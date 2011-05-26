@@ -65,7 +65,8 @@ class ShelfCreator(object):
         """Iterable of tuples describing shelvable changes.
 
         As well as generating the tuples, this updates several members.
-        Tuples may be:
+        Tuples may be::
+
            ('add file', file_id, work_kind, work_path)
            ('delete file', file_id, target_kind, target_path)
            ('rename', file_id, target_path, work_path)

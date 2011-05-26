@@ -47,14 +47,6 @@ class TestInit(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
 
-    def test_init_weave(self):
-        # --format=weave should be accepted to allow interoperation with
-        # old releases when desired.
-        out, err = self.run_bzr('init --format=weave')
-        self.assertEqual("""Created a standalone tree (format: weave)\n""",
-            out)
-        self.assertEqual('', err)
-
     def test_init_format_2a(self):
         """Smoke test for constructing a format 2a repoistory."""
         out, err = self.run_bzr('init --format=2a')

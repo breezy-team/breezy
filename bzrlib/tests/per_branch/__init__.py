@@ -20,18 +20,16 @@
 """Branch implementation tests for bzr.
 
 These test the conformance of all the branch variations to the expected API.
-Specific tests for individual formats are in the tests/test_branch file
-rather than in tests/per_branch/*.py.
+Specific tests for individual formats are in the `tests/test_branch` file
+rather than in `tests/per_branch/*.py`.
 """
 
 from bzrlib import (
     errors,
     tests,
     )
-from bzrlib.branch import (BranchFormat,
-                           _legacy_formats,
-                           )
-from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
+from bzrlib.branch import format_registry
+from bzrlib.remote import RemoteBranchFormat
 from bzrlib.tests import test_server
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.transport import memory
@@ -132,7 +130,7 @@ def branch_scenarios():
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [(format, format._matchingbzrdir) for format in
-         BranchFormat.get_formats() + _legacy_formats]
+         format_registry._get_all()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,

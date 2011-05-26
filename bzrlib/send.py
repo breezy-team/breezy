@@ -63,7 +63,8 @@ def send(submit_branch, revision, public_branch, remember, format,
             submit_branch = stored_submit_branch
             remembered_submit_branch = "submit"
         else:
-            if stored_submit_branch is None or remember:
+            # Remembers if asked explicitly or no previous location is set
+            if remember or (remember is None and stored_submit_branch is None):
                 branch.set_submit_branch(submit_branch)
         if submit_branch is None:
             submit_branch = branch.get_parent()
@@ -95,7 +96,9 @@ def send(submit_branch, revision, public_branch, remember, format,
         stored_public_branch = branch.get_public_branch()
         if public_branch is None:
             public_branch = stored_public_branch
-        elif stored_public_branch is None or remember:
+        # Remembers if asked explicitly or no previous location is set
+        elif (remember
+              or (remember is None and stored_public_branch is None)):
             branch.set_public_branch(public_branch)
         if no_bundle and public_branch is None:
             raise errors.BzrCommandError('No public branch specified or'

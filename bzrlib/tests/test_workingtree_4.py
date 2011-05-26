@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -56,6 +56,22 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             self.assertEqual([], state.get_parent_ids())
         finally:
             state.unlock()
+
+    def test_resets_ignores_on_last_unlock(self):
+        # Only the last unlock call will actually reset the
+        # ignores. (bug #785671)
+        tree = self.make_workingtree()
+        tree.lock_read()
+        try:
+            tree.lock_read()
+            try:
+                tree.is_ignored("foo")
+            finally:
+                tree.unlock()
+            self.assertIsNot(None, tree._ignoreglobster)
+        finally:
+            tree.unlock()
+        self.assertIs(None, tree._ignoreglobster)
 
     def test_uses_lockdir(self):
         """WorkingTreeFormat4 uses its own LockDir:
@@ -174,9 +190,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # it's given; any calls to forbidden methods will raise an
         # AssertionError
         repo = tree.branch.repository
-        repo.get_revision = self.fail
-        repo.get_inventory = self.fail
-        repo._get_inventory_xml = self.fail
+        self.overrideAttr(repo, "get_revision", self.fail)
+        self.overrideAttr(repo, "get_inventory", self.fail)
+        self.overrideAttr(repo, "_get_inventory_xml", self.fail)
         # try to set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree)])
 
@@ -214,8 +230,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # answer 'get_parent_ids' for the revision tree- dirstate does not
         # cache the parents of a parent tree at this point.
         #repo.get_revision = self.fail
-        repo.get_inventory = self.fail
-        repo._get_inventory_xml = self.fail
+        self.overrideAttr(repo, "get_inventory", self.fail)
+        self.overrideAttr(repo, "_get_inventory_xml", self.fail)
         # set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree), (rev2, rev2_tree)])
         # read the first tree
@@ -257,6 +273,68 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
         lock_and_call_current_dirstate(tree, 'lock_tree_write')
         self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
+
+    def test_set_parent_trees_uses_update_basis_by_delta(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('A', [], [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('a', 'a-id', 'file', 'content\n'))])
+        builder.build_snapshot('B', ['A'], [
+            ('modify', ('a-id', 'new content\nfor a\n')),
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
+        tree = self.make_workingtree('tree')
+        source_branch = builder.get_branch()
+        tree.branch.repository.fetch(source_branch.repository, 'B')
+        tree.pull(source_branch, stop_revision='A')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        state = tree.current_dirstate()
+        called = []
+        orig_update = state.update_basis_by_delta
+        def log_update_basis_by_delta(delta, new_revid):
+            called.append(new_revid)
+            return orig_update(delta, new_revid)
+        state.update_basis_by_delta = log_update_basis_by_delta
+        basis = tree.basis_tree()
+        self.assertEqual('a-id', basis.path2id('a'))
+        self.assertEqual(None, basis.path2id('b'))
+        def fail_set_parent_trees(trees, ghosts):
+            raise AssertionError('dirstate.set_parent_trees() was called')
+        state.set_parent_trees = fail_set_parent_trees
+        repo = tree.branch.repository
+        tree.pull(source_branch, stop_revision='B')
+        self.assertEqual(['B'], called)
+        basis = tree.basis_tree()
+        self.assertEqual('a-id', basis.path2id('a'))
+        self.assertEqual('b-id', basis.path2id('b'))
+
+    def test_set_parent_trees_handles_missing_basis(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('A', [], [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('a', 'a-id', 'file', 'content\n'))])
+        builder.build_snapshot('B', ['A'], [
+            ('modify', ('a-id', 'new content\nfor a\n')),
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
+        builder.build_snapshot('C', ['A'], [
+            ('add', ('c', 'c-id', 'file', 'c-content\n'))])
+        b_c = self.make_branch('branch_with_c')
+        b_c.pull(builder.get_branch(), stop_revision='C')
+        b_b = self.make_branch('branch_with_b')
+        b_b.pull(builder.get_branch(), stop_revision='B')
+        # This is reproducing some of what 'switch' does, just to isolate the
+        # set_parent_trees() step.
+        wt = b_b.create_checkout('tree', lightweight=True)
+        fmt = wt.bzrdir.find_branch_format()
+        fmt.set_reference(wt.bzrdir, None, b_c)
+        # Re-open with the new reference
+        wt = wt.bzrdir.open_workingtree()
+        wt.set_parent_trees([('C', b_c.repository.revision_tree('C'))])
+        self.assertEqual(None, wt.basis_tree().path2id('b'))
 
     def test_new_dirstate_on_new_lock(self):
         # until we have detection for when a dirstate can be reused, we
@@ -597,38 +675,40 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['foo'])
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree_contents([('foo', 'a bit of content for foo\n')])
         tree.add(['foo'], ['foo-id'])
-        # a 4 second old timestamp is always hashable - sucks to delay
-        # the test suite, but not testing this is worse.
-        time.sleep(4)
+        tree.current_dirstate()._cutoff_time = time.time() + 60
         return tree
 
     def test_commit_updates_hash_cache(self):
         tree = self.get_tree_with_cachable_file_foo()
         revid = tree.commit('a commit')
         # tree's dirstate should now have a valid stat entry for foo.
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
         entry = tree._get_entry(path='foo')
         expected_sha1 = osutils.sha_file_by_name('foo')
         self.assertEqual(expected_sha1, entry[1][0][1])
+        self.assertEqual(len('a bit of content for foo\n'), entry[1][0][2])
 
     def test_observed_sha1_cachable(self):
         tree = self.get_tree_with_cachable_file_foo()
         expected_sha1 = osutils.sha_file_by_name('foo')
         statvalue = os.lstat("foo")
-        tree.lock_write()
-        try:
-            tree._observed_sha1("foo-id", "foo", (expected_sha1, statvalue))
-            self.assertEqual(expected_sha1,
-                tree._get_entry(path="foo")[1][0][1])
-        finally:
-            tree.unlock()
+        tree._observed_sha1("foo-id", "foo", (expected_sha1, statvalue))
+        entry = tree._get_entry(path="foo")
+        entry_state = entry[1][0]
+        self.assertEqual(expected_sha1, entry_state[1])
+        self.assertEqual(statvalue.st_size, entry_state[2])
+        tree.unlock()
+        tree.lock_read()
         tree = tree.bzrdir.open_workingtree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(expected_sha1, tree._get_entry(path="foo")[1][0][1])
+        entry = tree._get_entry(path="foo")
+        entry_state = entry[1][0]
+        self.assertEqual(expected_sha1, entry_state[1])
+        self.assertEqual(statvalue.st_size, entry_state[2])
 
     def test_observed_sha1_new_file(self):
         tree = self.make_branch_and_tree('.')

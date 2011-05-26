@@ -7,7 +7,7 @@
 ローカルのブランチを作りチェックアウトに変更したいのであれば、
 ``bind`` コマンドを使います::
 
-  bzr bind sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr bind bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
 
 たとえば以前のセクションで説明されたように ``push`` を使って集中型の\
 ブランチを作った後でこれは必要です。
@@ -57,7 +57,7 @@ Bazaarはバージョン履歴を効率的に保存するために役立つ一�
 Bazaarで履歴のないチェックアウトを入手するには、
 ``--lightweight`` オプションを使います::
 
-  bzr checkout --lightweight sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr checkout --lightweight bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
 
 もちろん、これによって通常のチェックアウトの多くの利点は失われますが、
 役に立つ場合と時を選ぶトレードオフです。

@@ -27,10 +27,8 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import errno
 import threading
-from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -42,11 +40,10 @@ from bzrlib import (
     osutils,
     trace,
     ui,
-    win32utils,
     )
 """)
 
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -276,6 +273,8 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     # Allow plugins to extend commands
     for hook in Command.hooks['extend_command']:
         hook(cmd)
+    if getattr(cmd, 'invoked_as', None) is None:
+        cmd.invoked_as = cmd_name
     return cmd
 
 
@@ -358,57 +357,57 @@ class Command(object):
     summary, then a complete description of the command.  A grammar
     description will be inserted.
 
-    aliases
-        Other accepted names for this command.
+    :cvar aliases: Other accepted names for this command.
 
-    takes_args
-        List of argument forms, marked with whether they are optional,
-        repeated, etc.
+    :cvar takes_args: List of argument forms, marked with whether they are
+        optional, repeated, etc.  Examples::
 
-                Examples:
+            ['to_location', 'from_branch?', 'file*']
 
-                ['to_location', 'from_branch?', 'file*']
+        * 'to_location' is required
+        * 'from_branch' is optional
+        * 'file' can be specified 0 or more times
 
-                'to_location' is required
-                'from_branch' is optional
-                'file' can be specified 0 or more times
+    :cvar takes_options: List of options that may be given for this command.
+        These can be either strings, referring to globally-defined options, or
+        option objects.  Retrieve through options().
 
-    takes_options
-        List of options that may be given for this command.  These can
-        be either strings, referring to globally-defined options,
-        or option objects.  Retrieve through options().
-
-    hidden
-        If true, this command isn't advertised.  This is typically
+    :cvar hidden: If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
 
-    encoding_type
-        Command objects will get a 'outf' attribute, which has been
-        setup to properly handle encoding of unicode strings.
-        encoding_type determines what will happen when characters cannot
-        be encoded
-            strict - abort if we cannot decode
-            replace - put in a bogus character (typically '?')
-            exact - do not encode sys.stdout
+    :cvar encoding_type: Command objects will get a 'outf' attribute, which has
+        been setup to properly handle encoding of unicode strings.
+        encoding_type determines what will happen when characters cannot be
+        encoded:
 
-            NOTE: by default on Windows, sys.stdout is opened as a text
-            stream, therefore LF line-endings are converted to CRLF.
-            When a command uses encoding_type = 'exact', then
-            sys.stdout is forced to be a binary stream, and line-endings
-            will not mangled.
+        * strict - abort if we cannot decode
+        * replace - put in a bogus character (typically '?')
+        * exact - do not encode sys.stdout
+
+        NOTE: by default on Windows, sys.stdout is opened as a text stream,
+        therefore LF line-endings are converted to CRLF.  When a command uses
+        encoding_type = 'exact', then sys.stdout is forced to be a binary
+        stream, and line-endings will not mangled.
+
+    :cvar invoked_as:
+        A string indicating the real name under which this command was
+        invoked, before expansion of aliases.
+        (This may be None if the command was constructed and run in-process.)
 
     :cvar hooks: An instance of CommandHooks.
-    :ivar __doc__: The help shown by 'bzr help command' for this command.
+
+    :cvar __doc__: The help shown by 'bzr help command' for this command.
         This is set by assigning explicitly to __doc__ so that -OO can
         be used::
 
-        class Foo(Command):
-            __doc__ = "My help goes here"
+            class Foo(Command):
+                __doc__ = "My help goes here"
     """
     aliases = []
     takes_args = []
     takes_options = []
     encoding_type = 'strict'
+    invoked_as = None
 
     hidden = False
 
@@ -753,6 +752,10 @@ class Command(object):
         return getdoc(self)
 
     def name(self):
+        """Return the canonical name for this command.
+
+        The name under which it was actually invoked is available in invoked_as.
+        """
         return _unsquish_command_name(self.__class__.__name__)
 
     def plugin_name(self):
@@ -776,30 +779,30 @@ class CommandHooks(Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('extend_command',
+        Hooks.__init__(self, "bzrlib.commands", "Command.hooks")
+        self.add_hook('extend_command',
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
-            "new bzrlib.commands.Command object.", (1, 13), None))
-        self.create_hook(HookPoint('get_command',
+            "new bzrlib.commands.Command object.", (1, 13))
+        self.add_hook('get_command',
             "Called when creating a single command. Called with "
             "(cmd_or_None, command_name). get_command should either return "
             "the cmd_or_None parameter, or a replacement Command object that "
             "should be used for the command. Note that the Command.hooks "
             "hooks are core infrastructure. Many users will prefer to use "
             "bzrlib.commands.register_command or plugin_cmds.register_lazy.",
-            (1, 17), None))
-        self.create_hook(HookPoint('get_missing_command',
+            (1, 17))
+        self.add_hook('get_missing_command',
             "Called when creating a single command if no command could be "
             "found. Called with (command_name). get_missing_command should "
             "either return None, or a Command object to be used for the "
-            "command.", (1, 17), None))
-        self.create_hook(HookPoint('list_commands',
+            "command.", (1, 17))
+        self.add_hook('list_commands',
             "Called when enumerating commands. Called with a set of "
             "cmd_name strings for all the commands found so far. This set "
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
-            (1, 17), None))
+            (1, 17))
 
 Command.hooks = CommandHooks()
 
@@ -1035,7 +1038,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Specify the number of processes that can be run concurrently (selftest).
     """
     trace.mutter("bazaar version: " + bzrlib.__version__)
-    argv = list(argv)
+    argv = _specified_or_unicode_argv(argv)
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
@@ -1181,7 +1184,7 @@ def _specified_or_unicode_argv(argv):
         new_argv = []
         try:
             # ensure all arguments are unicode strings
-            for a in argv[1:]:
+            for a in argv:
                 if isinstance(a, unicode):
                     new_argv.append(a)
                 else:
@@ -1203,7 +1206,8 @@ def main(argv=None):
 
     :return: exit code of bzr command.
     """
-    argv = _specified_or_unicode_argv(argv)
+    if argv is not None:
+        argv = argv[1:]
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
@@ -1264,19 +1268,19 @@ class HelpCommandIndex(object):
 
 
 class Provider(object):
-    '''Generic class to be overriden by plugins'''
+    """Generic class to be overriden by plugins"""
 
     def plugin_for_command(self, cmd_name):
-        '''Takes a command and returns the information for that plugin
+        """Takes a command and returns the information for that plugin
 
         :return: A dictionary with all the available information
-        for the requested plugin
-        '''
+            for the requested plugin
+        """
         raise NotImplementedError
 
 
 class ProvidersRegistry(registry.Registry):
-    '''This registry exists to allow other providers to exist'''
+    """This registry exists to allow other providers to exist"""
 
     def __iter__(self):
         for key, provider in self.iteritems():

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,26 +42,16 @@ bzrlib.ui.text.TextUIFactory
 """
 
 
-import os
-import sys
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
-
 from bzrlib import (
-    errors,
     osutils,
     progress,
     trace,
     )
 """)
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 _valid_boolean_strings = dict(yes=True, no=False,
@@ -154,7 +144,16 @@ class UIFactory(object):
             "%(from_format)s to %(to_format)s.\n"
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
-            )
+            ),
+        deprecated_command=(
+            "The command 'bzr %(deprecated_name)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use 'bzr %(recommended_name)s' instead."),
+        recommend_upgrade=("%(current_format_name)s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  bzr upgrade %(basedir)s"),
         )
 
     def __init__(self):
@@ -320,7 +319,7 @@ class UIFactory(object):
         """Get a boolean question answered from the user.
 
         :param prompt: a message to prompt the user with. Should be a single
-        line without terminating \n.
+            line without terminating \\n.
         :return: True or False for y/yes or n/no.
         """
         raise NotImplementedError(self.get_boolean)
@@ -329,7 +328,7 @@ class UIFactory(object):
         """Get an integer from the user.
 
         :param prompt: a message to prompt the user with. Could be a multi-line
-            prompt but without a terminating \n.
+            prompt but without a terminating \\n.
 
         :return: A signed integer.
         """
@@ -343,21 +342,14 @@ class UIFactory(object):
         """
         return NullProgressView()
 
-    def recommend_upgrade(self,
-        current_format_name,
-        basedir):
-        # XXX: this should perhaps be in the TextUIFactory and the default can do
-        # nothing
-        #
-        # XXX: Change to show_user_warning - that will accomplish the previous
-        # xxx. -- mbp 2010-02-25
-        trace.warning("%s is deprecated "
-            "and a better format is available.\n"
-            "It is recommended that you upgrade by "
-            "running the command\n"
-            "  bzr upgrade %s",
-            current_format_name,
-            basedir)
+    def recommend_upgrade(self, current_format_name, basedir):
+        """Recommend the user upgrade a control directory.
+
+        :param current_format_name: Description of the current format
+        :param basedir: Location of the control dir
+        """
+        self.show_user_warning('recommend_upgrade',
+            current_format_name=current_format_name, basedir=basedir)
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.

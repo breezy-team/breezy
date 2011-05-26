@@ -377,12 +377,20 @@ class ExtendedTestResult(testtools.TextTestResult):
         if isinstance(test, TestCase):
             test.addCleanup(self._check_leaked_threads, test)
 
+    def stopTest(self, test):
+        super(ExtendedTestResult, self).stopTest(test)
+        # Manually break cycles, means touching various private things but hey
+        getDetails = getattr(test, "getDetails", None)
+        if getDetails is not None:
+            getDetails().clear()
+        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+        if type_equality_funcs is not None:
+            type_equality_funcs.clear()
+        self._traceback_from_test = None
+
     def startTests(self):
         self.report_tests_starting()
         self._active_threads = threading.enumerate()
-
-    def stopTest(self, test):
-        self._traceback_from_test = None
 
     def _check_leaked_threads(self, test):
         """See if any threads have leaked since last call
@@ -448,6 +456,19 @@ class ExtendedTestResult(testtools.TextTestResult):
     def addExpectedFailure(self, test, err):
         self.known_failure_count += 1
         self.report_known_failure(test, err)
+
+    def addUnexpectedSuccess(self, test, details=None):
+        """Tell result the test unexpectedly passed, counting as a failure
+
+        When the minimum version of testtools required becomes 0.9.8 this
+        can be updated to use the new handling there.
+        """
+        super(ExtendedTestResult, self).addFailure(test, details=details)
+        self.failure_count += 1
+        self.report_unexpected_success(test,
+            "".join(details["reason"].iter_text()))
+        if self.stop_early:
+            self.stop()
 
     def addNotSupported(self, test, feature):
         """The test will not be run because of a missing feature.
@@ -613,6 +634,13 @@ class TextTestResult(ExtendedTestResult):
     def report_known_failure(self, test, err):
         pass
 
+    def report_unexpected_success(self, test, reason):
+        self.stream.write('FAIL: %s\n    %s: %s\n' % (
+            self._test_description(test),
+            "Unexpected success. Should have failed",
+            reason,
+            ))
+
     def report_skip(self, test, reason):
         pass
 
@@ -669,6 +697,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write('XFAIL %s\n%s\n'
                 % (self._testTimeString(test),
                    self._error_summary(err)))
+
+    def report_unexpected_success(self, test, reason):
+        self.stream.write(' FAIL %s\n%s: %s\n'
+                % (self._testTimeString(test),
+                   "Unexpected success. Should have failed",
+                   reason))
 
     def report_success(self, test):
         self.stream.write('   OK %s\n' % self._testTimeString(test))
@@ -937,10 +971,6 @@ class TestCase(testtools.TestCase):
         super(TestCase, self).setUp()
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
-        self._log_contents = None
-        self.addDetail("log", content.Content(content.ContentType("text",
-            "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -954,6 +984,10 @@ class TestCase(testtools.TestCase):
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
         self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
+        # Isolate config option expansion until its default value for bzrlib is
+        # settled on or a the FIXME associated with _get_expand_default_value
+        # is addressed -- vila 20110219
+        self.overrideAttr(config, '_expand_default_value', None)
 
     def debug(self):
         # debug a frame up.
@@ -996,6 +1030,8 @@ class TestCase(testtools.TestCase):
         for key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
+        self._preserved_lazy_hooks = hooks._lazy_hooks
+        hooks._lazy_hooks = {}
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
@@ -1261,11 +1297,15 @@ class TestCase(testtools.TestCase):
                          'st_mtime did not match')
         self.assertEqual(expected.st_ctime, actual.st_ctime,
                          'st_ctime did not match')
-        if sys.platform != 'win32':
+        if sys.platform == 'win32':
             # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
             # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
-            # odd. Regardless we shouldn't actually try to assert anything
-            # about their values
+            # odd. We just force it to always be 0 to avoid any problems.
+            self.assertEqual(0, expected.st_dev)
+            self.assertEqual(0, actual.st_dev)
+            self.assertEqual(0, expected.st_ino)
+            self.assertEqual(0, actual.st_ino)
+        else:
             self.assertEqual(expected.st_dev, actual.st_dev,
                              'st_dev did not match')
             self.assertEqual(expected.st_ino, actual.st_ino,
@@ -1280,20 +1320,20 @@ class TestCase(testtools.TestCase):
                 length, len(obj_with_len), obj_with_len))
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """Assert that `func(*args, **kwargs)` quietly logs a specific error.
         """
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly
         try:
             def capture():
                 orig_log_exception_quietly()
-                captured.append(sys.exc_info())
+                captured.append(sys.exc_info()[1])
             trace.log_exception_quietly = capture
             func(*args, **kwargs)
         finally:
             trace.log_exception_quietly = orig_log_exception_quietly
         self.assertLength(1, captured)
-        err = captured[0][1]
+        err = captured[0]
         self.assertIsInstance(err, exception_class)
         return err
 
@@ -1594,7 +1634,14 @@ class TestCase(testtools.TestCase):
 
         The file is removed as the test is torn down.
         """
-        self._log_file = StringIO()
+        pseudo_log_file = StringIO()
+        def _get_log_contents_for_weird_testtools_api():
+            return [pseudo_log_file.getvalue().decode(
+                "utf-8", "replace").encode("utf-8")]          
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            _get_log_contents_for_weird_testtools_api))
+        self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
@@ -1607,8 +1654,6 @@ class TestCase(testtools.TestCase):
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
-        # Cache the log result and delete the file on disk
-        self._get_log(False)
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1663,6 +1708,9 @@ class TestCase(testtools.TestCase):
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
+        self._preserved_hooks.clear()
+        bzrlib.hooks._lazy_hooks = self._preserved_lazy_hooks
+        self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -1759,41 +1807,6 @@ class TestCase(testtools.TestCase):
 
     def log(self, *args):
         trace.mutter(*args)
-
-    def _get_log(self, keep_log_file=False):
-        """Internal helper to get the log from bzrlib.trace for this test.
-
-        Please use self.getDetails, or self.get_log to access this in test case
-        code.
-
-        :param keep_log_file: When True, if the log is still a file on disk
-            leave it as a file on disk. When False, if the log is still a file
-            on disk, the log file is deleted and the log preserved as
-            self._log_contents.
-        :return: A string containing the log.
-        """
-        if self._log_contents is not None:
-            try:
-                self._log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = self._log_contents.decode('utf8', 'replace')
-                self._log_contents = unicodestr.encode('utf8')
-            return self._log_contents
-        if self._log_file is not None:
-            log_contents = self._log_file.getvalue()
-            try:
-                log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = log_contents.decode('utf8', 'replace')
-                log_contents = unicodestr.encode('utf8')
-            if not keep_log_file:
-                self._log_file = None
-                # Permit multiple calls to get_log until we clean it up in
-                # finishLogFile
-                self._log_contents = log_contents
-            return log_contents
-        else:
-            return "No log file content."
 
     def get_log(self):
         """Get a unicode string containing the log from bzrlib.trace.
@@ -2114,18 +2127,20 @@ class TestCase(testtools.TestCase):
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
-    def check_inventory_shape(self, inv, shape):
-        """Compare an inventory to a list of expected names.
+    def check_tree_shape(self, tree, shape):
+        """Compare a tree to a list of expected names.
 
         Fail if they are not precisely equal.
         """
         extras = []
         shape = list(shape)             # copy
-        for path, ie in inv.entries():
+        for path, ie in tree.iter_entries_by_dir():
             name = path.replace('\\', '/')
             if ie.kind == 'directory':
                 name = name + '/'
-            if name in shape:
+            if name == "/":
+                pass # ignore root entry
+            elif name in shape:
                 shape.remove(name)
             else:
                 extras.append(name)
@@ -3717,6 +3732,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_repository',
         'bzrlib.tests.per_repository_chk',
         'bzrlib.tests.per_repository_reference',
+        'bzrlib.tests.per_repository_vf',
         'bzrlib.tests.per_uifactory',
         'bzrlib.tests.per_versionedfile',
         'bzrlib.tests.per_workingtree',
@@ -3756,12 +3772,12 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_commit_merge',
         'bzrlib.tests.test_config',
         'bzrlib.tests.test_conflicts',
+        'bzrlib.tests.test_controldir',
         'bzrlib.tests.test_counted_lock',
         'bzrlib.tests.test_crash',
         'bzrlib.tests.test_decorators',
         'bzrlib.tests.test_delta',
         'bzrlib.tests.test_debug',
-        'bzrlib.tests.test_deprecated_graph',
         'bzrlib.tests.test_diff',
         'bzrlib.tests.test_directory_service',
         'bzrlib.tests.test_dirstate',
@@ -3769,6 +3785,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_eol_filters',
         'bzrlib.tests.test_errors',
         'bzrlib.tests.test_export',
+        'bzrlib.tests.test_export_pot',
         'bzrlib.tests.test_extract',
         'bzrlib.tests.test_fetch',
         'bzrlib.tests.test_fixtures',
@@ -3812,6 +3829,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_merge3',
         'bzrlib.tests.test_merge_core',
         'bzrlib.tests.test_merge_directive',
+        'bzrlib.tests.test_mergetools',
         'bzrlib.tests.test_missing',
         'bzrlib.tests.test_msgeditor',
         'bzrlib.tests.test_multiparent',
@@ -3867,6 +3885,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_testament',
         'bzrlib.tests.test_textfile',
         'bzrlib.tests.test_textmerge',
+        'bzrlib.tests.test_cethread',
         'bzrlib.tests.test_timestamp',
         'bzrlib.tests.test_trace',
         'bzrlib.tests.test_transactions',
@@ -3883,6 +3902,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_upgrade',
         'bzrlib.tests.test_upgrade_stacked',
         'bzrlib.tests.test_urlutils',
+        'bzrlib.tests.test_utextwrap',
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
@@ -3905,7 +3925,6 @@ def _test_suite_modules_to_doctest():
         'bzrlib',
         'bzrlib.branchbuilder',
         'bzrlib.decorators',
-        'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
         'bzrlib.lockdir',

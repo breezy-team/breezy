@@ -54,61 +54,56 @@ in the deltas to provide line annotation
 
 from cStringIO import StringIO
 from itertools import izip
-import gzip
 import operator
 import os
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import gzip
+
 from bzrlib import (
-    annotate,
     debug,
     diff,
     graph as _mod_graph,
     index as _mod_index,
-    lru_cache,
     pack,
     patiencediff,
-    progress,
     static_tuple,
     trace,
     tsort,
     tuned_gzip,
     ui,
     )
+
+from bzrlib.repofmt import pack_repo
 """)
 from bzrlib import (
+    annotate,
     errors,
     osutils,
     )
 from bzrlib.errors import (
-    FileExists,
     NoSuchFile,
-    KnitError,
     InvalidRevisionId,
     KnitCorrupt,
     KnitHeaderError,
     RevisionNotPresent,
-    RevisionAlreadyPresent,
     SHA1KnitCorrupt,
     )
 from bzrlib.osutils import (
     contains_whitespace,
-    contains_linebreaks,
     sha_string,
     sha_strings,
     split_lines,
     )
 from bzrlib.versionedfile import (
+    _KeyRefs,
     AbsentContentFactory,
     adapter_registry,
     ConstantMapper,
     ContentFactory,
-    ChunkedContentFactory,
     sort_groupcompress,
-    VersionedFile,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 
@@ -413,7 +408,7 @@ def knit_network_to_record(storage_kind, bytes, line_end):
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied.
 
-    This is always stored in memory as a list of lines with \n at the end,
+    This is always stored in memory as a list of lines with \\n at the end,
     plus a flag saying if the final ending is really there or not, because that
     corresponds to the on-disk knit representation.
     """
@@ -806,7 +801,7 @@ def make_pack_factory(graph, delta, keylength):
         writer.begin()
         index = _KnitGraphIndex(graph_index, lambda:True, parents=parents,
             deltas=delta, add_callback=graph_index.add_nodes)
-        access = _DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = KnitVersionedFiles(index, access,
             max_delta_chain=max_delta_chain)
@@ -850,7 +845,7 @@ def _get_total_build_size(self, keys, positions):
                 in all_build_index_memos.itervalues()])
 
 
-class KnitVersionedFiles(VersionedFiles):
+class KnitVersionedFiles(VersionedFilesWithFallbacks):
     """Storage for many versioned files using knit compression.
 
     Backend storage is managed by indices and data objects.
@@ -883,7 +878,7 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitAnnotateFactory()
         else:
             self._factory = KnitPlainFactory()
-        self._fallback_vfs = []
+        self._immediate_fallback_vfs = []
         self._reload_func = reload_func
 
     def __repr__(self):
@@ -892,12 +887,18 @@ class KnitVersionedFiles(VersionedFiles):
             self._index,
             self._access)
 
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        return KnitVersionedFiles(self._index, self._access,
+            self._max_delta_chain, self._factory.annotated,
+            self._reload_func)
+
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
 
         :param a_versioned_files: A VersionedFiles object.
         """
-        self._fallback_vfs.append(a_versioned_files)
+        self._immediate_fallback_vfs.append(a_versioned_files)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -1070,7 +1071,7 @@ class KnitVersionedFiles(VersionedFiles):
                     raise errors.KnitCorrupt(self,
                         "Missing basis parent %s for %s" % (
                         compression_parent, key))
-        for fallback_vfs in self._fallback_vfs:
+        for fallback_vfs in self._immediate_fallback_vfs:
             fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
@@ -1154,14 +1155,15 @@ class KnitVersionedFiles(VersionedFiles):
 
         A dict of key to (record_details, index_memo, next, parents) is
         returned.
-        method is the way referenced data should be applied.
-        index_memo is the handle to pass to the data access to actually get the
-            data
-        next is the build-parent of the version, or None for fulltexts.
-        parents is the version_ids of the parents of this version
 
-        :param allow_missing: If True do not raise an error on a missing component,
-            just ignore it.
+        * method is the way referenced data should be applied.
+        * index_memo is the handle to pass to the data access to actually get
+          the data
+        * next is the build-parent of the version, or None for fulltexts.
+        * parents is the version_ids of the parents of this version
+
+        :param allow_missing: If True do not raise an error on a missing
+            component, just ignore it.
         """
         component_data = {}
         pending_components = keys
@@ -1193,19 +1195,6 @@ class KnitVersionedFiles(VersionedFiles):
         generator = _VFContentMapGenerator(self, [key])
         return generator._get_content(key)
 
-    def get_known_graph_ancestry(self, keys):
-        """Get a KnownGraph instance with the ancestry of keys."""
-        parent_map, missing_keys = self._index.find_ancestry(keys)
-        for fallback in self._transitive_fallbacks():
-            if not missing_keys:
-                break
-            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
-                                                missing_keys)
-            parent_map.update(f_parent_map)
-            missing_keys = f_missing_keys
-        kg = _mod_graph.KnownGraph(parent_map)
-        return kg
-
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.
 
@@ -1226,7 +1215,7 @@ class KnitVersionedFiles(VersionedFiles):
             and so on.
         """
         result = {}
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallback_vfs
         source_results = []
         missing = set(keys)
         for source in sources:
@@ -1242,15 +1231,13 @@ class KnitVersionedFiles(VersionedFiles):
         """Produce a dictionary of knit records.
 
         :return: {key:(record, record_details, digest, next)}
-            record
-                data returned from read_records (a KnitContentobject)
-            record_details
-                opaque information to pass to parse_record
-            digest
-                SHA1 digest of the full text after all steps are done
-            next
-                build-parent of the version, i.e. the leftmost ancestor.
+
+            * record: data returned from read_records (a KnitContentobject)
+            * record_details: opaque information to pass to parse_record
+            * digest: SHA1 digest of the full text after all steps are done
+            * next: build-parent of the version, i.e. the leftmost ancestor.
                 Will be None if the record is not a delta.
+
         :param keys: The keys to build a map for
         :param allow_missing: If some records are missing, rather than
             error, just return the data that could be generated.
@@ -1526,7 +1513,7 @@ class KnitVersionedFiles(VersionedFiles):
                         yield KnitContentFactory(key, global_map[key],
                             record_details, None, raw_data, self._factory.annotated, None)
                 else:
-                    vf = self._fallback_vfs[parent_maps.index(source) - 1]
+                    vf = self._immediate_fallback_vfs[parent_maps.index(source) - 1]
                     for record in vf.get_record_stream(keys, ordering,
                         include_delta_closure):
                         yield record
@@ -1542,7 +1529,7 @@ class KnitVersionedFiles(VersionedFiles):
             # record entry 2 is the 'digest'.
             result[key] = details[2]
         missing.difference_update(set(result))
-        for source in self._fallback_vfs:
+        for source in self._immediate_fallback_vfs:
             if not missing:
                 break
             new_result = source.get_sha1s(missing)
@@ -1619,7 +1606,7 @@ class KnitVersionedFiles(VersionedFiles):
                 raise RevisionNotPresent([record.key], self)
             elif ((record.storage_kind in knit_types)
                   and (compression_parent is None
-                       or not self._fallback_vfs
+                       or not self._immediate_fallback_vfs
                        or self._index.has_key(compression_parent)
                        or not self.has_key(compression_parent))):
                 # we can insert the knit record literally if either it has no
@@ -1797,11 +1784,11 @@ class KnitVersionedFiles(VersionedFiles):
         # vfs, and hope to find them there.  Note that if the keys are found
         # but had no changes or no content, the fallback may not return
         # anything.
-        if keys and not self._fallback_vfs:
+        if keys and not self._immediate_fallback_vfs:
             # XXX: strictly the second parameter is meant to be the file id
             # but it's not easily accessible here.
             raise RevisionNotPresent(keys, repr(self))
-        for source in self._fallback_vfs:
+        for source in self._immediate_fallback_vfs:
             if not keys:
                 break
             source_keys = set()
@@ -1923,6 +1910,7 @@ class KnitVersionedFiles(VersionedFiles):
         The result will be returned in whatever is the fastest to read.
         Not by the order requested. Also, multiple requests for the same
         record will only yield 1 response.
+
         :param records: A list of (key, access_memo) entries
         :return: Yields (key, contents, digest) in the order
                  read, not the order requested
@@ -1986,11 +1974,11 @@ class KnitVersionedFiles(VersionedFiles):
         :param key: The key of the record. Currently keys are always serialised
             using just the trailing component.
         :param dense_lines: The bytes of lines but in a denser form. For
-            instance, if lines is a list of 1000 bytestrings each ending in \n,
-            dense_lines may be a list with one line in it, containing all the
-            1000's lines and their \n's. Using dense_lines if it is already
-            known is a win because the string join to create bytes in this
-            function spends less time resizing the final string.
+            instance, if lines is a list of 1000 bytestrings each ending in
+            \\n, dense_lines may be a list with one line in it, containing all
+            the 1000's lines and their \\n's. Using dense_lines if it is
+            already known is a win because the string join to create bytes in
+            this function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
         chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]
@@ -2016,7 +2004,7 @@ class KnitVersionedFiles(VersionedFiles):
         """See VersionedFiles.keys."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "keys scales with size of history")
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallback_vfs
         result = set()
         for source in sources:
             result.update(source.keys())
@@ -2062,7 +2050,7 @@ class _ContentMapGenerator(object):
 
         missing_keys = set(nonlocal_keys)
         # Read from remote versioned file instances and provide to our caller.
-        for source in self.vf._fallback_vfs:
+        for source in self.vf._immediate_fallback_vfs:
             if not missing_keys:
                 break
             # Loop over fallback repositories asking them for texts - ignore
@@ -2787,64 +2775,6 @@ class _KndxIndex(object):
         return key[:-1], key[-1]
 
 
-class _KeyRefs(object):
-
-    def __init__(self, track_new_keys=False):
-        # dict mapping 'key' to 'set of keys referring to that key'
-        self.refs = {}
-        if track_new_keys:
-            # set remembering all new keys
-            self.new_keys = set()
-        else:
-            self.new_keys = None
-
-    def clear(self):
-        if self.refs:
-            self.refs.clear()
-        if self.new_keys:
-            self.new_keys.clear()
-
-    def add_references(self, key, refs):
-        # Record the new references
-        for referenced in refs:
-            try:
-                needed_by = self.refs[referenced]
-            except KeyError:
-                needed_by = self.refs[referenced] = set()
-            needed_by.add(key)
-        # Discard references satisfied by the new key
-        self.add_key(key)
-
-    def get_new_keys(self):
-        return self.new_keys
-    
-    def get_unsatisfied_refs(self):
-        return self.refs.iterkeys()
-
-    def _satisfy_refs_for_key(self, key):
-        try:
-            del self.refs[key]
-        except KeyError:
-            # No keys depended on this key.  That's ok.
-            pass
-
-    def add_key(self, key):
-        # satisfy refs for key, and remember that we've seen this key.
-        self._satisfy_refs_for_key(key)
-        if self.new_keys is not None:
-            self.new_keys.add(key)
-
-    def satisfy_refs_for_keys(self, keys):
-        for key in keys:
-            self._satisfy_refs_for_key(key)
-
-    def get_referrers(self):
-        result = set()
-        for referrers in self.refs.itervalues():
-            result.update(referrers)
-        return result
-
-
 class _KnitGraphIndex(object):
     """A KnitVersionedFiles index layered on GraphIndex."""
 
@@ -3521,8 +3451,8 @@ class _KnitAnnotator(annotate.Annotator):
         return records, ann_keys
 
     def _get_needed_texts(self, key, pb=None):
-        # if True or len(self._vf._fallback_vfs) > 0:
-        if len(self._vf._fallback_vfs) > 0:
+        # if True or len(self._vf._immediate_fallback_vfs) > 0:
+        if len(self._vf._immediate_fallback_vfs) > 0:
             # If we have fallbacks, go to the generic path
             for v in annotate.Annotator._get_needed_texts(self, key, pb=pb):
                 yield v

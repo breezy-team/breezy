@@ -36,7 +36,7 @@ from testtools.matchers import (
     DocTestMatches,
     Equals,
     )
-import testtools.tests.helpers
+import testtools.testresult.doubles
 
 import bzrlib
 from bzrlib import (
@@ -52,10 +52,11 @@ from bzrlib import (
     tests,
     transport,
     workingtree,
+    workingtree_3,
+    workingtree_4,
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
-    weaverepo,
     )
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -339,11 +340,11 @@ class TestWorkingTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat2(),
-                   workingtree.WorkingTreeFormat3(),]
+        formats = [workingtree_4.WorkingTreeFormat4(),
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
-            ('WorkingTreeFormat2',
+            ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
@@ -376,15 +377,15 @@ class TestTreeScenarios(tests.TestCase):
             )
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat2(),
-                   workingtree.WorkingTreeFormat3(),]
+        formats = [workingtree_4.WorkingTreeFormat4(),
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
-        default_wt_format = workingtree.WorkingTreeFormat4._default_format
-        wt4_format = workingtree.WorkingTreeFormat4()
-        wt5_format = workingtree.WorkingTreeFormat5()
+        default_wt_format = workingtree.format_registry.get_default()
+        wt4_format = workingtree_4.WorkingTreeFormat4()
+        wt5_format = workingtree_4.WorkingTreeFormat5()
         expected_scenarios = [
-            ('WorkingTreeFormat2',
+            ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
@@ -450,17 +451,17 @@ class TestInterTreeScenarios(tests.TestCase):
         # ones to add.
         from bzrlib.tests.per_tree import (
             return_parameter,
-            revision_tree_from_workingtree
             )
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
+        from bzrlib.workingtree_3 import WorkingTreeFormat3
+        from bzrlib.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
         server2 = "b"
-        format1 = WorkingTreeFormat2()
+        format1 = WorkingTreeFormat4()
         format2 = WorkingTreeFormat3()
         formats = [("1", str, format1, format2, "converter1"),
             ("2", int, format2, format1, "converter2")]
@@ -576,7 +577,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = weaverepo.RepositoryFormat7()
+        format.repository_format = repository.format_registry.get_default()
         tree = self.make_branch_and_memory_tree('dir', format=format)
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
@@ -596,7 +597,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Use a repo layout that doesn't conform to a 'named' layout, to ensure
         # that the format objects are used.
         format = bzrdir.BzrDirMetaFormat1()
-        repo_format = weaverepo.RepositoryFormat7()
+        repo_format = repository.format_registry.get_default()
         format.repository_format = repo_format
         builder = self.make_branch_builder('dir', format=format)
         the_branch = builder.get_branch()
@@ -720,7 +721,7 @@ class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = testtools.tests.helpers.ExtendedTestResult()
+        terminal = testtools.testresult.doubles.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -743,7 +744,7 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        capture = testtools.tests.helpers.ExtendedTestResult()
+        capture = testtools.testresult.doubles.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
         timed_string = result._testTimeString(run_case)
@@ -769,46 +770,6 @@ class TestTestResult(tests.TestCase):
                 time.sleep(0.003)
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
-
-    def _patch_get_bzr_source_tree(self):
-        # Reading from the actual source tree breaks isolation, but we don't
-        # want to assume that thats *all* that would happen.
-        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree', lambda: None)
-
-    def test_assigned_benchmark_file_stores_date(self):
-        self._patch_get_bzr_source_tree()
-        output = StringIO()
-        result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1,
-                                        bench_history=output
-                                        )
-        output_string = output.getvalue()
-        # if you are wondering about the regexp please read the comment in
-        # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
-        # XXX: what comment?  -- Andrew Bennetts
-        self.assertContainsRe(output_string, "--date [0-9.]+")
-
-    def test_benchhistory_records_test_times(self):
-        self._patch_get_bzr_source_tree()
-        result_stream = StringIO()
-        result = bzrlib.tests.TextTestResult(
-            self._log_file,
-            descriptions=0,
-            verbosity=1,
-            bench_history=result_stream
-            )
-
-        # we want profile a call and check that its test duration is recorded
-        # make a new test instance that when run will generate a benchmark
-        example_test_case = TestTestResult("_time_hello_world_encoding")
-        # execute the test, which should succeed and record times
-        example_test_case.run(result)
-        lines = result_stream.getvalue().splitlines()
-        self.assertEqual(2, len(lines))
-        self.assertContainsRe(lines[1],
-            " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
-            "._time_hello_world_encoding")
 
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
@@ -1084,7 +1045,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            self.fail('foo')
+            raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1098,7 +1059,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    self.fail\\(\'foo\'\\)\n'
+            '    raise AssertionError\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1110,7 +1071,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                self.expectFailure('failed', self.assertTrue, False)
+                self.knownFailure("Never works...")
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1121,6 +1082,24 @@ class TestRunner(tests.TestCase):
             'Ran 1 test in .*\n'
             '\n'
             'OK \\(known_failures=1\\)\n')
+
+    def test_unexpected_success_bad(self):
+        class Test(tests.TestCase):
+            def test_truth(self):
+                self.expectFailure("No absolute truth", self.assertTrue, True)
+        runner = tests.TextTestRunner(stream=StringIO())
+        result = self.run_test_runner(runner, Test("test_truth"))
+        self.assertContainsRe(runner.stream.getvalue(),
+            "=+\n"
+            "FAIL: \\S+\.test_truth\n"
+            "-+\n"
+            "(?:.*\n)*"
+            "No absolute truth\n"
+            "(?:.*\n)*"
+            "-+\n"
+            "Ran 1 test in .*\n"
+            "\n"
+            "FAILED \\(failures=1\\)\n\\Z")
 
     def test_result_decorator(self):
         # decorate results
@@ -1233,29 +1212,6 @@ class TestRunner(tests.TestCase):
             "Missing feature 'Feature2' skipped 1 tests.",
             ],
             lines[-3:])
-
-    def _patch_get_bzr_source_tree(self):
-        # Reading from the actual source tree breaks isolation, but we don't
-        # want to assume that thats *all* that would happen.
-        self._get_source_tree_calls = []
-        def new_get():
-            self._get_source_tree_calls.append("called")
-            return None
-        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree',  new_get)
-
-    def test_bench_history(self):
-        # tests that the running the benchmark passes bench_history into
-        # the test result object. We can tell that happens if
-        # _get_bzr_source_tree is called.
-        self._patch_get_bzr_source_tree()
-        test = TestRunner('dummy_test')
-        output = StringIO()
-        runner = tests.TextTestRunner(stream=self._log_file,
-                                      bench_history=output)
-        result = self.run_test_runner(runner, test)
-        output_string = output.getvalue()
-        self.assertContainsRe(output_string, "--date [0-9.]+")
-        self.assertLength(1, self._get_source_tree_calls)
 
     def test_verbose_test_count(self):
         """A verbose test run reports the right test count at the start"""
@@ -1507,12 +1463,12 @@ class TestTestCase(tests.TestCase):
         # Note this test won't fail with hooks that the core library doesn't
         # use - but it trigger with a plugin that adds hooks, so its still a
         # useful warning in that case.
-        self.assertEqual(bzrlib.branch.BranchHooks(),
-            bzrlib.branch.Branch.hooks)
-        self.assertEqual(bzrlib.smart.server.SmartServerHooks(),
+        self.assertEqual(bzrlib.branch.BranchHooks(), bzrlib.branch.Branch.hooks)
+        self.assertEqual(
+            bzrlib.smart.server.SmartServerHooks(),
             bzrlib.smart.server.SmartTCPServer.hooks)
-        self.assertEqual(bzrlib.commands.CommandHooks(),
-            bzrlib.commands.Command.hooks)
+        self.assertEqual(
+            bzrlib.commands.CommandHooks(), bzrlib.commands.Command.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -1996,11 +1952,8 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
         self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
-        self.make_branch_and_tree('b', format=bzrlib.bzrdir.BzrDirFormat6())
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
                               bzrlib.bzrdir.BzrDirMetaFormat1)
-        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
-                              bzrlib.bzrdir.BzrDirFormat6)
 
     def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from
@@ -2084,17 +2037,17 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_lsprof_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        calls = []
+        results = []
         class Test(object):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                self.assertIsInstance(result, ExtendedToOriginalDecorator)
-                calls.append("called")
+                results.append(result)
             def countTestCases(self):
                 return 1
         self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
-        self.assertLength(1, calls)
+        self.assertLength(1, results)
+        self.assertIsInstance(results.pop(), ExtendedToOriginalDecorator)
 
     def test_random(self):
         # test randomising by listing a number of tests.
@@ -2242,9 +2195,13 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_unexpected_success')
         self.assertContainsRe(content, '(?m)^log$')
         self.assertContainsRe(content, 'test with unexpected success')
-        self.expectFailure('subunit treats "unexpectedSuccess"'
-                           ' as a plain success',
-            self.assertEqual, 1, len(result.unexpectedSuccesses))
+        # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
+        #                success, if a min version check is added remove this
+        from subunit import TestProtocolClient as _Client
+        if _Client.addUnexpectedSuccess.im_func is _Client.addSuccess.im_func:
+            self.expectFailure('subunit treats "unexpectedSuccess"'
+                               ' as a plain success',
+                self.assertEqual, 1, len(result.unexpectedSuccesses))
         self.assertEqual(1, len(result.unexpectedSuccesses))
         test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"
@@ -2878,16 +2835,16 @@ class TestSelftestFiltering(tests.TestCase):
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
-class TestCheckInventoryShape(tests.TestCaseWithTransport):
+class TestCheckTreeShape(tests.TestCaseWithTransport):
 
-    def test_check_inventory_shape(self):
+    def test_check_tree_shape(self):
         files = ['a', 'b/', 'b/c']
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
         tree.add(files)
         tree.lock_read()
         try:
-            self.check_inventory_shape(tree.inventory, files)
+            self.check_tree_shape(tree, files)
         finally:
             tree.unlock()
 

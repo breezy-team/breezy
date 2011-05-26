@@ -28,7 +28,11 @@ from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
                            LockContention)
-from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
+from bzrlib.tests import (
+    SymlinkFeature,
+    TestCaseWithTransport,
+    test_foreign,
+    )
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -102,6 +106,44 @@ class TestCommit(TestCaseWithTransport):
         text = tree2.get_file_text(file_id)
         tree2.unlock()
         self.assertEqual('version 2', text)
+
+    def test_commit_lossy_native(self):
+        """Attempt a lossy commit to a native branch."""
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        revid = wt.commit(message='add hello', rev_id='revid', lossy=True)
+        self.assertEquals('revid', revid)
+
+    def test_commit_lossy_foreign(self):
+        """Attempt a lossy commit to a foreign branch."""
+        test_foreign.register_dummy_foreign_for_test(self)
+        wt = self.make_branch_and_tree('.',
+            format=test_foreign.DummyForeignVcsDirFormat())
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        revid = wt.commit(message='add hello', lossy=True,
+            timestamp=1302659388, timezone=0)
+        self.assertEquals('dummy-v1:1302659388.0-0-UNKNOWN', revid)
+
+    def test_commit_bound_lossy_foreign(self):
+        """Attempt a lossy commit to a bzr branch bound to a foreign branch."""
+        test_foreign.register_dummy_foreign_for_test(self)
+        foreign_branch = self.make_branch('foreign',
+            format=test_foreign.DummyForeignVcsDirFormat())
+        wt = foreign_branch.create_checkout("local")
+        b = wt.branch
+        file('local/hello', 'w').write('hello world')
+        wt.add('hello')
+        revid = wt.commit(message='add hello', lossy=True,
+            timestamp=1302659388, timezone=0)
+        self.assertEquals('dummy-v1:1302659388.0-0-0', revid)
+        self.assertEquals('dummy-v1:1302659388.0-0-0',
+            foreign_branch.last_revision())
+        self.assertEquals('dummy-v1:1302659388.0-0-0',
+            wt.branch.last_revision())
 
     def test_missing_commit(self):
         """Test a commit with a missing file"""
@@ -220,18 +262,16 @@ class TestCommit(TestCaseWithTransport):
         eq(tree1.id2path('hello-id'), 'hello')
         eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
-        self.check_inventory_shape(tree1.inventory, ['hello'])
-        ie = tree1.inventory['hello-id']
-        eq(ie.revision, 'test@rev-1')
+        self.check_tree_shape(tree1, ['hello'])
+        eq(tree1.get_file_revision('hello-id'), 'test@rev-1')
 
         tree2 = b.repository.revision_tree('test@rev-2')
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         eq(tree2.id2path('hello-id'), 'fruity')
         eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
-        self.check_inventory_shape(tree2.inventory, ['fruity'])
-        ie = tree2.inventory['hello-id']
-        eq(ie.revision, 'test@rev-2')
+        self.check_tree_shape(tree2, ['fruity'])
+        eq(tree2.get_file_revision('hello-id'), 'test@rev-2')
 
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""
@@ -258,8 +298,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('two', rev_id=r2, allow_pointless=False)
         wt.lock_read()
         try:
-            self.check_inventory_shape(wt.read_working_inventory(),
-                                       ['a/', 'a/hello', 'b/'])
+            self.check_tree_shape(wt, ['a/', 'a/hello', 'b/'])
         finally:
             wt.unlock()
 
@@ -268,9 +307,9 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('three', rev_id=r3, allow_pointless=False)
         wt.lock_read()
         try:
-            self.check_inventory_shape(wt.read_working_inventory(),
+            self.check_tree_shape(wt,
                                        ['a/', 'a/hello', 'a/b/'])
-            self.check_inventory_shape(b.repository.get_inventory(r3),
+            self.check_tree_shape(b.repository.revision_tree(r3),
                                        ['a/', 'a/hello', 'a/b/'])
         finally:
             wt.unlock()
@@ -280,8 +319,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('four', rev_id=r4, allow_pointless=False)
         wt.lock_read()
         try:
-            self.check_inventory_shape(wt.read_working_inventory(),
-                                       ['a/', 'a/b/hello', 'a/b/'])
+            self.check_tree_shape(wt, ['a/', 'a/b/hello', 'a/b/'])
         finally:
             wt.unlock()
 
@@ -349,7 +387,6 @@ class TestCommit(TestCaseWithTransport):
     def test_strict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = True,
         should work."""
-        from bzrlib.errors import StrictCommitFailed
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         file('hello', 'w').write('hello world')
@@ -407,7 +444,6 @@ class TestCommit(TestCaseWithTransport):
         wt.commit("base", allow_pointless=True, rev_id='A')
         self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
-            from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
             config = MustSignConfig(branch)

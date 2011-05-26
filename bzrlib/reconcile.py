@@ -64,13 +64,14 @@ class Reconciler(object):
         """Perform reconciliation.
 
         After reconciliation the following attributes document found issues:
-        inconsistent_parents: The number of revisions in the repository whose
-                              ancestry was being reported incorrectly.
-        garbage_inventories: The number of inventory objects without revisions
-                             that were garbage collected.
-        fixed_branch_history: None if there was no branch, False if the branch
-                              history was correct, True if the branch history
-                              needed to be re-normalized.
+
+        * `inconsistent_parents`: The number of revisions in the repository
+          whose ancestry was being reported incorrectly.
+        * `garbage_inventories`: The number of inventory objects without
+          revisions that were garbage collected.
+        * `fixed_branch_history`: None if there was no branch, False if the
+          branch history was correct, True if the branch history needed to be
+          re-normalized.
         """
         self.pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -196,10 +197,11 @@ class RepoReconciler(object):
         """Perform reconciliation.
 
         After reconciliation the following attributes document found issues:
-        inconsistent_parents: The number of revisions in the repository whose
-                              ancestry was being reported incorrectly.
-        garbage_inventories: The number of inventory objects without revisions
-                             that were garbage collected.
+
+        * `inconsistent_parents`: The number of revisions in the repository
+          whose ancestry was being reported incorrectly.
+        * `garbage_inventories`: The number of inventory objects without
+          revisions that were garbage collected.
         """
         operation = cleanup.OperationWithCleanups(self._reconcile)
         self.add_cleanup = operation.add_cleanup
@@ -224,8 +226,6 @@ class RepoReconciler(object):
         only data-loss causing issues (!self.thorough) or all issues
         (self.thorough) are treated as requiring the reweave.
         """
-        # local because needing to know about WeaveFile is a wart we want to hide
-        from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data')
         self.inventory = self.repo.inventories

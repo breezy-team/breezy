@@ -32,6 +32,7 @@ import threading
 import bzrlib
 from bzrlib import (
     bzrdir,
+    cethread,
     config,
     errors,
     osutils,
@@ -178,8 +179,8 @@ class RecordingServer(object):
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
         self._ready = threading.Event()
-        self._thread = test_server.ThreadWithException(
-            event=self._ready, target=self._accept_read_and_reply)
+        self._thread = test_server.TestThread(
+            sync_event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
             sys.stderr.write('Thread started: %s\n' % (self._thread.ident,))
@@ -252,6 +253,40 @@ class TestAuthHeader(tests.TestCase):
             'Digest realm="Thou should not pass"')
         self.assertEqual('digest', scheme)
         self.assertEqual('realm="Thou should not pass"', remainder)
+
+
+class TestHTTPRangeParsing(tests.TestCase):
+
+    def setUp(self):
+        super(TestHTTPRangeParsing, self).setUp()
+        # We focus on range  parsing here and ignore everything else
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+            def setup(self): pass
+            def handle(self): pass
+            def finish(self): pass
+
+        self.req_handler = RequestHandler(None, None, None)
+
+    def assertRanges(self, ranges, header, file_size):
+        self.assertEquals(ranges,
+                          self.req_handler._parse_ranges(header, file_size))
+
+    def test_simple_range(self):
+        self.assertRanges([(0,2)], 'bytes=0-2', 12)
+
+    def test_tail(self):
+        self.assertRanges([(8, 11)], 'bytes=-4', 12)
+
+    def test_tail_bigger_than_file(self):
+        self.assertRanges([(0, 11)], 'bytes=-99', 12)
+
+    def test_range_without_end(self):
+        self.assertRanges([(4, 11)], 'bytes=4-', 12)
+
+    def test_invalid_ranges(self):
+        self.assertRanges(None, 'bytes=12-22', 12)
+        self.assertRanges(None, 'bytes=1-3,12-22', 12)
+        self.assertRanges(None, 'bytes=-', 12)
 
 
 class TestHTTPServer(tests.TestCase):
@@ -427,7 +462,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
     """Test the http connections."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -492,7 +527,7 @@ class TestHttpTransportRegistration(tests.TestCase):
 class TestPost(tests.TestCase):
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -551,7 +586,7 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1029,7 +1064,7 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
     """Tests readv requests against a server erroring out on too much ranges."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1075,12 +1110,23 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def _proxied_request(self):
         handler = _urllib2_wrappers.ProxyHandler()
-        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
+        request = _urllib2_wrappers.Request('GET', 'http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
+    def assertEvaluateProxyBypass(self, expected, host, no_proxy):
+        handler = _urllib2_wrappers.ProxyHandler()
+        self.assertEquals(expected,
+                          handler.evaluate_proxy_bypass(host, no_proxy))
+
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
+        request = self._proxied_request()
+        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+
+    def test_user_with_at(self):
+        self.overrideEnv('http_proxy',
+                         'http://username@domain:password@proxy_host:1234')
         request = self._proxied_request()
         self.assertFalse(request.headers.has_key('Proxy-authorization'))
 
@@ -1088,6 +1134,26 @@ class TestHttpProxyWhiteBox(tests.TestCase):
         """A proxy env variable without scheme"""
         self.overrideEnv('http_proxy', 'host:1234')
         self.assertRaises(errors.InvalidURL, self._proxied_request)
+
+    def test_evaluate_proxy_bypass_true(self):
+        """The host is not proxied"""
+        self.assertEvaluateProxyBypass(True, 'example.com', 'example.com')
+        self.assertEvaluateProxyBypass(True, 'bzr.example.com', '*example.com')
+
+    def test_evaluate_proxy_bypass_false(self):
+        """The host is proxied"""
+        self.assertEvaluateProxyBypass(False, 'bzr.example.com', None)
+
+    def test_evaluate_proxy_bypass_unknown(self):
+        """The host is not explicitly proxied"""
+        self.assertEvaluateProxyBypass(None, 'example.com', 'not.example.com')
+        self.assertEvaluateProxyBypass(None, 'bzr.example.com', 'example.com')
+
+    def test_evaluate_proxy_bypass_empty_entries(self):
+        """Ignore empty entries"""
+        self.assertEvaluateProxyBypass(None, 'example.com', '')
+        self.assertEvaluateProxyBypass(None, 'example.com', ',')
+        self.assertEvaluateProxyBypass(None, 'example.com', 'foo,,bar')
 
 
 class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
@@ -1100,7 +1166,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1197,7 +1263,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     """Test the Range header in GET methods."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1247,7 +1313,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirection between http servers."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1320,7 +1386,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1375,7 +1441,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test transport.do_catching_redirections."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1730,7 +1796,7 @@ class SampleSocket(object):
 class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1947,11 +2013,12 @@ class TestActivityMixin(object):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
-        self.activities = {}
+        _activities = {} # Don't close over self and create a cycle
         def report_activity(t, bytes, direction):
-            count = self.activities.get(direction, 0)
+            count = _activities.get(direction, 0)
             count += bytes
-            self.activities[direction] = count
+            _activities[direction] = count
+        self.activities = _activities
 
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an

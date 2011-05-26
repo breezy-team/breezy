@@ -29,7 +29,10 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    fixtures,
+    TestCaseWithTransport,
+    )
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
@@ -142,6 +145,21 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull -r 4')
         self.assertEqual(a.revision_history(), b.revision_history())
 
+    def test_pull_tags(self):
+        """Tags are updated by pull, and revisions named in those tags are
+        fetched.
+        """
+        # Make a source, sprout a target off it
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        target_bzrdir = source.bzrdir.sprout('target')
+        source.tags.set_tag('tag-a', 'rev-2')
+        # Pull from source
+        self.run_bzr('pull -d target source')
+        target = target_bzrdir.open_branch()
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2')
 
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites
@@ -495,4 +513,13 @@ class TestPull(TestCaseWithTransport):
         self.assertEqual(out,
                          ('','bzr: ERROR: Need working tree for --show-base.\n'))
 
-
+    def test_pull_tag_conflicts(self):
+        """pulling tags with conflicts will change the exit code"""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        out = self.run_bzr(['pull','-d','to','from'],retcode=1)
+        self.assertEqual(out,
+            ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))

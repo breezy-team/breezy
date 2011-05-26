@@ -97,3 +97,31 @@ class RecordingContextManager(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._calls.append('__exit__')
         return False # propogate exceptions.
+
+
+def build_branch_with_non_ancestral_rev(branch_builder):
+    """Builds a branch with a rev not in the ancestry of the tip.
+
+    This is the revision graph::
+
+      rev-2
+        |
+      rev-1
+        |
+      (null)
+
+    The branch tip is 'rev-1'.  'rev-2' is present in the branch's repository,
+    but is not part of rev-1's ancestry.
+
+    :param branch_builder: A BranchBuilder (e.g. from
+        TestCaseWithMemoryTransport.make_branch_builder).
+    :returns: the new branch
+    """
+    # Make a sequence of two commits
+    branch_builder.build_commit(message="Rev 1", rev_id='rev-1')
+    branch_builder.build_commit(message="Rev 2", rev_id='rev-2')
+    # Move the branch tip back to the first commit
+    source = branch_builder.get_branch()
+    source.set_last_revision_info(1, 'rev-1')
+    return source
+

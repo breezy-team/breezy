@@ -18,7 +18,7 @@
 
 This documentation is made up of doctest testable examples.
 
-Look for bzrlib/doc/api/*.txt to read it.
+Look for `bzrlib/doc/api/*.txt` to read it.
 
 This documentation documents the current best practice in using the library.
 For details on specific apis, see pydoc on the api, or read the source.

@@ -215,11 +215,13 @@ class TestRegistryIter(tests.TestCase):
         # We create a registry with "official" objects and "hidden"
         # objects. The later represent the side effects that led to bug #277048
         # and #430510
-        self.registry =  registry.Registry()
+        _registry = registry.Registry()
 
         def register_more():
-            self.registry.register('hidden', None)
+           _registry.register('hidden', None)
 
+        # Avoid closing over self by binding local variable
+        self.registry = _registry
         self.registry.register('passive', None)
         self.registry.register('active', register_more)
         self.registry.register('passive-too', None)
@@ -229,7 +231,7 @@ class TestRegistryIter(tests.TestCase):
             def get_obj(inner_self):
                 # Surprise ! Getting a registered object (think lazy loaded
                 # module) register yet another object !
-                self.registry.register('more hidden', None)
+                _registry.register('more hidden', None)
                 return inner_self._obj
 
         self.registry.register('hacky', None)
@@ -338,3 +340,17 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         finally:
             sys.path.remove(plugin_path)
 
+    def test_lazy_import_get_module(self):
+        a_registry = registry.Registry()
+        a_registry.register_lazy('obj', "bzrlib.tests.test_registry",
+            'object1')
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))
+
+    def test_normal_get_module(self):
+        class AThing(object):
+            """Something"""
+        a_registry = registry.Registry()
+        a_registry.register("obj", AThing())
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))

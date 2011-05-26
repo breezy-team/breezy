@@ -18,19 +18,14 @@
 
 from bzrlib import (
     branchbuilder,
-    bzrdir,
     tag,
     )
 from bzrlib.branch import (
     Branch,
     )
-from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     script,
     TestCaseWithTransport,
-    )
-from bzrlib.repository import (
-    Repository,
     )
 from bzrlib.workingtree import WorkingTree
 
@@ -129,6 +124,8 @@ class TestTagging(TestCaseWithTransport):
     def make_fork(self, branch):
         fork = branch.create_clone_on_transport(self.get_transport('fork'))
         builder = branchbuilder.BranchBuilder(branch=fork)
+        builder.build_commit(message='Commit in fork.', rev_id='fork-0')
+        fork.set_last_revision_info(1, 'rev-1')
         builder.build_commit(message='Commit in fork.', rev_id='fork-1')
         return fork
 
@@ -148,6 +145,8 @@ class TestTagging(TestCaseWithTransport):
         master, child = self.make_master_and_checkout()
         fork = self.make_fork(master)
         fork.tags.set_tag('new-tag', fork.last_revision())
+        fork.tags.set_tag('non-ancestry-tag', 'fork-0')
+        fork.tags.set_tag('absent-tag', 'absent-rev')
         script.run_script(self, """
             $ cd child
             $ bzr merge ../fork
@@ -156,10 +155,16 @@ class TestTagging(TestCaseWithTransport):
             2>Committed revision 2.
             """, null_output_matches_anything=True)
         # Merge copied the tag to child and commit propagated it to master
-        self.assertEqual(
-            {'new-tag': fork.last_revision()}, child.branch.tags.get_tag_dict())
-        self.assertEqual(
-            {'new-tag': fork.last_revision()}, master.tags.get_tag_dict())
+        expected_tag_dict = {
+            'new-tag': fork.last_revision(),
+            'non-ancestry-tag': 'fork-0',
+            'absent-tag': 'absent-rev',
+            }
+        self.assertEqual(expected_tag_dict, child.branch.tags.get_tag_dict())
+        self.assertEqual(expected_tag_dict, master.tags.get_tag_dict())
+        # Revisions not in ancestry but named in tags are present
+        child.branch.repository.get_revision('fork-0')
+        master.repository.get_revision('fork-0')
 
     def test_commit_in_heavyweight_checkout_reports_tag_conflict(self):
         master, child = self.make_master_and_checkout()
@@ -333,7 +338,8 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # pull should give a warning about the tags
-        out, err = self.run_bzr('pull -d one two', encoding='utf-8')
+        out, err = self.run_bzr('pull -d one two', encoding='utf-8',
+            retcode=1)
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # merge should give a warning about the tags -- not implemented yet
@@ -354,3 +360,21 @@ class TestTagging(TestCaseWithTransport):
         self.assertEqual('', out)
         self.assertEqual('', err)
 
+    def test_tags_with_mainline_ghosts(self):
+        tree = self.make_branch_and_tree('tree1')
+        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.add('')
+        tree.commit('msg1', rev_id='rev1')
+        tree.commit('msg2', rev_id='rev2')
+        tree.branch.tags.set_tag('unknown', 'out-of-mainline')
+        tree.branch.tags.set_tag('ghost', 'spooky')
+        tree.branch.tags.set_tag('tag1', 'rev1')
+        tree.branch.tags.set_tag('tag2', 'rev2')
+
+        out, err = self.run_bzr('tags -d tree1', encoding='utf-8')
+        self.assertEqual(out,
+            'ghost                ?\n'
+            'tag1                 1\n'
+            'tag2                 2\n'
+            'unknown              ?\n')
+        self.assertEqual('', err)

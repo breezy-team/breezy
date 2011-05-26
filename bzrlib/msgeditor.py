@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ from subprocess import call
 import sys
 
 from bzrlib import (
+    cmdline,
     config,
     osutils,
     trace,
@@ -30,7 +31,7 @@ from bzrlib import (
     ui,
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 
 
 def _get_editor():
@@ -59,7 +60,7 @@ def _get_editor():
 def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
     for candidate, candidate_source in _get_editor():
-        edargs = candidate.split(' ')
+        edargs = cmdline.split(candidate)
         try:
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
@@ -301,16 +302,16 @@ class MessageEditorHooks(Hooks):
 
         These are all empty initially.
         """
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('commit_message_template',
+        Hooks.__init__(self, "bzrlib.msgeditor", "hooks")
+        self.add_hook('commit_message_template',
             "Called when a commit message is being generated. "
             "commit_message_template is called with the bzrlib.commit.Commit "
             "object and the message that is known so far. "
             "commit_message_template must return a new message to use (which "
-            "could be the same as it was given. When there are multiple "
+            "could be the same as it was given). When there are multiple "
             "hooks registered for commit_message_template, they are chained "
             "with the result from the first passed into the second, and so "
-            "on.", (1, 10), None))
+            "on.", (1, 10))
 
 
 hooks = MessageEditorHooks()

@@ -20,6 +20,9 @@ from bzrlib import (
     bzrdir,
     transport,
     )
+from bzrlib.remote import (
+    RemoteRepositoryFormat,
+    )
 from bzrlib.tests import (
     TestNotApplicable,
     )
@@ -84,21 +87,19 @@ class TestHasSameLocation(TestCaseWithRepository):
         CopyConverter creates a second repository in one bzrdir.
         """
         repo = self.make_repository('repo')
-        try:
-            control_transport = repo._transport
-        except AttributeError:
-            raise TestNotApplicable(
-                "%r has no transport" % (repo,))
-        if control_transport.base == repo.bzrdir.transport.base:
+        if repo.control_transport.base == repo.bzrdir.control_transport.base:
             raise TestNotApplicable(
                 "%r has repository files directly in the bzrdir"
                 % (repo,))
             # This test only applies to repository formats where the repo
             # control_files are separate from other bzrdir files, i.e. metadir
             # formats.
-        control_transport.copy_tree('.', '../repository.backup')
-        backup_transport = control_transport.clone('../repository.backup')
-        backup_repo = repo._format.open(repo.bzrdir, _found=True,
+        repo.control_transport.copy_tree('.', '../repository.backup')
+        backup_transport = repo.control_transport.clone('../repository.backup')
+        if isinstance(repo._format, RemoteRepositoryFormat):
+            raise TestNotApplicable("remote repositories don't support overriding "
+                                    "transport")
+        backup_repo = repo._format.open(repo.bzrdir,
                                         _override_transport=backup_transport)
         self.assertDifferentRepo(repo, backup_repo)
 
@@ -116,7 +117,7 @@ class TestHasSameLocation(TestCaseWithRepository):
             # format for other_repo.
             transport.get_transport(self.get_vfs_only_url()
                                     ).delete_tree('other')
-            other_repo = self.make_repository('other', format='metaweave')
+            other_repo = self.make_repository('other', format='knit')
         # Make sure the other_repo is not a RemoteRepository.
         other_bzrdir = bzrdir.BzrDir.open(self.get_vfs_only_url('other'))
         other_repo = other_bzrdir.open_repository()
