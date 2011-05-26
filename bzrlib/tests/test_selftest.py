@@ -3468,6 +3468,8 @@ class TestUncollectedWarningsForking(TestUncollectedWarnings):
         # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
         if getattr(os, "fork", None) is None:
             raise tests.TestNotApplicable("Platform doesn't support forking")
+        # Make sure the fork code is actually invoked by claiming two cores
+        self.overrideAttr(osutils, "local_concurrency", lambda: 2)
         kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
         return TestUncollectedWarnings._run_selftest_with_suite(self, **kwargs)
 
