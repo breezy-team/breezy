@@ -1706,10 +1706,16 @@ class InvalidRange(TransportError):
 
 class InvalidHttpResponse(TransportError):
 
-    _fmt = "Invalid http response for %(path)s: %(msg)s"
+    _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
 
     def __init__(self, path, msg, orig_error=None):
         self.path = path
+        if orig_error is None:
+            orig_error = ''
+        else:
+            # This is reached for obscure and unusual errors so we want to
+            # preserve as much info as possible to ease debug.
+            orig_error = ': %r' % (orig_error,)
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
