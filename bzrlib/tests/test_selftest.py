@@ -3459,6 +3459,19 @@ class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
             runner_class=tests.SubUnitBzrRunner, **kwargs)
 
 
+class TestUncollectedWarningsForking(TestUncollectedWarnings):
+    """Check warnings from tests staying alive are emitted when forking"""
+
+    _test_needs_features = [features.subunit]
+
+    def _run_selftest_with_suite(self, **kwargs):
+        # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
+        if getattr(os, "fork", None) is None:
+            raise tests.TestNotApplicable("Platform doesn't support forking")
+        kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
+        return TestUncollectedWarnings._run_selftest_with_suite(self, **kwargs)
+
+
 class TestEnvironHandling(tests.TestCase):
 
     def test_overrideEnv_None_called_twice_doesnt_leak(self):
