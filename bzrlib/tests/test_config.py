@@ -2176,6 +2176,21 @@ class TestLockableIniFileStore(TestStore):
         self.assertPathExists('dir/subdir')
 
 
+class TestBranchStore(TestStore):
+
+    def test_dead_branch(self):
+        build_backing_branch(self, 'branch')
+        b = branch.Branch.open('branch')
+        store = config.BranchStore(b)
+        del b
+        # The only reliable way to trigger the error is to explicitly call the
+        # garbage collector.
+        import gc
+        gc.collect()
+        store.get_mutable_section(None).set('foo', 'bar')
+        self.assertRaises(AssertionError, store.save)
+
+
 class TestConcurrentStoreUpdates(TestStore):
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
