@@ -181,9 +181,12 @@ Testing
   restoring the wt_scenarios helper that was accidentally deleted.
   (Vincent Ladeuil, #783472)
 
+* Removed ``test_breakin`` tests that were excessively prone to hanging,
+  did not work on Wine, and partly already disabled.
+  (Martin Pool, #408814, #746985)
+
 * Windows locations are different and should be tested accordingly.
   (Vincent Ladeuil, #788131)
-
 
 bzr 2.4b2
 #########
