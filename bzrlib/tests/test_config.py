@@ -2046,6 +2046,8 @@ class TestMutableStore(TestStore):
         return self.transport.has(store_basename)
 
     def test_save_empty_creates_no_file(self):
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
             raise tests.TestNotApplicable(
                 'branch.conf is *always* created when a branch is initialized')
@@ -2065,6 +2067,8 @@ class TestMutableStore(TestStore):
         self.assertLength(0, sections)
 
     def test_save_with_content_succeeds(self):
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
             raise tests.TestNotApplicable(
                 'branch.conf is *always* created when a branch is initialized')
