@@ -230,7 +230,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """True if filename is the name of a control file in this tree.
 
         :param filename: A filename within the tree. This is a relative path
-        from the root of this tree.
+            from the root of this tree.
 
         This is true IF and ONLY IF the filename is part of the meta data
         that bzr controls in this tree. I.E. a random .bzr directory placed
@@ -626,8 +626,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         and setting the list to its value plus revision_id.
 
         :param revision_id: The revision id to add to the parent list. It may
-        be a ghost revision as long as its not the first parent to be added,
-        or the allow_leftmost_as_ghost parameter is set True.
+            be a ghost revision as long as its not the first parent to be
+            added, or the allow_leftmost_as_ghost parameter is set True.
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         parents = self.get_parent_ids() + [revision_id]
@@ -1478,6 +1478,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         - Restore the wt.basis->wt.state changes.
 
         There isn't a single operation at the moment to do that, so we:
+
         - Merge current state -> basis tree of the master w.r.t. the old tree
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
@@ -1738,11 +1739,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def _walkdirs(self, prefix=""):
         """Walk the directories of this tree.
 
-           :prefix: is used as the directrory to start with.
-           returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, None, file1_id,
-                   file1_kind), ... ])
+        :param prefix: is used as the directrory to start with.
+        :returns: a generator which yields items in the form::
+
+            ((curren_directory_path, fileid),
+             [(file1_path, file1_name, file1_kind, None, file1_id,
+               file1_kind), ... ])
         """
         raise NotImplementedError(self._walkdirs)
 
@@ -1754,6 +1756,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         are considered 'resolved', because bzr always puts conflict markers
         into files that have text conflicts.  The corresponding .THIS .BASE and
         .OTHER files are deleted, as per 'resolve'.
+
         :return: a tuple of ConflictLists: (un_resolved, resolved).
         """
         un_resolved = _mod_conflicts.ConflictList()
@@ -2911,11 +2914,12 @@ class InventoryWorkingTree(WorkingTree,
     def _walkdirs(self, prefix=""):
         """Walk the directories of this tree.
 
-           :prefix: is used as the directrory to start with.
-           returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, None, file1_id,
-                   file1_kind), ... ])
+        :param prefix: is used as the directrory to start with.
+        :returns: a generator which yields items in the form::
+
+            ((curren_directory_path, fileid),
+             [(file1_path, file1_name, file1_kind, None, file1_id,
+               file1_kind), ... ])
         """
         _directory = 'directory'
         # get the root in the inventory

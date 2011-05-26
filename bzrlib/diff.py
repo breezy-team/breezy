@@ -463,7 +463,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     """Show in text form the changes from one tree to another.
 
     :param to_file: The output stream.
-    :param specific_files:Include only changes to these files - None for all
+    :param specific_files: Include only changes to these files - None for all
         changes.
     :param external_diff_options: If set, use an external GNU diff and pass 
         these options.
@@ -942,6 +942,7 @@ class DiffTree(object):
         """Factory for producing a DiffTree.
 
         Designed to accept options used by show_diff_trees.
+
         :param old_tree: The tree to show as old in the comparison
         :param new_tree: The tree to show as new in the comparison
         :param to_file: File to write comparisons to
