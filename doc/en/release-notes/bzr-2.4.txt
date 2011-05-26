@@ -8,7 +8,15 @@ Bazaar Release Notes
 bzr 2.4b3
 #########
 
-:2.4b3: NOT RELEASED YET
+:2.4b3: 2011-05-26
+
+This is the third beta of the 2.4 series, leading to a 2.4.0 release in
+August 2011. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
 
 External Compatibility Breaks
 *****************************
