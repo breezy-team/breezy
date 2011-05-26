@@ -57,6 +57,22 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         finally:
             state.unlock()
 
+    def test_resets_ignores_on_last_unlock(self):
+        # Only the last unlock call will actually reset the
+        # ignores. (bug #785671)
+        tree = self.make_workingtree()
+        tree.lock_read()
+        try:
+            tree.lock_read()
+            try:
+                tree.is_ignored("foo")
+            finally:
+                tree.unlock()
+            self.assertIsNot(None, tree._ignoreglobster)
+        finally:
+            tree.unlock()
+        self.assertIs(None, tree._ignoreglobster)
+
     def test_uses_lockdir(self):
         """WorkingTreeFormat4 uses its own LockDir:
 
@@ -174,9 +190,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # it's given; any calls to forbidden methods will raise an
         # AssertionError
         repo = tree.branch.repository
-        repo.get_revision = self.fail
-        repo.get_inventory = self.fail
-        repo._get_inventory_xml = self.fail
+        self.overrideAttr(repo, "get_revision", self.fail)
+        self.overrideAttr(repo, "get_inventory", self.fail)
+        self.overrideAttr(repo, "_get_inventory_xml", self.fail)
         # try to set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree)])
 
@@ -214,8 +230,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # answer 'get_parent_ids' for the revision tree- dirstate does not
         # cache the parents of a parent tree at this point.
         #repo.get_revision = self.fail
-        repo.get_inventory = self.fail
-        repo._get_inventory_xml = self.fail
+        self.overrideAttr(repo, "get_inventory", self.fail)
+        self.overrideAttr(repo, "_get_inventory_xml", self.fail)
         # set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree), (rev2, rev2_tree)])
         # read the first tree
