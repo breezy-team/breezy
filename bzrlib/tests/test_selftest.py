@@ -3404,6 +3404,8 @@ class TestUncollectedWarnings(tests.TestCase):
 
     def _run_selftest_with_suite(self, **kwargs):
         sio = StringIO()
+        old_flags = tests.selftest_debug_flags
+        tests.selftest_debug_flags = old_flags.union(["uncollected_cases"])
         gc_on = gc.isenabled()
         if gc_on:
             gc.disable()
@@ -3413,6 +3415,7 @@ class TestUncollectedWarnings(tests.TestCase):
         finally:
             if gc_on:
                 gc.enable()
+            tests.selftest_debug_flags = old_flags
         output = sio.getvalue()
         self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
         self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
