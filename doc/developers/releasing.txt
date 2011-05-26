@@ -195,8 +195,10 @@ Update the source code
 
      ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
 
-   (As of 2011-03-10, only a few false positives remain. Don't let this slow
-   you down too much.)
+   As of 2011-05-26, only a few false positives remain in the older
+   series. Don't let this slow you down too much. This script accepts
+   options you may find useful, use ``./tools/check-newsbugs.py`` to display
+   its usage.
 
 #. Commit these changes to the release branch, using a command like::
 
