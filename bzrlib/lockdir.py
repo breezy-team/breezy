@@ -822,22 +822,7 @@ class LockHeldInfo(object):
             mutter("can't parse pid %r from %r" 
                 % (pid_str, self))
             return False
-        try:
-            # Special meaning of unix kill: just check if it's there.
-            os.kill(pid, 0)
-        except OSError, e:
-            if e.errno == errno.ESRCH:
-                # On this machine, and really not found: as sure as we can be
-                # that it's dead.
-                return True
-            elif e.errno == errno.EPERM:
-                # exists, though not ours
-                return False
-            else:
-                raise
-        else:
-            # Exists and our process: not dead.
-            return False
+        return osutils._posix_is_local_pid_dead(pid)
 
 
 def get_username_for_lock_info():
