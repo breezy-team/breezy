@@ -62,6 +62,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Multiple ``selftest --exclude`` options are now combined instead of
+  overriding each other. (Vincent Ladeuil, #746991)
 
 bzr 2.4b3
 #########
