@@ -17,8 +17,12 @@
 
 """Tests of the bzrlib.utextwrap."""
 
-from bzrlib import tests, utextwrap
-from bzrlib.tests import TestSkipped
+from bzrlib import (
+    tests,
+    utextwrap,
+    )
+from bzrlib.tests import features
+
 
 # Japanese "Good morning".
 # Each character have double width. So total 8 width on console.
@@ -167,6 +171,15 @@ try:
 
 
     def setup_both(testcase, base_class, reused_class):
+        
+        if (features.sphinx.available()):
+            # Until https://bitbucket.org/birkenfeld/sphinx/issue/706 is fixed,
+            # we can't run these tests when sphinx <= 1.0.1
+            version = tuple(map(int,
+                                features.sphinx.module.__version__.split('.')))
+            if version <= (1, 0, 1):
+                raise tests.TestSkipped('sphinx monkeypatch textwrap')
+        testcase.debug()
         super(base_class, testcase).setUp()
         override_textwrap_symbols(testcase)
         reused_class.setUp(testcase)
@@ -194,14 +207,14 @@ except ImportError:
     class TestWrap(tests.TestCase):
 
         def test_wrap(self):
-            raise TestSkipped("test.test_textwrap is not avialable.")
+            raise tests.TestSkipped("test.test_textwrap is not available.")
 
     class TestLongWord(tests.TestCase):
 
         def test_longword(self):
-            raise TestSkipped("test.test_textwrap is not avialable.")
+            raise tests.TestSkipped("test.test_textwrap is not available.")
 
     class TestIndent(tests.TestCase):
 
         def test_indent(self):
-            raise TestSkipped("test.test_textwrap is not avialable.")
+            raise tests.TestSkipped("test.test_textwrap is not available.")
