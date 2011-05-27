@@ -104,7 +104,7 @@ class TestBzrServe(TestBzrServeBase):
             'test_server_except_hook hook')
         args = []
         out, err = self.run_bzr_serve_then_func(args, retcode=0)
-        self.assertEqual('catching exception\n', err)
+        self.assertEqual('listening on port: 4155\ncatching exception\n', err)
 
     def test_server_exception_no_hook(self):
         """test exception without hook returns error"""
