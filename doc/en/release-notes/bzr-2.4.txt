@@ -35,6 +35,9 @@ Bug Fixes
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
+* Reports a non-existant file error when trying to merge in a file
+  that does not exist. (Jonathan Riddell, #330063)
+
 * ``UIFactory.prompt``, ``UIFactory.get_username``,
   ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
   unicode prompt to be passed in. (Jelmer Vernooij, #592083)
