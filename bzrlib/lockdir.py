@@ -818,7 +818,7 @@ class LockHeldInfo(object):
             mutter("can't parse pid %r from %r" 
                 % (pid_str, self))
             return False
-        return osutils._posix_is_local_pid_dead(pid)
+        return osutils.is_local_pid_dead(pid)
 
 
 def get_username_for_lock_info():

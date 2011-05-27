@@ -2469,3 +2469,7 @@ def _posix_is_local_pid_dead(pid):
         # Exists and our process: not dead.
         return False
 
+if sys.platform == "win32":
+    is_local_pid_dead = win32utils.is_local_pid_dead
+else:
+    is_local_pid_dead = _posix_is_local_pid_dead
