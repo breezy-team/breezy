@@ -25,7 +25,6 @@ import errno
 
 from bzrlib import (
     cleanup,
-    commands,
     errors,
     osutils,
     rio,
@@ -35,6 +34,7 @@ from bzrlib import (
     )
 """)
 from bzrlib import (
+    commands,
     option,
     registry,
     )
