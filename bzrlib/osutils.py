@@ -2451,7 +2451,7 @@ def find_executable_on_path(name):
 
 
 def _posix_is_local_pid_dead(pid):
-    """True if a process with given pid is running on this machine"""
+    """True if pid doesn't correspond to live process on this machine"""
     try:
         # Special meaning of unix kill: just check if it's there.
         os.kill(pid, 0)
