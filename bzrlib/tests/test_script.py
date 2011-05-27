@@ -558,7 +558,7 @@ class cmd_test_confirm(commands.Command):
 
     def run(self):
         if ui.ui_factory.get_boolean(
-            'Really do it',
+            u'Really do it',
             # 'bzrlib.tests.test_script.confirm',
             # {}
             ):
