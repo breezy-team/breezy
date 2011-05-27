@@ -80,6 +80,10 @@ def _poentry_per_paragraph(outf, path, lineno, msgid):
     # TODO: How to split long help?
     paragraphs = msgid.split('\n\n')
     for p in paragraphs:
+        if p.splitlines()[0] == ':Usage:':
+            # :Usage: has special meaning in help topics.
+            # This is usage example of command and should not be translated.
+            continue
         _poentry(outf, path, lineno, p)
         lineno += p.count('\n') + 2
 

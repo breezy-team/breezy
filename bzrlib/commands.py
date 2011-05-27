@@ -491,9 +491,6 @@ class Command(object):
         if doc:
             # NOTE: If cmd_gettext translates ':Usage:\n', the section will
             # be shown after "Description" section.
-            # Additionally, ZzzTranslation translates ':Label...' into
-            # 'zz{{:Label...}}'. So all sections are broken and shown in
-            # the "Description" section.
             doc = cmd_gettext(doc)
         else:
             doc = gettext("No help for this command.")
