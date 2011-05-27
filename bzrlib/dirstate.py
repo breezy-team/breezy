@@ -20,91 +20,105 @@ Pseudo EBNF grammar for the state file. Fields are separated by NULLs, and
 lines by NL. The field delimiters are ommitted in the grammar, line delimiters
 are not - this is done for clarity of reading. All string data is in utf8.
 
-MINIKIND = "f" | "d" | "l" | "a" | "r" | "t";
-NL = "\n";
-NULL = "\0";
-WHOLE_NUMBER = {digit}, digit;
-BOOLEAN = "y" | "n";
-REVISION_ID = a non-empty utf8 string;
+::
 
-dirstate format = header line, full checksum, row count, parent details,
- ghost_details, entries;
-header line = "#bazaar dirstate flat format 3", NL;
-full checksum = "crc32: ", ["-"], WHOLE_NUMBER, NL;
-row count = "num_entries: ", WHOLE_NUMBER, NL;
-parent_details = WHOLE NUMBER, {REVISION_ID}* NL;
-ghost_details = WHOLE NUMBER, {REVISION_ID}*, NL;
-entries = {entry};
-entry = entry_key, current_entry_details, {parent_entry_details};
-entry_key = dirname,  basename, fileid;
-current_entry_details = common_entry_details, working_entry_details;
-parent_entry_details = common_entry_details, history_entry_details;
-common_entry_details = MINIKIND, fingerprint, size, executable
-working_entry_details = packed_stat
-history_entry_details = REVISION_ID;
-executable = BOOLEAN;
-size = WHOLE_NUMBER;
-fingerprint = a nonempty utf8 sequence with meaning defined by minikind.
+    MINIKIND = "f" | "d" | "l" | "a" | "r" | "t";
+    NL = "\\n";
+    NULL = "\\0";
+    WHOLE_NUMBER = {digit}, digit;
+    BOOLEAN = "y" | "n";
+    REVISION_ID = a non-empty utf8 string;
+    
+    dirstate format = header line, full checksum, row count, parent details,
+     ghost_details, entries;
+    header line = "#bazaar dirstate flat format 3", NL;
+    full checksum = "crc32: ", ["-"], WHOLE_NUMBER, NL;
+    row count = "num_entries: ", WHOLE_NUMBER, NL;
+    parent_details = WHOLE NUMBER, {REVISION_ID}* NL;
+    ghost_details = WHOLE NUMBER, {REVISION_ID}*, NL;
+    entries = {entry};
+    entry = entry_key, current_entry_details, {parent_entry_details};
+    entry_key = dirname,  basename, fileid;
+    current_entry_details = common_entry_details, working_entry_details;
+    parent_entry_details = common_entry_details, history_entry_details;
+    common_entry_details = MINIKIND, fingerprint, size, executable
+    working_entry_details = packed_stat
+    history_entry_details = REVISION_ID;
+    executable = BOOLEAN;
+    size = WHOLE_NUMBER;
+    fingerprint = a nonempty utf8 sequence with meaning defined by minikind.
 
-Given this definition, the following is useful to know:
-entry (aka row) - all the data for a given key.
-entry[0]: The key (dirname, basename, fileid)
-entry[0][0]: dirname
-entry[0][1]: basename
-entry[0][2]: fileid
-entry[1]: The tree(s) data for this path and id combination.
-entry[1][0]: The current tree
-entry[1][1]: The second tree
+Given this definition, the following is useful to know::
 
-For an entry for a tree, we have (using tree 0 - current tree) to demonstrate:
-entry[1][0][0]: minikind
-entry[1][0][1]: fingerprint
-entry[1][0][2]: size
-entry[1][0][3]: executable
-entry[1][0][4]: packed_stat
-OR (for non tree-0)
-entry[1][1][4]: revision_id
+    entry (aka row) - all the data for a given key.
+    entry[0]: The key (dirname, basename, fileid)
+    entry[0][0]: dirname
+    entry[0][1]: basename
+    entry[0][2]: fileid
+    entry[1]: The tree(s) data for this path and id combination.
+    entry[1][0]: The current tree
+    entry[1][1]: The second tree
+
+For an entry for a tree, we have (using tree 0 - current tree) to demonstrate::
+
+    entry[1][0][0]: minikind
+    entry[1][0][1]: fingerprint
+    entry[1][0][2]: size
+    entry[1][0][3]: executable
+    entry[1][0][4]: packed_stat
+
+OR (for non tree-0)::
+
+    entry[1][1][4]: revision_id
 
 There may be multiple rows at the root, one per id present in the root, so the
-in memory root row is now:
-self._dirblocks[0] -> ('', [entry ...]),
-and the entries in there are
-entries[0][0]: ''
-entries[0][1]: ''
-entries[0][2]: file_id
-entries[1][0]: The tree data for the current tree for this fileid at /
-etc.
+in memory root row is now::
 
-Kinds:
-'r' is a relocated entry: This path is not present in this tree with this id,
-    but the id can be found at another location. The fingerprint is used to
-    point to the target location.
-'a' is an absent entry: In that tree the id is not present at this path.
-'d' is a directory entry: This path in this tree is a directory with the
-    current file id. There is no fingerprint for directories.
-'f' is a file entry: As for directory, but it's a file. The fingerprint is the
-    sha1 value of the file's canonical form, i.e. after any read filters have
-    been applied to the convenience form stored in the working tree.
-'l' is a symlink entry: As for directory, but a symlink. The fingerprint is the
-    link target.
-'t' is a reference to a nested subtree; the fingerprint is the referenced
-    revision.
+    self._dirblocks[0] -> ('', [entry ...]),
+
+and the entries in there are::
+
+    entries[0][0]: ''
+    entries[0][1]: ''
+    entries[0][2]: file_id
+    entries[1][0]: The tree data for the current tree for this fileid at /
+    etc.
+
+Kinds::
+
+    'r' is a relocated entry: This path is not present in this tree with this
+        id, but the id can be found at another location. The fingerprint is
+        used to point to the target location.
+    'a' is an absent entry: In that tree the id is not present at this path.
+    'd' is a directory entry: This path in this tree is a directory with the
+        current file id. There is no fingerprint for directories.
+    'f' is a file entry: As for directory, but it's a file. The fingerprint is
+        the sha1 value of the file's canonical form, i.e. after any read
+        filters have been applied to the convenience form stored in the working
+        tree.
+    'l' is a symlink entry: As for directory, but a symlink. The fingerprint is
+        the link target.
+    't' is a reference to a nested subtree; the fingerprint is the referenced
+        revision.
 
 Ordering:
 
-The entries on disk and in memory are ordered according to the following keys:
+The entries on disk and in memory are ordered according to the following keys::
 
     directory, as a list of components
     filename
     file-id
 
 --- Format 1 had the following different definition: ---
-rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
-    WHOLE NUMBER (* size *), NULL, packed stat, NULL, sha1|symlink target,
-    {PARENT ROW}
-PARENT ROW = NULL, revision_utf8, NULL, MINIKIND, NULL, dirname, NULL,
-    basename, NULL, WHOLE NUMBER (* size *), NULL, "y" | "n", NULL,
-    SHA1
+
+::
+
+    rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
+        WHOLE NUMBER (* size *), NULL, packed stat, NULL, sha1|symlink target,
+        {PARENT ROW}
+    PARENT ROW = NULL, revision_utf8, NULL, MINIKIND, NULL, dirname, NULL,
+        basename, NULL, WHOLE NUMBER (* size *), NULL, "y" | "n", NULL,
+        SHA1
 
 PARENT ROW's are emitted for every parent that is not in the ghosts details
 line. That is, if the parents are foo, bar, baz, and the ghosts are bar, then
@@ -135,19 +149,21 @@ format did not accommodate.
 ----
 
 Design priorities:
- 1) Fast end to end use for bzr's top 5 uses cases. (commmit/diff/status/merge/???)
- 2) fall back current object model as needed.
- 3) scale usably to the largest trees known today - say 50K entries. (mozilla
+ 1. Fast end to end use for bzr's top 5 uses cases. (commmit/diff/status/merge/???)
+ 2. fall back current object model as needed.
+ 3. scale usably to the largest trees known today - say 50K entries. (mozilla
     is an example of this)
 
 
 Locking:
+
  Eventually reuse dirstate objects across locks IFF the dirstate file has not
  been modified, but will require that we flush/ignore cached stat-hit data
  because we won't want to restat all files on disk just because a lock was
  acquired, yet we cannot trust the data after the previous lock was released.
 
-Memory representation:
+Memory representation::
+
  vector of all directories, and vector of the childen ?
    i.e.
      root_entrie = (direntry for root, [parent_direntries_for_root]),
@@ -167,6 +183,7 @@ Memory representation:
     - What's the risk of error here? Once we have the base format being processed
       we should have a net win regardless of optimality. So we are going to
       go with what seems reasonable.
+
 open questions:
 
 Maybe we should do a test profile of the core structure - 10K simulated
@@ -371,7 +388,7 @@ class DirState(object):
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
     NULLSTAT = 'x' * 32
-    NULL_PARENT_DETAILS = ('a', '', 0, False, '')
+    NULL_PARENT_DETAILS = static_tuple.StaticTuple('a', '', 0, False, '')
 
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
@@ -1205,9 +1222,10 @@ class DirState(object):
     def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
 
-        Each line now has an extra '\n' field which is not used
+        Each line now has an extra '\\n' field which is not used
         so we just skip over it
-        entry size:
+
+        entry size::
             3 fields for the key
             + number of fields per tree_data (5) * tree count
             + newline
@@ -1326,6 +1344,14 @@ class DirState(object):
             raise
         return result
 
+    def _check_delta_is_valid(self, delta):
+        return list(inventory._check_delta_unique_ids(
+                    inventory._check_delta_unique_old_paths(
+                    inventory._check_delta_unique_new_paths(
+                    inventory._check_delta_ids_match_entry(
+                    inventory._check_delta_ids_are_valid(
+                    inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+
     def update_by_delta(self, delta):
         """Apply an inventory delta to the dirstate for tree 0
 
@@ -1349,15 +1375,10 @@ class DirState(object):
         new_ids = set()
         # This loop transforms the delta to single atomic operations that can
         # be executed and validated.
-        for old_path, new_path, file_id, inv_entry in sorted(
-            inventory._check_delta_unique_old_paths(
-            inventory._check_delta_unique_new_paths(
-            inventory._check_delta_ids_match_entry(
-            inventory._check_delta_ids_are_valid(
-            inventory._check_delta_new_path_entry_both_or_None(delta))))),
-            reverse=True):
+        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
+        for old_path, new_path, file_id, inv_entry in delta:
             if (file_id in insertions) or (file_id in removals):
-                raise errors.InconsistentDelta(old_path or new_path, file_id,
+                self._raise_invalid(old_path or new_path, file_id,
                     "repeated file_id")
             if old_path is not None:
                 old_path = old_path.encode('utf-8')
@@ -1366,7 +1387,7 @@ class DirState(object):
                 new_ids.add(file_id)
             if new_path is not None:
                 if inv_entry is None:
-                    raise errors.InconsistentDelta(new_path, file_id,
+                    self._raise_invalid(new_path, file_id,
                         "new_path with no entry")
                 new_path = new_path.encode('utf-8')
                 dirname_utf8, basename = osutils.split(new_path)
@@ -1413,7 +1434,8 @@ class DirState(object):
             # _get_entry raises BzrError when a request is inconsistent; we
             # want such errors to be shown as InconsistentDelta - and that 
             # fits the behaviour we trigger.
-            raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
+            raise errors.InconsistentDeltaDelta(delta,
+                "error from _get_entry. %s" % (e,))
 
     def _apply_removals(self, removals):
         for file_id, path in sorted(removals, reverse=True,
@@ -1424,16 +1446,13 @@ class DirState(object):
             try:
                 entry = self._dirblocks[block_i][1][entry_i]
             except IndexError:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(path, file_id,
+                self._raise_invalid(path, file_id,
                     "Wrong path for old path.")
             if not f_present or entry[1][0][0] in 'ar':
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(path, file_id,
+                self._raise_invalid(path, file_id,
                     "Wrong path for old path.")
             if file_id != entry[0][2]:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(path, file_id,
+                self._raise_invalid(path, file_id,
                     "Attempt to remove path has wrong id - found %r."
                     % entry[0][2])
             self._make_absent(entry)
@@ -1449,8 +1468,7 @@ class DirState(object):
                 # be due to it being in a parent tree, or a corrupt delta.
                 for child_entry in self._dirblocks[block_i][1]:
                     if child_entry[1][0][0] not in ('r', 'a'):
-                        self._changes_aborted = True
-                        raise errors.InconsistentDelta(path, entry[0][2],
+                        self._raise_invalid(path, entry[0][2],
                             "The file id was deleted but its children were "
                             "not deleted.")
 
@@ -1460,8 +1478,7 @@ class DirState(object):
                 self.update_minimal(key, minikind, executable, fingerprint,
                                     path_utf8=path_utf8)
         except errors.NotVersionedError:
-            self._changes_aborted = True
-            raise errors.InconsistentDelta(path_utf8.decode('utf8'), key[2],
+            self._raise_invalid(path_utf8.decode('utf8'), key[2],
                 "Missing parent")
 
     def update_basis_by_delta(self, delta, new_revid):
@@ -1474,9 +1491,6 @@ class DirState(object):
 
         Note that an exception during the operation of this method will leave
         the dirstate in a corrupt state where it should not be saved.
-
-        Finally, we expect all changes to be synchronising the basis tree with
-        the working tree.
 
         :param new_revid: The new revision id for the trees parent.
         :param delta: An inventory delta (see apply_inventory_delta) describing
@@ -1495,7 +1509,7 @@ class DirState(object):
 
         self._parents[0] = new_revid
 
-        delta = sorted(delta, reverse=True)
+        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
         adds = []
         changes = []
         deletes = []
@@ -1522,11 +1536,13 @@ class DirState(object):
         new_ids = set()
         for old_path, new_path, file_id, inv_entry in delta:
             if inv_entry is not None and file_id != inv_entry.file_id:
-                raise errors.InconsistentDelta(new_path, file_id,
+                self._raise_invalid(new_path, file_id,
                     "mismatched entry file_id %r" % inv_entry)
-            if new_path is not None:
+            if new_path is None:
+                new_path_utf8 = None
+            else:
                 if inv_entry is None:
-                    raise errors.InconsistentDelta(new_path, file_id,
+                    self._raise_invalid(new_path, file_id,
                         "new_path with no entry")
                 new_path_utf8 = encode(new_path)
                 # note the parent for validation
@@ -1534,12 +1550,27 @@ class DirState(object):
                 if basename_utf8:
                     parents.add((dirname_utf8, inv_entry.parent_id))
             if old_path is None:
-                adds.append((None, encode(new_path), file_id,
+                old_path_utf8 = None
+            else:
+                old_path_utf8 = encode(old_path)
+            if old_path is None:
+                adds.append((None, new_path_utf8, file_id,
                     inv_to_entry(inv_entry), True))
                 new_ids.add(file_id)
             elif new_path is None:
-                deletes.append((encode(old_path), None, file_id, None, True))
-            elif (old_path, new_path) != root_only:
+                deletes.append((old_path_utf8, None, file_id, None, True))
+            elif (old_path, new_path) == root_only:
+                # change things in-place
+                # Note: the case of a parent directory changing its file_id
+                #       tends to break optimizations here, because officially
+                #       the file has actually been moved, it just happens to
+                #       end up at the same path. If we can figure out how to
+                #       handle that case, we can avoid a lot of add+delete
+                #       pairs for objects that stay put.
+                # elif old_path == new_path:
+                changes.append((old_path_utf8, new_path_utf8, file_id,
+                                inv_to_entry(inv_entry)))
+            else:
                 # Renames:
                 # Because renames must preserve their children we must have
                 # processed all relocations and removes before hand. The sort
@@ -1555,36 +1586,31 @@ class DirState(object):
                 self._update_basis_apply_deletes(deletes)
                 deletes = []
                 # Split into an add/delete pair recursively.
-                adds.append((None, new_path_utf8, file_id,
-                    inv_to_entry(inv_entry), False))
+                adds.append((old_path_utf8, new_path_utf8, file_id,
+                             inv_to_entry(inv_entry), False))
                 # Expunge deletes that we've seen so that deleted/renamed
                 # children of a rename directory are handled correctly.
-                new_deletes = reversed(list(self._iter_child_entries(1,
-                    encode(old_path))))
+                new_deletes = reversed(list(
+                    self._iter_child_entries(1, old_path_utf8)))
                 # Remove the current contents of the tree at orig_path, and
                 # reinsert at the correct new path.
                 for entry in new_deletes:
-                    if entry[0][0]:
-                        source_path = entry[0][0] + '/' + entry[0][1]
+                    child_dirname, child_basename, child_file_id = entry[0]
+                    if child_dirname:
+                        source_path = child_dirname + '/' + child_basename
                     else:
-                        source_path = entry[0][1]
+                        source_path = child_basename
                     if new_path_utf8:
                         target_path = new_path_utf8 + source_path[len(old_path):]
                     else:
                         if old_path == '':
                             raise AssertionError("cannot rename directory to"
-                                " itself")
+                                                 " itself")
                         target_path = source_path[len(old_path) + 1:]
                     adds.append((None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append(
                         (source_path, target_path, entry[0][2], None, False))
-                deletes.append(
-                    (encode(old_path), new_path, file_id, None, False))
-            else:
-                # changes to just the root should not require remove/insertion
-                # of everything.
-                changes.append((encode(old_path), encode(new_path), file_id,
-                    inv_to_entry(inv_entry)))
+                deletes.append((old_path_utf8, new_path, file_id, None, False))
         self._check_delta_ids_absent(new_ids, delta, 1)
         try:
             # Finish expunging deletes/first half of renames.
@@ -1600,11 +1626,10 @@ class DirState(object):
             if 'integrity error' not in str(e):
                 raise
             # _get_entry raises BzrError when a request is inconsistent; we
-            # want such errors to be shown as InconsistentDelta - and that 
-            # fits the behaviour we trigger. Partof this is driven by dirstate
-            # only supporting deltas that turn the basis into a closer fit to
-            # the active tree.
-            raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
+            # want such errors to be shown as InconsistentDelta - and that
+            # fits the behaviour we trigger.
+            raise errors.InconsistentDeltaDelta(delta,
+                "error from _get_entry. %s" % (e,))
 
         self._mark_modified(header_modified=True)
         self._id_index = None
@@ -1626,12 +1651,13 @@ class DirState(object):
                 if entry[0][2] != file_id:
                     # Different file_id, so not what we want.
                     continue
-                # NB: No changes made before this helper is called, so no need
-                # to set the _changes_aborted flag.
-                raise errors.InconsistentDelta(
-                    ("%s/%s" % key[0:2]).decode('utf8'), file_id,
+                self._raise_invalid(("%s/%s" % key[0:2]).decode('utf8'), file_id,
                     "This file_id is new in the delta but already present in "
                     "the target")
+
+    def _raise_invalid(self, path, file_id, reason):
+        self._changes_aborted = True
+        raise errors.InconsistentDelta(path, file_id, reason)
 
     def _update_basis_apply_adds(self, adds):
         """Apply a sequence of adds to tree 1 during update_basis_by_delta.
@@ -1646,26 +1672,112 @@ class DirState(object):
         """
         # Adds are accumulated partly from renames, so can be in any input
         # order - sort it.
-        adds.sort()
+        # TODO: we may want to sort in dirblocks order. That way each entry
+        #       will end up in the same directory, allowing the _get_entry
+        #       fast-path for looking up 2 items in the same dir work.
+        adds.sort(key=lambda x: x[1])
         # adds is now in lexographic order, which places all parents before
         # their children, so we can process it linearly.
         absent = 'ar'
+        st = static_tuple.StaticTuple
         for old_path, new_path, file_id, new_details, real_add in adds:
-            # the entry for this file_id must be in tree 0.
-            entry = self._get_entry(0, file_id, new_path)
-            if entry[0] is None or entry[0][2] != file_id:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
-                    'working tree does not contain new entry')
-            if real_add and entry[1][1][0] not in absent:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
-                    'The entry was considered to be a genuinely new record,'
-                    ' but there was already an old record for it.')
-            # We don't need to update the target of an 'r' because the handling
-            # of renames turns all 'r' situations into a delete at the original
-            # location.
-            entry[1][1] = new_details
+            dirname, basename = osutils.split(new_path)
+            entry_key = st(dirname, basename, file_id)
+            block_index, present = self._find_block_index_from_key(entry_key)
+            if not present:
+                self._raise_invalid(new_path, file_id,
+                    "Unable to find block for this record."
+                    " Was the parent added?")
+            block = self._dirblocks[block_index][1]
+            entry_index, present = self._find_entry_index(entry_key, block)
+            if real_add:
+                if old_path is not None:
+                    self._raise_invalid(new_path, file_id,
+                        'considered a real add but still had old_path at %s'
+                        % (old_path,))
+            if present:
+                entry = block[entry_index]
+                basis_kind = entry[1][1][0]
+                if basis_kind == 'a':
+                    entry[1][1] = new_details
+                elif basis_kind == 'r':
+                    raise NotImplementedError()
+                else:
+                    self._raise_invalid(new_path, file_id,
+                        "An entry was marked as a new add"
+                        " but the basis target already existed")
+            else:
+                # The exact key was not found in the block. However, we need to
+                # check if there is a key next to us that would have matched.
+                # We only need to check 2 locations, because there are only 2
+                # trees present.
+                for maybe_index in range(entry_index-1, entry_index+1):
+                    if maybe_index < 0 or maybe_index >= len(block):
+                        continue
+                    maybe_entry = block[maybe_index]
+                    if maybe_entry[0][:2] != (dirname, basename):
+                        # Just a random neighbor
+                        continue
+                    if maybe_entry[0][2] == file_id:
+                        raise AssertionError(
+                            '_find_entry_index didnt find a key match'
+                            ' but walking the data did, for %s'
+                            % (entry_key,))
+                    basis_kind = maybe_entry[1][1][0]
+                    if basis_kind not in 'ar':
+                        self._raise_invalid(new_path, file_id,
+                            "we have an add record for path, but the path"
+                            " is already present with another file_id %s"
+                            % (maybe_entry[0][2],))
+
+                entry = (entry_key, [DirState.NULL_PARENT_DETAILS,
+                                     new_details])
+                block.insert(entry_index, entry)
+
+            active_kind = entry[1][0][0]
+            if active_kind == 'a':
+                # The active record shows up as absent, this could be genuine,
+                # or it could be present at some other location. We need to
+                # verify.
+                id_index = self._get_id_index()
+                # The id_index may not be perfectly accurate for tree1, because
+                # we haven't been keeping it updated. However, it should be
+                # fine for tree0, and that gives us enough info for what we
+                # need
+                keys = id_index.get(file_id, ())
+                for key in keys:
+                    block_i, entry_i, d_present, f_present = \
+                        self._get_block_entry_index(key[0], key[1], 0)
+                    if not f_present:
+                        continue
+                    active_entry = self._dirblocks[block_i][1][entry_i]
+                    if (active_entry[0][2] != file_id):
+                        # Some other file is at this path, we don't need to
+                        # link it.
+                        continue
+                    real_active_kind = active_entry[1][0][0]
+                    if real_active_kind in 'ar':
+                        # We found a record, which was not *this* record,
+                        # which matches the file_id, but is not actually
+                        # present. Something seems *really* wrong.
+                        self._raise_invalid(new_path, file_id,
+                            "We found a tree0 entry that doesnt make sense")
+                    # Now, we've found a tree0 entry which matches the file_id
+                    # but is at a different location. So update them to be
+                    # rename records.
+                    active_dir, active_name = active_entry[0][:2]
+                    if active_dir:
+                        active_path = active_dir + '/' + active_name
+                    else:
+                        active_path = active_name
+                    active_entry[1][1] = st('r', new_path, 0, False, '')
+                    entry[1][0] = st('r', active_path, 0, False, '')
+            elif active_kind == 'r':
+                raise NotImplementedError()
+
+            new_kind = new_details[0]
+            if new_kind == 'd':
+                self._ensure_block(block_index, entry_index, new_path)
 
     def _update_basis_apply_changes(self, changes):
         """Apply a sequence of changes to tree 1 during update_basis_by_delta.
@@ -1676,16 +1788,10 @@ class DirState(object):
         absent = 'ar'
         for old_path, new_path, file_id, new_details in changes:
             # the entry for this file_id must be in tree 0.
-            entry = self._get_entry(0, file_id, new_path)
-            if entry[0] is None or entry[0][2] != file_id:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
-                    'working tree does not contain new entry')
-            if (entry[1][0][0] in absent or
-                entry[1][1][0] in absent):
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
-                    'changed considered absent')
+            entry = self._get_entry(1, file_id, new_path)
+            if entry[0] is None or entry[1][1][0] in 'ar':
+                self._raise_invalid(new_path, file_id,
+                    'changed entry considered not present')
             entry[1][1] = new_details
 
     def _update_basis_apply_deletes(self, deletes):
@@ -1703,44 +1809,67 @@ class DirState(object):
         null = DirState.NULL_PARENT_DETAILS
         for old_path, new_path, file_id, _, real_delete in deletes:
             if real_delete != (new_path is None):
-                self._changes_aborted = True
-                raise AssertionError("bad delete delta")
+                self._raise_invalid(old_path, file_id, "bad delete delta")
             # the entry for this file_id must be in tree 1.
             dirname, basename = osutils.split(old_path)
             block_index, entry_index, dir_present, file_present = \
                 self._get_block_entry_index(dirname, basename, 1)
             if not file_present:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(old_path, file_id,
+                self._raise_invalid(old_path, file_id,
                     'basis tree does not contain removed entry')
             entry = self._dirblocks[block_index][1][entry_index]
+            # The state of the entry in the 'active' WT
+            active_kind = entry[1][0][0]
             if entry[0][2] != file_id:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(old_path, file_id,
+                self._raise_invalid(old_path, file_id,
                     'mismatched file_id in tree 1')
-            if real_delete:
-                if entry[1][0][0] != 'a':
-                    self._changes_aborted = True
-                    raise errors.InconsistentDelta(old_path, file_id,
-                            'This was marked as a real delete, but the WT state'
-                            ' claims that it still exists and is versioned.')
+            dir_block = ()
+            old_kind = entry[1][1][0]
+            if active_kind in 'ar':
+                # The active tree doesn't have this file_id.
+                # The basis tree is changing this record. If this is a
+                # rename, then we don't want the record here at all
+                # anymore. If it is just an in-place change, we want the
+                # record here, but we'll add it if we need to. So we just
+                # delete it
+                if active_kind == 'r':
+                    active_path = entry[1][0][1]
+                    active_entry = self._get_entry(0, file_id, active_path)
+                    if active_entry[1][1][0] != 'r':
+                        self._raise_invalid(old_path, file_id,
+                            "Dirstate did not have matching rename entries")
+                    elif active_entry[1][0][0] in 'ar':
+                        self._raise_invalid(old_path, file_id,
+                            "Dirstate had a rename pointing at an inactive"
+                            " tree0")
+                    active_entry[1][1] = null
                 del self._dirblocks[block_index][1][entry_index]
+                if old_kind == 'd':
+                    # This was a directory, and the active tree says it
+                    # doesn't exist, and now the basis tree says it doesn't
+                    # exist. Remove its dirblock if present
+                    (dir_block_index,
+                     present) = self._find_block_index_from_key(
+                        (old_path, '', ''))
+                    if present:
+                        dir_block = self._dirblocks[dir_block_index][1]
+                        if not dir_block:
+                            # This entry is empty, go ahead and just remove it
+                            del self._dirblocks[dir_block_index]
             else:
-                if entry[1][0][0] == 'a':
-                    self._changes_aborted = True
-                    raise errors.InconsistentDelta(old_path, file_id,
-                        'The entry was considered a rename, but the source path'
-                        ' is marked as absent.')
-                    # For whatever reason, we were asked to rename an entry
-                    # that was originally marked as deleted. This could be
-                    # because we are renaming the parent directory, and the WT
-                    # current state has the file marked as deleted.
-                elif entry[1][0][0] == 'r':
-                    # implement the rename
-                    del self._dirblocks[block_index][1][entry_index]
-                else:
-                    # it is being resurrected here, so blank it out temporarily.
-                    self._dirblocks[block_index][1][entry_index][1][1] = null
+                # There is still an active record, so just mark this
+                # removed.
+                entry[1][1] = null
+                block_i, entry_i, d_present, f_present = \
+                    self._get_block_entry_index(old_path, '', 1)
+                if d_present:
+                    dir_block = self._dirblocks[block_i][1]
+            for child_entry in dir_block:
+                child_basis_kind = child_entry[1][1][0]
+                if child_basis_kind not in 'ar':
+                    self._raise_invalid(old_path, file_id,
+                        "The file id was deleted but its children were "
+                        "not deleted.")
 
     def _after_delta_check_parents(self, parents, index):
         """Check that parents required by the delta are all intact.
@@ -1755,13 +1884,11 @@ class DirState(object):
             # has the right file id.
             entry = self._get_entry(index, file_id, dirname_utf8)
             if entry[1] is None:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                self._raise_invalid(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not present.")
             # Parents of things must be directories
             if entry[1][index][0] != 'd':
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                self._raise_invalid(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
@@ -1993,7 +2120,8 @@ class DirState(object):
             entry_index += 1
         return block_index, entry_index, True, False
 
-    def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None, include_deleted=False):
+    def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None,
+                   include_deleted=False):
         """Get the dirstate entry for path in tree tree_index.
 
         If either file_id or path is supplied, it is used as the key to lookup.
@@ -2198,7 +2326,7 @@ class DirState(object):
 
     def _get_id_index(self):
         """Get an id index of self._dirblocks.
-        
+
         This maps from file_id => [(directory, name, file_id)] entries where
         that file_id appears in one of the trees.
         """
@@ -2218,7 +2346,6 @@ class DirState(object):
         # such, we use a simple tuple, and do our own uniqueness checks. While
         # the 'in' check is O(N) since N is nicely bounded it shouldn't ever
         # cause quadratic failure.
-        # TODO: This should use StaticTuple
         file_id = entry_key[2]
         entry_key = static_tuple.StaticTuple.from_sequence(entry_key)
         if file_id not in id_index:
@@ -2899,7 +3026,7 @@ class DirState(object):
                             # This entry has the same path (but a different id) as
                             # the new entry we're adding, and is present in ths
                             # tree.
-                            raise errors.InconsistentDelta(
+                            self._raise_invalid(
                                 ("%s/%s" % key[0:2]).decode('utf8'), key[2],
                                 "Attempt to add item at path already occupied by "
                                 "id %r" % entry[0][2])
@@ -3663,7 +3790,6 @@ class ProcessEntryPython(object):
             raise AssertionError("don't know how to compare "
                 "source_minikind=%r, target_minikind=%r"
                 % (source_minikind, target_minikind))
-            ## import pdb;pdb.set_trace()
         return None, None
 
     def __iter__(self):

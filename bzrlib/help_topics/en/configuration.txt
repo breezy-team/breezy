@@ -19,7 +19,9 @@ See also the ``email`` configuration value.
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
 
-Override the progress display.  Possible values are "none", "dots", "tty"
+Override the progress display.  Possible values are "none" or "text".  If
+the value is "none" then no progress bar is displayed.  The value "text" draws
+the ordinary command line progress bar.
 
 BZR_SIGQUIT_PDB
 ~~~~~~~~~~~~~~~
@@ -550,15 +552,15 @@ compatibility with previous bzr versions (older than 2.2).
 parent_location
 ~~~~~~~~~~~~~~~
 
-If present, the location of the default branch for pull or merge.
-This option is normally set by ``pull --remember`` or ``merge
+If present, the location of the default branch for pull or merge.  This option
+is normally set when creating a branch, the first ``pull`` or by ``pull
 --remember``.
 
 push_location
 ~~~~~~~~~~~~~
 
 If present, the location of the default branch for push.  This option
-is normally set by ``push --remember``.
+is normally set by the first ``push`` or ``push --remember``.
 
 push_strict
 ~~~~~~~~~~~

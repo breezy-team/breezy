@@ -1260,11 +1260,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_password_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(user)s@%(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' password'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' password'
         return prompt
 
     def _build_username_prompt(self, auth):
@@ -1278,11 +1278,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_username_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' username'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' username'
         return prompt
 
     def http_request(self, request):
@@ -1552,12 +1552,12 @@ class ProxyAuthHandler(AbstractAuthHandler):
 
     def build_password_prompt(self, auth):
         prompt = self._build_password_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def build_username_prompt(self, auth):
         prompt = self._build_username_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def http_error_407(self, req, fp, code, msg, headers):

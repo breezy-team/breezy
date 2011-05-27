@@ -301,7 +301,9 @@ class PyCurlTransport(HttpTransportBase):
         The URL and code are automatically included as appropriate.
 
         :param info: Extra information to include in the message.
-        :param body: File-like object from which the body of the page can be read.
+
+        :param body: File-like object from which the body of the page can be
+            read.
         """
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
@@ -321,7 +323,7 @@ class PyCurlTransport(HttpTransportBase):
             else:
                 msg = ': ' + info
             raise errors.InvalidHttpResponse(
-                url, 'Unable to handle http code %d%s: %s' 
+                url, 'Unable to handle http code %d%s: %s'
                 % (code, msg, plaintext_body))
 
     def _debug_cb(self, kind, text):

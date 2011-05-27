@@ -357,58 +357,51 @@ class Command(object):
     summary, then a complete description of the command.  A grammar
     description will be inserted.
 
-    aliases
-        Other accepted names for this command.
+    :cvar aliases: Other accepted names for this command.
 
-    takes_args
-        List of argument forms, marked with whether they are optional,
-        repeated, etc.
+    :cvar takes_args: List of argument forms, marked with whether they are
+        optional, repeated, etc.  Examples::
 
-                Examples:
+            ['to_location', 'from_branch?', 'file*']
 
-                ['to_location', 'from_branch?', 'file*']
+        * 'to_location' is required
+        * 'from_branch' is optional
+        * 'file' can be specified 0 or more times
 
-                'to_location' is required
-                'from_branch' is optional
-                'file' can be specified 0 or more times
+    :cvar takes_options: List of options that may be given for this command.
+        These can be either strings, referring to globally-defined options, or
+        option objects.  Retrieve through options().
 
-    takes_options
-        List of options that may be given for this command.  These can
-        be either strings, referring to globally-defined options,
-        or option objects.  Retrieve through options().
-
-    hidden
-        If true, this command isn't advertised.  This is typically
+    :cvar hidden: If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
 
-    encoding_type
-        Command objects will get a 'outf' attribute, which has been
-        setup to properly handle encoding of unicode strings.
-        encoding_type determines what will happen when characters cannot
-        be encoded
-            strict - abort if we cannot decode
-            replace - put in a bogus character (typically '?')
-            exact - do not encode sys.stdout
+    :cvar encoding_type: Command objects will get a 'outf' attribute, which has
+        been setup to properly handle encoding of unicode strings.
+        encoding_type determines what will happen when characters cannot be
+        encoded:
 
-            NOTE: by default on Windows, sys.stdout is opened as a text
-            stream, therefore LF line-endings are converted to CRLF.
-            When a command uses encoding_type = 'exact', then
-            sys.stdout is forced to be a binary stream, and line-endings
-            will not mangled.
+        * strict - abort if we cannot decode
+        * replace - put in a bogus character (typically '?')
+        * exact - do not encode sys.stdout
 
-    :ivar invoked_as:
+        NOTE: by default on Windows, sys.stdout is opened as a text stream,
+        therefore LF line-endings are converted to CRLF.  When a command uses
+        encoding_type = 'exact', then sys.stdout is forced to be a binary
+        stream, and line-endings will not mangled.
+
+    :cvar invoked_as:
         A string indicating the real name under which this command was
-        invoked, before expansion of aliases. 
+        invoked, before expansion of aliases.
         (This may be None if the command was constructed and run in-process.)
 
     :cvar hooks: An instance of CommandHooks.
 
-    :ivar __doc__: The help shown by 'bzr help command' for this command.
+    :cvar __doc__: The help shown by 'bzr help command' for this command.
         This is set by assigning explicitly to __doc__ so that -OO can
         be used::
 
-        class Foo(Command):
-            __doc__ = "My help goes here"
+            class Foo(Command):
+                __doc__ = "My help goes here"
     """
     aliases = []
     takes_args = []
@@ -1302,19 +1295,19 @@ class HelpCommandIndex(object):
 
 
 class Provider(object):
-    '''Generic class to be overriden by plugins'''
+    """Generic class to be overriden by plugins"""
 
     def plugin_for_command(self, cmd_name):
-        '''Takes a command and returns the information for that plugin
+        """Takes a command and returns the information for that plugin
 
         :return: A dictionary with all the available information
-        for the requested plugin
-        '''
+            for the requested plugin
+        """
         raise NotImplementedError
 
 
 class ProvidersRegistry(registry.Registry):
-    '''This registry exists to allow other providers to exist'''
+    """This registry exists to allow other providers to exist"""
 
     def __iter__(self):
         for key, provider in self.iteritems():

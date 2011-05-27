@@ -24,6 +24,7 @@ from itertools import chain
 from bzrlib import (
         bzrdir,
         cache_utf8,
+        cleanup,
         config as _mod_config,
         debug,
         errors,
@@ -454,6 +455,7 @@ class Branch(controldir.ControlComponent):
             after. If None, the rest of history is included.
         :param stop_rule: if stop_revision_id is not None, the precise rule
             to use for termination:
+
             * 'exclude' - leave the stop revision out of the result (default)
             * 'include' - the stop revision is the last item in the result
             * 'with-merges' - include the stop revision and all of its
@@ -461,6 +463,7 @@ class Branch(controldir.ControlComponent):
             * 'with-merges-without-common-ancestry' - filter out revisions 
               that are in both ancestries
         :param direction: either 'reverse' or 'forward':
+
             * reverse means return the start_revision_id first, i.e.
               start at the most recent revision and go backwards in history
             * forward returns tuples in the opposite order to reverse.
@@ -667,15 +670,16 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None):
+    def fetch(self, from_branch, last_revision=None, limit=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
+        :param limit: Optional rough limit of revisions to fetch
         :return: None
         """
-        return InterBranch.get(from_branch, self).fetch(last_revision)
+        return InterBranch.get(from_branch, self).fetch(last_revision, limit=limit)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -774,7 +778,7 @@ class Branch(controldir.ControlComponent):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        raise NotImplementedError(self.last_revision_info)
+        raise NotImplementedError(self.set_last_revision_info)
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
@@ -928,8 +932,9 @@ class Branch(controldir.ControlComponent):
 
         :seealso: Branch._get_tags_bytes.
         """
-        return _run_with_write_locked_target(self, self._set_tags_bytes_locked,
-                bytes)
+        op = cleanup.OperationWithCleanups(self._set_tags_bytes_locked)
+        op.add_cleanup(self.lock_write().unlock)
+        return op.run_simple(bytes)
 
     def _set_tags_bytes_locked(self, bytes):
         self._tags_bytes = bytes
@@ -1102,35 +1107,14 @@ class Branch(controldir.ControlComponent):
             stop_revision=stop_revision,
             possible_transports=possible_transports, *args, **kwargs)
 
-    def push(self, target, overwrite=False, stop_revision=None, *args,
-        **kwargs):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False,
+            *args, **kwargs):
         """Mirror this branch into target.
 
         This branch is considered to be 'local', having low latency.
         """
         return InterBranch.get(self, target).push(overwrite, stop_revision,
-            *args, **kwargs)
-
-    def lossy_push(self, target, stop_revision=None):
-        """Push deltas into another branch.
-
-        :note: This does not, like push, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param target: Target branch
-        :param stop_revision: Revision to push, defaults to last revision.
-        :return: BranchPushResult with an extra member revidmap: 
-            A dictionary mapping revision ids from the target branch 
-            to new revision ids in the target branch, for each 
-            revision that was pushed.
-        """
-        inter = InterBranch.get(self, target)
-        lossy_push = getattr(inter, "lossy_push", None)
-        if lossy_push is None:
-            raise errors.LossyPushToSameVCS(self, target)
-        return lossy_push(stop_revision)
+            lossy, *args, **kwargs)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -1438,7 +1422,7 @@ class Branch(controldir.ControlComponent):
         :param to_location: The url to produce the checkout at
         :param revision_id: The revision to check out
         :param lightweight: If True, produce a lightweight checkout, otherwise,
-        produce a bound branch (heavyweight checkout)
+            produce a bound branch (heavyweight checkout)
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
@@ -1490,6 +1474,7 @@ class Branch(controldir.ControlComponent):
 
     def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
+
         :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
         :return: A branch associated with the file_id
@@ -1885,7 +1870,7 @@ Branch.hooks = BranchHooks()
 
 
 class ChangeBranchTipParams(object):
-    """Object holding parameters passed to *_change_branch_tip hooks.
+    """Object holding parameters passed to `*_change_branch_tip` hooks.
 
     There are 5 fields that hooks may wish to access:
 
@@ -1923,7 +1908,7 @@ class ChangeBranchTipParams(object):
 
 
 class BranchInitHookParams(object):
-    """Object holding parameters passed to *_branch_init hooks.
+    """Object holding parameters passed to `*_branch_init` hooks.
 
     There are 4 fields that hooks may wish to access:
 
@@ -1963,7 +1948,7 @@ class BranchInitHookParams(object):
 
 
 class SwitchHookParams(object):
-    """Object holding parameters passed to *_switch hooks.
+    """Object holding parameters passed to `*_switch` hooks.
 
     There are 4 fields that hooks may wish to access:
 
@@ -3185,39 +3170,6 @@ class Converter7to8(object):
         branch._transport.put_bytes('format', format.get_format_string())
 
 
-def _run_with_write_locked_target(target, callable, *args, **kwargs):
-    """Run ``callable(*args, **kwargs)``, write-locking target for the
-    duration.
-
-    _run_with_write_locked_target will attempt to release the lock it acquires.
-
-    If an exception is raised by callable, then that exception *will* be
-    propagated, even if the unlock attempt raises its own error.  Thus
-    _run_with_write_locked_target should be preferred to simply doing::
-
-        target.lock_write()
-        try:
-            return callable(*args, **kwargs)
-        finally:
-            target.unlock()
-
-    """
-    # This is very similar to bzrlib.decorators.needs_write_lock.  Perhaps they
-    # should share code?
-    target.lock_write()
-    try:
-        result = callable(*args, **kwargs)
-    except:
-        exc_info = sys.exc_info()
-        try:
-            target.unlock()
-        finally:
-            raise exc_info[0], exc_info[1], exc_info[2]
-    else:
-        target.unlock()
-        return result
-
-
 class InterBranch(InterObject):
     """This class represents operations taking place between two branches.
 
@@ -3251,7 +3203,7 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.pull)
 
     @needs_write_lock
-    def push(self, overwrite=False, stop_revision=None,
+    def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
         """Mirror the source branch into the target branch.
 
@@ -3269,10 +3221,11 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.copy_content_into)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None):
+    def fetch(self, stop_revision=None, limit=None):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
+        :param limit: Optional rough limit of revisions to fetch
         """
         raise NotImplementedError(self.fetch)
 
@@ -3316,7 +3269,7 @@ class GenericInterBranch(InterBranch):
             self.source.tags.merge_to(self.target.tags)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None):
+    def fetch(self, stop_revision=None, limit=None):
         if self.target.base == self.source.base:
             return (0, [])
         self.source.lock_read()
@@ -3327,6 +3280,7 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.limit = limit
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(self.source.repository,
                 fetch_spec=fetch_spec)
@@ -3405,27 +3359,27 @@ class GenericInterBranch(InterBranch):
             if master_branch:
                 master_branch.unlock()
 
-    def push(self, overwrite=False, stop_revision=None,
+    def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
         """See InterBranch.push.
 
         This is the basic concrete implementation of push()
 
-        :param _override_hook_source_branch: If specified, run
-        the hooks passing this Branch as the source, rather than self.
-        This is for use of RemoteBranch, where push is delegated to the
-        underlying vfs-based Branch.
+        :param _override_hook_source_branch: If specified, run the hooks
+            passing this Branch as the source, rather than self.  This is for
+            use of RemoteBranch, where push is delegated to the underlying
+            vfs-based Branch.
         """
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
-        self.source.lock_read()
-        try:
-            return _run_with_write_locked_target(
-                self.target, self._push_with_bound_branches, overwrite,
-                stop_revision,
-                _override_hook_source_branch=_override_hook_source_branch)
-        finally:
-            self.source.unlock()
+
+        op = cleanup.OperationWithCleanups(self._push_with_bound_branches)
+        op.add_cleanup(self.source.lock_read().unlock)
+        op.add_cleanup(self.target.lock_write().unlock)
+        return op.run(overwrite, stop_revision,
+            _override_hook_source_branch=_override_hook_source_branch)
 
     def _basic_push(self, overwrite, stop_revision):
         """Basic implementation of push without bound branches or hooks.
@@ -3449,7 +3403,7 @@ class GenericInterBranch(InterBranch):
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
-    def _push_with_bound_branches(self, overwrite, stop_revision,
+    def _push_with_bound_branches(self, operation, overwrite, stop_revision,
             _override_hook_source_branch=None):
         """Push from source into target, and into target's master if any.
         """
@@ -3467,21 +3421,18 @@ class GenericInterBranch(InterBranch):
             # be bound to itself? -- mbp 20070507
             master_branch = self.target.get_master_branch()
             master_branch.lock_write()
-            try:
-                # push into the master from the source branch.
-                master_inter = InterBranch.get(self.source, master_branch)
-                master_inter._basic_push(overwrite, stop_revision)
-                # and push into the target branch from the source. Note that
-                # we push from the source branch again, because it's considered
-                # the highest bandwidth repository.
-                result = self._basic_push(overwrite, stop_revision)
-                result.master_branch = master_branch
-                result.local_branch = self.target
-                _run_hooks()
-                return result
-            finally:
-                master_branch.unlock()
+            operation.add_cleanup(master_branch.unlock)
+            # push into the master from the source branch.
+            master_inter = InterBranch.get(self.source, master_branch)
+            master_inter._basic_push(overwrite, stop_revision)
+            # and push into the target branch from the source. Note that
+            # we push from the source branch again, because it's considered
+            # the highest bandwidth repository.
+            result = self._basic_push(overwrite, stop_revision)
+            result.master_branch = master_branch
+            result.local_branch = self.target
         else:
+            master_branch = None
             # no master branch
             result = self._basic_push(overwrite, stop_revision)
             # TODO: Why set master_branch and local_branch if there's no
@@ -3489,8 +3440,8 @@ class GenericInterBranch(InterBranch):
             # 20070504
             result.master_branch = self.target
             result.local_branch = None
-            _run_hooks()
-            return result
+        _run_hooks()
+        return result
 
     def _pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
