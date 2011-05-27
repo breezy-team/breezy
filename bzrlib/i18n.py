@@ -26,28 +26,35 @@ import gettext as _gettext
 import os
 import sys
 
-_translation = _null_translation = _gettext.NullTranslations()
-_installed_language = None
+_translation = _gettext.NullTranslations()
 
 
 def gettext(message):
     """Translate message. 
-    Returns translated message as unicode."""
+    
+    :returns: translated message as unicode.
+    """
     return _translation.ugettext(message)
+
 
 def ngettext(s, p, n):
     """Translate message based on `n`.
-    Returns translated message as unicode."""
+
+    :returns: translated message as unicode.
+    """
     return _translation.ungettext(s, p, n)
+
 
 def N_(msg):
     """Mark message for translation but don't translate it right away."""
     return msg
 
+
 def gettext_per_paragraph(message):
     """Translate message per paragraph.
 
-    Returns concatenated translated message as unicode."""
+    :returns: concatenated translated message as unicode.
+    """
     paragraphs = message.split(u'\n\n')
     ugettext = _translation.ugettext
     # Be careful not to translate the empty string -- it holds the
@@ -56,7 +63,7 @@ def gettext_per_paragraph(message):
 
 
 def install(lang=None):
-    global _translation, _installed_language
+    global _translation
     if lang is None:
         lang = _get_current_locale()
     _translation = _gettext.translation(
@@ -65,9 +72,6 @@ def install(lang=None):
             languages=lang.split(':'),
             fallback=True)
 
-def install_zzz():
-    global _translation
-    _translation = _ZzzTranslations()
 
 def uninstall():
     global _translation
@@ -129,20 +133,3 @@ def _get_current_locale():
         if lang:
             return lang
     return None
-
-class _ZzzTranslations(object):
-    """Special Zzz translation for debugging i18n stuff.
-
-    This class can be used to confirm the message is properly translated
-    while black box test.
-    """
-
-    def zzz(self, s):
-        return u'zz{{%s}}' % s
-
-    def ugettext(self, s):
-        return self.zzz(_null_translation.ugettext(s))
-
-    def ungettext(self, s, p, n):
-        return self.zzz(_null_translation.ungettext(s, p, n))
-
