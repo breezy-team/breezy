@@ -4964,7 +4964,7 @@ class cmd_uncommit(Command):
 
         if not force:
             if not ui.ui_factory.confirm_action(
-                    'Uncommit these revisions',
+                    u'Uncommit these revisions',
                     'bzrlib.builtins.uncommit',
                     {}):
                 self.outf.write('Canceled\n')

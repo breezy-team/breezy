@@ -63,7 +63,7 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_factory_confirm(self):
         # turns into reading a regular boolean
         ui = self.make_test_ui_factory('n\n')
-        self.assertEquals(ui.confirm_action('Should %(thing)s pass?',
+        self.assertEquals(ui.confirm_action(u'Should %(thing)s pass?',
             'bzrlib.tests.test_ui.confirmation',
             {'thing': 'this'},),
             False)
@@ -119,12 +119,12 @@ class TestTextUIFactory(tests.TestCase):
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
-        self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
-        self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
-        self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
@@ -137,15 +137,15 @@ class TestTextUIFactory(tests.TestCase):
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
-        self.assertEqual(1, factory.get_integer(""))
-        self.assertEqual(-2, factory.get_integer(""))
-        self.assertEqual(42, factory.get_integer(""))
+        self.assertEqual(1, factory.get_integer(u""))
+        self.assertEqual(-2, factory.get_integer(u""))
+        self.assertEqual(42, factory.get_integer(u""))
 
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
         StringIO = tests.StringIOWrapper
         factory = _mod_ui_text.TextUIFactory(StringIO(), StringIO(), StringIO())
-        factory.prompt('foo %2e')
+        factory.prompt(u'foo %2e')
         self.assertEqual('', factory.stdout.getvalue())
         self.assertEqual('foo %2e', factory.stderr.getvalue())
 
@@ -166,7 +166,7 @@ class TestTextUIFactory(tests.TestCase):
                          self.apply_redirected(None, factory.stdout,
                                                factory.stdout,
                                                factory.get_boolean,
-                                               "what do you want"))
+                                               u"what do you want"))
         output = out.getvalue()
         self.assertContainsRe(output,
             "| foo *\r\r  *\r*")
@@ -195,10 +195,10 @@ class TestTextUIFactory(tests.TestCase):
         factory.stdout.encoding = "utf8"
         # there is no output from the base factory
         self.assertEqual("someuser",
-                         factory.get_username('Hello %(host)s', host='some'))
+                         factory.get_username(u'Hello %(host)s', host='some'))
         self.assertEquals("Hello some: ", factory.stderr.getvalue())
         self.assertEquals('', factory.stdout.getvalue())
-        self.assertEqual("", factory.get_username("Gebruiker"))
+        self.assertEqual("", factory.get_username(u"Gebruiker"))
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
@@ -352,7 +352,7 @@ class SilentUITests(tests.TestCase):
         self.assertRaises(
             NotImplementedError,
             self.apply_redirected,
-            None, stdout, stdout, factory.get_boolean, "foo")
+            None, stdout, stdout, factory.get_boolean, u"foo")
 
 
 class TestUIFactoryTests(tests.TestCase):
@@ -371,12 +371,12 @@ class CannedInputUIFactoryTests(tests.TestCase):
 
     def test_canned_input_get_input(self):
         uif = _mod_ui.CannedInputUIFactory([True, 'mbp', 'password', 42])
-        self.assertEqual(True, uif.get_boolean('Extra cheese?'))
-        self.assertEqual('mbp', uif.get_username('Enter your user name'))
+        self.assertEqual(True, uif.get_boolean(u'Extra cheese?'))
+        self.assertEqual('mbp', uif.get_username(u'Enter your user name'))
         self.assertEqual('password',
-                         uif.get_password('Password for %(host)s',
+                         uif.get_password(u'Password for %(host)s',
                                           host='example.com'))
-        self.assertEqual(42, uif.get_integer('And all that jazz ?'))
+        self.assertEqual(42, uif.get_integer(u'And all that jazz ?'))
 
 
 class TestBoolFromString(tests.TestCase):

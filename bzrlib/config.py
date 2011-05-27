@@ -1803,7 +1803,7 @@ class AuthenticationConfig(object):
             if ask:
                 if prompt is None:
                     # Create a default prompt suitable for most cases
-                    prompt = scheme.upper() + ' %(host)s username'
+                    prompt = u'%s' % (scheme.upper(),) + u' %(host)s username'
                 # Special handling for optional fields in the prompt
                 if port is not None:
                     prompt_host = '%s:%d' % (host, port)
@@ -1847,7 +1847,7 @@ class AuthenticationConfig(object):
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
-                prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
+                prompt = u'%s' % scheme.upper() + u' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = '%s:%d' % (host, port)
