@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* New hook server_exception in bzrlib.smart.server to catch any
+  exception caused while running bzr serve.  (Jonathan Riddell,
+  #274578)
+
 Improvements
 ************
 
