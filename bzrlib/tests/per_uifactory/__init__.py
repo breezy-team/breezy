@@ -66,9 +66,8 @@ class UIFactoryTestMixin(object):
         # confirm_action should be answered by every ui factory; even
         # noninteractive ones should have a reasonable default
         self._load_responses([True])
-        result = self.factory.confirm_action(
-            'Break a lock?',
-            'bzr.lock.break.confirm',
+        result = self.factory.confirm_action(u'Break a lock?',
+             'bzr.lock.break.confirm',
             {})
         # will be true either because we read it from the input or because
         # that's the default
