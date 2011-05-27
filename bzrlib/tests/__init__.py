@@ -2068,15 +2068,12 @@ class TestCase(testtools.TestCase):
                 # multiple details with the same key (either wasting effort if
                 # the log file is the same or losing info if the log files are
                 # different).
-                try:
-                    with open(subproc_bzr_log, "rb") as log_file:
-                        log_text = log_file.read()
-                except (IOError, OSError) as err:
-                    log_text = ('Could not read log file: %s' %
-                        unicode(err).encode('utf8'))
+                # We use buffer_now=True to avoid holding the file open beyond
+                # the life of this function, which might interfere with e.g.
+                # cleaning tempdirs on Windows.
                 self.addDetail("start_bzr_subprocess-log",
-                    content.Content(content.ContentType("text", "plain",
-                        {"charset": "utf8"}), lambda: [log_text]))
+                    content.content_from_file(subproc_bzr_log,
+                        buffer_now=True))
             self.addCleanup(addLogDetail)
 
             command = [sys.executable]
