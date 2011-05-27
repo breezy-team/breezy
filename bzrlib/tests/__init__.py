@@ -2055,6 +2055,9 @@ class TestCase(testtools.TestCase):
         :param skip_if_plan_to_signal: raise TestSkipped when true and system
             doesn't support signalling subprocesses.
         :param allow_plugins: If False (default) pass --no-plugins to bzr.
+        :param stderr: file to use for the subprocess's stderr.  Valid values
+            are those valid for the stderr argument of `subprocess.Popen`.
+            Default value is ``subprocess.PIPE``.
 
         :returns: Popen object for the started process.
         """
