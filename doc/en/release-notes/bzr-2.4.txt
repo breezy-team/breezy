@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* New hook server_exception in bzrlib.smart.server to catch any
+  exception caused while running bzr serve.  (Jonathan Riddell,
+  #274578)
+
 Improvements
 ************
 
@@ -36,8 +40,16 @@ Bug Fixes
   ``Transport.rename``, deleting any existing targets even on SFTP.
   (Martin von Gagern, #421776)
 
+* Pass the ``build_mo`` command to the rest of the setup() calls in
+  setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
+  because ``build_mo`` became a required step that they didn't know about.
+  (John Arbash Meinel, #787122)
+
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
+
+* Reports a non-existant file error when trying to merge in a file
+  that does not exist. (Jonathan Riddell, #330063)
 
 * ``UIFactory.prompt``, ``UIFactory.get_username``,
   ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
