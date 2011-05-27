@@ -128,6 +128,17 @@ class TestTrace(TestCase):
         #                with errno, function name, and locale error message
         self.assertContainsRe(msg,
             r"^bzr: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
+            
+    def test_format_sockets_error(self):
+        try:
+            sock = socket.socket()
+            sock.send("Fail me please.")
+        except sockets.error:
+            pass
+        msg = _format_exception()
+        
+        self.assertContainsRe(msg,
+            r"^bzr: ERROR: \[Errno .*\] Socket is not connected")
 
     def test_format_unicode_error(self):
         try:
