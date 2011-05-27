@@ -79,8 +79,13 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
-        return self.start_bzr_subprocess(args, env_changes=env_changes,
-            allow_plugins=(not are_plugins_disabled()))
+        kwargs = dict(env_changes=env_changes,
+                      allow_plugins=(not are_plugins_disabled()))
+        if stderr_file:
+            # We don't want to update the whole call chain so we insert stderr
+            # *iff* we need to
+            kwargs['stderr'] = stderr_file
+        return self.start_bzr_subprocess(args, **kwargs)
 
     def check_forbidden_modules(self, err, forbidden_imports):
         """Check for forbidden modules in stderr.
