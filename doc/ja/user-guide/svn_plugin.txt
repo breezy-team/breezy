@@ -18,7 +18,7 @@ Subversionリポジトリへのアクセスは大部分は透明、\
 利用からまだ採用していないチームのための共通の暫定ステップです
 
 インストールの手引きに関しては、bzr-svnのホームページをご覧ください:
-http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion.
+http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion
 
 
 シンプルな例
@@ -28,14 +28,10 @@ GNOMEプロジェクトの **beagle** でのシンプルな使い方です。
 最初に、ブランチの保存用のローカルな共用リポジトリをセットアップして\
 トランクをチェックアウトします::
 
-  bzr init-repo --rich-root-pack beagle-repo
+  bzr init-repo beagle-repo
   cd beagle-repo
   bzr checkout svn+ssh://svn.gnome.org/svn/beagle/trunk beagle-trunk
 
-
-``init-repo`` に対して ``rich-root-pack`` オプションを使うことが重要です。
-bzr-svnは追加のメタデータがいくつか必要ですが、Bazaarのデフォルトのリポジトリフォーマットではまだサポートされないからです。
-(訳注: Bazaar 2.0以降を使っているのであれば、 --rich-root-pack オプションは不要です。)
 次に、フィーチャブランチを作成してハックします::
 
   bzr branch beagle-trunk beagle-feature1
@@ -70,7 +66,7 @@ bzr-svnはリポジトリからリポジトリへの変換を行うために ``s
 
 中央のBazaarミラーを利用するために更新された上記からのレシピです::
 
-  bzr init-repo --rich-root-pack beagle-repo
+  bzr init-repo beagle-repo
   cd beagle-repo
   bzr branch bzr+ssh://bzr.gnome.org/beagle.bzr/trunk beagle-trunk
   bzr branch beagle-trunk beagle-feature1
@@ -108,5 +104,5 @@ bzr-svn 0.5.4 に関するいくつかの例です:
 
  * Bazaarはファイルのコピーのトラッキングをサポートしません
 
-現在の制約の一覧に関しては、bzr-svnのウェブページ、\
+現在の制約の一覧に関しては、bzr-svnのウェブページ、
 http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion を参照してください。

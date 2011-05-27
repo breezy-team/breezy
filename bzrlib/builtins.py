@@ -44,7 +44,6 @@ from bzrlib import (
     rename_map,
     revision as _mod_revision,
     static_tuple,
-    symbol_versioning,
     timestamp,
     transport,
     ui,
@@ -72,6 +71,9 @@ from bzrlib.option import (
     _parse_revision_str,
     )
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
+from bzrlib import (
+    symbol_versioning,
+    )
 
 
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
@@ -3646,10 +3648,10 @@ class cmd_selftest(Command):
         if typestring == "sftp":
             from bzrlib.tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
-        if typestring == "memory":
+        elif typestring == "memory":
             from bzrlib.tests import test_server
             return memory.MemoryServer
-        if typestring == "fakenfs":
+        elif typestring == "fakenfs":
             from bzrlib.tests import test_server
             return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
@@ -3951,7 +3953,11 @@ class cmd_merge(Command):
         merger = None
         allow_pending = True
         verified = 'inapplicable'
+
         tree = WorkingTree.open_containing(directory)[0]
+        if tree.branch.revno() == 0:
+            raise errors.BzrCommandError('Merging into empty branches not currently supported, '
+                                         'https://bugs.launchpad.net/bzr/+bug/308562')
 
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
@@ -5644,7 +5650,7 @@ class cmd_reconfigure(Command):
             unstacked=None):
         directory = bzrdir.BzrDir.open(location)
         if stacked_on and unstacked:
-            raise BzrCommandError("Can't use both --stacked-on and --unstacked")
+            raise errors.BzrCommandError("Can't use both --stacked-on and --unstacked")
         elif stacked_on is not None:
             reconfigure.ReconfigureStackedOn().apply(directory, stacked_on)
         elif unstacked:

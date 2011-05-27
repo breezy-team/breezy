@@ -985,15 +985,16 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
 
     It contains code very similar to SequenceMatcher because of having a similar
     task. However some key differences apply:
-     - there is no junk, we want a minimal edit not a human readable diff.
-     - we don't filter very common lines (because we don't know where a good
-       range will start, and after the first text we want to be emitting minmal
-       edits only.
-     - we chain the left side, not the right side
-     - we incrementally update the adjacency matrix as new lines are provided.
-     - we look for matches in all of the left side, so the routine which does
-       the analagous task of find_longest_match does not need to filter on the
-       left side.
+
+    * there is no junk, we want a minimal edit not a human readable diff.
+    * we don't filter very common lines (because we don't know where a good
+      range will start, and after the first text we want to be emitting minmal
+      edits only.
+    * we chain the left side, not the right side
+    * we incrementally update the adjacency matrix as new lines are provided.
+    * we look for matches in all of the left side, so the routine which does
+      the analagous task of find_longest_match does not need to filter on the
+      left side.
     """
 
     def __init__(self, settings=None):
@@ -1255,11 +1256,11 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         :param key: The key tuple of the text to add.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
-            of them except the last must be terminated with \n and contain no
-            other \n's. The last line may either contain no \n's or a single
-            terminating \n. If the lines list does meet this constraint the add
-            routine may error or may succeed - but you will be unable to read
-            the data back accurately. (Checking the lines have been split
+            of them except the last must be terminated with \\n and contain no
+            other \\n's. The last line may either contain no \\n's or a single
+            terminating \\n. If the lines list does meet this constraint the
+            add routine may error or may succeed - but you will be unable to
+            read the data back accurately. (Checking the lines have been split
             correctly is expensive and extremely unlikely to catch bugs so it
             is not done at runtime unless check_content is True.)
         :param parent_texts: An optional dictionary containing the opaque
@@ -1503,6 +1504,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
 
         The returned objects should be in the order defined by 'ordering',
         which can weave between different sources.
+
         :param ordering: Must be one of 'topological' or 'groupcompress'
         :return: List of [(source, [keys])] tuples, such that all keys are in
             the defined order, regardless of source.
@@ -2130,16 +2132,14 @@ class _GCGraphIndex(object):
         :param keys: An iterable of keys.
         :return: A dict of key:
             (index_memo, compression_parent, parents, record_details).
-            index_memo
-                opaque structure to pass to read_records to extract the raw
-                data
-            compression_parent
-                Content that this record is built upon, may be None
-            parents
-                Logical parents of this node
-            record_details
-                extra information about the content which needs to be passed to
-                Factory.parse_record
+
+            * index_memo: opaque structure to pass to read_records to extract
+              the raw data
+            * compression_parent: Content that this record is built upon, may
+              be None
+            * parents: Logical parents of this node
+            * record_details: extra information about the content which needs
+              to be passed to Factory.parse_record
         """
         self._check_read()
         result = {}

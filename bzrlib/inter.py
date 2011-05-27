@@ -78,6 +78,7 @@ class InterObject(object):
                        the InterObject instance.
         :param target: the object to be the 'target' member of
                        the InterObject instance.
+
         If an optimised worker exists it will be used otherwise
         a default Inter worker instance will be created.
         """

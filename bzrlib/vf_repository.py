@@ -19,6 +19,8 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
+
 from bzrlib import (
     check,
     debug,
@@ -1425,8 +1427,8 @@ class VersionedFileRepository(Repository):
             the revision key from each parsed line will be looked up in the
             revision_keys filter.
         :return: a dictionary mapping altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
+            revision_ids. Each altered file-ids has the exact revision_ids that
+            altered it listed explicitly.
         """
         seen = set(self._serializer._find_text_key_references(
                 line_iterator).iterkeys())
@@ -1461,8 +1463,8 @@ class VersionedFileRepository(Repository):
         :param _inv_weave: The inventory weave from this repository or None.
             If None, the inventory weave will be opened automatically.
         :return: a dictionary mapping altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
+            revision_ids. Each altered file-ids has the exact revision_ids that
+            altered it listed explicitly.
         """
         selected_keys = set((revid,) for revid in revision_ids)
         w = _inv_weave or self.inventories
@@ -2552,7 +2554,8 @@ class InterVersionedFileRepository(InterRepository):
     @needs_read_lock
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """Return the revision ids that source has that target does not.
 
         :param revision_id: only return revision ids included by this
@@ -2582,13 +2585,20 @@ class InterVersionedFileRepository(InterRepository):
         # stop searching at found target revisions.
         if not find_ghosts and (revision_ids is not None or if_present_ids is
                 not None):
-            return self._walk_to_common_revisions(revision_ids,
+            result = self._walk_to_common_revisions(revision_ids,
                     if_present_ids=if_present_ids)
-        # generic, possibly worst case, slow code path.
-        target_ids = set(self.target.all_revision_ids())
-        source_ids = self._present_source_revisions_for(
-            revision_ids, if_present_ids)
-        result_set = set(source_ids).difference(target_ids)
+            if limit is None:
+                return result
+            result_set = result.get_keys()
+        else:
+            # generic, possibly worst case, slow code path.
+            target_ids = set(self.target.all_revision_ids())
+            source_ids = self._present_source_revisions_for(
+                revision_ids, if_present_ids)
+            result_set = set(source_ids).difference(target_ids)
+        if limit is not None:
+            topo_ordered = self.source.get_graph().iter_topo_order(result_set)
+            result_set = set(itertools.islice(topo_ordered, limit))
         return self.source.revision_ids_to_search_result(result_set)
 
     def _present_source_revisions_for(self, revision_ids, if_present_ids=None):

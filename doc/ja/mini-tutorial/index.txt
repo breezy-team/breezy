@@ -7,11 +7,12 @@
 イントロダクション
 ===================
 
-Bazaarは分散型バージョン管理システムで、ソフトウェアプロジェクトの共同作業を楽にしてくれます。
+Bazaarは分散型バージョン管理システムで、ソフトウェアプロジェクトの
+共同作業を楽にしてくれます。
 
-これから5分ほどで、ファイルをバージョン管理下に置き、変更をそれらに記録して、\
-作業内容を確認し、公開して作業内容をマージしてもらうためにプロジェクトのtrunkに\
-送る方法などを学びます。
+これから5分ほどで、ファイルをバージョン管理下に置き、変更を記録して、
+作業内容を確認し、公開して作業内容をマージしてもらうためにプロジェクトの
+trunk に送る方法などを学びます。
 
 詳細な紹介内容を望むのであれば、 `さらに学ぶ`_ をご覧ください。
 
@@ -78,7 +79,7 @@ Bazaarはファイルとリビジョンの履歴を保存する branch_ を作�
 
 次のステップはBazaarに管理して欲しいファイルを教えることです。
 ``bzr add`` を実行するとすべてのディレクトリとファイルがプロジェクトに\
-再帰的に追加されます::
+再帰的に追加されます。 ::
 
  $ bzr add
  added subdirectory
@@ -88,15 +89,15 @@ Bazaarはファイルとリビジョンの履歴を保存する branch_ を作�
  added subdirectory/test4.txt
 
 次に、これらをブランチにコミットしてスナップショットをとります。
-コミットを行った理由を説明するメッセージを追加します::
+コミットを行った理由を説明するメッセージを追加します。 ::
 
   $ bzr commit -m "Initial import"
 
 Bazaarは分散型バージョン管理システムなので、コミットするために\
 サーバーに接続する必要はありません。
 代わりに、Bazaarはブランチとすべてのコミットをあなたが作業している\
-ディレクトリ内部に保存します;
-``.bzr`` というサブディレクトリをご覧ください。
+ディレクトリ内部に ``.bzr`` というサブディレクトリを作ってそこに
+保存します。
 
 
 ファイルを変更する
@@ -104,7 +105,7 @@ Bazaarは分散型バージョン管理システムなので、コミットす�
 
 ファイルを変更してブランチにその変更をコミットしてみましょう。
 
-好きなエディタで ``test1.txt`` を編集し、何を行ったのかを確認します::
+好きなエディタで ``test1.txt`` を編集し、何を行ったのかを確認します。 ::
 
  $ bzr diff
  === modified file 'test1.txt'
@@ -122,7 +123,7 @@ Bazaarは分散型バージョン管理システムなので、コミットす�
 リビジョンのログを眺める
 =========================
 
-ログを閲覧することでブランチの履歴がわかります::
+ログを閲覧することでブランチの履歴を調べることができます。 ::
 
   $ bzr log
   ------------------------------------------------------------
@@ -141,58 +142,37 @@ Bazaarは分散型バージョン管理システムなので、コミットす�
     Initial import
 
 
-sftpでブランチを公開する
-=========================
+ブランチを Launchpad で公開する
+===================================
 
-ブランチを公開する方法は複数あります。
-SFTPサーバーがすでにあるもしくは容易にセットアップできるのであれば、\
-ブランチをそこで公開できます。
+Launchpad はソフトウェアプロジェクトの開発と運営のためのツールをまとめた
+サイトです。自分のブランチを公開するために Launchpad を利用することができます。
+(もちろん、自分のサーバーや他のホスティングサービス上で公開することもできます)
 
-そうでなければ、このセクションをとばして、Bazaarのための無料ホスティング\
-サービスである、 Launchpad_ で公開しましょう。
+まだ Launchpad のアカウントを持っていないのであれば、 `account signup guide`_
+に従ってアカウントを作成し、 `SSH 鍵を登録`_ してください。
 
-.. _Launchpad: https://launchpad.net/
+.. _account signup guide: https://help.launchpad.net/CreatingYourLaunchpadAccount
+.. _SSH 鍵を登録: https://launchpad.net/people/+me/+editsshkeys
 
-``www.example.com/myproject`` でブランチを公開することを前提とします::
+次のように、 (``john.doe`` は自分のアカウントのユーザー名に置き換えて)
+タイプしてください。 [#]_ ::
 
- $ bzr push --create-prefix sftp://your.name@example.com/~/public_html/myproject
- 2 revision(s) pushed.
+ $ bzr push lp:~john.doe/+junk/myproject
 
-Bazaarはリモートサーバー上で ``myproject`` ディレクトリを作りブランチを\
-そこにpushします。
+.. [#] ``lp:`` という URL スキーマは bzr 0.92 以降でサポートされています。
 
-これで誰でも次のコマンドを入力すればあなたのブランチをコピーできます::
+**注意**: ``+junk`` の部分は、このブランチが Launchpad 上の特定のプロジェクトに
+属していないことを意味しています。
 
- $ bzr branch http://www.example.com/myproject
+これで、誰でもあなたのブランチのコピーを、次のようなコマンドで入手できるようになりました。 ::
 
-**注:** sftpを使うためには、 ``paramiko`` と ``pyCrypto`` をインストールする必要があります。
-詳細は http://wiki.bazaar.canonical.com/InstallationFaq を参照してください。
+ $ bzr branch lp:~john.doe/+junk/myproject
 
+ブランチの情報を、履歴も含めて
+https://code.launchpad.net/people/+me/+junk/myproject
+から閲覧することができます。
 
-Launchpadでブランチを公開する
-==============================
-
-Launchpadはフリーソフトウェアのための開発とホスティングのためのツールが\
-ひとまとめになったものです。これをブランチを公開するために利用できます。
-
-Launchpadのアカウントを持っていなければ、 `アカウントのサインアップのガイド`_
-に従ってアカウントを作り、 `SSHキーを登録`_ してください。
-
-.. _アカウントのサインアップのガイド: https://help.launchpad.net/CreatingYourLaunchpadAccount
-.. _SSHキーを登録: https://launchpad.net/people/+me/+editsshkeys
-
-次のコマンドを(``john.doe`` を自分のLaunchpadアカウント名に変更して)実行してください::
-
- $ bzr push bzr+ssh://john.doe@bazaar.launchpad.net/~john.doe/+junk/myproject
-
-**注:** ``+junk`` はこのブランチがLaunchpad上の特定のプロジェクトに関連していないことを意味します。
-
-これで、誰でも次のコマンドを入力することでブランチのコピーを作ることができます::
-
- $ bzr branch http://bazaar.launchpad.net/~john.doe/+junk/myproject
-
-ブランチとリビジョンの履歴に関する情報は https://code.launchpad.net/people/+me/+junk/myproject
-でも見ることができます。
 
 別のブランチから自分用のコピーを作る
 =====================================
@@ -200,23 +180,23 @@ Launchpadのアカウントを持っていなければ、 `アカウントのサ
 他人のコードに取り組むために、ブランチのコピーを作ることができます。
 実際の世界の例として、BazaarのGTKインターフェイスを見てみましょう::
 
-  $ bzr branch http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk bzr-gtk.john
+  $ bzr branch lp:~bzr/bzr-gtk/trunk bzr-gtk.john
   Branched 292 revision(s).
 
-Bazaarはbzr-gtkのtrunkブランチからすべてのファイルをダウンロードして\
+Bazaarはbzr-gtkのtrunkブランチからすべてのファイルをダウンロードして
 リビジョンの履歴をそろえ、bzr-gtk.johnというコピーを作ります。
 
-これで、ブランチのコピーを手に入れたのでネットの接続のあるなしに\
+これで、ブランチのコピーを手に入れたのでネットの接続のあるなしに
 関わらず変更をコミットできます。
-ブランチはいつでも公開することで共有でき、bzr-gtkチームがあなたの作品を\
-使いたいと思ったときにBazaarは彼らがあなたのブランチから彼らのブランチに\
+ブランチはいつでも公開することで共有でき、bzr-gtkチームがあなたの作品を
+使いたいと思ったときにBazaarは彼らがあなたのブランチから彼らのブランチに
 マージし直す作業を簡単にしてくれます。
 
 
 メインのブランチから自分のブランチを更新する
 =============================================
 
-変更を自分のブランチにコミットする一方で、他の人がコードを親のブランチに\
+変更を自分のブランチにコミットしている間に、他の人がコードを元のブランチに\
 コミットしているということもよくあります。
 
 自分のブランチを最新に維持するには、親ブランチから自分のブランチへと変更を\
@@ -273,3 +253,20 @@ Bazaarのコマンドを学ぶには::
 ''foo'' トピックもしくはコマンドを学ぶには::
 
   $ bzr help foo
+
+
+Licence
+=============
+
+Copyright 2007-2011 Canonical Ltd. Bazaar is free software, and you
+may use, modify and redistribute both Bazaar and this document under
+the terms of the GNU General Public License version 2 or later. See
+<http://www.gnu.org/licenses/>.
+
+
+日本語訳について
+-----------------
+この日本語訳は、 `Bazaar-jaグループ <https://groups.google.com/group/bazaar-ja>`_
+がメンテナンスしています。
+
+日本語訳に着いて間違いや質問等ありましたらこちらへお願いします。
