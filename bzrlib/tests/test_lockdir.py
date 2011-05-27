@@ -678,7 +678,7 @@ class TestLockHeldInfo(TestCase):
         info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123' # probably not alive at all
         if sys.platform == 'win32':
-            raise KnownFailure(
+            self.knownFailure(
                 'live lock holder detection not implemented yet on win32')
         self.assertTrue(info.is_lock_holder_known_dead())
         

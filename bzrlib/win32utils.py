@@ -576,3 +576,41 @@ if has_ctypes and winver != 'Windows 98':
         return argv
 else:
     get_unicode_argv = None
+
+
+if has_win32api:
+    def _pywin32_is_local_pid_dead(pid):
+        """True if pid doesn't correspond to live process on this machine"""
+        try:
+            handle = win32api.OpenProcess(1, False, pid) # PROCESS_TERMINATE
+        except pywintypes.error, e:
+            if e[0] == 1: # ERROR_ACCESS_DENIED
+                # Probably something alive we're not allowed to kill
+                return False
+            elif e[0] == 87: # ERROR_INVALID_PARAMETER
+                return True
+            raise
+        handle.close()
+        return False
+    is_local_pid_dead = _pywin32_is_local_pid_dead
+elif has_ctypes:
+    from ctypes.wintypes import BOOL, DWORD, HANDLE
+    _kernel32 = ctypes.windll.kernel32
+    _CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
+        ("CloseHandle", _kernel32))
+    _OpenProcess = ctypes.WINFUNCTYPE(HANDLE, DWORD, BOOL, DWORD)(
+        ("OpenProcess", _kernel32))
+    def _ctypes_is_local_pid_dead(pid):
+        """True if pid doesn't correspond to live process on this machine"""
+        handle = _OpenProcess(1, False, pid) # PROCESS_TERMINATE
+        if not handle:
+            errorcode = ctypes.GetLastError()
+            if errorcode == 1: # ERROR_ACCESS_DENIED
+                # Probably something alive we're not allowed to kill
+                return False
+            elif errorcode == 87: # ERROR_INVALID_PARAMETER
+                return True
+            raise ctypes.WinError(errorcode)
+        _CloseHandle(handle)
+        return False
+    is_local_pid_dead = _ctypes_is_local_pid_dead

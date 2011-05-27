@@ -239,10 +239,10 @@ class LockDir(lock.Lock):
             except (errors.TransportError, PathError, DirectoryNotEmpty,
                     FileExists, ResourceBusy), e:
                 self._trace("... contention, %s", e)
-                # XXX: Cope if the lock has disappeared at this point.
                 other_holder = self.peek()
                 self._trace("other holder is %r" % other_holder)
-                if (other_holder.is_lock_holder_known_dead()
+                if (other_holder is not None
+                    and other_holder.is_lock_holder_known_dead()
                     and self.get_config().get_user_option_as_bool(
                         'steal_dead_locks',
                         default=True)):
@@ -810,10 +810,6 @@ class LockHeldInfo(object):
         if self.get('hostname') == 'localhost':
             # Too ambiguous.
             return False
-        if getattr(os, 'kill', None) is None:
-            # Probably not available on Windows.  
-            # XXX: How should we check for process liveness there?
-            return False
         pid_str = self.info_dict.get('pid', None)
         if not pid_str:
             mutter("no pid recorded in %r" % (self, ))
@@ -824,22 +820,7 @@ class LockHeldInfo(object):
             mutter("can't parse pid %r from %r" 
                 % (pid_str, self))
             return False
-        try:
-            # Special meaning of unix kill: just check if it's there.
-            os.kill(pid, 0)
-        except OSError, e:
-            if e.errno == errno.ESRCH:
-                # On this machine, and really not found: as sure as we can be
-                # that it's dead.
-                return True
-            elif e.errno == errno.EPERM:
-                # exists, though not ours
-                return False
-            else:
-                raise
-        else:
-            # Exists and our process: not dead.
-            return False
+        return osutils.is_local_pid_dead(pid)
 
 
 def get_username_for_lock_info():
