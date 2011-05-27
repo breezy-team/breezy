@@ -239,10 +239,10 @@ class LockDir(lock.Lock):
             except (errors.TransportError, PathError, DirectoryNotEmpty,
                     FileExists, ResourceBusy), e:
                 self._trace("... contention, %s", e)
-                # XXX: Cope if the lock has disappeared at this point.
                 other_holder = self.peek()
                 self._trace("other holder is %r" % other_holder)
-                if (other_holder.is_lock_holder_known_dead()
+                if (other_holder is not None
+                    and other_holder.is_lock_holder_known_dead()
                     and self.get_config().get_user_option_as_bool(
                         'steal_dead_locks',
                         default=True)):
