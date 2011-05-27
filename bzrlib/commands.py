@@ -44,6 +44,7 @@ from bzrlib import (
 """)
 
 from bzrlib.hooks import Hooks
+from bzrlib.i18n import install as i18n_install, gettext
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -485,7 +486,6 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
-        from bzrlib.i18n import gettext   # gettext() for fixed string
         cmd_gettext = self.get_gettext()  # gettext() for command help
         doc = self.help()
         if doc:
@@ -764,7 +764,6 @@ class Command(object):
         NOTE: Commands provided by plugins should override this to use own
         i18n system.
         """
-        from bzrlib.i18n import gettext
         return gettext
 
     def name(self):
@@ -1101,11 +1100,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     debug.set_debug_flags_from_config()
     if not opt_no_i18n:
-        from bzrlib import i18n
-        if 'i18n' in debug.debug_flags:
-            i18n.install_zzz()
-        else:
-            i18n.install()
+        # selftest uninstalls i18n later.
+        i18n_install()
 
     if not opt_no_plugins:
         load_plugins()
