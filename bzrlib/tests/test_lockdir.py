@@ -194,20 +194,12 @@ class TestLockDir(TestCaseWithTransport):
         finally:
             lf1.unlock()
         self.assertEqual(1, len(self._logged_reports))
-        self.assertEqual(self._logged_reports[0][0],
-            '%s lock %s held by %s\n'
-            'at %s [process #%s], acquired %s.\n'
-            'Will continue to try until %s, unless '
-            'you press Ctrl-C.\n'
-            'See "bzr help break-lock" for more.')
-        start, lock_url, user, hostname, pid, time_ago, deadline_str = \
-            self._logged_reports[0][1]
-        self.assertEqual(start, u'Unable to obtain')
-        self.assertEqual(user, u'jrandom@example.com')
-        # skip hostname
-        self.assertContainsRe(pid, r'\d+')
-        self.assertContainsRe(time_ago, r'.* ago')
-        self.assertContainsRe(deadline_str, r'\d{2}:\d{2}:\d{2}')
+        self.assertContainsRe(self._logged_reports[0][0],
+            r'Unable to obtain lock .* held by jrandom@example\.com on .*'
+            r' \(process #\d+\), acquired .* ago\.\n'
+            r'Will continue to try until \d{2}:\d{2}:\d{2}, unless '
+            r'you press Ctrl-C.\n'
+            r'See "bzr help break-lock" for more.')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -427,13 +419,12 @@ class TestLockDir(TestCaseWithTransport):
         ld1.create()
         ld1.lock_write()
         try:
-            info_list = ld1.peek().to_readable_list()
+            info_list = ld1.peek().to_readable_dict()
         finally:
             ld1.unlock()
-        self.assertEqual(info_list[0], u'jrandom@example.com')
-        # info_list[1] is hostname. we skip this.
-        self.assertContainsRe(info_list[2], '^\d+$') # pid
-        self.assertContainsRe(info_list[3], r'^\d+ seconds? ago$') # time_ago
+        self.assertEqual(info_list['user'], u'jrandom@example.com')
+        self.assertContainsRe(info_list['pid'], '^\d+$') # pid
+        self.assertContainsRe(info_list['time_ago'], r'^\d+ seconds? ago$') # time_ago
 
     def test_lock_without_email(self):
         global_config = config.GlobalConfig()
@@ -511,9 +502,10 @@ class TestLockDir(TestCaseWithTransport):
         t.put_bytes('test_lock/held/info', '')
         lf = LockDir(t, 'test_lock')
         info = lf.peek()
-        formatted_info = info.to_readable_list()
+        formatted_info = info.to_readable_dict()
         self.assertEquals(
-            ['<unknown>', '<unknown>', '<unknown>', '(unknown)'],
+            dict(user='<unknown>', hostname='<unknown>', pid='<unknown>',
+                time_ago='(unknown)'),
             formatted_info)
 
     def test_corrupt_lockdir_info(self):
@@ -660,8 +652,12 @@ class TestLockHeldInfo(TestCase):
 
     def test_repr(self):
         info = LockHeldInfo.for_this_process(None)
-        r = repr(info)
-        self.assertContainsRe(r, r"LockHeldInfo\(.*\)")
+        self.assertContainsRe(repr(info), r"LockHeldInfo\(.*\)")
+
+    def test_unicode(self):
+        info = LockHeldInfo.for_this_process(None)
+        self.assertContainsRe(unicode(info),
+            r'held by .* on .* \(process #\d+\), acquired .* ago')
 
     def test_is_locked_by_this_process(self):
         info = LockHeldInfo.for_this_process(None)

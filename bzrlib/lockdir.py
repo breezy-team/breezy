@@ -249,7 +249,7 @@ class LockDir(lock.Lock):
                     ui.ui_factory.show_user_warning(
                         'steal_dead_lock',
                         lock_url=urlutils.join(self.transport.base, self.path),
-                        other_holder_info=str(other_holder))
+                        other_holder_info=unicode(other_holder))
                     self.force_break(other_holder)
                     self._trace("stole lock from dead holder")
                     continue
@@ -383,10 +383,10 @@ class LockDir(lock.Lock):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
-            info_text = '\n'.join(holder_info.to_readable_list())
             if ui.ui_factory.confirm_action(
-                "Break %(lock_info)s", 'bzrlib.lockdir.break', 
-                dict(lock_info=info_text)):
+                "Break %(lock_info)s",
+                'bzrlib.lockdir.break', 
+                dict(lock_info=str(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
                     "Broke lock %s" % result.lock_url)
@@ -595,24 +595,16 @@ class LockDir(lock.Lock):
                 else:
                     start = 'Lock owner changed for'
                 last_info = new_info
-                formatted_info = new_info.to_readable_list()
+                msg = u'%s lock %s %s.' % (start, lock_url, new_info)
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
-                                                 time.localtime(deadline))
-                user, hostname, pid, time_ago = formatted_info
-                msg = ('%s lock %s '        # lock_url
-                    'held by '              # start
-                    '%s\n'                  # user
-                    'at %s '                # hostname
-                    '[process #%s], '       # pid
-                    'acquired %s.')         # time ago
-                msg_args = [start, lock_url, user, hostname, pid, time_ago]
+                                                    time.localtime(deadline))
                 if timeout > 0:
                     msg += ('\nWill continue to try until %s, unless '
-                        'you press Ctrl-C.')
-                    msg_args.append(deadline_str)
+                        'you press Ctrl-C.'
+                        % deadline_str)
                 msg += '\nSee "bzr help break-lock" for more.'
-                self._report_function(msg, *msg_args)
+                self._report_function(msg)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
                 raise LockContention(self)
@@ -713,7 +705,39 @@ class LockHeldInfo(object):
         self.info_dict = info_dict
 
     def __repr__(self):
+        """Return a debugging representation of this object."""
         return "%s(%r)" % (self.__class__.__name__, self.info_dict)
+
+    def __unicode__(self):
+        """Return a user-oriented description of this object."""
+        d = self.to_readable_dict()
+        return (
+            u'held by %(user)s on %(hostname)s (process #%(pid)s), '
+            u'acquired %(time_ago)s' % d)
+
+    def to_readable_dict(self):
+        """Turn the holder info into a dict of human-readable attributes.
+
+        For example, the start time is presented relative to the current time,
+        rather than as seconds since the epoch.
+        
+        Returns a list of [user, hostname, pid, time_ago] all as readable 
+        strings.
+        """
+        start_time = self.info_dict.get('start_time')
+        if start_time is None:
+            time_ago = '(unknown)'
+        else:
+            time_ago = format_delta(
+                time.time() - int(self.info_dict['start_time']))
+        user = self.info_dict.get('user', '<unknown>')
+        hostname = self.info_dict.get('hostname', '<unknown>')
+        pid = self.info_dict.get('pid', '<unknown>')
+        return dict(
+            user=user,
+            hostname=hostname,
+            pid=pid,
+            time_ago=time_ago)
 
     def get(self, field_name):
         """Return the contents of a field from the lock info, or None."""
@@ -755,28 +779,6 @@ class LockHeldInfo(object):
             return cls({})
         else:
             return cls(stanza.as_dict())
-
-    def to_readable_list(self):
-        """Turn the contents of peek() into something for the user.
-        
-        Returns a list of [user, hostname, pid, time_ago] all as readable 
-        strings.
-        """
-        start_time = self.info_dict.get('start_time')
-        if start_time is None:
-            time_ago = '(unknown)'
-        else:
-            time_ago = format_delta(
-                time.time() - int(self.info_dict['start_time']))
-        user = self.info_dict.get('user', '<unknown>')
-        hostname = self.info_dict.get('hostname', '<unknown>')
-        pid = self.info_dict.get('pid', '<unknown>')
-        return [
-            user,
-            hostname,
-            pid,
-            time_ago,
-            ]
 
     def __cmp__(self, other):
         """Value comparison of lock holders."""

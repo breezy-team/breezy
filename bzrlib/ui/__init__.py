@@ -155,7 +155,7 @@ class UIFactory(object):
             "running the command\n"
             "  bzr upgrade %(basedir)s"),
         steal_dead_lock=(
-            "Stole lock %(lock_url)s from dead process %(other_holder_info)s."),
+            u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
         )
 
     def __init__(self):
