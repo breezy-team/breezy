@@ -808,10 +808,6 @@ class LockHeldInfo(object):
         if self.get('hostname') == 'localhost':
             # Too ambiguous.
             return False
-        if getattr(os, 'kill', None) is None:
-            # Probably not available on Windows.  
-            # XXX: How should we check for process liveness there?
-            return False
         pid_str = self.info_dict.get('pid', None)
         if not pid_str:
             mutter("no pid recorded in %r" % (self, ))
