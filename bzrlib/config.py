@@ -2368,11 +2368,8 @@ class BranchStore(IniFileStore):
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
-        # We don't want to create a cycle here when the BranchStore becomes
-        # part of an object (roughly a Stack, directly or indirectly) that is
-        # an attribute of the branch object itself. Since the BranchStore
-        # cannot exist without a branch, it's safe to make it a weakref.
-        self.branch = weakref.ref(branch)
+        # FIXME: This creates a cycle -- vila 2011-05-27
+        self.branch = branch
 
     def lock_write(self, token=None):
         return self.branch.lock_write(token)
