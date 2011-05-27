@@ -2111,6 +2111,8 @@ class TestMutableStore(TestStore):
         return self.transport.has(store_basename)
 
     def test_save_empty_creates_no_file(self):
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
             raise tests.TestNotApplicable(
                 'branch.conf is *always* created when a branch is initialized')
@@ -2130,6 +2132,8 @@ class TestMutableStore(TestStore):
         self.assertLength(0, sections)
 
     def test_save_with_content_succeeds(self):
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
             raise tests.TestNotApplicable(
                 'branch.conf is *always* created when a branch is initialized')
@@ -2235,6 +2239,21 @@ class TestLockableIniFileStore(TestStore):
         store.get_mutable_section(None).set('foo', 'bar')
         store.save()
         self.assertPathExists('dir/subdir')
+
+
+class TestBranchStore(TestStore):
+
+    def test_dead_branch(self):
+        build_backing_branch(self, 'branch')
+        b = branch.Branch.open('branch')
+        store = config.BranchStore(b)
+        del b
+        # The only reliable way to trigger the error is to explicitly call the
+        # garbage collector.
+        import gc
+        gc.collect()
+        store.get_mutable_section(None).set('foo', 'bar')
+        self.assertRaises(AssertionError, store.save)
 
 
 class TestConcurrentStoreUpdates(TestStore):
