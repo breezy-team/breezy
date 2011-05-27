@@ -3721,7 +3721,10 @@ class cmd_selftest(Command):
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
+        from bzrlib import i18n
         from bzrlib import tests
+
+        i18n.uninstall()
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
