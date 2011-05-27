@@ -52,6 +52,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``tools/check-newsbugs.py`` accepts a ``--browser`` option to open
+  corresponding launchpad pages in a browser. (Vincent Ladeuil)
+
 Testing
 *******
 
