@@ -1,4 +1,5 @@
 # Copyright (C) 2006-2011 Canonical Ltd
+# coding: UTF-8
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +61,24 @@ class TestBranch(TestCaseWithTransport):
         # previously was erroneously created by branching
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
+
+    def test_branch_broken_pack(self):
+        """branching with a corrupted pack file."""
+        from bzrlib.trace import mutter
+        self.example_branch('a')
+        #now add some random corruption
+        pack = open('a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0], "r")
+        line1 = pack.read(724)
+        pack.seek(746)
+        line2 = pack.read()
+        pack.close()
+        pack = open('a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0], "w")
+        pack.write(line1 + "îîîîîîîîîîîîîîîîîîîîîîîîîî" + line2)
+        pack.close()
+        
+        #mutter("PACK:" + pack)
+        self.run_bzr('branch a b')
+        #self.assertEqual(pack, "foo")
 
     def test_branch_switch_no_branch(self):
         # No branch in the current directory:
