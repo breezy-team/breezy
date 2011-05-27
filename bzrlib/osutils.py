@@ -2464,7 +2464,9 @@ def _posix_is_local_pid_dead(pid):
             # exists, though not ours
             return False
         else:
-            raise
+            mutter("os.kill(%d, 0) failed: %s" % (pid, e))
+            # Don't really know.
+            return False
     else:
         # Exists and our process: not dead.
         return False
