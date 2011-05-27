@@ -17,6 +17,7 @@
 """Tests for LockDir"""
 
 import os
+import sys
 import time
 
 import bzrlib
@@ -656,6 +657,11 @@ class TestLockDirHooks(TestCaseWithTransport):
 class TestLockHeldInfo(TestCase):
     """Can get information about the lock holder, and detect whether they're
     still alive."""
+
+    def test_repr(self):
+        info = LockHeldInfo.for_this_process(None)
+        r = repr(info)
+        self.assertContainsRe(r, r"LockHeldInfo\(.*\)")
 
     def test_is_locked_by_this_process(self):
         info = LockHeldInfo.for_this_process(None)
