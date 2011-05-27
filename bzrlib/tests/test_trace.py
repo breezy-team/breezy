@@ -133,13 +133,13 @@ class TestTrace(TestCase):
         try:
             import socket
             sock = socket.socket()
-            sock.send("Fail me please.")
+            sock.send("This should fail.")
         except socket.error:
             pass
         msg = _format_exception()
         
-        self.assertContainsRe(msg,
-            r"^bzr: ERROR: \[Errno .*\] Socket is not connected")
+        self.assertNotContainsRe(msg,
+            r"Traceback (most recent call last):")
 
     def test_format_unicode_error(self):
         try:
