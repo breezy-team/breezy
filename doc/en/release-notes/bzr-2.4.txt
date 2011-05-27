@@ -36,6 +36,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Pass the ``build_mo`` command to the rest of the setup() calls in
+  setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
+  because ``build_mo`` became a required step that they didn't know about.
+  (John Arbash Meinel, #787122)
+
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
