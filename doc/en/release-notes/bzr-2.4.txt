@@ -59,6 +59,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Show log file contents from subprocesses started by
+  `start_bzr_subprocess` in test failure details.  This may help diagnose
+  strange hangs and failures involving subprocesses.  (Andrew Bennetts)
+
 
 bzr 2.4b3
 #########
