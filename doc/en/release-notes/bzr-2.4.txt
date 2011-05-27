@@ -35,6 +35,10 @@ Bug Fixes
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
+* ``UIFactory.prompt``, ``UIFactory.get_username``,
+  ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
+  unicode prompt to be passed in. (Jelmer Vernooij, #592083)
+
 Documentation
 *************
 
@@ -51,6 +55,9 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* ``tools/check-newsbugs.py`` accepts a ``--browser`` option to open
+  corresponding launchpad pages in a browser. (Vincent Ladeuil)
 
 Testing
 *******
