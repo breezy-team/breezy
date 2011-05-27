@@ -44,7 +44,6 @@ from bzrlib import (
     rename_map,
     revision as _mod_revision,
     static_tuple,
-    symbol_versioning,
     timestamp,
     transport,
     ui,
@@ -72,6 +71,9 @@ from bzrlib.option import (
     _parse_revision_str,
     )
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
+from bzrlib import (
+    symbol_versioning,
+    )
 
 
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
@@ -3646,10 +3648,10 @@ class cmd_selftest(Command):
         if typestring == "sftp":
             from bzrlib.tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
-        if typestring == "memory":
+        elif typestring == "memory":
             from bzrlib.tests import test_server
             return memory.MemoryServer
-        if typestring == "fakenfs":
+        elif typestring == "fakenfs":
             from bzrlib.tests import test_server
             return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
@@ -3834,7 +3836,10 @@ class cmd_merge(Command):
     The source of the merge can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
     with bzr send. If neither is specified, the default is the upstream branch
-    or the branch most recently merged using --remember.
+    or the branch most recently merged using --remember.  The source of the
+    merge may also be specified in the form of a path to a file in another
+    branch:  in this case, only the modifications to that file are merged into
+    the current working tree.
 
     When merging from a branch, by default bzr will try to merge in all new
     work from the other branch, automatically determining an appropriate base
@@ -4004,6 +4009,13 @@ class cmd_merge(Command):
         self.sanity_check_merger(merger)
         if (merger.base_rev_id == merger.other_rev_id and
             merger.other_rev_id is not None):
+            # check if location is a nonexistent file (and not a branch) to
+            # disambiguate the 'Nothing to do'
+            if merger.interesting_files:
+                if not merger.other_tree.has_filename(
+                    merger.interesting_files[0]):
+                    note("merger: " + str(merger))
+                    raise errors.PathsDoNotExist([location])
             note('Nothing to do.')
             return 0
         if pull and not preview:
@@ -4952,7 +4964,7 @@ class cmd_uncommit(Command):
 
         if not force:
             if not ui.ui_factory.confirm_action(
-                    'Uncommit these revisions',
+                    u'Uncommit these revisions',
                     'bzrlib.builtins.uncommit',
                     {}):
                 self.outf.write('Canceled\n')
@@ -5636,7 +5648,7 @@ class cmd_reconfigure(Command):
             unstacked=None):
         directory = bzrdir.BzrDir.open(location)
         if stacked_on and unstacked:
-            raise BzrCommandError("Can't use both --stacked-on and --unstacked")
+            raise errors.BzrCommandError("Can't use both --stacked-on and --unstacked")
         elif stacked_on is not None:
             reconfigure.ReconfigureStackedOn().apply(directory, stacked_on)
         elif unstacked:
