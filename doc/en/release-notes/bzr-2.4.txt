@@ -32,6 +32,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``pack_repo`` now uses ``Transport.move`` instead of
+  ``Transport.rename``, deleting any existing targets even on SFTP.
+  (Martin von Gagern, #421776)
+
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
