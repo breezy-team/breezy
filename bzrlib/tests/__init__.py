@@ -1637,7 +1637,7 @@ class TestCase(testtools.TestCase):
         pseudo_log_file = StringIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
-                "utf-8", "replace").encode("utf-8")]          
+                "utf-8", "replace").encode("utf-8")]
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
             _get_log_contents_for_weird_testtools_api))
@@ -2062,6 +2062,23 @@ class TestCase(testtools.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
+            subproc_bzr_log = trace._get_bzr_log_filename()
+            def addLogDetail():
+                # XXX: if a test creates multiple subprocesses this will add
+                # multiple details with the same key (either wasting effort if
+                # the log file is the same or losing info if the log files are
+                # different).
+                try:
+                    with open(subproc_bzr_log, "rb") as log_file:
+                        log_text = log_file.read()
+                except (IOError, OSError) as err:
+                    log_text = ('Could not read log file: %s' %
+                        unicode(err).encode('utf8'))
+                self.addDetail("start_bzr_subprocess-log",
+                    content.Content(content.ContentType("text", "plain",
+                        {"charset": "utf8"}), lambda: [log_text]))
+            self.addCleanup(addLogDetail)
+
             command = [sys.executable]
             # frozen executables don't need the path to bzr
             if getattr(sys, "frozen", None) is None:
