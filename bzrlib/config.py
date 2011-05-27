@@ -2413,11 +2413,19 @@ class BranchStore(IniFileStore):
         # cannot exist without a branch, it's safe to make it a weakref.
         self.branch_ref = weakref.ref(branch)
 
+    def _get_branch(self):
+        b = self.branch_ref()
+        if b is None:
+            # Programmer error, a branch store can't exist if the branch it
+            # refers to is dead.
+            raise AssertionError('Dead branch ref in %r' % (self,))
+        return b
+
     def lock_write(self, token=None):
-        return self.branch_ref().lock_write(token)
+        return self._get_branch().lock_write(token)
 
     def unlock(self):
-        return self.branch_ref().unlock()
+        return self._get_branch().unlock()
 
     @needs_write_lock
     def save(self):
