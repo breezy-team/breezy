@@ -131,9 +131,10 @@ class TestTrace(TestCase):
             
     def test_format_sockets_error(self):
         try:
+            import socket
             sock = socket.socket()
             sock.send("Fail me please.")
-        except sockets.error:
+        except socket.error:
             pass
         msg = _format_exception()
         
