@@ -262,6 +262,7 @@ class SmartServerHooks(Hooks):
 
 SmartTCPServer.hooks = SmartServerHooks()
 
+
 def _local_path_for_transport(transport):
     """Return a local path for transport, if reasonably possible.
     
@@ -376,6 +377,7 @@ class BzrServerFactory(object):
     def tear_down(self):
         for cleanup in reversed(self.cleanups):
             cleanup()
+
 
 def serve_bzr(transport, host=None, port=None, inet=False):
     """This is the default implementation of 'bzr serve'.
