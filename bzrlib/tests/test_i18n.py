@@ -74,5 +74,20 @@ class TestGetText(tests.TestCase):
                          i18n.gettext("spam ham eggs"))
 
     def test_multiline(self):
-        self.assertEqual(u"zz{{spam\nham}}\n\nzz{{eggs\n}}",
+        self.assertEqual(u"zz{{spam\nham\n\neggs\n}}",
                          i18n.gettext("spam\nham\n\neggs\n"))
+
+
+class TestGetTextPerParagraph(tests.TestCase):
+
+    def setUp(self):
+        super(TestGetTextPerParagraph, self).setUp()
+        self.overrideAttr(i18n, '_translation', ZzzTranslations())
+
+    def test_oneline(self):
+        self.assertEqual(u"zz{{spam ham eggs}}",
+                         i18n.gettext_per_paragraph("spam ham eggs"))
+
+    def test_multiline(self):
+        self.assertEqual(u"zz{{spam\nham}}\n\nzz{{eggs\n}}",
+                         i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
