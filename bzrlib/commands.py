@@ -489,7 +489,7 @@ class Command(object):
         cmd_gettext = self.get_gettext()  # gettext() for command help
         doc = self.help()
         if doc:
-            # NOTE: If cmd_gettext translates ':Usage:\n', the section will
+            # Note: If cmd_gettext translates ':Usage:\n', the section will
             # be shown after "Description" section.
             doc = cmd_gettext(doc)
         else:
@@ -759,8 +759,8 @@ class Command(object):
     def get_gettext(self):
         """Returns the gettext function used to translate this command's help.
 
-        NOTE: Commands provided by plugins should override this to use own
-        i18n system.
+        Commands provided by plugins should override this to use their
+        own i18n system.
         """
         import bzrlib.i18n
         return bzrlib.i18n.gettext_per_paragraph
