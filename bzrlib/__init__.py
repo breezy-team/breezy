@@ -190,11 +190,3 @@ def test_suite():
     import tests
     return tests.test_suite()
 
-
-def N_(msg):
-    """Pass thorough function for marking the message may be translated
-    after. Use `i18n.gettext()` to translate immediately.
-
-    This function is here to avoid importing bzrlib.i18n and gettext modules.
-    """
-    return msg
