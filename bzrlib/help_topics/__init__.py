@@ -316,7 +316,7 @@ command.  (e.g. ``bzr --profile help``).
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
---no-i18n      Do not translate messages.
+--no-l10n      Do not translate messages.
 --concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.

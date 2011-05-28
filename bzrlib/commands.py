@@ -1056,7 +1056,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = \
-            opt_no_i18n = opt_no_aliases = False
+            opt_no_l10n = opt_no_aliases = False
     opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
@@ -1079,8 +1079,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             opt_no_plugins = True
         elif a == '--no-aliases':
             opt_no_aliases = True
-        elif a == '--no-i18n':
-            opt_no_i18n = True
+        elif a == '--no-l10n':
+            opt_no_l10n = True
         elif a == '--builtin':
             opt_builtin = True
         elif a == '--concurrency':
@@ -1098,7 +1098,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         i += 1
 
     debug.set_debug_flags_from_config()
-    if not opt_no_i18n:
+    if not opt_no_l10n:
         # selftest uninstalls i18n later.
         i18n_install()
 
