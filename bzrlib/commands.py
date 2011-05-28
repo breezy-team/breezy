@@ -506,11 +506,11 @@ class Command(object):
 
         # The header is the purpose and usage
         result = ""
-        result += ':%s: %s\n' % (gettext('Purpose'), purpose)
+        result += gettext(':Purpose: %s') % (purpose,) + '\n'
         if usage.find('\n') >= 0:
-            result += ':%s:\n%s\n' % (gettext('Usage'), usage)
+            result += gettext(':Usage:\n%s') % (usage,) + '\n'
         else:
-            result += ':%s:   %s\n' % (gettext('Usage'), usage)
+            result += gettext(':Usage:   %s') % (usage,) + '\n'
         result += '\n'
 
         # Add the options
@@ -528,9 +528,8 @@ class Command(object):
         # don't have to do that too often -- vila 20110514
         if not plain and options.find('  --1.14  ') != -1:
             options = options.replace(' format:\n', ' format::\n\n', 1)
-        if options.startswith('Options:') or options.startswith('options:'):
-            # Python 2.4 version of optparse uses 'options'.
-            result += ':%s:%s' % (gettext('Options'), options[len('options:'):])
+        if options.startswith('Options:'):
+            result += gettext(':Options:%s') % (options[len('options:'):],)
         else:
             result += options
         result += '\n'
@@ -541,7 +540,7 @@ class Command(object):
             if sections.has_key(None):
                 text = sections.pop(None)
                 text = '\n  '.join(text.splitlines())
-                result += ':%s:\n  %s\n\n' % (gettext('Description'),text)
+                result += gettext(':Description:\n  %s') % (text,) + '\n\n'
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
@@ -556,11 +555,11 @@ class Command(object):
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
-            result += ':%s:  ' % gettext('Aliases')
+            result += gettext(':Aliases:  ')
             result += ', '.join(self.aliases) + '\n'
         plugin_name = self.plugin_name()
         if plugin_name is not None:
-            result += ':From:     plugin "%s"\n' % plugin_name
+            result += gettext(':From:     plugin "%s"\n') % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
             if not plain and see_also_as_links:
@@ -572,11 +571,10 @@ class Command(object):
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = ":doc:`%s <%s-help>`" % (item, item)
+                        link_text = gettext(":doc:`%s <%s-help>`") % (item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
-            result += ':%s: ' % gettext('See also')
-            result += ', '.join(see_also) + '\n'
+            result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
 
         # If this will be rendered as plain text, convert it
         if plain:

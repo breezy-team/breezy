@@ -332,8 +332,8 @@ class TestCommandHelpI18n(tests.TestCase):
             '  -v, --verbose  zz{{Display more information.}}\n'
             '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
             '  -h, --help     zz{{Show help message.}}\n'
-            '\n'
-            'zz{{See also}}: bar, foo\n')
+            '}}\n'
+            'zz{{:See also: bar, foo}}\n')
 
     def test_get_help_text(self):
         """Commands have a get_help_text method which returns their help."""
@@ -342,10 +342,10 @@ class TestCommandHelpI18n(tests.TestCase):
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext,
-            'zz{{Purpose}}: zz{{A sample command.}}\n'
-            'zz{{Usage}}:   bzr Demo')
+            'zz{{:Purpose: zz{{A sample command.}}}}\n'
+            'zz{{:Usage:   bzr Demo}}\n')
         self.assertEndsWith(helptext,
-            '  -h, --help     zz{{Show help message.}}\n\n')
+            '  -h, --help     zz{{Show help message.}}\n}}\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -358,8 +358,8 @@ class TestCommandHelpI18n(tests.TestCase):
             '  -v, --verbose  zz{{Display more information.}}\n'
             '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
             '  -h, --help     zz{{Show help message.}}\n'
-            '\n'
-            'zz{{See also}}: bar, foo, gam\n')
+            '}}\n'
+            'zz{{:See also: bar, foo, gam}}\n')
 
     def test_command_only_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -368,11 +368,13 @@ class TestCommandHelpI18n(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
+            'zz{{:Options:\n'
+            '  --usage        zz{{Show usage message and options.}}\n'
             '  -v, --verbose  zz{{Display more information.}}\n'
             '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
             '  -h, --help     zz{{Show help message.}}\n'
-            '\n'
-            'zz{{See also}}: gam\n')
+            '}}\n'
+            'zz{{:See also: gam}}\n')
 
 
     def test_help_custom_section_ordering(self):
@@ -397,17 +399,17 @@ class TestCommandHelpI18n(tests.TestCase):
         helptext = cmd.get_help_text()
         self.assertEqualDiff(
             helptext,
-            'zz{{Purpose}}: zz{{A sample command.}}\n'
-            'zz{{Usage}}:   bzr Demo\n'
+            'zz{{:Purpose: zz{{A sample command.}}}}\n'
+            'zz{{:Usage:   bzr Demo}}\n'
             '\n'
-            'zz{{Options}}:\n'
+            'zz{{:Options:\n'
             '  --usage        zz{{Show usage message and options.}}\n'
             '  -v, --verbose  zz{{Display more information.}}\n'
             '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
             '  -h, --help     zz{{Show help message.}}\n'
-            '\n'
-            'zz{{Description}}:\n'
-            '  zz{{Blah blah blah.}}\n'
+            '}}\n'
+            'Description:\n'
+            '  zz{{zz{{Blah blah blah.}}}}\n'
             '\n'
             'Formats:\n'
             '  zz{{Interesting stuff about formats.}}\n'
@@ -436,21 +438,21 @@ class TestCommandHelpI18n(tests.TestCase):
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertEquals(helptext,
-            'zz{{Purpose}}: zz{{A sample command.}}\n'
-            'zz{{Usage}}:\n'
+            'zz{{:Purpose: zz{{A sample command.}}}}\n'
+            'zz{{:Usage:\n'
             '    zz{{cmd Demo [opts] args}}\n'
             '\n'
             '    zz{{cmd Demo -h}}\n'
+            '}}\n'
             '\n'
-            '\n'
-            'zz{{Options}}:\n'
+            'zz{{:Options:\n'
             '  --usage        zz{{Show usage message and options.}}\n'
             '  -v, --verbose  zz{{Display more information.}}\n'
             '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
             '  -h, --help     zz{{Show help message.}}\n'
-            '\n'
-            'zz{{Description}}:\n'
-            '  zz{{Blah blah blah.}}\n\n')
+            '}}\n'
+            'Description:\n'
+            '  zz{{zz{{Blah blah blah.}}}}\n\n')
 
 
 class TestRegisteredTopic(TestHelp):
