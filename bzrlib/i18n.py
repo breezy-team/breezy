@@ -26,7 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
-_translation = _gettext.NullTranslations()
+_translation = _null_translation = _gettext.NullTranslations()
 
 
 def gettext(message):
