@@ -304,7 +304,6 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         if (self.workingtree_format.requires_normalized_unicode_filenames
             and sys.platform != 'darwin'):
-            self.debug()
             self.assertRaises(
                 errors.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
         else:
