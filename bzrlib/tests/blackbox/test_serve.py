@@ -81,7 +81,8 @@ class TestBzrServeBase(TestCaseWithTransport):
             'run_bzr_serve_then_func hook')
         # start a TCP server
         try:
-            out, err = self.run_bzr(['serve'] + list(serve_args), retcode=retcode)
+            out, err = self.run_bzr(['serve'] + list(serve_args),
+                                    retcode=retcode)
         except KeyboardInterrupt, e:
             out, err = e.args
         return out, err
@@ -102,9 +103,12 @@ class TestBzrServe(TestBzrServeBase):
         SmartTCPServer.hooks.install_named_hook(
             'server_exception', hook,
             'test_server_except_hook hook')
-        args = []
+        args = ['--port', 'localhost:0']
         out, err = self.run_bzr_serve_then_func(args, retcode=0)
-        self.assertEqual('listening on port: 4155\ncatching exception\n', err)
+        err_lines = err.splitlines()
+        self.assertLength(2, err_lines)
+        self.assertStartsWith(err_lines[0],'listening on port:')
+        self.assertEqual('catching exception', err_lines[1])
 
     def test_server_exception_no_hook(self):
         """test exception without hook returns error"""

@@ -136,10 +136,10 @@ class SmartTCPServer(object):
 
     def serve(self, thread_name_suffix=''):
         self._should_terminate = False
+        self._started.set()
         # for hooks we are letting code know that a server has started (and
         # later stopped).
         self.run_server_started_hooks()
-        self._started.set()
         try:
             try:
                 while not self._should_terminate:
