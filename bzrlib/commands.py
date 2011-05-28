@@ -756,8 +756,7 @@ class Command(object):
             return None
         return getdoc(self)
 
-    @staticmethod
-    def get_gettext():
+    def get_gettext(self):
         """Returns the gettext function used to translate this command's help.
 
         NOTE: Commands provided by plugins should override this to use own

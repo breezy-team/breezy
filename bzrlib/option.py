@@ -203,8 +203,7 @@ class Option(object):
         else:
             return 'no-' + self.name
 
-    @staticmethod
-    def get_gettext(l10n):
+    def get_gettext(self, l10n):
         """Returns the gettext function used to translate this Option's help.
 
         NOTE: Options provided by third party plugins should override this to
