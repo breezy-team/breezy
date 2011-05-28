@@ -668,7 +668,8 @@ class Command(object):
             self.outf.write(self.get_help_text())
             return 0
         if 'usage' in opts:  # e.g. bzr add --usage
-            sys.stdout.write(self.get_help_text(verbose=False))
+            self._setup_outf()
+            self.outf.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
         if 'verbose' in self.supported_std_options:
