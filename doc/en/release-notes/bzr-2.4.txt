@@ -84,6 +84,10 @@ Testing
   the default OS buffer size for pipes is small or the ``python -v``
   output is large.  (Andrew Bennetts, #784802)
 
+* Skip ``utextwrap`` tests when ``sphinx`` breaks text_wrap by an hostile
+  monkeypatch to textwrap.TextWrapper.wordsep_re.
+  (Vincent Ladeuil, #785098)
+
 * Multiple ``selftest --exclude`` options are now combined instead of
   overriding each other. (Vincent Ladeuil, #746991)
 
