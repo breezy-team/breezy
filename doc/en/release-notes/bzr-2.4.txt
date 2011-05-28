@@ -84,6 +84,8 @@ Testing
   the default OS buffer size for pipes is small or the ``python -v``
   output is large.  (Andrew Bennetts, #784802)
 
+* Fix spurious test failure on OSX for WorkingTreeFormat2.
+  (Vincent Ladeuil, #787942)
 
 bzr 2.4b3
 #########
