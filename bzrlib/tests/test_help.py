@@ -22,9 +22,13 @@ from bzrlib import (
     errors,
     help,
     help_topics,
+    i18n,
     plugin,
     tests,
     )
+
+from bzrlib.tests.test_i18n import ZzzTranslations
+import re
 
 
 class TestHelp(tests.TestCase):
@@ -293,6 +297,160 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             'Description:\n'
             '  Blah blah blah.\n\n')
+
+
+class ZzzTranslationsForDoc(ZzzTranslations):
+
+    _section_pat = re.compile(':\w+:\\n\\s+')
+    _indent_pat = re.compile('\\s+')
+
+    def zzz(self, s):
+        m = self._section_pat.match(s)
+        if m is None:
+            m = self._indent_pat.match(s)
+        if m:
+            return u'%szz{{%s}}' % (m.group(0), s[m.end():])
+        return u'zz{{%s}}' % s
+
+
+class TestCommandHelpI18n(tests.TestCase):
+    """Tests for help on translated commands."""
+
+    def setUp(self):
+        super(TestCommandHelpI18n, self).setUp()
+        self.overrideAttr(i18n, '_translation', ZzzTranslationsForDoc())
+
+
+    def test_command_help_includes_see_also(self):
+        class cmd_WithSeeAlso(commands.Command):
+            __doc__ = """A sample command."""
+            _see_also = ['foo', 'bar']
+        cmd = cmd_WithSeeAlso()
+        helptext = cmd.get_help_text()
+        self.assertEndsWith(
+            helptext,
+            '  -v, --verbose  zz{{Display more information.}}\n'
+            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
+            '  -h, --help     zz{{Show help message.}}\n'
+            '\n'
+            'zz{{See also}}: bar, foo\n')
+
+    def test_get_help_text(self):
+        """Commands have a get_help_text method which returns their help."""
+        class cmd_Demo(commands.Command):
+            __doc__ = """A sample command."""
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertStartsWith(helptext,
+            'zz{{Purpose}}: zz{{A sample command.}}\n'
+            'zz{{Usage}}:   bzr Demo')
+        self.assertEndsWith(helptext,
+            '  -h, --help     zz{{Show help message.}}\n\n')
+
+    def test_command_with_additional_see_also(self):
+        class cmd_WithSeeAlso(commands.Command):
+            __doc__ = """A sample command."""
+            _see_also = ['foo', 'bar']
+        cmd = cmd_WithSeeAlso()
+        helptext = cmd.get_help_text(['gam'])
+        self.assertEndsWith(
+            helptext,
+            '  -v, --verbose  zz{{Display more information.}}\n'
+            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
+            '  -h, --help     zz{{Show help message.}}\n'
+            '\n'
+            'zz{{See also}}: bar, foo, gam\n')
+
+    def test_command_only_additional_see_also(self):
+        class cmd_WithSeeAlso(commands.Command):
+            __doc__ = """A sample command."""
+        cmd = cmd_WithSeeAlso()
+        helptext = cmd.get_help_text(['gam'])
+        self.assertEndsWith(
+            helptext,
+            '  -v, --verbose  zz{{Display more information.}}\n'
+            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
+            '  -h, --help     zz{{Show help message.}}\n'
+            '\n'
+            'zz{{See also}}: gam\n')
+
+
+    def test_help_custom_section_ordering(self):
+        """Custom descriptive sections should remain in the order given."""
+        class cmd_Demo(commands.Command):
+            __doc__ = """A sample command.
+ 
+            Blah blah blah.
+
+            :Formats:
+              Interesting stuff about formats.
+
+            :Examples:
+              Example 1::
+ 
+                cmd arg1
+
+            :Tips:
+              Clever things to keep in mind.
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEqualDiff(
+            helptext,
+            'zz{{Purpose}}: zz{{A sample command.}}\n'
+            'zz{{Usage}}:   bzr Demo\n'
+            '\n'
+            'zz{{Options}}:\n'
+            '  --usage        zz{{Show usage message and options.}}\n'
+            '  -v, --verbose  zz{{Display more information.}}\n'
+            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
+            '  -h, --help     zz{{Show help message.}}\n'
+            '\n'
+            'zz{{Description}}:\n'
+            '  zz{{Blah blah blah.}}\n'
+            '\n'
+            'Formats:\n'
+            '  zz{{Interesting stuff about formats.}}\n'
+            '\n'
+            'Examples:\n'
+            '  zz{{Example 1::}}\n'
+            '\n'
+            '    zz{{cmd arg1}}\n'
+            '\n'
+            'Tips:\n'
+            '  zz{{Clever things to keep in mind.}}\n'
+            '\n')
+
+    def test_help_text_custom_usage(self):
+        """Help text may contain a custom usage section."""
+        class cmd_Demo(commands.Command):
+            __doc__ = """A sample command.
+
+            :Usage:
+                cmd Demo [opts] args
+
+                cmd Demo -h
+
+            Blah blah blah.
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEquals(helptext,
+            'zz{{Purpose}}: zz{{A sample command.}}\n'
+            'zz{{Usage}}:\n'
+            '    zz{{cmd Demo [opts] args}}\n'
+            '\n'
+            '    zz{{cmd Demo -h}}\n'
+            '\n'
+            '\n'
+            'zz{{Options}}:\n'
+            '  --usage        zz{{Show usage message and options.}}\n'
+            '  -v, --verbose  zz{{Display more information.}}\n'
+            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
+            '  -h, --help     zz{{Show help message.}}\n'
+            '\n'
+            'zz{{Description}}:\n'
+            '  zz{{Blah blah blah.}}\n\n')
 
 
 class TestRegisteredTopic(TestHelp):
