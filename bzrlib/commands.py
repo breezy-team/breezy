@@ -764,7 +764,8 @@ class Command(object):
         NOTE: Commands provided by plugins should override this to use own
         i18n system.
         """
-        return gettext
+        import bzrlib.i18n
+        return i18n.gettext_per_paragraph
 
     def name(self):
         """Return the canonical name for this command.
