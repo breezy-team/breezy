@@ -102,7 +102,7 @@ class TestBzrServe(TestBzrServeBase):
         SmartTCPServer.hooks.install_named_hook(
             'server_exception', hook,
             'test_server_except_hook hook')
-        # We don't want the 'listening on port' line to interfer with the
+        # We don't want the 'listening on port' line to interfere with the
         # test. We don't care about when the exception is raised, we care about
         # catching it. Using '--quiet' ensures we don't get spurious failures
         # depending on whether the hook is fired before or after the main
