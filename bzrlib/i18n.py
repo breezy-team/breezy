@@ -4,10 +4,10 @@
 # Copyright (C) 2007,2009 Alexander Belchenko <bialix@ukr.net>
 # Copyright (C) 2011 Canonical Ltd
 #
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # This module is copied from Bazaar Explorer and modified for bzr.
 
@@ -26,12 +26,44 @@ import gettext as _gettext
 import os
 import sys
 
-_translation = _null_translation = _gettext.NullTranslations()
-_installed_language = None
+_translation = _gettext.NullTranslations()
+
+
+def gettext(message):
+    """Translate message. 
+    
+    :returns: translated message as unicode.
+    """
+    return _translation.ugettext(message)
+
+
+def ngettext(s, p, n):
+    """Translate message based on `n`.
+
+    :returns: translated message as unicode.
+    """
+    return _translation.ungettext(s, p, n)
+
+
+def N_(msg):
+    """Mark message for translation but don't translate it right away."""
+    return msg
+
+
+def gettext_per_paragraph(message):
+    """Translate message per paragraph.
+
+    :returns: concatenated translated message as unicode.
+    """
+    paragraphs = message.split(u'\n\n')
+    ugettext = _translation.ugettext
+    # Be careful not to translate the empty string -- it holds the
+    # meta data of the .po file.
+    return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
 
 
 def install(lang=None):
-    global _translation, _installed_language
+    global _translation
     if lang is None:
         lang = _get_current_locale()
     _translation = _gettext.translation(
@@ -39,6 +71,7 @@ def install(lang=None):
             localedir=_get_locale_dir(),
             languages=lang.split(':'),
             fallback=True)
+
 
 def uninstall():
     global _translation
@@ -52,7 +85,11 @@ def _get_locale_dir():
         return os.path.join(base, u'locale')
     else:
         base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
-        return os.path.realpath(os.path.join(base, u'locale'))
+        dirpath = os.path.realpath(os.path.join(base, u'locale'))
+        if os.path.exists(dirpath):
+            return dirpath
+        else:
+            return '/usr/share/locale'
 
 
 def _check_win32_locale():
@@ -96,32 +133,3 @@ def _get_current_locale():
         if lang:
             return lang
     return None
-
-# special zzz translation for debugging i18n stuff
-class _ZzzTranslations(object):
-
-    def zzz(self, s):
-        return u'zz{{%s}}' % s
-
-    def ugettext(self, s):
-        return self.zzz(_null_translation.ugettext(s))
-
-    def ungettext(self, s, p, n):
-        return self.zzz(_null_translation.ungettext(s, p, n))
-
-def install_zzz():
-    global _translation
-    _translation = _ZzzTranslations()
-
-def gettext(message):
-    """Translate message. 
-    Returns translated message as unicode."""
-    paragraphs = message.split(u'\n\n')
-    ugettext = _translation.ugettext
-    # Be careful not to translate the empty string -- it holds the
-    # meta data of the .po file.
-    return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
-
-def ngettext(s, p, n):
-    return gettext(s if n == 1 else p)
-

@@ -78,6 +78,14 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Fix deadlock in `TestImportTariffs.test_simple_serve` when stderr gets
+  more output than fits in the default buffer.  This was happening on the
+  Windows buildslave, and could easily happen in other circumstances where
+  the default OS buffer size for pipes is small or the ``python -v``
+  output is large.  (Andrew Bennetts, #784802)
+
+* Multiple ``selftest --exclude`` options are now combined instead of
+  overriding each other. (Vincent Ladeuil, #746991)
 
 bzr 2.4b3
 #########

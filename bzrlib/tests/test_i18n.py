@@ -19,6 +19,26 @@
 from bzrlib import i18n, tests
 
 
+
+
+class ZzzTranslations(object):
+    """Special Zzz translation for debugging i18n stuff.
+
+    This class can be used to confirm that the message is properly translated
+    during black box tests.
+    """
+    _null_translation = i18n._gettext.NullTranslations()
+
+    def zzz(self, s):
+        return u'zz{{%s}}' % s
+
+    def ugettext(self, s):
+        return self.zzz(self._null_translation.ugettext(s))
+
+    def ungettext(self, s, p, n):
+        return self.zzz(self._null_translation.ungettext(s, p, n))
+
+
 class TestZzzTranslation(tests.TestCase):
 
     def _check_exact(self, expected, source):
@@ -26,7 +46,7 @@ class TestZzzTranslation(tests.TestCase):
         self.assertEqual(type(expected), type(source))
 
     def test_translation(self):
-        trans = i18n._ZzzTranslations()
+        trans = ZzzTranslations()
 
         t = trans.zzz('msg')
         self._check_exact(u'zz{{msg}}', t)
@@ -47,12 +67,27 @@ class TestGetText(tests.TestCase):
 
     def setUp(self):
         super(TestGetText, self).setUp()
-        self.overrideAttr(i18n, '_translation', i18n._ZzzTranslations())
+        self.overrideAttr(i18n, '_translation', ZzzTranslations())
 
     def test_oneline(self):
         self.assertEqual(u"zz{{spam ham eggs}}",
                          i18n.gettext("spam ham eggs"))
 
     def test_multiline(self):
-        self.assertEqual(u"zz{{spam\nham}}\n\nzz{{eggs\n}}",
+        self.assertEqual(u"zz{{spam\nham\n\neggs\n}}",
                          i18n.gettext("spam\nham\n\neggs\n"))
+
+
+class TestGetTextPerParagraph(tests.TestCase):
+
+    def setUp(self):
+        super(TestGetTextPerParagraph, self).setUp()
+        self.overrideAttr(i18n, '_translation', ZzzTranslations())
+
+    def test_oneline(self):
+        self.assertEqual(u"zz{{spam ham eggs}}",
+                         i18n.gettext_per_paragraph("spam ham eggs"))
+
+    def test_multiline(self):
+        self.assertEqual(u"zz{{spam\nham}}\n\nzz{{eggs\n}}",
+                         i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
