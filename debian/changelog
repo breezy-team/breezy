@@ -1,6 +1,6 @@
-bzr (2.4.0~beta3~bzr5906-1) UNRELEASED; urgency=low
+bzr (2.4.0~beta3-1) UNRELEASED; urgency=low
 
-  * New upstream snapshot.
+  * New upstream release.
    + Requires at least Python 2.6 or higher.
    + Fixes permissions on directories in zip files. LP: #207253
    + Prints proper error when encountering encoding-invalid characters in
