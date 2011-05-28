@@ -765,7 +765,7 @@ class Command(object):
         i18n system.
         """
         import bzrlib.i18n
-        return i18n.gettext_per_paragraph
+        return bzrlib.i18n.gettext_per_paragraph
 
     def name(self):
         """Return the canonical name for this command.
