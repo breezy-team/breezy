@@ -486,12 +486,11 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
-        cmd_gettext = self.get_gettext()  # gettext() for command help
         doc = self.help()
         if doc:
             # Note: If cmd_gettext translates ':Usage:\n', the section will
             # be shown after "Description" section.
-            doc = cmd_gettext(doc)
+            doc = self.gettext(doc)
         else:
             doc = gettext("No help for this command.")
 
@@ -756,7 +755,8 @@ class Command(object):
             return None
         return getdoc(self)
 
-    def get_gettext(self):
+    @property
+    def gettext(self):
         """Returns the gettext function used to translate this command's help.
 
         Commands provided by plugins should override this to use their
