@@ -81,8 +81,7 @@ class TestBzrServeBase(TestCaseWithTransport):
             'run_bzr_serve_then_func hook')
         # start a TCP server
         try:
-            out, err = self.run_bzr(['serve'] + list(serve_args),
-                                    retcode=retcode)
+            out, err = self.run_bzr(['serve'] + list(serve_args), retcode=retcode)
         except KeyboardInterrupt, e:
             out, err = e.args
         return out, err
