@@ -103,12 +103,14 @@ class TestBzrServe(TestBzrServeBase):
         SmartTCPServer.hooks.install_named_hook(
             'server_exception', hook,
             'test_server_except_hook hook')
-        args = ['--port', 'localhost:0']
+        # We don't want the 'listening on port' line to interfer with the
+        # test. We don't care about when the exception is raised, we care about
+        # catching it. Using '--quiet' ensures we don't get spurious failures
+        # depending on whether the hook is fired before or after the main
+        # server thread get a change to emit the 'listening on port' line.
+        args = ['--port', 'localhost:0', '--quiet']
         out, err = self.run_bzr_serve_then_func(args, retcode=0)
-        err_lines = err.splitlines()
-        self.assertLength(2, err_lines)
-        self.assertStartsWith(err_lines[0],'listening on port:')
-        self.assertEqual('catching exception', err_lines[1])
+        self.assertEqual('catching exception\n', err)
 
     def test_server_exception_no_hook(self):
         """test exception without hook returns error"""
