@@ -26,7 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
-_translation = _null_translation = _gettext.NullTranslations()
+_translation = _gettext.NullTranslations()
 
 
 def gettext(message):
@@ -75,7 +75,7 @@ def install(lang=None):
 
 def uninstall():
     global _translation
-    _translation = _null_translation
+    _translation = _gettext.NullTranslations()
 
 
 def _get_locale_dir():
