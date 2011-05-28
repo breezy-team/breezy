@@ -174,12 +174,13 @@ try:
         
         if (features.sphinx.available()):
             # Until https://bitbucket.org/birkenfeld/sphinx/issue/706 is fixed,
-            # we can't run these tests when sphinx <= 1.0.1
+            # we can't run these tests when sphinx <= 1.0.1 as it breaks
+            # textwrap.TextWrapper.wordsep_re
             version = tuple(map(int,
                                 features.sphinx.module.__version__.split('.')))
             if version <= (1, 0, 1):
-                raise tests.TestSkipped('sphinx monkeypatch textwrap')
-        testcase.debug()
+                raise tests.TestSkipped(
+                    'sphinx textwrap monkeypatch breaks utextwrap')
         super(base_class, testcase).setUp()
         override_textwrap_symbols(testcase)
         reused_class.setUp(testcase)
