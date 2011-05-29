@@ -36,6 +36,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Fix a race condition for ``server_started`` hooks leading to a spurious
+  test failure. (Vincent Ladeuil, #789167)
+
 * Pass the ``build_mo`` command to the rest of the setup() calls in
   setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
   because ``build_mo`` became a required step that they didn't know about.
