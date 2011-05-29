@@ -19,6 +19,7 @@
 
 import os
 import signal
+import sys
 import thread
 import threading
 
@@ -27,6 +28,7 @@ from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
+    trace,
     transport,
     urlutils,
     )
@@ -41,7 +43,6 @@ from bzrlib.tests import (
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport import remote
 
 
@@ -56,12 +57,12 @@ class TestBzrServeBase(TestCaseWithTransport):
 
         Returns stdout and stderr.
         """
-        # install hook
-        def on_server_start(backing_urls, tcp_server):
-            t = threading.Thread(
-                target=on_server_start_thread, args=(tcp_server,))
-            t.start()
         def on_server_start_thread(tcp_server):
+            """This runs concurrently with the server thread.
+
+            The server is interrupted as soon as ``func`` finishes, even if an
+            exception is encountered.
+            """
             try:
                 # Run func if set
                 self.tcp_server = tcp_server
@@ -71,17 +72,25 @@ class TestBzrServeBase(TestCaseWithTransport):
                     except Exception, e:
                         # Log errors to make some test failures a little less
                         # mysterious.
-                        mutter('func broke: %r', e)
+                        trace.mutter('func broke: %r', e)
             finally:
                 # Then stop the server
-                mutter('interrupting...')
+                trace.mutter('interrupting...')
                 thread.interrupt_main()
+        # When the hook is fired, it just starts ``on_server_start_thread`` and
+        # return
+        def on_server_start(backing_urls, tcp_server):
+            t = threading.Thread(
+                target=on_server_start_thread, args=(tcp_server,))
+            t.start()
+        # install hook
         SmartTCPServer.hooks.install_named_hook(
             'server_started_ex', on_server_start,
             'run_bzr_serve_then_func hook')
         # start a TCP server
         try:
-            out, err = self.run_bzr(['serve'] + list(serve_args), retcode=retcode)
+            out, err = self.run_bzr(['serve'] + list(serve_args),
+                                    retcode=retcode)
         except KeyboardInterrupt, e:
             out, err = e.args
         return out, err
@@ -94,22 +103,23 @@ class TestBzrServe(TestBzrServeBase):
         self.disable_missing_extensions_warning()
 
     def test_server_exception_with_hook(self):
-        """test exception hook works to catch exceptions from server"""
+        """Catch exception from the server in the server_exception hook.
+
+        We use ``run_bzr_serve_then_func`` without a ``func`` so the server
+        will receive a KeyboardInterrupt exception we want to catch.
+        """
         def hook(exception):
-            from bzrlib.trace import note
-            note("catching exception")
-            return True
+            if exception[0] is KeyboardInterrupt:
+                sys.stderr.write('catching KeyboardInterrupt\n')
+                return True
+            else:
+                return False
         SmartTCPServer.hooks.install_named_hook(
             'server_exception', hook,
             'test_server_except_hook hook')
-        # We don't want the 'listening on port' line to interfere with the
-        # test. We don't care about when the exception is raised, we care about
-        # catching it. Using '--quiet' ensures we don't get spurious failures
-        # depending on whether the hook is fired before or after the main
-        # server thread get a change to emit the 'listening on port' line.
         args = ['--port', 'localhost:0', '--quiet']
         out, err = self.run_bzr_serve_then_func(args, retcode=0)
-        self.assertEqual('catching exception\n', err)
+        self.assertEqual('catching KeyboardInterrupt\n', err)
 
     def test_server_exception_no_hook(self):
         """test exception without hook returns error"""
