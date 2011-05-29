@@ -20,6 +20,10 @@
 import os
 from testtools import content
 
+from bzrlib import (
+    osutils,
+    trace,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import medium
 from bzrlib.transport import remote
@@ -61,6 +65,15 @@ class TestImportTariffs(TestCaseWithTransport):
                      'BZR_PLUGINS_AT', 'HOME'):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
+        self.log_path = osutils.pathjoin(self.test_home_dir, '.bzr.log')
+        self.overrideEnv('BZR_LOG', self.log_path)
+
+    def test_log_path_overriden(self):
+        # ensure we get the log file in the right place
+        actual_log_path = trace._get_bzr_log_filename()
+        self.assertStartsWith(actual_log_path, self.test_home_dir)
+        self.assertEquals(self.log_path, actual_log_path)
+
 
     def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
