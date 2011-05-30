@@ -2372,9 +2372,9 @@ class LockableIniFileStore(IniFileStore):
     @needs_write_lock
     def save(self):
         # We need to be able to override the undecorated implementation
-        self._save()
+        self.save_without_locking()
 
-    def _save(self):
+    def save_without_locking(self):
         super(LockableIniFileStore, self).save()
 
 
@@ -2627,6 +2627,12 @@ class _CompatibleStack(Stack):
 
     One assumption made here is that the daughter classes will all use Stores
     derived from LockableIniFileStore).
+
+    It implements set() by re-loading the store before applying the
+    modification and saving it.
+
+    The long term plan being to implement a single write by store to save
+    all modifications, this class should not be used in the interim.
     """
 
     def set(self, name, value):
