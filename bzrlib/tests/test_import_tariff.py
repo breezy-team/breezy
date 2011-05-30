@@ -56,6 +56,14 @@ class TestImportTariffs(TestCaseWithTransport):
     """Check how many modules are loaded for some representative scenarios.
 
     See the Testing Guide in the developer documentation for more explanation.
+
+
+    We must respect the setup used by the selftest command regarding
+    plugins. This allows the user to control which plugins are in effect while
+    running these tests and respect the import policies defined here.
+
+    When failures are encountered for a given plugin, they can generally be
+    addressed by using lazy import or lazy hook registration.
     """
 
     def setUp(self):
@@ -65,6 +73,7 @@ class TestImportTariffs(TestCaseWithTransport):
                      'BZR_PLUGINS_AT', 'HOME'):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
+        # We don't want to pollute the user's .bzr.log so we define our own.
         self.log_path = osutils.pathjoin(self.test_home_dir, '.bzr.log')
         self.overrideEnv('BZR_LOG', self.log_path)
 
