@@ -2332,9 +2332,9 @@ class LockableIniFileStore(IniFileStore):
     @needs_write_lock
     def save(self):
         # We need to be able to override the undecorated implementation
-        self._save()
+        self.save_without_locking()
 
-    def _save(self):
+    def save_without_locking(self):
         super(LockableIniFileStore, self).save()
 
 
@@ -2364,7 +2364,7 @@ class LocationStore(LockableIniFileStore):
 
 # FIXME: We should rely on the branch itself to be locked (possibly checking
 # that even) but we shouldn't lock ourselves. This may make `bzr config` is
-# abit trickier though but I punt for now -- vila 20110512
+# a bit trickier though but I punt for now -- vila 20110512
 class BranchStore(LockableIniFileStore):
 
     def __init__(self, branch):
@@ -2547,11 +2547,17 @@ class Stack(object):
 class _CompatibleStack(Stack):
     """Place holder for compatibility with previous design.
 
-    This intended to ease the transition from the Config-based design to the
+    This is intended to ease the transition from the Config-based design to the
     Stack-based design and should not be used nor relied upon by plugins.
 
     One assumption made here is that the daughter classes will all use Stores
     derived from LockableIniFileStore).
+
+    It implements set() by re-loading the store before applying the
+    modification and saving it.
+
+    The long term plan being to implement a single write by store to save
+    all modifications, this class should not be used in the interim.
     """
 
     def set(self, name, value):
