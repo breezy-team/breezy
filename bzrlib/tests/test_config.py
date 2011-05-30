@@ -2247,14 +2247,14 @@ class TestConcurrentStoreUpdates(TestStore):
         before_writing = threading.Event()
         after_writing = threading.Event()
         writing_done = threading.Event()
-        c1_save_orig = c1.store._save
-        def c1_save():
+        c1_save_without_locking_orig = c1.store.save_without_locking
+        def c1_save_without_locking():
             before_writing.set()
-            c1_save_orig()
+            c1_save_without_locking_orig()
             # The lock is held. We wait for the main thread to decide when to
             # continue
             after_writing.wait()
-        c1.store._save = c1_save
+        c1.store.save_without_locking = c1_save_without_locking
         def c1_set():
             c1.set('one', 'c1')
             writing_done.set()
@@ -2281,15 +2281,15 @@ class TestConcurrentStoreUpdates(TestStore):
        do_writing = threading.Event()
        writing_done = threading.Event()
        # We override the _save implementation so we know the store is locked
-       c1_orig = c1.store._save
-       def c1_save():
+       c1_save_without_locking_orig = c1.store.save_without_locking
+       def c1_save_without_locking():
            ready_to_write.set()
            # The lock is held. We wait for the main thread to decide when to
            # continue
            do_writing.wait()
-           c1_orig()
+           c1_save_without_locking_orig()
            writing_done.set()
-       c1.store._save = c1_save
+       c1.store.save_without_locking = c1_save_without_locking
        def c1_set():
            c1.set('one', 'c1')
        t1 = threading.Thread(target=c1_set)
