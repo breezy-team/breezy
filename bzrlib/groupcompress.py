@@ -469,8 +469,6 @@ class _LazyGroupCompressFactory(object):
                 try:
                     self._manager._prepare_for_extract()
                 except zlib.error as value:
-                    from bzrlib.trace import mutter
-                    mutter("value: " + str(value) + str(type(value)))
                     raise errors.DecompressCorruption()
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
