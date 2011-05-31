@@ -3691,10 +3691,10 @@ class cmd_selftest(Command):
                      Option('randomize', type=str, argname="SEED",
                             help='Randomize the order of tests using the given'
                                  ' seed or "now" for the current time.'),
-                     Option('exclude', type=str, argname="PATTERN",
-                            short_name='x',
-                            help='Exclude tests that match this regular'
-                                 ' expression.'),
+                     ListOption('exclude', type=str, argname="PATTERN",
+                                short_name='x',
+                                help='Exclude tests that match this regular'
+                                ' expression.'),
                      Option('subunit',
                         help='Output test progress via subunit.'),
                      Option('strict', help='Fail on missing dependencies or '
@@ -3751,6 +3751,10 @@ class cmd_selftest(Command):
                 "--benchmark is no longer supported from bzr 2.2; "
                 "use bzr-usertest instead")
         test_suite_factory = None
+        if not exclude:
+            exclude_pattern = None
+        else:
+            exclude_pattern = '(' + '|'.join(exclude) + ')'
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3761,7 +3765,7 @@ class cmd_selftest(Command):
                           "matching_tests_first": first,
                           "list_only": list_only,
                           "random_seed": randomize,
-                          "exclude_pattern": exclude,
+                          "exclude_pattern": exclude_pattern,
                           "strict": strict,
                           "load_list": load_list,
                           "debug_flags": debugflag,
