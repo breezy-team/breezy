@@ -85,7 +85,6 @@ from bzrlib import (
     mail_client,
     mergetools,
     osutils,
-    registry,
     symbol_versioning,
     trace,
     transport,
@@ -95,6 +94,9 @@ from bzrlib import (
     )
 from bzrlib.util.configobj import configobj
 """)
+from bzrlib import (
+    registry,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -1483,7 +1485,7 @@ def _auto_user_id():
     try:
         w = pwd.getpwuid(uid)
     except KeyError:
-        mutter('no passwd entry for uid %d?' % uid)
+        trace.mutter('no passwd entry for uid %d?' % uid)
         return None, None
 
     # we try utf-8 first, because on many variants (like Linux),
@@ -1498,12 +1500,12 @@ def _auto_user_id():
             encoding = osutils.get_user_encoding()
             gecos = w.pw_gecos.decode(encoding)
         except UnicodeError, e:
-            mutter("cannot decode passwd entry %s" % w)
+            trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
     try:
         username = w.pw_name.decode(encoding)
     except UnicodeError, e:
-        mutter("cannot decode passwd entry %s" % w)
+        trace.mutter("cannot decode passwd entry %s" % w)
         return None, None
 
     comma = gecos.find(',')
@@ -1807,7 +1809,7 @@ class AuthenticationConfig(object):
             if ask:
                 if prompt is None:
                     # Create a default prompt suitable for most cases
-                    prompt = scheme.upper() + ' %(host)s username'
+                    prompt = u'%s' % (scheme.upper(),) + u' %(host)s username'
                 # Special handling for optional fields in the prompt
                 if port is not None:
                     prompt_host = '%s:%d' % (host, port)
@@ -1851,7 +1853,7 @@ class AuthenticationConfig(object):
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
-                prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
+                prompt = u'%s' % scheme.upper() + u' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = '%s:%d' % (host, port)
