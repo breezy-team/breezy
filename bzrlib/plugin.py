@@ -535,12 +535,8 @@ class PlugIn(object):
         self.name = name
         self.module = module
 
-    def path(self, default_to_None=False):
-        """Get the path that this plugin was loaded from.
-        
-        :param default_to_None: if True, return None if the path could not be
-            determined.  Otherwise the repr of the module is used in that case.
-        """
+    def path(self):
+        """Get the path that this plugin was loaded from."""
         if getattr(self.module, '__path__', None) is not None:
             return os.path.abspath(self.module.__path__[0])
         elif getattr(self.module, '__file__', None) is not None:
@@ -551,10 +547,7 @@ class PlugIn(object):
                     path = pypath
             return path
         else:
-            if default_to_None:
-                return None
-            else:
-                return repr(self.module)
+            return repr(self.module)
 
     def __str__(self):
         return "<%s.%s object at %s, name=%s, module=%s>" % (
