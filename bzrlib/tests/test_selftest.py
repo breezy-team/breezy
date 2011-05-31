@@ -3522,3 +3522,40 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees None
         self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)
+
+
+class TestSelftestExcludePatterns(tests.TestCase):
+
+    def setUp(self):
+        super(TestSelftestExcludePatterns, self).setUp()
+        self.overrideAttr(tests, 'test_suite', self.suite_factory)
+
+    def suite_factory(self, keep_only=None, starting_with=None):
+        """A test suite factory with only a few tests."""
+        class Test(tests.TestCase):
+            def id(self):
+                # We don't need the full class path
+                return self._testMethodName
+            def a(self):
+                pass
+            def b(self):
+                pass
+            def c(self):
+                pass
+        return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
+
+    def assertTestList(self, expected, *selftest_args):
+        # We rely on setUp installing the right test suite factory so we can
+        # test at the command level without loading the whole test suite
+        out, err = self.run_bzr(('selftest', '--list') + selftest_args)
+        actual = out.splitlines()
+        self.assertEquals(expected, actual)
+
+    def test_full_list(self):
+        self.assertTestList(['a', 'b', 'c'])
+
+    def test_single_exclude(self):
+        self.assertTestList(['b', 'c'], '-x', 'a')
+
+    def test_mutiple_excludes(self):
+        self.assertTestList(['c'], '-x', 'a', '-x', 'b')
