@@ -701,11 +701,11 @@ class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
     def test_default_is_True(self):
         self.config = self.get_config(True)
         self.assertExpandIs(True)
-        
+
     def test_default_is_False(self):
         self.config = self.get_config(False)
         self.assertExpandIs(False)
-        
+
 
 class TestIniConfigOptionExpansion(tests.TestCase):
     """Test option expansion from the IniConfig level.
