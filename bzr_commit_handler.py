@@ -509,8 +509,11 @@ class GenericCommitHandler(processor.CommitHandler):
         self.data_for_commit[file_id] = ''.join(lines)
 
     def _delete_all_items(self, inv):
-        for name, root_item in inv.root.children.iteritems():
-            inv.remove_recursive_id(root_item.file_id)
+        if len(inv) == 0:
+            return
+        for path, ie in inv.iter_entries_by_dir():
+            if path != "":
+                self.record_delete(path, ie)
 
     def _warn_unless_in_merges(self, fileid, path):
         if len(self.parents) <= 1:
@@ -905,10 +908,4 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def deleteall_handler(self, filecmd):
         self.debug("deleting all files (and also all directories)")
-        # I'm not 100% sure this will work in the delta case.
-        # But clearing out the basis inventory so that everything
-        # is added sounds ok in theory ...
-        # We grab a copy as the basis is likely to be cached and
-        # we don't want to destroy the cached version
-        self.basis_inventory = copy_inventory(self.basis_inventory)
         self._delete_all_items(self.basis_inventory)
