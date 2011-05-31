@@ -355,7 +355,7 @@ class LockDir(lock.Lock):
             holder_info = self.peek()
         except LockCorrupt, e:
             # The lock info is corrupt.
-            if bzrlib.ui.ui_factory.get_boolean("Break (corrupt %r)" % (self,)):
+            if bzrlib.ui.ui_factory.get_boolean(u"Break (corrupt %r)" % (self,)):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
