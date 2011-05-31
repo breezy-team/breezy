@@ -2380,9 +2380,9 @@ class BranchStore(IniFileStore):
     @needs_write_lock
     def save(self):
         # We need to be able to override the undecorated implementation
-        self._save()
+        self.save_without_locking()
 
-    def _save(self):
+    def save_without_locking(self):
         super(BranchStore, self).save()
 
 
