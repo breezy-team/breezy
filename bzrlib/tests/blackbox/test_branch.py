@@ -1,5 +1,4 @@
 # Copyright (C) 2006-2011 Canonical Ltd
-# coding: UTF-8
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -68,12 +67,11 @@ class TestBranch(TestCaseWithTransport):
         self.example_branch('a')
         #now add some random corruption
         pack = open('a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0], "r")
-        line1 = pack.read(724)
-        pack.seek(746)
+        line1 = pack.read(750)
         line2 = pack.read()
         pack.close()
         pack = open('a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0], "w")
-        pack.write(line1 + "îîîîîîîîîîîîîîîîîîîîîîîîîî" + line2)
+        pack.write(line1 + "\xff" + line2)
         pack.close()
         self.run_bzr_error(['Corruption while decompressing pack files, this is caused by a local disk read error.\n'], 'branch a b', retcode=3)
 
