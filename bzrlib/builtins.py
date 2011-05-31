@@ -3879,8 +3879,10 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given. The --force option can also be used to create a
-    merge revision which has more than two parents.
+    --force is given.  If --force is given, then the changes from the source 
+    will be merged with the changes in the current working tree.  The 
+    --force option can also be used to create a merge revision which has 
+    more than two parents.
 
     If one would like to merge changes from the working tree of the other
     branch without merging any committed revisions, the --uncommitted option

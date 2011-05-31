@@ -59,6 +59,9 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Improve documentation of ``bzr merge --force``.
+  (Neil Martinsen-Burrell, #767307)
+
 API Changes
 ***********
 
