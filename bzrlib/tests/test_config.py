@@ -63,36 +63,32 @@ def lockable_config_scenarios():
 
 load_tests = scenarios.load_tests_apply_scenarios
 
-# We need adapters that can build a config store in a test context. Test
-# classes, based on TestCaseWithTransport, can use the registry to parametrize
-# themselves. The builder will receive a test instance and should return a
-# ready-to-use store.  Plugins that defines new stores can also register
-# themselves here to be tested against the tests defined below.
-
-# FIXME: plugins should *not* need to import test_config to register their
-# helpers (or selftest -s xxx will be broken), the following registry should be
-# moved to bzrlib.config instead so that selftest -s bt.test_config also runs
-# the plugin specific tests (selftest -s bp.xxx won't, that would be against
-# the spirit of '-s') -- vila 20110503
-test_store_builder_registry = registry.Registry()
-test_store_builder_registry.register(
+# Register helpers to build stores
+config.test_store_builder_registry.register(
     'configobj', lambda test: config.IniFileStore(test.get_transport(),
                                                   'configobj.conf'))
-test_store_builder_registry.register(
+config.test_store_builder_registry.register(
     'bazaar', lambda test: config.GlobalStore())
-test_store_builder_registry.register(
+config.test_store_builder_registry.register(
     'location', lambda test: config.LocationStore())
-test_store_builder_registry.register(
-    'branch', lambda test: config.BranchStore(test.branch))
 
-# FIXME: Same remark as above for the following registry -- vila 20110503
-test_stack_builder_registry = registry.Registry()
-test_stack_builder_registry.register(
+def build_branch_store(test):
+    if getattr(test, 'branch', None) is None:
+        test.branch = test.make_branch('branch')
+    return config.BranchStore(test.branch)
+config.test_store_builder_registry.register('branch', build_branch_store)
+
+
+config.test_stack_builder_registry.register(
     'bazaar', lambda test: config.GlobalStack())
-test_stack_builder_registry.register(
+config.test_stack_builder_registry.register(
     'location', lambda test: config.LocationStack('.'))
-test_stack_builder_registry.register(
-    'branch', lambda test: config.BranchStack(test.branch))
+
+def build_branch_stack(test):
+    if getattr(test, 'branch', None) is None:
+        test.branch = test.make_branch('branch')
+    return config.BranchStack(test.branch)
+config.test_stack_builder_registry.register('branch', build_branch_stack)
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -1931,8 +1927,8 @@ class TestStore(tests.TestCaseWithTransport):
 
 class TestReadonlyStore(TestStore):
 
-    scenarios = [(key, {'get_store': builder})
-                 for key, builder in test_store_builder_registry.iteritems()]
+    scenarios = [(key, {'get_store': builder}) for key, builder
+                 in config.test_store_builder_registry.iteritems()]
 
     def setUp(self):
         super(TestReadonlyStore, self).setUp()
@@ -1971,13 +1967,12 @@ class TestReadonlyStore(TestStore):
 
 class TestMutableStore(TestStore):
 
-    scenarios = [(key, {'store_id': key, 'get_store': builder})
-                 for key, builder in test_store_builder_registry.iteritems()]
+    scenarios = [(key, {'store_id': key, 'get_store': builder}) for key, builder
+                 in config.test_store_builder_registry.iteritems()]
 
     def setUp(self):
         super(TestMutableStore, self).setUp()
         self.transport = self.get_transport()
-        self.branch = self.make_branch('branch')
 
     def has_store(self, store):
         store_basename = urlutils.relative_url(self.transport.external_url(),
@@ -2103,20 +2098,140 @@ foo_in_qux=quux
 class TestLockableIniFileStore(TestStore):
 
     def test_create_store_in_created_dir(self):
+        self.assertPathDoesNotExist('dir')
         t = self.get_transport('dir/subdir')
         store = config.LockableIniFileStore(t, 'foo.conf')
         store.get_mutable_section(None).set('foo', 'bar')
         store.save()
+        self.assertPathExists('dir/subdir')
 
-    # FIXME: We should adapt the tests in TestLockableConfig about concurrent
-    # writes. Since this requires a clearer rewrite, I'll just rely on using
-    # the same code in LockableIniFileStore (copied from LockableConfig, but
-    # trivial enough, the main difference is that we add @needs_write_lock on
-    # save() instead of set_user_option() and remove_user_option()). The intent
-    # is to ensure that we always get a valid content for the store even when
-    # concurrent accesses occur, read/write, write/write. It may be worth
-    # looking into removing the lock dir when it;s not needed anymore and look
-    # at possible fallouts for concurrent lockers -- vila 20110-04-06
+
+class TestConcurrentStoreUpdates(TestStore):
+
+    scenarios = [(key, {'get_stack': builder}) for key, builder
+                 in config.test_stack_builder_registry.iteritems()]
+
+    def setUp(self):
+        super(TestConcurrentStoreUpdates, self).setUp()
+        self._content = 'one=1\ntwo=2\n'
+        self.stack = self.get_stack(self)
+        if not isinstance(self.stack, config._CompatibleStack):
+            raise tests.TestNotApplicable(
+                '%s is not meant to be compatible with the old config design'
+                % (self.stack,))
+        self.stack.store._load_from_string(self._content)
+        # Flush the store
+        self.stack.store.save()
+
+    def test_simple_read_access(self):
+        self.assertEquals('1', self.stack.get('one'))
+
+    def test_simple_write_access(self):
+        self.stack.set('one', 'one')
+        self.assertEquals('one', self.stack.get('one'))
+
+    def test_listen_to_the_last_speaker(self):
+        c1 = self.stack
+        c2 = self.get_stack(self)
+        c1.set('one', 'ONE')
+        c2.set('two', 'TWO')
+        self.assertEquals('ONE', c1.get('one'))
+        self.assertEquals('TWO', c2.get('two'))
+        # The second update respect the first one
+        self.assertEquals('ONE', c2.get('one'))
+
+    def test_last_speaker_wins(self):
+        # If the same config is not shared, the same variable modified twice
+        # can only see a single result.
+        c1 = self.stack
+        c2 = self.get_stack(self)
+        c1.set('one', 'c1')
+        c2.set('one', 'c2')
+        self.assertEquals('c2', c2.get('one'))
+        # The first modification is still available until another refresh
+        # occur
+        self.assertEquals('c1', c1.get('one'))
+        c1.set('two', 'done')
+        self.assertEquals('c2', c1.get('one'))
+
+    def test_writes_are_serialized(self):
+        c1 = self.stack
+        c2 = self.get_stack(self)
+
+        # We spawn a thread that will pause *during* the config saving.
+        before_writing = threading.Event()
+        after_writing = threading.Event()
+        writing_done = threading.Event()
+        c1_save_without_locking_orig = c1.store.save_without_locking
+        def c1_save_without_locking():
+            before_writing.set()
+            c1_save_without_locking_orig()
+            # The lock is held. We wait for the main thread to decide when to
+            # continue
+            after_writing.wait()
+        c1.store.save_without_locking = c1_save_without_locking
+        def c1_set():
+            c1.set('one', 'c1')
+            writing_done.set()
+        t1 = threading.Thread(target=c1_set)
+        # Collect the thread after the test
+        self.addCleanup(t1.join)
+        # Be ready to unblock the thread if the test goes wrong
+        self.addCleanup(after_writing.set)
+        t1.start()
+        before_writing.wait()
+        self.assertTrue(c1.store._lock.is_held)
+        self.assertRaises(errors.LockContention,
+                          c2.set, 'one', 'c2')
+        self.assertEquals('c1', c1.get('one'))
+        # Let the lock be released
+        after_writing.set()
+        writing_done.wait()
+        c2.set('one', 'c2')
+        self.assertEquals('c2', c2.get('one'))
+
+    def test_read_while_writing(self):
+       c1 = self.stack
+       # We spawn a thread that will pause *during* the write
+       ready_to_write = threading.Event()
+       do_writing = threading.Event()
+       writing_done = threading.Event()
+       # We override the _save implementation so we know the store is locked
+       c1_save_without_locking_orig = c1.store.save_without_locking
+       def c1_save_without_locking():
+           ready_to_write.set()
+           # The lock is held. We wait for the main thread to decide when to
+           # continue
+           do_writing.wait()
+           c1_save_without_locking_orig()
+           writing_done.set()
+       c1.store.save_without_locking = c1_save_without_locking
+       def c1_set():
+           c1.set('one', 'c1')
+       t1 = threading.Thread(target=c1_set)
+       # Collect the thread after the test
+       self.addCleanup(t1.join)
+       # Be ready to unblock the thread if the test goes wrong
+       self.addCleanup(do_writing.set)
+       t1.start()
+       # Ensure the thread is ready to write
+       ready_to_write.wait()
+       self.assertTrue(c1.store._lock.is_held)
+       self.assertEquals('c1', c1.get('one'))
+       # If we read during the write, we get the old value
+       c2 = self.get_stack(self)
+       self.assertEquals('1', c2.get('one'))
+       # Let the writing occur and ensure it occurred
+       do_writing.set()
+       writing_done.wait()
+       # Now we get the updated value
+       c3 = self.get_stack(self)
+       self.assertEquals('c1', c3.get('one'))
+
+    # FIXME: It may be worth looking into removing the lock dir when it's not
+    # needed anymore and look at possible fallouts for concurrent lockers. This
+    # will matter if/when we use config files outside of bazaar directories
+    # (.bazaar or .bzr) -- vila 20110-04-11
 
 
 class TestSectionMatcher(TestStore):
@@ -2248,17 +2363,11 @@ class TestStackGet(tests.TestCase):
 
 class TestStackWithTransport(tests.TestCaseWithTransport):
 
-    def setUp(self):
-        super(TestStackWithTransport, self).setUp()
-        # FIXME: A more elaborate builder for the stack would avoid building a
-        # branch even for tests that don't need it.
-        self.branch = self.make_branch('branch')
+    scenarios = [(key, {'get_stack': builder}) for key, builder
+                 in config.test_stack_builder_registry.iteritems()]
 
 
 class TestStackSet(TestStackWithTransport):
-
-    scenarios = [(key, {'get_stack': builder})
-                 for key, builder in test_stack_builder_registry.iteritems()]
 
     def test_simple_set(self):
         conf = self.get_stack(self)
@@ -2276,9 +2385,6 @@ class TestStackSet(TestStackWithTransport):
 
 class TestStackRemove(TestStackWithTransport):
 
-    scenarios = [(key, {'get_stack': builder})
-                 for key, builder in test_stack_builder_registry.iteritems()]
-
     def test_remove_existing(self):
         conf = self.get_stack(self)
         conf.store._load_from_string('foo=bar')
@@ -2293,9 +2399,6 @@ class TestStackRemove(TestStackWithTransport):
 
 
 class TestConcreteStacks(TestStackWithTransport):
-
-    scenarios = [(key, {'get_stack': builder})
-                 for key, builder in test_stack_builder_registry.iteritems()]
 
     def test_build_stack(self):
         stack = self.get_stack(self)

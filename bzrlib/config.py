@@ -199,7 +199,6 @@ class Config(object):
         return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
                                              sys.stdout)
 
-
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
@@ -2334,6 +2333,10 @@ class LockableIniFileStore(IniFileStore):
 
     @needs_write_lock
     def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
         super(LockableIniFileStore, self).save()
 
 
@@ -2361,7 +2364,10 @@ class LocationStore(LockableIniFileStore):
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 
-class BranchStore(IniFileStore):
+# FIXME: We should rely on the branch itself to be locked (possibly checking
+# that even) but we shouldn't lock ourselves. This may make `bzr config` is
+# a bit trickier though but I punt for now -- vila 20110512
+class BranchStore(LockableIniFileStore):
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
@@ -2540,7 +2546,31 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
 
-class GlobalStack(Stack):
+class _CompatibleStack(Stack):
+    """Place holder for compatibility with previous design.
+
+    This is intended to ease the transition from the Config-based design to the
+    Stack-based design and should not be used nor relied upon by plugins.
+
+    One assumption made here is that the daughter classes will all use Stores
+    derived from LockableIniFileStore).
+
+    It implements set() by re-loading the store before applying the
+    modification and saving it.
+
+    The long term plan being to implement a single write by store to save
+    all modifications, this class should not be used in the interim.
+    """
+
+    def set(self, name, value):
+        # Force a reload (assuming we use a LockableIniFileStore)
+        self.store._config_obj = None
+        super(_CompatibleStack, self).set(name, value)
+        # Force a write to persistent storage
+        self.store.save()
+
+
+class GlobalStack(_CompatibleStack):
 
     def __init__(self):
         # Get a GlobalStore
@@ -2548,7 +2578,7 @@ class GlobalStack(Stack):
         super(GlobalStack, self).__init__([gstore.get_sections], gstore)
 
 
-class LocationStack(Stack):
+class LocationStack(_CompatibleStack):
 
     def __init__(self, location):
         lstore = LocationStore()
@@ -2557,8 +2587,8 @@ class LocationStack(Stack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
-
-class BranchStack(Stack):
+# FIXME: See BranchStore, same remarks -- vila 20110512
+class BranchStack(_CompatibleStack):
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
@@ -2733,3 +2763,23 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfig(scope)
         if not removed:
             raise errors.NoSuchConfigOption(name)
+
+
+# Test registries
+#
+# We need adapters that can build a Store or a Stack in a test context. Test
+# classes, based on TestCaseWithTransport, can use the registry to parametrize
+# themselves. The builder will receive a test instance and should return a
+# ready-to-use store or stack.  Plugins that define new store/stacks can also
+# register themselves here to be tested against the tests defined in
+# bzrlib.tests.test_config.
+
+# The registered object should be a callable receiving a test instance
+# parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
+# object.
+test_store_builder_registry = registry.Registry()
+
+# Thre registered object should be a callable receiving a test instance
+# parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
+# object.
+test_stack_builder_registry = registry.Registry()
