@@ -97,6 +97,10 @@ from bzrlib.util.configobj import configobj
 from bzrlib import (
     registry,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 CHECK_IF_POSSIBLE=0
@@ -188,6 +192,7 @@ class Config(object):
         """Returns a unique ID for the config."""
         raise NotImplementedError(self.config_id)
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
@@ -910,6 +915,7 @@ class GlobalConfig(LockableConfig):
         conf._create_from_string(str_or_unicode, save)
         return conf
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def get_editor(self):
         return self._get_user_option('editor')
 
@@ -2114,9 +2120,9 @@ class Option(object):
 option_registry = registry.Registry()
 
 
-# FIXME: Delete the following dummy option once we register the real ones
-# -- vila 20110515
-option_registry.register('foo', Option('foo'), help='Dummy option')
+option_registry.register(
+    'editor', Option('editor'),
+    help='The command called to launch an editor to enter a message.')
 
 
 class Section(object):

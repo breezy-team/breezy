@@ -41,6 +41,10 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.transport import remote
 from bzrlib.tests import (
     features,
@@ -474,7 +478,10 @@ class TestConfig(tests.TestCase):
         config.Config()
 
     def test_no_default_editor(self):
-        self.assertRaises(NotImplementedError, config.Config().get_editor)
+        self.assertRaises(
+            NotImplementedError,
+            self.applyDeprecated, deprecated_in((2, 4, 0)),
+            config.Config().get_editor)
 
     def test_user_email(self):
         my_config = InstrumentedConfig()
@@ -1188,7 +1195,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_configured_editor(self):
         my_config = config.GlobalConfig.from_string(sample_config_text)
-        self.assertEqual("vim", my_config.get_editor())
+        editor = self.applyDeprecated(
+            deprecated_in((2, 4, 0)), my_config.get_editor)
+        self.assertEqual('vim', editor)
 
     def test_signatures_always(self):
         my_config = config.GlobalConfig.from_string(sample_always_signatures)
