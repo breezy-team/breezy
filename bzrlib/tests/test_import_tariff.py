@@ -17,11 +17,9 @@
 
 """Tests for how many modules are loaded in executing various commands."""
 
-import os
 from testtools import content
 
 from bzrlib import (
-    osutils,
     trace,
     )
 from bzrlib.bzrdir import BzrDir
@@ -30,6 +28,7 @@ from bzrlib.transport import remote
 
 from bzrlib.plugin import (
     are_plugins_disabled,
+    plugins,
     )
 
 from bzrlib.tests import (
@@ -66,41 +65,31 @@ class TestImportTariffs(TestCaseWithTransport):
     addressed by using lazy import or lazy hook registration.
     """
 
-    def setUp(self):
-        # Preserve some env vars as we want to escape the isolation for them
-        self.preserved_env_vars = {}
-        for name in ('BZR_HOME', 'BZR_PLUGIN_PATH', 'BZR_DISABLE_PLUGINS',
-                     'BZR_PLUGINS_AT', 'HOME'):
-            self.preserved_env_vars[name] = os.environ.get(name)
-        super(TestImportTariffs, self).setUp()
-        # We don't want to pollute the user's .bzr.log so we define our own.
-        self.log_path = osutils.pathjoin(self.test_home_dir, '.bzr.log')
-        self.overrideEnv('BZR_LOG', self.log_path)
-
-    def test_log_path_overriden(self):
-        # ensure we get the log file in the right place
-        actual_log_path = trace._get_bzr_log_filename()
-        self.assertStartsWith(actual_log_path, self.test_home_dir)
-        self.assertEquals(self.log_path, actual_log_path)
-
-
     def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
         cover representative rather than exhaustive cases.
         """
-        # We use PYTHON_VERBOSE rather than --profile-importts because in
+        # We use BZR_PLUGIN_PATH and BZR_PLUGINS_AT to explicitly set the
+        # subprocess to use the same plugins as this process.  Plugins without
+        # filesystem paths (perhaps they are in a zip package or frozen python
+        # exe?) cannot be loaded this way so are omitted.
+        loaded_plugin_info = [
+            (name, plugin.path(default_to_None=True))
+            for (name, plugin) in plugins().items()]
+        plugins_at = [
+            '%s@%s' % (name, path)
+            for (name, path) in loaded_plugin_info if path is not None]
+        # We use PYTHON_VERBOSE rather than --profile-imports because in
         # experimentation the profile-imports output seems to not always show
         # the modules you'd expect; this can be debugged but python -v seems
         # more likely to always show everything.  And we use the environment
         # variable rather than 'python -v' in the hope it will work even if
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
-
-        # Normally we want test isolation from the real $HOME but here we
-        # explicitly do want to test against things installed there, therefore
-        # we pass it through.
-        env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
+        env_changes = dict(PYTHONVERBOSE='1', BZR_PLUGIN_PATH="-site:-core",
+                           BZR_PLUGINS_AT=':'.join(plugins_at))
+        trace.mutter('Setting env for bzr subprocess: %r', env_changes)
         kwargs = dict(env_changes=env_changes,
                       allow_plugins=(not are_plugins_disabled()))
         if stderr_file:
