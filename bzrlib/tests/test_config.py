@@ -2200,6 +2200,12 @@ class TestBranchStore(TestStore):
 
 
 class TestConcurrentStoreUpdates(TestStore):
+    """Test that Stores properly handle conccurent updates.
+
+    New Store implementation may fail some of these tests but until such
+    implementations exist it's hard to properly filter them from the scenarios
+    applied here. If you encounter such a case, contact the bzr devs.
+    """
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
                  in config.test_stack_builder_registry.iteritems()]
