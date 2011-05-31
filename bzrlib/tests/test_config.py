@@ -1917,6 +1917,62 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestOption(tests.TestCase):
+
+    def test_default_value(self):
+        opt = config.Option('foo', default='bar')
+        self.assertEquals('bar', opt.get_default())
+
+
+class TestOptionRegistry(tests.TestCase):
+
+    def setUp(self):
+        super(TestOptionRegistry, self).setUp()
+        # Always start with an empty registry
+        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.registry = config.option_registry
+
+    def test_register(self):
+        opt = config.Option('foo')
+        self.registry.register('foo', opt)
+        self.assertIs(opt, self.registry.get('foo'))
+
+    lazy_option = config.Option('lazy_foo')
+
+    def test_register_lazy(self):
+        self.registry.register_lazy('foo', self.__module__,
+                                    'TestOptionRegistry.lazy_option')
+        self.assertIs(self.lazy_option, self.registry.get('foo'))
+
+    def test_registered_help(self):
+        opt = config.Option('foo')
+        self.registry.register('foo', opt, help='A simple option')
+        self.assertEquals('A simple option', self.registry.get_help('foo'))
+
+
+class TestRegisteredOptions(tests.TestCase):
+    """All registered options should verify some constraints."""
+
+    scenarios = [(key, {'option_name': key, 'option': option}) for key, option
+                 in config.option_registry.iteritems()]
+
+    def setUp(self):
+        super(TestRegisteredOptions, self).setUp()
+        self.registry = config.option_registry
+
+    def test_proper_name(self):
+        # An option should be registered under its own name, this can't be
+        # checked at registration time for the lazy ones.
+        self.assertEquals(self.option_name, self.option.name)
+
+    def test_help_is_set(self):
+        option_help = self.registry.get_help(self.option_name)
+        self.assertNotEquals(None, option_help)
+        # Come on, think about the user, he really wants to know whst the
+        # option is about
+        self.assertNotEquals('', option_help)
+
+
 class TestSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections produced by Stores run these
@@ -2412,8 +2468,14 @@ foo:policy = appendpath
 
     def test_file_urls_are_normalized(self):
         store = self.get_store('foo.conf')
-        matcher = config.LocationMatcher(store, 'file:///dir/subdir')
-        self.assertEquals('/dir/subdir', matcher.location)
+        if sys.platform == 'win32':
+            expected_url = 'file:///C:/dir/subdir'
+            expected_location = 'C:/dir/subdir'
+        else:
+            expected_url = 'file:///dir/subdir'
+            expected_location = '/dir/subdir'
+        matcher = config.LocationMatcher(store, expected_url)
+        self.assertEquals(expected_location, matcher.location)
 
 
 class TestStackGet(tests.TestCase):
@@ -2425,6 +2487,26 @@ class TestStackGet(tests.TestCase):
         conf = dict(foo='bar')
         conf_stack = config.Stack([conf])
         self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_with_registered_default_value(self):
+        conf_stack = config.Stack([dict()])
+        opt = config.Option('foo', default='bar')
+        self.overrideAttr(config, 'option_registry', registry.Registry())
+        config.option_registry.register('foo', opt)
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_without_registered_default_value(self):
+        conf_stack = config.Stack([dict()])
+        opt = config.Option('foo')
+        self.overrideAttr(config, 'option_registry', registry.Registry())
+        config.option_registry.register('foo', opt)
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_without_default_value_for_not_registered(self):
+        conf_stack = config.Stack([dict()])
+        opt = config.Option('foo')
+        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.assertEquals(None, conf_stack.get('foo'))
 
     def test_get_first_definition(self):
         conf1 = dict(foo='bar')
@@ -2458,6 +2540,13 @@ class TestStackWithTransport(tests.TestCaseWithTransport):
                  in config.test_stack_builder_registry.iteritems()]
 
 
+class TestConcreteStacks(TestStackWithTransport):
+
+    def test_build_stack(self):
+        # Just a smoke test to help debug builders
+        stack = self.get_stack(self)
+
+
 class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):
@@ -2487,12 +2576,6 @@ class TestStackRemove(TestStackWithTransport):
     def test_remove_unknown(self):
         conf = self.get_stack(self)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
-
-
-class TestConcreteStacks(TestStackWithTransport):
-
-    def test_build_stack(self):
-        stack = self.get_stack(self)
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
@@ -2929,11 +3012,11 @@ class TestAuthenticationConfig(tests.TestCase):
 
     def test_username_defaults_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
-        self._check_default_username_prompt('FTP %(host)s username: ', 'ftp')
+        self._check_default_username_prompt(u'FTP %(host)s username: ', 'ftp')
         self._check_default_username_prompt(
-            'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
+            u'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
         self._check_default_username_prompt(
-            'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
+            u'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
 
     def test_username_default_no_prompt(self):
         conf = config.AuthenticationConfig()
@@ -2945,22 +3028,21 @@ class TestAuthenticationConfig(tests.TestCase):
     def test_password_default_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
         self._check_default_password_prompt(
-            'FTP %(user)s@%(host)s password: ', 'ftp')
+            u'FTP %(user)s@%(host)s password: ', 'ftp')
         self._check_default_password_prompt(
-            'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
+            u'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
         self._check_default_password_prompt(
-            'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
+            u'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
         # SMTP port handling is a bit special (it's handled if embedded in the
         # host too)
         # FIXME: should we: forbid that, extend it to other schemes, leave
         # things as they are that's fine thank you ?
-        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
-                                            'smtp')
-        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
-                                            'smtp', host='bar.org:10025')
         self._check_default_password_prompt(
-            'SMTP %(user)s@%(host)s:%(port)d password: ',
-            'smtp', port=10025)
+            u'SMTP %(user)s@%(host)s password: ', 'smtp')
+        self._check_default_password_prompt(
+            u'SMTP %(user)s@%(host)s password: ', 'smtp', host='bar.org:10025')
+        self._check_default_password_prompt(
+            u'SMTP %(user)s@%(host)s:%(port)d password: ', 'smtp', port=10025)
 
     def test_ssh_password_emits_warning(self):
         conf = config.AuthenticationConfig(_file=StringIO(

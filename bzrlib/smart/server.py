@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -254,6 +254,11 @@ class SmartServerHooks(Hooks):
             "Called by the bzr server when it stops serving a directory. "
             "server_stopped is called with the same parameters as the "
             "server_started hook: (backing_urls, public_url).", (0, 16))
+        self.add_hook('server_exception',
+            "Called by the bzr server when an exception occurs. "
+            "server_exception is called with the sys.exc_info() tuple "
+            "return true for the hook if the exception has been handled, "
+            "in which case the server will exit normally.", (2, 4))
 
 SmartTCPServer.hooks = SmartServerHooks()
 
@@ -373,7 +378,6 @@ class BzrServerFactory(object):
         for cleanup in reversed(self.cleanups):
             cleanup()
 
-
 def serve_bzr(transport, host=None, port=None, inet=False):
     """This is the default implementation of 'bzr serve'.
     
@@ -385,6 +389,11 @@ def serve_bzr(transport, host=None, port=None, inet=False):
     try:
         bzr_server.set_up(transport, host, port, inet)
         bzr_server.smart_server.serve()
+    except:
+        hook_caught_exception = False
+        for hook in SmartTCPServer.hooks['server_exception']:
+            hook_caught_exception = hook(sys.exc_info())
+        if not hook_caught_exception:
+            raise
     finally:
         bzr_server.tear_down()
-

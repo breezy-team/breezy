@@ -20,6 +20,10 @@
 import os
 from testtools import content
 
+from bzrlib import (
+    osutils,
+    trace,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import medium
 from bzrlib.transport import remote
@@ -52,6 +56,14 @@ class TestImportTariffs(TestCaseWithTransport):
     """Check how many modules are loaded for some representative scenarios.
 
     See the Testing Guide in the developer documentation for more explanation.
+
+
+    We must respect the setup used by the selftest command regarding
+    plugins. This allows the user to control which plugins are in effect while
+    running these tests and respect the import policies defined here.
+
+    When failures are encountered for a given plugin, they can generally be
+    addressed by using lazy import or lazy hook registration.
     """
 
     def setUp(self):
@@ -61,8 +73,18 @@ class TestImportTariffs(TestCaseWithTransport):
                      'BZR_PLUGINS_AT', 'HOME'):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
+        # We don't want to pollute the user's .bzr.log so we define our own.
+        self.log_path = osutils.pathjoin(self.test_home_dir, '.bzr.log')
+        self.overrideEnv('BZR_LOG', self.log_path)
 
-    def start_bzr_subprocess_with_import_check(self, args):
+    def test_log_path_overriden(self):
+        # ensure we get the log file in the right place
+        actual_log_path = trace._get_bzr_log_filename()
+        self.assertStartsWith(actual_log_path, self.test_home_dir)
+        self.assertEquals(self.log_path, actual_log_path)
+
+
+    def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
@@ -79,8 +101,13 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
-        return self.start_bzr_subprocess(args, env_changes=env_changes,
-            allow_plugins=(not are_plugins_disabled()))
+        kwargs = dict(env_changes=env_changes,
+                      allow_plugins=(not are_plugins_disabled()))
+        if stderr_file:
+            # We don't want to update the whole call chain so we insert stderr
+            # *iff* we need to
+            kwargs['stderr'] = stderr_file
+        return self.start_bzr_subprocess(args, **kwargs)
 
     def check_forbidden_modules(self, err, forbidden_imports):
         """Check for forbidden modules in stderr.
@@ -187,8 +214,11 @@ class TestImportTariffs(TestCaseWithTransport):
     def test_simple_serve(self):
         # 'serve' in a default format working tree shouldn't need many modules
         tree = self.make_branch_and_tree('.')
+        # Capture the bzr serve process' stderr in a file to avoid deadlocks
+        # while the smart client interacts with it.
+        stderr_file = open('bzr-serve.stderr', 'w')
         process = self.start_bzr_subprocess_with_import_check(['serve',
-            '--inet', '-d', tree.basedir])
+            '--inet', '-d', tree.basedir], stderr_file=stderr_file)
         url = 'bzr://localhost/'
         self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
@@ -200,6 +230,9 @@ class TestImportTariffs(TestCaseWithTransport):
         process.stdin = None
         (out, err) = self.finish_bzr_subprocess(process,
             universal_newlines=False)
+        stderr_file.close()
+        with open('bzr-serve.stderr', 'r') as stderr_file:
+            err = stderr_file.read()
         self.check_forbidden_modules(err,
             ['bzrlib.annotate',
             'bzrlib.atomicfile',

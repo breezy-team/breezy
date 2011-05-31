@@ -85,7 +85,6 @@ from bzrlib import (
     mail_client,
     mergetools,
     osutils,
-    registry,
     symbol_versioning,
     trace,
     transport,
@@ -95,6 +94,9 @@ from bzrlib import (
     )
 from bzrlib.util.configobj import configobj
 """)
+from bzrlib import (
+    registry,
+    )
 
 
 CHECK_IF_POSSIBLE=0
@@ -1477,7 +1479,7 @@ def _auto_user_id():
     try:
         w = pwd.getpwuid(uid)
     except KeyError:
-        mutter('no passwd entry for uid %d?' % uid)
+        trace.mutter('no passwd entry for uid %d?' % uid)
         return None, None
 
     # we try utf-8 first, because on many variants (like Linux),
@@ -1492,12 +1494,12 @@ def _auto_user_id():
             encoding = osutils.get_user_encoding()
             gecos = w.pw_gecos.decode(encoding)
         except UnicodeError, e:
-            mutter("cannot decode passwd entry %s" % w)
+            trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
     try:
         username = w.pw_name.decode(encoding)
     except UnicodeError, e:
-        mutter("cannot decode passwd entry %s" % w)
+        trace.mutter("cannot decode passwd entry %s" % w)
         return None, None
 
     comma = gecos.find(',')
@@ -1801,7 +1803,7 @@ class AuthenticationConfig(object):
             if ask:
                 if prompt is None:
                     # Create a default prompt suitable for most cases
-                    prompt = scheme.upper() + ' %(host)s username'
+                    prompt = u'%s' % (scheme.upper(),) + u' %(host)s username'
                 # Special handling for optional fields in the prompt
                 if port is not None:
                     prompt_host = '%s:%d' % (host, port)
@@ -1845,7 +1847,7 @@ class AuthenticationConfig(object):
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
-                prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
+                prompt = u'%s' % scheme.upper() + u' %(user)s@%(host)s password'
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = '%s:%d' % (host, port)
@@ -2090,8 +2092,35 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
+class Option(object):
+    """An option definition.
+
+    The option *values* are stored in config files and found in sections.
+
+    Here we define various properties about the option itself, its default
+    value, in which config files it can be stored, etc (TBC).
+    """
+
+    def __init__(self, name, default=None):
+        self.name = name
+        self.default = default
+
+    def get_default(self):
+        return self.default
+
+
+# Options registry
+
+option_registry = registry.Registry()
+
+
+# FIXME: Delete the following dummy option once we register the real ones
+# -- vila 20110515
+option_registry.register('foo', Option('foo'), help='Dummy option')
+
+
 class Section(object):
-    """A section defines a dict of options.
+    """A section defines a dict of option name => value.
 
     This is merely a read-only dict which can add some knowledge about the
     options. It is *not* a python dict object though and doesn't try to mimic
@@ -2538,7 +2567,7 @@ class Stack(object):
         existence) require loading the store (even partially).
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
-
+        value = None
         # Ensuring lazy loading is achieved by delaying section matching (which
         # implies querying the persistent storage) until it can't be avoided
         # anymore by using callables to describe (possibly empty) section
@@ -2552,9 +2581,19 @@ class Stack(object):
             for section in sections:
                 value = section.get(name)
                 if value is not None:
-                    return value
-        # No definition was found
-        return None
+                    break
+            if value is not None:
+                break
+        if value is None:
+            # If the option is registered, it may provide a default value
+            try:
+                opt = option_registry.get(name)
+            except KeyError:
+                # Not registered
+                opt = None
+            if opt is not None:
+                value = opt.get_default()
+        return value
 
     def _get_mutable_section(self):
         """Get the MutableSection for the Stack.
@@ -2800,7 +2839,6 @@ class cmd_config(commands.Command):
         if not removed:
             raise errors.NoSuchConfigOption(name)
 
-
 # Test registries
 #
 # We need adapters that can build a Store or a Stack in a test context. Test
@@ -2808,7 +2846,8 @@ class cmd_config(commands.Command):
 # themselves. The builder will receive a test instance and should return a
 # ready-to-use store or stack.  Plugins that define new store/stacks can also
 # register themselves here to be tested against the tests defined in
-# bzrlib.tests.test_config.
+# bzrlib.tests.test_config. Note that the builder can be called multiple times
+# for the same tests.
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
