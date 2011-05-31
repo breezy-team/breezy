@@ -94,15 +94,15 @@ def build_backing_branch(test, relpath,
     :param server_class: The server associated with the ``transport_class``
         above.
 
-    Either both or none of ``transport_class`` and ``server_class`` should be
-    specified.
+    Either both or neither of ``transport_class`` and ``server_class`` should
+    be specified.
     """
     if transport_class is not None and server_class is not None:
         test.transport_class = transport_class
         test.transport_server = server_class
     elif not (transport_class is None and server_class is None):
         raise AssertionError('Specify both ``transport_class`` and '
-                             '``server_class`` or none of them')
+                             '``server_class`` or neither of them')
     if getattr(test, 'backing_branch', None) is None:
         # First call, let's build the branch on disk
         test.backing_branch = test.make_branch(relpath)
@@ -708,11 +708,11 @@ class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
     def test_default_is_True(self):
         self.config = self.get_config(True)
         self.assertExpandIs(True)
-        
+
     def test_default_is_False(self):
         self.config = self.get_config(False)
         self.assertExpandIs(False)
-        
+
 
 class TestIniConfigOptionExpansion(tests.TestCase):
     """Test option expansion from the IniConfig level.
