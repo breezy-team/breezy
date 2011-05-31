@@ -44,14 +44,13 @@ from bzrlib.plugins.fastimport.helpers import (
 _serializer_handles_escaping = hasattr(serializer.Serializer,
     'squashes_xml_invalid_characters')
 
-def copy_inventory(inv):
-    # This currently breaks revision-id matching
-    #if hasattr(inv, "_get_mutable_inventory"):
-    #    # TODO: Make this a public API on inventory
-    #    return inv._get_mutable_inventory()
 
-    # TODO: Shallow copy - deep inventory copying is expensive
-    return inv.copy()
+def copy_inventory(inv):
+    entries = inv.iter_entries_by_dir()
+    inv = inventory.Inventory(None, inventory.revision_id)
+    for path, inv_entry in entries:
+        inv.add(inv_entry.copy())
+    return inv
 
 
 class GenericCommitHandler(processor.CommitHandler):

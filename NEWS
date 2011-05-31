@@ -13,6 +13,9 @@ Bug fixes
 
 * Setup.py no longer relies on bzrlib. (Jelmer Vernooij, #735201)
 
+* Avoid Inventory.copy, which has disappeared in newer versions of Bazaar.
+  (Jelmer Vernooij, #485788)
+
 0.10 08-Mar-2011
 
 Changes
