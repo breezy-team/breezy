@@ -47,7 +47,7 @@ _serializer_handles_escaping = hasattr(serializer.Serializer,
 
 def copy_inventory(inv):
     entries = inv.iter_entries_by_dir()
-    inv = inventory.Inventory(None, inventory.revision_id)
+    inv = inventory.Inventory(None, inv.revision_id)
     for path, inv_entry in entries:
         inv.add(inv_entry.copy())
     return inv
