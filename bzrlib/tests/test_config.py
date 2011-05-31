@@ -119,6 +119,7 @@ def keep_branch_alive(test, b):
     """
     test.addCleanup(lambda : b)
 
+
 def build_branch_store(test):
     build_backing_branch(test, 'branch')
     b = branch.Branch.open('branch')
