@@ -74,7 +74,7 @@ def extract_auth(url, password_manager):
             password = urllib.unquote(password)
         else:
             password = ui.ui_factory.get_password(
-                prompt='HTTP %(user)s@%(host)s password',
+                prompt=u'HTTP %(user)s@%(host)s password',
                 user=username, host=host)
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))

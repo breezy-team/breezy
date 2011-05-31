@@ -516,9 +516,9 @@ We want to avoid loading code unnecessarily, for reasons including:
 regress.
 
 This is done by running the command in a subprocess with
-``--profile-imports``.  Starting a whole Python interpreter is pretty
-slow, so we don't want exhaustive testing here, but just enough to guard
-against distinct fixed problems.
+``PYTHON_VERBOSE=1``.  Starting a whole Python interpreter is pretty slow,
+so we don't want exhaustive testing here, but just enough to guard against
+distinct fixed problems.
 
 Assertions about precisely what is loaded tend to be brittle so we instead
 make assertions that particular things aren't loaded.

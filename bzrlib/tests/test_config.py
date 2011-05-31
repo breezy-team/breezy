@@ -2468,8 +2468,14 @@ foo:policy = appendpath
 
     def test_file_urls_are_normalized(self):
         store = self.get_store('foo.conf')
-        matcher = config.LocationMatcher(store, 'file:///dir/subdir')
-        self.assertEquals('/dir/subdir', matcher.location)
+        if sys.platform == 'win32':
+            expected_url = 'file:///C:/dir/subdir'
+            expected_location = 'C:/dir/subdir'
+        else:
+            expected_url = 'file:///dir/subdir'
+            expected_location = '/dir/subdir'
+        matcher = config.LocationMatcher(store, expected_url)
+        self.assertEquals(expected_location, matcher.location)
 
 
 class TestStackGet(tests.TestCase):
@@ -3006,11 +3012,11 @@ class TestAuthenticationConfig(tests.TestCase):
 
     def test_username_defaults_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
-        self._check_default_username_prompt('FTP %(host)s username: ', 'ftp')
+        self._check_default_username_prompt(u'FTP %(host)s username: ', 'ftp')
         self._check_default_username_prompt(
-            'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
+            u'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
         self._check_default_username_prompt(
-            'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
+            u'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
 
     def test_username_default_no_prompt(self):
         conf = config.AuthenticationConfig()
@@ -3022,22 +3028,21 @@ class TestAuthenticationConfig(tests.TestCase):
     def test_password_default_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
         self._check_default_password_prompt(
-            'FTP %(user)s@%(host)s password: ', 'ftp')
+            u'FTP %(user)s@%(host)s password: ', 'ftp')
         self._check_default_password_prompt(
-            'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
+            u'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
         self._check_default_password_prompt(
-            'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
+            u'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
         # SMTP port handling is a bit special (it's handled if embedded in the
         # host too)
         # FIXME: should we: forbid that, extend it to other schemes, leave
         # things as they are that's fine thank you ?
-        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
-                                            'smtp')
-        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
-                                            'smtp', host='bar.org:10025')
         self._check_default_password_prompt(
-            'SMTP %(user)s@%(host)s:%(port)d password: ',
-            'smtp', port=10025)
+            u'SMTP %(user)s@%(host)s password: ', 'smtp')
+        self._check_default_password_prompt(
+            u'SMTP %(user)s@%(host)s password: ', 'smtp', host='bar.org:10025')
+        self._check_default_password_prompt(
+            u'SMTP %(user)s@%(host)s:%(port)d password: ', 'smtp', port=10025)
 
     def test_ssh_password_emits_warning(self):
         conf = config.AuthenticationConfig(_file=StringIO(
