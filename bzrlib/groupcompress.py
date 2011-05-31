@@ -466,7 +466,12 @@ class _LazyGroupCompressFactory(object):
                 # Grab and cache the raw bytes for this entry
                 # and break the ref-cycle with _manager since we don't need it
                 # anymore
-                self._manager._prepare_for_extract()
+                try:
+                    self._manager._prepare_for_extract()
+                except zlib.error as value:
+                    from bzrlib.trace import mutter
+                    mutter("value: " + str(value) + str(type(value)))
+                    raise errors.DecompressCorruption()
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
                 # There are code paths that first extract as fulltext, and then

@@ -3081,6 +3081,11 @@ class ShelfCorrupt(BzrError):
     _fmt = "Shelf corrupt."
 
 
+class DecompressCorruption(BzrError):
+
+    _fmt = "Corruption while decompressing pack files, this is caused by a local disk read error."
+
+
 class NoSuchShelfId(BzrError):
 
     _fmt = 'No changes are shelved with id "%(shelf_id)d".'
