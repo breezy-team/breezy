@@ -65,6 +65,7 @@ up=pull
 import os
 import string
 import sys
+import weakref
 
 from bzrlib import commands
 from bzrlib.decorators import needs_write_lock
@@ -2364,14 +2365,28 @@ class LocationStore(LockableIniFileStore):
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 
-# FIXME: We should rely on the branch itself to be locked (possibly checking
-# that even) but we shouldn't lock ourselves. This may make `bzr config` is
-# a bit trickier though but I punt for now -- vila 20110512
-class BranchStore(LockableIniFileStore):
+class BranchStore(IniFileStore):
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
+        # FIXME: This creates a cycle -- vila 2011-05-27
+        self.branch = branch
+
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
+        super(BranchStore, self).save()
+
 
 class SectionMatcher(object):
     """Select sections into a given Store.
