@@ -3083,7 +3083,15 @@ class ShelfCorrupt(BzrError):
 
 class DecompressCorruption(BzrError):
 
-    _fmt = "Corruption while decompressing pack files, this is caused by a local disk read error."
+
+    def __init__(self, orig_error=None):
+        if orig_error is None:
+            self._fmt = "Corruption while decompressing repository file"
+        else:
+            self._fmt = "Corruption while decompressing repository file, "\
+                        "%(orig_error)s"
+        self.orig_error = orig_error
+        BzrError.__init__(self)
 
 
 class NoSuchShelfId(BzrError):

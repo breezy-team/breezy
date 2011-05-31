@@ -469,7 +469,7 @@ class _LazyGroupCompressFactory(object):
                 try:
                     self._manager._prepare_for_extract()
                 except zlib.error as value:
-                    raise errors.DecompressCorruption()
+                    raise errors.DecompressCorruption("zlib: " + str(value))
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
                 # There are code paths that first extract as fulltext, and then

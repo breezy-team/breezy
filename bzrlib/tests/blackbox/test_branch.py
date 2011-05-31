@@ -73,7 +73,8 @@ class TestBranch(TestCaseWithTransport):
         pack = open('a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0], "w")
         pack.write(line1 + "\xff" + line2)
         pack.close()
-        self.run_bzr_error(['Corruption while decompressing pack files, this is caused by a local disk read error.\n'], 'branch a b', retcode=3)
+        self.run_bzr_error(['Corruption while decompressing repository file'], 
+                            'branch a b', retcode=3)
 
     def test_branch_switch_no_branch(self):
         # No branch in the current directory:
