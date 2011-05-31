@@ -505,11 +505,11 @@ class Command(object):
 
         # The header is the purpose and usage
         result = ""
-        result += gettext(':Purpose: %s') % (purpose,) + '\n'
+        result += gettext(':Purpose: %s\n') % (purpose,)
         if usage.find('\n') >= 0:
-            result += gettext(':Usage:\n%s') % (usage,) + '\n'
+            result += gettext(':Usage:\n%s\n') % (usage,)
         else:
-            result += gettext(':Usage:   %s') % (usage,) + '\n'
+            result += gettext(':Usage:   %s\n') % (usage,)
         result += '\n'
 
         # Add the options
@@ -539,7 +539,7 @@ class Command(object):
             if sections.has_key(None):
                 text = sections.pop(None)
                 text = '\n  '.join(text.splitlines())
-                result += gettext(':Description:\n  %s') % (text,) + '\n\n'
+                result += gettext(':Description:\n  %s\n\n') % (text,)
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
