@@ -104,12 +104,26 @@ def build_backing_branch(test, relpath,
         test.backing_branch = test.make_branch(relpath)
 
 
+def keep_branch_alive(test, b):
+    """Keep a branch alive for the duration of a test.
+
+    :param tests: the test that should hold the branch alive.
+
+    :param b: the branch that should be kept alive.
+
+    Several tests need to keep a reference to a branch object as they are
+    testing a Store which uses a weak reference. This is achieved by embedding
+    a reference to the branch object in a lambda passed to a cleanup. When the
+    test finish the cleanup method is deleted and so does the reference to the
+    branch.
+    """
+    test.addCleanup(lambda : b)
+
+
 def build_branch_store(test):
     build_backing_branch(test, 'branch')
     b = branch.Branch.open('branch')
-    # We need to keep a reference to the branch as the Store uses a weak
-    # ref. Referring to it in a lambda should be enough.
-    test.addCleanup(lambda : b)
+    keep_branch_alive(test, b)
     return config.BranchStore(b)
 config.test_store_builder_registry.register('branch', build_branch_store)
 
@@ -120,9 +134,7 @@ def build_remote_branch_store(test):
     (transport_class, server_class) = remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    # We need to keep a reference to the branch as the Store uses a weak
-    # ref. Referring to it in a lambda should be enough.
-    test.addCleanup(lambda : b)
+    keep_branch_alive(test, b)
     return config.BranchStore(b)
 config.test_store_builder_registry.register('remote_branch',
                                             build_remote_branch_store)
@@ -137,9 +149,7 @@ config.test_stack_builder_registry.register(
 def build_branch_stack(test):
     build_backing_branch(test, 'branch')
     b = branch.Branch.open('branch')
-    # We need to keep a reference to the branch as the Store uses a weak
-    # ref. Referring to it in a lambda should be enough.
-    test.addCleanup(lambda : b)
+    keep_branch_alive(test, b)
     return config.BranchStack(b)
 config.test_stack_builder_registry.register('branch', build_branch_stack)
 
@@ -150,9 +160,7 @@ def build_remote_branch_stack(test):
     (transport_class, server_class) = remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    # We need to keep a reference to the branch as the Store uses a weak
-    # ref. Referring to it in a lambda should be enough.
-    test.addCleanup(lambda : b)
+    keep_branch_alive(test, b)
     return config.BranchStack(b)
 config.test_stack_builder_registry.register('remote_branch',
                                             build_remote_branch_stack)
@@ -2248,6 +2256,12 @@ class TestBranchStore(TestStore):
 
 
 class TestConcurrentStoreUpdates(TestStore):
+    """Test that Stores properly handle conccurent updates.
+
+    New Store implementation may fail some of these tests but until such
+    implementations exist it's hard to properly filter them from the scenarios
+    applied here. If you encounter such a case, contact the bzr devs.
+    """
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
                  in config.test_stack_builder_registry.iteritems()]
