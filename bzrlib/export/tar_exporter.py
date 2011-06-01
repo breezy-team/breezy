@@ -33,7 +33,7 @@ from bzrlib.filters import (
     )
 
 
-def export_tarball(tree, ball, root, subdir=None, filtered=False,
+def export_tarball_generator(tree, ball, root, subdir=None, filtered=False,
                    force_mtime=None):
     """Export tree contents to a tarball.
 
@@ -83,7 +83,7 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False,
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
                            (ie.file_id, ie.kind))
-        ball.addfile(item, fileobj)
+        yield ball.addfile(item, fileobj)
 
 
 def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
