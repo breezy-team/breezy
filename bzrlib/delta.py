@@ -175,7 +175,7 @@ class _ChangeReporter(object):
 
     def __init__(self, output=None, suppress_root_add=True,
                  output_file=None, unversioned_filter=None, view_info=None,
-                 kind_marker=None):
+                 classify=True):
         """Constructor
 
         :param output: a function with the signature of trace.note, i.e.
@@ -190,8 +190,7 @@ class _ChangeReporter(object):
         :param view_info: A tuple of view_name,view_files if only
             items inside a view are to be reported on, or None for
             no view filtering.
-        :param kind_marker: Function to get kind decoration symbols,
-            None for default, or False to disable decorations.
+        :param classify: Add special symbols to indicate file kind.
         """
         if output_file is not None:
             if output is not None:
@@ -216,10 +215,10 @@ class _ChangeReporter(object):
                               'unversioned': '?', # versioned in neither
                               }
         self.unversioned_filter = unversioned_filter
-        if kind_marker is False:
-            def kind_marker(kind):
-                return ''
-        self.kind_marker = kind_marker or osutils.kind_marker
+        if classify:
+            self.kind_marker = osutils.kind_marker
+        else:
+            self.kind_marker = lambda kind: ''
         if view_info is None:
             self.view_name = None
             self.view_files = []
@@ -347,7 +346,7 @@ def report_changes(change_iterator, reporter):
                         exe_change, kind)
 
 def report_delta(to_file, delta, short_status=False, show_ids=False, 
-         show_unchanged=False, indent='', filter=None, no_decorate=False):
+         show_unchanged=False, indent='', filter=None, classify=True):
     """Output this delta in status-like form to to_file.
 
     :param to_file: A file-like object where the output is displayed.
@@ -366,12 +365,11 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
     :param filter: A callable receiving a path and a file id and
         returning True if the path should be displayed.
 
-    :param no_decorate: Do not add special symbols for symlinks or
-        modified metadata.
+    :param classify: Add special symbols to indicate file kind.
     """
 
     def decorate_path(path, kind, meta_modified=None):
-        if no_decorate:
+        if not classify:
             return path
         if kind == 'directory':
             path += '/'
