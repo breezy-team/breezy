@@ -75,7 +75,6 @@ import fnmatch
 import re
 from cStringIO import StringIO
 
-import bzrlib
 from bzrlib import (
     atomicfile,
     bzrdir,
