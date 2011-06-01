@@ -39,6 +39,10 @@ Bug Fixes
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
 
+* ``pack_repo`` now uses ``Transport.move`` instead of
+  ``Transport.rename``, deleting any existing targets even on SFTP.
+  (Martin von Gagern, #421776)
+
 * Pass the ``build_mo`` command to the rest of the setup() calls in
   setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
   because ``build_mo`` became a required step that they didn't know about.
@@ -89,6 +93,10 @@ Testing
 
 * Fix spurious test failure on OSX for WorkingTreeFormat2.
   (Vincent Ladeuil, #787942)
+
+* Show log file contents from subprocesses started by
+  `start_bzr_subprocess` in test failure details.  This may help diagnose
+  strange hangs and failures involving subprocesses.  (Andrew Bennetts)
 
 * Skip ``utextwrap`` tests when ``sphinx`` breaks text_wrap by an hostile
   monkeypatch to textwrap.TextWrapper.wordsep_re.
