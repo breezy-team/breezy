@@ -3194,7 +3194,7 @@ class cmd_commit(Command):
             edit_commit_message_encoded,
             generate_commit_message_template,
             make_commit_message_template_encoded,
-            set_commit_message
+            set_commit_message,
         )
 
         commit_stamp = offset = None
