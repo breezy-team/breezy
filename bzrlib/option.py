@@ -563,7 +563,7 @@ _global_option('update')
 _global_registry_option('log-format', "Use specified log format.",
                         lazy_registry=('bzrlib.log', 'log_formatter_registry'),
                         value_switches=True, title='Log format',
-                        short_value_switches={'short': 's'})
+                        short_value_switches={'short': 'S'})
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')
