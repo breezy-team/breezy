@@ -2200,8 +2200,14 @@ foo:policy = appendpath
 
     def test_file_urls_are_normalized(self):
         store = self.get_store('foo.conf')
-        matcher = config.LocationMatcher(store, 'file:///dir/subdir')
-        self.assertEquals('/dir/subdir', matcher.location)
+        if sys.platform == 'win32':
+            expected_url = 'file:///C:/dir/subdir'
+            expected_location = 'C:/dir/subdir'
+        else:
+            expected_url = 'file:///dir/subdir'
+            expected_location = '/dir/subdir'
+        matcher = config.LocationMatcher(store, expected_url)
+        self.assertEquals(expected_location, matcher.location)
 
 
 class TestStackGet(tests.TestCase):
