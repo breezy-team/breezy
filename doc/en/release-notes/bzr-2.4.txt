@@ -39,6 +39,11 @@ Bug Fixes
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
 
+* Handle files that get created but don't get used during TreeTransform.
+  ``open()`` can create a file, and still raise an exception before it
+  returns. So anything we might have created, make sure we destroy during
+  ``finalize()``. (Martin [gz], #597686)
+
 * ``pack_repo`` now uses ``Transport.move`` instead of
   ``Transport.rename``, deleting any existing targets even on SFTP.
   (Martin von Gagern, #421776)
