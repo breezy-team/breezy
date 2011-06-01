@@ -18,8 +18,13 @@
 """Tests for how many modules are loaded in executing various commands."""
 
 import os
+
 from testtools import content
 
+from bzrlib import (
+    plugins as _mod_plugins,
+    trace,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import medium
 from bzrlib.transport import remote
@@ -52,35 +57,44 @@ class TestImportTariffs(TestCaseWithTransport):
     """Check how many modules are loaded for some representative scenarios.
 
     See the Testing Guide in the developer documentation for more explanation.
+
+
+    We must respect the setup used by the selftest command regarding
+    plugins. This allows the user to control which plugins are in effect while
+    running these tests and respect the import policies defined here.
+
+    When failures are encountered for a given plugin, they can generally be
+    addressed by using lazy import or lazy hook registration.
     """
 
     def setUp(self):
-        # Preserve some env vars as we want to escape the isolation for them
         self.preserved_env_vars = {}
-        for name in ('BZR_HOME', 'BZR_PLUGIN_PATH', 'BZR_DISABLE_PLUGINS',
-                     'BZR_PLUGINS_AT', 'HOME'):
+        for name in ('BZR_PLUGIN_PATH', 'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT'
+                     ):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
 
-    def start_bzr_subprocess_with_import_check(self, args):
+    def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
         cover representative rather than exhaustive cases.
         """
-        # We use PYTHON_VERBOSE rather than --profile-importts because in
+        # We use PYTHON_VERBOSE rather than --profile-imports because in
         # experimentation the profile-imports output seems to not always show
         # the modules you'd expect; this can be debugged but python -v seems
         # more likely to always show everything.  And we use the environment
         # variable rather than 'python -v' in the hope it will work even if
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
-
-        # Normally we want test isolation from the real $HOME but here we
-        # explicitly do want to test against things installed there, therefore
-        # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
-        return self.start_bzr_subprocess(args, env_changes=env_changes,
-            allow_plugins=(not are_plugins_disabled()))
+        trace.mutter('Setting env for bzr subprocess: %r', env_changes)
+        kwargs = dict(env_changes=env_changes,
+                      allow_plugins=(not are_plugins_disabled()))
+        if stderr_file:
+            # We don't want to update the whole call chain so we insert stderr
+            # *iff* we need to
+            kwargs['stderr'] = stderr_file
+        return self.start_bzr_subprocess(args, **kwargs)
 
     def check_forbidden_modules(self, err, forbidden_imports):
         """Check for forbidden modules in stderr.
@@ -187,8 +201,11 @@ class TestImportTariffs(TestCaseWithTransport):
     def test_simple_serve(self):
         # 'serve' in a default format working tree shouldn't need many modules
         tree = self.make_branch_and_tree('.')
+        # Capture the bzr serve process' stderr in a file to avoid deadlocks
+        # while the smart client interacts with it.
+        stderr_file = open('bzr-serve.stderr', 'w')
         process = self.start_bzr_subprocess_with_import_check(['serve',
-            '--inet', '-d', tree.basedir])
+            '--inet', '-d', tree.basedir], stderr_file=stderr_file)
         url = 'bzr://localhost/'
         self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
@@ -200,6 +217,9 @@ class TestImportTariffs(TestCaseWithTransport):
         process.stdin = None
         (out, err) = self.finish_bzr_subprocess(process,
             universal_newlines=False)
+        stderr_file.close()
+        with open('bzr-serve.stderr', 'r') as stderr_file:
+            err = stderr_file.read()
         self.check_forbidden_modules(err,
             ['bzrlib.annotate',
             'bzrlib.atomicfile',

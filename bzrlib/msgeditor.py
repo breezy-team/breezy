@@ -41,7 +41,7 @@ def _get_editor():
     except KeyError:
         pass
 
-    e = config.GlobalConfig().get_editor()
+    e = config.GlobalStack().get('editor')
     if e is not None:
         yield e, config.config_filename()
 
@@ -151,7 +151,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         edited_content = msg_transport.get_bytes(basename)
         if edited_content == reference_content:
             if not ui.ui_factory.confirm_action(
-                "Commit message was not edited, use anyway",
+                u"Commit message was not edited, use anyway",
                 "bzrlib.msgeditor.unchanged",
                 {}):
                 # Returning "" makes cmd_commit raise 'empty commit message
