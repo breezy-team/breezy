@@ -286,6 +286,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``MutableTree.smart_add`` now uses inventory deltas.
+  (Jelmer Vernooij, #146165)
+
 * Removed ``bzrlib.branch._run_with_write_locked_target`` as
   ``bzrlib.cleanup`` provides the same functionality in a more general
   way.  (Andrew Bennetts)
