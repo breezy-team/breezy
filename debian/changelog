@@ -1,3 +1,10 @@
+bzr (2.4.0~beta3-2) unstable; urgency=low
+
+  * Add 04_fix_undecodable_argv; cope with $HOME not existing on some
+    buildd machines.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 01 Jun 2011 13:17:25 +0100
+
 bzr (2.4.0~beta3-1) unstable; urgency=low
 
   * New upstream release.
