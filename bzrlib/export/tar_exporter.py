@@ -86,6 +86,13 @@ def export_tarball_generator(tree, ball, root, subdir=None, filtered=False,
         yield ball.addfile(item, fileobj)
 
 
+def export_tarball(tree, ball, root, subdir=None, filtered=False,
+                   force_mtime=None):
+    
+    for ball in export_tarball_generator(tree, ball, root, subdir, filtered, force_mtime):
+        pass
+    
+
 def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     """Export this tree to a new tar file.
 
