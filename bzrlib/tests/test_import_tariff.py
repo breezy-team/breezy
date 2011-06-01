@@ -69,7 +69,8 @@ class TestImportTariffs(TestCaseWithTransport):
 
     def setUp(self):
         self.preserved_env_vars = {}
-        for name in ('BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT'):
+        for name in ('BZR_PLUGIN_PATH', 'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT'
+                     ):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
 
@@ -85,12 +86,7 @@ class TestImportTariffs(TestCaseWithTransport):
         # more likely to always show everything.  And we use the environment
         # variable rather than 'python -v' in the hope it will work even if
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
-        # We use BZR_PLUGIN_PATH to explicitly set the subprocess to use the
-        # same plugins as this process.
-        plugin_path = os.pathsep.join(
-            ['-core', '-site'] + _mod_plugins.__path__)
-        env_changes = dict(PYTHONVERBOSE='1', BZR_PLUGIN_PATH=plugin_path)
-        env_changes.update(self.preserved_env_vars)
+        env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
         trace.mutter('Setting env for bzr subprocess: %r', env_changes)
         kwargs = dict(env_changes=env_changes,
                       allow_plugins=(not are_plugins_disabled()))
