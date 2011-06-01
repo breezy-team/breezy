@@ -58,7 +58,7 @@ class TestExceptionReporting(TestCase):
             env_changes={"LANG": "C", "LC_ALL": "C"},
             universal_newlines=True,
             retcode=errors.EXIT_ERROR)
-        self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported")
+        self.assertContainsRe(err, r"bzr: ERROR: .*'\\xa0'.* unsupported")
         self.assertEquals(out, "")
 
 
