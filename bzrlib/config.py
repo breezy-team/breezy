@@ -2409,25 +2409,13 @@ class BranchStore(IniFileStore):
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
-        # We don't want to create a cycle here when the BranchStore becomes
-        # part of an object (roughly a Stack, directly or indirectly) that is
-        # an attribute of the branch object itself. Since the BranchStore
-        # cannot exist without a branch, it's safe to make it a weakref.
-        self.branch_ref = weakref.ref(branch)
-
-    def _get_branch(self):
-        b = self.branch_ref()
-        if b is None:
-            # Programmer error, a branch store can't exist if the branch it
-            # refers to is dead.
-            raise AssertionError('Dead branch ref in %r' % (self,))
-        return b
+        self.branch = branch
 
     def lock_write(self, token=None):
-        return self._get_branch().lock_write(token)
+        return self.branch.lock_write(token)
 
     def unlock(self):
-        return self._get_branch().unlock()
+        return self.branch.unlock()
 
     @needs_write_lock
     def save(self):
