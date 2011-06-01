@@ -3083,14 +3083,13 @@ class ShelfCorrupt(BzrError):
 
 class DecompressCorruption(BzrError):
 
+    _fmt = "Corruption while decompressing repository file%(orig_error)s"
 
     def __init__(self, orig_error=None):
-        if orig_error is None:
-            self._fmt = "Corruption while decompressing repository file"
+        if orig_error is not None:
+            self.orig_error = ", %s" % (orig_error,)
         else:
-            self._fmt = "Corruption while decompressing repository file, "\
-                        "%(orig_error)s"
-        self.orig_error = orig_error
+            self.orig_error = ""
         BzrError.__init__(self)
 
 

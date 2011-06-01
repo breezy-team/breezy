@@ -66,13 +66,12 @@ class TestBranch(TestCaseWithTransport):
         from bzrlib.trace import mutter
         self.example_branch('a')
         #now add some random corruption
-        pack = open('a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0], "r")
-        line1 = pack.read(750)
-        line2 = pack.read()
-        pack.close()
-        pack = open('a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0], "w")
-        pack.write(line1 + "\xff" + line2)
-        pack.close()
+        fname = 'a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0]
+        with open(fname, 'rb') as f:
+            line1 = f.read(750)
+            line2 = f.read()
+        with open(fname, 'wb') as f:
+            f.write(line1 + "\xff" + line2)
         self.run_bzr_error(['Corruption while decompressing repository file'], 
                             'branch a b', retcode=3)
 
