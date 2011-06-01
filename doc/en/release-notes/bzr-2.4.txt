@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* New hook server_exception in bzrlib.smart.server to catch any
+  exception caused while running bzr serve.  (Jonathan Riddell,
+  #274578)
+
 Improvements
 ************
 
@@ -32,8 +36,27 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Fix a race condition for ``server_started`` hooks leading to a spurious
+  test failure. (Vincent Ladeuil, #789167)
+
+* ``pack_repo`` now uses ``Transport.move`` instead of
+  ``Transport.rename``, deleting any existing targets even on SFTP.
+  (Martin von Gagern, #421776)
+
+* Pass the ``build_mo`` command to the rest of the setup() calls in
+  setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
+  because ``build_mo`` became a required step that they didn't know about.
+  (John Arbash Meinel, #787122)
+
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
+
+* Reports a non-existant file error when trying to merge in a file
+  that does not exist. (Jonathan Riddell, #330063)
+
+* ``UIFactory.prompt``, ``UIFactory.get_username``,
+  ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
+  unicode prompt to be passed in. (Jelmer Vernooij, #592083)
 
 Documentation
 *************
@@ -52,6 +75,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``tools/check-newsbugs.py`` accepts a ``--browser`` option to open
+  corresponding launchpad pages in a browser. (Vincent Ladeuil)
+
 Testing
 *******
 
@@ -59,9 +85,28 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Don't use ``$HOME/.bzr.log`` for the TestImportTariffs tests.
+  (Vincent Ladeuil, #789505)
+
+* Fix deadlock in `TestImportTariffs.test_simple_serve` when stderr gets
+  more output than fits in the default buffer.  This was happening on the
+  Windows buildslave, and could easily happen in other circumstances where
+  the default OS buffer size for pipes is small or the ``python -v``
+  output is large.  (Andrew Bennetts, #784802)
+
+* Fix spurious test failure on OSX for WorkingTreeFormat2.
+  (Vincent Ladeuil, #787942)
+
+* Skip ``utextwrap`` tests when ``sphinx`` breaks text_wrap by an hostile
+  monkeypatch to textwrap.TextWrapper.wordsep_re.
+  (Vincent Ladeuil, #785098)
+
 * Show log file contents from subprocesses started by
   `start_bzr_subprocess` in test failure details.  This may help diagnose
   strange hangs and failures involving subprocesses.  (Andrew Bennetts)
+
+* Multiple ``selftest --exclude`` options are now combined instead of
+  overriding each other. (Vincent Ladeuil, #746991)
 
 
 bzr 2.4b3

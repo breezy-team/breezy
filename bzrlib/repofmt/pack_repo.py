@@ -314,10 +314,10 @@ class ResumedPack(ExistingPack):
         for index_type in index_types:
             old_name = self.index_name(index_type, self.name)
             new_name = '../indices/' + old_name
-            self.upload_transport.rename(old_name, new_name)
+            self.upload_transport.move(old_name, new_name)
             self._replace_index_with_readonly(index_type)
         new_name = '../packs/' + self.file_name()
-        self.upload_transport.rename(self.file_name(), new_name)
+        self.upload_transport.move(self.file_name(), new_name)
         self._state = 'finished'
 
     def _get_external_refs(self, index):
@@ -503,7 +503,7 @@ class NewPack(Pack):
         new_name = self.name + '.pack'
         if not suspend:
             new_name = '../packs/' + new_name
-        self.upload_transport.rename(self.random_name, new_name)
+        self.upload_transport.move(self.random_name, new_name)
         self._state = 'finished'
         if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
@@ -1211,7 +1211,7 @@ class RepositoryPackCollection(object):
         """
         for pack in packs:
             try:
-                pack.pack_transport.rename(pack.file_name(),
+                pack.pack_transport.move(pack.file_name(),
                     '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError), e:
                 # TODO: Should these be warnings or mutters?
@@ -1225,7 +1225,7 @@ class RepositoryPackCollection(object):
                 suffixes.append('.cix')
             for suffix in suffixes:
                 try:
-                    self._index_transport.rename(pack.name + suffix,
+                    self._index_transport.move(pack.name + suffix,
                         '../obsolete_packs/' + pack.name + suffix)
                 except (errors.PathError, errors.TransportError), e:
                     mutter("couldn't rename obsolete index, skipping it:\n%s"

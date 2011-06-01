@@ -16,14 +16,17 @@ except ImportError:
     sys.exit(1)
 
 
-options, args = getopt.gnu_getopt(sys.argv, "l", ["launchpad"])
+options, args = getopt.gnu_getopt(sys.argv, "lw", ["launchpad", 'webbrowser'])
 options = dict(options)
 
 if len(args) == 1:
-    print "Usage: check-newsbugs [--launchpad] NEWS"
+    print ("Usage: check-newsbugs [--launchpad][--webbrowser] "
+           "doc/en/release-notes/bzr-x.y.txt")
     print "Options:"
     print "--launchpad     Print out Launchpad mail commands for closing bugs "
     print "                that are already fixed."
+    print "--webbrowser    Open launchpad bug pages for bugs that are already "
+    print "                fixed."
     sys.exit(1)
 
 
@@ -37,6 +40,9 @@ def report_notmarked(bug, task, section):
         print "  bug %d" % bug.id
         print "  affects %s" % task.bug_target_name
         print "  status fixreleased"
+    if "--webbrowser" in options or "-w" in options:
+        import webbrowser
+        webbrowser.open('http://pad.lv/%s>' % (bug.id,))
 
 
 def read_news_bugnos(path):

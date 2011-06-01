@@ -101,6 +101,13 @@ Creating a stacked branch from a smart server with ``bzr branch
 network roundtrips.  Other operations where a local branch is stacked on a
 branch hosted on a smart server will also benefit.
 
+Testing
+*******
+
+The ``selftest --exclude`` option can now be specified multiple times and
+the tests that match any of the specified patterns will be excluded. Only
+the last specified patetrn was previously taken into account.
+
 Further information
 *******************
 

@@ -3691,10 +3691,10 @@ class cmd_selftest(Command):
                      Option('randomize', type=str, argname="SEED",
                             help='Randomize the order of tests using the given'
                                  ' seed or "now" for the current time.'),
-                     Option('exclude', type=str, argname="PATTERN",
-                            short_name='x',
-                            help='Exclude tests that match this regular'
-                                 ' expression.'),
+                     ListOption('exclude', type=str, argname="PATTERN",
+                                short_name='x',
+                                help='Exclude tests that match this regular'
+                                ' expression.'),
                      Option('subunit',
                         help='Output test progress via subunit.'),
                      Option('strict', help='Fail on missing dependencies or '
@@ -3751,6 +3751,10 @@ class cmd_selftest(Command):
                 "--benchmark is no longer supported from bzr 2.2; "
                 "use bzr-usertest instead")
         test_suite_factory = None
+        if not exclude:
+            exclude_pattern = None
+        else:
+            exclude_pattern = '(' + '|'.join(exclude) + ')'
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3761,7 +3765,7 @@ class cmd_selftest(Command):
                           "matching_tests_first": first,
                           "list_only": list_only,
                           "random_seed": randomize,
-                          "exclude_pattern": exclude,
+                          "exclude_pattern": exclude_pattern,
                           "strict": strict,
                           "load_list": load_list,
                           "debug_flags": debugflag,
@@ -3836,7 +3840,10 @@ class cmd_merge(Command):
     The source of the merge can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
     with bzr send. If neither is specified, the default is the upstream branch
-    or the branch most recently merged using --remember.
+    or the branch most recently merged using --remember.  The source of the
+    merge may also be specified in the form of a path to a file in another
+    branch:  in this case, only the modifications to that file are merged into
+    the current working tree.
 
     When merging from a branch, by default bzr will try to merge in all new
     work from the other branch, automatically determining an appropriate base
@@ -4006,6 +4013,13 @@ class cmd_merge(Command):
         self.sanity_check_merger(merger)
         if (merger.base_rev_id == merger.other_rev_id and
             merger.other_rev_id is not None):
+            # check if location is a nonexistent file (and not a branch) to
+            # disambiguate the 'Nothing to do'
+            if merger.interesting_files:
+                if not merger.other_tree.has_filename(
+                    merger.interesting_files[0]):
+                    note("merger: " + str(merger))
+                    raise errors.PathsDoNotExist([location])
             note('Nothing to do.')
             return 0
         if pull and not preview:
@@ -4954,7 +4968,7 @@ class cmd_uncommit(Command):
 
         if not force:
             if not ui.ui_factory.confirm_action(
-                    'Uncommit these revisions',
+                    u'Uncommit these revisions',
                     'bzrlib.builtins.uncommit',
                     {}):
                 self.outf.write('Canceled\n')
