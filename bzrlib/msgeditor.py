@@ -308,7 +308,7 @@ class MessageEditorHooks(Hooks):
             "commit_message_template is called with the bzrlib.commit.Commit "
             "object and the message that is known so far. "
             "commit_message_template must return a new message to use (which "
-            "could be the same as it was given. When there are multiple "
+            "could be the same as it was given). When there are multiple "
             "hooks registered for commit_message_template, they are chained "
             "with the result from the first passed into the second, and so "
             "on.", (1, 10))

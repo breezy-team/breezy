@@ -1,14 +1,16 @@
-bzr (2.4.0~beta3~bzr5906-1) UNRELEASED; urgency=low
+bzr (2.4.0~beta3-1) unstable; urgency=low
 
-  * New upstream snapshot.
+  * New upstream release.
    + Requires at least Python 2.6 or higher.
    + Fixes permissions on directories in zip files. LP: #207253
    + Prints proper error when encountering encoding-invalid characters in
      commit messages on the commandline. LP: #745712
-  * Add upper bound version dependency on python-bzrlib in bzr. LP:
-    #778696
+   + Drop patches merged upstream: 04_auto_user_id_test_fix,
+   05_fix_locale_test
+  * Add upper bound version dependency on python-bzrlib in bzr.
+    LP: #778696
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 21 May 2011 18:34:53 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 01 Jun 2011 10:54:35 +0100
 
 bzr (2.4.0~beta2-3) unstable; urgency=low
 
