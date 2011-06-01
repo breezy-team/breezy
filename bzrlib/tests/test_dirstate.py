@@ -1351,6 +1351,19 @@ class TestDirStateHashUpdates(TestCaseWithDirState):
         stat = os.lstat(path)
         return dirstate.update_entry(state, entry, os.path.abspath(path), stat)
 
+    def _read_state_content(self, state):
+        """Read the content of the dirstate file.
+
+        On Windows when one process locks a file, you can't even open() the
+        file in another process (to read it). So we go directly to
+        state._state_file. This should always be the exact disk representation,
+        so it is reasonable to do so.
+        DirState also always seeks before reading, so it doesn't matter if we
+        bump the file pointer.
+        """
+        state._state_file.seek(0)
+        return state._state_file.read()
+
     def test_worth_saving_limit_avoids_writing(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c', 'd'])
@@ -1366,11 +1379,7 @@ class TestDirStateHashUpdates(TestCaseWithDirState):
         state.adjust_time(+20) # Allow things to be cached
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
-        f = open(state._filename, 'rb')
-        try:
-            content = f.read()
-        finally:
-            f.close()
+        content = self._read_state_content(state)
         self.do_update_entry(state, 'c')
         self.assertEqual(1, len(state._known_hash_changes))
         self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
@@ -1380,7 +1389,7 @@ class TestDirStateHashUpdates(TestCaseWithDirState):
         # hash values haven't been written out.
         self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                          state._dirblock_state)
-        self.assertFileEqual(content, state._filename)
+        self.assertEqual(content, self._read_state_content(state))
         self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                          state._dirblock_state)
         self.do_update_entry(state, 'd')

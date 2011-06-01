@@ -811,7 +811,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
-        conflicts_s = [str(c) for c in cooked_conflicts]
+        conflicts_s = [unicode(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
                                          'Moved existing file to '
@@ -2462,6 +2462,91 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.assertPathExists('a')
         self.assertPathExists('a/b')
+
+
+class TestFinalizeRobustness(tests.TestCaseWithTransport):
+    """Ensure treetransform creation errors can be safely cleaned up after"""
+
+    def _override_globals_in_method(self, instance, method_name, globals):
+        """Replace method on instance with one with updated globals"""
+        import types
+        func = getattr(instance, method_name).im_func
+        new_globals = dict(func.func_globals)
+        new_globals.update(globals)
+        new_func = types.FunctionType(func.func_code, new_globals,
+            func.func_name, func.func_defaults)
+        setattr(instance, method_name,
+            types.MethodType(new_func, instance, instance.__class__))
+        self.addCleanup(delattr, instance, method_name)
+
+    @staticmethod
+    def _fake_open_raises_before(name, mode):
+        """Like open() but raises before doing anything"""
+        raise RuntimeError
+
+    @staticmethod
+    def _fake_open_raises_after(name, mode):
+        """Like open() but raises after creating file without returning"""
+        open(name, mode).close()
+        raise RuntimeError
+
+    def create_transform_and_root_trans_id(self):
+        """Setup a transform creating a file in limbo"""
+        tree = self.make_branch_and_tree('.')
+        tt = TreeTransform(tree)
+        return tt, tt.create_path("a", tt.root)
+
+    def create_transform_and_subdir_trans_id(self):
+        """Setup a transform creating a directory containing a file in limbo"""
+        tree = self.make_branch_and_tree('.')
+        tt = TreeTransform(tree)
+        d_trans_id = tt.create_path("d", tt.root)
+        tt.create_directory(d_trans_id)
+        f_trans_id = tt.create_path("a", d_trans_id)
+        tt.adjust_path("a", d_trans_id, f_trans_id)
+        return tt, f_trans_id
+
+    def test_root_create_file_open_raises_before_creation(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_before})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathDoesNotExist(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_root_create_file_open_raises_after_creation(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_after})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_subdir_create_file_open_raises_before_creation(self):
+        tt, trans_id = self.create_transform_and_subdir_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_before})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathDoesNotExist(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_subdir_create_file_open_raises_after_creation(self):
+        tt, trans_id = self.create_transform_and_subdir_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_after})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
 
 
 class TestTransformMissingParent(tests.TestCaseWithTransport):

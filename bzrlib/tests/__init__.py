@@ -377,12 +377,20 @@ class ExtendedTestResult(testtools.TextTestResult):
         if isinstance(test, TestCase):
             test.addCleanup(self._check_leaked_threads, test)
 
+    def stopTest(self, test):
+        super(ExtendedTestResult, self).stopTest(test)
+        # Manually break cycles, means touching various private things but hey
+        getDetails = getattr(test, "getDetails", None)
+        if getDetails is not None:
+            getDetails().clear()
+        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+        if type_equality_funcs is not None:
+            type_equality_funcs.clear()
+        self._traceback_from_test = None
+
     def startTests(self):
         self.report_tests_starting()
         self._active_threads = threading.enumerate()
-
-    def stopTest(self, test):
-        self._traceback_from_test = None
 
     def _check_leaked_threads(self, test):
         """See if any threads have leaked since last call
@@ -963,10 +971,6 @@ class TestCase(testtools.TestCase):
         super(TestCase, self).setUp()
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
-        self._log_contents = None
-        self.addDetail("log", content.Content(content.ContentType("text",
-            "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -984,6 +988,7 @@ class TestCase(testtools.TestCase):
         # settled on or a the FIXME associated with _get_expand_default_value
         # is addressed -- vila 20110219
         self.overrideAttr(config, '_expand_default_value', None)
+        self._log_files = set()
 
     def debug(self):
         # debug a frame up.
@@ -1323,13 +1328,13 @@ class TestCase(testtools.TestCase):
         try:
             def capture():
                 orig_log_exception_quietly()
-                captured.append(sys.exc_info())
+                captured.append(sys.exc_info()[1])
             trace.log_exception_quietly = capture
             func(*args, **kwargs)
         finally:
             trace.log_exception_quietly = orig_log_exception_quietly
         self.assertLength(1, captured)
-        err = captured[0][1]
+        err = captured[0]
         self.assertIsInstance(err, exception_class)
         return err
 
@@ -1542,7 +1547,8 @@ class TestCase(testtools.TestCase):
         not other callers that go direct to the warning module.
 
         To test that a deprecated method raises an error, do something like
-        this::
+        this (remember that both assertRaises and applyDeprecated delays *args
+        and **kwargs passing)::
 
             self.assertRaises(errors.ReservedId,
                 self.applyDeprecated,
@@ -1630,7 +1636,14 @@ class TestCase(testtools.TestCase):
 
         The file is removed as the test is torn down.
         """
-        self._log_file = StringIO()
+        pseudo_log_file = StringIO()
+        def _get_log_contents_for_weird_testtools_api():
+            return [pseudo_log_file.getvalue().decode(
+                "utf-8", "replace").encode("utf-8")]
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            _get_log_contents_for_weird_testtools_api))
+        self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
@@ -1643,8 +1656,6 @@ class TestCase(testtools.TestCase):
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
-        # Cache the log result and delete the file on disk
-        self._get_log(False)
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1699,7 +1710,9 @@ class TestCase(testtools.TestCase):
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
-        hooks._lazy_hooks = self._preserved_lazy_hooks
+        self._preserved_hooks.clear()
+        bzrlib.hooks._lazy_hooks = self._preserved_lazy_hooks
+        self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -1796,41 +1809,6 @@ class TestCase(testtools.TestCase):
 
     def log(self, *args):
         trace.mutter(*args)
-
-    def _get_log(self, keep_log_file=False):
-        """Internal helper to get the log from bzrlib.trace for this test.
-
-        Please use self.getDetails, or self.get_log to access this in test case
-        code.
-
-        :param keep_log_file: When True, if the log is still a file on disk
-            leave it as a file on disk. When False, if the log is still a file
-            on disk, the log file is deleted and the log preserved as
-            self._log_contents.
-        :return: A string containing the log.
-        """
-        if self._log_contents is not None:
-            try:
-                self._log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = self._log_contents.decode('utf8', 'replace')
-                self._log_contents = unicodestr.encode('utf8')
-            return self._log_contents
-        if self._log_file is not None:
-            log_contents = self._log_file.getvalue()
-            try:
-                log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = log_contents.decode('utf8', 'replace')
-                log_contents = unicodestr.encode('utf8')
-            if not keep_log_file:
-                self._log_file = None
-                # Permit multiple calls to get_log until we clean it up in
-                # finishLogFile
-                self._log_contents = log_contents
-            return log_contents
-        else:
-            return "No log file content."
 
     def get_log(self):
         """Get a unicode string containing the log from bzrlib.trace.
@@ -2037,7 +2015,7 @@ class TestCase(testtools.TestCase):
     def start_bzr_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
-                             allow_plugins=False):
+                             allow_plugins=False, stderr=subprocess.PIPE):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -2055,6 +2033,9 @@ class TestCase(testtools.TestCase):
         :param skip_if_plan_to_signal: raise TestSkipped when true and system
             doesn't support signalling subprocesses.
         :param allow_plugins: If False (default) pass --no-plugins to bzr.
+        :param stderr: file to use for the subprocess's stderr.  Valid values
+            are those valid for the stderr argument of `subprocess.Popen`.
+            Default value is ``subprocess.PIPE``.
 
         :returns: Popen object for the started process.
         """
@@ -2086,6 +2067,9 @@ class TestCase(testtools.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
+            # Include the subprocess's log file in the test details, in case
+            # the test fails due to an error in the subprocess.
+            self._add_subprocess_log(trace._get_bzr_log_filename())
             command = [sys.executable]
             # frozen executables don't need the path to bzr
             if getattr(sys, "frozen", None) is None:
@@ -2095,13 +2079,40 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+                                  stderr=stderr)
         finally:
             restore_environment()
             if cwd is not None:
                 os.chdir(cwd)
 
         return process
+
+    def _add_subprocess_log(self, log_file_path):
+        if len(self._log_files) == 0:
+            # Register an addCleanup func.  We do this on the first call to
+            # _add_subprocess_log rather than in TestCase.setUp so that this
+            # addCleanup is registered after any cleanups for tempdirs that
+            # subclasses might create, which will probably remove the log file
+            # we want to read.
+            self.addCleanup(self._subprocess_log_cleanup)
+        # self._log_files is a set, so if a log file is reused we won't grab it
+        # twice.
+        self._log_files.add(log_file_path)
+
+    def _subprocess_log_cleanup(self):
+        for count, log_file_path in enumerate(self._log_files):
+            # We use buffer_now=True to avoid holding the file open beyond
+            # the life of this function, which might interfere with e.g.
+            # cleaning tempdirs on Windows.
+            # XXX: Testtools 0.9.5 doesn't have the content_from_file helper
+            #detail_content = content.content_from_file(
+            #    log_file_path, buffer_now=True)
+            with open(log_file_path, 'rb') as log_file:
+                log_file_bytes = log_file.read()
+            detail_content = content.Content(content.ContentType("text",
+                "plain", {"charset": "utf8"}), lambda: [log_file_bytes])
+            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+                detail_content)
 
     def _popen(self, *args, **kwargs):
         """Place a call to Popen.
@@ -3829,6 +3840,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_http',
         'bzrlib.tests.test_http_response',
         'bzrlib.tests.test_https_ca_bundle',
+        'bzrlib.tests.test_i18n',
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
         'bzrlib.tests.test_index',

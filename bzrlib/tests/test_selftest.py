@@ -36,7 +36,7 @@ from testtools.matchers import (
     DocTestMatches,
     Equals,
     )
-import testtools.tests.helpers
+import testtools.testresult.doubles
 
 import bzrlib
 from bzrlib import (
@@ -721,7 +721,7 @@ class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = testtools.tests.helpers.ExtendedTestResult()
+        terminal = testtools.testresult.doubles.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -744,7 +744,7 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        capture = testtools.tests.helpers.ExtendedTestResult()
+        capture = testtools.testresult.doubles.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
         timed_string = result._testTimeString(run_case)
@@ -1045,7 +1045,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            self.fail('foo')
+            raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1059,7 +1059,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    self.fail\\(\'foo\'\\)\n'
+            '    raise AssertionError\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1071,7 +1071,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                self.expectFailure('failed', self.assertTrue, False)
+                self.knownFailure("Never works...")
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -2037,17 +2037,17 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_lsprof_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        calls = []
+        results = []
         class Test(object):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                self.assertIsInstance(result, ExtendedToOriginalDecorator)
-                calls.append("called")
+                results.append(result)
             def countTestCases(self):
                 return 1
         self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
-        self.assertLength(1, calls)
+        self.assertLength(1, results)
+        self.assertIsInstance(results.pop(), ExtendedToOriginalDecorator)
 
     def test_random(self):
         # test randomising by listing a number of tests.
@@ -3522,3 +3522,40 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees None
         self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)
+
+
+class TestSelftestExcludePatterns(tests.TestCase):
+
+    def setUp(self):
+        super(TestSelftestExcludePatterns, self).setUp()
+        self.overrideAttr(tests, 'test_suite', self.suite_factory)
+
+    def suite_factory(self, keep_only=None, starting_with=None):
+        """A test suite factory with only a few tests."""
+        class Test(tests.TestCase):
+            def id(self):
+                # We don't need the full class path
+                return self._testMethodName
+            def a(self):
+                pass
+            def b(self):
+                pass
+            def c(self):
+                pass
+        return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
+
+    def assertTestList(self, expected, *selftest_args):
+        # We rely on setUp installing the right test suite factory so we can
+        # test at the command level without loading the whole test suite
+        out, err = self.run_bzr(('selftest', '--list') + selftest_args)
+        actual = out.splitlines()
+        self.assertEquals(expected, actual)
+
+    def test_full_list(self):
+        self.assertTestList(['a', 'b', 'c'])
+
+    def test_single_exclude(self):
+        self.assertTestList(['b', 'c'], '-x', 'a')
+
+    def test_mutiple_excludes(self):
+        self.assertTestList(['c'], '-x', 'a', '-x', 'b')

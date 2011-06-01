@@ -5,10 +5,133 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.4b4
+#########
+
+:2.4b4: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+* New hook server_exception in bzrlib.smart.server to catch any
+  exception caused while running bzr serve.  (Jonathan Riddell,
+  #274578)
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* Fix a race condition for ``server_started`` hooks leading to a spurious
+  test failure. (Vincent Ladeuil, #789167)
+
+* Handle files that get created but don't get used during TreeTransform.
+  ``open()`` can create a file, and still raise an exception before it
+  returns. So anything we might have created, make sure we destroy during
+  ``finalize()``. (Martin [gz], #597686)
+
+* ``pack_repo`` now uses ``Transport.move`` instead of
+  ``Transport.rename``, deleting any existing targets even on SFTP.
+  (Martin von Gagern, #421776)
+
+* Pass the ``build_mo`` command to the rest of the setup() calls in
+  setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
+  because ``build_mo`` became a required step that they didn't know about.
+  (John Arbash Meinel, #787122)
+
+* Reports the original error when an InvalidHttpResponse exception is
+  encountered to facilitate debug. (Vincent Ladeuil, #788530)
+
+* Reports a non-existant file error when trying to merge in a file
+  that does not exist. (Jonathan Riddell, #330063)
+
+* ``UIFactory.prompt``, ``UIFactory.get_username``,
+  ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
+  unicode prompt to be passed in. (Jelmer Vernooij, #592083)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+* Improve documentation of ``bzr merge --force``.
+  (Neil Martinsen-Burrell, #767307)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+* ``tools/check-newsbugs.py`` accepts a ``--browser`` option to open
+  corresponding launchpad pages in a browser. (Vincent Ladeuil)
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* Fix deadlock in `TestImportTariffs.test_simple_serve` when stderr gets
+  more output than fits in the default buffer.  This was happening on the
+  Windows buildslave, and could easily happen in other circumstances where
+  the default OS buffer size for pipes is small or the ``python -v``
+  output is large.  (Andrew Bennetts, #784802)
+
+* Fix spurious test failure on OSX for WorkingTreeFormat2.
+  (Vincent Ladeuil, #787942)
+
+* Show log file contents from subprocesses started by
+  `start_bzr_subprocess` in test failure details.  This may help diagnose
+  strange hangs and failures involving subprocesses.  (Andrew Bennetts)
+
+* Skip ``utextwrap`` tests when ``sphinx`` breaks text_wrap by an hostile
+  monkeypatch to textwrap.TextWrapper.wordsep_re.
+  (Vincent Ladeuil, #785098)
+
+* Multiple ``selftest --exclude`` options are now combined instead of
+  overriding each other. (Vincent Ladeuil, #746991)
+
+* `TestImportTariffs` no longer uses the real ``$HOME``.  This prevents it
+  from polluting ``$HOME/.bzr.log`` or being accidentally influenced by
+  user configuration such as aliases.  It still runs with all the user's
+  plugins enabled, as intended.
+  (Vincent Ladeuil, Andrew Bennetts, #789505)
+
+
 bzr 2.4b3
 #########
 
-:2.4b3: NOT RELEASED YET
+:2.4b3: 2011-05-26
+
+This is the third beta of the 2.4 series, leading to a 2.4.0 release in
+August 2011. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
 
 External Compatibility Breaks
 *****************************
@@ -87,6 +210,9 @@ Bug Fixes
   submit_location public_location`` never sets ``submit_branch``
   nor ``public_branch``.  (Vincent Ladeuil)
 
+* Conflicts involving non-ascii filenames are now properly reported rather
+  than failing with a UnicodeEncodeError. (Martin [GZ], #686161)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
@@ -163,6 +289,10 @@ Internals
 * ``MutableTree.smart_add`` now uses inventory deltas.
   (Jelmer Vernooij, #146165)
 
+* Removed ``bzrlib.branch._run_with_write_locked_target`` as
+  ``bzrlib.cleanup`` provides the same functionality in a more general
+  way.  (Andrew Bennetts)
+
 Testing
 *******
 
@@ -176,6 +306,13 @@ Testing
 * Make it easier for plugins to reuse the per_workingtree scenarios by
   restoring the wt_scenarios helper that was accidentally deleted.
   (Vincent Ladeuil, #783472)
+
+* Removed ``test_breakin`` tests that were excessively prone to hanging,
+  did not work on Wine, and partly already disabled.
+  (Martin Pool, #408814, #746985)
+
+* Windows locations are different and should be tested accordingly.
+  (Vincent Ladeuil, #788131)
 
 bzr 2.4b2
 #########
