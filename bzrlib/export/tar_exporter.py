@@ -154,13 +154,16 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
             stream.close()
 
 
-def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
+def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                 per_file_timestamps=False, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    if dest == '-':
+    if fileobj is not None:
+        ball = tarfile.open(None, 'w|bz2', fileobj)
+    elif dest == '-':
         ball = tarfile.open(None, 'w|bz2', sys.stdout)
     else:
         # tarfile.open goes on to do 'os.getcwd() + dest' for opening
