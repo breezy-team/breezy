@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a non-versioned directory.
-"""
+"""Export a Tree to a non-versioned directory."""
 
 import os
 import StringIO
@@ -32,64 +31,57 @@ from bzrlib.filters import (
     filtered_output_bytes,
     )
 
-def export_tarball_item(tree, ball, root, dp, ie, subdir=None, filtered=False,
-                   force_mtime=None):
+def export_tarball_item(tree, root, final_path, entry, filtered=False, force_mtime=None):
     """Export a tarball item
         
     :param tree: Tree to export
-    :param ball: Tarball to export to
-    :param dp: Return value of _export_iter_entities
-    :param ie: Return value of _export_iter_entities
+    :param final_path: Final path to place item
+    :param entry: Entry to export
     :param filtered: Whether to apply filters
-    :param subdir: Sub directory to export
-    :param force_mtime: Option mtime to force, instead of using
-        tree timestamps.
+    :param force_mtime: Option mtime to force, instead of using tree timestamps.
     """
     
-    
-    filename = osutils.pathjoin(root, dp).encode('utf8')
+    filename = osutils.pathjoin(root, final_path).encode('utf8')
     item = tarfile.TarInfo(filename)
     if force_mtime is not None:
         item.mtime = force_mtime
     else:
-        item.mtime = tree.get_file_mtime(ie.file_id, dp)
-    if ie.kind == "file":
+        item.mtime = tree.get_file_mtime(entry.file_id, final_path)
+    if entry.kind == "file":
         item.type = tarfile.REGTYPE
-        if tree.is_executable(ie.file_id):
+        if tree.is_executable(entry.file_id):
             item.mode = 0755
         else:
             item.mode = 0644
         if filtered:
-            chunks = tree.get_file_lines(ie.file_id)
-            filters = tree._content_filter_stack(dp)
-            context = ContentFilterContext(dp, tree, ie)
+            chunks = tree.get_file_lines(entry.file_id)
+            filters = tree._content_filter_stack(final_path)
+            context = ContentFilterContext(final_path, tree, entry)
             contents = filtered_output_bytes(chunks, filters, context)
             content = ''.join(contents)
             item.size = len(content)
             fileobj = StringIO.StringIO(content)
         else:
-            item.size = tree.get_file_size(ie.file_id)
-            fileobj = tree.get_file(ie.file_id)
-    elif ie.kind == "directory":
+            item.size = tree.get_file_size(entry.file_id)
+            fileobj = tree.get_file(entry.file_id)
+    elif entry.kind == "directory":
         item.type = tarfile.DIRTYPE
         item.name += '/'
         item.size = 0
         item.mode = 0755
         fileobj = None
-    elif ie.kind == "symlink":
+    elif entry.kind == "symlink":
         item.type = tarfile.SYMTYPE
         item.size = 0
         item.mode = 0755
-        item.linkname = tree.get_symlink_target(ie.file_id)
+        item.linkname = tree.get_symlink_target(entry.file_id)
         fileobj = None
     else:
-        raise errors.BzrError("don't know how to export {%s} of kind %r" %
-                       (ie.file_id, ie.kind))
+        raise errors.BzrError("don't know how to export {%s} of kind %r" % (entry.file_id, entry.kind))
+    
     return (item, fileobj)
 
-
-def export_tarball(tree, ball, root, subdir=None, filtered=False,
-                   force_mtime=None):
+def export_tarball(tree, ball, root, subdir=None, filtered=False, force_mtime=None):
     """Export tree contents to a tarball. This is a generator.
 
     :param tree: Tree to export
@@ -99,13 +91,12 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False,
     :param force_mtime: Option mtime to force, instead of using
         tree timestamps.
     """
-    for dp, ie in _export_iter_entries(tree, subdir):
+    for final_path, entry in _export_iter_entries(tree, subdir):
 
-        (item, fileobj) = export_tarball_item(tree, ball, root, dp, ie, subdir, filtered, force_mtime)
+        (item, fileobj) = export_tarball_item(tree, root, final_path, entry, filtered, force_mtime)
         ball.addfile(item, fileobj)
-        yield
-
-    
+        
+        yield    
 
 def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
                  per_file_timestamps=False, fileobj=None):
