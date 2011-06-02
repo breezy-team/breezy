@@ -663,14 +663,13 @@ class Command(object):
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         args, opts = parse_args(self, argv, alias_argv)
+        self._setup_outf()
 
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
-            self._setup_outf()
             self.outf.write(self.get_help_text())
             return 0
         if 'usage' in opts:  # e.g. bzr add --usage
-            self._setup_outf()
             self.outf.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
@@ -691,8 +690,6 @@ class Command(object):
 
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
-
-        self._setup_outf()
 
         try:
             return self.run(**all_cmd_args)
