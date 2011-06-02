@@ -101,8 +101,8 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False,
     """
     for dp, ie in _export_iter_entries(tree, subdir):
 
-        result = export_tarball_item(tree, ball, root, dp, ie, subdir, filtered, force_mtime)
-        ball.addfile(result[0], result[1])
+        (item, fileobj) = export_tarball_item(tree, ball, root, dp, ie, subdir, filtered, force_mtime)
+        ball.addfile(item, fileobj)
         yield
 
     
