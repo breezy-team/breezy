@@ -64,11 +64,11 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
         return func(tree, dest, root, subdir, filtered=filtered,
                     force_mtime=force_mtime)
     register_exporter(scheme, extensions, _loader)
-
-
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
-           per_file_timestamps=False):
-    """Export the given Tree to the specific destination.
+    
+def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, filtered=False,
+           per_file_timestamps=False, fileobj=None):
+    
+    """Returns a generator that exports the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
     :param dest: The destination where the files,etc should be put
@@ -89,10 +89,11 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
     :param per_file_timestamps: Whether to use the timestamp stored in the 
         tree rather than now(). This will do a revision lookup 
         for every file so will be significantly slower.
+    :param fileobj: Optional file object to use
     """
     global _exporters, _exporter_extensions
 
-    if format is None:
+    if format is None and dest is not None:
         for ext in _exporter_extensions:
             if dest.endswith(ext):
                 format = _exporter_extensions[ext]
@@ -119,6 +120,37 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
                                   force_mtime=force_mtime)
     finally:
         tree.unlock()
+
+
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
+           per_file_timestamps=False, fileobj=None):
+    """Export the given Tree to the specific destination.
+
+    :param tree: A Tree (such as RevisionTree) to export
+    :param dest: The destination where the files,etc should be put
+    :param format: The format (dir, zip, etc), if None, it will check the
+                   extension on dest, looking for a match
+    :param root: The root location inside the format.
+                 It is common practise to have zipfiles and tarballs
+                 extract into a subdirectory, rather than into the
+                 current working directory.
+                 If root is None, the default root will be
+                 selected as the destination without its
+                 extension.
+    :param subdir: A starting directory within the tree. None means to export
+        the entire tree, and anything else should specify the relative path to
+        a directory to start exporting from.
+    :param filtered: If True, content filtering is applied to the
+                     files exported.
+    :param per_file_timestamps: Whether to use the timestamp stored in the 
+        tree rather than now(). This will do a revision lookup 
+        for every file so will be significantly slower.
+    :param fileobj: Optional file object to use
+    """
+    for _ in get_export_generator(tree, dest, format=format, root=root, subdir=subdir,
+                                  filtered=filtered, per_file_timestamps=per_file_timestamps,fileobj=fileobj):
+        pass
+
 
 
 def get_root_name(dest):
