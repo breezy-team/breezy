@@ -107,7 +107,8 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False,
 
     
 
-def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
+def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                 per_file_timestamps=False, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -127,7 +128,9 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         root_mtime = None
 
     is_stdout = False
-    if dest == '-':
+    if fileobj is not None:
+        stream = fileobj
+    elif dest == '-':
         basename = None
         stream = sys.stdout
         is_stdout = True
