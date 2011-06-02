@@ -100,6 +100,7 @@ def zip_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, tree.get_symlink_target(file_id))
+            yield
 
         zipf.close()
 
