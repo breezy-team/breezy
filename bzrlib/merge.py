@@ -92,7 +92,7 @@ class AbstractPerFileMerger(object):
         """Attempt to merge the contents of a single file.
         
         :param merge_params: A bzrlib.merge.MergeHookParams
-        :return : A tuple of (status, chunks), where status is one of
+        :return: A tuple of (status, chunks), where status is one of
             'not_applicable', 'success', 'conflicted', or 'delete'.  If status
             is 'success' or 'conflicted', then chunks should be an iterable of
             strings for the new file contents.
@@ -888,7 +888,7 @@ class Merge3Merger(object):
                 self.tt.iter_changes(), self.change_reporter)
         self.cook_conflicts(fs_conflicts)
         for conflict in self.cooked_conflicts:
-            trace.warning(conflict)
+            trace.warning(unicode(conflict))
 
     def _entries3(self):
         """Gather data about files modified between three trees.
@@ -933,14 +933,16 @@ class Merge3Merger(object):
         it then compares with THIS and BASE.
 
         For the multi-valued entries, the format will be (BASE, [lca1, lca2])
-        :return: [(file_id, changed, parents, names, executable)]
-            file_id     Simple file_id of the entry
-            changed     Boolean, True if the kind or contents changed
-                        else False
-            parents     ((base, [parent_id, in, lcas]), parent_id_other,
-                         parent_id_this)
-            names       ((base, [name, in, lcas]), name_in_other, name_in_this)
-            executable  ((base, [exec, in, lcas]), exec_in_other, exec_in_this)
+
+        :return: [(file_id, changed, parents, names, executable)], where:
+
+            * file_id: Simple file_id of the entry
+            * changed: Boolean, True if the kind or contents changed else False
+            * parents: ((base, [parent_id, in, lcas]), parent_id_other,
+                        parent_id_this)
+            * names:   ((base, [name, in, lcas]), name_in_other, name_in_this)
+            * executable: ((base, [exec, in, lcas]), exec_in_other,
+                        exec_in_this)
         """
         if self.interesting_files is not None:
             lookup_trees = [self.this_tree, self.base_tree]
@@ -2401,6 +2403,7 @@ class _PlanMerge(_PlanMergeBase):
 class _PlanLCAMerge(_PlanMergeBase):
     """
     This merge algorithm differs from _PlanMerge in that:
+
     1. comparisons are done against LCAs only
     2. cases where a contested line is new versus one LCA but old versus
        another are marked as conflicts, by emitting the line as conflicted-a
@@ -2447,10 +2450,11 @@ class _PlanLCAMerge(_PlanMergeBase):
 
         If a line is killed and new, this indicates that the two merge
         revisions contain differing conflict resolutions.
+
         :param revision_id: The id of the revision in which the lines are
             unique
         :param unique_line_numbers: The line numbers of unique lines.
-        :return a tuple of (new_this, killed_other):
+        :return: a tuple of (new_this, killed_other)
         """
         new = set()
         killed = set()

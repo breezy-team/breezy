@@ -811,7 +811,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
-        conflicts_s = [str(c) for c in cooked_conflicts]
+        conflicts_s = [unicode(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
                                          'Moved existing file to '
@@ -2464,7 +2464,8 @@ class TestTransformRollback(tests.TestCaseWithTransport):
         self.assertPathExists('a/b')
 
 
-class TestCleanup(tests.TestCaseWithTransport):
+class TestFinalizeRobustness(tests.TestCaseWithTransport):
+    """Ensure treetransform creation errors can be safely cleaned up after"""
 
     def _override_globals_in_method(self, instance, method_name, globals):
         """Replace method on instance with one with updated globals"""

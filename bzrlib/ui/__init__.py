@@ -204,10 +204,10 @@ class UIFactory(object):
         """
         return self.get_boolean(prompt % prompt_kwargs)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         """Prompt the user for a password.
 
-        :param prompt: The prompt to present the user
+        :param prompt: The prompt to present the user (must be unicode)
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
@@ -319,7 +319,7 @@ class UIFactory(object):
         """Get a boolean question answered from the user.
 
         :param prompt: a message to prompt the user with. Should be a single
-        line without terminating \n.
+            line without terminating \\n.
         :return: True or False for y/yes or n/no.
         """
         raise NotImplementedError(self.get_boolean)
@@ -328,7 +328,7 @@ class UIFactory(object):
         """Get an integer from the user.
 
         :param prompt: a message to prompt the user with. Could be a multi-line
-            prompt but without a terminating \n.
+            prompt but without a terminating \\n.
 
         :return: A signed integer.
         """
@@ -483,7 +483,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_integer(self, prompt):
         return self.responses.pop(0)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):

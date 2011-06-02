@@ -304,14 +304,15 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # pointless commit.
             self.assertFalse(builder.any_changes())
             builder.finish_inventory()
-            new_root = tree.branch.repository.get_inventory(
-                builder._new_revision_id).root
+            builder_tree = builder.revision_tree()
+            new_root_id = builder_tree.get_root_id()
+            new_root_revision = builder_tree.get_file_revision(new_root_id)
             if tree.branch.repository.supports_rich_root():
                 # We should not have seen a new root revision
-                self.assertEqual(old_revision_id, new_root.revision)
+                self.assertEqual(old_revision_id, new_root_revision)
             else:
                 # We should see a new root revision
-                self.assertNotEqual(old_revision_id, new_root.revision)
+                self.assertNotEqual(old_revision_id, new_root_revision)
         finally:
             builder.abort()
             tree.unlock()

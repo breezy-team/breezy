@@ -1855,8 +1855,11 @@ class TreeTransform(DiskTreeTransform):
                     self._observed_sha1s[trans_id] = (o_sha1, st)
         finally:
             child_pb.finished()
-        for trans_id in self._new_contents:
-            del self._limbo_files[trans_id]
+        for path, trans_id in new_paths:
+            # new_paths includes stuff like workingtree conflicts. Only the
+            # stuff in new_contents actually comes from limbo.
+            if trans_id in self._limbo_files:
+                del self._limbo_files[trans_id]
         self._new_contents.clear()
         return modified_paths
 
@@ -2584,7 +2587,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             precomputed_delta = None
         conflicts = cook_conflicts(raw_conflicts, tt)
         for conflict in conflicts:
-            trace.warning(conflict)
+            trace.warning(unicode(conflict))
         try:
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
@@ -2826,7 +2829,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
-            trace.warning(conflict)
+            trace.warning(unicode(conflict))
         pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified(merge_modified)

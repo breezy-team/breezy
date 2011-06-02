@@ -44,7 +44,6 @@ from bzrlib import (
     rename_map,
     revision as _mod_revision,
     static_tuple,
-    symbol_versioning,
     timestamp,
     transport,
     ui,
@@ -72,6 +71,9 @@ from bzrlib.option import (
     _parse_revision_str,
     )
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
+from bzrlib import (
+    symbol_versioning,
+    )
 
 
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
@@ -962,10 +964,10 @@ class cmd_pull(Command):
     match the remote one, use pull --overwrite. This will work even if the two
     branches have diverged.
 
-    If there is no default location set, the first pull will set it.  After
-    that, you can omit the location to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default location set, the first pull will set it (use
+    --no-remember to avoid settting it). After that, you can omit the
+    location to use the default.  To change the default, use --remember. The
+    value will only be saved if the remote location can be accessed.
 
     Note: The location can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
@@ -990,7 +992,7 @@ class cmd_pull(Command):
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False,
+    def run(self, location=None, remember=None, overwrite=False,
             revision=None, verbose=False,
             directory=None, local=False,
             show_base=False):
@@ -1047,8 +1049,9 @@ class cmd_pull(Command):
             branch_from = Branch.open(location,
                 possible_transports=possible_transports)
             self.add_cleanup(branch_from.lock_read().unlock)
-
-            if branch_to.get_parent() is None or remember:
+            # Remembers if asked explicitly or no previous location is set
+            if (remember
+                or (remember is None and branch_to.get_parent() is None)):
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
@@ -1098,10 +1101,10 @@ class cmd_push(Command):
     do a merge (see bzr help merge) from the other branch, and commit that.
     After that you will be able to do a push without '--overwrite'.
 
-    If there is no default push location set, the first push will set it.
-    After that, you can omit the location to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default push location set, the first push will set it (use
+    --no-remember to avoid settting it).  After that, you can omit the
+    location to use the default.  To change the default, use --remember. The
+    value will only be saved if the remote location can be accessed.
     """
 
     _see_also = ['pull', 'update', 'working-trees']
@@ -1135,7 +1138,7 @@ class cmd_push(Command):
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False,
+    def run(self, location=None, remember=None, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
         stacked=False, strict=None, no_tree=False):
@@ -3645,10 +3648,10 @@ class cmd_selftest(Command):
         if typestring == "sftp":
             from bzrlib.tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
-        if typestring == "memory":
+        elif typestring == "memory":
             from bzrlib.tests import test_server
             return memory.MemoryServer
-        if typestring == "fakenfs":
+        elif typestring == "fakenfs":
             from bzrlib.tests import test_server
             return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
@@ -3688,10 +3691,10 @@ class cmd_selftest(Command):
                      Option('randomize', type=str, argname="SEED",
                             help='Randomize the order of tests using the given'
                                  ' seed or "now" for the current time.'),
-                     Option('exclude', type=str, argname="PATTERN",
-                            short_name='x',
-                            help='Exclude tests that match this regular'
-                                 ' expression.'),
+                     ListOption('exclude', type=str, argname="PATTERN",
+                                short_name='x',
+                                help='Exclude tests that match this regular'
+                                ' expression.'),
                      Option('subunit',
                         help='Output test progress via subunit.'),
                      Option('strict', help='Fail on missing dependencies or '
@@ -3748,6 +3751,10 @@ class cmd_selftest(Command):
                 "--benchmark is no longer supported from bzr 2.2; "
                 "use bzr-usertest instead")
         test_suite_factory = None
+        if not exclude:
+            exclude_pattern = None
+        else:
+            exclude_pattern = '(' + '|'.join(exclude) + ')'
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3758,7 +3765,7 @@ class cmd_selftest(Command):
                           "matching_tests_first": first,
                           "list_only": list_only,
                           "random_seed": randomize,
-                          "exclude_pattern": exclude,
+                          "exclude_pattern": exclude_pattern,
                           "strict": strict,
                           "load_list": load_list,
                           "debug_flags": debugflag,
@@ -3833,7 +3840,10 @@ class cmd_merge(Command):
     The source of the merge can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
     with bzr send. If neither is specified, the default is the upstream branch
-    or the branch most recently merged using --remember.
+    or the branch most recently merged using --remember.  The source of the
+    merge may also be specified in the form of a path to a file in another
+    branch:  in this case, only the modifications to that file are merged into
+    the current working tree.
 
     When merging from a branch, by default bzr will try to merge in all new
     work from the other branch, automatically determining an appropriate base
@@ -3846,7 +3856,9 @@ class cmd_merge(Command):
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
     not already contain revision BASE, such a merge is commonly referred to as
-    a "cherrypick".
+    a "cherrypick". Unlike a normal merge, Bazaar does not currently track
+    cherrypicks. The changes look like a normal commit, and the history of the
+    changes from the other branch is not stored in the commit.
 
     Revision numbers are always relative to the source branch.
 
@@ -3858,16 +3870,18 @@ class cmd_merge(Command):
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
     If there is no default branch set, the first merge will set it (use
-    --no-remember to *not* set it). After that, you can omit the branch to use
-    the default.  To change the default, use --remember. The value will only be
-    saved if the remote location can be accessed.
+    --no-remember to avoid settting it). After that, you can omit the branch
+    to use the default.  To change the default, use --remember. The value will
+    only be saved if the remote location can be accessed.
 
     The results of the merge are placed into the destination working
     directory, where they can be reviewed (with bzr diff), tested, and then
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given. The --force option can also be used to create a
+    --force is given.  If --force is given, then the changes from the source 
+    will be merged with the current working tree, including any uncommitted
+    changes in the tree.  The --force option can also be used to create a
     merge revision which has more than two parents.
 
     If one would like to merge changes from the working tree of the other
@@ -3945,7 +3959,11 @@ class cmd_merge(Command):
         merger = None
         allow_pending = True
         verified = 'inapplicable'
+
         tree = WorkingTree.open_containing(directory)[0]
+        if tree.branch.revno() == 0:
+            raise errors.BzrCommandError('Merging into empty branches not currently supported, '
+                                         'https://bugs.launchpad.net/bzr/+bug/308562')
 
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
@@ -3997,6 +4015,13 @@ class cmd_merge(Command):
         self.sanity_check_merger(merger)
         if (merger.base_rev_id == merger.other_rev_id and
             merger.other_rev_id is not None):
+            # check if location is a nonexistent file (and not a branch) to
+            # disambiguate the 'Nothing to do'
+            if merger.interesting_files:
+                if not merger.other_tree.has_filename(
+                    merger.interesting_files[0]):
+                    note("merger: " + str(merger))
+                    raise errors.PathsDoNotExist([location])
             note('Nothing to do.')
             return 0
         if pull and not preview:
@@ -4945,7 +4970,7 @@ class cmd_uncommit(Command):
 
         if not force:
             if not ui.ui_factory.confirm_action(
-                    'Uncommit these revisions',
+                    u'Uncommit these revisions',
                     'bzrlib.builtins.uncommit',
                     {}):
                 self.outf.write('Canceled\n')
@@ -5287,6 +5312,12 @@ class cmd_send(Command):
     source branch defaults to that containing the working directory, but can
     be changed using --from.
 
+    Both the submit branch and the public branch follow the usual behavior with
+    respect to --remember: If there is no default location set, the first send
+    will set it (use --no-remember to avoid settting it). After that, you can
+    omit the location to use the default.  To change the default, use
+    --remember. The value will only be saved if the location can be accessed.
+
     In order to calculate those changes, bzr must analyse the submit branch.
     Therefore it is most efficient for the submit branch to be a local mirror.
     If a public location is known for the submit_branch, that location is used
@@ -5361,7 +5392,7 @@ class cmd_send(Command):
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
-            no_patch=False, revision=None, remember=False, output=None,
+            no_patch=False, revision=None, remember=None, output=None,
             format=None, mail_to=None, message=None, body=None,
             strict=None, **kwargs):
         from bzrlib.send import send
@@ -5623,7 +5654,7 @@ class cmd_reconfigure(Command):
             unstacked=None):
         directory = bzrdir.BzrDir.open(location)
         if stacked_on and unstacked:
-            raise BzrCommandError("Can't use both --stacked-on and --unstacked")
+            raise errors.BzrCommandError("Can't use both --stacked-on and --unstacked")
         elif stacked_on is not None:
             reconfigure.ReconfigureStackedOn().apply(directory, stacked_on)
         elif unstacked:
