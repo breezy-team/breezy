@@ -305,11 +305,11 @@ class MessageEditorHooks(Hooks):
         Hooks.__init__(self, "bzrlib.msgeditor", "hooks")
         self.add_hook('set_commit_message',
             "Set a fixed commit message. "
-            "set_commit_message is called with the message so far and "
-            "bzrlib.commit.Commit object so you can also change e.g. revision "
-            "properties by editing commit.builder._revprops. "
-            "set_commit_message must return the message to use or None if it "
-            "should use the message editor as normal.", (2, 4))
+            "set_commit_message is called with the "
+            "bzrlib.commit.Commit object (so you can also change e.g. revision "
+            "properties by editing commit.builder._revprops) and the message "
+            "so far. set_commit_message must return the message to use or None"
+            " if it should use the message editor as normal.", (2, 4))
         self.add_hook('commit_message_template',
             "Called when a commit message is being generated. "
             "commit_message_template is called with the bzrlib.commit.Commit "
