@@ -34,46 +34,58 @@ from bzrlib.filters import (
 
 def export_tarball_item(tree, ball, root, dp, ie, subdir=None, filtered=False,
                    force_mtime=None):
+    """Export a tarball item
+        
+    :param tree: Tree to export
+    :param ball: Tarball to export to
+    :param dp: Return value of _export_iter_entities
+    :param ie: Return value of _export_iter_entities
+    :param filtered: Whether to apply filters
+    :param subdir: Sub directory to export
+    :param force_mtime: Option mtime to force, instead of using
+        tree timestamps.
+    """
     
-        filename = osutils.pathjoin(root, dp).encode('utf8')
-        item = tarfile.TarInfo(filename)
-        if force_mtime is not None:
-            item.mtime = force_mtime
-        else:
-            item.mtime = tree.get_file_mtime(ie.file_id, dp)
-        if ie.kind == "file":
-            item.type = tarfile.REGTYPE
-            if tree.is_executable(ie.file_id):
-                item.mode = 0755
-            else:
-                item.mode = 0644
-            if filtered:
-                chunks = tree.get_file_lines(ie.file_id)
-                filters = tree._content_filter_stack(dp)
-                context = ContentFilterContext(dp, tree, ie)
-                contents = filtered_output_bytes(chunks, filters, context)
-                content = ''.join(contents)
-                item.size = len(content)
-                fileobj = StringIO.StringIO(content)
-            else:
-                item.size = tree.get_file_size(ie.file_id)
-                fileobj = tree.get_file(ie.file_id)
-        elif ie.kind == "directory":
-            item.type = tarfile.DIRTYPE
-            item.name += '/'
-            item.size = 0
+    
+    filename = osutils.pathjoin(root, dp).encode('utf8')
+    item = tarfile.TarInfo(filename)
+    if force_mtime is not None:
+        item.mtime = force_mtime
+    else:
+        item.mtime = tree.get_file_mtime(ie.file_id, dp)
+    if ie.kind == "file":
+        item.type = tarfile.REGTYPE
+        if tree.is_executable(ie.file_id):
             item.mode = 0755
-            fileobj = None
-        elif ie.kind == "symlink":
-            item.type = tarfile.SYMTYPE
-            item.size = 0
-            item.mode = 0755
-            item.linkname = tree.get_symlink_target(ie.file_id)
-            fileobj = None
         else:
-            raise errors.BzrError("don't know how to export {%s} of kind %r" %
-                           (ie.file_id, ie.kind))
-        return (item, fileobj)
+            item.mode = 0644
+        if filtered:
+            chunks = tree.get_file_lines(ie.file_id)
+            filters = tree._content_filter_stack(dp)
+            context = ContentFilterContext(dp, tree, ie)
+            contents = filtered_output_bytes(chunks, filters, context)
+            content = ''.join(contents)
+            item.size = len(content)
+            fileobj = StringIO.StringIO(content)
+        else:
+            item.size = tree.get_file_size(ie.file_id)
+            fileobj = tree.get_file(ie.file_id)
+    elif ie.kind == "directory":
+        item.type = tarfile.DIRTYPE
+        item.name += '/'
+        item.size = 0
+        item.mode = 0755
+        fileobj = None
+    elif ie.kind == "symlink":
+        item.type = tarfile.SYMTYPE
+        item.size = 0
+        item.mode = 0755
+        item.linkname = tree.get_symlink_target(ie.file_id)
+        fileobj = None
+    else:
+        raise errors.BzrError("don't know how to export {%s} of kind %r" %
+                       (ie.file_id, ie.kind))
+    return (item, fileobj)
 
 
 def export_tarball(tree, ball, root, subdir=None, filtered=False,
