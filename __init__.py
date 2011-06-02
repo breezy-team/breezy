@@ -24,10 +24,12 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
+import re
 
 import bzrlib
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
+from bzrlib import bugtracker
 
 from info import (
     bzr_plugin_version as version_info,
@@ -110,23 +112,16 @@ def debian_changelog_commit_message(commit, start_message):
     return "".join(changes)
 
 def debian_changelog_commit(commit, start_message):
-    print "debian_changelog_commit()"
     changes = debian_changelog_commit_message(commit, start_message)
 
-    import re
-    from bzrlib import bugtracker
     lpmatch = re.findall(r"lp:\s+\#\d+(?:,\s*\#\d+)*", changes, re.I)
     bugs = re.findall(r"\#?\s?(\d+)", ' '.join(lpmatch), re.I)
-    print bugs
     bugs_revision_property = ''
     for bug in bugs:
-        print "bug: " + bug
-        print "url: " + bugtracker.get_bug_url("lp", commit.work_tree.branch, bug)
-        bugs_revision_property = bugs_revision_property + bugtracker.get_bug_url("lp", commit.work_tree.branch, bug) + " fixed\n"
-    print bugs_revision_property
+        bugs_revision_property = bugs_revision_property + \
+          bugtracker.get_bug_url("lp", commit.work_tree.branch, bug) + \
+          " fixed\n"
     commit.builder._revprops["bugs"] = bugs_revision_property
-    #commit.builder._revprops["bugs"] = "https://launchpad.net/bugs/6543 fixed\nhttps://launchpad.net/bugs/5431 fixed"
-    #print "bugtracker: " + bugtracker.get_bug_url("lp", commit.work_tree.branch, "1234")
     return debian_changelog_commit_message(commit, start_message)
 
 def changelog_merge_hook_factory(merger):
