@@ -324,15 +324,15 @@ class MessageEditorHooks(Hooks):
 hooks = MessageEditorHooks()
 
 
-def set_commit_message(commit):
+def set_commit_message(commit, start_message=None):
     """Sets the commit message.
     :param commit: Commit object for the active commit.
     :return: The commit message or None to continue using the message editor
     """
-    message = None
+    start_message = None
     for hook in hooks['set_commit_message']:
-        message = hook(message, commit)
-    return message
+        start_message = hook(commit, start_message)
+    return start_message
 
 def generate_commit_message_template(commit, start_message=None):
     """Generate a commit message template.
