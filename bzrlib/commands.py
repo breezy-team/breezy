@@ -488,8 +488,11 @@ class Command(object):
         """
         doc = self.help()
         if doc:
-            # Note: If cmd_gettext translates ':Usage:\n', the section will
-            # be shown after "Description" section.
+            # Note: If self.gettext() translates ':Usage:\n', the section will
+            # be shown after "Description" section and we don't want to
+            # translate the usage string.
+            # Though, bzr export-pot don't exports :Usage: section and it must
+            # not be translated.
             doc = self.gettext(doc)
         else:
             doc = gettext("No help for this command.")
