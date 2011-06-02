@@ -178,14 +178,16 @@ def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
         ball.close()
 
 
-def plain_tar_exporter(tree, dest, root, subdir, compression=None,
-                       filtered=False, force_mtime=None):
+def plain_tar_exporter(tree, dest, root, subdir, compression=None, filtered=False, force_mtime=None,
+                       per_file_timestamps=False, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    if dest == '-':
+    if fileobj is not None:
+        stream = fileobj  
+    elif dest == '-':
         stream = sys.stdout
     else:
         stream = open(dest, 'wb')
@@ -196,13 +198,14 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None,
         ball.close()
 
 
-def tar_xz_exporter(tree, dest, root, subdir, filtered=False,
-                    force_mtime=None):
+def tar_xz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                    per_file_timestamps=False, fileobj=None):
     return tar_lzma_exporter(tree, dest, root, subdir, filtered=filtered,
-        force_mtime=force_mtime, compression_format="xz")
+        force_mtime=force_mtime,per_file_timestamps=per_file_timestamps, fileobj=fileobj, compression_format="xz")
 
 
-def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, compression_format="alone"):
+def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                      per_file_timestamps=False, fileobj=None, compression_format="alone"):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -211,6 +214,9 @@ def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None
     if dest == '-':
         raise errors.BzrError("Writing to stdout not supported for .tar.lzma")
 
+    if fileobj is not None:
+        raise errors.BzrError("Writing to fileobject not supported for .tar.lzma")
+        
     try:
         import lzma
     except ImportError, e:
