@@ -59,10 +59,10 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir, filtered, force_mtime):
+    def _loader(tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj):
         func = pyutils.get_named_object(module, funcname)
         return func(tree, dest, root, subdir, filtered=filtered,
-                    force_mtime=force_mtime)
+                    force_mtime=force_mtime, per_file_timestamps=per_file_timestamps, fileobj=fileobj)
     register_exporter(scheme, extensions, _loader)
     
 def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, filtered=False,
@@ -117,7 +117,7 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, f
     tree.lock_read()
     try:
         return _exporters[format](tree, dest, root, subdir, filtered=filtered,
-                                  force_mtime=force_mtime)
+                                  force_mtime=force_mtime, fileobj=fileobj)
     finally:
         tree.unlock()
 
