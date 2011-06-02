@@ -17,7 +17,7 @@
 """Tests for display of exceptions."""
 
 import os
-import sys
+import re
 
 from bzrlib import (
     bzrdir,
@@ -58,7 +58,8 @@ class TestExceptionReporting(TestCase):
             env_changes={"LANG": "C", "LC_ALL": "C"},
             universal_newlines=True,
             retcode=errors.EXIT_ERROR)
-        self.assertContainsRe(err, r"bzr: ERROR: .*'\\xa0'.* unsupported")
+        self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported",
+            flags=re.MULTILINE)
         self.assertEquals(out, "")
 
 
