@@ -27,11 +27,13 @@ from bzrlib.filters import (
     )
 
 
-def dir_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None):
+def dir_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None, fileobj=None):
     """Export this tree to a new directory.
 
     `dest` should either not exist or should be empty. If it does not exist it
     will be created holding the contents of this tree.
+    
+    :param fileobj: Is not used in this exporter
 
     :note: If the export fails, the destination directory will be
            left in an incompletely exported state: export is not transactional.
@@ -69,6 +71,7 @@ def dir_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
                (ie.file_id, ie.kind))
+        yield
     # The data returned here can be in any order, but we've already created all
     # the directories
     flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
@@ -92,3 +95,4 @@ def dir_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None
         else:
             mtime = tree.get_file_mtime(tree.path2id(relpath), relpath)
         os.utime(fullpath, (mtime, mtime))
+        yield
