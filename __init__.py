@@ -109,6 +109,25 @@ def debian_changelog_commit_message(commit, start_message):
     changes = strip_changelog_message(changes)
     return "".join(changes)
 
+def debian_changelog_commit(commit, start_message):
+    print "debian_changelog_commit()"
+    changes = debian_changelog_commit_message(commit, start_message)
+
+    import re
+    from bzrlib import bugtracker
+    lpmatch = re.findall(r"lp:\s+\#\d+(?:,\s*\#\d+)*", changes, re.I)
+    bugs = re.findall(r"\#?\s?(\d+)", ' '.join(lpmatch), re.I)
+    print bugs
+    bugs_revision_property = ''
+    for bug in bugs:
+        print "bug: " + bug
+        print "url: " + bugtracker.get_bug_url("lp", commit.work_tree.branch, bug)
+        bugs_revision_property = bugs_revision_property + bugtracker.get_bug_url("lp", commit.work_tree.branch, bug) + " fixed\n"
+    print bugs_revision_property
+    commit.builder._revprops["bugs"] = bugs_revision_property
+    #commit.builder._revprops["bugs"] = "https://launchpad.net/bugs/6543 fixed\nhttps://launchpad.net/bugs/5431 fixed"
+    #print "bugtracker: " + bugtracker.get_bug_url("lp", commit.work_tree.branch, "1234")
+    return debian_changelog_commit_message(commit, start_message)
 
 def changelog_merge_hook_factory(merger):
     from bzrlib.plugins.builddeb import merge_changelog
@@ -170,6 +189,12 @@ else:
             debian_changelog_commit_message,
             "Use changes documented in debian/changelog to suggest "
             "the commit message")
+    if bzrlib.version_info[0] >= 2 and bzrlib.version_info[1] >= 4:
+        install_lazy_named_hook(
+            "bzrlib.msgeditor", "hooks", "set_commit_message",
+                debian_changelog_commit,
+                "Use changes documented in debian/changelog to set "
+                "the commit message and bugs fixed")
     install_lazy_named_hook(
         "bzrlib.merge", "Merger.hooks",
         'merge_file_content', changelog_merge_hook_factory,
