@@ -102,7 +102,8 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False,
     for dp, ie in _export_iter_entries(tree, subdir):
 
         result = export_tarball_item(tree, ball, root, dp, ie, subdir, filtered, force_mtime)
-        yield ball.addfile(result[0], result[1])
+        ball.addfile(result[0], result[1])
+        yield
 
     
 
@@ -142,12 +143,12 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         # Python < 2.7 doesn't support the mtime argument
         zipstream = gzip.GzipFile(basename, 'w', fileobj=stream)
     ball = tarfile.open(None, 'w|', fileobj=zipstream)
-    for ball in export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime):
-        pass
-    zipstream.close()
-    if not is_stdout:
-        stream.close()
+    try:
+        return export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
+    finally:
+        zipstream.close()
+        if not is_stdout:
+            stream.close()
 
 
 def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
@@ -165,10 +166,10 @@ def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         # upstream python bug http://bugs.python.org/issue8396
         # (fixed in Python 2.6.5 and 2.7b1)
         ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:bz2')
-    for ball in export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime):
-        pass
-    ball.close()
+    try:
+        return export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
+    finally:
+        ball.close()
 
 
 def plain_tar_exporter(tree, dest, root, subdir, compression=None,
@@ -183,10 +184,10 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None,
     else:
         stream = open(dest, 'wb')
     ball = tarfile.open(None, 'w|', stream)
-    for ball in export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime):
-        pass
-    ball.close()
+    try:
+        export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
+    finally:               
+        ball.close()
 
 
 def tar_xz_exporter(tree, dest, root, subdir, filtered=False,
@@ -212,8 +213,8 @@ def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',
             options={"format": compression_format})
     ball = tarfile.open(None, 'w:', fileobj=stream)
-    for ball in export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime):
-        pass
-    ball.close()
+    try:
+        return export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
+    finally:
+        ball.close()
 
