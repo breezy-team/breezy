@@ -29,7 +29,6 @@ import re
 import bzrlib
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
-from bzrlib import bugtracker
 
 from info import (
     bzr_plugin_version as version_info,
@@ -111,7 +110,12 @@ def debian_changelog_commit_message(commit, start_message):
     changes = strip_changelog_message(changes)
     return "".join(changes)
 
+
 def debian_changelog_commit(commit, start_message):
+    """hooked into bzrlib.msgeditor set_commit_message to set the commit
+    message from debian/changelog and set any LP: #1234 to bug fixed tags"""
+    from bzrlib import bugtracker
+    
     changes = debian_changelog_commit_message(commit, start_message)
 
     lpmatch = re.findall(r"lp:\s+\#\d+(?:,\s*\#\d+)*", changes, re.I)
@@ -123,6 +127,7 @@ def debian_changelog_commit(commit, start_message):
           " fixed\n"
     commit.builder._revprops["bugs"] = bugs_revision_property
     return debian_changelog_commit_message(commit, start_message)
+
 
 def changelog_merge_hook_factory(merger):
     from bzrlib.plugins.builddeb import merge_changelog
