@@ -572,9 +572,8 @@ class DistributionBranch(object):
                     try:
                         graph = branch.branch.repository.get_graph(
                                 self.branch.repository)
-                        other_revid = branch.revid_of_version(version)
-                        if len(graph.heads([other_revid,
-                                    self.branch.last_revision()])) == 1:
+                        if graph.is_ancestor(self.branch.last_revision(),
+                                branch.revid_of_version(version)):
                             return branch
                     finally:
                         branch.branch.unlock()
@@ -585,9 +584,8 @@ class DistributionBranch(object):
                     try:
                         graph = branch.branch.repository.get_graph(
                                 self.branch.repository)
-                        other_revid = branch.revid_of_version(version)
-                        if len(graph.heads([other_revid,
-                                    self.branch.last_revision()])) == 1:
+                        if graph.is_ancestor(self.branch.last_revision(),
+                                branch.revid_of_version(version)):
                             return branch
                     finally:
                         branch.branch.unlock()
@@ -622,31 +620,27 @@ class DistributionBranch(object):
         try:
             for branch in reversed(self.get_lesser_branches()):
                 if branch.has_upstream_version(version, md5=md5):
-                    # Check for divergenge.
+                    # Check that they haven't diverged
                     other_up_branch = branch.upstream_branch
                     other_up_branch.lock_read()
                     try:
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
-                        other_revid = branch.revid_of_upstream_version(
-                                version)
-                        if len(graph.heads([other_revid,
-                                    up_branch.last_revision()])) == 1:
+                        if graph.is_ancestor(up_branch.last_revision(),
+                                branch.revid_of_upstream_version(version)):
                             return branch
                     finally:
                         other_up_branch.unlock()
             for branch in self.get_greater_branches():
                 if branch.has_upstream_version(version, md5=md5):
-                    # Check for divergenge.
+                    # Check that they haven't diverged
                     other_up_branch = branch.upstream_branch
                     other_up_branch.lock_read()
                     try:
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
-                        other_revid = branch.revid_of_upstream_version(
-                                version)
-                        if len(graph.heads([other_revid,
-                                    up_branch.last_revision()])) == 1:
+                        if graph.is_ancestor(up_branch.last_revision(),
+                                branch.revid_of_upstream_version(version)):
                             return branch
                     finally:
                         other_up_branch.unlock()
