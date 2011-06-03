@@ -98,14 +98,14 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False, force_mtime=No
         
         yield    
 
-def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
-                 per_file_timestamps=False, fileobj=None):
+def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
     import gzip
+    
     if force_mtime is not None:
         root_mtime = force_mtime
     elif (getattr(tree, "repository", None) and
@@ -119,6 +119,7 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
         root_mtime = None
 
     is_stdout = False
+    
     if fileobj is not None:
         stream = fileobj
     elif dest == '-':
@@ -137,12 +138,15 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
         # Python < 2.7 doesn't support the mtime argument
         zipstream = gzip.GzipFile(basename, 'w', fileobj=stream)
     ball = tarfile.open(None, 'w|', fileobj=zipstream)
-    try:
-        return export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
-    finally:
-        zipstream.close()
-        if not is_stdout:
-            stream.close()
+
+    for _ in export_tarball(tree, ball, root, subdir, filtered, force_mtime):
+        
+        yield
+
+    zipstream.close()
+    
+    if not is_stdout:
+        stream.close()
 
 
 def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
@@ -163,10 +167,12 @@ def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
         # upstream python bug http://bugs.python.org/issue8396
         # (fixed in Python 2.6.5 and 2.7b1)
         ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:bz2')
-    try:
-        return export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
-    finally:
-        ball.close()
+
+    for _ in export_tarball(tree, ball, root, subdir, filtered, force_mtime):
+        
+        yield
+
+    ball.close()
 
 
 def plain_tar_exporter(tree, dest, root, subdir, compression=None, filtered=False, force_mtime=None,
@@ -183,25 +189,26 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None, filtered=Fals
     else:
         stream = open(dest, 'wb')
     ball = tarfile.open(None, 'w|', stream)
-    try:
-        export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
-    finally:               
-        ball.close()
+
+    for _ in export_tarball(tree, ball, root, subdir, filtered, force_mtime):
+
+        yield
+
+    ball.close()
 
 
-def tar_xz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
-                    per_file_timestamps=False, fileobj=None):
-    return tar_lzma_exporter(tree, dest, root, subdir, filtered=filtered,
-        force_mtime=force_mtime,per_file_timestamps=per_file_timestamps, fileobj=fileobj, compression_format="xz")
+def tar_xz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None):
+    
+    return tar_lzma_exporter(tree, dest, root, subdir, filtered, force_mtime,per_file_timestamps, fileobj, "xz")
 
 
-def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
-                      per_file_timestamps=False, fileobj=None, compression_format="alone"):
+def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None, compression_format="alone"):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
+    
     if dest == '-':
         raise errors.BzrError("Writing to stdout not supported for .tar.lzma")
 
@@ -216,8 +223,10 @@ def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',
             options={"format": compression_format})
     ball = tarfile.open(None, 'w:', fileobj=stream)
-    try:
-        return export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime)
-    finally:
-        ball.close()
+
+    for _ in export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime):
+        
+        yield
+
+    ball.close()
 

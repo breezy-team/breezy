@@ -44,7 +44,7 @@ _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
-def zip_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None):
+def zip_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -52,7 +52,9 @@ def zip_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None
     """
 
     compression = zipfile.ZIP_DEFLATED
-    if dest == "-":
+    if fileobj is not None:
+        dest = fileobj
+    elif dest == "-":
         dest = sys.stdout
     zipf = zipfile.ZipFile(dest, "w", compression)
     try:
@@ -100,6 +102,7 @@ def zip_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, tree.get_symlink_target(file_id))
+            
             yield
 
         zipf.close()

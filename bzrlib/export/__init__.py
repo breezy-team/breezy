@@ -61,13 +61,10 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
     """
     def _loader(tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj):
         func = pyutils.get_named_object(module, funcname)
-        return func(tree, dest, root, subdir, filtered=filtered,
-                    force_mtime=force_mtime, per_file_timestamps=per_file_timestamps, fileobj=fileobj)
+        return func(tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj)
     register_exporter(scheme, extensions, _loader)
     
-def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, filtered=False,
-           per_file_timestamps=False, fileobj=None):
-    
+def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, filtered=False, per_file_timestamps=False, fileobj=None):
     """Returns a generator that exports the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -115,15 +112,15 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, f
     trace.mutter('export version %r', tree)
 
     tree.lock_read()
-    try:
-        return _exporters[format](tree, dest, root, subdir, filtered=filtered,
-                                  force_mtime=force_mtime, fileobj=fileobj)
-    finally:
-        tree.unlock()
+
+    for _ in _exporters[format](tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj):
+        
+        yield
+        
+    tree.unlock()
 
 
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
-           per_file_timestamps=False, fileobj=None):
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False, per_file_timestamps=False, fileobj=None):
     """Export the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -147,11 +144,9 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
         for every file so will be significantly slower.
     :param fileobj: Optional file object to use
     """
-    for _ in get_export_generator(tree, dest, format=format, root=root, subdir=subdir,
-                                  filtered=filtered, per_file_timestamps=per_file_timestamps,fileobj=fileobj):
+    for _ in get_export_generator(tree, dest, format, root, subdir, filtered, per_file_timestamps, fileobj):
+        
         pass
-
-
 
 def get_root_name(dest):
     """Get just the root name for an export.
@@ -199,6 +194,7 @@ def _export_iter_entries(tree, subdir, skip_special=True):
             final_path = path
         if not tree.has_filename(path):
             continue
+        
         yield final_path, entry
 
 
