@@ -584,7 +584,7 @@ if has_win32api:
         try:
             handle = win32api.OpenProcess(1, False, pid) # PROCESS_TERMINATE
         except pywintypes.error, e:
-            if e[0] == 1: # ERROR_ACCESS_DENIED
+            if e[0] == 5: # ERROR_ACCESS_DENIED
                 # Probably something alive we're not allowed to kill
                 return False
             elif e[0] == 87: # ERROR_INVALID_PARAMETER
@@ -605,7 +605,7 @@ elif has_ctypes:
         handle = _OpenProcess(1, False, pid) # PROCESS_TERMINATE
         if not handle:
             errorcode = ctypes.GetLastError()
-            if errorcode == 1: # ERROR_ACCESS_DENIED
+            if errorcode == 5: # ERROR_ACCESS_DENIED
                 # Probably something alive we're not allowed to kill
                 return False
             elif errorcode == 87: # ERROR_INVALID_PARAMETER
