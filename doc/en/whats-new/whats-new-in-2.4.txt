@@ -49,6 +49,12 @@ Deprecated command synonyms
 Two built-in synonyms for ``bzr branch`` have been deprecated: ``clone`` and
 ``get``.
 
+Command options
+***************
+
+* The ``bzr log`` and ``bzr missing`` commands now accept ``-S`` as a
+  shorthand for ``--short``.
+
 Configuration files
 *******************
 

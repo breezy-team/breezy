@@ -24,6 +24,9 @@ New Features
   exception caused while running bzr serve.  (Jonathan Riddell,
   #274578)
 
+* Support ``-S`` as an alias for ``--short`` for the ``log`` and
+  ``missing`` commands. (Martin von Gagern, #38655)
+
 Improvements
 ************
 
