@@ -502,13 +502,13 @@ if 'bdist_wininst' in sys.argv:
             # help pages
             'data_files': find_docs(),
             # for building pyrex extensions
-            'cmdclass': {'build_ext': build_ext_if_possible},
+            'cmdclass': command_classes,
            }
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)
-    
+
     setup(**ARGS)
 
 elif 'py2exe' in sys.argv:
@@ -725,13 +725,14 @@ elif 'py2exe' in sys.argv:
             self.optimize = 2
 
     if __name__ == '__main__':
+        command_classes['install_data'] = install_data_with_bytecompile
+        command_classes['py2exe'] = py2exe_no_oo_exe
         setup(options=options_list,
               console=console_targets,
               windows=gui_targets,
               zipfile='lib/library.zip',
               data_files=data_files,
-              cmdclass={'install_data': install_data_with_bytecompile,
-                        'py2exe': py2exe_no_oo_exe},
+              cmdclass=command_classes,
               )
 
 else:
