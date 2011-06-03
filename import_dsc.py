@@ -74,18 +74,18 @@ from bzrlib.plugins.builddeb.util import (
     FORMAT_3_0_NATIVE,
     export,
     get_commit_info_from_changelog,
-    make_pristine_tar_delta,
     md5sum_filename,
     open_file_via_transport,
     open_transport,
     safe_decode,
     subprocess_setup,
     )
-from bzrlib.plugins.builddeb.upstream import (
-    PristineTarSource,
-    )
 from bzrlib.plugins.builddeb.upstream.branch import (
     UpstreamBranchSource,
+    )
+from bzrlib.plugins.builddeb.upstream.pristinetar import (
+    PristineTarSource,
+    make_pristine_tar_delta,
     )
 
 
