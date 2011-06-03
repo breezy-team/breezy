@@ -24,6 +24,7 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
+import re
 
 import bzrlib
 from bzrlib.commands import plugin_cmds
@@ -110,6 +111,20 @@ def debian_changelog_commit_message(commit, start_message):
     return "".join(changes)
 
 
+def debian_changelog_commit(commit, start_message):
+    """hooked into bzrlib.msgeditor set_commit_message to set the commit
+    message from debian/changelog and set any LP: #1234 to bug fixed tags"""
+   
+    changes = debian_changelog_commit_message(commit, start_message)
+    if changes is None:
+        return None
+
+    bugs_fixed = util.find_bugs_fixed([changes], commit.work_tree.branch)
+    commit.builder._revprops["bugs"] = "\n".join(bugs_fixed)
+    
+    return debian_changelog_commit_message(commit, start_message)
+
+
 def changelog_merge_hook_factory(merger):
     from bzrlib.plugins.builddeb import merge_changelog
     return merge_changelog.ChangeLogFileMerge(merger)
@@ -170,6 +185,12 @@ else:
             debian_changelog_commit_message,
             "Use changes documented in debian/changelog to suggest "
             "the commit message")
+    if bzrlib.version_info[0] >= 2 and bzrlib.version_info[1] >= 4:
+        install_lazy_named_hook(
+            "bzrlib.msgeditor", "hooks", "set_commit_message",
+                debian_changelog_commit,
+                "Use changes documented in debian/changelog to set "
+                "the commit message and bugs fixed")
     install_lazy_named_hook(
         "bzrlib.merge", "Merger.hooks",
         'merge_file_content', changelog_merge_hook_factory,
