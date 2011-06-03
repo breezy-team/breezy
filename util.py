@@ -396,7 +396,7 @@ def get_parent_dir(target):
 def find_bugs_fixed(changes, branch, _lplib=None):
     """Find the bugs marked fixed in a changelog entry.
 
-    :param changes: The contents of the changelog entry.
+    :param changes: A list of the contents of the changelog entry.
     :param branch: Bazaar branch associated with the package
     :return: String with bugs closed, as appropriate for a Bazaar "bugs" revision 
         property.
