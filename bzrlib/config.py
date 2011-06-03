@@ -2702,6 +2702,8 @@ class cmd_config(commands.Command):
                         ' the configuration file'),
         ]
 
+    _see_also = ['configuration']
+
     @commands.display_command
     def run(self, name=None, all=False, directory=None, scope=None,
             remove=False):
