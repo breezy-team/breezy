@@ -44,8 +44,8 @@ _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
-def zip_exporter(tree, dest, root, subdir=None, filtered=False, 
-                 force_mtime=None, per_file_timestamps=False, fileobj=None):
+def zip_exporter_generator(tree, dest, root, subdir=None, filtered=False, 
+                 force_mtime=None, fileobj=None):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -113,3 +113,10 @@ def zip_exporter(tree, dest, root, subdir=None, filtered=False,
         os.remove(dest)
         from bzrlib.errors import BzrError
         raise BzrError("Can't export non-ascii filenames to zip")
+    
+def zip_exporter(tree, dest, root, subdir=None, filtered=False, 
+                 force_mtime=None, fileobj=None):
+    
+    for _ in zip_exporter_generator(tree, dest, root, subdir, filtered,
+                                    force_mtime, fileobj):
+        pass
