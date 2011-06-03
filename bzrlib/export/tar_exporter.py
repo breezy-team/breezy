@@ -31,14 +31,16 @@ from bzrlib.filters import (
     filtered_output_bytes,
     )
 
-def export_tarball_item(tree, root, final_path, entry, filtered=False, force_mtime=None):
-    """Export a tarball item
+def prepare_tarball_item(tree, root, final_path, entry, filtered=False, force_mtime=None):
+    """Prepare a tarball item for exporting
         
     :param tree: Tree to export
     :param final_path: Final path to place item
     :param entry: Entry to export
     :param filtered: Whether to apply filters
     :param force_mtime: Option mtime to force, instead of using tree timestamps.
+    
+    Returns a (tarinfo, fileobj) tuple
     """
     
     filename = osutils.pathjoin(root, final_path).encode('utf8')
@@ -93,7 +95,7 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False, force_mtime=No
     """
     for final_path, entry in _export_iter_entries(tree, subdir):
 
-        (item, fileobj) = export_tarball_item(tree, root, final_path, entry, filtered, force_mtime)
+        (item, fileobj) = prepare_tarball_item(tree, root, final_path, entry, filtered, force_mtime)
         ball.addfile(item, fileobj)
         
         yield    
