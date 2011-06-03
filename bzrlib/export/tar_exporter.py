@@ -85,7 +85,7 @@ def prepare_tarball_item(tree, root, final_path, entry, filtered=False,
     
     return (item, fileobj)
 
-def export_tarball(tree, ball, root, subdir=None, filtered=False, 
+def export_tarball_generator(tree, ball, root, subdir=None, filtered=False, 
                    force_mtime=None):
     """Export tree contents to a tarball. This is a generator.
 
@@ -103,9 +103,15 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False,
         ball.addfile(item, fileobj)
         
         yield    
+        
+def export_tarball(tree, ball, root, subdir=None, filtered=False, force_mtime=None):
+    
+    for _ in export_tarball_generator(tree, ball, root, subdir, filtered, force_mtime):
+        
+        pass
 
-def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, 
-                 per_file_timestamps=False, fileobj=None):
+def tgz_exporter_generator(tree, dest, root, subdir, filtered=False, force_mtime=None, 
+                 fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -147,7 +153,7 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
         zipstream = gzip.GzipFile(basename, 'w', fileobj=stream)
     ball = tarfile.open(None, 'w|', fileobj=zipstream)
 
-    for _ in export_tarball(tree, ball, root, subdir, filtered, force_mtime):
+    for _ in export_tarball_generator(tree, ball, root, subdir, filtered, force_mtime):
         
         yield
 
@@ -155,10 +161,17 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
     
     if not is_stdout:
         stream.close()
+        
+def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, fileobj=None):
+    
+    for _ in tgz_exporter_generator(tree, dest, root, subdir, filtered, force_mtime, 
+                                    fileobj):
+        
+        pass
 
 
-def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
-                 per_file_timestamps=False, fileobj=None):
+def tbz_exporter_generator(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                 fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -176,15 +189,22 @@ def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
         # (fixed in Python 2.6.5 and 2.7b1)
         ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:bz2')
 
-    for _ in export_tarball(tree, ball, root, subdir, filtered, force_mtime):
+    for _ in export_tarball_generator(tree, ball, root, subdir, filtered, force_mtime):
         
         yield
 
     ball.close()
+    
+def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                 fileobj=None):
+    
+    for _ in tbz_exporter_generator(tree, dest, root, subdir, filtered, force_mtime, 
+                                    fileobj):
+        pass
 
 
-def plain_tar_exporter(tree, dest, root, subdir, compression=None, filtered=False, force_mtime=None,
-                       per_file_timestamps=False, fileobj=None):
+def plain_tar_exporter_generator(tree, dest, root, subdir, compression=None, filtered=False,
+                                force_mtime=None, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -198,23 +218,35 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None, filtered=Fals
         stream = open(dest, 'wb')
     ball = tarfile.open(None, 'w|', stream)
 
-    for _ in export_tarball(tree, ball, root, subdir, filtered, force_mtime):
+    for _ in export_tarball_generator(tree, ball, root, subdir, filtered, force_mtime):
 
         yield
 
     ball.close()
-
-
-def tar_xz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
-                     per_file_timestamps=False, fileobj=None):
     
-    return tar_lzma_exporter(tree, dest, root, subdir, filtered, force_mtime,
-                             per_file_timestamps, fileobj, "xz")
+def plain_tar_exporter(tree, dest, root, subdir, compression=None, filtered=False, 
+                       force_mtime=None, fileobj=None):
+    
+    for _ in plain_tar_exporter_generator(tree, dest, root, subdir, compression, 
+                                          filtered, force_mtime, fileobj): 
+        pass 
 
 
-def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, 
-                      force_mtime=None, per_file_timestamps=False, 
-                      fileobj=None, compression_format="alone"):
+def tar_xz_exporter_generator(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                     fileobj=None):
+    
+    return tar_lzma_exporter_generator(tree, dest, root, subdir, filtered, force_mtime,
+                              fileobj, "xz")
+    
+def tar_xz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                     fileobj=None):
+    for _ in tar_xz_exporter_generator(tree, dest, root, subdir, filtered, force_mtime,
+                                       fileobj):
+        pass
+
+
+def tar_lzma_exporter_generator(tree, dest, root, subdir, filtered=False, 
+                      force_mtime=None, fileobj=None, compression_format="alone"):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -236,10 +268,17 @@ def tar_lzma_exporter(tree, dest, root, subdir, filtered=False,
             options={"format": compression_format})
     ball = tarfile.open(None, 'w:', fileobj=stream)
 
-    for _ in export_tarball(tree, ball, root, subdir, filtered=filtered, 
+    for _ in export_tarball_generator(tree, ball, root, subdir, filtered=filtered, 
                             force_mtime=force_mtime):
         
         yield
 
     ball.close()
 
+def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                  fileobj=None, compression_format="alone"):
+    
+    for _ in tar_lzma_exporter_generator(tree, dest, root, subdir, filtered, force_mtime,
+                                         fileobj, compression_format):
+        
+        pass
