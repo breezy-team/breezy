@@ -113,4 +113,6 @@ class CommitMessageTests(TestCaseWithTransport):
         commit = self._Commit(wt)
         self.assertEqual(debian_changelog_commit(commit, None),
                 "* fix LP: #1234\n* close LP: #4321\n")
-        self.assertEqual(commit.builder._revprops, {'bugs': 'https://launchpad.net/bugs/1234 fixed\nhttps://launchpad.net/bugs/4321 fixed\n'})
+        self.assertEqual(commit.builder._revprops, 
+                        {'bugs': 'https://launchpad.net/bugs/1234 fixed\n'
+                                 'https://launchpad.net/bugs/4321 fixed'})
