@@ -419,10 +419,10 @@ def find_bugs_fixed(changes, branch, _lplib=None):
         for match in re.finditer("lp:\s+\#\d+(?:,\s*\#\d+)*",
                 change, re.IGNORECASE):
             closes_list = match.group(0)
-            for match in re.finditer("\d+", closes_list):
-                bug_url = bugtracker.get_bug_url("lp", branch, match.group(0))
+            for match in re.finditer(r"\#?\s?(\d+)", closes_list):
+                bug_url = bugtracker.get_bug_url("lp", branch, match.group(1))
                 bugs.append(bug_url + " fixed")
-                deb_bugs = _lplib.debian_bugs_for_ubuntu_bug(match.group(0))
+                deb_bugs = _lplib.debian_bugs_for_ubuntu_bug(match.group(1))
                 if len(deb_bugs) == 1:
                     bug_url = bugtracker.get_bug_url("deb", branch, deb_bugs[0])
                     bugs.append(bug_url + " fixed")
