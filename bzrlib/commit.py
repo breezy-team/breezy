@@ -52,7 +52,6 @@
 from bzrlib import (
     debug,
     errors,
-    revision,
     trace,
     tree,
     ui,
