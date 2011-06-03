@@ -20,6 +20,7 @@
 
 from base64 import (
     standard_b64decode,
+    standard_b64encode,
     )
 import errno
 import os
@@ -233,3 +234,34 @@ class PristineTarSource(UpstreamSource):
                 export(tree, dest_filename, require_per_file_timestamps=True)
         finally:
             shutil.rmtree(tmpdir)
+
+    def make_pristine_tar_delta(self, tree, tarball_path):
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
+        try:
+            dest = os.path.join(tmpdir, "orig")
+            tree.lock_read()
+            try:
+                for (dp, ie) in tree.inventory.iter_entries():
+                    ie._read_tree_state(dp, tree)
+                export(tree, dest, format='dir')
+            finally:
+                tree.unlock()
+            return make_pristine_tar_delta(dest, tarball_path)
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def create_delta_revprops(self, tree, tarball):
+        """Create the revision properties with the pristine tar delta.
+
+        :param tree: Bazaar Tree to diff against
+        :param tarball: The pristine tarball
+        :return: Dictionary with extra revision properties
+        """
+        ret = {}
+        delta = self.make_pristine_tar_delta(tree, tarball)
+        uuencoded = standard_b64encode(delta)
+        if tarball.endswith(".tar.bz2"):
+            ret["deb-pristine-delta-bz2"] = uuencoded
+        else:
+            ret["deb-pristine-delta"] = uuencoded
+        return ret
