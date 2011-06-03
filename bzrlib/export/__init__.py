@@ -111,13 +111,14 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, f
 
     trace.mutter('export version %r', tree)
 
-    tree.lock_read()
-
-    for _ in _exporters[format](tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj):
-        
-        yield
-        
-    tree.unlock()
+    try:
+        tree.lock_read()
+    
+        for _ in _exporters[format](tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj):
+            
+            yield
+    finally:    
+        tree.unlock()
 
 
 def export(tree, dest, format=None, root=None, subdir=None, filtered=False, per_file_timestamps=False, fileobj=None):
