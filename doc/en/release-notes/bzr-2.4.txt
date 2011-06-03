@@ -39,6 +39,11 @@ Bug Fixes
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
 
+* Handle files that get created but don't get used during TreeTransform.
+  ``open()`` can create a file, and still raise an exception before it
+  returns. So anything we might have created, make sure we destroy during
+  ``finalize()``. (Martin [gz], #597686)
+
 * ``pack_repo`` now uses ``Transport.move`` instead of
   ``Transport.rename``, deleting any existing targets even on SFTP.
   (Martin von Gagern, #421776)
@@ -63,6 +68,9 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Improve documentation of ``bzr merge --force``.
+  (Neil Martinsen-Burrell, #767307)
+
 API Changes
 ***********
 
@@ -85,9 +93,6 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
-* Don't use ``$HOME/.bzr.log`` for the TestImportTariffs tests.
-  (Vincent Ladeuil, #789505)
-
 * Fix deadlock in `TestImportTariffs.test_simple_serve` when stderr gets
   more output than fits in the default buffer.  This was happening on the
   Windows buildslave, and could easily happen in other circumstances where
@@ -96,12 +101,24 @@ Testing
 
 * Fix spurious test failure on OSX for WorkingTreeFormat2.
   (Vincent Ladeuil, #787942)
+
+* Show log file contents from subprocesses started by
+  `start_bzr_subprocess` in test failure details.  This may help diagnose
+  strange hangs and failures involving subprocesses.  (Andrew Bennetts)
+
 * Skip ``utextwrap`` tests when ``sphinx`` breaks text_wrap by an hostile
   monkeypatch to textwrap.TextWrapper.wordsep_re.
   (Vincent Ladeuil, #785098)
 
 * Multiple ``selftest --exclude`` options are now combined instead of
   overriding each other. (Vincent Ladeuil, #746991)
+
+* `TestImportTariffs` no longer uses the real ``$HOME``.  This prevents it
+  from polluting ``$HOME/.bzr.log`` or being accidentally influenced by
+  user configuration such as aliases.  It still runs with all the user's
+  plugins enabled, as intended.
+  (Vincent Ladeuil, Andrew Bennetts, #789505)
+
 
 bzr 2.4b3
 #########
@@ -268,6 +285,9 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* ``MutableTree.smart_add`` now uses inventory deltas.
+  (Jelmer Vernooij, #146165)
 
 * Removed ``bzrlib.branch._run_with_write_locked_target`` as
   ``bzrlib.cleanup`` provides the same functionality in a more general

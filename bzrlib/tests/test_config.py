@@ -108,26 +108,9 @@ def build_backing_branch(test, relpath,
         test.backing_branch = test.make_branch(relpath)
 
 
-def keep_branch_alive(test, b):
-    """Keep a branch alive for the duration of a test.
-
-    :param tests: the test that should hold the branch alive.
-
-    :param b: the branch that should be kept alive.
-
-    Several tests need to keep a reference to a branch object as they are
-    testing a Store which uses a weak reference. This is achieved by embedding
-    a reference to the branch object in a lambda passed to a cleanup. When the
-    test finish the cleanup method is deleted and so does the reference to the
-    branch.
-    """
-    test.addCleanup(lambda : b)
-
-
 def build_branch_store(test):
     build_backing_branch(test, 'branch')
     b = branch.Branch.open('branch')
-    keep_branch_alive(test, b)
     return config.BranchStore(b)
 config.test_store_builder_registry.register('branch', build_branch_store)
 
@@ -138,7 +121,6 @@ def build_remote_branch_store(test):
     (transport_class, server_class) = remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    keep_branch_alive(test, b)
     return config.BranchStore(b)
 config.test_store_builder_registry.register('remote_branch',
                                             build_remote_branch_store)
@@ -153,7 +135,6 @@ config.test_stack_builder_registry.register(
 def build_branch_stack(test):
     build_backing_branch(test, 'branch')
     b = branch.Branch.open('branch')
-    keep_branch_alive(test, b)
     return config.BranchStack(b)
 config.test_stack_builder_registry.register('branch', build_branch_stack)
 
@@ -164,7 +145,6 @@ def build_remote_branch_stack(test):
     (transport_class, server_class) = remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    keep_branch_alive(test, b)
     return config.BranchStack(b)
 config.test_stack_builder_registry.register('remote_branch',
                                             build_remote_branch_stack)
@@ -2247,21 +2227,6 @@ class TestLockableIniFileStore(TestStore):
         store.get_mutable_section(None).set('foo', 'bar')
         store.save()
         self.assertPathExists('dir/subdir')
-
-
-class TestBranchStore(TestStore):
-
-    def test_dead_branch(self):
-        build_backing_branch(self, 'branch')
-        b = branch.Branch.open('branch')
-        store = config.BranchStore(b)
-        del b
-        # The only reliable way to trigger the error is to explicitly call the
-        # garbage collector.
-        import gc
-        gc.collect()
-        store.get_mutable_section(None).set('foo', 'bar')
-        self.assertRaises(AssertionError, store.save)
 
 
 class TestConcurrentStoreUpdates(TestStore):
