@@ -59,12 +59,15 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj):
+    def _loader(tree, dest, root, subdir, filtered, force_mtime, 
+                per_file_timestamps, fileobj):
         func = pyutils.get_named_object(module, funcname)
-        return func(tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj)
+        return func(tree, dest, root, subdir, filtered, force_mtime, 
+                    per_file_timestamps, fileobj)
     register_exporter(scheme, extensions, _loader)
     
-def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, filtered=False, per_file_timestamps=False, fileobj=None):
+def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
+                          filtered=False, per_file_timestamps=False, fileobj=None):
     """Returns a generator that exports the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -114,14 +117,16 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None, f
     try:
         tree.lock_read()
     
-        for _ in _exporters[format](tree, dest, root, subdir, filtered, force_mtime, per_file_timestamps, fileobj):
+        for _ in _exporters[format](tree, dest, root, subdir, filtered, 
+                                    force_mtime, per_file_timestamps, fileobj):
             
             yield
     finally:    
         tree.unlock()
 
 
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False, per_file_timestamps=False, fileobj=None):
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False, 
+           per_file_timestamps=False, fileobj=None):
     """Export the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -145,7 +150,8 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False, per_
         for every file so will be significantly slower.
     :param fileobj: Optional file object to use
     """
-    for _ in get_export_generator(tree, dest, format, root, subdir, filtered, per_file_timestamps, fileobj):
+    for _ in get_export_generator(tree, dest, format, root, subdir, filtered, 
+                                  per_file_timestamps, fileobj):
         
         pass
 

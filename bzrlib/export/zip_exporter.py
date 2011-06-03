@@ -44,7 +44,8 @@ _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
-def zip_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None):
+def zip_exporter(tree, dest, root, subdir=None, filtered=False, 
+                 force_mtime=None, per_file_timestamps=False, fileobj=None):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it

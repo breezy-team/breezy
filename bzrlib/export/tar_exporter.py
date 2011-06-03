@@ -31,7 +31,8 @@ from bzrlib.filters import (
     filtered_output_bytes,
     )
 
-def prepare_tarball_item(tree, root, final_path, entry, filtered=False, force_mtime=None):
+def prepare_tarball_item(tree, root, final_path, entry, filtered=False, 
+                         force_mtime=None):
     """Prepare a tarball item for exporting
         
     :param tree: Tree to export
@@ -79,11 +80,13 @@ def prepare_tarball_item(tree, root, final_path, entry, filtered=False, force_mt
         item.linkname = tree.get_symlink_target(entry.file_id)
         fileobj = None
     else:
-        raise errors.BzrError("don't know how to export {%s} of kind %r" % (entry.file_id, entry.kind))
+        raise errors.BzrError("don't know how to export {%s} of kind %r" 
+                              % (entry.file_id, entry.kind))
     
     return (item, fileobj)
 
-def export_tarball(tree, ball, root, subdir=None, filtered=False, force_mtime=None):
+def export_tarball(tree, ball, root, subdir=None, filtered=False, 
+                   force_mtime=None):
     """Export tree contents to a tarball. This is a generator.
 
     :param tree: Tree to export
@@ -95,12 +98,14 @@ def export_tarball(tree, ball, root, subdir=None, filtered=False, force_mtime=No
     """
     for final_path, entry in _export_iter_entries(tree, subdir):
 
-        (item, fileobj) = prepare_tarball_item(tree, root, final_path, entry, filtered, force_mtime)
+        (item, fileobj) = prepare_tarball_item(tree, root, final_path, 
+                                               entry, filtered, force_mtime)
         ball.addfile(item, fileobj)
         
         yield    
 
-def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None):
+def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, 
+                 per_file_timestamps=False, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -135,7 +140,8 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, per
         # dest. (bug 102234)
         basename = os.path.basename(dest)
     try:
-        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream, mtime=root_mtime)
+        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream, 
+                                  mtime=root_mtime)
     except TypeError:
         # Python < 2.7 doesn't support the mtime argument
         zipstream = gzip.GzipFile(basename, 'w', fileobj=stream)
@@ -199,12 +205,16 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None, filtered=Fals
     ball.close()
 
 
-def tar_xz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None):
+def tar_xz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None,
+                     per_file_timestamps=False, fileobj=None):
     
-    return tar_lzma_exporter(tree, dest, root, subdir, filtered, force_mtime,per_file_timestamps, fileobj, "xz")
+    return tar_lzma_exporter(tree, dest, root, subdir, filtered, force_mtime,
+                             per_file_timestamps, fileobj, "xz")
 
 
-def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None, compression_format="alone"):
+def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, 
+                      force_mtime=None, per_file_timestamps=False, 
+                      fileobj=None, compression_format="alone"):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -226,7 +236,8 @@ def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None
             options={"format": compression_format})
     ball = tarfile.open(None, 'w:', fileobj=stream)
 
-    for _ in export_tarball(tree, ball, root, subdir, filtered=filtered, force_mtime=force_mtime):
+    for _ in export_tarball(tree, ball, root, subdir, filtered=filtered, 
+                            force_mtime=force_mtime):
         
         yield
 
