@@ -112,8 +112,9 @@ def debian_changelog_commit_message(commit, start_message):
 
 
 def debian_changelog_commit(commit, start_message):
-    """hooked into bzrlib.msgeditor set_commit_message to set the commit
-    message from debian/changelog and set any LP: #1234 to bug fixed tags"""
+    """hooked into bzrlib.msgeditor set_commit_message.
+     Set the commit message from debian/changelog and set any LP: #1234 to bug
+     fixed tags."""
    
     changes = debian_changelog_commit_message(commit, start_message)
     if changes is None:
