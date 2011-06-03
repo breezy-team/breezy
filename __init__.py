@@ -114,18 +114,14 @@ def debian_changelog_commit_message(commit, start_message):
 def debian_changelog_commit(commit, start_message):
     """hooked into bzrlib.msgeditor set_commit_message to set the commit
     message from debian/changelog and set any LP: #1234 to bug fixed tags"""
-    from bzrlib import bugtracker
-    
+   
     changes = debian_changelog_commit_message(commit, start_message)
+    if changes is None:
+        return None
 
-    lpmatch = re.findall(r"lp:\s+\#\d+(?:,\s*\#\d+)*", changes, re.I)
-    bugs = re.findall(r"\#?\s?(\d+)", ' '.join(lpmatch), re.I)
-    bugs_revision_property = ''
-    for bug in bugs:
-        bugs_revision_property = bugs_revision_property + \
-          bugtracker.get_bug_url("lp", commit.work_tree.branch, bug) + \
-          " fixed\n"
-    commit.builder._revprops["bugs"] = bugs_revision_property
+    bugs_fixed = util.find_bugs_fixed([changes], commit.work_tree.branch)
+    commit.builder._revprops["bugs"] = "\n".join(bugs_fixed)
+    
     return debian_changelog_commit_message(commit, start_message)
 
 
