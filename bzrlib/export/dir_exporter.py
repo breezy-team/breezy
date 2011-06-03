@@ -27,7 +27,8 @@ from bzrlib.filters import (
     )
 
 
-def dir_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None, per_file_timestamps=False, fileobj=None):
+def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False, 
+                           force_mtime=None, fileobj=None):
     """Return a generator that exports this tree to a new directory.
 
     `dest` should either not exist or should be empty. If it does not exist it
@@ -98,3 +99,10 @@ def dir_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None
         os.utime(fullpath, (mtime, mtime))
 
         yield
+        
+def dir_exporter(tree, dest, root, subdir=None, filtered=False, 
+                 force_mtime=None, fileobj=None):
+
+    for _ in dir_exporter_generator(tree, dest, root, subdir, filtered,
+                                    force_mtime, fileobj):
+        pass
