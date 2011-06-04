@@ -25,9 +25,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from base64 import (
-    standard_b64encode,
-    )
 
 import os
 import re
@@ -74,18 +71,17 @@ from bzrlib.plugins.builddeb.util import (
     FORMAT_3_0_NATIVE,
     export,
     get_commit_info_from_changelog,
-    make_pristine_tar_delta,
     md5sum_filename,
     open_file_via_transport,
     open_transport,
     safe_decode,
     subprocess_setup,
     )
-from bzrlib.plugins.builddeb.upstream import (
-    PristineTarSource,
-    )
 from bzrlib.plugins.builddeb.upstream.branch import (
     UpstreamBranchSource,
+    )
+from bzrlib.plugins.builddeb.upstream.pristinetar import (
+    PristineTarSource,
     )
 
 
@@ -906,16 +902,12 @@ class DistributionBranch(object):
         self.upstream_tree.set_parent_ids(upstream_parents)
         revprops = {"deb-md5": md5}
         if upstream_tarball is not None:
-            delta = self.make_pristine_tar_delta(
+            delta_revprops = self.pristine_tar_source.create_delta_revprops(
                 self.upstream_tree, upstream_tarball)
-            uuencoded = standard_b64encode(delta)
-            if upstream_tarball.endswith(".tar.bz2"):
-                revprops["deb-pristine-delta-bz2"] = uuencoded
-            else:
-                revprops["deb-pristine-delta"] = uuencoded
+            revprops.update(delta_revprops)
         if author is not None:
             revprops['authors'] = author
-        timezone=None
+        timezone = None
         if timestamp is not None:
             timezone = timestamp[1]
             timestamp = timestamp[0]
@@ -1069,7 +1061,7 @@ class DistributionBranch(object):
         if message is None:
             message = 'Import packaging changes for version %s' % \
                         (str(version),)
-        revprops={"deb-md5":md5}
+        revprops={"deb-md5": md5}
         if native:
             revprops['deb-native'] = "True"
         if authors:
@@ -1463,21 +1455,6 @@ class DistributionBranch(object):
                     upstream_branch.unlock()
         finally:
             shutil.rmtree(tempdir)
-
-    def make_pristine_tar_delta(self, tree, tarball_path):
-        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
-        try:
-            dest = os.path.join(tmpdir, "orig")
-            tree.lock_read()
-            try:
-                for (dp, ie) in tree.inventory.iter_entries():
-                    ie._read_tree_state(dp, tree)
-                export(tree, dest, format='dir')
-            finally:
-                tree.unlock()
-            return make_pristine_tar_delta(dest, tarball_path)
-        finally:
-            shutil.rmtree(tmpdir)
 
 
 class SourceExtractor(object):

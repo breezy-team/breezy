@@ -163,13 +163,6 @@ class UnsupportedRepackFormat(BzrError):
         BzrError.__init__(self, location=location)
 
 
-class PristineTarError(BzrError):
-    _fmt = 'There was an error using pristine-tar: %(error)s.'
-
-    def __init__(self, error):
-        BzrError.__init__(self, error=error)
-
-
 class SharedUpstreamConflictsWithTargetPackaging(BzrError):
     _fmt = ('The upstream branches for the merge source and target have '
             'diverged. Unfortunately, the attempt to fix this problem '

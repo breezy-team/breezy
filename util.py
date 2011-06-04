@@ -22,10 +22,8 @@ try:
     import hashlib as md5
 except ImportError:
     import md5
-import errno
 import signal
 import shutil
-import subprocess
 import tempfile
 import os
 import re
@@ -43,7 +41,6 @@ except ImportError:
 from bzrlib import (
     bugtracker,
     errors,
-    osutils,
     urlutils,
     version_info as bzr_version_info,
     )
@@ -69,7 +66,6 @@ from bzrlib.plugins.builddeb.errors import (
     AddChangelogError,
     InconsistentSourceFormatError,
     NoPreviousUpload,
-    PristineTarError,
     UnableToFindPreviousUpload,
     UnparseableChangelog,
     )
@@ -686,51 +682,4 @@ def guess_build_type(tree, version, contains_upstream_source):
         return BUILD_TYPE_NORMAL
 
 
-def reconstruct_pristine_tar(dest, delta, dest_filename):
-    """Reconstruct a pristine tarball from a directory and a delta.
 
-    :param dest: Directory to pack
-    :param delta: pristine-tar delta
-    :param dest_filename: Destination filename
-    """
-    command = ["pristine-tar", "gentar", "-",
-               os.path.abspath(dest_filename)]
-    try:
-        proc = subprocess.Popen(command, stdin=subprocess.PIPE,
-                cwd=dest, preexec_fn=subprocess_setup,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    except OSError, e:
-        if e.errno == errno.ENOENT:
-            raise PristineTarError("pristine-tar is not installed")
-        else:
-            raise
-    (stdout, stderr) = proc.communicate(delta)
-    if proc.returncode != 0:
-        raise PristineTarError("Generating tar from delta failed: %s" % stdout)
-
-
-def make_pristine_tar_delta(dest, tarball_path):
-    """Create a pristine-tar delta for a tarball.
-
-    :param dest: Directory to generate pristine tar delta for
-    :param tarball_path: Path to the tarball
-    :return: pristine-tarball
-    """
-    # If tarball_path is relative, the cwd=dest parameter to Popen will make
-    # pristine-tar faaaail. pristine-tar doesn't use the VFS either, so we
-    # assume local paths.
-    tarball_path = osutils.abspath(tarball_path)
-    command = ["pristine-tar", "gendelta", tarball_path, "-"]
-    try:
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE,
-                cwd=dest, preexec_fn=subprocess_setup,
-                stderr=subprocess.PIPE)
-    except OSError, e:
-        if e.errno == errno.ENOENT:
-            raise PristineTarError("pristine-tar is not installed")
-        else:
-            raise
-    (stdout, stderr) = proc.communicate()
-    if proc.returncode != 0:
-        raise PristineTarError("Generating delta from tar failed: %s" % stderr)
-    return stdout

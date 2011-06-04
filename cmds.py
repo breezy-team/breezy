@@ -93,7 +93,6 @@ from bzrlib.plugins.builddeb.tagging import (
 from bzrlib.plugins.builddeb.upstream import (
         AptSource,
         GetOrigSourceSource,
-        PristineTarSource,
         SelfSplitSource,
         TarfileSource,
         UScanSource,
@@ -102,6 +101,9 @@ from bzrlib.plugins.builddeb.upstream import (
 from bzrlib.plugins.builddeb.upstream.branch import (
         LazyUpstreamBranchSource,
         UpstreamBranchSource,
+        )
+from bzrlib.plugins.builddeb.upstream.pristinetar import (
+        PristineTarSource,
         )
 from bzrlib.plugins.builddeb.util import (
         FORMAT_3_0_QUILT,

@@ -48,13 +48,11 @@ from bzrlib.plugins.builddeb.errors import (
     )
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
-    PristineTarSource,
     StackedUpstreamSource,
     TarfileSource,
     UpstreamProvider,
     UpstreamSource,
     UScanSource,
-    Version,
     extract_tarball_version,
     )
 from bzrlib.plugins.builddeb.upstream.branch import (
@@ -65,6 +63,9 @@ from bzrlib.plugins.builddeb.upstream.branch import (
     _upstream_branch_version,
     upstream_tag_to_version,
     upstream_version_add_revision
+    )
+from bzrlib.plugins.builddeb.upstream.pristinetar import (
+    PristineTarSource,
     )
 
 
