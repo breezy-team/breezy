@@ -34,25 +34,25 @@ from bzrlib.plugins.builddeb.merge_upstream import (
 
 class TestPackageVersion(TestCase):
 
-  def test_simple_debian(self):
-    self.assertEquals(Version("1.2-1"),
-        package_version("1.2", "debian"))
+    def test_simple_debian(self):
+        self.assertEquals(Version("1.2-1"),
+                package_version("1.2", "debian"))
 
-  def test_simple_ubuntu(self):
-    self.assertEquals(Version("1.2-0ubuntu1"),
-        package_version("1.2", "ubuntu"))
+    def test_simple_ubuntu(self):
+        self.assertEquals(Version("1.2-0ubuntu1"),
+                package_version("1.2", "ubuntu"))
 
-  def test_debian_with_dash(self):
-    self.assertEquals(Version("1.2-0ubuntu1-1"),
-        package_version("1.2-0ubuntu1", "debian"))
+    def test_debian_with_dash(self):
+        self.assertEquals(Version("1.2-0ubuntu1-1"),
+                package_version("1.2-0ubuntu1", "debian"))
 
-  def test_ubuntu_with_dash(self):
-    self.assertEquals(Version("1.2-1-0ubuntu1"),
-        package_version("1.2-1", "ubuntu"))
+    def test_ubuntu_with_dash(self):
+        self.assertEquals(Version("1.2-1-0ubuntu1"),
+                package_version("1.2-1", "ubuntu"))
 
-  def test_ubuntu_with_epoch(self):
-    self.assertEquals(Version("3:1.2-1-0ubuntu1"),
-        package_version("1.2-1", "ubuntu", "3"))
+    def test_ubuntu_with_epoch(self):
+        self.assertEquals(Version("3:1.2-1-0ubuntu1"),
+                package_version("1.2-1", "ubuntu", "3"))
 
 
 class UpstreamMergeChangelogLineTests(TestCase):

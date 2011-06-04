@@ -345,23 +345,23 @@ def open_file(url):
 
 
 def open_transport(path):
-  """Obtain an appropriate transport instance for the given path."""
-  base_dir, path = urlutils.split(path)
-  transport = get_transport(base_dir)
-  return (path, transport)
+    """Obtain an appropriate transport instance for the given path."""
+    base_dir, path = urlutils.split(path)
+    transport = get_transport(base_dir)
+    return (path, transport)
 
 
 def open_file_via_transport(filename, transport):
-  """Open a file using the transport, follow redirects as necessary."""
-  def open_file(transport):
-    return transport.get(filename)
-  def follow_redirection(transport, e, redirection_notice):
-    mutter(redirection_notice)
-    _filename, redirected_transport = open_transport(e.target)
-    return redirected_transport
+    """Open a file using the transport, follow redirects as necessary."""
+    def open_file(transport):
+        return transport.get(filename)
+    def follow_redirection(transport, e, redirection_notice):
+        mutter(redirection_notice)
+        _filename, redirected_transport = open_transport(e.target)
+        return redirected_transport
 
-  result = do_catching_redirections(open_file, transport, follow_redirection)
-  return result
+    result = do_catching_redirections(open_file, transport, follow_redirection)
+    return result
 
 
 def _dget(cls, dsc_location, target_dir):
