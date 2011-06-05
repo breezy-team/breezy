@@ -31,6 +31,7 @@ from bzrlib import (
 from bzrlib import (
     registry as _mod_registry,
     )
+from bzrlib.i18n import gettext
 
 
 def _parse_revision_str(revstr):
@@ -203,15 +204,13 @@ class Option(object):
         else:
             return 'no-' + self.name
 
-    @property
-    def gettext(self):
-        """Returns the gettext function used to translate this Option's help.
+    def gettext(self, message):
+        """The gettext for this class used to translate this option's help.
 
-        NOTE: Options provided by third party plugins should override this to
+        Note: Options provided by third party plugins should override this to
         use own i18n system.
         """
-        from bzrlib.i18n import gettext
-        return gettext
+        return gettext(message)
 
     def add_option(self, parser, short_name, l10n=False):
         """Add this option to an Optparse parser.

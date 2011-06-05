@@ -44,7 +44,11 @@ from bzrlib import (
 """)
 
 from bzrlib.hooks import Hooks
-from bzrlib.i18n import install as i18n_install, gettext
+from bzrlib.i18n import (
+    gettext,
+    gettext_per_paragraph,
+    install as i18n_install,
+    )
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -755,15 +759,13 @@ class Command(object):
             return None
         return getdoc(self)
 
-    @property
-    def gettext(self):
+    def gettext(self, message):
         """Returns the gettext function used to translate this command's help.
 
         Commands provided by plugins should override this to use their
         own i18n system.
         """
-        import bzrlib.i18n
-        return bzrlib.i18n.gettext_per_paragraph
+        return gettext_per_paragraph(message)
 
     def name(self):
         """Return the canonical name for this command.
