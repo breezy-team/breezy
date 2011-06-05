@@ -8,6 +8,8 @@
   * Use Bazaar SSH vendor infrastructure to find whatever SSH client was
     selected in Bazaar itself. (Jelmer Vernooij, #670035)
 
+  * Fix two mistakes in 'bzr help git'. (Jelmer Vernooij, #791047)
+
 0.6.0	2011-04-12
 
  BUG FIXES

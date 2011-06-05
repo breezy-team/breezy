@@ -21,11 +21,11 @@ The bzr-git plugin provides support for using Bazaar with local and remote
 Git repositories, as just another format. You can clone, pull from and 
 push to git repositories as you would with any native Bazaar branch.
 
-The bzr-git plugin also adds two new bzr subcommands:
+The bzr-git plugin also adds three new bzr subcommands:
 
  * bzr git-objects: Extracts Git objects out of a Bazaar repository
  * bzr git-refs: Display Git refs from a Bazaar branch or repository
- * bzr svn-import: Imports a local or remote Git repository to a set of Bazaar
+ * bzr git-import: Imports a local or remote Git repository to a set of Bazaar
                    branches
 
 The 'git:' revision specifier can be used to find revisions by short or long
