@@ -37,7 +37,7 @@ try:
     from debian import deb822
     from debian.changelog import Version, Changelog, VersionError
 except ImportError:
-  # Prior to 0.1.15 the debian module was called debian_bundle
+    # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle import deb822
     from debian_bundle.changelog import Version, Changelog, VersionError
 
@@ -87,46 +87,46 @@ from bzrlib.plugins.builddeb.upstream.pristinetar import (
 
 class DscCache(object):
 
-  def __init__(self, transport=None):
-    self.cache = {}
-    self.transport_cache = {}
-    self.transport = transport
+    def __init__(self, transport=None):
+        self.cache = {}
+        self.transport_cache = {}
+        self.transport = transport
 
-  def get_dsc(self, name):
+    def get_dsc(self, name):
 
-    if name in self.cache:
-      dsc1 = self.cache[name]
-    else:
-      # Obtain the dsc file, following any redirects as needed.
-      filename, transport = open_transport(name)
-      f1 = open_file_via_transport(filename, transport)
-      try:
-        dsc1 = deb822.Dsc(f1)
-      finally:
-        f1.close()
-      self.cache[name] = dsc1
-      self.transport_cache[name] = transport
+        if name in self.cache:
+            dsc1 = self.cache[name]
+        else:
+            # Obtain the dsc file, following any redirects as needed.
+            filename, transport = open_transport(name)
+            f1 = open_file_via_transport(filename, transport)
+            try:
+                dsc1 = deb822.Dsc(f1)
+            finally:
+                f1.close()
+            self.cache[name] = dsc1
+            self.transport_cache[name] = transport
 
-    return dsc1
+        return dsc1
 
-  def get_transport(self, name):
-    return self.transport_cache[name]
+    def get_transport(self, name):
+        return self.transport_cache[name]
 
 class DscComp(object):
 
-  def __init__(self, cache):
-    self.cache = cache
+    def __init__(self, cache):
+        self.cache = cache
 
-  def cmp(self, dscname1, dscname2):
-    dsc1 = self.cache.get_dsc(dscname1)
-    dsc2 = self.cache.get_dsc(dscname2)
-    v1 = Version(dsc1['Version'])
-    v2 = Version(dsc2['Version'])
-    if v1 == v2:
-      return 0
-    if v1 > v2:
-      return 1
-    return -1
+    def cmp(self, dscname1, dscname2):
+        dsc1 = self.cache.get_dsc(dscname1)
+        dsc2 = self.cache.get_dsc(dscname2)
+        v1 = Version(dsc1['Version'])
+        v2 = Version(dsc2['Version'])
+        if v1 == v2:
+            return 0
+        if v1 > v2:
+            return 1
+        return -1
 
 
 

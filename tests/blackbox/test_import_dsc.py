@@ -32,11 +32,11 @@ from bzrlib.plugins.builddeb.tests.test_import_dsc import PristineTarFeature
 class TestBaseImportDsc(BuilddebTestCase):
 
   def _upstream_dir(self, package_name, upstream_version):
-      return package_name + '-' + upstream_version
+    return package_name + '-' + upstream_version
   upstream_dir = property(lambda self:self._upstream_dir(self.package_name,
       self.upstream_version))
   def _upstream_tarball_name(self, package_name, upstream_version):
-      return package_name + '_' + upstream_version + '.orig.tar.gz'
+    return package_name + '_' + upstream_version + '.orig.tar.gz'
   upstream_tarball_name = property(lambda self:
       self._upstream_tarball_name(self.package_name, self.upstream_version))
   dsc_name = property(lambda self:
@@ -119,5 +119,4 @@ class TestImportDsc(TestBaseImportDsc):
         'package.'], 'import-dsc')
 
 
-# vim: ts=4 sts=4 sw=4
-
+# vim: ts=2 sts=2 sw=2

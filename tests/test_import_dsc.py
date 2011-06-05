@@ -32,8 +32,8 @@ except ImportError:
     from debian_bundle import deb822
 
 from bzrlib import (
-  tests,
-  )
+        tests,
+        )
 
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
@@ -51,22 +51,22 @@ from bzrlib.plugins.builddeb.tests import (
 
 class _PristineTarFeature(tests.Feature):
 
-  def feature_name(self):
-    return '/usr/bin/pristine-tar'
+    def feature_name(self):
+        return '/usr/bin/pristine-tar'
 
-  def _probe(self):
-    return os.path.exists("/usr/bin/pristine-tar")
+    def _probe(self):
+        return os.path.exists("/usr/bin/pristine-tar")
 
 
 PristineTarFeature = _PristineTarFeature()
 
 
 def write_to_file(filename, contents):
-  f = open(filename, 'wb')
-  try:
-    f.write(contents)
-  finally:
-    f.close()
+    f = open(filename, 'wb')
+    try:
+        f.write(contents)
+    finally:
+        f.close()
 
 
 class DistributionBranchTests(BuilddebTestCase):
