@@ -27,7 +27,7 @@ from bzrlib.filters import (
     )
 
 
-def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False, 
+def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False,
                            force_mtime=None, fileobj=None):
     """Return a generator that exports this tree to a new directory.
 
@@ -45,7 +45,8 @@ def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False,
         if e.errno == errno.EEXIST:
             # check if directory empty
             if os.listdir(dest) != []:
-                raise errors.BzrError("Can't export tree to non-empty directory.")
+                raise errors.BzrError(
+                    "Can't export tree to non-empty directory.")
         else:
             raise
     # Iterate everything, building up the files we will want to export, and
