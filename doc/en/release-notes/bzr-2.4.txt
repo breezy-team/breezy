@@ -93,6 +93,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* A `ImportTariffTestCase` base class has been added in
+  ``bzrlib.tests.test_import_tariff``, which can be used for import tariff
+  tests in plugins. (Jelmer Vernooij, #793465)
+
 * Fix deadlock in `TestImportTariffs.test_simple_serve` when stderr gets
   more output than fits in the default buffer.  This was happening on the
   Windows buildslave, and could easily happen in other circumstances where
