@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -762,7 +762,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
    </D:propfind>
 """
         request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
-                                            {'Depth': 0},
+                                            {'Depth': '0'},
                                             accepted_errors=[207, 404, 409,])
         response = self._perform(request)
 
