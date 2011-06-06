@@ -134,7 +134,7 @@ class GitSmartTransport(Transport):
             return client.fetch_pack(self._get_path(), determine_wants,
                 graph_walker, pack_data, progress)
         except GitProtocolError, e:
-            raise BzrError(e)
+            raise BzrError(str(e).strip())
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
         client = self._get_client(thin_packs=False)
@@ -142,7 +142,7 @@ class GitSmartTransport(Transport):
             return client.send_pack(self._get_path(), get_changed_refs,
                 generate_pack_contents)
         except GitProtocolError, e:
-            raise BzrError(e)
+            raise BzrError(str(e).strip())
 
     def get(self, path):
         raise NoSuchFile(path)
