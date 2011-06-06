@@ -101,6 +101,12 @@ Creating a stacked branch from a smart server with ``bzr branch
 network roundtrips.  Other operations where a local branch is stacked on a
 branch hosted on a smart server will also benefit.
 
+More export control
+*******************
+
+When exporting a tree, you may now use get_export_generator() to 
+do an operation after each file is exported. 
+
 Testing
 *******
 
