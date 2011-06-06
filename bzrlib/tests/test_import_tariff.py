@@ -54,7 +54,18 @@ old_format_modules = [
 
 
 class ImportTariffTestCase(TestCaseWithTransport):
-    """Test the imports used by Bazaar commands."""
+    """Check how many modules are loaded for some representative scenarios.
+
+    See the Testing Guide in the developer documentation for more explanation.
+
+
+    We must respect the setup used by the selftest command regarding
+    plugins. This allows the user to control which plugins are in effect while
+    running these tests and respect the import policies defined here.
+
+    When failures are encountered for a given plugin, they can generally be
+    addressed by using lazy import or lazy hook registration.
+    """
 
     def setUp(self):
         self.preserved_env_vars = {}
@@ -132,18 +143,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
 
 class TestImportTariffs(ImportTariffTestCase):
-    """Check how many modules are loaded for some representative scenarios.
-
-    See the Testing Guide in the developer documentation for more explanation.
-
-
-    We must respect the setup used by the selftest command regarding
-    plugins. This allows the user to control which plugins are in effect while
-    running these tests and respect the import policies defined here.
-
-    When failures are encountered for a given plugin, they can generally be
-    addressed by using lazy import or lazy hook registration.
-    """
+    """Basic import tariff tests for some common bzr commands"""
 
     def test_import_tariffs_working(self):
         # check some guaranteed-true and false imports to be sure we're
