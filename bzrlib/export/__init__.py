@@ -67,7 +67,9 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
     
 def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
                           filtered=False, per_file_timestamps=False, fileobj=None):
-    """Returns a generator that exports the given Tree to the specific destination.
+    """Returns a generator that exports the given tree to the specific destination.
+    
+    The generator is expected to yield None while exporting the tree
 
     :param tree: A Tree (such as RevisionTree) to export
     :param dest: The destination where the files,etc should be put
