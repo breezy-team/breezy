@@ -66,30 +66,36 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
     register_exporter(scheme, extensions, _loader)
     
 def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
-                          filtered=False, per_file_timestamps=False, fileobj=None):
-    """Returns a generator that exports the given tree to the specific destination.
+                         filtered=False, per_file_timestamps=False,
+                         fileobj=None):
+    """Returns a generator that exports the given tree.
     
-    The generator is expected to yield None while exporting the tree
+    The generator is expected to yield None while exporting the tree while the
+    actual export is written to ``fileobj``.
 
     :param tree: A Tree (such as RevisionTree) to export
-    :param dest: The destination where the files,etc should be put
+
+    :param dest: The destination where the files, etc should be put
+
     :param format: The format (dir, zip, etc), if None, it will check the
-                   extension on dest, looking for a match
-    :param root: The root location inside the format.
-                 It is common practise to have zipfiles and tarballs
-                 extract into a subdirectory, rather than into the
-                 current working directory.
-                 If root is None, the default root will be
-                 selected as the destination without its
-                 extension.
+        extension on dest, looking for a match
+
+    :param root: The root location inside the format.  It is common practise to
+        have zipfiles and tarballs extract into a subdirectory, rather than
+        into the current working directory.  If root is None, the default root
+        will be selected as the destination without its extension.
+
     :param subdir: A starting directory within the tree. None means to export
         the entire tree, and anything else should specify the relative path to
         a directory to start exporting from.
-    :param filtered: If True, content filtering is applied to the
-                     files exported.
-    :param per_file_timestamps: Whether to use the timestamp stored in the 
-        tree rather than now(). This will do a revision lookup 
-        for every file so will be significantly slower.
+
+    :param filtered: If True, content filtering is applied to the exported
+        files.
+
+    :param per_file_timestamps: Whether to use the timestamp stored in the tree
+        rather than now(). This will do a revision lookup for every file so
+        will be significantly slower.
+
     :param fileobj: Optional file object to use
     """
     global _exporters, _exporter_extensions
@@ -118,7 +124,8 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
     try:
         tree.lock_read()
     
-        for _ in _exporters[format](tree, dest, root, subdir, filtered=filtered, 
+        for _ in _exporters[format](tree, dest, root, subdir,
+                                    filtered=filtered, 
                                     force_mtime=force_mtime, fileobj=fileobj):
             
             yield
@@ -206,12 +213,20 @@ def _export_iter_entries(tree, subdir, skip_special=True):
         yield final_path, entry
 
 
-register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter', 'dir_exporter_generator')
-register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter', 'dir_exporter_generator')
-register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'plain_tar_exporter_generator')
-register_lazy_exporter('tgz', ['.tar.gz', '.tgz'], 'bzrlib.export.tar_exporter', 'tgz_exporter_generator')
-register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'], 'bzrlib.export.tar_exporter', 'tbz_exporter_generator')
-register_lazy_exporter('tlzma', ['.tar.lzma'], 'bzrlib.export.tar_exporter', 'tar_lzma_exporter_generator')
-register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter', 'tar_xz_exporte_generatorr')
-register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter', 'zip_exporter_generator')
+register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter',
+                       'dir_exporter_generator')
+register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter',
+                       'dir_exporter_generator')
+register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter',
+                       'plain_tar_exporter_generator')
+register_lazy_exporter('tgz', ['.tar.gz', '.tgz'], 'bzrlib.export.tar_exporter',
+                       'tgz_exporter_generator')
+register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'],
+                       'bzrlib.export.tar_exporter', 'tbz_exporter_generator')
+register_lazy_exporter('tlzma', ['.tar.lzma'], 'bzrlib.export.tar_exporter',
+                       'tar_lzma_exporter_generator')
+register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter',
+                       'tar_xz_exporte_generatorr')
+register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter',
+                       'zip_exporter_generator')
 
