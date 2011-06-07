@@ -83,9 +83,8 @@ def prepare_tarball_item(tree, root, final_path, entry, filtered=False,
         item.linkname = tree.get_symlink_target(entry.file_id)
         fileobj = None
     else:
-        raise errors.BzrError("don't know how to export {%s} of kind %r" 
+        raise errors.BzrError("don't know how to export {%s} of kind %r"
                               % (entry.file_id, entry.kind))
-    
     return (item, fileobj)
 
 def export_tarball_generator(tree, ball, root, subdir=None, filtered=False,
@@ -164,9 +163,12 @@ def tgz_exporter_generator(tree, dest, root, subdir, filtered=False,
                                       force_mtime):
 
         yield
-
+    # Closing ball may trigger writes to zipstream
+    ball.close()
+    # Closing zipstream may trigger writes to stream
     zipstream.close()
     if not is_stdout:
+        # Now we can safely close the stream
         stream.close()
 
 
