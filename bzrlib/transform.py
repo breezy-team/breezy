@@ -137,6 +137,14 @@ class TreeTransformBase(object):
         # A counter of how many files have been renamed
         self.rename_count = 0
 
+    def __enter__(self):
+        """Support Context Manager API."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Support Context Manager API."""
+        self.finalize()
+
     def finalize(self):
         """Release the working tree lock, if held.
 
