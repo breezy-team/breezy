@@ -24,8 +24,13 @@ from bzrlib import tests
 
 try:
     from bzrlib.tests.ftp_server import medusa_based
-    # medusa is bogus under python2.6
-    medusa_available = sys.version_info < (2, 6)
+    # medusa is bogus starting with python2.6, since we don't support earlier
+    # pythons anymore, it's currently useless. There is hope though that the
+    # unicode bugs get fixed in the future so we leave it disabled until
+    # then. Keeping the framework in place means that only the following line
+    # will need to be changed.  The last tests were conducted with medusa-2.0
+    # -- vila 20110607
+    medusa_available = False
 except ImportError:
     medusa_available = False
 
