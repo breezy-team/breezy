@@ -155,7 +155,8 @@ def show_log(branch,
              end_revision=None,
              search=None,
              limit=None,
-             show_diff=False):
+             show_diff=False,
+             match=None):
     """Write out human-readable log of commits to this branch.
 
     This function is being retained for backwards compatibility but
@@ -184,6 +185,9 @@ def show_log(branch,
         if None or 0.
 
     :param show_diff: If True, output a diff after each revision.
+    
+    :param match: Dictionary of search lists to use when matching revision
+      properties.
     """
     # Convert old-style parameters to new-style parameters
     if specific_fileid is not None:
@@ -229,7 +233,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
                           message_search=None, levels=1, generate_tags=True,
                           delta_type=None,
                           diff_type=None, _match_using_deltas=True,
-                          exclude_common_ancestry=False,
+                          exclude_common_ancestry=False, match=None,
                           ):
     """Convenience function for making a logging request dictionary.
 
@@ -277,19 +281,35 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
 
     :param exclude_common_ancestry: Whether -rX..Y should be interpreted as a
       range operator or as a graph difference.
+      
+    :param match: Dictionary of list of search strings to use when filtering
+      revisions. Keys can be 'message', 'author', 'committer', 'bugs' or
+      the empty string to match any of the preceding properties. 
+      
     """
+    
+    # Take care of old style message_search parameter
+    if message_search:
+        if match:
+            if 'message' in match:
+                match['message'].append(message_search)
+            else:
+                match['message'] = [message_search]
+        else:
+            match={ 'message': [message_search] }
+        
     return {
         'direction': direction,
         'specific_fileids': specific_fileids,
         'start_revision': start_revision,
         'end_revision': end_revision,
         'limit': limit,
-        'message_search': message_search,
         'levels': levels,
         'generate_tags': generate_tags,
         'delta_type': delta_type,
         'diff_type': diff_type,
         'exclude_common_ancestry': exclude_common_ancestry,
+        'match': match,
         # Add 'private' attributes for features that may be deprecated
         '_match_using_deltas': _match_using_deltas,
     }
@@ -472,7 +492,7 @@ class _DefaultLogGenerator(LogGenerator):
 
         # Apply the other filters
         return make_log_rev_iterator(self.branch, view_revisions,
-            rqst.get('delta_type'), rqst.get('message_search'),
+            rqst.get('delta_type'), rqst.get('match'),
             file_ids=rqst.get('specific_fileids'),
             direction=rqst.get('direction'))
 
@@ -491,7 +511,7 @@ class _DefaultLogGenerator(LogGenerator):
             rqst.get('specific_fileids')[0], view_revisions,
             include_merges=rqst.get('levels') != 1)
         return make_log_rev_iterator(self.branch, view_revisions,
-            rqst.get('delta_type'), rqst.get('message_search'))
+            rqst.get('delta_type'), rqst.get('match'))
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
@@ -813,31 +833,50 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
     return log_rev_iterator
 
 
-def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
+def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     """Create a filtered iterator of log_rev_iterator matching on a regex.
 
     :param branch: The branch being logged.
     :param generate_delta: Whether to generate a delta for each revision.
-    :param search: A user text search string.
+    :param match: A dictionary with properties as keys and lists of strings
+        as values. To match, a revision may match any of the supplied strings
+        within a single property but must match at least one string for each
+        property.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    if search is None:
+    if match is None:
         return log_rev_iterator
-    searchRE = re.compile(search, re.IGNORECASE)
-    return _filter_message_re(searchRE, log_rev_iterator)
+    searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v]) 
+                for (k,v) in match.iteritems()]
+    return _filter_re(searchRE, log_rev_iterator)
 
 
-def _filter_message_re(searchRE, log_rev_iterator):
+def _filter_re(searchRE, log_rev_iterator):
     for revs in log_rev_iterator:
-        new_revs = []
-        for (rev_id, revno, merge_depth), rev, delta in revs:
-            if searchRE.search(rev.message):
-                new_revs.append(((rev_id, revno, merge_depth), rev, delta))
-        yield new_revs
+        new_revs = [rev for rev in revs if _match_filter(searchRE, rev[1])]
+        if new_revs:
+            yield new_revs
 
+def _match_filter(searchRE, rev):
+    strings = {
+               'message': (rev.message,),
+               'committer': (rev.committer,),
+               'author': (rev.get_apparent_authors()),
+               'bugs': list(rev.iter_bugs())
+               }
+    strings[''] = [item for inner_list in strings.itervalues() 
+                   for item in inner_list]
+    
+    for (k,v) in searchRE:
+        if k in strings and not _match_any_filter(strings[k], v):
+            return False
+    return True
+
+def _match_any_filter(strings, res):
+    return any([filter(None, map(re.search, strings)) for re in res])
 
 def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
     fileids=None, direction='reverse'):
@@ -963,7 +1002,6 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    repository = branch.repository
     num = 9
     for batch in log_rev_iterator:
         batch = iter(batch)

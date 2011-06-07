@@ -2372,7 +2372,6 @@ class cmd_log(Command):
                    argname='N',
                    type=_parse_levels),
             Option('message',
-                   short_name='m',
                    help='Show revisions whose message matches this '
                         'regular expression.',
                    type=str),
@@ -2389,7 +2388,28 @@ class cmd_log(Command):
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
-                   )
+                   ),
+            ListOption('match',
+                short_name='m',
+                help='Show revisions whose properties match this '
+                'expression.',
+                type=str),
+            ListOption('match-message',
+                   help='Show revisions whose message matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-committer',
+                   help='Show revisions whose committer matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-author',
+                   help='Show revisions whose authors match this '
+                   'expression.',
+                type=str),
+            ListOption('match-bugs',
+                   help='Show revisions whose bugs match this '
+                   'expression.',
+                type=str)
             ]
     encoding_type = 'replace'
 
@@ -2408,6 +2428,11 @@ class cmd_log(Command):
             include_merges=False,
             authors=None,
             exclude_common_ancestry=False,
+            match=None,
+            match_message=None,
+            match_committer=None,
+            match_author=None,
+            match_bugs=None,
             ):
         from bzrlib.log import (
             Logger,
@@ -2509,6 +2534,18 @@ class cmd_log(Command):
         match_using_deltas = (len(file_ids) != 1 or filter_by_dir
             or delta_type or partial_history)
 
+        match_dict = {}
+        if match:
+            match_dict[''] = match
+        if match_message:
+            match_dict['message'] = match_message
+        if match_committer:
+            match_dict['committer'] = match_committer
+        if match_author:
+            match_dict['author'] = match_author
+        if match_bugs:
+            match_dict['bugs'] = match_bugs
+            
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -2517,7 +2554,7 @@ class cmd_log(Command):
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
-            exclude_common_ancestry=exclude_common_ancestry,
+            exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
             )
         Logger(b, rqst).show(lf)
 
