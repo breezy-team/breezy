@@ -34,10 +34,12 @@ from bzrlib import (
     bzrdir,
     cethread,
     config,
+    debug,
     errors,
     osutils,
     remote as _mod_remote,
     tests,
+    trace,
     transport,
     ui,
     )
@@ -100,21 +102,23 @@ def vary_by_http_auth_scheme():
         ]
     # Add some attributes common to all scenarios
     for scenario_id, scenario_dict in scenarios:
-        scenario_dict.update(_username_prompt_prefix='',
+        scenario_dict.update(_auth_header='Authorization',
+                             _username_prompt_prefix='',
                              _password_prompt_prefix='')
     return scenarios
 
 
 def vary_by_http_proxy_auth_scheme():
     scenarios = [
-        ('basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
-        ('digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
-        ('basicdigest',
+        ('proxy-basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
+        ('proxy-digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
+        ('proxy-basicdigest',
             dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
         ]
     # Add some attributes common to all scenarios
     for scenario_id, scenario_dict in scenarios:
-        scenario_dict.update(_username_prompt_prefix='Proxy ',
+        scenario_dict.update(_auth_header='Proxy-Authorization',
+                             _username_prompt_prefix='Proxy ',
                              _password_prompt_prefix='Proxy ')
     return scenarios
 
@@ -1728,6 +1732,32 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
+    def test_no_credential_leaks_in_log(self):
+        self.overrideAttr(debug, 'debug_flags', set(['http']))
+        user = 'joe'
+        password = 'very-sensitive-password'
+        self.server.add_user(user, password)
+        t = self.get_user_transport(user, password)
+        # Capture the debug calls to mutter
+        self.mutters = []
+        def mutter(*args):
+            lines = args[0] % args[1:]
+            # Some calls output multiple lines, just split them now since we
+            # care about a single one later.
+            self.mutters.extend(lines.splitlines())
+        self.overrideAttr(trace, 'mutter', mutter)
+        # Issue a request to the server to connect
+        self.assertEqual(True, t.has('a'))
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+        # Since the authentification succeeded, there should be a corresponding
+        # debug line
+        sent_auth_headers = [line for line in self.mutters
+                             if line.startswith('> %s' % (self._auth_header,))]
+        self.assertLength(1, sent_auth_headers)
+        self.assertStartsWith(sent_auth_headers[0],
+                              '> %s: <masked>' % (self._auth_header,))
+
 
 class TestProxyAuth(TestAuth):
     """Test proxy authentication schemes.
@@ -2242,5 +2272,4 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
         self.assertEqual('', stdout.getvalue())
-
 

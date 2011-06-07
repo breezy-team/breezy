@@ -648,7 +648,13 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                                      headers)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
-                hdrs = ['%s: %s' % (k, v) for k,v in headers.items()]
+                hdrs = []
+                for k,v in headers.iteritems():
+                    # People are often told to paste -Dhttp output to help
+                    # debug. Don't compromise credentials.
+                    if k in ('Authorization', 'Proxy-Authorization'):
+                        v = '<masked>'
+                    hdrs.append('%s: %s' % (k, v))
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
                 print 'Request sent: [%r] from (%s)' \
