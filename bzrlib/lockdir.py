@@ -388,9 +388,9 @@ class LockDir(lock.Lock):
             return
         if holder_info is not None:
             if ui.ui_factory.confirm_action(
-                "Break %(lock_info)s",
+                u"Break %(lock_info)s",
                 'bzrlib.lockdir.break', 
-                dict(lock_info=str(holder_info))):
+                dict(lock_info=unicode(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
                     "Broke lock %s" % result.lock_url)
