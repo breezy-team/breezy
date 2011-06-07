@@ -226,8 +226,8 @@ class LockDir(lock.Lock):
 
         :returns: The nonce of the lock, if it was successfully acquired.
 
-        :raises LockContention: If the lock is held by someone else.  The exception
-            contains the info of the current holder of the lock.
+        :raises LockContention: If the lock is held by someone else.  The
+            exception contains the info of the current holder of the lock.
         """
         self._trace("lock_write...")
         start_time = time.time()
@@ -389,7 +389,7 @@ class LockDir(lock.Lock):
         if holder_info is not None:
             if ui.ui_factory.confirm_action(
                 u"Break %(lock_info)s",
-                'bzrlib.lockdir.break', 
+                'bzrlib.lockdir.break',
                 dict(lock_info=unicode(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
@@ -406,7 +406,7 @@ class LockDir(lock.Lock):
         It is possible that another process may sneak in and take the
         lock before the breaking process acquires it.
 
-        :param dead_holder_info: 
+        :param dead_holder_info:
             Must be the result of a previous LockDir.peek() call; this is used
             to check that it's still held by the same process that the user
             decided was dead.  If this is not the current holder,
@@ -442,10 +442,10 @@ class LockDir(lock.Lock):
 
     def force_break_corrupt(self, corrupt_info_lines):
         """Release a lock that has been corrupted.
-        
+
         This is very similar to force_break, it except it doesn't assume that
         self.peek() can work.
-        
+
         :param corrupt_info_lines: the lines of the corrupted info file, used
             to check that the lock hasn't changed between reading the (corrupt)
             info file and calling force_break_corrupt.
@@ -698,7 +698,7 @@ class LockHeldInfo(object):
     """The information recorded about a held lock.
 
     This information is recorded into the lock when it's taken, and it can be
-    read back by any process with access to the lockdir.  It can be used, for 
+    read back by any process with access to the lockdir.  It can be used, for
     example, to tell the user who holds the lock, or to try to detect whether
     the lock holder is still alive.
 
@@ -724,8 +724,8 @@ class LockHeldInfo(object):
 
         For example, the start time is presented relative to the current time,
         rather than as seconds since the epoch.
-        
-        Returns a list of [user, hostname, pid, time_ago] all as readable 
+
+        Returns a list of [user, hostname, pid, time_ago] all as readable
         strings.
         """
         start_time = self.info_dict.get('start_time')
@@ -791,7 +791,7 @@ class LockHeldInfo(object):
             or cmp(self.info_dict, other.info_dict))
 
     def is_locked_by_this_process(self):
-        """Check if the hostname and pid in the lock are the same as for this process."""
+        """True if this process seems to be the current lock holder."""
         return (
             self.get('hostname') == get_host_name()
             and self.get('pid') == str(os.getpid())
@@ -825,7 +825,7 @@ class LockHeldInfo(object):
         try:
             pid = int(pid_str)
         except ValueError:
-            mutter("can't parse pid %r from %r" 
+            mutter("can't parse pid %r from %r"
                 % (pid_str, self))
             return False
         return osutils.is_local_pid_dead(pid)
