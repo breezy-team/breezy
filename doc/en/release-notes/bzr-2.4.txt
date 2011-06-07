@@ -111,6 +111,10 @@ Testing
 * Multiple ``selftest --exclude`` options are now combined instead of
   overriding each other. (Vincent Ladeuil, #746991)
 
+* Restore some ``FTPTransport`` test coverage by allowing ``pyftpdlib
+  0.6.0`` to be used. Also restore ``medusa`` support while leaving it
+  disabled to make it easier to use if/when we can in the future.
+  (Vincent Ladeuil, #781140)
 
 bzr 2.4b3
 #########
