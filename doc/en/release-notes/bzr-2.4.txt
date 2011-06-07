@@ -36,8 +36,8 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Credentials in the log output produced by ``-Dhttp`` masks credentials so
-  users can more freely post them in bug reports. (Vincent Ladeuil, #723074)
+* Credentials in the log output produced by ``-Dhttp`` are masked so users
+  can more freely post them in bug reports. (Vincent Ladeuil, #723074)
 
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
