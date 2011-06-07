@@ -2305,8 +2305,11 @@ class cmd_log(Command):
 
     :Other filtering:
 
-      The --message option can be used for finding revisions that match a
-      regular expression in a commit message.
+      The --match option can be used for finding revisions that match a
+      regular expression in a commit message, committer, author or bug.
+      Specifying the option several times will match any of the supplied
+      expressions. --match-author, --match-bugs, --match-committer and
+      --match-message can be used to only match a specific field.
 
     :Tips & tricks:
 
@@ -2374,7 +2377,8 @@ class cmd_log(Command):
             Option('message',
                    help='Show revisions whose message matches this '
                         'regular expression.',
-                   type=str),
+                   type=str,
+                   hidden=True),
             Option('limit',
                    short_name='l',
                    help='Limit the output to the first N revisions.',
