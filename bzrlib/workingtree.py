@@ -973,8 +973,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         file and change the file_id. That is the normal mode. Second, it can
         only change the file_id without touching any physical file.
 
-        rename_one uses the second mode if 'after == True' and 'to_rel' is not
-        versioned but present in the working tree.
+        rename_one uses the second mode if 'after == True' and 'to_rel' is
+        either not versioned or newly added, and present in the working tree.
 
         rename_one uses the second mode if 'after == False' and 'from_rel' is
         versioned but no longer in the working tree, and 'to_rel' is not
@@ -2573,8 +2573,8 @@ class InventoryWorkingTree(WorkingTree,
         inventory. The second mode only updates the inventory without
         touching the file on the filesystem.
 
-        move uses the second mode if 'after == True' and the target is not
-        versioned but present in the working tree.
+        move uses the second mode if 'after == True' and the target is
+        either not versioned or newly added, and present in the working tree.
 
         move uses the second mode if 'after == False' and the source is
         versioned but no longer in the working tree, and the target is not
