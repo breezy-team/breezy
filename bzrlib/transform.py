@@ -394,7 +394,9 @@ class TreeTransformBase(object):
     def _inventory_altered(self):
         """Get the trans_ids and paths of files needing new inv entries."""
         new_ids = set()
-        for id_set in [self._new_name, self._new_parent, self._new_id,
+        changed_id = set(t for t in self._new_id
+                         if self._new_id[t] != self.tree_file_id(t))
+        for id_set in [self._new_name, self._new_parent, changed_id,
                        self._new_executability]:
             new_ids.update(id_set)
         changed_kind = set(self._removed_contents)
@@ -403,6 +405,9 @@ class TreeTransformBase(object):
         changed_kind = (t for t in changed_kind
                         if self.tree_kind(t) != self.final_kind(t))
         new_ids.update(changed_kind)
+        file_id_changed = set(t for t in changed_id if t in self._removed_id)
+        for parent_trans_id in file_id_changed:
+            new_ids.update(self.iter_tree_children(parent_trans_id))
         return sorted(FinalPaths(self).get_paths(new_ids))
 
     def final_kind(self, trans_id):

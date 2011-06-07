@@ -1599,6 +1599,38 @@ def conflict_text(tree, merge):
     return template % ('<' * 7, tree, '=' * 7, merge, '>' * 7)
 
 
+class TestInventoryAltered(tests.TestCaseWithTransport):
+
+    def test_inventory_altered_unchanged(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            self.assertEqual([], tt._inventory_altered())
+
+    def test_inventory_altered_changed_parent_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            tt.unversion_file(tt.root)
+            tt.version_file('new-id', tt.root)
+            foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+            foo_tuple = ('foo', foo_trans_id)
+            root_tuple = ('', tt.root)
+            self.assertEqual([root_tuple, foo_tuple], tt._inventory_altered())
+
+    def test_inventory_altered_noop_changed_parent_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            tt.unversion_file(tt.root)
+            tt.version_file(tree.get_root_id(), tt.root)
+            foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+            self.assertEqual([], tt._inventory_altered())
+
+
 class TestTransformMerge(TestCaseInTempDir):
 
     def test_text_merge(self):
