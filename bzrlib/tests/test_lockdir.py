@@ -685,7 +685,15 @@ class TestLockHeldInfo(TestCase):
     def test_lock_holder_other_machine(self):
         """The lock holder isn't here so we don't know if they're alive."""
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict['host'] = 'egg.example.com'
+        info.info_dict['hostname'] = 'egg.example.com'
+        info.info_dict['pid'] = '123123123' # probably not alive at all
+        self.assertFalse(info.is_lock_holder_known_dead())
+
+    def test_lock_holder_other_user(self):
+        """Only auto-break locks held by this user."""
+        info = LockHeldInfo.for_this_process(None)
+        info.info_dict['user'] = 'notme@example.com'
+        info.info_dict['pid'] = '123123123' # probably not alive at all
         self.assertFalse(info.is_lock_holder_known_dead())
 
     def test_no_good_hostname(self):

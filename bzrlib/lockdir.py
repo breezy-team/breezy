@@ -92,6 +92,10 @@ Example usage:
 >>> # do something here
 >>> l.unlock()
 
+Some classes of stale locks can be predicted by checking: the host name is the
+same as the local host name; the user name is the same as the local user; the
+process id no longer exists.  The check on user name is not strictly necessary
+but helps protect against colliding host names.
 """
 
 
@@ -809,6 +813,10 @@ class LockHeldInfo(object):
             return False
         if self.get('hostname') == 'localhost':
             # Too ambiguous.
+            return False
+        if self.get('user') != get_username_for_lock_info():
+            # Could well be another local process by a different user, but
+            # just to be safe we won't conclude about this either.
             return False
         pid_str = self.info_dict.get('pid', None)
         if not pid_str:
