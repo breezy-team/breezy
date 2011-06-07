@@ -2762,15 +2762,16 @@ class InventoryWorkingTree(WorkingTree,
                     errors.NotVersionedError(path=from_rel))
             if to_id is not None:
                 allowed = False
-                # allow it with after but only if dest is newly added
+                # allow it with --after but only if dest is newly added
                 if after:
                     basis = self.basis_tree()
                     basis.lock_read()
-                    added = not basis.inventory.has_id(to_id)
-                    basis.unlock()
-                    if added:
-                        change_id = True
-                        allowed = True
+                    try:
+                        if not basis.has_id(to_id):
+                            rename_entry.change_id = True
+                            allowed = True
+                    finally:
+                        basis.unlock()
                 if not allowed:
                     raise errors.BzrMoveFailedError(from_rel,to_rel,
                         errors.AlreadyVersionedError(path=to_rel))
@@ -2801,7 +2802,6 @@ class InventoryWorkingTree(WorkingTree,
                 else:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel)
             rename_entry.only_change_inv = only_change_inv
-            rename_entry.change_id = change_id
         return rename_entries
 
     def _move(self, rename_entries):
