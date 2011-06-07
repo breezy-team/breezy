@@ -785,6 +785,9 @@ API Changes
   (``bzrlib.working_tree.format_registry``) rather than using the class
   methods on ``WorkingTreeFormat``. (Jelmer Vernooij, #714730)
 
+* Exporting may now be done with a generator
+  (``bzrlib.export.get_export_generator``) (Geoff/xaav, #791005)
+
 Internals
 *********
 
