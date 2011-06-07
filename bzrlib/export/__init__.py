@@ -226,7 +226,7 @@ register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'],
 register_lazy_exporter('tlzma', ['.tar.lzma'], 'bzrlib.export.tar_exporter',
                        'tar_lzma_exporter_generator')
 register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter',
-                       'tar_xz_exporte_generatorr')
+                       'tar_xz_exporter_generator')
 register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter',
                        'zip_exporter_generator')
 
