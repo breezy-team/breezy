@@ -463,6 +463,9 @@ class TestLogVerbose(TestLog):
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])
 
+    def test_log_s_verbose(self):
+        self.assertUseShortDeltaFormat(['log', '-S', '-v'])
+
     def test_log_short_verbose_verbose(self):
         self.assertUseLongDeltaFormat(['log', '--short', '-vv'])
 
