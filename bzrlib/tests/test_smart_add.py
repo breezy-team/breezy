@@ -30,11 +30,11 @@ class AddCustomIDAction(add.AddAction):
         # The first part just logs if appropriate
         # Now generate a custom id
         file_id = osutils.safe_file_id(kind + '-'
-                                       + path.raw_path.replace('/', '%'),
+                                       + path.replace('/', '%'),
                                        warn=False)
         if self.should_print:
             self._to_file.write('added %s with id %s\n'
-                                % (path.raw_path, file_id))
+                                % (path, file_id))
         return file_id
 
 
@@ -152,11 +152,10 @@ class TestAddActions(tests.TestCase):
         self.run_action("adding path\n")
 
     def run_action(self, output):
-        from bzrlib.mutabletree import _FastPath
         inv = inventory.Inventory()
         stdout = StringIO()
         action = add.AddAction(to_file=stdout, should_print=bool(output))
 
         self.apply_redirected(None, stdout, None, action, inv, None,
-            _FastPath('path'), 'file')
+            'path', 'file')
         self.assertEqual(stdout.getvalue(), output)

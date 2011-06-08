@@ -82,5 +82,90 @@ sink can be constructed with ``repo._get_sink()``, and provides an
 others).
 
 
+Stacking constraints
+====================
+
+**In short the rule is:** "repositories must hold revisions' parent
+inventories and their new texts (or else all texts for those revisions)."
+
+This is sometimes called "the stacking invariant."
+
+Why that rule?
+--------------
+
+A stacked repository needs to be capable of generating a complete stream
+for the revisions it does hold without access to its fallback
+repositories [#]_.  "Complete" here means that the stream for a revision (or
+set of revisions) can be inserted into a repository that already contains
+the parent(s) of that revision, and that repository will have a fully
+usable copy of that revision: a working tree can be built for that
+revision, etc.
+
+Assuming for a moment the stream has the necessary inventory, signature
+and CHK records to have a usable revision, what texts are required to have
+a usable revision?  The simple way to satisfy the requirement is to have
+*every* text for every revision at the stacking boundary.  Thus the
+revisions at the stacking boundary and all their descendants have their
+texts present and so can be fully reconstructed.  But this is expensive:
+it implies each stacked repository much contain *O(tree)* data even for a
+single revision of a 1-line change, and also implies transferring
+*O(tree)* data to fetch that revision.
+
+Because the goal is a usable revision *when added to a repository with the
+parent revision(s)* most of those texts will be redundant.  The minimal
+set that is needed is just those texts that are new in the revisions in
+our repository.  However, we need enough inventory data to be able to
+determine that set of texts.  So to make this possible every revision must
+have its parent inventories present so that the inventory delta between
+revisions can be calculated, and of course the CHK pages associated with
+that delta.  In fact the entire inventory does not need to be present,
+just enough of it to find the delta (assuming a repository format, like
+2a, that allows only part of an inventory to be stored).  Thus the stacked
+repository can contain only *O(changes)* data [#]_ and still deliver
+complete streams of that data.
+
+What about revisions at the stacking boundary with more than one parent?
+All of their parent revisions must be present, as a client may ask for a
+stream up to any parent, not just the left-hand parent.  If any parent is
+absent then all texts must be present instead.  Otherwise there will be
+the strange situation where some fetches of a revision will succeed and
+others fail depending the precise details of the fetch.
+
+Implications for fetching
+-------------------------
+
+Fetches must retrieve the records necessary to satisfy that rule.  The
+stream source will attempt to send the necessary records, and the stream
+sink will check for any missing records and make a second fetch for just
+those missing records before committing the write group.
+
+Our repository implementations check this constraint is satisfied before
+committing a write group, to prevent a bad stream from creating a corrupt
+repository.  So a fetch from a bad source (e.g. a damaged repository, or a
+buggy foreign-format import) may trigger ``BzrCheckError`` during
+``commit_write_group``.
+
+To fetch from a stacked repository via a smart server, the smart client:
+
+* first fetches a stream of as many of the requested revisions as possible
+  from the initial repository,
+* then while there are still missing revisions and untried fallback
+  repositories fetches the outstanding revisions from the next fallback
+  until either all revisions have been found (success) or the list of
+  fallbacks has been exhausted (failure).
+
+
+.. [#] This is not just a theoretical concern.  The smart server always
+   opens repositories without opening fallbacks, as it cannot assume it
+   can access the fallbacks that the client can.
+
+.. [#] Actually *O(changes)* isn't quite right in practice.  In the
+   current implementation the fulltext of a changed file must be
+   transferred, not just a delta, so a 1-line change to a 10MB file will
+   still transfer 10MB of text data.  This is because current formats
+   require records' compression parents to be present in the same
+   repository.
+
+
 ..
    vim: ft=rst tw=74 ai
