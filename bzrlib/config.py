@@ -2291,6 +2291,8 @@ class IniFileStore(Store):
         except configobj.ConfigObjError, e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
+        for hook in Store.hooks['load']:
+            hook(self)
 
     def save(self):
         if not self.is_loaded():
@@ -2299,6 +2301,8 @@ class IniFileStore(Store):
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
+        for hook in Store.hooks['save']:
+            hook(self)
 
     def external_url(self):
         # FIXME: external_url should really accepts an optional relpath
@@ -2337,6 +2341,28 @@ class IniFileStore(Store):
         else:
             section = self._config_obj.setdefault(section_name, {})
         return self.mutable_section_class(section_name, section)
+
+class StoreHooks(hooks.Hooks):
+    """A dict mapping hook names and a list of callables for config stores.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        super(StoreHooks, self).__init__('bzrlib.config', 'Store.hooks')
+        self.add_hook('load',
+                      'Invoked when a config store is loaded.'
+                      ' The signature is (store).',
+                      (2, 4))
+        self.add_hook('save',
+                      'Invoked when a config store is saved.'
+                      ' The signature is (store).',
+                      (2, 4))
+# install the default hooks into the Stack class.
+Store.hooks = StoreHooks()
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -2645,7 +2671,6 @@ class StackHooks(hooks.Hooks):
                       'Invoked when a config option is removed.'
                       ' The signature is (stack, name).',
                       (2, 4))
-
 # install the default hooks into the Stack class.
 Stack.hooks = StackHooks()
 

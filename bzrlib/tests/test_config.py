@@ -2083,6 +2083,17 @@ class TestReadonlyStore(TestStore):
         store._load_from_string('foo=bar')
         self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
 
+    def test_load_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.Store.hooks.install_named_hook('load', hook, None)
+        self.assertLength(0, calls)
+        store = self.get_store(self)
+        store._load_from_string('')
+        self.assertLength(1, calls)
+        self.assertEquals((store,), calls[0])
+
 
 class TestMutableStore(TestStore):
 
@@ -2166,6 +2177,19 @@ class TestMutableStore(TestStore):
         sections = list(modified_store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
+
+    def test_save_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.Store.hooks.install_named_hook('save', hook, None)
+        self.assertLength(0, calls)
+        store = self.get_store(self)
+        section = store.get_mutable_section('baz')
+        section.set('foo', 'bar')
+        store.save()
+        self.assertLength(1, calls)
+        self.assertEquals((store,), calls[0])
 
 
 class TestIniFileStore(TestStore):
