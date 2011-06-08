@@ -2272,6 +2272,8 @@ class IniFileStore(Store):
             return
         content = self.transport.get_bytes(self.file_name)
         self._load_from_string(content)
+        for hook in Store.hooks['load']:
+            hook(self)
 
     def _load_from_string(self, str_or_unicode):
         """Create a config store from a string.
@@ -2291,8 +2293,6 @@ class IniFileStore(Store):
         except configobj.ConfigObjError, e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
-        for hook in Store.hooks['load']:
-            hook(self)
 
     def save(self):
         if not self.is_loaded():
