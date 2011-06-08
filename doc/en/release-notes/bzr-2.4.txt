@@ -20,9 +20,14 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Hooks added for config stacks: ``get``, ``set`` and ``remove`` are called
+  when an option is repsectively read, modified or deleted.
+  (Vincent Ladeuil)
+
 * New hook server_exception in bzrlib.smart.server to catch any
-  exception caused while running bzr serve.  (Jonathan Riddell,
-  #274578)
+  exception caused while running bzr serve.
+  (Jonathan Riddell, #274578)
+
 
 Improvements
 ************

@@ -2494,10 +2494,6 @@ class TestStackGet(tests.TestCase):
         conf_stack = config.Stack([conf1, conf2])
         self.assertEquals('baz', conf_stack.get('foo'))
 
-    def test_get_for_empty_stack(self):
-        conf_stack = config.Stack([])
-        self.assertEquals(None, conf_stack.get('foo'))
-
     def test_get_for_empty_section_callable(self):
         conf_stack = config.Stack([lambda : []])
         self.assertEquals(None, conf_stack.get('foo'))
@@ -2521,6 +2517,26 @@ class TestConcreteStacks(TestStackWithTransport):
         stack = self.get_stack(self)
 
 
+class TestStackGet(TestStackWithTransport):
+
+    def test_get_for_empty_stack(self):
+        conf = self.get_stack(self)
+        self.assertEquals(None, conf.get('foo'))
+
+    def test_get_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.Stack.hooks.install_named_hook('get', hook, None)
+        self.assertLength(0, calls)
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        value = conf.get('foo')
+        self.assertEquals('bar', value)
+        self.assertLength(1, calls)
+        self.assertEquals((conf, 'foo', 'bar'), calls[0])
+
+
 class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):
@@ -2536,6 +2552,17 @@ class TestStackSet(TestStackWithTransport):
         conf.set('foo', 'baz')
         self.assertEquals, 'baz', conf.get('foo')
 
+    def test_set_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.Stack.hooks.install_named_hook('set', hook, None)
+        self.assertLength(0, calls)
+        conf = self.get_stack(self)
+        conf.set('foo', 'bar')
+        self.assertLength(1, calls)
+        self.assertEquals((conf, 'foo', 'bar'), calls[0])
+
 
 class TestStackRemove(TestStackWithTransport):
 
@@ -2550,6 +2577,18 @@ class TestStackRemove(TestStackWithTransport):
     def test_remove_unknown(self):
         conf = self.get_stack(self)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+    def test_remove_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.Stack.hooks.install_named_hook('remove', hook, None)
+        self.assertLength(0, calls)
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        conf.remove('foo')
+        self.assertLength(1, calls)
+        self.assertEquals((conf, 'foo'), calls[0])
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):

@@ -65,9 +65,8 @@ up=pull
 import os
 import string
 import sys
-import weakref
 
-from bzrlib import commands
+
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -95,6 +94,8 @@ from bzrlib import (
 from bzrlib.util.configobj import configobj
 """)
 from bzrlib import (
+    commands,
+    hooks,
     registry,
     )
 from bzrlib.symbol_versioning import (
@@ -159,7 +160,7 @@ class ConfigObj(configobj.ConfigObj):
         return self[section][name]
 
 
-# FIXME: Until we can guarantee that each config file is loaded once and and
+# FIXME: Until we can guarantee that each config file is loaded once and
 # only once for a given bzrlib session, we don't want to re-read the file every
 # time we query for an option so we cache the value (bad ! watch out for tests
 # needing to restore the proper value).This shouldn't be part of 2.4.0 final,
@@ -2587,6 +2588,8 @@ class Stack(object):
                 opt = None
             if opt is not None:
                 value = opt.get_default()
+        for hook in Stack.hooks['get']:
+            hook(self, name, value)
         return value
 
     def _get_mutable_section(self):
@@ -2604,15 +2607,47 @@ class Stack(object):
         """Set a new value for the option."""
         section = self._get_mutable_section()
         section.set(name, value)
+        for hook in Stack.hooks['set']:
+            hook(self, name, value)
 
     def remove(self, name):
         """Remove an existing option."""
         section = self._get_mutable_section()
         section.remove(name)
+        for hook in Stack.hooks['remove']:
+            hook(self, name)
 
     def __repr__(self):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
+
+
+class StackHooks(hooks.Hooks):
+    """A dict mapping hook names and a list of callables for config stacks.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        super(StackHooks, self).__init__('bzrlib.config', 'Stack.hooks')
+        self.add_hook('get',
+                      'Invoked when a config option is read.'
+                      ' The signature is (stack, name, value).',
+                      (2, 4))
+        self.add_hook('set',
+                      'Invoked when a config option is set.'
+                      ' The signature is (stack, name, value).',
+                      (2, 4))
+        self.add_hook('remove',
+                      'Invoked when a config option is removed.'
+                      ' The signature is (stack, name).',
+                      (2, 4))
+
+# install the default hooks into the Stack class.
+Stack.hooks = StackHooks()
 
 
 class _CompatibleStack(Stack):

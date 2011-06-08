@@ -72,6 +72,7 @@ _builtin_known_hooks = (
     ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
     ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
     ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
+    ('bzrlib.config', 'Stack.hooks', 'StackHooks'),
     ('bzrlib.info', 'hooks', 'InfoHooks'),
     ('bzrlib.lock', 'Lock.hooks', 'LockHooks'),
     ('bzrlib.merge', 'Merger.hooks', 'MergeHooks'),
