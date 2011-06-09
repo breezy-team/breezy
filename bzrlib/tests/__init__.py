@@ -1450,7 +1450,6 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failUnlessExists(self, path):
         return self.assertPathExists(path)
 
@@ -1463,7 +1462,6 @@ class TestCase(testtools.TestCase):
             self.assertTrue(osutils.lexists(path),
                 path + " does not exist")
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failIfExists(self, path):
         return self.assertPathDoesNotExist(path)
 
