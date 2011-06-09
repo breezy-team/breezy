@@ -140,6 +140,7 @@ Updated to revision 2 of branch %s
         # smoke test for doing an update of a checkout of a bound
         # branch with local commits.
         master = self.make_branch_and_tree('master')
+        master.commit('first commit')
         # make a bound branch
         self.run_bzr('checkout master child')
         # get an object form of child
@@ -174,7 +175,7 @@ Updated to revision 2 of branch %s
 All changes applied successfully.
 +N  file
 All changes applied successfully.
-Updated to revision 1 of branch %s
+Updated to revision 2 of branch %s
 Your local commits will now show as pending merges with 'bzr status', and can be committed with 'bzr commit'.
 """ % osutils.pathjoin(self.test_dir, 'master',),
                          err)

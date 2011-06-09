@@ -46,9 +46,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_tree_with_pending_merge_to_branch(self):
         tree = self.make_branch_and_tree('tree')
+        tree.commit('unchanged')
         other_tree = tree.bzrdir.sprout('other').open_workingtree()
-        self.build_tree(['other/file'])
-        other_tree.add('file')
         other_tree.commit('file added')
         tree.merge_from_branch(other_tree.branch)
         reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
