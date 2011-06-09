@@ -224,3 +224,9 @@ class DchError(BzrError):
 
     def __init__(self, error):
         BzrError.__init__(self, error=error)
+
+
+class MultipleUpstreamTarballsNotSupported(BzrError):
+
+    _fmt = ("Importing packages using source format 3.0 multiple tarballs "
+            "is not yet supported.")
