@@ -285,6 +285,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
         self.assertRaises(ValueError, transform.fixup_new_roots)
 
+    def test_apply_retains_root_directory(self):
+        # Do not attempt to delete the physical root directory, because that
+        # is impossible.
+        transform, root = self.get_transform()
+        with transform:
+            transform.delete_contents(root)
+            transform.apply()
+
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
         transform, root = self.get_transform()
