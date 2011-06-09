@@ -1093,6 +1093,7 @@ class Merge3Merger(object):
                           ))
         return result
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def fix_root(self):
         if self.tt.final_kind(self.tt.root) is None:
             self.tt.cancel_deletion(self.tt.root)
