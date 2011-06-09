@@ -125,7 +125,7 @@ repository can contain only *O(changes)* data [#]_ and still deliver
 complete streams of that data.
 
 What about revisions at the stacking boundary with more than one parent?
-All of their parent revisions must be present, as a client may ask for a
+All of the parent inventories must be present, as a client may ask for a
 stream up to any parent, not just the left-hand parent.  If any parent is
 absent then all texts must be present instead.  Otherwise there will be
 the strange situation where some fetches of a revision will succeed and
