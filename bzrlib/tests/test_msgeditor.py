@@ -351,7 +351,7 @@ if len(sys.argv) == 2:
 
     def test_set_commit_message_hook(self):
         msgeditor.hooks.install_named_hook("set_commit_message",
-                lambda existing_message, commit_obj: "save me some typing\n", None)
+                lambda commit_obj, existing_message: "save me some typing\n", None)
         commit_obj = commit.Commit()
         self.assertEquals("save me some typing\n",
             msgeditor.set_commit_message(commit_obj))
