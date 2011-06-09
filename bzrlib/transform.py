@@ -252,7 +252,8 @@ class TreeTransformBase(object):
         if (self.tree_file_id(self._new_root) is not None and
             self._new_root not in self._removed_id):
             self.unversion_file(self._new_root)
-        self.version_file(file_id, self._new_root)
+        if file_id is not None:
+            self.version_file(file_id, self._new_root)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't

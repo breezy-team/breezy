@@ -668,8 +668,9 @@ class TestMerge(tests.TestCaseWithTransport):
             self.build_tree([f])
             tree.add(f)
             tree.commit("added "+f)
-        for context in (".", "", "a"):
-            self.run_bzr("merge -r 1..0 " + context)
+        for context in (".", "", 'a'):
+            retcode = 1 if context == '.' or context == '' else 0
+            self.run_bzr("merge -r 1..0 " + context, retcode=retcode)
             self.assertPathDoesNotExist("a")
             tree.revert()
             self.assertPathExists("a")

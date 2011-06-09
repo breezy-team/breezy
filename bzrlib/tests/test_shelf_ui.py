@@ -20,6 +20,8 @@ import os
 import sys
 from textwrap import dedent
 
+from testtools.testcase import ExpectedException
+
 from bzrlib import (
     errors,
     shelf_ui,
@@ -310,11 +312,11 @@ class TestShelver(ShelfTestCase):
         tree1.merge_from_branch(tree2.branch,
                                 from_revision=revision.NULL_REVISION)
         tree1.commit('Replaced root entry')
+        self.shelve_all(tree1, rev2)
         # This is essentially assertNotRaises(InconsistentDelta)
-        self.expectFailure('Cannot shelve replacing a root entry',
-                           self.assertRaises, AssertionError,
-                           self.assertRaises, errors.InconsistentDelta,
-                           self.shelve_all, tree1, rev2)
+        with ExpectedException(AssertionError, ''):
+            with ExpectedException(errors.InconsistentDelta, ''):
+                self.shelve_all(tree1, rev2)
 
     def test_shelve_split(self):
         outer_tree = self.make_branch_and_tree('outer')

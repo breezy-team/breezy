@@ -201,7 +201,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         outer.remove(['dir-outer/file3'], keep_files=False)
         outer.commit('delete file3')
         nb_conflicts = outer.merge_from_branch(inner, to_revision='3')
-        self.assertEqual(4, nb_conflicts)
+        self.assertEqual(1, nb_conflicts)
         self.assertTreeLayout(['dir-outer',
                                'dir-outer/dir',
                                'dir-outer/dir/file1',
@@ -217,9 +217,6 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
     def test_file4_added_in_root(self):
         outer, inner = self.make_outer_tree()
         nb_conflicts = outer.merge_from_branch(inner, to_revision='4')
-        # file4 could not be added to its original root, so it gets added to
-        # the new root with a conflict.
-        self.assertEqual(1, nb_conflicts)
         self.assertTreeLayout(['dir-outer',
                                'dir-outer/dir',
                                'dir-outer/dir/file1',
@@ -230,19 +227,9 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_file4_added_then_renamed(self):
         outer, inner = self.make_outer_tree()
-        # 1 conflict, because file4 can't be put into the old root
-        self.assertEqual(1, outer.merge_from_branch(inner, to_revision='4'))
-        try:
-            outer.set_conflicts(conflicts.ConflictList())
-        except errors.UnsupportedOperation:
-            # WT2 doesn't have a separate list of conflicts to clear. It
-            # actually says there is a conflict, but happily forgets all about
-            # it.
-            pass
         outer.commit('added file4')
         # And now file4 gets renamed into an existing dir
         nb_conflicts = outer.merge_from_branch(inner, to_revision='5')
-        self.assertEqual(1, nb_conflicts)
         self.assertTreeLayout(['dir-outer',
                                'dir-outer/dir',
                                'dir-outer/dir/file1',
