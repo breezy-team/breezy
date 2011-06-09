@@ -28,6 +28,9 @@ New Features
   a commit message and revision properties.  (Jonathan Riddell,
   #274578)
 
+* Support ``-S`` as an alias for ``--short`` for the ``log`` and
+  ``missing`` commands. (Martin von Gagern, #38655)
+
 Improvements
 ************
 
@@ -39,6 +42,9 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Credentials in the log output produced by ``-Dhttp`` are masked so users
+  can more freely post them in bug reports. (Vincent Ladeuil, #723074)
 
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
@@ -97,6 +103,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* A `ImportTariffTestCase` base class has been added in
+  ``bzrlib.tests.test_import_tariff``, which can be used for import tariff
+  tests in plugins. (Jelmer Vernooij, #793465)
+
 * Fix deadlock in `TestImportTariffs.test_simple_serve` when stderr gets
   more output than fits in the default buffer.  This was happening on the
   Windows buildslave, and could easily happen in other circumstances where
@@ -116,6 +126,11 @@ Testing
 
 * Multiple ``selftest --exclude`` options are now combined instead of
   overriding each other. (Vincent Ladeuil, #746991)
+
+* Restore some ``FTPTransport`` test coverage by allowing ``pyftpdlib
+  0.6.0`` to be used. Also restore ``medusa`` support while leaving it
+  disabled to make it easier to use if/when we can in the future.
+  (Vincent Ladeuil, #781140)
 
 * `TestImportTariffs` no longer uses the real ``$HOME``.  This prevents it
   from polluting ``$HOME/.bzr.log`` or being accidentally influenced by
@@ -779,6 +794,9 @@ API Changes
 * Working tree formats should now be registered on the format registry
   (``bzrlib.working_tree.format_registry``) rather than using the class
   methods on ``WorkingTreeFormat``. (Jelmer Vernooij, #714730)
+
+* Exporting may now be done with a generator
+  (``bzrlib.export.get_export_generator``) (Geoff/xaav, #791005)
 
 Internals
 *********

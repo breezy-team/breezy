@@ -637,10 +637,10 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
-        result = self.run_bzr("status --short -r 0")[0]
+        result = self.run_bzr("status -S -r 0")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n" \
                                       "[?]   world.txt\n")
-        result2 = self.run_bzr("status --short -r 0..")[0]
+        result2 = self.run_bzr("status -S -r 0..")[0]
         self.assertEquals(result2, result)
 
     def test_status_versioned(self):

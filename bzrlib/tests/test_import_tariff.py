@@ -53,7 +53,7 @@ old_format_modules = [
     ]
 
 
-class TestImportTariffs(TestCaseWithTransport):
+class ImportTariffTestCase(TestCaseWithTransport):
     """Check how many modules are loaded for some representative scenarios.
 
     See the Testing Guide in the developer documentation for more explanation.
@@ -72,7 +72,7 @@ class TestImportTariffs(TestCaseWithTransport):
         for name in ('BZR_PLUGIN_PATH', 'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT'
                      ):
             self.preserved_env_vars[name] = os.environ.get(name)
-        super(TestImportTariffs, self).setUp()
+        super(ImportTariffTestCase, self).setUp()
 
     def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
@@ -140,6 +140,10 @@ class TestImportTariffs(TestCaseWithTransport):
         process = self.start_bzr_subprocess_with_import_check(args)
         self.finish_bzr_subprocess_with_import_check(process, args,
             forbidden_imports)
+
+
+class TestImportTariffs(ImportTariffTestCase):
+    """Basic import tariff tests for some common bzr commands"""
 
     def test_import_tariffs_working(self):
         # check some guaranteed-true and false imports to be sure we're
