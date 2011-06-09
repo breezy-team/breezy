@@ -334,6 +334,7 @@ def set_commit_message(commit, start_message=None):
         start_message = hook(commit, start_message)
     return start_message
 
+
 def generate_commit_message_template(commit, start_message=None):
     """Generate a commit message template.
 
