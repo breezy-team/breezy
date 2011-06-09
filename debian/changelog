@@ -1,9 +1,14 @@
 bzr-builddeb (2.7.5) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * New 'bzr dep3-patch' subcommand that can generate DEP-3 compliant
     patches. LP: #460576
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 08 May 2011 17:45:14 +0200
+  [ Jonathan Riddell ]
+  * Use new set_commit_message() hook in bzr to set the commit
+    message from debian/changelog and set fixed bugs in tags. LP: #707274
+
+ -- Jonathan Riddell <jriddell@ubuntu.com>  Fri, 03 Jun 2011 15:36:10 +0100
 
 bzr-builddeb (2.7.4) unstable; urgency=low
 
