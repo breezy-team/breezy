@@ -137,6 +137,14 @@ class TreeTransformBase(object):
         # A counter of how many files have been renamed
         self.rename_count = 0
 
+    def __enter__(self):
+        """Support Context Manager API."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Support Context Manager API."""
+        self.finalize()
+
     def finalize(self):
         """Release the working tree lock, if held.
 
@@ -384,18 +392,44 @@ class TreeTransformBase(object):
         return sorted(FinalPaths(self).get_paths(new_ids))
 
     def _inventory_altered(self):
-        """Get the trans_ids and paths of files needing new inv entries."""
-        new_ids = set()
-        for id_set in [self._new_name, self._new_parent, self._new_id,
+        """Determine which trans_ids need new Inventory entries.
+
+        An new entry is needed when anything that would be reflected by an
+        inventory entry changes, including file name, file_id, parent file_id,
+        file kind, and the execute bit.
+
+        Some care is taken to return entries with real changes, not cases
+        where the value is deleted and then restored to its original value,
+        but some actually unchanged values may be returned.
+
+        :returns: A list of (path, trans_id) for all items requiring an
+            inventory change. Ordered by path.
+        """
+        changed_ids = set()
+        # Find entries whose file_ids are new (or changed).
+        new_file_id = set(t for t in self._new_id
+                          if self._new_id[t] != self.tree_file_id(t))
+        for id_set in [self._new_name, self._new_parent, new_file_id,
                        self._new_executability]:
-            new_ids.update(id_set)
+            changed_ids.update(id_set)
+        # removing implies a kind change
         changed_kind = set(self._removed_contents)
+        # so does adding
         changed_kind.intersection_update(self._new_contents)
-        changed_kind.difference_update(new_ids)
+        # Ignore entries that are already known to have changed.
+        changed_kind.difference_update(changed_ids)
+        #  to keep only the truly changed ones
         changed_kind = (t for t in changed_kind
                         if self.tree_kind(t) != self.final_kind(t))
-        new_ids.update(changed_kind)
-        return sorted(FinalPaths(self).get_paths(new_ids))
+        # all kind changes will alter the inventory
+        changed_ids.update(changed_kind)
+        # To find entries with changed parent_ids, find parents which existed,
+        # but changed file_id.
+        changed_file_id = set(t for t in new_file_id if t in self._removed_id)
+        # Now add all their children to the set.
+        for parent_trans_id in new_file_id:
+            changed_ids.update(self.iter_tree_children(parent_trans_id))
+        return sorted(FinalPaths(self).get_paths(changed_ids))
 
     def final_kind(self, trans_id):
         """Determine the final file kind, after any changes applied.

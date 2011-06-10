@@ -63,7 +63,7 @@ LINES_ZY = 'z\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 LINES_AY = 'a\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 
 
-class TestShelver(tests.TestCaseWithTransport):
+class ShelfTestCase(tests.TestCaseWithTransport):
 
     def create_shelvable_tree(self):
         tree = self.make_branch_and_tree('tree')
@@ -72,6 +72,9 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.commit('added foo')
         self.build_tree_contents([('tree/foo', LINES_ZY)])
         return tree
+
+
+class TestShelver(ShelfTestCase):
 
     def test_unexpected_prompt_failure(self):
         tree = self.create_shelvable_tree()
@@ -327,7 +330,7 @@ class TestShelver(tests.TestCaseWithTransport):
                            outer_tree, rev2)
 
 
-class TestApplyReporter(TestShelver):
+class TestApplyReporter(ShelfTestCase):
 
     def test_shelve_not_diff(self):
         tree = self.create_shelvable_tree()
