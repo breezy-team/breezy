@@ -62,6 +62,7 @@ from bzrlib.transport import (
 
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
+    MultipleUpstreamTarballsNotSupported,
     TarFailed,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
@@ -1560,8 +1561,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                 "0000", "-exec", "chmod", "644", "{}", ";"])
         for part in self.dsc['files']:
             if (re.search("\.orig-[^.]+\.tar\.(gz|bz2|lzma)$", part['name'])):
-                raise AssertionError("Can't import packages with multiple "
-                    "upstream tarballs yet")
+                raise MultipleUpstreamTarballsNotSupported()
             if (part['name'].endswith(".orig.tar.gz")
                     or part['name'].endswith(".orig.tar.bz2")):
                 assert self.unextracted_upstream is None, "Two .orig.tar.(gz|bz2)?"

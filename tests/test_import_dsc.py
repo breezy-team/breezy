@@ -35,6 +35,9 @@ from bzrlib import (
         tests,
         )
 
+from bzrlib.plugins.builddeb.errors import (
+        MultipleUpstreamTarballsNotSupported,
+        )
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
@@ -1917,3 +1920,20 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         finally:
             extractor.cleanup()
 
+    def test_extract_format3_quilt_multiple_upstream_tarballs(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version, version3=True,
+                multiple_upstream_tarballs=("foo", "bar"))
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_upstream_file("foo/wibble")
+        builder.add_upstream_file("bar/xyzzy")
+        builder.add_default_control()
+        builder.build(tar_format='bz2')
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(ThreeDotZeroQuiltSourceExtractor,
+                SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = ThreeDotZeroQuiltSourceExtractor(builder.dsc_name(), dsc)
+        self.addCleanup(extractor.cleanup)
+        self.assertRaises(MultipleUpstreamTarballsNotSupported, extractor.extract)
