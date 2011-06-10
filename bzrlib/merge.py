@@ -1318,9 +1318,9 @@ class Merge3Merger(object):
                                         this_parent, this_name,
                                         other_parent, other_name))
         if not self.other_tree.has_id(file_id):
-            # it doesn't matter whether the result was 'other' or
-            # 'conflict'-- if there's no 'other', or it's not versioned, we
-            # leave it alone.
+            # it doesn't matter whether the result was 'other' or 'conflict'--
+            # if there's no 'other', or it's not versioned (unversioned being
+            # one such case), we leave it alone.
             return
         parent_id = parents[self.winner_idx[parent_id_winner]]
         name = names[self.winner_idx[name_winner]]
