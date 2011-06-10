@@ -1935,11 +1935,5 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         self.assertEqual(ThreeDotZeroQuiltSourceExtractor,
                 SOURCE_EXTRACTORS[dsc['Format']])
         extractor = ThreeDotZeroQuiltSourceExtractor(builder.dsc_name(), dsc)
-        try:
-            try:
-                extractor.extract()
-                self.fail("Expected exception not thrown")
-            except MultipleUpstreamTarballsNotSupported:
-                pass # Expected
-        finally:
-            extractor.cleanup()
+        self.addCleanup(extractor.cleanup)
+        self.assertRaises(MultipleUpstreamTarballsNotSupported, extractor.extract)
