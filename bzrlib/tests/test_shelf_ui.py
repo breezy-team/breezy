@@ -312,7 +312,6 @@ class TestShelver(ShelfTestCase):
         tree1.merge_from_branch(tree2.branch,
                                 from_revision=revision.NULL_REVISION)
         tree1.commit('Replaced root entry')
-        self.shelve_all(tree1, rev2)
         # This is essentially assertNotRaises(InconsistentDelta)
         with ExpectedException(AssertionError,
                                'InconsistentDelta not raised'):
