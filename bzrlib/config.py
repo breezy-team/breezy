@@ -555,6 +555,41 @@ class Config(object):
         return command_line
 
 
+class _ConfigHooks(hooks.Hooks):
+    """A dict mapping hook names and a list of callables for configs.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        super(_ConfigHooks, self).__init__('bzrlib.config', 'ConfigHooks')
+        self.add_hook('load',
+                      'Invoked when a config store is loaded.'
+                      ' The signature is (store).',
+                      (2, 4))
+        self.add_hook('save',
+                      'Invoked when a config store is saved.'
+                      ' The signature is (store).',
+                      (2, 4))
+        # The hooks for config options
+        self.add_hook('get',
+                      'Invoked when a config option is read.'
+                      ' The signature is (stack, name, value).',
+                      (2, 4))
+        self.add_hook('set',
+                      'Invoked when a config option is set.'
+                      ' The signature is (stack, name, value).',
+                      (2, 4))
+        self.add_hook('remove',
+                      'Invoked when a config option is removed.'
+                      ' The signature is (stack, name).',
+                      (2, 4))
+ConfigHooks = _ConfigHooks()
+
+
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
@@ -2272,7 +2307,7 @@ class IniFileStore(Store):
             return
         content = self.transport.get_bytes(self.file_name)
         self._load_from_string(content)
-        for hook in Store.hooks['load']:
+        for hook in ConfigHooks['load']:
             hook(self)
 
     def _load_from_string(self, str_or_unicode):
@@ -2301,7 +2336,7 @@ class IniFileStore(Store):
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
-        for hook in Store.hooks['save']:
+        for hook in ConfigHooks['save']:
             hook(self)
 
     def external_url(self):
@@ -2341,28 +2376,6 @@ class IniFileStore(Store):
         else:
             section = self._config_obj.setdefault(section_name, {})
         return self.mutable_section_class(section_name, section)
-
-class StoreHooks(hooks.Hooks):
-    """A dict mapping hook names and a list of callables for config stores.
-    """
-
-    def __init__(self):
-        """Create the default hooks.
-
-        These are all empty initially, because by default nothing should get
-        notified.
-        """
-        super(StoreHooks, self).__init__('bzrlib.config', 'Store.hooks')
-        self.add_hook('load',
-                      'Invoked when a config store is loaded.'
-                      ' The signature is (store).',
-                      (2, 4))
-        self.add_hook('save',
-                      'Invoked when a config store is saved.'
-                      ' The signature is (store).',
-                      (2, 4))
-# install the default hooks into the Stack class.
-Store.hooks = StoreHooks()
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -2614,7 +2627,7 @@ class Stack(object):
                 opt = None
             if opt is not None:
                 value = opt.get_default()
-        for hook in Stack.hooks['get']:
+        for hook in ConfigHooks['get']:
             hook(self, name, value)
         return value
 
@@ -2633,46 +2646,19 @@ class Stack(object):
         """Set a new value for the option."""
         section = self._get_mutable_section()
         section.set(name, value)
-        for hook in Stack.hooks['set']:
+        for hook in ConfigHooks['set']:
             hook(self, name, value)
 
     def remove(self, name):
         """Remove an existing option."""
         section = self._get_mutable_section()
         section.remove(name)
-        for hook in Stack.hooks['remove']:
+        for hook in ConfigHooks['remove']:
             hook(self, name)
 
     def __repr__(self):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
-
-
-class StackHooks(hooks.Hooks):
-    """A dict mapping hook names and a list of callables for config stacks.
-    """
-
-    def __init__(self):
-        """Create the default hooks.
-
-        These are all empty initially, because by default nothing should get
-        notified.
-        """
-        super(StackHooks, self).__init__('bzrlib.config', 'Stack.hooks')
-        self.add_hook('get',
-                      'Invoked when a config option is read.'
-                      ' The signature is (stack, name, value).',
-                      (2, 4))
-        self.add_hook('set',
-                      'Invoked when a config option is set.'
-                      ' The signature is (stack, name, value).',
-                      (2, 4))
-        self.add_hook('remove',
-                      'Invoked when a config option is removed.'
-                      ' The signature is (stack, name).',
-                      (2, 4))
-# install the default hooks into the Stack class.
-Stack.hooks = StackHooks()
 
 
 class _CompatibleStack(Stack):

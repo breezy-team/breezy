@@ -2177,7 +2177,7 @@ class TestMutableStore(TestStore):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.Store.hooks.install_named_hook('load', hook, None)
+        config.ConfigHooks.install_named_hook('load', hook, None)
         self.assertLength(0, calls)
         store = self.get_store(self)
         store.load()
@@ -2188,7 +2188,7 @@ class TestMutableStore(TestStore):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.Store.hooks.install_named_hook('save', hook, None)
+        config.ConfigHooks.install_named_hook('save', hook, None)
         self.assertLength(0, calls)
         store = self.get_store(self)
         section = store.get_mutable_section('baz')
@@ -2557,7 +2557,7 @@ class TestStackGet(TestStackWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.Stack.hooks.install_named_hook('get', hook, None)
+        config.ConfigHooks.install_named_hook('get', hook, None)
         self.assertLength(0, calls)
         conf = self.get_stack(self)
         conf.store._load_from_string('foo=bar')
@@ -2586,7 +2586,7 @@ class TestStackSet(TestStackWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.Stack.hooks.install_named_hook('set', hook, None)
+        config.ConfigHooks.install_named_hook('set', hook, None)
         self.assertLength(0, calls)
         conf = self.get_stack(self)
         conf.set('foo', 'bar')
@@ -2612,7 +2612,7 @@ class TestStackRemove(TestStackWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.Stack.hooks.install_named_hook('remove', hook, None)
+        config.ConfigHooks.install_named_hook('remove', hook, None)
         self.assertLength(0, calls)
         conf = self.get_stack(self)
         conf.store._load_from_string('foo=bar')
