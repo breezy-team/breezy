@@ -143,8 +143,6 @@ Updated to revision 2 of branch %s
         master.commit('first commit')
         # make a bound branch
         self.run_bzr('checkout master child')
-        # get an object form of child
-        child = workingtree.WorkingTree.open('child')
         # check that out
         self.run_bzr('checkout --lightweight child checkout')
         # get an object form of the checkout to manipulate
@@ -159,6 +157,8 @@ Updated to revision 2 of branch %s
         a_file = file('child/file_b', 'wt')
         a_file.write('Foo')
         a_file.close()
+        # get an object form of child
+        child = workingtree.WorkingTree.open('child')
         child.add(['file_b'])
         child_tip = child.commit('add file_b', local=True)
         # check checkout
