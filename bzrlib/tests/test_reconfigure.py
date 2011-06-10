@@ -48,7 +48,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         tree.commit('unchanged')
         other_tree = tree.bzrdir.sprout('other').open_workingtree()
-        other_tree.commit('file added')
+        other_tree.commit('mergeable commit')
         tree.merge_from_branch(other_tree.branch)
         reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
         self.assertRaises(errors.UncommittedChanges, reconfiguration.apply)
