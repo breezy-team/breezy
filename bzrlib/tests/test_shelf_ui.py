@@ -314,7 +314,8 @@ class TestShelver(ShelfTestCase):
         tree1.commit('Replaced root entry')
         self.shelve_all(tree1, rev2)
         # This is essentially assertNotRaises(InconsistentDelta)
-        with ExpectedException(AssertionError, ''):
+        with ExpectedException(AssertionError,
+                               'InconsistentDelta not raised'):
             with ExpectedException(errors.InconsistentDelta, ''):
                 self.shelve_all(tree1, rev2)
 

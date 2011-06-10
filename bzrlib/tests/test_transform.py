@@ -20,6 +20,8 @@ from StringIO import StringIO
 import sys
 import time
 
+from testtools import ExpectedException
+
 from bzrlib import (
     bencode,
     errors,
@@ -291,7 +293,10 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         with transform:
             transform.delete_contents(root)
-            transform.apply()
+            with ExpectedException(AssertionError,
+                                   'TransformRenameFailed not raised'):
+                with ExpectedException(errors.TransformRenameFailed, ''):
+                    transform.apply()
 
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
