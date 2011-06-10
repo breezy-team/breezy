@@ -239,13 +239,27 @@ class SourcePackageBuilder(object):
     >>> builder.dsc_name()
     """
 
-    def __init__(self, name, version, native=False, version3=False):
+    def __init__(self, name, version, native=False, version3=False,
+            multiple_upstream_tarballs=None):
+        """
+        :param name: Package name
+        :param version: Package version
+        :param native: Whether to build a native source package
+        :param version3: Whether to build a version 3.0 source package
+        :param multiple_upstream_tarballs: A list of each top-level directory
+            within the upstream tree which is to be packed as a source format
+            3.0 (quilt) additional upstream tarball
+        """
         self.upstream_files = {}
         self.upstream_symlinks = {}
         self.debian_files = {}
         self.name = name
         self.native = native
         self.version3 = version3
+        self.multiple_upstream_tarballs = multiple_upstream_tarballs
+        if multiple_upstream_tarballs and not (version3 and not native):
+            raise AssertionError("Multiple upstream tarballs are only "
+                    "possible with 3.0 (quilt) format")
         self._cl = Changelog()
         self.new_version(version)
 
@@ -356,6 +370,20 @@ class SourcePackageBuilder(object):
                 cmd = ["dpkg-source", "-sn", "-b", basedir]
         else:
             if not self.native:
+                if self.multiple_upstream_tarballs:
+                    for part in self.multiple_upstream_tarballs:
+                        tar_path = "%s_%s.orig-%s.tar.%s" % (self.name,
+                                self._cl.version.upstream_version,
+                                part, tar_format)
+                        if os.path.exists(tar_path):
+                            os.unlink(tar_path)
+                        tar = tarfile.open(tar_path, 'w:%s' % tar_format)
+                        part_basedir = os.path.join(basedir, part)
+                        try:
+                            tar.add(part_basedir, arcname=part)
+                        finally:
+                            tar.close()
+                        shutil.rmtree(part_basedir)
                 tar_path = "%s_%s.orig.tar.%s" % (self.name,
                         self._cl.version.upstream_version, tar_format)
                 if os.path.exists(tar_path):
