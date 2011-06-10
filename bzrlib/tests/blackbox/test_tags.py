@@ -124,8 +124,7 @@ class TestTagging(TestCaseWithTransport):
 
     def make_fork(self, branch):
         fork = branch.create_clone_on_transport(self.get_transport('fork'))
-        fork.lock_write()
-        self.addCleanup(fork.unlock)
+        self.addCleanup(fork.lock_write().unlock)
         with transform.TransformPreview(fork.basis_tree()) as tt:
             tt.commit(fork, message='Commit in fork.', revision_id='fork-0')
         with transform.TransformPreview(fork.basis_tree()) as tt:
