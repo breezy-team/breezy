@@ -392,20 +392,38 @@ class TreeTransformBase(object):
         return sorted(FinalPaths(self).get_paths(new_ids))
 
     def _inventory_altered(self):
-        """Get the trans_ids and paths of files needing new inv entries."""
+        """Get the trans_ids and paths of files needing new inv entries.
+
+        Summarize all changes to the inventory.
+
+        :returns: A list of (path, trans_id) for all items requiring an
+            inventory change. Ordered by path.
+        """
+        # We'll collect all kinds of new ids (isn't it really changed_ids ? --
+        # vila 20110611)
         new_ids = set()
+        # Keep only the ids that don't already exist in the tree (to
+        # filter... what ? It may be clearer to get rid of the for loop and add
+        # a comment for each id_set -- vila 20110611)
         changed_id = set(t for t in self._new_id
                          if self._new_id[t] != self.tree_file_id(t))
         for id_set in [self._new_name, self._new_parent, changed_id,
                        self._new_executability]:
             new_ids.update(id_set)
+        # removing implies a kind change
         changed_kind = set(self._removed_contents)
+        # so does adding
         changed_kind.intersection_update(self._new_contents)
+        # unless it's just a modification
         changed_kind.difference_update(new_ids)
+        # final check to keep only the truely changed ones
         changed_kind = (t for t in changed_kind
                         if self.tree_kind(t) != self.final_kind(t))
+        # all kind changes will alter the inventory
         new_ids.update(changed_kind)
+        # as well as file_id changes
         file_id_changed = set(t for t in changed_id if t in self._removed_id)
+        # which propagate to children for directories
         for parent_trans_id in file_id_changed:
             new_ids.update(self.iter_tree_children(parent_trans_id))
         return sorted(FinalPaths(self).get_paths(new_ids))
