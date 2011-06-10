@@ -36,9 +36,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Bazaar will now detect when a lock file is held by a dead process
+* Bazaar can now detect when a lock file is held by a dead process
   originating from the same machine, and steal the lock after printing a
-  message to the user.
+  message to the user.  This is off by default, for safety, but can be
+  turned on by setting the configuration variable ``locks.steal_dead`` to
+  ``True``.
   (Martin Pool, #220464)
 
 * Fix a race condition for ``server_started`` hooks leading to a spurious

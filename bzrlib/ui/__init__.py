@@ -154,7 +154,7 @@ class UIFactory(object):
             "It is recommended that you upgrade by "
             "running the command\n"
             "  bzr upgrade %(basedir)s"),
-        steal_dead_lock=(
+        locks_steal_dead=(
             u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
         )
 

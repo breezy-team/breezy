@@ -708,11 +708,15 @@ class TestStaleLockDir(TestCaseWithTransport):
 
     :see: https://bugs.launchpad.net/bzr/+bug/220464
     """
+
     def test_auto_break_stale_lock(self):
         """Locks safely known to be stale are just cleaned up.
 
         This generates a warning but no other user interaction.
         """
+        # This is off by default at present; see the discussion in the bug.
+        # If you change the default, don't forget to update the docs.
+        config.GlobalConfig().set_user_option('locks.steal_dead', True)
         # Create a lock pretending to come from a different nonexistent
         # process on the same machine.
         l1 = LockDir(self.get_transport(), 'a',
@@ -732,8 +736,7 @@ class TestStaleLockDir(TestCaseWithTransport):
         token_1 = l1.attempt_lock()
         self.addCleanup(l1.unlock)
         l2 = LockDir(self.get_transport(), 'a')
-        # This fails now, because dead lock breaking is turned off.
-        config.GlobalConfig().set_user_option('steal_dead_locks', False)
+        # This fails now, because dead lock breaking is off by default.
         self.assertRaises(LockContention,
             l2.attempt_lock)
         # and it's in fact not broken
