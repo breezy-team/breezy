@@ -49,6 +49,12 @@ Deprecated command synonyms
 Two built-in synonyms for ``bzr branch`` have been deprecated: ``clone`` and
 ``get``.
 
+Command options
+***************
+
+* The ``bzr log`` and ``bzr missing`` commands now accept ``-S`` as a
+  shorthand for ``--short``.
+
 Configuration files
 *******************
 
@@ -100,6 +106,12 @@ Creating a stacked branch from a smart server with ``bzr branch
 --stacked`` is a bit faster now.  For small branches it does 20% fewer
 network roundtrips.  Other operations where a local branch is stacked on a
 branch hosted on a smart server will also benefit.
+
+More export control
+*******************
+
+When exporting a tree, you may now use get_export_generator() to 
+do an operation after each file is exported. 
 
 Testing
 *******

@@ -303,6 +303,13 @@ class MessageEditorHooks(Hooks):
         These are all empty initially.
         """
         Hooks.__init__(self, "bzrlib.msgeditor", "hooks")
+        self.add_hook('set_commit_message',
+            "Set a fixed commit message. "
+            "set_commit_message is called with the "
+            "bzrlib.commit.Commit object (so you can also change e.g. revision "
+            "properties by editing commit.builder._revprops) and the message "
+            "so far. set_commit_message must return the message to use or None"
+            " if it should use the message editor as normal.", (2, 4))
         self.add_hook('commit_message_template',
             "Called when a commit message is being generated. "
             "commit_message_template is called with the bzrlib.commit.Commit "
@@ -315,6 +322,17 @@ class MessageEditorHooks(Hooks):
 
 
 hooks = MessageEditorHooks()
+
+
+def set_commit_message(commit, start_message=None):
+    """Sets the commit message.
+    :param commit: Commit object for the active commit.
+    :return: The commit message or None to continue using the message editor
+    """
+    start_message = None
+    for hook in hooks['set_commit_message']:
+        start_message = hook(commit, start_message)
+    return start_message
 
 
 def generate_commit_message_template(commit, start_message=None):
