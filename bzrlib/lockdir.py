@@ -92,6 +92,10 @@ Example usage:
 >>> # do something here
 >>> l.unlock()
 
+Some classes of stale locks can be predicted by checking: the host name is the
+same as the local host name; the user name is the same as the local user; the
+process id no longer exists.  The check on user name is not strictly necessary
+but helps protect against colliding host names.
 """
 
 
@@ -402,9 +406,9 @@ class LockDir(lock.Lock):
             return
         if holder_info is not None:
             if ui.ui_factory.confirm_action(
-                "Break %(lock_info)s",
-                'bzrlib.lockdir.break',
-                dict(lock_info=str(holder_info))):
+                u"Break %(lock_info)s",
+                'locks.confirm_break',
+                dict(lock_info=unicode(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
                     "Broke lock %s" % result.lock_url)
@@ -805,7 +809,7 @@ class LockHeldInfo(object):
             or cmp(self.info_dict, other.info_dict))
 
     def is_locked_by_this_process(self):
-        """Check if the lock appears to be held by this process."""
+        """True if this process seems to be the current lock holder."""
         return (
             self.get('hostname') == get_host_name()
             and self.get('pid') == str(os.getpid())
@@ -827,6 +831,10 @@ class LockHeldInfo(object):
             return False
         if self.get('hostname') == 'localhost':
             # Too ambiguous.
+            return False
+        if self.get('user') != get_username_for_lock_info():
+            # Could well be another local process by a different user, but
+            # just to be safe we won't conclude about this either.
             return False
         pid_str = self.info_dict.get('pid', None)
         if not pid_str:
