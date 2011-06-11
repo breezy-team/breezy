@@ -593,7 +593,7 @@ if has_win32api:
         handle.close()
         return False
     is_local_pid_dead = _pywin32_is_local_pid_dead
-elif has_ctypes:
+elif has_ctypes and sys.platform == 'win32':
     from ctypes.wintypes import BOOL, DWORD, HANDLE
     _kernel32 = ctypes.windll.kernel32
     _CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
