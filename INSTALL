@@ -1,5 +1,8 @@
 You need the Dulwich Python module installed (or in PYTHONPATH) and a fairly 
-recent version of bzr. 
+recent version of bzr.
+
+You will also need either the python tdb or sqlite bindings; the latter are included
+with Python.
 
 For more information on Dulwich, see http://samba.org/~jelmer/dulwich/
 
