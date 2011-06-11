@@ -73,6 +73,9 @@ Bug Fixes
   ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
   unicode prompt to be passed in. (Jelmer Vernooij, #592083)
 
+* Fix exporting subdirectory with ``--per-file-timestamps``.
+  (Szilveszter Farkas, #795557)
+
 Documentation
 *************
 
