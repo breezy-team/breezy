@@ -1,4 +1,4 @@
-#    test_util.py -- Lookups via. launchpadlib
+#    launchpad.py -- Lookups via. launchpadlib
 #    Copyright (C) 2009 Canonical Ltd.
 #
 #    This file is part of bzr-builddeb.
@@ -35,7 +35,9 @@ except ImportError:
     HAVE_LPLIB = False
 
 
-def _get_launchpad():
+def get_launchpad():
+    if not HAVE_LPLIB:
+        return None
     try:
         return Launchpad.login_anonymously("bzr-builddeb",
             service_root=LPNET_SERVICE_ROOT)
@@ -58,9 +60,7 @@ def ubuntu_bugs_for_debian_bug(bug_id):
     :param bug_id: Debian bug id
     :return: Liust of Launchpad bug ids for Ubuntu bugs
     """
-    if not HAVE_LPLIB:
-        return []
-    lp = _get_launchpad()
+    lp = get_launchpad()
     if lp is None:
         return []
     try:
@@ -81,9 +81,7 @@ def debian_bugs_for_ubuntu_bug(bug_id):
     :param bug_id: The Launchpad bug ID for the Ubuntu bug
     :return: List of Debian bug URLs.
     """
-    if not HAVE_LPLIB:
-        return []
-    lp = _get_launchpad()
+    lp = get_launchpad()
     if lp is None:
         return []
     try:
@@ -101,16 +99,15 @@ def debian_bugs_for_ubuntu_bug(bug_id):
     return []
 
 
-def get_upstream_branch_url(package, distribution_name, distroseries_name):
-    """Return the upstream branch URL based on a package in a distribution.
+def get_upstream_projectseries_for_package(package, distribution_name, distroseries_name):
+    """Return the upstream project series for a package.
 
+    :param package: Package name
     :param distribution_name: Distribution name
-    :param package: Source package name
-    :param distroseries_name: Distroseries name
+    :param distroseries_name: Distribution series name
+    :return: Launchpad object for the upstream project series
     """
-    if not HAVE_LPLIB:
-        return None
-    lp = _get_launchpad()
+    lp = get_launchpad()
     if lp is None:
         return None
     distribution = lp.distributions[distribution_name]
@@ -131,9 +128,24 @@ def get_upstream_branch_url(package, distribution_name, distroseries_name):
         note("%s: Source package %s in %s not linked to a product series" % (
             distribution_name, package, sourcepackage))
         return None
-    branch = productseries.branch
+    return productseries
+
+
+def get_upstream_branch_url(package, distribution_name, distroseries_name):
+    """Return the upstream branch URL based on a package in a distribution.
+
+    :param distribution_name: Distribution name
+    :param package: Source package name
+    :param distroseries_name: Distroseries name
+    """
+    projectseries = get_upstream_projectseries_for_package(
+        package, distribution_name, distroseries_name)
+    if projectseries is None:
+        return
+    branch = projectseries.branch
     if branch is None:
-        note(("%s: upstream product series %s for source package %s does not have "
-             "a branch") % (distribution_name, distroseries, package))
+        note(("%s: upstream project series %s for source package %s does "
+              "not have a branch") % (distribution_name, distroseries_name,
+                  package))
         return None
     return branch.bzr_identity
