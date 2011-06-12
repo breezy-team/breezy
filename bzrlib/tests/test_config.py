@@ -2174,12 +2174,12 @@ class TestMutableStore(TestStore):
         section.set('foo', 'bar')
         store.save()
         # Now we can try to load it
+        store = self.get_store(self)
         calls = []
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('load', hook, None)
         self.assertLength(0, calls)
-        store = self.get_store(self)
         store.load()
         self.assertLength(1, calls)
         self.assertEquals((store,), calls[0])
@@ -2554,13 +2554,13 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals(None, conf.get('foo'))
 
     def test_get_hook(self):
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
         calls = []
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('get', hook, None)
         self.assertLength(0, calls)
-        conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
         value = conf.get('foo')
         self.assertEquals('bar', value)
         self.assertLength(1, calls)
