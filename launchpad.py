@@ -53,6 +53,11 @@ def _get_launchpad():
 
 
 def ubuntu_bugs_for_debian_bug(bug_id):
+    """Find Ubuntu bugs linked to a particular Debian bug.
+
+    :param bug_id: Debian bug id
+    :return: Liust of Launchpad bug ids for Ubuntu bugs
+    """
     if not HAVE_LPLIB:
         return []
     lp = _get_launchpad()
@@ -71,6 +76,11 @@ def ubuntu_bugs_for_debian_bug(bug_id):
 
 
 def debian_bugs_for_ubuntu_bug(bug_id):
+    """Find the Debian bugs linked to a particular Ubuntu bug.
+
+    :param bug_id: The Launchpad bug ID for the Ubuntu bug
+    :return: List of Debian bug URLs.
+    """
     if not HAVE_LPLIB:
         return []
     lp = _get_launchpad()
