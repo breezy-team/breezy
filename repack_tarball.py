@@ -208,7 +208,7 @@ def repack_tarball(source_name, new_name, target_dir=None, force_gz=True):
     The source must exist, and the target cannot exist, unless it is identical
     to the source.
 
-    :param source_name: the curent name of the file/dir
+    :param source_name: the current name of the file/dir
     :type source_name: string
     :param new_name: the desired name of the tarball
     :type new_name: string
