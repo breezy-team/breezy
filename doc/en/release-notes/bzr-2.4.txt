@@ -73,6 +73,9 @@ Bug Fixes
   ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
   unicode prompt to be passed in. (Jelmer Vernooij, #592083)
 
+* ``bzr version-info`` now works when the tree is on a dotted revno.
+  (Benoît Pierre, #796259)
+
 Documentation
 *************
 
@@ -86,6 +89,9 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* the "revno" field type when using the python version-info format is now
+  a string (to handle dotted revnos) (Benoît Pierre, #796259)
 
 Internals
 *********
