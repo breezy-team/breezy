@@ -19,13 +19,13 @@
 #
 
 from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseWithTransport
 
 from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NORMAL,
     DebBuildConfig,
     )
+from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
 
 
 class DebBuildConfigTests(TestCaseWithTransport):

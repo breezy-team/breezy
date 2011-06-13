@@ -36,7 +36,6 @@ from bzrlib.revision import (
 from bzrlib.tests import (
     Feature,
     TestCase,
-    TestCaseWithTransport,
     )
 from bzrlib.plugins.builddeb.config import (
     DebBuildConfig,
@@ -45,6 +44,9 @@ from bzrlib.plugins.builddeb.errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
     WatchFileMissing,
+    )
+from bzrlib.plugins.builddeb.tests import (
+    TestCaseWithTransport,
     )
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
@@ -336,7 +338,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         os.mkdir("mydir")
         self.assertEquals("mydir/foo_1.0.orig.tar.gz",
             source.fetch_tarball("foo", "1.0", "mydir"))
-        self.failUnlessExists("mydir/foo_1.0.orig.tar.gz")
+        self.assertPathExists("mydir/foo_1.0.orig.tar.gz")
 
     def test_fetch_tarball_not_found(self):
         source = UpstreamBranchSource(self.tree.branch)
@@ -402,7 +404,7 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
         os.mkdir("mydir")
         self.assertEquals("mydir/foo_1.0.orig.tar.gz",
             source.fetch_tarball("foo", "1.0", "mydir"))
-        self.failUnlessExists("mydir/foo_1.0.orig.tar.gz")
+        self.assertPathExists("mydir/foo_1.0.orig.tar.gz")
         self.assertIsNot(None, source._upstream_branch)
 
     def test_fetch_tarball_not_found(self):
@@ -680,7 +682,7 @@ class TarfileSourceTests(TestCaseWithTransport):
         os.mkdir("bar")
         self.assertEquals("bar/foo_1.0.orig.tar.gz",
             source.fetch_tarball("foo", "1.0", "bar"))
-        self.failUnlessExists("bar/foo_1.0.orig.tar.gz")
+        self.assertPathExists("bar/foo_1.0.orig.tar.gz")
 
     def test_fetch_tarball_repack(self):
         zf = zipfile.ZipFile("bla-2.0.zip", "w")
@@ -690,7 +692,7 @@ class TarfileSourceTests(TestCaseWithTransport):
         os.mkdir("bar")
         self.assertEquals("bar/foo_2.0.orig.tar.gz",
             source.fetch_tarball("foo", "2.0", "bar"))
-        self.failUnlessExists("bar/foo_2.0.orig.tar.gz")
+        self.assertPathExists("bar/foo_2.0.orig.tar.gz")
 
     def test_fetch_tarball_not_present(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
@@ -707,7 +709,7 @@ class TarfileSourceTests(TestCaseWithTransport):
         os.mkdir("bar")
         self.assertEquals("bar/foo_1.0.orig.tar.gz",
             source.fetch_tarball("foo", "1.0", "bar"))
-        self.failUnlessExists("bar/foo_1.0.orig.tar.gz")
+        self.assertPathExists("bar/foo_1.0.orig.tar.gz")
         gzip.open("bar/foo_1.0.orig.tar.gz").close()
 
 

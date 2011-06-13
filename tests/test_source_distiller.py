@@ -26,22 +26,24 @@ except ImportError:
     from debian_bundle.changelog import Version
 
 from bzrlib.errors import (
-        FileExists,
-        )
-from bzrlib.tests import TestCaseWithTransport
+    FileExists,
+    )
 
 from bzrlib.plugins.builddeb.errors import MissingUpstreamTarball
 from bzrlib.plugins.builddeb.source_distiller import (
-        FullSourceDistiller,
-        MergeModeDistiller,
-        NativeSourceDistiller,
-        )
-from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
+    FullSourceDistiller,
+    MergeModeDistiller,
+    NativeSourceDistiller,
+    )
+from bzrlib.plugins.builddeb.tests import (
+    SourcePackageBuilder,
+    TestCaseWithTransport,
+    )
 from bzrlib.plugins.builddeb.tests.test_upstream import (
-        _MissingUpstreamProvider,
-        _SimpleUpstreamProvider,
-        _TouchUpstreamProvider,
-        )
+    _MissingUpstreamProvider,
+    _SimpleUpstreamProvider,
+    _TouchUpstreamProvider,
+    )
 
 
 class NativeSourceDistillerTests(TestCaseWithTransport):
@@ -64,8 +66,8 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         rev_tree = wt.basis_tree()
         sd = NativeSourceDistiller(rev_tree, None)
         sd.distill('target')
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/a')
+        self.assertPathExists('target')
+        self.assertPathExists('target/a')
 
     def test_distill_removes_builddeb_dir(self):
         wt = self.make_branch_and_tree(".")
@@ -79,9 +81,9 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         rev_tree = wt.basis_tree()
         sd = NativeSourceDistiller(rev_tree, None)
         sd.distill('target')
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/a')
-        self.failIfExists('target/.bzr-builddeb')
+        self.assertPathExists('target')
+        self.assertPathExists('target/a')
+        self.assertPathDoesNotExist('target/.bzr-builddeb')
 
     def test_distill_working_tree_with_symlinks(self):
         wt = self.make_branch_and_tree(".")
@@ -92,9 +94,9 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         wt.add(['a', 'b'])
         sd = NativeSourceDistiller(wt, None, is_working_tree=True)
         sd.distill('target')
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/a')
-        self.failUnlessExists('target/b')
+        self.assertPathExists('target')
+        self.assertPathExists('target/a')
+        self.assertPathExists('target/b')
 
 
 class FullSourceDistillerTests(TestCaseWithTransport):
@@ -120,7 +122,7 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         self.addCleanup(wt.unlock)
         sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'))
         sd.distill('target')
-        self.failUnlessExists('tarball')
+        self.assertPathExists('tarball')
 
     def test_distill_revision_tree(self):
         wt = self.make_branch_and_tree(".")
@@ -130,10 +132,10 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         wt.add(['a', '.bzr-builddeb'])
         sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'))
         sd.distill('target')
-        self.failUnlessExists('tarball')
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/a')
-        self.failIfExists('target/.bzr-builddeb')
+        self.assertPathExists('tarball')
+        self.assertPathExists('target')
+        self.assertPathExists('target/a')
+        self.assertPathDoesNotExist('target/.bzr-builddeb')
 
     def test_distill_working_tree_with_symlinks(self):
         wt = self.make_branch_and_tree(".")
@@ -145,9 +147,10 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'),
                 is_working_tree=True)
         sd.distill('target')
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/a')
-        self.failUnlessExists('target/b')
+        self.assertPathExists('target')
+        self.assertPathExists('target/a')
+        self.assertPathExists('target/b')
+
 
 class MergeModeDistillerTests(TestCaseWithTransport):
 
@@ -183,9 +186,9 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
                     version.upstream_version, "."))
         sd.distill('target/foo')
-        self.failUnlessExists('target/%s_%s.orig.tar.gz'
+        self.assertPathExists('target/%s_%s.orig.tar.gz'
                 % (name, version.upstream_version))
-        self.failUnlessExists('target/foo/a')
+        self.assertPathExists('target/foo/a')
 
     def test_distill_exports_branch(self):
         wt = self.make_branch_and_tree('.')
@@ -199,8 +202,8 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
                     version.upstream_version, "."))
         sd.distill('target/')
-        self.failUnlessExists('target/debian/a')
-        self.failIfExists('target/.bzr-builddeb')
+        self.assertPathExists('target/debian/a')
+        self.assertPathDoesNotExist('target/.bzr-builddeb')
 
     def test_distill_removes_debian(self):
         wt = self.make_branch_and_tree('.')
@@ -218,8 +221,8 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
                     version.upstream_version, "."))
         sd.distill('target/')
-        self.failUnlessExists('target/a')
-        self.failIfExists('target/debian/foo')
+        self.assertPathExists('target/a')
+        self.assertPathDoesNotExist('target/debian/foo')
 
     def test_distill_larstiq(self):
         wt = self.make_branch_and_tree('.')
@@ -233,11 +236,11 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
                     version.upstream_version, "."), larstiq=True)
         sd.distill('target/')
-        self.failUnlessExists('target/a')
-        self.failUnlessExists('target/debian/b')
-        self.failIfExists('target/debian/.bzr-builddeb')
-        self.failIfExists('target/.bzr-builddeb')
-        self.failIfExists('target/b')
+        self.assertPathExists('target/a')
+        self.assertPathExists('target/debian/b')
+        self.assertPathDoesNotExist('target/debian/.bzr-builddeb')
+        self.assertPathDoesNotExist('target/.bzr-builddeb')
+        self.assertPathDoesNotExist('target/b')
 
     def test_distill_use_existing(self):
         wt = self.make_branch_and_tree('.')
@@ -253,10 +256,10 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         self.build_tree(['target/', 'target/b', 'target/debian/',
                 'target/debian/b'])
         sd.distill('target/')
-        self.failUnlessExists('target/b')
-        self.failUnlessExists('target/debian/a')
-        self.failIfExists('target/a')
-        self.failIfExists('target/debian/b')
+        self.assertPathExists('target/b')
+        self.assertPathExists('target/debian/a')
+        self.assertPathDoesNotExist('target/a')
+        self.assertPathDoesNotExist('target/debian/b')
 
     def test_distill_working_tree_with_symlinks(self):
         wt = self.make_branch_and_tree(".")
@@ -271,6 +274,6 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
                     version.upstream_version, "."), is_working_tree=True)
         sd.distill('target')
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/debian/a')
-        self.failUnlessExists('target/debian/b')
+        self.assertPathExists('target')
+        self.assertPathExists('target/debian/a')
+        self.assertPathExists('target/debian/b')

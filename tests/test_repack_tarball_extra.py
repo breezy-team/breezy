@@ -72,7 +72,7 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         old_tarball = 'package-0.2.INVALID'
         f = open(old_tarball, 'w')
         f.close()
-        self.failUnlessExists(old_tarball)
+        self.assertPathExists(old_tarball)
         self.assertRaises(UnsupportedRepackFormat, repack_tarball, old_tarball,
                           'package_0.2.orig.tar.gz')
 
@@ -86,8 +86,8 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         make_new_upstream_tarball(os.path.join(target_dir, tarball_name))
         self.assertRaises(FileExists, repack_tarball, tarball_name,
             tarball_name, target_dir=target_dir)
-        self.failUnlessExists(tarball_name)
-        self.failUnlessExists(os.path.join(target_dir, tarball_name))
+        self.assertPathExists(tarball_name)
+        self.assertPathExists(os.path.join(target_dir, tarball_name))
 
     def test_conditional_repack_tarball_same(self):
         tarball_name = 'package-0.2.tar.gz'
@@ -97,8 +97,8 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         os.mkdir(target_dir)
         shutil.copy(tarball_name, target_dir)
         repack_tarball(tarball_name, tarball_name, target_dir=target_dir)
-        self.failUnlessExists(tarball_name)
-        self.failUnlessExists(os.path.join(target_dir, tarball_name))
+        self.assertPathExists(tarball_name)
+        self.assertPathExists(os.path.join(target_dir, tarball_name))
 
     def test_conditional_repack_different_formats(self):
         tarball_name = 'package-0.2.tar.gz'
@@ -111,8 +111,8 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         make_new_upstream_tarball(os.path.join(target_dir, tarball_name))
         self.assertRaises(FileExists, repack_tarball, bz2_tarball_name,
             tarball_name, target_dir=target_dir)
-        self.failUnlessExists(bz2_tarball_name)
-        self.failUnlessExists(os.path.join(target_dir, tarball_name))
+        self.assertPathExists(bz2_tarball_name)
+        self.assertPathExists(os.path.join(target_dir, tarball_name))
 
     def test_exists_not_force_gz(self):
         bz2_tarball_name = 'package-0.2.tar.bz2'
@@ -120,7 +120,7 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         make_new_upstream_tarball_bz2(bz2_tarball_name)
         repack_tarball(bz2_tarball_name, bz2_tarball_name, target_dir=".",
                 force_gz=False)
-        self.failUnlessExists(bz2_tarball_name)
+        self.assertPathExists(bz2_tarball_name)
 
     def test_exists_different_bz2(self):
         bz2_tarball_name = 'package-0.2.tar.bz2'
@@ -132,5 +132,5 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         make_new_upstream_tarball(os.path.join(target_dir, bz2_tarball_name))
         self.assertRaises(FileExists, repack_tarball, bz2_tarball_name,
             bz2_tarball_name, target_dir=target_dir)
-        self.failUnlessExists(bz2_tarball_name)
-        self.failUnlessExists(os.path.join(target_dir, bz2_tarball_name))
+        self.assertPathExists(bz2_tarball_name)
+        self.assertPathExists(os.path.join(target_dir, bz2_tarball_name))

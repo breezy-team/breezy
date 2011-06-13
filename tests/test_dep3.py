@@ -27,7 +27,6 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import (
     TestCase,
-    TestCaseWithTransport,
     )
 
 from bzrlib.plugins.builddeb.dep3 import (
@@ -37,6 +36,10 @@ from bzrlib.plugins.builddeb.dep3 import (
     write_dep3_bug_line,
     write_dep3_patch,
     write_dep3_patch_header,
+    )
+
+from bzrlib.plugins.builddeb.tests import (
+    TestCaseWithTransport,
     )
 
 

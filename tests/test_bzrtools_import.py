@@ -18,9 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.tests import TestCaseWithTransport
-
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
+from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
 
 
 class ImportArchiveTests(TestCaseWithTransport):
