@@ -524,7 +524,7 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        parser = option.get_optparser(self.options(), True)
+        parser = option.get_optparser(self.options())
         options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
