@@ -1906,6 +1906,122 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestOldConfigHooks(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestOldConfigHooks, self).setUp()
+        create_configs_with_file_option(self)
+
+    def assertGetHook(self, conf, name, value):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_get', hook, None)
+        self.assertLength(0, calls)
+        actual_value = conf.get_user_option(name)
+        self.assertEquals(value, actual_value)
+        self.assertLength(1, calls)
+        self.assertEquals((conf, name, value), calls[0])
+
+    def test_get_hook_bazaar(self):
+        self.assertGetHook(self.bazaar_config, 'file', 'bazaar')
+
+    def test_get_hook_locations(self):
+        self.assertGetHook(self.locations_config, 'file', 'locations')
+
+    def test_get_hook_branch(self):
+        # Since locations masks branch, we define a different option
+        self.branch_config.set_user_option('file2', 'branch')
+        self.assertGetHook(self.branch_config, 'file2', 'branch')
+
+    def assertSetHook(self, conf, name, value):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_set', hook, None)
+        self.assertLength(0, calls)
+        conf.set_user_option(name, value)
+        self.assertLength(1, calls)
+        # We can't assert the conf object below as different configs use
+        # different means to implement set_user_option and we care only about
+        # coverage here.
+        self.assertEquals((name, value), calls[0][1:])
+
+    def test_set_hook_bazaar(self):
+        self.assertSetHook(self.bazaar_config, 'foo', 'bazaar')
+
+    def test_set_hook_locations(self):
+        self.assertSetHook(self.locations_config, 'foo', 'locations')
+
+    def test_set_hook_branch(self):
+        self.assertSetHook(self.branch_config, 'foo', 'branch')
+
+    def assertRemoveHook(self, conf, name, section_name=None):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_remove', hook, None)
+        self.assertLength(0, calls)
+        conf.remove_user_option(name, section_name)
+        self.assertLength(1, calls)
+        # We can't assert the conf object below as different configs use
+        # different means to implement remove_user_option and we care only about
+        # coverage here.
+        self.assertEquals((name,), calls[0][1:])
+
+    def test_remove_hook_bazaar(self):
+        self.assertRemoveHook(self.bazaar_config, 'file')
+
+    def test_remove_hook_locations(self):
+        self.assertRemoveHook(self.locations_config, 'file',
+                              self.locations_config.location)
+
+    def test_remove_hook_branch(self):
+        self.assertRemoveHook(self.branch_config, 'file')
+
+    def assertLoadHook(self, name, conf_class, *conf_args):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_load', hook, None)
+        self.assertLength(0, calls)
+        # Build a config
+        conf = conf_class(*conf_args)
+        # Access an option to trigger a load
+        conf.get_user_option(name)
+        self.assertLength(1, calls)
+        # Since we can't assert about conf, we just use the number of calls ;-/
+
+    def test_load_hook_bazaar(self):
+        self.assertLoadHook('file', config.GlobalConfig)
+
+    def test_load_hook_locations(self):
+        self.assertLoadHook('file', config.LocationConfig, self.tree.basedir)
+
+    def test_load_hook_branch(self):
+        self.assertLoadHook('file', config.BranchConfig, self.tree.branch)
+
+    def assertSaveHook(self, conf):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_save', hook, None)
+        self.assertLength(0, calls)
+        # Setting an option triggers a save
+        conf.set_user_option('foo', 'bar')
+        self.assertLength(1, calls)
+        # Since we can't assert about conf, we just use the number of calls ;-/
+
+    def test_save_hook_bazaar(self):
+        self.assertSaveHook(self.bazaar_config)
+
+    def test_save_hook_locations(self):
+        self.assertSaveHook(self.locations_config)
+
+    def test_save_hook_branch(self):
+        self.assertSaveHook(self.branch_config)
+
+
 class TestOption(tests.TestCase):
 
     def test_default_value(self):

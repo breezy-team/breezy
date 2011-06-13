@@ -2153,7 +2153,7 @@ class TransportConfig(object):
         else:
             del configobj[section_name][option_name]
         for hook in ConfigHooks['old_remove']:
-            hook(self, option_name, value)
+            hook(self, option_name)
         self._set_configobj(configobj)
 
     def _get_config_file(self):
