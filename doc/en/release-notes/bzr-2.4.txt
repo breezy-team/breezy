@@ -63,6 +63,8 @@ Bug Fixes
   ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
   unicode prompt to be passed in. (Jelmer Vernooij, #592083)
 
+* Support merging into the empty tree. (Aaron Bentley, #595328)
+
 Documentation
 *************
 
