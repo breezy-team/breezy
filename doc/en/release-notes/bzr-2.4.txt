@@ -16,7 +16,7 @@ External Compatibility Breaks
 .. These may require users to change the way they use Bazaar.
 
 * Do not treat configuration option 'check_signatures = require' as if
-  it were 'create_signatures = always'
+  it were 'create_signatures = always' (Jonathan Riddell)
 
 New Features
 ************
