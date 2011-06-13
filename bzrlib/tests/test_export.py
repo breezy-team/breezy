@@ -236,8 +236,11 @@ class TarExporterTests(tests.TestCaseWithTransport):
                 pass
         finally:
             wt.unlock()
-        self.assertEquals(["bar/a"], ball.getnames())
-        ball.close()
+        # Ball should now be closed.
+        target.seek(0)
+        ball2 = tarfile.open(None, "r", target)
+        self.addCleanup(ball2.close)
+        self.assertEquals(["bar/a"], ball2.getnames())
 
 
 class ZipExporterTests(tests.TestCaseWithTransport):
