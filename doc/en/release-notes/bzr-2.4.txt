@@ -106,8 +106,6 @@ Testing
   and rewrite it as a parameterized test to avoid unrelated failures.
   (Vincent Ladeuil, #795456)
 
-
-
 * Show log file contents from subprocesses started by
   `start_bzr_subprocess` in test failure details.  This may help diagnose
   strange hangs and failures involving subprocesses.  (Andrew Bennetts)

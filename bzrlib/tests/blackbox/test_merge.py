@@ -689,6 +689,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertEqual('rev-2a', target.tags.lookup_tag('tag-a'))
         target.repository.get_revision('rev-2a')
 
+
 class TestMergeRevisionRange(tests.TestCaseWithTransport):
 
     scenarios = (('whole-tree', dict(context='.')),
