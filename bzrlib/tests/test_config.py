@@ -2033,19 +2033,26 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport,
         self.transport_server = test_server.SmartTCPServer_for_testing
         create_configs_with_file_option(self)
 
-    def test_get_hook(self):
-        remote_branch = branch.Branch.open(self.get_url('tree'))
-        conf = remote_branch._get_config()
+    def assertGetHook(self, conf, name, value):
         calls = []
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('old_get', hook, None)
         self.assertLength(0, calls)
-        actual_value = conf.get_option('file')
-        self.assertEquals('branch', actual_value)
+        actual_value = conf.get_option(name)
+        self.assertEquals(value, actual_value)
         self.assertLength(1, calls)
-        self.assertEquals((conf, 'file', 'branch'), calls[0])
+        self.assertEquals((conf, name, value), calls[0])
 
+    def test_get_hook_remote_branch(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.assertGetHook(remote_branch._get_config(), 'file', 'branch')
+
+    def test_get_hook_remote_bzrdir(self):
+        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        conf = remote_bzrdir._get_config()
+        conf.set_option('remotedir', 'file')
+        self.assertGetHook(conf, 'file', 'remotedir')
 
 
 class TestOption(tests.TestCase):
