@@ -291,19 +291,16 @@ class TestSource(TestSourceHelper):
     def test_coding_style(self):
         """Check if bazaar code conforms to some coding style conventions.
 
-        Currently we assert that the following is not present:
-         * any tab characters
-         * non-unix newlines
-         * no newline at end of files
+        Generally we expect PEP8, but we do not generally strictly enforce
+        this, and there are existing files that do not comply.  The 'pep8'
+        tool, available separately, will check for more cases.
 
-        Print how many files have
-         * trailing white space
-         * lines longer than 79 chars
+        This test only enforces conditions that are globally true at the
+        moment, and that should cause a patch to be rejected: spaces rather
+        than tabs, unix newlines, and a newline at the end of the file.
         """
         tabs = {}
-        trailing_ws = {}
         illegal_newlines = {}
-        long_lines = {}
         no_newline_at_eof = []
         for fname, text in self.get_source_file_contents(
                 extensions=('.py', '.pyx')):
@@ -317,10 +314,6 @@ class TestSource(TestSourceHelper):
                 if not line.endswith('\n') or line.endswith('\r\n'):
                     if line_no != last_line_no: # not no_newline_at_eof
                         self._push_file(illegal_newlines, fname, line_no)
-                if line.endswith(' \n'):
-                    self._push_file(trailing_ws, fname, line_no)
-                if len(line) > 80:
-                    self._push_file(long_lines, fname, line_no)
             if not lines[-1].endswith('\n'):
                 no_newline_at_eof.append(fname)
         problems = []
@@ -328,17 +321,9 @@ class TestSource(TestSourceHelper):
             problems.append(self._format_message(tabs,
                 'Tab characters were found in the following source files.'
                 '\nThey should either be replaced by "\\t" or by spaces:'))
-        if trailing_ws:
-            print ("There are %i lines with trailing white space in %i files."
-                % (sum([len(lines) for f, lines in trailing_ws.items()]),
-                    len(trailing_ws)))
         if illegal_newlines:
             problems.append(self._format_message(illegal_newlines,
                 'Non-unix newlines were found in the following source files:'))
-        if long_lines:
-            print ("There are %i lines longer than 79 characters in %i files."
-                % (sum([len(lines) for f, lines in long_lines.items()]),
-                    len(long_lines)))
         if no_newline_at_eof:
             no_newline_at_eof.sort()
             problems.append("The following source files doesn't have a "
