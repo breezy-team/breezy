@@ -371,6 +371,10 @@ class Config(object):
                               % (option_name,))
             else:
                 value = self._expand_options_in_string(value)
+        for hook in ConfigHooks['get']:
+            # We're lying here pretending to be a Stack until we get deprecated
+            # -- vila 20110610
+            hook(self, option_name, value)        
         return value
 
     def get_user_option_as_bool(self, option_name, expand=None):
@@ -657,6 +661,10 @@ class IniBasedConfig(Config):
             raise errors.ParseConfigError(e.errors, e.config.filename)
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
+        for hook in ConfigHooks['load']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110610
+            hook(self)
         return self._parser
 
     def reload(self):
@@ -665,6 +673,10 @@ class IniBasedConfig(Config):
             raise AssertionError('We need a file name to reload the config')
         if self._parser is not None:
             self._parser.reload()
+        for hook in ConfigHooks['load']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110610
+            hook(self)
 
     def _get_matching_sections(self):
         """Return an ordered list of (section_name, extra_path) pairs.
@@ -842,6 +854,10 @@ class IniBasedConfig(Config):
         except KeyError:
             raise errors.NoSuchConfigOption(option_name)
         self._write_config_file()
+        for hook in ConfigHooks['remove']:
+            # We're lying here pretending to be a Stack until we get deprecated
+            # -- vila 20110610
+            hook(self, name)
 
     def _write_config_file(self):
         if self.file_name is None:
@@ -986,7 +1002,10 @@ class GlobalConfig(LockableConfig):
         self.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
-
+        for hook in ConfigHooks['set']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110610
+            hook(self, name, value)
 
     def _get_sections(self, name=None):
         """See IniBasedConfig._get_sections()."""
@@ -1188,6 +1207,10 @@ class LocationConfig(LockableConfig):
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
         self._write_config_file()
+        for hook in ConfigHooks['set']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110610
+            hook(self, name, value)
 
 
 class BranchConfig(Config):
