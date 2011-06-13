@@ -297,10 +297,10 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         with transform:
             transform.delete_contents(root)
-            with ExpectedException(AssertionError,
-                                   'TransformRenameFailed not raised'):
-                with ExpectedException(errors.TransformRenameFailed, ''):
-                    transform.apply()
+            e = self.assertRaises(AssertionError, self.assertRaises,
+                                  errors.TransformRenameFailed,
+                                  transform.apply)
+        self.assertContainsRe('TransformRenameFailed not raised', str(e))
 
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
