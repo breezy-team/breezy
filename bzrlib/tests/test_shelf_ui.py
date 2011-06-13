@@ -315,6 +315,9 @@ class TestShelver(ShelfTestCase):
         # This is essentially assertNotRaises(InconsistentDelta)
         with ExpectedException(AssertionError,
                                'InconsistentDelta not raised'):
+            # We expect errors.InconsistentDelta to not be raised.
+            # ExpectedException will raise an AssertionError that we'll catch
+            # in the enclosing 'with'
             with ExpectedException(errors.InconsistentDelta, ''):
                 self.shelve_all(tree1, rev2)
 
