@@ -320,7 +320,6 @@ class TestCommandHelpI18n(tests.TestCase):
         super(TestCommandHelpI18n, self).setUp()
         self.overrideAttr(i18n, '_translation', ZzzTranslationsForDoc())
 
-
     def test_command_help_includes_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
@@ -329,9 +328,9 @@ class TestCommandHelpI18n(tests.TestCase):
         helptext = cmd.get_help_text()
         self.assertEndsWith(
             helptext,
-            '  -v, --verbose  zz{{Display more information.}}\n'
-            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
-            '  -h, --help     zz{{Show help message.}}\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '}}\n'
             'zz{{:See also: bar, foo}}\n')
 
@@ -345,7 +344,7 @@ class TestCommandHelpI18n(tests.TestCase):
             'zz{{:Purpose: zz{{A sample command.}}}}\n'
             'zz{{:Usage:   bzr Demo}}\n')
         self.assertEndsWith(helptext,
-            '  -h, --help     zz{{Show help message.}}\n}}\n')
+            '  -h, --help     Show help message.\n}}\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -355,9 +354,9 @@ class TestCommandHelpI18n(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -v, --verbose  zz{{Display more information.}}\n'
-            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
-            '  -h, --help     zz{{Show help message.}}\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '}}\n'
             'zz{{:See also: bar, foo, gam}}\n')
 
@@ -369,10 +368,10 @@ class TestCommandHelpI18n(tests.TestCase):
         self.assertEndsWith(
             helptext,
             'zz{{:Options:\n'
-            '  --usage        zz{{Show usage message and options.}}\n'
-            '  -v, --verbose  zz{{Display more information.}}\n'
-            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
-            '  -h, --help     zz{{Show help message.}}\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '}}\n'
             'zz{{:See also: gam}}\n')
 
@@ -403,10 +402,10 @@ class TestCommandHelpI18n(tests.TestCase):
             'zz{{:Usage:   bzr Demo}}\n'
             '\n'
             'zz{{:Options:\n'
-            '  --usage        zz{{Show usage message and options.}}\n'
-            '  -v, --verbose  zz{{Display more information.}}\n'
-            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
-            '  -h, --help     zz{{Show help message.}}\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '}}\n'
             'Description:\n'
             '  zz{{zz{{Blah blah blah.}}}}\n'
@@ -446,10 +445,10 @@ class TestCommandHelpI18n(tests.TestCase):
             '}}\n'
             '\n'
             'zz{{:Options:\n'
-            '  --usage        zz{{Show usage message and options.}}\n'
-            '  -v, --verbose  zz{{Display more information.}}\n'
-            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
-            '  -h, --help     zz{{Show help message.}}\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '}}\n'
             'Description:\n'
             '  zz{{zz{{Blah blah blah.}}}}\n\n')
