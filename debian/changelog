@@ -8,7 +8,11 @@ bzr-builddeb (2.7.5) UNRELEASED; urgency=low
   * Use new set_commit_message() hook in bzr to set the commit
     message from debian/changelog and set fixed bugs in tags. LP: #707274
 
- -- Jonathan Riddell <jriddell@ubuntu.com>  Fri, 03 Jun 2011 15:36:10 +0100
+  [ Jelmer Vernooij ]
+  * Fix deprecation warnings for TestCase.failUnlessExists and
+    TestCase.failIfExists in bzr 2.4.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 14 Jun 2011 00:02:40 +0100
 
 bzr-builddeb (2.7.4) unstable; urgency=low
 
