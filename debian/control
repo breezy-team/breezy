@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>, James Westby <james.westby@ubuntu.com>, Jelmer Vernooij <jelmer@debian.org>
 Build-Depends: debhelper (>= 5.0.37.2), python-all (>= 2.6.6-3)
-Build-Depends-Indep: bzr (>= 2.1~), python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts, python-subunit, python-bzrlib.tests | bzr (<< 2.4.0~beta1-2)
+Build-Depends-Indep: bzr (>= 2.1~), python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts (>= 2.10.59), python-subunit, python-bzrlib.tests | bzr (<< 2.4.0~beta1-2)
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr-builddeb/unstable
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr-builddeb/unstable
 X-Python-Version: >= 2.4
@@ -12,7 +12,7 @@ Standards-Version: 3.9.1
 
 Package: bzr-builddeb
 Architecture: all
-Depends: bzr (>= 2.1~), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts, patchutils, pristine-tar, ${misc:Depends}
+Depends: bzr (>= 2.1~), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, ${misc:Depends}
 Recommends: python-launchpadlib
 Suggests: bzr-svn (>= 0.4.10)
 Provides: bzr-buildpackage
