@@ -85,7 +85,9 @@ Documentation
   (Neil Martinsen-Burrell, #767307)
 
 * Make docs for configuration options for digital signatures match 
-  reality (Jonathan Riddell).
+  reality. (Jonathan Riddell)
+
+* Add user-guide page on GPG signatures. (Jonathan Riddell)
 
 API Changes
 ***********
