@@ -492,10 +492,10 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
+                #this warning should go away once check_signatures is
+                #implemented (if not before)
                 trace.warning("Please use create_signatures,"
                               " not check_signatures to set signing policy.")
-            if policy == CHECK_ALWAYS:
-                return True
         elif policy == SIGN_ALWAYS:
             return True
         return False
