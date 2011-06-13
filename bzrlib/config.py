@@ -857,7 +857,7 @@ class IniBasedConfig(Config):
         for hook in ConfigHooks['remove']:
             # We're lying here pretending to be a Stack until we get deprecated
             # -- vila 20110610
-            hook(self, name)
+            hook(self, option_name)
 
     def _write_config_file(self):
         if self.file_name is None:
@@ -869,6 +869,10 @@ class IniBasedConfig(Config):
         atomic_file.commit()
         atomic_file.close()
         osutils.copy_ownership_from_path(self.file_name)
+        for hook in ConfigHooks['save']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110610
+            hook(self)
 
 
 class LockableConfig(IniBasedConfig):
@@ -1005,7 +1009,7 @@ class GlobalConfig(LockableConfig):
         for hook in ConfigHooks['set']:
             # We're lying here pretending to be a Store until we get deprecated
             # -- vila 20110610
-            hook(self, name, value)
+            hook(self, option, value)
 
     def _get_sections(self, name=None):
         """See IniBasedConfig._get_sections()."""
@@ -1210,7 +1214,7 @@ class LocationConfig(LockableConfig):
         for hook in ConfigHooks['set']:
             # We're lying here pretending to be a Store until we get deprecated
             # -- vila 20110610
-            hook(self, name, value)
+            hook(self, option, value)
 
 
 class BranchConfig(Config):
@@ -2113,7 +2117,12 @@ class TransportConfig(object):
                 section_obj = configobj[section]
             except KeyError:
                 return default
-        return section_obj.get(name, default)
+        value = section_obj.get(name, default)
+        for hook in ConfigHooks['get']:
+            # We're lying here pretending to be a Stack until we get deprecated
+            # -- vila 20110613
+            hook(self, name, value)        
+        return value
 
     def set_option(self, value, name, section=None):
         """Set the value associated with a named option.
@@ -2127,6 +2136,10 @@ class TransportConfig(object):
             configobj[name] = value
         else:
             configobj.setdefault(section, {})[name] = value
+        for hook in ConfigHooks['set']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110610
+            hook(self, name, value)
         self._set_configobj(configobj)
 
     def remove_option(self, option_name, section_name=None):
@@ -2135,11 +2148,20 @@ class TransportConfig(object):
             del configobj[option_name]
         else:
             del configobj[section_name][option_name]
+        for hook in ConfigHooks['remove']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110613
+            hook(self, option_name, value)
         self._set_configobj(configobj)
 
     def _get_config_file(self):
         try:
-            return StringIO(self._transport.get_bytes(self._filename))
+            f = StringIO(self._transport.get_bytes(self._filename))
+            for hook in ConfigHooks['load']:
+                # We're lying here pretending to be a Store until we get
+                # deprecated -- vila 20110613
+                hook(self)
+            return f
         except errors.NoSuchFile:
             return StringIO()
 
@@ -2155,6 +2177,10 @@ class TransportConfig(object):
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
+        for hook in ConfigHooks['save']:
+            # We're lying here pretending to be a Store until we get deprecated
+            # -- vila 20110613
+            hook(self)
 
 
 class Option(object):
