@@ -48,8 +48,8 @@ from bzrlib.symbol_versioning import (
 from bzrlib.transport import remote
 from bzrlib.tests import (
     features,
-    TestSkipped,
     scenarios,
+    test_server,
     )
 from bzrlib.util.configobj import configobj
 
@@ -2025,6 +2025,29 @@ class TestOldConfigHooks(tests.TestCaseWithTransport, TestOldConfigHooksMixin):
         self.assertSaveHook(self.branch_config)
 
 
+class TestOldConfigHooksForRemote(tests.TestCaseWithTransport,
+                                  TestOldConfigHooksMixin):
+
+    def setUp(self):
+        super(TestOldConfigHooksForRemote, self).setUp()
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        create_configs_with_file_option(self)
+
+    def test_get_hook(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        conf = remote_branch._get_config()
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_get', hook, None)
+        self.assertLength(0, calls)
+        actual_value = conf.get_option('file')
+        self.assertEquals('branch', actual_value)
+        self.assertLength(1, calls)
+        self.assertEquals((conf, 'file', 'branch'), calls[0])
+
+
+
 class TestOption(tests.TestCase):
 
     def test_default_value(self):
@@ -3404,7 +3427,8 @@ class TestAutoUserId(tests.TestCase):
         to be able to choose a user name with no configuration.
         """
         if sys.platform == 'win32':
-            raise TestSkipped("User name inference not implemented on win32")
+            raise tests.TestSkipped(
+                "User name inference not implemented on win32")
         realname, address = config._auto_user_id()
         if os.path.exists('/etc/mailname'):
             self.assertIsNot(None, realname)
