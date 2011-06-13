@@ -20,8 +20,6 @@ from StringIO import StringIO
 import sys
 import time
 
-from testtools import ExpectedException
-
 from bzrlib import (
     bencode,
     errors,
@@ -291,8 +289,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         new_trans_id = transform.new_directory('', ROOT_PARENT, None)
         transform.fixup_new_roots()
-        with ExpectedException(KeyError, ''):
-            transform._new_id[transform.root]
+        self.assertNotIn(transform.root, transform._new_id)
 
     def test_apply_retains_root_directory(self):
         # Do not attempt to delete the physical root directory, because that
