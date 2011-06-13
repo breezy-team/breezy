@@ -989,6 +989,9 @@ class TestCase(testtools.TestCase):
         # is addressed -- vila 20110219
         self.overrideAttr(config, '_expand_default_value', None)
         self._log_files = set()
+        self._init_counters()
+        if 'config_stats' in selftest_debug_flags:
+            self._install_config_stats_hooks()
 
     def debug(self):
         # debug a frame up.
@@ -1010,6 +1013,37 @@ class TestCase(testtools.TestCase):
         details = self.getDetails()
         if name in details:
             del details[name]
+
+    def _init_counters(self):
+        """Setup a dict to collect various counters.
+
+        Each key in the dict holds a value for a different counter. When the
+        test ends, use addDetail subunit API to record the counter values.
+        """
+        self._counters = {}
+        def add_counters():
+            for k, v in self._counters.iteritems():
+                self.addDetail('%s' % (k,), content.text_content('%s' % (v,)))
+            self._counters = None
+        self.addCleanup(add_counters)
+
+    def _install_config_stats_hooks(self):
+        """Install config hooks to count hook calls.
+
+        """
+        def create_counter(name): self._counters[name] = 0
+        def increment_counter(name): self._counters[name] += 1
+
+        for hook_name in ('get', 'set', 'remove', 'load', 'save',):
+            counter_name = 'config.%s' % (hook_name,)
+            create_counter(counter_name)
+            def create_hook_point(name):
+                # Force the lambda creation so we refer to the right counter
+                # name
+                return lambda *args: increment_counter(name)
+            config.ConfigHooks.install_named_hook(
+                hook_name, create_hook_point(counter_name),
+                'count config.%s calls' % (hook_name,))
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -3510,6 +3544,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
+#   -Econfig_stats          Will collect statistics using the subunit addDetail
+#                           API
 selftest_debug_flags = set()
 
 
