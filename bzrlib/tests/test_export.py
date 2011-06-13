@@ -28,7 +28,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.export import get_root_name
-from bzrlib.export.tar_exporter import export_tarball
+from bzrlib.export.tar_exporter import export_tarball_generator
 from bzrlib.tests import features
 
 
@@ -84,10 +84,12 @@ class TestDirExport(tests.TestCaseWithTransport):
         wt.add(['a', 'b', 'b/c'])
         wt.commit('1')
         self.build_tree(['target/', 'target/foo'])
-        self.assertRaises(errors.BzrError, export.export, wt, 'target', format="dir")
+        self.assertRaises(errors.BzrError,
+            export.export, wt, 'target', format="dir")
 
     def test_existing_single_file(self):
-        self.build_tree(['dir1/', 'dir1/dir2/', 'dir1/first', 'dir1/dir2/second'])
+        self.build_tree([
+            'dir1/', 'dir1/dir2/', 'dir1/first', 'dir1/dir2/second'])
         wtree = self.make_branch_and_tree('dir1')
         wtree.add(['dir2', 'first', 'dir2/second'])
         wtree.commit('1')
@@ -110,6 +112,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.addCleanup(b.unlock)
         tree = b.basis_tree()
         orig_iter_files_bytes = tree.iter_files_bytes
+
         # Make iter_files_bytes slower, so we provoke mtime skew
         def iter_files_bytes(to_fetch):
             for thing in orig_iter_files_bytes(to_fetch):
@@ -220,7 +223,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         self.assertRaises(errors.BzrError, export.export, wt, '-',
             format="txz")
 
-    def test_export_tarball(self):
+    def test_export_tarball_generator(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         wt.add(["a"])
@@ -229,7 +232,8 @@ class TarExporterTests(tests.TestCaseWithTransport):
         ball = tarfile.open(None, "w|", target)
         wt.lock_read()
         try:
-            export_tarball(wt, ball, "bar")
+            for _ in export_tarball_generator(wt, ball, "bar"):
+                pass
         finally:
             wt.unlock()
         self.assertEquals(["bar/a"], ball.getnames())

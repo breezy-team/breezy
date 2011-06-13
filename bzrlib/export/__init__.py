@@ -161,7 +161,6 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
     """
     for _ in get_export_generator(tree, dest, format, root, subdir, filtered,
                                   per_file_timestamps, fileobj):
-
         pass
 
 

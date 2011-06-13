@@ -87,6 +87,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Exporters are now all exposed as generators, rather than as single-call
+  functions, so that calling code can take stream the output.
+  (Xaav, Martin Pool)
+
 Internals
 *********
 
