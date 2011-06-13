@@ -126,9 +126,13 @@ class AptSource(UpstreamSource):
         lookup = get_fn(sources, 'lookup', 'Lookup')
         while lookup(package):
             version = get_fn(sources, 'version', 'Version')
-            if upstream_version == Version(version).upstream_version:
-                if self._run_apt_source(package, version, target_dir):
-                    return self._tarball_path(package, version, target_dir)
+            for (checksum, size, filename, filekind) in sources.files:
+                if filekind != "tar":
+                    continue
+                filename = os.path.basename(filename)
+                if filename.startswith("%s_%s.orig" % (package, upstream_version)):
+                    if self._run_apt_source(package, version, target_dir):
+                        return os.path.join(target_dir, filename)
                 break
         note("apt could not find the needed tarball.")
         raise PackageVersionNotPresent(package, upstream_version, self)
