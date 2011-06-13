@@ -11,8 +11,10 @@ bzr-builddeb (2.7.5) UNRELEASED; urgency=low
   [ Jelmer Vernooij ]
   * Add dependency on devscripts >= 2.10.59, required now that 'dch --
     package' is used. LP: #783122
+  * Fix support for native packages with dashes in their version in
+    sources.list. LP: #796853
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 13 Jun 2011 19:26:58 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 13 Jun 2011 23:10:20 +0100
 
 bzr-builddeb (2.7.4) unstable; urgency=low
 

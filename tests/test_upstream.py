@@ -88,12 +88,14 @@ svn_plugin = SvnPluginAvailable()
 
 class MockSources(object):
 
-    def __init__(self, versions):
+    def __init__(self, versions, files):
         self.restart_called_times = 0
         self.lookup_called_times = 0
         self.lookup_package = None
         self.versions = versions
         self.version = None
+        self.filess = files
+        self.files = None
 
     def restart(self):
         self.restart_called_times += 1
@@ -104,9 +106,11 @@ class MockSources(object):
         self.lookup_package = package
         if self.lookup_called_times <= len(self.versions):
             self.version = self.versions[self.lookup_called_times-1]
+            self.files = self.filess[self.lookup_called_times-1]
             return True
         else:
             self.version = None
+            self.files = None
             return False
 
 
@@ -151,7 +155,7 @@ class AptSourceTests(TestCase):
 
     def test_apt_provider_no_package(self):
         caller = MockAptCaller()
-        sources = MockSources([])
+        sources = MockSources([], [])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -166,7 +170,8 @@ class AptSourceTests(TestCase):
 
     def test_apt_provider_wrong_version(self):
         caller = MockAptCaller()
-        sources = MockSources(["0.1-1"])
+        sources = MockSources(["0.1-1"],
+            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -179,14 +184,31 @@ class AptSourceTests(TestCase):
         self.assertEqual("apackage", sources.lookup_package)
         self.assertEqual(0, caller.called)
 
-    def test_apt_provider_right_version(self):
+    def test_apt_provider_right_version_bz2(self):
         caller = MockAptCaller(work=True)
-        sources = MockSources(["0.1-1", "0.2-1"])
+        sources = MockSources(["0.1-1", "0.2-1"],
+            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0L, "apackage_0.2.orig.tar.bz2", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        src.fetch_tarball("apackage", "0.2", "target",
+        path = src.fetch_tarball("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
+        self.assertEquals(path,
+            "target/apackage_0.2.orig.tar.bz2")
+
+    def test_apt_provider_right_version(self):
+        caller = MockAptCaller(work=True)
+        sources = MockSources(["0.1-1", "0.2-1"],
+            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0L, "apackage_0.2.orig.tar.gz", "tar")]])
+        apt_pkg = MockAptPkg(sources)
+        src = AptSource()
+        src._run_apt_source = caller.call
+        path = src.fetch_tarball("apackage", "0.2", "target",
+            _apt_pkg=apt_pkg)
+        self.assertEquals(path,
+            "target/apackage_0.2.orig.tar.gz")
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -200,7 +222,9 @@ class AptSourceTests(TestCase):
 
     def test_apt_provider_right_version_command_fails(self):
         caller = MockAptCaller()
-        sources = MockSources(["0.1-1", "0.2-1"])
+        sources = MockSources(["0.1-1", "0.2-1"],
+            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0L, "apackage_0.2.orig.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
@@ -211,12 +235,29 @@ class AptSourceTests(TestCase):
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
         # Only called twice means it stops when the command fails.
-        self.assertEqual(2, sources.lookup_called_times)
+        self.assertEqual(3, sources.lookup_called_times)
         self.assertEqual("apackage", sources.lookup_package)
         self.assertEqual(1, caller.called)
         self.assertEqual("apackage", caller.package)
         self.assertEqual("0.2-1", caller.version_str)
         self.assertEqual("target", caller.target_dir)
+
+    def test_apt_provider_right_version_is_native(self):
+        caller = MockAptCaller(work=True)
+        sources = MockSources(["0.1-1", "0.2-1"],
+            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0L, "apackage_0.2-1.orig.tar.gz", "tar")]])
+        apt_pkg = MockAptPkg(sources)
+        src = AptSource()
+        src._run_apt_source = caller.call
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
+            "apackage", "0.2", "target", _apt_pkg=apt_pkg)
+        self.assertEqual(1, apt_pkg.init_called_times)
+        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
+        self.assertEqual(1, sources.restart_called_times)
+        self.assertEqual(3, sources.lookup_called_times)
+        self.assertEqual("apackage", sources.lookup_package)
+        self.assertEqual(0, caller.called)
 
 
 class RecordingSource(UpstreamSource):
