@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,10 @@ expressions.
 
 import re
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    lazy_regex,
+    )
 from bzrlib.trace import (
     mutter,
     warning,
@@ -217,9 +220,13 @@ class Globster(object):
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
-            grouped_rules = ['(%s)' % translator(pat) for pat in patterns[:99]]
+            grouped_rules = [
+                '(%s)' % translator(pat) for pat in patterns[:99]]
             joined_rule = '%s(?:%s)$' % (prefix, '|'.join(grouped_rules))
-            self._regex_patterns.append((re.compile(joined_rule, re.UNICODE),
+            # Explicitly use lazy_compile here, because we count on its
+            # nicer error reporting.
+            self._regex_patterns.append((
+                lazy_regex.lazy_compile(joined_rule, re.UNICODE),
                 patterns[:99]))
             patterns = patterns[99:]
 

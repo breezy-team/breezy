@@ -124,17 +124,11 @@ class TestInstallLazyCompile(tests.TestCase):
     assume it is installed, and leave it installed when they're done.
     """
 
-    def setUp(self):
-        super(TestInstallLazyCompile, self).setUp()
-
     def test_install(self):
-        lazy_regex.reset_compile()
-        lazy_regex.install_lazy_compile()
         pattern = re.compile('foo')
         self.assertIsInstance(pattern, lazy_regex.LazyRegex)
 
     def test_reset(self):
-        lazy_regex.install_lazy_compile()
         lazy_regex.reset_compile()
         self.addCleanup(lazy_regex.install_lazy_compile)
         pattern = re.compile('foo')
