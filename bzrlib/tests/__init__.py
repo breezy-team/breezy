@@ -1034,12 +1034,14 @@ class TestCase(testtools.TestCase):
         def create_counter(name): self._counters[name] = 0
         def increment_counter(name): self._counters[name] += 1
 
-        for hook_name in ('get', 'set', 'remove', 'load', 'save',):
+        for hook_name in (
+            'get', 'set', 'remove', 'load', 'save',
+            'old_get', 'old_set', 'old_remove', 'old_load', 'old_save',):
             counter_name = 'config.%s' % (hook_name,)
             create_counter(counter_name)
             def create_hook_point(name):
-                # Force the lambda creation so we refer to the right counter
-                # name
+                # Force the lambda creation at the right time so we refer to
+                # the right counter name
                 return lambda *args: increment_counter(name)
             config.ConfigHooks.install_named_hook(
                 hook_name, create_hook_point(counter_name),
