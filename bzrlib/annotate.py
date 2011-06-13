@@ -38,6 +38,7 @@ from bzrlib import (
 from bzrlib import (
     errors,
     osutils,
+    i18n,
     )
 from bzrlib.config import extract_email_address
 from bzrlib.repository import _strip_NULL_ghosts
@@ -104,7 +105,10 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         # bugfixes etc.
         current_rev = Revision(CURRENT_REVISION)
         current_rev.parent_ids = tree.get_parent_ids()
-        current_rev.committer = branch.get_config().username()
+        try:
+            current_rev.committer = branch.get_config().username()
+        except errors.NoWhoami:
+            current_rev.committer = i18n.gettext("local user")
         current_rev.message = "?"
         current_rev.timestamp = round(time.time(), 3)
         current_rev.timezone = osutils.local_time_offset()
