@@ -1021,17 +1021,18 @@ class TestCase(testtools.TestCase):
         test ends, use addDetail subunit API to record the counter values.
         """
         self._counters = {}
-        def add_counters():
+        def add_counter_details():
             for k, v in self._counters.iteritems():
                 self.addDetail('%s' % (k,), content.text_content('%s' % (v,)))
             self._counters = None
-        self.addCleanup(add_counters)
+        self.addCleanup(add_counter_details)
 
     def _install_config_stats_hooks(self):
         """Install config hooks to count hook calls.
 
         """
-        def install_hook(hooks, prefix, hook_name):
+        def install_counter_hook(hooks, prefix, hook_name):
+            """Create a counter and install its associated hook"""
             counter_name = '%s.%s' % (prefix, hook_name)
             self._counters[counter_name] = 0
             def increment_counter(name): self._counters[name] += 1
@@ -1045,7 +1046,7 @@ class TestCase(testtools.TestCase):
             self.addCleanup(hooks.uninstall_named_hook, hook_name, label)
 
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
-            install_hook(config.ConfigHooks, 'config', hook_name)
+            install_counter_hook(config.ConfigHooks, 'config', hook_name)
 
         # The OldConfigHooks are private and need special handling to protect
         # against recursive tests (tests that run other tests), so we just do
@@ -1053,7 +1054,7 @@ class TestCase(testtools.TestCase):
         # us.
         self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
-            install_hook(config.OldConfigHooks, 'old_config', hook_name)
+            install_counter_hook(config.OldConfigHooks, 'old_config', hook_name)
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
