@@ -15,6 +15,9 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* Do not treat configuration option 'check_signatures = require' as if
+  it were 'create_signatures = always' (Jonathan Riddell)
+
 New Features
 ************
 
@@ -92,6 +95,11 @@ Documentation
 
 * Improve documentation of ``bzr merge --force``.
   (Neil Martinsen-Burrell, #767307)
+
+* Make docs for configuration options for digital signatures match 
+  reality. (Jonathan Riddell)
+
+* Add user-guide page on GPG signatures. (Jonathan Riddell)
 
 API Changes
 ***********

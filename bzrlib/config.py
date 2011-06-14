@@ -144,7 +144,6 @@ class ConfigObj(configobj.ConfigObj):
                                         interpolation=False,
                                         **kwargs)
 
-
     def get_bool(self, section, key):
         return self[section].as_bool(key)
 
@@ -493,10 +492,10 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
+                #this warning should go away once check_signatures is
+                #implemented (if not before)
                 trace.warning("Please use create_signatures,"
                               " not check_signatures to set signing policy.")
-            if policy == CHECK_ALWAYS:
-                return True
         elif policy == SIGN_ALWAYS:
             return True
         return False
@@ -545,7 +544,7 @@ class Config(object):
         return tools
 
     def find_merge_tool(self, name):
-        # We fake a defaults mechanism here by checking if the given name can 
+        # We fake a defaults mechanism here by checking if the given name can
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.

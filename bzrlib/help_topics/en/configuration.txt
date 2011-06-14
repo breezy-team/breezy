@@ -386,7 +386,8 @@ value is ``long``.
 check_signatures
 ~~~~~~~~~~~~~~~~
 
-Defines the behavior for signatures.
+Reserved for future use.  These options will allow a policy for branches to
+require signatures.
 
 require
     The gnupg signature for revisions must be present and must be valid.
@@ -402,18 +403,22 @@ check-available
 create_signatures
 ~~~~~~~~~~~~~~~~~
 
-Defines the behaviour of signing revisions.
+Defines the behaviour of signing revisions on commits.  By default bzr will not
+sign new commits.
 
 always
-    Sign every new revision that is committed.
+    Sign every new revision that is committed.  If the signing fails then the
+    commit will not be made.
 
 when-required
-    (default) Sign newly committed revisions only when the branch requires
-    signed revisions.
+    Reserved for future use.
 
 never
-    Refuse to sign newly committed revisions, even if the branch
-    requires signatures.
+    Reserved for future use.
+
+In future it is planned that ``when-required`` will sign newly
+committed revisions only when the branch requires them.  ``never`` will refuse
+to sign newly committed revisions, even if the branch requires signatures.
 
 recurse
 ~~~~~~~
