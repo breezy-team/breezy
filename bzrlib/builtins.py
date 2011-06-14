@@ -796,8 +796,9 @@ class cmd_inventory(Command):
                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
-                             for file_id in file_ids if file_id in tree)
+            entries = sorted(
+                (tree.id2path(file_id), tree.inventory[file_id])
+                for file_id in file_ids if tree.has_id(file_id))
         else:
             entries = tree.inventory.entries()
 
@@ -2150,7 +2151,7 @@ class cmd_added(Command):
         basis_inv = basis.inventory
         inv = wt.inventory
         for file_id in inv:
-            if file_id in basis_inv:
+            if basis_inv.has_id(file_id):
                 continue
             if inv.is_root(file_id) and len(basis_inv) == 0:
                 continue

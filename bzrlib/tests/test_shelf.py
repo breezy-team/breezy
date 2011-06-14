@@ -330,8 +330,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         return creator, tree
 
     def check_shelve_deletion(self, tree):
-        self.assertTrue('foo-id' in tree)
-        self.assertTrue('bar-id' in tree)
+        self.assertTrue(tree.has_id('foo-id'))
+        self.assertTrue(tree.has_id('bar-id'))
         self.assertFileEqual('baz', 'tree/foo/bar')
 
     def test_shelve_deletion(self):
@@ -574,15 +574,15 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator.transform()
         creator.finalize()
         # validate the test setup
-        self.assertTrue('foo-id' in tree)
-        self.assertTrue('bar-id' in tree)
+        self.assertTrue(tree.has_id('foo-id'))
+        self.assertTrue(tree.has_id('bar-id'))
         self.assertFileEqual('baz', 'tree/foo/bar')
         shelf_file.seek(0)
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
         self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
-        self.assertFalse('foo-id' in tree)
-        self.assertFalse('bar-id' in tree)
+        self.assertFalse(tree.has_id('foo-id'))
+        self.assertFalse(tree.has_id('bar-id'))
 
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')

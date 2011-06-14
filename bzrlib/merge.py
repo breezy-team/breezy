@@ -990,12 +990,12 @@ class Merge3Merger(object):
                 else:
                     lca_entries.append(lca_ie)
 
-            if file_id in base_inventory:
+            if base_inventory.has_id(file_id):
                 base_ie = base_inventory[file_id]
             else:
                 base_ie = _none_entry
 
-            if file_id in this_inventory:
+            if this_inventory.has_id(file_id):
                 this_ie = this_inventory[file_id]
             else:
                 this_ie = _none_entry
@@ -1105,9 +1105,10 @@ class Merge3Merger(object):
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
-        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
-            # the other tree's root is a non-root in the current tree (as when
-            # a previously unrelated branch is merged into another)
+        if self.this_tree.inventory.has_id(
+            self.other_tree.inventory.root.file_id):
+            # the other tree's root is a non-root in the current tree (as
+            # when a previously unrelated branch is merged into another)
             return
         if self.tt.final_kind(other_root) is not None:
             other_root_is_present = True
@@ -1165,7 +1166,7 @@ class Merge3Merger(object):
     @staticmethod
     def contents_sha1(tree, file_id):
         """Determine the sha1 of the file contents (used as a key method)."""
-        if file_id not in tree:
+        if not tree.has_id(file_id):
             return None
         return tree.get_file_sha1(file_id)
 
@@ -1331,7 +1332,7 @@ class Merge3Merger(object):
     def _do_merge_contents(self, file_id):
         """Performs a merge on file_id contents."""
         def contents_pair(tree):
-            if file_id not in tree:
+            if not tree.has_id(file_id):
                 return (None, None)
             kind = tree.kind(file_id)
             if kind == "file":
@@ -1900,7 +1901,7 @@ class MergeIntoMergeType(Merge3Merger):
         name_in_target = osutils.basename(self._target_subdir)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
-        if merge_into_root.file_id in self.this_tree.inventory:
+        if self.this_tree.inventory.has_id(merge_into_root.file_id):
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
             # incorporating is the root, and both trees have 'TREE_ROOT' as

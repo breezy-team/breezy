@@ -278,7 +278,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
 
     def _get_delta(self, ie, basis_inv, path):
         """Get a delta against the basis inventory for ie."""
-        if ie.file_id not in basis_inv:
+        if not basis_inv.has_id(ie.file_id):
             # add
             result = (None, path, ie.file_id, ie)
             self._basis_delta.append(result)
@@ -397,7 +397,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 # this masks when a change may have occurred against the basis.
                 # To match this we always issue a delta, because the revision
                 # of the root will always be changing.
-                if ie.file_id in basis_inv:
+                if basis_inv.has_id(ie.file_id):
                     delta = (basis_inv.id2path(ie.file_id), path,
                         ie.file_id, ie)
                 else:
@@ -422,7 +422,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         head_set = self._heads(ie.file_id, parent_candiate_entries.keys())
         heads = []
         for inv in parent_invs:
-            if ie.file_id in inv:
+            if inv.has_id(ie.file_id):
                 old_rev = inv[ie.file_id].revision
                 if old_rev in head_set:
                     heads.append(inv[ie.file_id].revision)
@@ -3070,7 +3070,7 @@ def _install_revision(repository, rev, revision_tree, signature,
         # the parents inserted are not those commit would do - in particular
         # they are not filtered by heads(). RBC, AB
         for revision, tree in parent_trees.iteritems():
-            if ie.file_id not in tree:
+            if not tree.has_id(ie.file_id):
                 continue
             parent_id = tree.get_file_revision(ie.file_id)
             if parent_id in text_parents:

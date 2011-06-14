@@ -162,7 +162,7 @@ class MutableTree(tree.Tree):
         if sub_tree_id == self.get_root_id():
             raise errors.BadReferenceTarget(self, sub_tree,
                                      'Trees have the same root id.')
-        if sub_tree_id in self:
+        if self.has_id(sub_tree_id):
             raise errors.BadReferenceTarget(self, sub_tree,
                                             'Root id already present in tree')
         self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])

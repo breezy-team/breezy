@@ -87,6 +87,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Checking for a file id in a `Tree` or `Inventory` using ``in`` is now
+  deprecated.  Instead, use `has_id`.
+  (Martin Pool)
+
 Internals
 *********
 

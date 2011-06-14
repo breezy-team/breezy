@@ -2089,8 +2089,6 @@ class InventoryWorkingTree(WorkingTree,
             return True
         return self.inventory.has_id(file_id)
 
-    __contains__ = has_id
-
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -2272,7 +2270,7 @@ class InventoryWorkingTree(WorkingTree,
                 parent_tree = self.branch.repository.revision_tree(parent_id)
             parent_tree.lock_read()
             try:
-                if file_id not in parent_tree:
+                if not parent_tree.has_id(file_id):
                     continue
                 ie = parent_tree.inventory[file_id]
                 if ie.kind != 'file':
@@ -2326,7 +2324,7 @@ class InventoryWorkingTree(WorkingTree,
             for s in _mod_rio.RioReader(hashfile):
                 # RioReader reads in Unicode, so convert file_ids back to utf8
                 file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
-                if file_id not in self.inventory:
+                if not self.inventory.has_id(file_id):
                     continue
                 text_hash = s.get("hash")
                 if text_hash == self.get_file_sha1(file_id):
@@ -2849,7 +2847,7 @@ class InventoryWorkingTree(WorkingTree,
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         for file_id in file_ids:
-            if file_id not in self._inventory:
+            if not self._inventory.has_id(file_id):
                 raise errors.NoSuchId(self, file_id)
         for file_id in file_ids:
             if self._inventory.has_id(file_id):
