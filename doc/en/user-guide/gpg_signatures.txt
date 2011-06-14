@@ -42,7 +42,7 @@ commit name.  You can also pass the name of a contributor to ``sign-my-commits``
 to sign someone else's commits or if your GnuPG key does not match your Bazaar
 name and e-mail::
 
-  bzr sign-my-commits . "Amy Pond <amy@tardis.com>"
+  bzr sign-my-commits . "Amy Pond <amy@example.com>"
 
 It will not sign commits which already have a signature.
 
@@ -62,13 +62,13 @@ be done manually using bzrlib and Python::
   >>> from bzrlib.branch import Branch
   >>> b = Branch.open('/home/amy/src/daleks')
   >>> b.last_revision()
-  'amy@tardis.com-20110527185938-hluafawphszb8dl1'
+  'amy@example.com-20110527185938-hluafawphszb8dl1'
   >>> print b.repository.get_signature_text(b.last_revision())
   -----BEGIN PGP SIGNED MESSAGE-----
   Hash: SHA1
 
   bazaar-ng testament short form 1
-  revision-id: amy@tardis.com-20110527185938-hluafawphszb8dl1
+  revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
   sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
   -----BEGIN PGP SIGNATURE-----
   Version: GnuPG v1.4.11 (GNU/Linux)
