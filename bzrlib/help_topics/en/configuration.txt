@@ -462,6 +462,14 @@ is set, and smtp_password is not, Bazaar will prompt for a password.
 These settings are only needed if the SMTP server requires authentication
 to send mail.
 
+locks.steal_dead
+~~~~~~~~~~~~~~~~
+
+If set to true, bzr will automatically break locks held by processes from
+the same machine and user that are no longer alive.  Otherwise, it will
+print a message and you can break the lock manually, if you are satisfied
+the object is no longer in use.
+
 mail_client
 ~~~~~~~~~~~
 

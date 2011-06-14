@@ -43,6 +43,13 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Bazaar can now detect when a lock file is held by a dead process
+  originating from the same machine, and steal the lock after printing a
+  message to the user.  This is off by default, for safety, but can be
+  turned on by setting the configuration variable ``locks.steal_dead`` to
+  ``True``.
+  (Martin Pool, #220464)
+
 * Credentials in the log output produced by ``-Dhttp`` are masked so users
   can more freely post them in bug reports. (Vincent Ladeuil, #723074)
 
@@ -88,6 +95,10 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* Information about held lockdir locks returned from eg `LockDir.peek` is
+  now represented as a `LockHeldInfo` object, rather than a plain Python
+  dict.
 
 Internals
 *********
