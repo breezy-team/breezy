@@ -33,6 +33,12 @@ from bzrlib import (
 """)
 
 
+SIGNATURE_VALID = 0
+SIGNATURE_KEY_MISSING = 1
+SIGNATURE_NOT_VALID = 2
+SIGNATURE_NOT_SIGNED = 3
+
+
 class DisabledGPGStrategy(object):
     """A GPG Strategy that makes everything fail."""
 
@@ -111,3 +117,23 @@ class GPGStrategy(object):
                 raise errors.SigningFailed(self._command_line())
             else:
                 raise
+
+    def verify(self, content):
+        import gpgme
+        from StringIO import StringIO
+        context = gpgme.Context()
+        signature = StringIO(content)
+        plain = StringIO()
+        
+        result = context.verify(signature, None, plain)
+        #print "plain: " + plain.getvalue()
+
+        #print "summary: " + str(result[0].summary)
+        if result[0].summary & gpgme.SIGSUM_VALID:
+            return SIGNATURE_VALID
+        if result[0].summary & gpgme.SIGSUM_GREEN:
+            print "green!"
+        if result[0].summary & gpgme.SIGSUM_RED:
+            return SIGNATURE_NOT_VALID
+        if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
+            return SIGNATURE_NOT_VALID

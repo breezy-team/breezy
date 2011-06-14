@@ -26,7 +26,7 @@ from bzrlib import (
 """)
 from bzrlib.commands import Command
 from bzrlib.option import Option
-
+from bzrlib.trace import note
 
 class cmd_sign_my_commits(Command):
     __doc__ = """Sign all commits by a given committer.
@@ -88,3 +88,58 @@ class cmd_sign_my_commits(Command):
         print 'Signed %d revisions' % (count,)
 
 
+class cmd_verify(Command):
+    __doc__ = """Sign all commits by a given committer.
+
+    If location is not specified the local tree is used.
+    If committer is not specified the default committer is used.
+
+    This does not sign commits that already have signatures.
+    """
+    # Note that this signs everything on the branch's ancestry
+    # (both mainline and merged), but not other revisions that may be in the
+    # repository
+
+    takes_options = [
+            Option('dry-run',
+   help='Don\'t actually sign anything, just print'
+        ' the revisions that would be signed.'),
+            ]
+    takes_args = ['location?', 'committer?']
+
+    def run(self, location=None, committer=None, dry_run=False):
+        if location is None:
+            bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
+        else:
+            # Passed in locations should be exact
+            bzrdir = _mod_bzrdir.BzrDir.open(location)
+        branch = bzrdir.open_branch()
+        repo = branch.repository
+        branch_config = branch.get_config()
+
+        if committer is None:
+            committer = branch_config.username()
+        gpg_strategy = gpg.GPGStrategy(branch_config)
+
+        count = {gpg.SIGNATURE_VALID: 0,
+                 gpg.SIGNATURE_KEY_MISSING: 0,
+                 gpg.SIGNATURE_NOT_VALID: 0,
+                 gpg.SIGNATURE_NOT_SIGNED: 0}
+        result = []
+        for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
+            if not repo.has_signature_for_revision_id(rev_id):
+                result.append([rev_id, gpg.SIGNATURE_NOT_SIGNED])
+                continue
+            rev = repo.get_revision(rev_id)
+            #if rev.committer != committer:
+            #    continue
+            # We have a revision without a signature who has a
+            # matching committer, start signing
+            print rev_id
+            if not dry_run:
+                verification_result = repo.verify_revision(rev_id, gpg_strategy)
+                result.append([rev_id, verification_result])
+                count[verification_result] += 1
+        #print 'Signed %d revisions' % (count,)
+        print "result: " + str(result)
+        print "count: " + str(count)

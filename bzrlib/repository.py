@@ -1200,6 +1200,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         plaintext = testament.as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
+    def verify_revision(self, revision_id, gpg_strategy):
+        signature = self.get_signature_text(revision_id)
+        return gpg_strategy.verify(signature)
+
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
         raise NotImplementedError(self.has_signature_for_revision_id)
