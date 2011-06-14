@@ -1201,6 +1201,9 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     def verify_revision(self, revision_id, gpg_strategy):
+        from bzrlib import gpg
+        if not self.has_signature_for_revision_id(revision_id):
+            return gpg.SIGNATURE_NOT_SIGNED
         signature = self.get_signature_text(revision_id)
         return gpg_strategy.verify(signature)
 

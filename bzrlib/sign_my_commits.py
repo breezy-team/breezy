@@ -127,9 +127,6 @@ class cmd_verify(Command):
                  gpg.SIGNATURE_NOT_SIGNED: 0}
         result = []
         for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
-            if not repo.has_signature_for_revision_id(rev_id):
-                result.append([rev_id, gpg.SIGNATURE_NOT_SIGNED])
-                continue
             rev = repo.get_revision(rev_id)
             #if rev.committer != committer:
             #    continue
@@ -140,6 +137,25 @@ class cmd_verify(Command):
                 verification_result = repo.verify_revision(rev_id, gpg_strategy)
                 result.append([rev_id, verification_result])
                 count[verification_result] += 1
+                print "verresult " + str(verification_result)
         #print 'Signed %d revisions' % (count,)
         print "result: " + str(result)
         print "count: " + str(count)
+
+        if count[gpg.SIGNATURE_VALID] > 0 and \
+           count[gpg.SIGNATURE_KEY_MISSING] == 0 and \
+           count[gpg.SIGNATURE_NOT_VALID] == 0 and \
+           count[gpg.SIGNATURE_NOT_SIGNED] == 0:
+               note("All commits signed with verifiable keys")
+               return 0
+
+        else:
+            note("{0} commits with valid signatures".format(
+                                        count[gpg.SIGNATURE_VALID]))
+            note("{0} commits with unknown keys".format(
+                                        count[gpg.SIGNATURE_KEY_MISSING]))
+            note("{0} commits not valid".format(
+                                        count[gpg.SIGNATURE_NOT_VALID]))
+            note("{0} commits not signed".format(
+                                        count[gpg.SIGNATURE_NOT_SIGNED]))
+            return 1
