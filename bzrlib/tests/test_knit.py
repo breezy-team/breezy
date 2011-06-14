@@ -62,10 +62,13 @@ from bzrlib.versionedfile import (
     network_bytes_to_kind_and_offset,
     RecordingVersionedFilesDecorator,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
-compiled_knit_feature = tests.ModuleAvailableFeature(
-                            'bzrlib._knit_load_data_pyx')
+compiled_knit_feature = features.ModuleAvailableFeature(
+    'bzrlib._knit_load_data_pyx')
 
 
 class KnitContentTestsMixin(object):

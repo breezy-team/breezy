@@ -28,7 +28,7 @@ from bzrlib import errors
 
 # this is currently test-focused, so importing bzrlib.tests is ok. We might
 # want to move feature to its own module though.
-from bzrlib.tests import Feature
+from bzrlib.tests.features import Feature
 
 
 def strace(function, *args, **kwargs):
@@ -98,23 +98,3 @@ class StraceResult(object):
         self.err_messages = err_messages
 
 
-class _StraceFeature(Feature):
-
-    def _probe(self):
-        try:
-            proc = subprocess.Popen(['strace'],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
-            proc.communicate()
-            return True
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                # strace is not installed
-                return False
-            else:
-                raise
-
-    def feature_name(self):
-        return 'strace'
-
-StraceFeature = _StraceFeature()

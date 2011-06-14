@@ -24,36 +24,21 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.tests import (
-    Feature,
     TestCase,
     TestCaseInTempDir,
     TestSkipped,
-    UnicodeFilenameFeature,
     )
 from bzrlib.tests.features import backslashdir_feature
 from bzrlib.win32utils import glob_expand, get_app_path
+from bzrlib.tests import (
+    features,
+    )
 
 
-class _RequiredModuleFeature(Feature):
-
-    def __init__(self, mod_name):
-        self.mod_name = mod_name
-        super(_RequiredModuleFeature, self).__init__()
-
-    def _probe(self):
-        try:
-            __import__(self.mod_name)
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return self.mod_name
-
-Win32RegistryFeature = _RequiredModuleFeature('_winreg')
-CtypesFeature = _RequiredModuleFeature('ctypes')
-Win32comShellFeature = _RequiredModuleFeature('win32com.shell')
-Win32ApiFeature = _RequiredModuleFeature('win32api') 
+Win32RegistryFeature = features.ModuleAvailableFeature('_winreg')
+CtypesFeature = features.ModuleAvailableFeature('ctypes')
+Win32comShellFeature = features.ModuleAvailableFeature('win32com.shell')
+Win32ApiFeature = features.ModuleAvailableFeature('win32api') 
 
 
 # Tests
@@ -78,7 +63,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
                          'd/', 'd/d1', 'd/d2', 'd/e/', 'd/e/e1'])
 
     def build_unicode_tree(self):
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self.build_tree([u'\u1234', u'\u1234\u1234', u'\u1235/',
                          u'\u1235/\u1235'])
 
@@ -263,14 +248,14 @@ class TestSetHidden(TestCaseInTempDir):
 
     def test_unicode_dir(self):
         # we should handle unicode paths without errors
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.mkdir(u'\u1234')
         win32utils.set_file_attr_hidden(u'\u1234')
 
     def test_dot_bzr_in_unicode_dir(self):
         # we should not raise traceback if we try to set hidden attribute
         # on .bzr directory below unicode path
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.makedirs(u'\u1234\\.bzr')
         path = osutils.abspath(u'\u1234\\.bzr')
         win32utils.set_file_attr_hidden(path)

@@ -41,7 +41,7 @@ from bzrlib.tests import (
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-class _UTF8DirReaderFeature(tests.Feature):
+class _UTF8DirReaderFeature(features.Feature):
 
     def _probe(self):
         try:
@@ -54,9 +54,9 @@ class _UTF8DirReaderFeature(tests.Feature):
     def feature_name(self):
         return 'bzrlib._readdir_pyx'
 
-UTF8DirReaderFeature = _UTF8DirReaderFeature()
+UTF8DirReaderFeature = features.ModuleAvailableFeature('bzrlib._readdir_pyx')
 
-term_ios_feature = tests.ModuleAvailableFeature('termios')
+term_ios_feature = features.ModuleAvailableFeature('termios')
 
 
 def _already_unicode(s):
@@ -429,7 +429,7 @@ class TestDateTime(tests.TestCase):
 class TestLinks(tests.TestCaseInTempDir):
 
     def test_dereference_path(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -482,7 +482,7 @@ class TestLinks(tests.TestCaseInTempDir):
 
 class TestCanonicalRelPath(tests.TestCaseInTempDir):
 
-    _test_needs_features = [tests.CaseInsCasePresFilenameFeature]
+    _test_needs_features = [features.CaseInsCasePresFilenameFeature]
 
     def test_canonical_relpath_simple(self):
         f = file('MixedCaseName', 'w')
@@ -888,7 +888,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     """Test win32 functions that create files."""
 
     def test_getcwd(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.mkdir(u'mu-\xb5')
         os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
@@ -984,13 +984,13 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
     """Test mac special functions that require directories."""
 
     def test_getcwd(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.mkdir(u'B\xe5gfors')
         os.chdir(u'B\xe5gfors')
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
     def test_getcwd_nonnorm(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Test that _mac_getcwd() will normalize this path
         os.mkdir(u'Ba\u030agfors')
         os.chdir(u'Ba\u030agfors')
@@ -1106,7 +1106,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # are not using the filesystem's encoding
 
         # require a bytestring based filesystem
-        self.requireFeature(tests.ByteStringNamedFilesystem)
+        self.requireFeature(features.ByteStringNamedFilesystem)
 
         tree = [
             '.bzr',
@@ -1207,21 +1207,24 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'UTF-8'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
+        self.assertDirReaderIs(
+            UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'US-ASCII'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
+        self.assertDirReaderIs(
+            UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_ANSI(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'ANSI_X3.4-1968'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
+        self.assertDirReaderIs(
+            UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
@@ -1245,7 +1248,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         name0 = u'0file-\xb6'
         name1 = u'1dir-\u062c\u0648'
         name2 = u'2file-\u0633'
@@ -1288,7 +1291,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         The abspath portion might be in unicode or utf-8
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         name0 = u'0file-\xb6'
         name1 = u'1dir-\u062c\u0648'
         name2 = u'2file-\u0633'
@@ -1349,7 +1352,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         The abspath portion should be in unicode
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Use the unicode reader. TODO: split into driver-and-driven unit
         # tests.
         self._save_platform_info()
@@ -1396,7 +1399,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf8_win32readdir(self):
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
         osutils._selected_dir_reader = Win32ReadDir()
@@ -1453,7 +1456,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
         name0 = name0u.encode('utf8')
@@ -1477,7 +1480,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
@@ -1583,7 +1586,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1856,15 +1859,15 @@ class TestDirReader(tests.TestCaseInTempDir):
         return filtered_dirblocks
 
     def test_walk_unicode_tree(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree, expected_dirblocks = self._get_unicode_tree()
         self.build_tree(tree)
         result = list(osutils._walkdirs_utf8('.'))
         self.assertEqual(expected_dirblocks, self._filter_out(result))
 
     def test_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
@@ -1888,7 +1891,7 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-    _test_needs_features = [tests.SymlinkFeature, tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.SymlinkFeature, features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()

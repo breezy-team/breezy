@@ -27,8 +27,9 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import (
-    test_smart_add,
+    features,
     per_workingtree,
+    test_smart_add,
     )
 
 
@@ -288,7 +289,7 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
 
 class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
-    _test_needs_features = [tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(TestSmartAddTreeUnicode, self).setUp()

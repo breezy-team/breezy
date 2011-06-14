@@ -22,8 +22,10 @@ from bzrlib import osutils
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
 from bzrlib.tests import (
-    OsFifoFeature,
     TestCaseInTempDir,
+    )
+from bzrlib.tests.features import (
+    OsFifoFeature,
     )
 
 

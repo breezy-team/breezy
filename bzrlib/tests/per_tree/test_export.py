@@ -22,6 +22,9 @@ from bzrlib.export import export
 from bzrlib import osutils
 from bzrlib import tests
 from bzrlib.tests.per_tree import TestCaseWithTree
+from bzrlib.tests import (
+    features,
+    )
 
 
 class ExportTest(object):
@@ -37,7 +40,7 @@ class ExportTest(object):
         export(tree_a, 'output', self.exporter)
 
     def prepare_symlink_export(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         work_a = self.make_branch_and_tree('wta')
         os.symlink('target', 'wta/link')
         work_a.add('link', 'link-id')

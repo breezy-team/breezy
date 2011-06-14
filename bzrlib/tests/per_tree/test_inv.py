@@ -28,6 +28,9 @@ from bzrlib.tests import TestSkipped
 from bzrlib.tree import InventoryTree
 from bzrlib.transform import _PreviewTree
 from bzrlib.uncommit import uncommit
+from bzrlib.tests import (
+    features,
+    )
 
 
 def get_entry(tree, file_id):
@@ -36,7 +39,7 @@ def get_entry(tree, file_id):
 
 class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
 
-    _test_needs_features = [tests.SymlinkFeature]
+    _test_needs_features = [features.SymlinkFeature]
 
     def setUp(self):
         per_tree.TestCaseWithTree.setUp(self)
@@ -153,7 +156,7 @@ class TestInventory(per_tree.TestCaseWithTree):
         # some of the trees we want to use can only exist on a disk, not in
         # memory - therefore we can only test this if the filesystem is
         # case-sensitive.
-        self.requireFeature(tests.case_sensitive_filesystem_feature)
+        self.requireFeature(features.case_sensitive_filesystem_feature)
         work_tree = self.make_branch_and_tree('.')
         self.build_tree(['test/', 'test/file', 'Test'])
         work_tree.add(['test/', 'test/file', 'Test'])

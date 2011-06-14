@@ -21,13 +21,16 @@
 import os
 
 from bzrlib import osutils
-from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.testament import (
     Testament,
     StrictTestament,
     StrictTestament3,
     )
 from bzrlib.transform import TreeTransform
+from bzrlib.tests.features import (
+    SymlinkFeature,
+    )
 
 
 class TestamentSetup(TestCaseWithTransport):

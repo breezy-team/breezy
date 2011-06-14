@@ -37,6 +37,9 @@ from bzrlib.tests.per_workingtree import (
     )
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
+from bzrlib.tests import (
+    features,
+    )
 from bzrlib.workingtree import (
     format_registry,
     )
@@ -242,7 +245,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         note that the order of the paths and fileids is deliberately
         mismatched to ensure that the result order is path based.
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
             '1top-dir/',
@@ -274,7 +277,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
 
     def _create_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # We avoid combining characters in file names here, normalization
         # checks (as performed by some file systems (OSX) are outside the scope
         # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in

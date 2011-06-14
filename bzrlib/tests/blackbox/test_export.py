@@ -32,7 +32,10 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    features,
+    TestCaseWithTransport,
+    )
 
 
 class TestExport(TestCaseWithTransport):
@@ -98,7 +101,7 @@ class TestExport(TestCaseWithTransport):
                          sorted(ball.getnames()))
 
     def test_tar_export_unicode_filename(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tar')
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
@@ -116,7 +119,7 @@ class TestExport(TestCaseWithTransport):
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         basedir = u'\N{euro sign}'
         os.mkdir(basedir)
         self.run_bzr(['init', basedir])
@@ -194,7 +197,7 @@ class TestExport(TestCaseWithTransport):
     # TODO: test_xz_export, I don't have pylzma working here to test it.
 
     def test_zip_export_unicode(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
         fname = u'\N{Euro Sign}.txt'
         self.build_tree(['zip/' + fname])

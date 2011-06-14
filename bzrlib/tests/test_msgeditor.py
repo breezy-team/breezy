@@ -34,6 +34,7 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
+    features,
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
@@ -309,7 +310,7 @@ if len(sys.argv) == 2:
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         if hasattr(self, 'info'):
             tmpdir = self.info['directory']
             os.mkdir(tmpdir)

@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 """
 Facilities to use ftp test servers.
 """
@@ -20,6 +21,9 @@ Facilities to use ftp test servers.
 import sys
 
 from bzrlib import tests
+from bzrlib.tests import (
+    features,
+    )
 
 
 try:
@@ -42,7 +46,7 @@ except ImportError:
     pyftpdlib_available = False
 
 
-class _FTPServerFeature(tests.Feature):
+class _FTPServerFeature(features.Feature):
     """Some tests want an FTP Server, check if one is available.
 
     Right now, the only way this is available is if one of the following is

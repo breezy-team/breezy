@@ -23,6 +23,9 @@ from bzrlib import (
     osutils,
     tests,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -339,7 +342,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
 
     def test_rename_unversioned_non_ascii(self):
         """Check error when renaming an unversioned non-ascii file"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilename)
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
         e = self.assertRaises(errors.BzrRenameFailedError,
@@ -349,7 +352,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
 
     def test_rename_into_unversioned_non_ascii_dir(self):
         """Check error when renaming into unversioned non-ascii directory"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilename)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", u"\xA7/"])
         tree.add(["a"])
@@ -360,7 +363,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
 
     def test_rename_over_already_versioned_non_ascii(self):
         """Check error renaming over an already versioned non-ascii file"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilename)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", u"\xA7"])
         tree.add(["a", u"\xA7"])
@@ -371,7 +374,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
 
     def test_rename_after_non_existant_non_ascii(self):
         """Check error renaming after move with missing non-ascii file"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilename)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a"])
         tree.add(["a"])

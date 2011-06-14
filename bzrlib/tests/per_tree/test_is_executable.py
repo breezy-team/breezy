@@ -16,6 +16,8 @@
 
 from bzrlib.tests import (
     per_tree,
+    )
+from bzrlib.tests.features import (
     SymlinkFeature,
     )
 

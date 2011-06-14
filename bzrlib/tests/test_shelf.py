@@ -25,6 +25,9 @@ from bzrlib import (
     transform,
     workingtree,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -214,7 +217,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -241,7 +244,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self._test_shelve_symlink_creation('foo', 'bar')
 
     def test_shelve_unicode_symlink_creation(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_shelve_symlink_creation(u'fo\N{Euro Sign}o',
                                            u'b\N{Euro Sign}ar')
 
@@ -251,7 +254,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def _test_shelve_symlink_target_change(self, link_name,
                                            old_target, new_target,
                                            shelve_change=False):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -282,7 +285,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
 
     def test_shelve_unicode_symlink_target_change(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_shelve_symlink_target_change(
             u'fo\N{Euro Sign}o', u'b\N{Euro Sign}ar', u'b\N{Euro Sign}az')
 

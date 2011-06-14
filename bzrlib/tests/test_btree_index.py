@@ -33,6 +33,9 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     scenarios,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 load_tests = scenarios.load_tests_apply_scenarios
@@ -47,7 +50,7 @@ def btreeparser_scenarios():
     return scenarios
 
 
-compiled_btreeparser_feature = tests.ModuleAvailableFeature(
+compiled_btreeparser_feature = features.ModuleAvailableFeature(
     'bzrlib._btree_serializer_pyx')
 
 

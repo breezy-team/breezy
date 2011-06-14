@@ -172,10 +172,12 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    from bzrlib.tests import http_server
+    from bzrlib.tests import (
+        features,
+        http_server,
+        )
     permutations = [(HttpTransport_urllib, http_server.HttpServer_urllib),]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         from bzrlib.tests import https_server
         permutations.append((HttpTransport_urllib,
                              https_server.HTTPSServer_urllib))

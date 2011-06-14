@@ -25,9 +25,11 @@ from bzrlib import (
     )
 
 from bzrlib.tests import (
+    TestCaseWithTransport,
+    )
+from bzrlib.tests.features import (
     CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
-    TestCaseWithTransport,
     UnicodeFilename,
     )
 

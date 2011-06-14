@@ -32,8 +32,10 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 from bzrlib.tests import (
-    HardlinkFeature,
     KnownFailure,
+    )
+from bzrlib.tests.features import (
+    HardlinkFeature,
     )
 
 

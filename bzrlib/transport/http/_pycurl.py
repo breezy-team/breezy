@@ -423,10 +423,10 @@ class PyCurlTransport(HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
+    from bzrlib.tests import features
     from bzrlib.tests import http_server
     permutations = [(PyCurlTransport, http_server.HttpServer_PyCurl),]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         from bzrlib.tests import (
             https_server,
             ssl_certs,

@@ -41,6 +41,7 @@ from bzrlib.smart import (
         vfs,
 )
 from bzrlib.tests import (
+    features,
     test_smart,
     test_server,
     )
@@ -82,7 +83,7 @@ class StringIOSSHConnection(ssh.SSHConnection):
         return 'pipes', (self.vendor.read_from, self.vendor.write_to)
 
 
-class _InvalidHostnameFeature(tests.Feature):
+class _InvalidHostnameFeature(features.Feature):
     """Does 'non_existent.invalid' fail to resolve?
 
     RFC 2606 states that .invalid is reserved for invalid domain names, and

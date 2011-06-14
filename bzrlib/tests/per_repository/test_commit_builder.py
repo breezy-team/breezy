@@ -29,6 +29,9 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import per_repository
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestCommitBuilder(per_repository.TestCaseWithRepository):
@@ -628,14 +631,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_commit_link_unchanged(self):
         # committing without changing a link does not change the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link')
 
     def test_last_modified_revision_after_commit_link_unchanged_ric(self):
         # committing without changing a link does not change the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link',
@@ -710,14 +713,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_rename_link_changes(self):
         # renaming a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link')
 
     def test_last_modified_revision_after_rename_link_changes_ric(self):
         # renaming a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link',
@@ -785,14 +788,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_reparent_link_changes(self):
         # reparenting a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_reparent_check_changed(tree, 'link')
 
     def test_last_modified_revision_after_reparent_link_changes_ric(self):
         # reparenting a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_reparent_check_changed(tree, 'link',
@@ -1020,7 +1023,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_content_link_changes(self):
         # changing a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         def change_link():
@@ -1033,7 +1036,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         if file_id is None:
             file_id = link
         # changing a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink(target, link)
         def change_link():
@@ -1049,7 +1052,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             'link', 'target', 'newtarget')
 
     def test_last_modified_rev_after_content_unicode_link_changes_ric(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_last_mod_rev_after_content_link_changes_ric(
             u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget',
 
@@ -1114,14 +1117,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_merge_link_changes(self):
         # merge a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge(tree1, 'link')
 
     def test_last_modified_revision_after_merge_link_changes_ric(self):
         # merge a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge(tree1, 'link',
@@ -1208,14 +1211,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_converged_merge_link_unchanged(self):
         # merge a link that changed preserves the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link')
 
     def test_last_modified_revision_after_converged_merge_link_unchanged_ric(self):
         # merge a link that changed preserves the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link',
@@ -1261,7 +1264,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.build_tree([name])
 
     def make_link(self, name):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         os.symlink('target', name)
 
     def make_reference(self, name):

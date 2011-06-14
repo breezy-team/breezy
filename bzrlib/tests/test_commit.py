@@ -29,9 +29,11 @@ from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
                            LockContention)
 from bzrlib.tests import (
-    SymlinkFeature,
     TestCaseWithTransport,
     test_foreign,
+    )
+from bzrlib.tests.features import (
+    SymlinkFeature,
     )
 
 

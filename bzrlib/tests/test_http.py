@@ -128,7 +128,7 @@ def vary_by_http_activity():
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
                             _transport=_urllib.HttpTransport_urllib,)),
         ]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         activity_scenarios.append(
             ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
                                 _transport=_urllib.HttpTransport_urllib,)),)
@@ -136,7 +136,7 @@ def vary_by_http_activity():
         activity_scenarios.append(
             ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
                                 _transport=PyCurlTransport,)),)
-        if tests.HTTPSServerFeature.available():
+        if features.HTTPSServerFeature.available():
             from bzrlib.tests import (
                 ssl_certs,
                 )
@@ -2020,7 +2020,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
     pass
 
 
-if tests.HTTPSServerFeature.available():
+if features.HTTPSServerFeature.available():
     from bzrlib.tests import https_server
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass

@@ -26,6 +26,9 @@ from bzrlib import (
     static_tuple,
     tests,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 def load_tests(standard_tests, module, loader):
@@ -35,21 +38,6 @@ def load_tests(standard_tests, module, loader):
         standard_tests, loader, 'bzrlib._static_tuple_py',
         'bzrlib._static_tuple_c')
     return suite
-
-
-class _Meliae(tests.Feature):
-
-    def _probe(self):
-        try:
-            from meliae import scanner
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return "Meliae - python memory debugger"
-
-Meliae = _Meliae()
 
 
 class TestStaticTuple(tests.TestCase):
@@ -444,7 +432,7 @@ class TestStaticTuple(tests.TestCase):
         # amount of referenced memory. Unfortunately gc.get_referents() first
         # checks the IS_GC flag before it traverses anything. We could write a
         # helper func, but that won't work for the generic implementation...
-        self.requireFeature(Meliae)
+        self.requireFeature(features.meliae_feature)
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k = self.module.StaticTuple(*strs)
@@ -455,7 +443,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual(sorted(refs), sorted(scanner.get_referents(k)))
 
     def test_nested_referents(self):
-        self.requireFeature(Meliae)
+        self.requireFeature(features.meliae_feature)
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k1 = self.module.StaticTuple(*strs[:2])

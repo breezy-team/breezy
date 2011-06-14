@@ -26,6 +26,9 @@ from bzrlib import (
 from bzrlib.tests import test_graph
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
+from bzrlib.tests import (
+    features,
+    )
 
 
 def caching_scenarios():
@@ -52,7 +55,7 @@ def non_caching_scenarios():
 load_tests = load_tests_apply_scenarios
 
 
-compiled_known_graph_feature = tests.ModuleAvailableFeature(
+compiled_known_graph_feature = features.ModuleAvailableFeature(
     'bzrlib._known_graph_pyx')
 
 

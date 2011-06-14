@@ -87,6 +87,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Test optional features including the base `Feature` class have been
+  moved to `bzrlib.tests.features`.
+
 Internals
 *********
 

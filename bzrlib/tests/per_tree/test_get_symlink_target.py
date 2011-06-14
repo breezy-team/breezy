@@ -23,12 +23,15 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import per_tree
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
 
     def get_tree_with_symlinks(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink('foo', 'tree/link')
         os.symlink('../bar', 'tree/rel_link')
@@ -48,8 +51,8 @@ class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
         self.assertEqual('foo', tree.get_symlink_target('link-id', 'link'))
 
     def test_get_unicode_symlink_target(self):
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
         target = u'targ\N{Euro Sign}t'
         os.symlink(target,  u'tree/\u03b2_link'.encode(osutils._fs_enc))
