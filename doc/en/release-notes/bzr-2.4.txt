@@ -87,6 +87,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Remove `file_status` function.
+  (Martin Pool)
+
 Internals
 *********
 
