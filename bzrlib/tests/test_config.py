@@ -1919,7 +1919,9 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_get', hook, None)
+        config.OldConfigHooks.install_named_hook('get', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'get', None)
         self.assertLength(0, calls)
         actual_value = conf.get_user_option(name)
         self.assertEquals(value, actual_value)
@@ -1941,7 +1943,9 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_set', hook, None)
+        config.OldConfigHooks.install_named_hook('set', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'set', None)
         self.assertLength(0, calls)
         conf.set_user_option(name, value)
         self.assertLength(1, calls)
@@ -1963,7 +1967,9 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_remove', hook, None)
+        config.OldConfigHooks.install_named_hook('remove', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'remove', None)
         self.assertLength(0, calls)
         conf.remove_user_option(name, section_name)
         self.assertLength(1, calls)
@@ -1986,7 +1992,9 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_load', hook, None)
+        config.OldConfigHooks.install_named_hook('load', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'load', None)
         self.assertLength(0, calls)
         # Build a config
         conf = conf_class(*conf_args)
@@ -2008,7 +2016,9 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_save', hook, None)
+        config.OldConfigHooks.install_named_hook('save', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'save', None)
         self.assertLength(0, calls)
         # Setting an option triggers a save
         conf.set_user_option('foo', 'bar')
@@ -2040,9 +2050,9 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_get', hook, None)
+        config.OldConfigHooks.install_named_hook('get', hook, None)
         self.addCleanup(
-            config.ConfigHooks.uninstall_named_hook, 'old_get', None)
+            config.OldConfigHooks.uninstall_named_hook, 'get', None)
         self.assertLength(0, calls)
         actual_value = conf.get_option(name)
         self.assertEquals(value, actual_value)
@@ -2063,9 +2073,9 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_set', hook, None)
+        config.OldConfigHooks.install_named_hook('set', hook, None)
         self.addCleanup(
-            config.ConfigHooks.uninstall_named_hook, 'old_set', None)
+            config.OldConfigHooks.uninstall_named_hook, 'set', None)
         self.assertLength(0, calls)
         conf.set_option(value, name)
         self.assertLength(1, calls)
@@ -2089,9 +2099,9 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_load', hook, None)
+        config.OldConfigHooks.install_named_hook('load', hook, None)
         self.addCleanup(
-            config.ConfigHooks.uninstall_named_hook, 'old_load', None)
+            config.OldConfigHooks.uninstall_named_hook, 'load', None)
         self.assertLength(0, calls)
         # Build a config
         conf = conf_class(*conf_args)
@@ -2119,9 +2129,9 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         calls = []
         def hook(*args):
             calls.append(args)
-        config.ConfigHooks.install_named_hook('old_save', hook, None)
+        config.OldConfigHooks.install_named_hook('save', hook, None)
         self.addCleanup(
-            config.ConfigHooks.uninstall_named_hook, 'old_save', None)
+            config.OldConfigHooks.uninstall_named_hook, 'save', None)
         self.assertLength(0, calls)
         # Setting an option triggers a save
         conf.set_option('foo', 'bar')

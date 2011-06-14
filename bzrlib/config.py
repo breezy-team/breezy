@@ -371,7 +371,7 @@ class Config(object):
                               % (option_name,))
             else:
                 value = self._expand_options_in_string(value)
-        for hook in ConfigHooks['old_get']:
+        for hook in OldConfigHooks['get']:
             hook(self, option_name, value)        
         return value
 
@@ -589,29 +589,42 @@ class _ConfigHooks(hooks.Hooks):
                       'Invoked when a config option is removed.'
                       ' The signature is (stack, name).',
                       (2, 4))
-        # Hooks for the actual implementation
-        self.add_hook('old_load',
+ConfigHooks = _ConfigHooks()
+
+
+class _OldConfigHooks(hooks.Hooks):
+    """A dict mapping hook names and a list of callables for configs.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        super(_OldConfigHooks, self).__init__('bzrlib.config', 'OldConfigHooks')
+        self.add_hook('load',
                       'Invoked when a config store is loaded.'
                       ' The signature is (config).',
                       (2, 4))
-        self.add_hook('old_save',
+        self.add_hook('save',
                       'Invoked when a config store is saved.'
                       ' The signature is (config).',
                       (2, 4))
         # The hooks for config options
-        self.add_hook('old_get',
+        self.add_hook('get',
                       'Invoked when a config option is read.'
                       ' The signature is (config, name, value).',
                       (2, 4))
-        self.add_hook('old_set',
+        self.add_hook('set',
                       'Invoked when a config option is set.'
                       ' The signature is (config, name, value).',
                       (2, 4))
-        self.add_hook('old_remove',
+        self.add_hook('remove',
                       'Invoked when a config option is removed.'
                       ' The signature is (config, name).',
                       (2, 4))
-ConfigHooks = _ConfigHooks()
+OldConfigHooks = _OldConfigHooks()
 
 
 class IniBasedConfig(Config):
@@ -681,7 +694,7 @@ class IniBasedConfig(Config):
             raise errors.ParseConfigError(e.errors, e.config.filename)
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
-        for hook in ConfigHooks['old_load']:
+        for hook in OldConfigHooks['load']:
             hook(self)
         return self._parser
 
@@ -691,7 +704,7 @@ class IniBasedConfig(Config):
             raise AssertionError('We need a file name to reload the config')
         if self._parser is not None:
             self._parser.reload()
-        for hook in ConfigHooks['old_load']:
+        for hook in ConfigHooks['load']:
             hook(self)
 
     def _get_matching_sections(self):
@@ -870,7 +883,7 @@ class IniBasedConfig(Config):
         except KeyError:
             raise errors.NoSuchConfigOption(option_name)
         self._write_config_file()
-        for hook in ConfigHooks['old_remove']:
+        for hook in OldConfigHooks['remove']:
             hook(self, option_name)
 
     def _write_config_file(self):
@@ -883,7 +896,7 @@ class IniBasedConfig(Config):
         atomic_file.commit()
         atomic_file.close()
         osutils.copy_ownership_from_path(self.file_name)
-        for hook in ConfigHooks['old_save']:
+        for hook in OldConfigHooks['save']:
             hook(self)
 
 
@@ -1018,7 +1031,7 @@ class GlobalConfig(LockableConfig):
         self.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
-        for hook in ConfigHooks['old_set']:
+        for hook in OldConfigHooks['set']:
             hook(self, option, value)
 
     def _get_sections(self, name=None):
@@ -1221,7 +1234,7 @@ class LocationConfig(LockableConfig):
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
         self._write_config_file()
-        for hook in ConfigHooks['old_set']:
+        for hook in OldConfigHooks['set']:
             hook(self, option, value)
 
 
@@ -2126,7 +2139,7 @@ class TransportConfig(object):
             except KeyError:
                 return default
         value = section_obj.get(name, default)
-        for hook in ConfigHooks['old_get']:
+        for hook in OldConfigHooks['get']:
             hook(self, name, value)        
         return value
 
@@ -2142,7 +2155,7 @@ class TransportConfig(object):
             configobj[name] = value
         else:
             configobj.setdefault(section, {})[name] = value
-        for hook in ConfigHooks['old_set']:
+        for hook in OldConfigHooks['set']:
             hook(self, name, value)
         self._set_configobj(configobj)
 
@@ -2152,14 +2165,14 @@ class TransportConfig(object):
             del configobj[option_name]
         else:
             del configobj[section_name][option_name]
-        for hook in ConfigHooks['old_remove']:
+        for hook in OldConfigHooks['remove']:
             hook(self, option_name)
         self._set_configobj(configobj)
 
     def _get_config_file(self):
         try:
             f = StringIO(self._transport.get_bytes(self._filename))
-            for hook in ConfigHooks['old_load']:
+            for hook in OldConfigHooks['load']:
                 hook(self)
             return f
         except errors.NoSuchFile:
@@ -2177,7 +2190,7 @@ class TransportConfig(object):
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
-        for hook in ConfigHooks['old_save']:
+        for hook in OldConfigHooks['save']:
             hook(self)
 
 
