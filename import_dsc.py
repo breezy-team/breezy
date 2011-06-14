@@ -68,9 +68,9 @@ from bzrlib.plugins.builddeb.errors import (
     UpstreamBranchAlreadyMerged,
     )
 from bzrlib.plugins.builddeb.util import (
+    FORMAT_1_0,
     FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
-    export,
     get_commit_info_from_changelog,
     md5sum_filename,
     open_file_via_transport,
@@ -1472,6 +1472,18 @@ class SourceExtractor(object):
 
     def extract(self):
         """Extract the package to a new temporary directory."""
+        raise NotImplementedError(self.extract)
+
+    def cleanup(self):
+        """Cleanup any extracted files."""
+        raise NotImplementedError(self.cleanup)
+
+
+class OneZeroSourceExtractor(SourceExtractor):
+    """Source extract for the "1.0" source format."""
+
+    def extract(self):
+        """Extract the package to a new temporary directory."""
         self.tempdir = tempfile.mkdtemp()
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
@@ -1509,6 +1521,7 @@ class SourceExtractor(object):
 
 
 class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
+    """Source extractor for the "3.0 (native)" source format."""
 
     def extract(self):
         self.tempdir = tempfile.mkdtemp()
@@ -1529,8 +1542,13 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
                     or part['name'].endswith(".tar.bz2")):
                 self.unextracted_debian_md5 = part['md5sum']
 
+    def cleanup(self):
+        if os.path.exists(self.tempdir):
+            shutil.rmtree(self.tempdir)
+
 
 class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
+    """Source extractor for the "3.0 (quilt)" source format."""
 
     def extract(self):
         self.tempdir = tempfile.mkdtemp()
@@ -1577,8 +1595,12 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         assert self.unextracted_debian_md5 is not None, \
             "Can't handle non gz|bz2 tarballs yet"
 
+    def cleanup(self):
+        if os.path.exists(self.tempdir):
+            shutil.rmtree(self.tempdir)
+
 
 SOURCE_EXTRACTORS = {}
-SOURCE_EXTRACTORS["1.0"] = SourceExtractor
+SOURCE_EXTRACTORS[FORMAT_1_0] = OneZeroSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_NATIVE] = ThreeDotZeroNativeSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor
