@@ -1031,21 +1031,29 @@ class TestCase(testtools.TestCase):
         """Install config hooks to count hook calls.
 
         """
-        def create_counter(name): self._counters[name] = 0
-        def increment_counter(name): self._counters[name] += 1
-
-        for hook_name in (
-            'get', 'set', 'remove', 'load', 'save',
-            'old_get', 'old_set', 'old_remove', 'old_load', 'old_save',):
-            counter_name = 'config.%s' % (hook_name,)
-            create_counter(counter_name)
-            def create_hook_point(name):
+        def install_hook(hooks, prefix, hook_name):
+            counter_name = '%s.%s' % (prefix, hook_name)
+            self._counters[counter_name] = 0
+            def increment_counter(name): self._counters[name] += 1
+            def create_hook_point(attr_name):
                 # Force the lambda creation at the right time so we refer to
                 # the right counter name
-                return lambda *args: increment_counter(name)
-            config.ConfigHooks.install_named_hook(
-                hook_name, create_hook_point(counter_name),
-                'count config.%s calls' % (hook_name,))
+                return lambda *args: increment_counter(attr_name)
+            label = 'count %s.%s calls' % (prefix, hook_name)
+            hooks.install_named_hook(hook_name, create_hook_point(counter_name),
+                                     label)
+            self.addCleanup(hooks.uninstall_named_hook, hook_name, label)
+
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            install_hook(config.ConfigHooks, 'config', hook_name)
+
+        # The OldConfigHooks are private and need special handling to protect
+        # against recursive tests (tests that run other tests), so we just do
+        # manually what registering them into _builtin_known_hooks will provide
+        # us.
+        self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            install_hook(config.OldConfigHooks, 'old_config', hook_name)
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
