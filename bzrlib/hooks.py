@@ -257,8 +257,7 @@ class Hooks(dict):
         try:
             uninstall = getattr(hook, "uninstall")
         except AttributeError:
-            raise errors.UnsupportedOperation(self.install_named_hook_lazy,
-                self)
+            raise errors.UnsupportedOperation(self.uninstall_named_hook, self)
         else:
             uninstall(label)
 
