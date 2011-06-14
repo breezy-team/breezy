@@ -1791,10 +1791,18 @@ class NoEmailInUsername(BzrError):
 
 class SigningFailed(BzrError):
 
-    _fmt = 'Failed to gpg sign data with command "%(command_line)s"'
+    _fmt = 'Failed to GPG sign data with command "%(command_line)s"'
 
     def __init__(self, command_line):
         BzrError.__init__(self, command_line=command_line)
+
+
+class VerifyFailed(BzrError):
+
+    _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)
 
 
 class GpgmeNotInstalled(BzrError):

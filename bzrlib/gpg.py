@@ -49,6 +49,8 @@ class DisabledGPGStrategy(object):
     def sign(self, content):
         raise errors.SigningFailed('Signing is disabled.')
 
+    def verification(self, content):
+        return SIGNATURE_VALID
 
 class LoopbackGPGStrategy(object):
     """A GPG Strategy that acts like 'cat' - data is just passed through."""
@@ -59,6 +61,9 @@ class LoopbackGPGStrategy(object):
     def sign(self, content):
         return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
                 "-----END PSEUDO-SIGNED CONTENT-----\n")
+
+    def verification(self, content):
+        raise errors.VerifyFailed('Signature verification is disabled.')
 
 
 def _set_gpg_tty():
@@ -129,7 +134,10 @@ class GPGStrategy(object):
         signature = StringIO(content)
         plain_output = StringIO()
         
-        result = context.verify(signature, None, plain_output)
+        try:
+            result = context.verify(signature, None, plain_output)
+        except gpgme.GpgmeError,error:
+            raise errors.VerifyFailed(error[2])
 
         if result[0].summary & gpgme.SIGSUM_VALID:
             return SIGNATURE_VALID
