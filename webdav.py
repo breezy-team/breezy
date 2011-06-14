@@ -715,7 +715,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
    </D:propfind>
 """
         request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
-                                            {'Depth': depth},
+                                            {'Depth': '%s' % (depth,)},
                                             accepted_errors=[207, 404, 409,])
         response = self._perform(request)
 
