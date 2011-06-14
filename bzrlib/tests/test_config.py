@@ -2088,7 +2088,6 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def assertLoadHook(self, expected_nb_calls, name, conf_class, *conf_args):
         calls = []
         def hook(*args):
-            self.debug()
             calls.append(args)
         config.ConfigHooks.install_named_hook('old_load', hook, None)
         self.addCleanup(
@@ -2115,6 +2114,30 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         # SmartServerBzrDirRequestConfigFile (in smart/bzrdir.py) and
         # SmartServerBranchGetConfigFile (in smart/branch.py)
         self.assertLoadHook(2 ,'file', remote.RemoteBzrDirConfig, remote_bzrdir)
+
+    def assertSaveHook(self, conf):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_save', hook, None)
+        self.addCleanup(
+            config.ConfigHooks.uninstall_named_hook, 'old_save', None)
+        self.assertLength(0, calls)
+        # Setting an option triggers a save
+        conf.set_option('foo', 'bar')
+        self.assertLength(1, calls)
+        # Since we can't assert about conf, we just use the number of calls ;-/
+
+    def test_save_hook_remote_branch(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        self.assertSaveHook(remote_branch._get_config())
+
+    def test_save_hook_remote_bzrdir(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        self.assertSaveHook(remote_bzrdir._get_config())
 
 
 class TestOption(tests.TestCase):
