@@ -69,9 +69,6 @@ Improvements
   scratch, use ``update_basis_by_delta``, computing the delta from the
   repository. (John Arbash Meinel, #780544)
 
-* ``bzr mv --after old_name new_name`` now works if "new_name" is newly
-  added. (Benoît Pierre)
-
 Bug Fixes
 *********
 
@@ -114,6 +111,9 @@ Bug Fixes
   by more commands than just commit. Updating with a delta allows us to
   not load the whole inventory, which can take 10+s with large trees.
   (Jonathan Riddell, John Arbash Meinel, #781168)
+
+* ``bzr mv --after old_name new_name`` now works if "new_name" is newly
+  added. (Benoît Pierre)
 
 
 Documentation
