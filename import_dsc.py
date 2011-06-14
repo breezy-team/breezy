@@ -1133,9 +1133,8 @@ class DistributionBranch(object):
         return cl
 
     def _do_import_package(self, version, versions, debian_part, md5,
-            upstream_part, upstream_md5, upstream_tarball=None,
-            timestamp=None, author=None, file_ids_from=None,
-            pull_debian=True):
+            upstream_part, upstream_tarballs, timestamp=None, author=None,
+            file_ids_from=None, pull_debian=True):
         """Import a source package.
 
         :param version: Full Debian version
@@ -1143,8 +1142,7 @@ class DistributionBranch(object):
         :param debian_part: Path to extracted directory with Debian changes
         :param unextracted_debian_md5: MD5 sum of unextracted Debian diff/tarball
         :param upstream_part: Extracted upstream directory
-        :param upstream_md5: MD5 sum of unextracted upstream tarball
-        :param upstream_tarball: Path to upstream tarball
+        :param upstream_tarballs: List of tuples with (upstream tarfile, md5sum)
         :param timestamp: Version timestamp according to changelog
         :param author: Author according to changelog
         :param file_ids_from: Sequence of trees to take file ids from
@@ -1153,6 +1151,13 @@ class DistributionBranch(object):
         pull_branch = None
         if pull_debian:
             pull_branch = self.branch_to_pull_version_from(version, md5)
+        if len(upstream_tarballs) == 0:
+            upstream_md5 = None
+            upstream_tarball = None
+        elif len(upstream_tarballs) == 1:
+            (upstream_tarball, upstream_md5) = upstream_tarballs[0]
+        else:
+            raise MultipleUpstreamTarballsNotSupported()
         if pull_branch is not None:
             if (self.branch_to_pull_upstream_from(version.upstream_version,
                         upstream_md5)
@@ -1264,7 +1269,7 @@ class DistributionBranch(object):
         base_path = osutils.dirname(dsc_filename)
         dsc = deb822.Dsc(open(dsc_filename).read())
         version = Version(dsc['Version'])
-        format = dsc.get('Format', '1.0').strip()
+        format = dsc.get('Format', FORMAT_1_0).strip()
         extractor_cls = SOURCE_EXTRACTORS.get(format)
         if extractor_cls is None:
             raise AssertionError("Don't know how to import source format %s yet"
@@ -1288,13 +1293,13 @@ class DistributionBranch(object):
             #TODO: check that the versions list is correctly ordered,
             # as some methods assume that, and it's not clear what
             # should happen if it isn't.
+
             if extractor.extracted_upstream is not None:
                 self._do_import_package(version, versions,
                         extractor.extracted_debianised,
                         extractor.unextracted_debian_md5,
                         extractor.extracted_upstream,
-                        extractor.unextracted_upstream_md5,
-                        upstream_tarball=extractor.unextracted_upstream,
+                        extractor.upstream_tarballs,
                         timestamp=timestamp, author=author,
                         file_ids_from=file_ids_from,
                         pull_debian=pull_debian)
@@ -1480,9 +1485,9 @@ class SourceExtractor(object):
         self.dsc = dsc
         self.extracted_upstream = None
         self.extracted_debianised = None
-        self.unextracted_upstream = None
         self.unextracted_debian_md5 = None
-        self.unextracted_upstream_md5 = None
+        self.upstream_tarballs = []
+        self.tempdir = None
 
     def extract(self):
         """Extract the package to a new temporary directory."""
@@ -1490,7 +1495,8 @@ class SourceExtractor(object):
 
     def cleanup(self):
         """Cleanup any extracted files."""
-        raise NotImplementedError(self.cleanup)
+        if self.tempdir is not None and os.path.isdir(self.tempdir):
+            shutil.rmtree(self.tempdir)
 
 
 class OneZeroSourceExtractor(SourceExtractor):
@@ -1521,17 +1527,11 @@ class OneZeroSourceExtractor(SourceExtractor):
                     self.unextracted_debian_md5 = part['md5sum']
             else:
                 if part['name'].endswith(".orig.tar.gz"):
-                    assert self.unextracted_upstream is None, "Two .orig.tar.gz?"
-                    self.unextracted_upstream = os.path.abspath(
+                    self.upstream_tarballs.append((os.path.abspath(
                             os.path.join(osutils.dirname(self.dsc_path),
-                                part['name']))
-                    self.unextracted_upstream_md5 = part['md5sum']
+                                part['name'])), part['md5sum']))
                 elif part['name'].endswith(".diff.gz"):
                     self.unextracted_debian_md5 = part['md5sum']
-
-    def cleanup(self):
-        if os.path.exists(self.tempdir):
-            shutil.rmtree(self.tempdir)
 
 
 class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
@@ -1555,10 +1555,6 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
             if (part['name'].endswith(".tar.gz")
                     or part['name'].endswith(".tar.bz2")):
                 self.unextracted_debian_md5 = part['md5sum']
-
-    def cleanup(self):
-        if os.path.exists(self.tempdir):
-            shutil.rmtree(self.tempdir)
 
 
 class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
@@ -1592,26 +1588,17 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         subprocess.call(["find", self.extracted_debianised, "-perm",
                 "0000", "-exec", "chmod", "644", "{}", ";"])
         for part in self.dsc['files']:
-            if (re.search("\.orig-[^.]+\.tar\.(gz|bz2|lzma)$", part['name'])):
-                raise MultipleUpstreamTarballsNotSupported()
-            if (part['name'].endswith(".orig.tar.gz")
-                    or part['name'].endswith(".orig.tar.bz2")):
-                assert self.unextracted_upstream is None, "Two .orig.tar.(gz|bz2)?"
-                self.unextracted_upstream = os.path.abspath(
+            if part['name'].startswith("%s_%s.orig" % (name, str(version.upstream_version))):
+                self.upstream_tarballs.append((os.path.abspath(
                         os.path.join(osutils.dirname(self.dsc_path),
-                            part['name']))
-                self.unextracted_upstream_md5 = part['md5sum']
+                            part['name'])), part['md5sum']))
             elif (part['name'].endswith(".debian.tar.gz")
                     or part['name'].endswith(".debian.tar.bz2")):
                 self.unextracted_debian_md5 = part['md5sum']
-        assert self.unextracted_upstream is not None, \
+        assert self.upstream_tarballs is not None, \
             "Can't handle non gz|bz2 tarballs yet"
         assert self.unextracted_debian_md5 is not None, \
             "Can't handle non gz|bz2 tarballs yet"
-
-    def cleanup(self):
-        if os.path.exists(self.tempdir):
-            shutil.rmtree(self.tempdir)
 
 
 SOURCE_EXTRACTORS = {}

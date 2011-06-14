@@ -41,7 +41,7 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
-        SourceExtractor,
+        OneZeroSourceExtractor,
         SOURCE_EXTRACTORS,
         ThreeDotZeroNativeSourceExtractor,
         ThreeDotZeroQuiltSourceExtractor,
@@ -1778,7 +1778,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.db1.import_package(builder.dsc_name())
 
 
-class SourceExtractorTests(tests.TestCaseInTempDir):
+class OneZeroSourceExtractorTests(tests.TestCaseInTempDir):
 
     def test_extract_format1(self):
         version = Version("0.1-1")
@@ -1789,8 +1789,8 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         builder.add_default_control()
         builder.build()
         dsc = deb822.Dsc(open(builder.dsc_name()).read())
-        self.assertEqual(SourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
-        extractor = SourceExtractor(builder.dsc_name(), dsc)
+        self.assertEqual(OneZeroSourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = OneZeroSourceExtractor(builder.dsc_name(), dsc)
         try:
             extractor.extract()
             unpacked_dir = extractor.extracted_debianised
@@ -1805,7 +1805,7 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
                             "README")))
             self.assertFalse(os.path.exists(os.path.join(orig_dir,
                             "debian", "control")))
-            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
+            self.assertTrue(os.path.exists(extractor.upstream_tarballs[0][0]))
         finally:
             extractor.cleanup()
 
@@ -1818,8 +1818,8 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         builder.add_default_control()
         builder.build()
         dsc = deb822.Dsc(open(builder.dsc_name()).read())
-        self.assertEqual(SourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
-        extractor = SourceExtractor(builder.dsc_name(), dsc)
+        self.assertEqual(OneZeroSourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = OneZeroSourceExtractor(builder.dsc_name(), dsc)
         try:
             extractor.extract()
             unpacked_dir = extractor.extracted_debianised
@@ -1886,7 +1886,7 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
                             "README")))
             self.assertFalse(os.path.exists(os.path.join(orig_dir,
                             "debian", "control")))
-            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
+            self.assertTrue(os.path.exists(extractor.upstream_tarballs[0][0]))
         finally:
             extractor.cleanup()
 
@@ -1916,7 +1916,7 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
                             "README")))
             self.assertFalse(os.path.exists(os.path.join(orig_dir,
                             "debian", "control")))
-            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
+            self.assertTrue(os.path.exists(extractor.upstream_tarballs[0][0]))
         finally:
             extractor.cleanup()
 
@@ -1936,4 +1936,4 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
                 SOURCE_EXTRACTORS[dsc['Format']])
         extractor = ThreeDotZeroQuiltSourceExtractor(builder.dsc_name(), dsc)
         self.addCleanup(extractor.cleanup)
-        self.assertRaises(MultipleUpstreamTarballsNotSupported, extractor.extract)
+        self.assertEquals([], extractor.upstream_tarballs)
