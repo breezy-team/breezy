@@ -34,10 +34,11 @@ class NoSourceDirError(BzrError):
 
 
 class MissingUpstreamTarball(BzrError):
-    _fmt = "Unable to find the needed upstream tarball: %(tarball_name)s."
+    _fmt = ("Unable to find the needed upstream tarball for package %(package)s, "
+            "version %(version)s.")
 
-    def __init__(self, tarball_name):
-        BzrError.__init__(self, tarball_name=tarball_name)
+    def __init__(self, package, version):
+        BzrError.__init__(self, package=package, version=version)
 
 
 class TarFailed(BzrError):

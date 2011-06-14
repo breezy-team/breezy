@@ -268,7 +268,7 @@ class UpstreamBranchSource(UpstreamSource):
             export(rev_tree, target_filename, 'tgz', tarball_base)
         finally:
             self.upstream_branch.unlock()
-        return target_filename
+        return [target_filename]
 
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__,

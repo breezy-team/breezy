@@ -13,6 +13,7 @@ from bzrlib import errors as bzr_errors
 
 from bzrlib.plugins.builddeb import (
     default_orig_dir,
+    errors,
     import_dsc,
     upstream,
     util,
@@ -50,7 +51,7 @@ def _get_tree(package_name):
     return tree
 
 
-def _get_tarball(tree, tarball, package_name, version, use_v3=False):
+def _get_tarballs(tree, tarball, package_name, version, use_v3=False):
     from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
     config = util.debuild_config(tree, tree)
     orig_dir = config.orig_dir or default_orig_dir
@@ -62,14 +63,16 @@ def _get_tarball(tree, tarball, package_name, version, use_v3=False):
         if tarball.endswith(".tar.bz2") or tarball.endswith(".tbz2"):
             format = "bz2"
     dest_name = util.tarball_name(package_name, version, format=format)
-    tarball_filename = os.path.join(orig_dir, dest_name)
     trace.note("Fetching tarball")
     repack_tarball(tarball, dest_name, target_dir=orig_dir,
             force_gz=not use_v3)
     provider = upstream.UpstreamProvider(package_name, version,
             orig_dir, [])
-    provider.provide(os.path.join(tree.basedir, ".."))
-    return tarball_filename, util.md5sum_filename(tarball_filename)
+    orig_files = provider.provide(os.path.join(tree.basedir, ".."))
+    ret = []
+    for filename in orig_files:
+        ret.append((filename, util.md5sum_filename(filename)))
+    return ret
 
 
 def import_upstream(tarball, package_name, version, use_v3=False):
@@ -78,12 +81,15 @@ def import_upstream(tarball, package_name, version, use_v3=False):
         parents = [tree.branch.last_revision()]
     else:
         parents = []
-    tarball_filename, md5sum = _get_tarball(tree, tarball,
+    tarball_filenames  = _get_tarballs(tree, tarball,
             package_name, version, use_v3=use_v3)
     db = import_dsc.DistributionBranch(tree.branch, tree.branch, tree=tree,
             upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()
     dbs.add_branch(db)
+    if len(tarball_filenames) > 1:
+        raise errors.MultipleUpstreamTarballsNotSupported()
+    (tarball_filename, md5sum) = tarball_filenames[0]
     db.import_upstream_tarball(tarball_filename, version, parents, md5sum=md5sum)
     return tree
 

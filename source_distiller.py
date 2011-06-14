@@ -26,6 +26,7 @@ import tempfile
 from bzrlib import errors as bzr_errors
 
 from bzrlib.plugins.builddeb.errors import (
+        MultipleUpstreamTarballsNotSupported,
         TarFailed,
         )
 from bzrlib.plugins.builddeb.util import (
@@ -121,11 +122,14 @@ class MergeModeDistiller(SourceDistiller):
         if parent_dir != '' and not os.path.exists(parent_dir):
             os.makedirs(parent_dir)
         if not self.use_existing:
-            tarball = self.upstream_provider.provide(parent_dir)
+            tarballs = self.upstream_provider.provide(parent_dir)
+            if len(tarballs) > 1:
+                raise MultipleUpstreamTarballsNotSupported()
+            tarball = tarballs[0]
             # Extract it to the right place
             tempdir = tempfile.mkdtemp(prefix='builddeb-merge-')
             try:
-                ret = subprocess.call(['tar','-C',tempdir,'-xf',tarball],
+                ret = subprocess.call(['tar', '-C', tempdir, '-xf', tarball],
                         preexec_fn=subprocess_setup)
                 if ret != 0:
                     raise TarFailed("uncompress", tarball)
