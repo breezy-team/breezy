@@ -3115,7 +3115,7 @@ class RemoteConfig(object):
                 value = section_obj.get(name, default)
         except errors.UnknownSmartMethod:
             value = self._vfs_get_option(name, section, default)
-        for hook in config.ConfigHooks['old_get']:
+        for hook in config.OldConfigHooks['get']:
             hook(self, name, value)
         return value
 
@@ -3124,7 +3124,7 @@ class RemoteConfig(object):
             raise errors.UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
         conf = config.ConfigObj(lines, encoding='utf-8')
-        for hook in config.ConfigHooks['old_load']:
+        for hook in config.OldConfigHooks['load']:
             hook(self)
         return conf
 

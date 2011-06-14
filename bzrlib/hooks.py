@@ -72,10 +72,7 @@ _builtin_known_hooks = (
     ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
     ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
     ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
-# Keep the config hooks private (i.e. not shown by 'bzr help hooks') until the
-# old_* ones are removed (which will occur when the stack/store implementation
-# if fully deployed). -- vila 20110614
-#    ('bzrlib.config', 'ConfigHooks', '_ConfigHooks'),
+    ('bzrlib.config', 'ConfigHooks', '_ConfigHooks'),
     ('bzrlib.info', 'hooks', 'InfoHooks'),
     ('bzrlib.lock', 'Lock.hooks', 'LockHooks'),
     ('bzrlib.merge', 'Merger.hooks', 'MergeHooks'),
