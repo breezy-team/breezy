@@ -69,6 +69,7 @@ from bzrlib.plugins.builddeb.errors import (
     BuildFailedError,
     DchError,
     MissingChangelogError,
+    MultipleUpstreamTarballsNotSupported,
     NoPreviousUpload,
     PackageVersionNotPresent,
     StrictBuildFailed,
@@ -560,8 +561,7 @@ class cmd_merge_upstream(Command):
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         if len(tarball_filenames) > 1:
-            raise BzrCommandError("Merging multiple upstream tarballs not "
-                                  "yet supported")
+            raise MultipleUpstreamTarballsNotSupported()
         conflicts = db.merge_upstream(tarball_filenames[0], package, version,
                 current_version, upstream_branch=upstream_branch,
                 upstream_revision=upstream_revision,

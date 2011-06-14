@@ -774,7 +774,7 @@ class _MissingUpstreamProvider(UpstreamProvider):
         pass
 
     def provide(self, target_dir):
-        raise MissingUpstreamTarball("test_tarball")
+        raise MissingUpstreamTarball("test_tarball", "1.0")
 
 
 class _TouchUpstreamProvider(UpstreamProvider):
@@ -802,7 +802,7 @@ class _SimpleUpstreamProvider(UpstreamProvider):
                 or self.provide_from_store_dir(target_dir))
         if path is not None:
             return path
-        raise MissingUpstreamTarball(self._tarball_names()[0])
+        raise MissingUpstreamTarball(self.package, self.version)
 
 
 class ExtractTarballVersionTests(TestCase):

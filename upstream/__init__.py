@@ -402,41 +402,42 @@ class UpstreamProvider(object):
                 paths = self.source.fetch_tarball(self.package,
                     self.version, self.store_dir)
             except PackageVersionNotPresent:
-                raise MissingUpstreamTarball(self._tarball_names()[0])
+                raise MissingUpstreamTarball(self.package, self.version)
             assert isinstance(paths, list)
         else:
             note("Using the upstream tarball that is present in %s" %
                  self.store_dir)
-        path = self.provide_from_store_dir(target_dir)
-        assert path is not None
-        return path
+        paths = self.provide_from_store_dir(target_dir)
+        assert paths is not None
+        return paths
+
+    def _gather_orig_files(self, path):
+        prefix = "%s_%s.orig" % (self.package, self.version)
+        ret = []
+        path = os.path.abspath(path)
+        if not os.path.isdir(path):
+            return None
+        for filename in os.listdir(path):
+            if filename.startswith(prefix):
+                ret.append(os.path.join(path, filename))
+        if ret:
+            return ret
+        return None
 
     def already_exists_in_target(self, target_dir):
-        for tarball_name in self._tarball_names():
-            path = os.path.join(target_dir, tarball_name)
-            if os.path.exists(path):
-                return path
-        return None
+        return self._gather_orig_files(target_dir)
 
     def already_exists_in_store(self):
-        for tarball_name in self._tarball_names():
-            path = os.path.join(self.store_dir, tarball_name)
-            if os.path.exists(path):
-                return path
-        return None
+        return self._gather_orig_files(self.store_dir)
 
     def provide_from_store_dir(self, target_dir):
-        path = self.already_exists_in_store()
-        if path is not None:
+        paths = self.already_exists_in_store()
+        if paths is None:
+            return None
+        for path in paths:
             repack_tarball(path, os.path.basename(path),
                     target_dir=target_dir, force_gz=False)
-            return path
-        return path
-
-    def _tarball_names(self):
-        return [tarball_name(self.package, self.version),
-                tarball_name(self.package, self.version, format='bz2'),
-                tarball_name(self.package, self.version, format='lzma')]
+        return paths
 
 
 def extract_tarball_version(path, packagename):
