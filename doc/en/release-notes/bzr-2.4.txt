@@ -20,10 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* Hooks added for config stacks: ``get``, ``set`` and ``remove`` are called
-  when an option is repsectively read, modified or deleted. Also added
-  ``load`` and ``save`` hooks for config stores, called when the stores are
-  loaded or saved.  (Vincent Ladeuil)
+* Hooks have been added for config stacks: ``get``, ``set`` and ``remove``
+  are called when an option is repsectively read, modified or deleted. Also
+  added ``load`` and ``save`` hooks for config stores, called when the
+  stores are loaded or saved.  (Vincent Ladeuil)
 
 * New hook server_exception in bzrlib.smart.server to catch any
   exception caused while running bzr serve.
