@@ -3123,7 +3123,10 @@ class RemoteConfig(object):
         if len(response[0]) and response[0][0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
-        return config.ConfigObj(lines, encoding='utf-8')
+        conf = config.ConfigObj(lines, encoding='utf-8')
+        for hook in config.ConfigHooks['old_load']:
+            hook(self)
+        return conf
 
 
 class RemoteBranchConfig(RemoteConfig):
