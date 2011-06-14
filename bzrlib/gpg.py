@@ -50,7 +50,8 @@ class DisabledGPGStrategy(object):
         raise errors.SigningFailed('Signing is disabled.')
 
     def verification(self, content):
-        return SIGNATURE_VALID
+        raise errors.VerifyFailed('Signature verification is disabled.')
+
 
 class LoopbackGPGStrategy(object):
     """A GPG Strategy that acts like 'cat' - data is just passed through."""
@@ -63,7 +64,7 @@ class LoopbackGPGStrategy(object):
                 "-----END PSEUDO-SIGNED CONTENT-----\n")
 
     def verification(self, content):
-        raise errors.VerifyFailed('Signature verification is disabled.')
+        return SIGNATURE_VALID
 
 
 def _set_gpg_tty():
