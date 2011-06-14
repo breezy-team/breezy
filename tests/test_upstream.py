@@ -784,9 +784,11 @@ class _TouchUpstreamProvider(UpstreamProvider):
         self.desired_tarball_name = desired_tarball_name
 
     def provide(self, target_dir):
-        f = open(os.path.join(target_dir, self.desired_tarball_name), "wb")
+        path = os.path.join(target_dir, self.desired_tarball_name)
+        f = open(path, "wb")
         f.write("I am a tarball, honest\n")
         f.close()
+        return [path]
 
 
 class _SimpleUpstreamProvider(UpstreamProvider):
@@ -798,10 +800,10 @@ class _SimpleUpstreamProvider(UpstreamProvider):
         self.store_dir = store_dir
 
     def provide(self, target_dir):
-        path = (self.already_exists_in_target(target_dir)
+        paths = (self.already_exists_in_target(target_dir)
                 or self.provide_from_store_dir(target_dir))
-        if path is not None:
-            return path
+        if paths is not None:
+            return paths
         raise MissingUpstreamTarball(self.package, self.version)
 
 
