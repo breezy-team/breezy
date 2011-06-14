@@ -9,12 +9,12 @@ class dh_makeTests(BuilddebTestCase):
     def test__get_tree_existing_branch(self):
         tree = self.make_branch_and_tree('.')
         new_tree = dh_make._get_tree("foo")
-        self.failIfExists("foo")
+        self.assertPathDoesNotExist("foo")
         self.assertEqual(tree.branch.base, new_tree.branch.base)
 
     def test__get_tree_no_existing_branch(self):
         new_tree = dh_make._get_tree("foo")
-        self.failUnlessExists("foo")
+        self.assertPathExists("foo")
 
     def test_import_upstream(self):
         tree = self.make_branch_and_tree('.')
@@ -34,10 +34,10 @@ class dh_makeTests(BuilddebTestCase):
                 tree.branch.last_revision())
         # Has the original revision as a parent
         self.assertEqual([revid], rev_tree.get_parent_ids())
-        self.failUnlessExists('a')
-        self.failUnlessExists('b')
+        self.assertPathExists('a')
+        self.assertPathExists('b')
         self.assertEqual(open('package-0.1/a').read(), open('a').read())
-        self.failUnlessExists('../package_0.1.orig.tar.gz')
+        self.assertPathExists('../package_0.1.orig.tar.gz')
 
     def test_import_upstream_no_existing(self):
         self.build_tree(['package-0.1/', 'package-0.1/a', 'package-0.1/b'])
@@ -47,12 +47,12 @@ class dh_makeTests(BuilddebTestCase):
         finally:
             tf.close()
         tree = dh_make.import_upstream('package-0.1', 'package', '0.1')
-        self.failUnlessExists("package")
+        self.assertPathExists("package")
         rev_tree = tree.branch.repository.revision_tree(
                 tree.branch.last_revision())
         # Has the original revision as a parent
-        self.failUnlessExists('package/a')
-        self.failUnlessExists('package/b')
+        self.assertPathExists('package/a')
+        self.assertPathExists('package/b')
         self.assertEqual(open('package-0.1/a').read(),
                open('package/a').read())
-        self.failUnlessExists('package_0.1.orig.tar.gz')
+        self.assertPathExists('package_0.1.orig.tar.gz')

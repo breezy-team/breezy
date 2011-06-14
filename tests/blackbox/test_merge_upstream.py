@@ -196,7 +196,7 @@ class TestMergeUpstream(BuilddebTestCase):
         rel2 = self.release_upstream(changed_upstream)
         self.run_bzr(['merge-upstream', '--version', str(rel2.version),
             os.path.abspath(rel2.tarball)], working_dir=package.tree.basedir)
-        self.failUnlessExists(os.path.join(package.tree.basedir, 'muhook'))
+        self.assertPathExists(os.path.join(package.tree.basedir, 'muhook'))
 
     def test_new_package(self):
         upstream = self.make_upstream()

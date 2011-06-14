@@ -44,6 +44,14 @@ class TestDo(ExternalBase):
   uncommited_file = 'uncommited_file'
   unadded_file = 'unadded_file'
 
+  if not getattr(ExternalBase, "assertPathDoesNotExist", None):
+    # Compatibility with bzr < 2.4
+    def assertPathDoesNotExist(self, path):
+      self.failIfExists(path)
+
+    def assertPathExists(self, path):
+      self.failUnlessExists(path)
+
   def make_changelog(self, version=None):
     if version is None:
       version = self.package_version
@@ -101,12 +109,12 @@ class TestDo(ExternalBase):
   def assertInBuildDir(self, files):
     build_dir = self.build_dir()
     for filename in files:
-      self.failUnlessExists(os.path.join(build_dir, filename))
+      self.assertPathExists(os.path.join(build_dir, filename))
 
   def assertNotInBuildDir(self, files):
     build_dir = self.build_dir()
     for filename in files:
-      self.failIfExists(os.path.join(build_dir, filename))
+      self.assertPathDoesNotExist(os.path.join(build_dir, filename))
 
   def test_bd_do_registered(self):
     self.run_bzr("bd-do --help")
@@ -127,14 +135,14 @@ class TestDo(ExternalBase):
     self.make_upstream_tarball()
     self.run_bzr_error(['Not updating the working tree as the command '
                         'failed.'], ['bd-do', 'touch debian/do && false'])
-    self.failIfExists('debian/do')
+    self.assertPathDoesNotExist('debian/do')
 
   def test_copy_on_success(self):
     tree = self.make_unpacked_source()
     self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'touch debian/do'])
-    self.failUnlessExists('debian/do')
+    self.assertPathExists('debian/do')
 
   def test_removed_files_are_removed_in_branch(self):
     tree = self.make_unpacked_source()
@@ -144,14 +152,14 @@ class TestDo(ExternalBase):
     # It might be nice if this was actually gone, but that would involve
     # either a comaparison, or removing all the files, but the latter is
     # dangerous. I guess it's a TODO to implement the comparison.
-    self.failUnlessExists('debian/changelog')
+    self.assertPathExists('debian/changelog')
 
   def test_new_directories_created(self):
     tree = self.make_unpacked_source()
     self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'mkdir debian/dir'])
-    self.failUnlessExists('debian/dir')
+    self.assertPathExists('debian/dir')
 
   def test_contents_taken_from_export(self):
     tree = self.make_unpacked_source()
@@ -165,7 +173,7 @@ class TestDo(ExternalBase):
     self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'echo a > debian/changelog'])
-    self.failIfExists(self.build_dir())
+    self.assertPathDoesNotExist(self.build_dir())
 
   def test_uses_shell(self):
     tree = self.make_unpacked_source()
@@ -180,6 +188,6 @@ class TestDo(ExternalBase):
         os.environ['SHELL'] = old_shell
       else:
         del os.environ['SHELL']
-    self.failUnlessExists('debian/shell')
+    self.assertPathExists('debian/shell')
 
 # vim: ts=2 sts=2 sw=2

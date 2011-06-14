@@ -28,12 +28,12 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib.tests import TestCaseWithTransport
-
 from bzrlib.plugins.builddeb import merge_package as MP
 from bzrlib.plugins.builddeb.errors import (
     SharedUpstreamConflictsWithTargetPackaging)
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
+
+from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
 
 _Debian_changelog = '''\
 ipsec-tools (%s) unstable; urgency=high

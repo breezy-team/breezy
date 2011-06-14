@@ -24,13 +24,12 @@ import tarfile
 from bzrlib.errors import (NoSuchFile,
                            FileExists,
                            )
-from bzrlib.tests import TestCaseInTempDir
-
 from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
 from bzrlib.plugins.builddeb.repack_tarball import (
         repack_tarball,
         get_repacker_class,
         )
+from bzrlib.plugins.builddeb.tests import TestCaseInTempDir
 
 
 def touch(filename):
@@ -66,7 +65,7 @@ class TestRepackTarball(TestCaseInTempDir):
 
     def test_create_old_tarball(self):
         self.create_old_tarball()
-        self.failUnlessExists(self.old_tarball)
+        self.assertPathExists(self.old_tarball)
 
     def test_repack_tarball_non_extant(self):
         error = NoSuchFile
@@ -86,8 +85,8 @@ class TestRepackTarball(TestCaseInTempDir):
     def test_repack_tarball_creates_new(self):
         self.create_old_tarball()
         repack_tarball(self.old_tarball, self.new_tarball)
-        self.failUnlessExists(self.old_tarball)
-        self.failUnlessExists(self.new_tarball)
+        self.assertPathExists(self.old_tarball)
+        self.assertPathExists(self.new_tarball)
 
     def test_repack_tarball_contents(self):
         self.create_old_tarball()
@@ -107,20 +106,20 @@ class TestRepackTarball(TestCaseInTempDir):
         self.create_old_tarball()
         target_dir = 'tarballs'
         repack_tarball(self.old_tarball, self.new_tarball, target_dir=target_dir)
-        self.failUnlessExists(target_dir)
-        self.failUnlessExists(os.path.join(target_dir, self.new_tarball))
-        self.failUnlessExists(self.old_tarball)
-        self.failIfExists(self.new_tarball)
+        self.assertPathExists(target_dir)
+        self.assertPathExists(os.path.join(target_dir, self.new_tarball))
+        self.assertPathExists(self.old_tarball)
+        self.assertPathDoesNotExist(self.new_tarball)
 
     def test_repack_tarball_with_target_dir_exists(self):
         self.create_old_tarball()
         target_dir = 'tarballs'
         os.mkdir(target_dir)
         repack_tarball(self.old_tarball, self.new_tarball, target_dir=target_dir)
-        self.failUnlessExists(target_dir)
-        self.failUnlessExists(os.path.join(target_dir, self.new_tarball))
-        self.failUnlessExists(self.old_tarball)
-        self.failIfExists(self.new_tarball)
+        self.assertPathExists(target_dir)
+        self.assertPathExists(os.path.join(target_dir, self.new_tarball))
+        self.assertPathExists(self.old_tarball)
+        self.assertPathDoesNotExist(self.new_tarball)
 
     def test_repack_tarball_with_target_dir_not_dir(self):
         self.create_old_tarball()
@@ -129,7 +128,7 @@ class TestRepackTarball(TestCaseInTempDir):
         # transport gives NoSuchFile rather than NotADirectory for this
         self.assertRaises(NoSuchFile, repack_tarball, self.old_tarball,
                           self.new_tarball, target_dir=target_dir)
-        self.failUnlessExists(self.old_tarball)
-        self.failIfExists(self.new_tarball)
-        self.failIfExists(os.path.join(target_dir, self.new_tarball))
-        self.failUnlessExists(target_dir)
+        self.assertPathExists(self.old_tarball)
+        self.assertPathDoesNotExist(self.new_tarball)
+        self.assertPathDoesNotExist(os.path.join(target_dir, self.new_tarball))
+        self.assertPathExists(target_dir)

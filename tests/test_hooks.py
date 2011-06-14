@@ -20,11 +20,10 @@
 
 import os
 
-from bzrlib.tests import TestCaseInTempDir
-
 from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import HookFailedError
 from bzrlib.plugins.builddeb.hooks import run_hook
+from bzrlib.plugins.builddeb.tests import TestCaseInTempDir
 
 class MockTree:
   def abspath(self, relpath):
@@ -67,7 +66,7 @@ class HookTests(TestCaseInTempDir):
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
     run_hook(MockTree(), 'pre-build', config)
-    self.failUnlessExists('a')
+    self.assertPathExists('a')
 
   def test_run_hook_uses_passed_wd(self):
     os.mkdir('dir')
@@ -78,7 +77,7 @@ class HookTests(TestCaseInTempDir):
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
     run_hook(MockTree(), 'pre-build', config, wd='dir')
-    self.failUnlessExists('dir/a')
+    self.assertPathExists('dir/a')
 
   def test_run_hook_uses_shell(self):
     f = open(self.default_conf, 'wb')
@@ -88,8 +87,8 @@ class HookTests(TestCaseInTempDir):
       f.close()
     config = DebBuildConfig([(self.default_conf, False)])
     run_hook(MockTree(), 'post-build', config)
-    self.failUnlessExists('a')
-    self.failUnlessExists('b')
+    self.assertPathExists('a')
+    self.assertPathExists('b')
 
   def test_run_hook_uses_local_over_global(self):
     f = open(self.default_conf, 'wb')
@@ -105,7 +104,7 @@ class HookTests(TestCaseInTempDir):
     config = DebBuildConfig([(self.local_conf, False),
                              (self.default_conf, False)])
     run_hook(MockTree(), 'post-build', config)
-    self.failIfExists('a')
-    self.failUnlessExists('b')
+    self.assertPathDoesNotExist('a')
+    self.assertPathExists('b')
 
 # vim: ts=2 sts=2 sw=2

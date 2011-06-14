@@ -50,14 +50,14 @@ class TestBuilddeb(BuilddebTestCase):
     if isinstance(files, basestring):
       files = [files]
     for filename in files:
-      self.failUnlessExists(os.path.join(build_dir, filename))
+      self.assertPathExists(os.path.join(build_dir, filename))
 
   def assertNotInBuildDir(self, files):
     build_dir = self.build_dir()
     if isinstance(files, basestring):
       files = [files]
     for filename in files:
-      self.failIfExists(os.path.join(build_dir, filename))
+      self.assertPathDoesNotExist(os.path.join(build_dir, filename))
 
   def test_builddeb_registered(self):
     self.run_bzr("builddeb --help")
@@ -163,7 +163,7 @@ class TestBuilddeb(BuilddebTestCase):
       f.close()
     self.run_bzr('add .bzr-builddeb/default.conf')
     self.run_bzr('bd --dont-purge --builder true')
-    self.failUnlessExists('pre-export')
+    self.assertPathExists('pre-export')
     self.assertInBuildDir(['pre-build', 'post-build'])
 
 # vim: ts=2 sts=2 sw=2

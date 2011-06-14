@@ -32,27 +32,27 @@ class TestDebBuild(TestCaseInTempDir):
     def test_prepare_makes_parents(self):
         builder = DebBuild(None, 'target/sub/sub2', None)
         builder.prepare()
-        self.failUnlessExists('target/sub')
-        self.failIfExists('target/sub/sub2')
+        self.assertPathExists('target/sub')
+        self.assertPathDoesNotExist('target/sub/sub2')
 
     def test_prepare_purges_dir(self):
         self.build_tree(['target/', 'target/sub/'])
         builder = DebBuild(None, 'target/sub/', None)
         builder.prepare()
-        self.failUnlessExists('target')
-        self.failIfExists('target/sub')
+        self.assertPathExists('target')
+        self.assertPathDoesNotExist('target/sub')
 
     def test_use_existing_preserves(self):
         self.build_tree(['target/', 'target/sub/'])
         builder = DebBuild(None, 'target/sub/', None, use_existing=True)
         builder.prepare()
-        self.failUnlessExists('target/sub')
+        self.assertPathExists('target/sub')
 
     def test_use_existing_errors_if_not_present(self):
         self.build_tree(['target/'])
         builder = DebBuild(None, 'target/sub/', None, use_existing=True)
         self.assertRaises(errors.NoSourceDirError, builder.prepare)
-        self.failIfExists('target/sub')
+        self.assertPathDoesNotExist('target/sub')
 
     def test_export(self):
         class MkdirDistiller(object):
@@ -60,13 +60,13 @@ class TestDebBuild(TestCaseInTempDir):
                 os.mkdir(target)
         builder = DebBuild(MkdirDistiller(), 'target', None)
         builder.export()
-        self.failUnlessExists('target')
+        self.assertPathExists('target')
 
     def test_build(self):
         builder = DebBuild(None, 'target', "touch built")
         self.build_tree(['target/'])
         builder.build()
-        self.failUnlessExists('target/built')
+        self.assertPathExists('target/built')
 
     def test_build_fails(self):
         builder = DebBuild(None, 'target', "false")
@@ -77,4 +77,4 @@ class TestDebBuild(TestCaseInTempDir):
         builder = DebBuild(None, 'target', None)
         self.build_tree(['target/', 'target/foo'])
         builder.clean()
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')

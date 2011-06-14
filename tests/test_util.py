@@ -38,39 +38,41 @@ from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_NORMAL,
     )
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
-                AddChangelogError,
-                InconsistentSourceFormatError,
-                NoPreviousUpload,
-                )
-from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
+    AddChangelogError,
+    InconsistentSourceFormatError,
+    NoPreviousUpload,
+    )
+from bzrlib.plugins.builddeb.tests import (
+    SourcePackageBuilder,
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    )
 from bzrlib.plugins.builddeb.util import (
-                  dget,
-                  dget_changes,
-                  find_bugs_fixed,
-                  find_changelog,
-                  find_extra_authors,
-                  find_last_distribution,
-                  _find_previous_upload,
-                  find_thanks,
-                  get_commit_info_from_changelog,
-                  get_source_format,
-                  guess_build_type,
-                  lookup_distribution,
-                  move_file_if_different,
-                  get_parent_dir,
-                  recursive_copy,
-                  safe_decode,
-                  strip_changelog_message,
-                  suite_to_distribution,
-                  tarball_name,
-                  write_if_different,
-                  )
+    dget,
+    dget_changes,
+    find_bugs_fixed,
+    find_changelog,
+    find_extra_authors,
+    find_last_distribution,
+    _find_previous_upload,
+    find_thanks,
+    get_commit_info_from_changelog,
+    get_source_format,
+    guess_build_type,
+    lookup_distribution,
+    move_file_if_different,
+    get_parent_dir,
+    recursive_copy,
+    safe_decode,
+    strip_changelog_message,
+    suite_to_distribution,
+    tarball_name,
+    write_if_different,
+    )
 
 from bzrlib import errors as bzr_errors
 from bzrlib.tests import (
     SymlinkFeature,
-    TestCaseWithTransport,
-    TestCaseInTempDir,
     TestCase,
     )
 
@@ -90,15 +92,15 @@ class RecursiveCopyTests(TestCaseInTempDir):
             f.close()
         os.mkdir('b/g')
         recursive_copy('a', 'b')
-        self.failUnlessExists('a')
-        self.failUnlessExists('b')
-        self.failUnlessExists('c')
-        self.failUnlessExists('b/d')
-        self.failUnlessExists('b/d/e')
-        self.failUnlessExists('b/f')
-        self.failUnlessExists('a/d')
-        self.failUnlessExists('a/d/e')
-        self.failUnlessExists('a/f')
+        self.assertPathExists('a')
+        self.assertPathExists('b')
+        self.assertPathExists('c')
+        self.assertPathExists('b/d')
+        self.assertPathExists('b/d/e')
+        self.assertPathExists('b/f')
+        self.assertPathExists('a/d')
+        self.assertPathExists('a/d/e')
+        self.assertPathExists('a/f')
 
 
 class SafeDecodeTests(TestCase):
@@ -325,13 +327,13 @@ class MoveFileTests(TestCaseInTempDir):
     def test_move_file_non_extant(self):
         self.build_tree(['a'])
         move_file_if_different('a', 'b', None)
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
 
     def test_move_file_samefile(self):
         self.build_tree(['a'])
         move_file_if_different('a', 'a', None)
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
 
     def test_move_file_same_md5(self):
         self.build_tree(['a'])
@@ -343,8 +345,8 @@ class MoveFileTests(TestCaseInTempDir):
             f.close()
         shutil.copy('a', 'b')
         move_file_if_different('a', 'b', md5sum.hexdigest())
-        self.failUnlessExists('a')
-        self.failUnlessExists('b')
+        self.assertPathExists('a')
+        self.assertPathExists('b')
 
     def test_move_file_diff_md5(self):
         self.build_tree(['a', 'b'])
@@ -364,8 +366,8 @@ class MoveFileTests(TestCaseInTempDir):
         b_hexdigest = md5sum.hexdigest()
         self.assertNotEqual(a_hexdigest, b_hexdigest)
         move_file_if_different('a', 'b', a_hexdigest)
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
         md5sum = md5.md5()
         f = open('b', 'rb')
         try:
@@ -379,23 +381,23 @@ class WriteFileTests(TestCaseInTempDir):
 
     def test_write_non_extant(self):
         write_if_different("foo", 'a')
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
         self.check_file_contents('a', "foo")
 
     def test_write_file_same(self):
         write_if_different("foo", 'a')
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
         self.check_file_contents('a', "foo")
         write_if_different("foo", 'a')
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
         self.check_file_contents('a', "foo")
 
     def test_write_file_different(self):
         write_if_different("foo", 'a')
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
         self.check_file_contents('a', "foo")
         write_if_different("bar", 'a')
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
         self.check_file_contents('a', "bar")
 
 
@@ -408,9 +410,9 @@ class DgetTests(TestCaseWithTransport):
         builder.build()
         self.build_tree(["target/"])
         dget(builder.dsc_name(), 'target')
-        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
-        self.failUnlessExists(os.path.join("target", builder.tar_name()))
-        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+        self.assertPathExists(os.path.join("target", builder.dsc_name()))
+        self.assertPathExists(os.path.join("target", builder.tar_name()))
+        self.assertPathExists(os.path.join("target", builder.diff_name()))
 
     def test_dget_transport(self):
         builder = SourcePackageBuilder("package", Version("0.1-1"))
@@ -419,9 +421,9 @@ class DgetTests(TestCaseWithTransport):
         builder.build()
         self.build_tree(["target/"])
         dget(self.get_url(builder.dsc_name()), 'target')
-        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
-        self.failUnlessExists(os.path.join("target", builder.tar_name()))
-        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+        self.assertPathExists(os.path.join("target", builder.dsc_name()))
+        self.assertPathExists(os.path.join("target", builder.tar_name()))
+        self.assertPathExists(os.path.join("target", builder.diff_name()))
 
     def test_dget_missing_dsc(self):
         builder = SourcePackageBuilder("package", Version("0.1-1"))
@@ -457,10 +459,10 @@ class DgetTests(TestCaseWithTransport):
         builder.build()
         self.build_tree(["target/"])
         dget_changes(builder.changes_name(), 'target')
-        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
-        self.failUnlessExists(os.path.join("target", builder.tar_name()))
-        self.failUnlessExists(os.path.join("target", builder.diff_name()))
-        self.failUnlessExists(os.path.join("target", builder.changes_name()))
+        self.assertPathExists(os.path.join("target", builder.dsc_name()))
+        self.assertPathExists(os.path.join("target", builder.tar_name()))
+        self.assertPathExists(os.path.join("target", builder.diff_name()))
+        self.assertPathExists(os.path.join("target", builder.changes_name()))
 
 
 class ParentDirTests(TestCase):

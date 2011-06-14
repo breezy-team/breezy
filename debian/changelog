@@ -13,6 +13,8 @@ bzr-builddeb (2.7.5) UNRELEASED; urgency=low
     package' is used. LP: #783122
   * Fix support for native packages with dashes in their version in
     sources.list. LP: #796853
+  * Fix deprecation warnings for TestCase.failUnlessExists and
+    TestCase.failIfExists in bzr 2.4.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 13 Jun 2011 23:10:20 +0100
 

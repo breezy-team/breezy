@@ -28,13 +28,15 @@ import doctest
 import os
 from unittest import TestSuite
 
+from bzrlib import tests
+
 try:
     from debian.changelog import Version, Changelog
 except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version, Changelog
 
-from bzrlib.tests import TestUtil, multiply_tests, TestCaseWithTransport
+from bzrlib.tests import TestUtil, multiply_tests
 
 
 def make_new_upstream_dir(source, dest):
@@ -156,6 +158,28 @@ def load_tests(standard_tests, module, loader):
                  ]
     suite = multiply_tests(repack_tarball_tests, scenarios, suite)
     return suite
+
+
+class TestCaseWithTransport(tests.TestCaseWithTransport):
+
+    if not getattr(tests.TestCaseWithTransport, "assertPathDoesNotExist", None):
+        # Compatibility with bzr < 2.4
+        def assertPathDoesNotExist(self, path):
+            self.failIfExists(path)
+
+        def assertPathExists(self, path):
+            self.failUnlessExists(path)
+
+
+class TestCaseInTempDir(tests.TestCaseInTempDir):
+
+    if not getattr(tests.TestCaseInTempDir, "assertPathDoesNotExist", None):
+        # Compatibility with bzr < 2.4
+        def assertPathDoesNotExist(self, path):
+            self.failIfExists(path)
+
+        def assertPathExists(self, path):
+            self.failUnlessExists(path)
 
 
 class BuilddebTestCase(TestCaseWithTransport):
