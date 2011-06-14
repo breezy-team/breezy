@@ -1136,6 +1136,20 @@ class DistributionBranch(object):
             upstream_part, upstream_md5, upstream_tarball=None,
             timestamp=None, author=None, file_ids_from=None,
             pull_debian=True):
+        """Import a source package.
+
+        :param version: Full Debian version
+        :param versions: Safe versions from changelog
+        :param debian_part: Path to extracted directory with Debian changes
+        :param unextracted_debian_md5: MD5 sum of unextracted Debian diff/tarball
+        :param upstream_part: Extracted upstream directory
+        :param upstream_md5: MD5 sum of unextracted upstream tarball
+        :param upstream_tarball: Path to upstream tarball
+        :param timestamp: Version timestamp according to changelog
+        :param author: Author according to changelog
+        :param file_ids_from: Sequence of trees to take file ids from
+        :param pull_debian: Whether to pull from the Debian branch
+        """
         pull_branch = None
         if pull_debian:
             pull_branch = self.branch_to_pull_version_from(version, md5)
