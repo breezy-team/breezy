@@ -114,3 +114,15 @@ class SignMyCommits(tests.TestCaseWithTransport):
         self.assertUnsigned(repo, 'B')
         self.assertUnsigned(repo, 'C')
         self.assertUnsigned(repo, 'D')
+
+    def test_verify_commits(self):
+        wt = self.setup_tree()
+
+        self.monkey_patch_gpg()
+
+        self.run_bzr('sign-my-commits')
+
+        out = self.run_bzr('verify', retcode=1)
+
+        self.assertEquals(('', '3 commits with valid signatures\n0 commits \
+with unknown keys\n0 commits not valid\n1 commits not signed\n'), out)

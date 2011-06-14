@@ -146,6 +146,8 @@ class GPGStrategy(object):
         except gpgme.GpgmeError,error:
             raise errors.VerifyFailed(error[2])
 
+        if len(result) == 0:
+            return SIGNATURE_NOT_VALID
         if result[0].summary & gpgme.SIGSUM_VALID:
             return SIGNATURE_VALID
         if result[0].summary & gpgme.SIGSUM_RED:

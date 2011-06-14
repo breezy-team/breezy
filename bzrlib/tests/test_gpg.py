@@ -84,6 +84,45 @@ class TestCommandLine(TestCase):
         self.assertRaises(errors.BzrBadParameterUnicode,
                           self.assertProduces, u'foo')
 
+    def test_verify_valid(self):
+        """FIXME how to get this to work on a computer other than mine?"""
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iEYEARECAAYFAk33gYsACgkQpQbm1N1NUIhiDACglOuQDlnSF4NxfHSkN/zrmFy8
+nswAoNGXAVuR9ONasAKIGBNUE0b+lolx
+=SOuC
+-----END PGP SIGNATURE-----
+"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertEqual(gpg.SIGNATURE_VALID, my_gpg.verify(content))
+
+    def test_verify_invalid(self):
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iEYEARECAAYFAk33gYsACgkQpQbm1N1NUIhiDACglOuQDlnSF4NxfHSkN/zrmFy8
+nswAoNGXAVuR9ONasAKIGBNUE0b+lols
+=SOuC
+-----END PGP SIGNATURE-----
+"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertEqual(gpg.SIGNATURE_NOT_VALID, my_gpg.verify(content))
+
+#FIXME test if gpgme isn't installed?
+#FIXME test for gpgme error?
 
 class TestDisabled(TestCase):
 
