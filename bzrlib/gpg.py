@@ -19,6 +19,7 @@
 
 import os
 import sys
+from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -32,7 +33,7 @@ from bzrlib import (
     )
 """)
 
-
+#verification results
 SIGNATURE_VALID = 0
 SIGNATURE_KEY_MISSING = 1
 SIGNATURE_NOT_VALID = 2
@@ -119,20 +120,19 @@ class GPGStrategy(object):
                 raise
 
     def verify(self, content):
-        import gpgme
-        from StringIO import StringIO
+        try:
+            import gpgme
+        except ImportError:
+            raise errors.GpgmeNotInstalled()
+
         context = gpgme.Context()
         signature = StringIO(content)
-        plain = StringIO()
+        plain_output = StringIO()
         
-        result = context.verify(signature, None, plain)
-        #print "plain: " + plain.getvalue()
+        result = context.verify(signature, None, plain_output)
 
-        #print "summary: " + str(result[0].summary)
         if result[0].summary & gpgme.SIGSUM_VALID:
             return SIGNATURE_VALID
-        if result[0].summary & gpgme.SIGSUM_GREEN:
-            print "green!"
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:

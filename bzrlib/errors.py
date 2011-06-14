@@ -1797,6 +1797,11 @@ class SigningFailed(BzrError):
         BzrError.__init__(self, command_line=command_line)
 
 
+class GpgmeNotInstalled(BzrError):
+
+    _fmt = 'python-gpgme is not installed, it is needed to verify signatures'
+
+
 class WorkingTreeNotRevision(BzrError):
 
     _fmt = ("The working tree for %(basedir)s has changed since"
