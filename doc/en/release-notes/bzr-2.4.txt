@@ -37,6 +37,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr annotate`` can be run without setting whoami data first. (Jonathan
+  Riddell, #667408)
+
 Bug Fixes
 *********
 
