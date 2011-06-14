@@ -90,3 +90,7 @@ class TestDisabled(TestCase):
     def test_sign(self):
         self.assertRaises(errors.SigningFailed,
                           gpg.DisabledGPGStrategy(None).sign, 'content')
+
+    def test_verify(self):
+        self.assertRaises(errors.VerifyFailed,
+                          gpg.DisabledGPGStrategy(None).verify, 'content')
