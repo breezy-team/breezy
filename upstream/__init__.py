@@ -85,7 +85,7 @@ class UpstreamSource(object):
         :param package: Name of the package
         :param version: Version string of the version to fetch
         :param target_dir: Directory in which to store the tarball
-        :return: Path of the fetched tarball
+        :return: Paths of the fetched tarballs
         """
         raise NotImplementedError(self.fetch_tarball)
 
@@ -160,8 +160,7 @@ class GetOrigSourceSource(UpstreamSource):
         self.tree = tree
         self.larstiq = larstiq
 
-    def _get_orig_source(self, source_dir, desired_tarball_names,
-                        target_dir):
+    def _get_orig_source(self, source_dir, prefix, target_dir):
         note("Trying to use get-orig-source to retrieve needed tarball.")
         command = ["make", "-f", "debian/rules", "get-orig-source"]
         proc = subprocess.Popen(command, cwd=source_dir)
@@ -169,13 +168,18 @@ class GetOrigSourceSource(UpstreamSource):
         if ret != 0:
             note("Trying to run get-orig-source rule failed")
             return None
-        for desired_tarball_name in desired_tarball_names:
-            fetched_tarball = os.path.join(source_dir, desired_tarball_name)
+        filenames = []
+        for filename in os.listdir(source_dir):
+            if not filename.startswith(prefix):
+                continue
+            fetched_tarball = os.path.join(source_dir, filename)
             if os.path.exists(fetched_tarball):
-                repack_tarball(fetched_tarball, desired_tarball_name,
+                repack_tarball(fetched_tarball, filename,
                                target_dir=target_dir, force_gz=False)
-                return fetched_tarball
-        note("get-orig-source did not create %s", desired_tarball_name)
+                filenames.append(os.path.join(target_dir, filename))
+        if filenames:
+            return filenames
+        note("get-orig-source did not create file with prefix %s", prefix)
         return None
 
     def fetch_tarball(self, package, version, target_dir):
@@ -185,9 +189,6 @@ class GetOrigSourceSource(UpstreamSource):
             rules_name = 'debian/rules'
         rules_id = self.tree.path2id(rules_name)
         if rules_id is not None:
-            desired_tarball_names = [tarball_name(package, version),
-                    tarball_name(package, version, 'bz2'),
-                    tarball_name(package, version, 'lzma')]
             tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
             try:
                 base_export_dir = os.path.join(tmpdir, "export")
@@ -196,11 +197,11 @@ class GetOrigSourceSource(UpstreamSource):
                     os.mkdir(export_dir)
                     export_dir = os.path.join(export_dir, "debian")
                 export(self.tree, export_dir, format="dir")
-                tarball_path = self._get_orig_source(base_export_dir,
-                        desired_tarball_names, target_dir)
-                if tarball_path is None:
+                tarball_paths = self._get_orig_source(base_export_dir,
+                        "%s_%s.orig" % (package, version), target_dir)
+                if tarball_paths is None:
                     raise PackageVersionNotPresent(package, version, self)
-                return [tarball_path]
+                return tarball_paths
             finally:
                 shutil.rmtree(tmpdir)
         note("No debian/rules file to try and use for a get-orig-source rule")
@@ -316,7 +317,7 @@ class SelfSplitSource(UpstreamSource):
 class StackedUpstreamSource(UpstreamSource):
     """An upstream source that checks a list of other upstream sources.
 
-    The first source that can provide a tarball, wins. 
+    The first source that can provide a tarball, wins.
     """
 
     def __init__(self, sources):
