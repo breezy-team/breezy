@@ -2022,8 +2022,11 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
         self.assertSaveHook(self.branch_config)
 
 
-class TestOldConfigHooksForRemote(tests.TestCaseWithTransport,
-                                  TestOldConfigHooksMixin):
+class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
+    """Tests config hooks for remote configs.
+
+    No tests for the remove hook as this is not implemented there.
+    """
 
     def setUp(self):
         super(TestOldConfigHooksForRemote, self).setUp()
@@ -2050,6 +2053,30 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport,
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
         self.assertGetHook(conf, 'file', 'remotedir')
+
+    def assertSetHook(self, conf, name, value):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('old_set', hook, None)
+        self.assertLength(0, calls)
+        conf.set_option(value, name)
+        self.assertLength(1, calls)
+        # We can't assert the conf object below as different configs use
+        # different means to implement set_user_option and we care only about
+        # coverage here.
+        self.assertEquals((name, value), calls[0][1:])
+
+    def test_set_hook_remote_branch(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        self.assertSetHook(remote_branch._get_config(), 'file', 'remote')
+
+    def test_set_hook_remote_bzrdir(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        self.assertSetHook(remote_bzrdir._get_config(), 'file', 'remotedir')
 
 
 class TestOption(tests.TestCase):
