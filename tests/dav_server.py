@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -352,7 +352,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
                 is_exec = 'T'
             else:
                 is_exec = 'F'
-            prop['exec'] = _prop('bzr', 'excutable', is_exec)
+            prop['exec'] = _prop('bzr', 'executable', is_exec)
         prop['status'] = _prop('D', 'status', 'HTTP/1.1 200 OK')
 
         response = """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
