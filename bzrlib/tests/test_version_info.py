@@ -53,7 +53,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
         return wt
 
-    def create_tree_on_dotted_revno(self):
+    def create_tree_with_dotted_revno(self):
         wt = self.make_branch_and_tree('branch')
         self.build_tree(['branch/a'])
         wt.add('a')
@@ -83,7 +83,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(val, 'revno: 0')
 
     def test_rio_dotted_revno(self):
-        wt = self.create_tree_on_dotted_revno()
+        wt = self.create_tree_with_dotted_revno()
 
         sio = StringIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
@@ -223,7 +223,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertNotContainsString(val, '\n\n\n\n')
 
     def test_python_dotted_revno(self):
-        wt = self.create_tree_on_dotted_revno()
+        wt = self.create_tree_with_dotted_revno()
 
         sio = StringIO()
         builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
@@ -322,7 +322,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_custom_dotted_revno(self):
         sio = StringIO()
-        wt = self.create_tree_on_dotted_revno()
+        wt = self.create_tree_with_dotted_revno()
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
             template='{revno} revid: {revision_id}')
         builder.generate(sio)
