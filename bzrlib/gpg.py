@@ -126,6 +126,12 @@ class GPGStrategy(object):
                 raise
 
     def verify(self, content):
+        """Check content has a valid signature.
+        
+        :param content: the commit signature
+        
+        :return: SIGNATURE_VALID or a failed SIGNATURE_ value
+        """
         try:
             import gpgme
         except ImportError:
