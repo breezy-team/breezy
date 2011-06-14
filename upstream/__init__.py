@@ -126,14 +126,17 @@ class AptSource(UpstreamSource):
         lookup = get_fn(sources, 'lookup', 'Lookup')
         while lookup(package):
             version = get_fn(sources, 'version', 'Version')
+            filenames = []
             for (checksum, size, filename, filekind) in sources.files:
                 if filekind != "tar":
                     continue
                 filename = os.path.basename(filename)
                 if filename.startswith("%s_%s.orig" % (package, upstream_version)):
-                    if self._run_apt_source(package, version, target_dir):
-                        return os.path.join(target_dir, filename)
-                break
+                    filenames.append(filename)
+            if filenames:
+                if self._run_apt_source(package, version, target_dir):
+                    return [os.path.join(target_dir, filename)
+                            for filename in filenames]
         note("apt could not find the needed tarball.")
         raise PackageVersionNotPresent(package, upstream_version, self)
 
@@ -197,7 +200,7 @@ class GetOrigSourceSource(UpstreamSource):
                         desired_tarball_names, target_dir)
                 if tarball_path is None:
                     raise PackageVersionNotPresent(package, version, self)
-                return tarball_path
+                return [tarball_path]
             finally:
                 shutil.rmtree(tmpdir)
         note("No debian/rules file to try and use for a get-orig-source rule")
@@ -279,7 +282,7 @@ class UScanSource(UpstreamSource):
         if r != 0:
             note("uscan could not find the needed tarball.")
             raise PackageVersionNotPresent(package, version, self)
-        return self._tarball_path(package, version, target_dir)
+        return [self._tarball_path(package, version, target_dir)]
 
 
 class SelfSplitSource(UpstreamSource):
@@ -307,7 +310,7 @@ class SelfSplitSource(UpstreamSource):
                 "to create the tarball")
         tarball_path = self._tarball_path(package, version, target_dir)
         self._split(package, version, tarball_path)
-        return tarball_path
+        return [tarball_path]
 
 
 class StackedUpstreamSource(UpstreamSource):
@@ -325,12 +328,11 @@ class StackedUpstreamSource(UpstreamSource):
     def fetch_tarball(self, package, version, target_dir):
         for source in self._sources:
             try:
-                path = source.fetch_tarball(package, version, target_dir)
+                paths = source.fetch_tarball(package, version, target_dir)
             except PackageVersionNotPresent:
                 pass
             else:
-                assert isinstance(path, basestring)
-                return path
+                return paths
         raise PackageVersionNotPresent(package, version, self)
 
     def get_latest_version(self, package, version):
@@ -364,7 +366,7 @@ class UpstreamProvider(object):
         self.source = StackedUpstreamSource(sources)
 
     def provide(self, target_dir):
-        """Provide the upstream tarball any way possible.
+        """Provide the upstream tarball(s) any way possible.
 
         Call this to place the correctly named tarball in to target_dir,
         through means possible.
@@ -396,11 +398,11 @@ class UpstreamProvider(object):
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
-                path = self.source.fetch_tarball(self.package,
+                paths = self.source.fetch_tarball(self.package,
                     self.version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_names()[0])
-            assert isinstance(path, basestring)
+            assert isinstance(paths, list)
         else:
             note("Using the upstream tarball that is present in %s" %
                  self.store_dir)
@@ -473,7 +475,7 @@ class TarfileSource(UpstreamSource):
             raise PackageVersionNotPresent(package, version, self)
         dest_name = tarball_name(package, version)
         repack_tarball(self.path, dest_name, target_dir=target_dir, force_gz=True)
-        return os.path.join(target_dir, dest_name)
+        return [os.path.join(target_dir, dest_name)]
 
     def get_latest_version(self, package, version):
         if self.version is not None:

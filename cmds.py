@@ -553,45 +553,51 @@ class cmd_merge_upstream(Command):
                     'merge had completed failed. Add the new changelog '
                     'entry yourself, review the merge, and then commit.')
 
-    def _do_merge(self, tree, tarball_filename, package, version,
+    def _do_merge(self, tree, tarball_filenames, package, version,
             current_version, upstream_branch, upstream_revision, merge_type,
             force):
         db = DistributionBranch(tree.branch, None, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        conflicts = db.merge_upstream(tarball_filename, package, version,
+        if len(tarball_filenames) > 1:
+            raise BzrCommandError("Merging multiple upstream tarballs not "
+                                  "yet supported")
+        conflicts = db.merge_upstream(tarball_filenames[0], package, version,
                 current_version, upstream_branch=upstream_branch,
                 upstream_revision=upstream_revision,
                 merge_type=merge_type, force=force)
         return conflicts
 
-    def _fetch_tarball(self, package, version, orig_dir, location, v3):
+    def _fetch_tarball(self, package, version, orig_dir, locations, v3):
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+        ret = []
         format = None
-        if v3:
-            if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
-                format = "bz2"
-        dest_name = tarball_name(package, version, format=format)
-        tarball_filename = os.path.join(orig_dir, dest_name)
-        try:
-            repack_tarball(location, dest_name, target_dir=orig_dir,
-                    force_gz=not v3)
-        except FileExists:
-            raise BzrCommandError("The target file %s already exists, and is either "
-                                  "different to the new upstream tarball, or they "
-                                  "are of different formats. Either delete the target "
-                                  "file, or use it as the argument to import."
-                                  % dest_name)
-        return tarball_filename
+        for location in locations:
+            if v3:
+                if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
+                    format = "bz2"
+            dest_name = tarball_name(package, version, format=format)
+            tarball_filename = os.path.join(orig_dir, dest_name)
+            try:
+                repack_tarball(location, dest_name, target_dir=orig_dir,
+                        force_gz=not v3)
+            except FileExists:
+                raise BzrCommandError("The target file %s already exists, and is either "
+                                      "different to the new upstream tarball, or they "
+                                      "are of different formats. Either delete the target "
+                                      "file, or use it as the argument to import."
+                                      % dest_name)
+            ret.append(tarball_filename)
+        return ret
 
     def _get_tarball(self, config, tree, package, version, upstream_branch,
-            upstream_revision, v3, location):
+            upstream_revision, v3, locations):
         orig_dir = config.orig_dir or default_orig_dir
         orig_dir = os.path.join(tree.basedir, orig_dir)
         if not os.path.exists(orig_dir):
             os.makedirs(orig_dir)
         return self._fetch_tarball(package, version, orig_dir,
-            location, v3)
+            locations, v3)
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
         current_version = last_version
@@ -738,15 +744,15 @@ class cmd_merge_upstream(Command):
                         (version, upstream_branch_source))
             if need_upstream_tarball:
                 target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
-                location = primary_upstream_source.fetch_tarball(
+                locations = primary_upstream_source.fetch_tarball(
                     package, version, target_dir)
                 source_format = get_source_format(tree)
                 v3 = (source_format in [
                     FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
-                tarball_filename = self._get_tarball(config, tree, package,
+                tarball_filenames = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
-                    location)
-                conflicts = self._do_merge(tree, tarball_filename, package,
+                    locations)
+                conflicts = self._do_merge(tree, tarball_filenames, package,
                     version, current_version, upstream_branch, upstream_revision,
                     merge_type, force)
             if current_version is not None and Version(current_version) >= Version(version):

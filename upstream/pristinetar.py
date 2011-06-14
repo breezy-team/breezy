@@ -145,7 +145,7 @@ class PristineTarSource(UpstreamSource):
             raise PackageVersionNotPresent(package, version, self)
         except PerFileTimestampsNotSupported:
             raise PackageVersionNotPresent(package, version, self)
-        return target_filename
+        return [target_filename]
 
     def _has_version(self, tag_name, md5=None):
         if not self.branch.tags.has_tag(tag_name):
