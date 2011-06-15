@@ -349,7 +349,7 @@ class DistributionBranch(object):
             return True
         return False
 
-    def has_upstream_version(self, version, tarballs=None):
+    def has_upstream_version(self, package, version, tarballs=None):
         """Whether this branch contains the upstream version specified.
 
         The version must be judged present by having the appropriate tag
@@ -456,7 +456,7 @@ class DistributionBranch(object):
             return self.branch.tags.lookup_tag(ubuntu_tag_name)
         return self.branch.tags.lookup_tag(tag_name)
 
-    def revid_of_upstream_version(self, version):
+    def revid_of_upstream_version(self, package, version):
         """Returns the revision id corresponding to the upstream version.
 
         :param version: the Version object to extract the upstream version
@@ -613,7 +613,7 @@ class DistributionBranch(object):
         finally:
             self.branch.unlock()
 
-    def branch_to_pull_upstream_from(self, version, upstream_tarballs):
+    def branch_to_pull_upstream_from(self, package, version, upstream_tarballs):
         """Checks whether this upstream is a pull from a lesser branch.
 
         Looks in all the other upstream branches for the given
@@ -634,7 +634,8 @@ class DistributionBranch(object):
         up_branch.lock_read()
         try:
             for branch in reversed(self.get_lesser_branches()):
-                if branch.has_upstream_version(version, tarballs=upstream_tarballs):
+                if branch.has_upstream_version(package, version,
+                        tarballs=upstream_tarballs):
                     # Check that they haven't diverged
                     other_up_branch = branch.upstream_branch
                     other_up_branch.lock_read()
@@ -642,12 +643,12 @@ class DistributionBranch(object):
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
                         if graph.is_ancestor(up_branch.last_revision(),
-                                branch.revid_of_upstream_version(version)):
+                                branch.revid_of_upstream_version(package, version)):
                             return branch
                     finally:
                         other_up_branch.unlock()
             for branch in self.get_greater_branches():
-                if branch.has_upstream_version(version, tarballs=upstream_tarballs):
+                if branch.has_upstream_version(package, version, tarballs=upstream_tarballs):
                     # Check that they haven't diverged
                     other_up_branch = branch.upstream_branch
                     other_up_branch.lock_read()
@@ -655,7 +656,7 @@ class DistributionBranch(object):
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
                         if graph.is_ancestor(up_branch.last_revision(),
-                                branch.revid_of_upstream_version(version)):
+                                branch.revid_of_upstream_version(package, version)):
                             return branch
                     finally:
                         other_up_branch.unlock()
@@ -728,7 +729,7 @@ class DistributionBranch(object):
                         last_revision=revid)
         return parents
 
-    def pull_upstream_from_branch(self, pull_branch, version):
+    def pull_upstream_from_branch(self, pull_branch, package, version):
         """Pulls an upstream version from a branch.
 
         Given a DistributionBranch and a version number this method
@@ -744,7 +745,7 @@ class DistributionBranch(object):
         :param version: the upstream version string
         """
         assert isinstance(version, str)
-        pull_revision = pull_branch.revid_of_upstream_version(version)
+        pull_revision = pull_branch.revid_of_upstream_version(package, version)
         mutter("Pulling upstream part of %s from revision %s" % \
                 (version, pull_revision))
         up_pull_branch = pull_branch.upstream_branch
@@ -756,7 +757,7 @@ class DistributionBranch(object):
         self.branch.fetch(self.upstream_branch, last_revision=pull_revision)
         self.upstream_branch.tags.merge_to(self.branch.tags)
 
-    def pull_version_from_branch(self, pull_branch, version, native=False):
+    def pull_version_from_branch(self, pull_branch, package, version, native=False):
         """Pull a version from a particular branch.
 
         Given a DistributionBranch and a version number this method
@@ -783,10 +784,10 @@ class DistributionBranch(object):
         assert self.tree is not None, "Can't pull branch with no tree"
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
         self.tag_version(version, revid=pull_revision)
-        if not native and not self.has_upstream_version(version.upstream_version):
-            if pull_branch.has_upstream_version(version.upstream_version):
+        if not native and not self.has_upstream_version(package, version.upstream_version):
+            if pull_branch.has_upstream_version(package, version.upstream_version):
                 self.pull_upstream_from_branch(pull_branch, 
-                    version.upstream_version)
+                    package, version.upstream_version)
             else:
                 assert False, ("Can't find the needed upstream part "
                         "for version %s" % version)
@@ -802,7 +803,7 @@ class DistributionBranch(object):
             mutter("Not importing the upstream part as it is already "
                     "present in the upstream branch")
 
-    def get_parents_with_upstream(self, version, versions,
+    def get_parents_with_upstream(self, package, version, versions,
             force_upstream_parent=False):
         """Get the list of parents including any upstream parents.
 
@@ -839,7 +840,8 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            parent_revid = self.revid_of_upstream_version(version.upstream_version)
+            parent_revid = self.revid_of_upstream_version(package,
+                version.upstream_version)
             if len(parents) > 0:
                 real_parents.insert(1, parent_revid)
             else:
@@ -1099,7 +1101,7 @@ class DistributionBranch(object):
                 timezone=timezone)
         self.tag_version(version, revid=revid)
 
-    def upstream_parents(self, versions, version):
+    def upstream_parents(self, package, versions, version):
         """Get the parents for importing a new upstream.
 
         The upstream parents will be the last upstream version,
@@ -1118,7 +1120,8 @@ class DistributionBranch(object):
             # upstream as a non-native version (i.e. it wasn't a mistaken
             # native -2 version), then we want to add an extra parent.
             if (self.is_version_native(last_contained_version)
-                and not self.has_upstream_version(last_contained_version.upstream_version)):
+                and not self.has_upstream_version(package,
+                    last_contained_version.upstream_version)):
                 revid = self.revid_of_version(last_contained_version)
                 parents.append(revid)
                 self.upstream_branch.fetch(self.branch,
@@ -1133,10 +1136,10 @@ class DistributionBranch(object):
                 pull_branch = pull_parents[1][0]
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
-                    pull_revid = \
-                        pull_branch.revid_of_upstream_version(pull_version.upstream_version)
-                    mutter("Initialising upstream from %s, version %s" \
-                        % (str(pull_branch), str(pull_version)))
+                    pull_revid = pull_branch.revid_of_upstream_version(
+                        package, pull_version.upstream_version)
+                    mutter("Initialising upstream from %s, version %s",
+                        str(pull_branch), str(pull_version))
                     parents.append(pull_revid)
                     self.upstream_branch.fetch(
                             pull_branch.upstream_branch,
@@ -1151,11 +1154,12 @@ class DistributionBranch(object):
         cl.parse_changelog(open(cl_filename).read(), strict=False)
         return cl
 
-    def _import_normal_package(self, version, versions, debian_part, md5,
+    def _import_normal_package(self, package, version, versions, debian_part, md5,
             upstream_part, upstream_tarballs, timestamp=None, author=None,
             file_ids_from=None, pull_debian=True):
         """Import a source package.
 
+        :param package: Package name
         :param version: Full Debian version
         :param versions: Safe versions from changelog
         :param debian_part: Path to extracted directory with Debian changes
@@ -1171,28 +1175,28 @@ class DistributionBranch(object):
         if pull_debian:
             pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
-            if (self.branch_to_pull_upstream_from(version.upstream_version,
-                        upstream_tarballs)
+            if (self.branch_to_pull_upstream_from(package,
+                    version.upstream_version, upstream_tarballs)
                     is None):
                 pull_branch = None
         if pull_branch is not None:
-            self.pull_version_from_branch(pull_branch, version)
+            self.pull_version_from_branch(pull_branch, package, version)
         else:
             # We need to import at least the diff, possibly upstream.
             # Work out if we need the upstream part first.
             imported_upstream = False
-            if not self.has_upstream_version(version.upstream_version):
+            if not self.pristine_tar_source.has_version(package, version.upstream_version):
                 up_pull_branch = \
-                    self.branch_to_pull_upstream_from(version.upstream_version,
+                    self.branch_to_pull_upstream_from(package, version.upstream_version,
                             upstream_tarballs)
                 if up_pull_branch is not None:
                     self.pull_upstream_from_branch(up_pull_branch,
-                            version.upstream_version)
+                            package, version.upstream_version)
                 else:
                     imported_upstream = True
                     # Check whether we should pull first if this initialises
                     # from another branch:
-                    upstream_parents = self.upstream_parents(versions,
+                    upstream_parents = self.upstream_parents(package, versions,
                             version.upstream_version)
                     _, new_revid = self.import_upstream(upstream_part,
                             version.upstream_version,
@@ -1203,7 +1207,7 @@ class DistributionBranch(object):
                     self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
-            parents = self.get_parents_with_upstream(version, versions,
+            parents = self.get_parents_with_upstream(package, version, versions,
                     force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
             self.import_debian(debian_part, version, parents, md5,
@@ -1247,13 +1251,13 @@ class DistributionBranch(object):
             parents.insert(0, self.branch.last_revision())
         return parents
 
-    def _import_native_package(self, version, versions, debian_part, md5,
+    def _import_native_package(self, package, version, versions, debian_part, md5,
             timestamp=None, file_ids_from=None, pull_debian=True):
         pull_branch = None
         if pull_debian:
             pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
-            self.pull_version_from_branch(pull_branch, version, native=True)
+            self.pull_version_from_branch(pull_branch, package, version, native=True)
         else:
             parents = self.get_native_parents(version, versions)
             self.import_debian(debian_part, version, parents, md5,
@@ -1307,7 +1311,7 @@ class DistributionBranch(object):
             # should happen if it isn't.
 
             if extractor.extracted_upstream is not None:
-                self._import_normal_package(version, versions,
+                self._import_normal_package(dsc['Source'], version, versions,
                         extractor.extracted_debianised,
                         extractor.unextracted_debian_md5,
                         extractor.extracted_upstream,
@@ -1316,7 +1320,7 @@ class DistributionBranch(object):
                         file_ids_from=file_ids_from,
                         pull_debian=pull_debian)
             else:
-                self._import_native_package(version, versions,
+                self._import_native_package(dsc['Source'], version, versions,
                         extractor.extracted_debianised,
                         extractor.unextracted_debian_md5,
                         timestamp=timestamp, file_ids_from=file_ids_from,
