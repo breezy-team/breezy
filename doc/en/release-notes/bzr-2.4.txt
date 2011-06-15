@@ -62,6 +62,9 @@ Bug Fixes
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
 
+* Fix exporting subdirectory with ``--per-file-timestamps``.
+  (Szilveszter Farkas, #795557)
+
 * Handle files that get created but don't get used during TreeTransform.
   ``open()`` can create a file, and still raise an exception before it
   returns. So anything we might have created, make sure we destroy during
