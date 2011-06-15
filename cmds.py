@@ -557,7 +557,7 @@ class cmd_merge_upstream(Command):
     def _do_merge(self, tree, tarball_filenames, package, version,
             current_version, upstream_branch, upstream_revision, merge_type,
             force):
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         if len(tarball_filenames) > 1:
@@ -860,7 +860,7 @@ class cmd_import_dsc(Command):
                         "yet supported.")
             orig_dir = config.orig_dir or default_orig_dir
             orig_target = os.path.join(tree.basedir, default_orig_dir)
-            db = DistributionBranch(tree.branch, None, tree=tree)
+            db = DistributionBranch(tree.branch, tree.branch, tree=tree)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             try:
@@ -945,8 +945,8 @@ class cmd_import_upstream(Command):
         tempdir = tempfile.mkdtemp(
             dir=branch.bzrdir.root_transport.clone('..').local_abspath('.'))
         self.add_cleanup(shutil.rmtree, tempdir)
-        db = DistributionBranch(branch, upstream_branch=upstream)
-        if db.pristine_tar_source.has_version(None, version):
+        db = DistributionBranch(branch, pristine_upstream_branch=branch)
+        if db.pristine_upstream_source.has_version(None, version):
             raise BzrCommandError("Version %s is already present." % version)
         tagged_versions = {}
         for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():
