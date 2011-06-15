@@ -43,7 +43,6 @@ from bzrlib import osutils
 from bzrlib.errors import (
     BzrError,
     NoSuchRevision,
-    NoSuchTag,
     )
 from bzrlib.trace import (
     note,
@@ -114,6 +113,9 @@ class PristineTarSource(UpstreamSource):
     def __init__(self, tree, branch):
         self.branch = branch
         self.tree = tree
+
+    def __repr__(self):
+        return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
 
     def tag_name(self, version, distro=None):
         """Gets the tag name for the upstream part of version.
