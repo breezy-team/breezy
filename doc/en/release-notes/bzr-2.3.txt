@@ -33,6 +33,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Don't fail with traceback if `bzr serve` is running as a service on Windows,
+  and there is no USERNAME, nor BZR_EMAIL or other whoami-related environment
+  variables set. (Alexander Belchenko, Bug #660174)
+
 Documentation
 *************
 
