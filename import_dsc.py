@@ -300,30 +300,6 @@ class DistributionBranch(object):
                 pass
         return False
 
-    def _has_upstream_version(self, branch, tag_name, tarballs=None):
-        if branch.tags.has_tag(tag_name):
-            revid = branch.tags.lookup_tag(tag_name)
-            branch.lock_read()
-            try:
-                graph = branch.repository.get_graph()
-                if not graph.is_ancestor(revid, branch.last_revision()):
-                    return False
-            finally:
-                branch.unlock()
-            if tarballs is None:
-                return True
-            if len(tarballs) != 1:
-                raise MultipleUpstreamTarballsNotSupported()
-            (filename, md5) = tarballs[0]
-            rev = branch.repository.get_revision(revid)
-            try:
-                return rev.properties['deb-md5'] == md5
-            except KeyError:
-                warning("tag %s present in branch, but there is no "
-                    "associated 'deb-md5' property" % tag_name)
-                pass
-        return False
-
     def has_version(self, version, md5=None):
         """Whether this branch contains the package version specified.
 
@@ -364,10 +340,7 @@ class DistributionBranch(object):
         :return: True if the upstream branch contains the specified upstream
             version of the package. False otherwise.
         """
-        for tag_name in self.pristine_upstream_source.possible_tag_names(version):
-            if self._has_upstream_version(self.pristine_upstream_branch, tag_name, tarballs=tarballs):
-                return True
-        return False
+        return self.pristine_upstream_source.has_version(package, version, tarballs)
 
     def contained_versions(self, versions):
         """Splits a list of versions depending on presence in the branch.
