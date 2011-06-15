@@ -149,10 +149,12 @@ class GPGStrategy(object):
         except gpgme.GpgmeError,error:
             raise errors.VerifyFailed(error[2])
 
-        ##look up keys, if not in, return missing
-
         if len(result) == 0:
             return SIGNATURE_NOT_VALID
+        fingerprint = result[0].fpr
+        if self.acceptable_keys is not None:
+            if not fingerprint in self.acceptable_keys:
+                return SIGNATURE_KEY_MISSING
         if result[0].summary & gpgme.SIGSUM_VALID:
             return SIGNATURE_VALID
         if result[0].summary & gpgme.SIGSUM_RED:
