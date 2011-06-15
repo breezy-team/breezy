@@ -429,20 +429,17 @@ class DistributionBranch(object):
             return self.branch.tags.lookup_tag(ubuntu_tag_name)
         return self.branch.tags.lookup_tag(tag_name)
 
-    def revid_of_upstream_version(self, package, version):
+    def revid_of_upstream_version(self, package, version, tarballs=None):
         """Returns the revision id corresponding to the upstream version.
 
         :param version: the Version object to extract the upstream version
-            from to retreive the revid of. The upstream version must be
+            from to retrieve the revid of. The upstream version must be
             present in the upstream branch.
         :return: the revision id corresponding to the upstream portion
             of the version
         """
-        for tag_name in self.pristine_upstream_source.possible_tag_names(version):
-            if self._has_version(self.pristine_upstream_branch, tag_name):
-                return self.pristine_upstream_branch.tags.lookup_tag(tag_name)
-        tag_name = self.pristine_upstream_source.tag_name(version)
-        return self.pristine_upstream_branch.tags.lookup_tag(tag_name)
+        return self.pristine_upstream_source.version_as_revision(package, version,
+            tarballs)
 
     def tag_version(self, version, revid=None):
         """Tags the branch's last revision with the given version.
@@ -1109,16 +1106,16 @@ class DistributionBranch(object):
                 pull_branch = pull_parents[1][0]
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
-                    pull_revid = pull_branch.revid_of_upstream_version(
-                        package, pull_version.upstream_version)
-                    mutter("Initialising upstream from %s, version %s",
-                        str(pull_branch), str(pull_version))
-                    parents.append(pull_revid)
-                    self.pristine_upstream_branch.fetch(
-                            pull_branch.pristine_upstream_branch,
-                            last_revision=pull_revid)
-                    pull_branch.pristine_upstream_branch.tags.merge_to(
-                            self.pristine_upstream_branch.tags)
+                pull_revid = pull_branch.revid_of_upstream_version(
+                    package, pull_version.upstream_version)
+                mutter("Initialising upstream from %s, version %s",
+                    str(pull_branch), str(pull_version))
+                parents.append(pull_revid)
+                self.pristine_upstream_branch.fetch(
+                        pull_branch.pristine_upstream_branch,
+                        last_revision=pull_revid)
+                pull_branch.pristine_upstream_branch.tags.merge_to(
+                        self.pristine_upstream_branch.tags)
         return parents
 
     def get_changelog_from_source(self, dir):

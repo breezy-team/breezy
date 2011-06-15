@@ -43,6 +43,7 @@ from bzrlib import osutils
 from bzrlib.errors import (
     BzrError,
     NoSuchRevision,
+    NoSuchTag,
     )
 from bzrlib.trace import (
     note,
@@ -179,7 +180,11 @@ class PristineTarSource(UpstreamSource):
         for tag_name in self.possible_tag_names(version):
             if self._has_version(tag_name, tarballs):
                 return self.branch.tags.lookup_tag(tag_name)
-        raise PackageVersionNotPresent(package, version, self)
+        tag_name = self.tag_name(version)
+        try:
+            return self.branch.tags.lookup_tag(tag_name)
+        except NoSuchTag:
+            raise PackageVersionNotPresent(package, version, self)
 
     def has_version(self, package, version, tarballs=None):
         assert isinstance(version, str), str(type(version))
