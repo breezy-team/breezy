@@ -1018,7 +1018,7 @@ class TestCase(testtools.TestCase):
         """Setup a dict to collect various counters.
 
         Each key in the dict holds a value for a different counter. When the
-        test ends, use addDetail subunit API to record the counter values.
+        test ends, subunit addDetail API is used to output the counter values.
         """
         self._counters = {}
         def add_counter_details():
@@ -1027,26 +1027,39 @@ class TestCase(testtools.TestCase):
             self._counters = None
         self.addCleanup(add_counter_details)
 
+    def install_counter_hook(self, hooks, name, counter_name=None):
+        """Install a counting hook.
+
+        Any hook can be counted as long as it doesn't need to return a value.
+
+        :param hooks: Where the hook should be installed.
+
+        :param name: The hook name that will be counted.
+
+        :param counter_name: The counter identifier in ``_counters``, defaults
+            to ``name``.
+        """
+        if counter_name is None:
+            counter_name = name
+        if self._counters.has_key(counter_name):
+            raise AssertionError('%s is already used as a counter name'
+                                  % (counter_name,))
+        self._counters[counter_name] = 0
+        def increment_counter():
+            # We can't do that in a lambda...
+            self._counters[counter_name] += 1
+        label = 'count %s calls' % (counter_name,)
+        hooks.install_named_hook(
+            name, lambda *args, **kwargs: increment_counter(), label)
+        self.addCleanup(hooks.uninstall_named_hook, name, label)
+
     def _install_config_stats_hooks(self):
         """Install config hooks to count hook calls.
 
         """
-        def install_counter_hook(hooks, prefix, hook_name):
-            """Create a counter and install its associated hook"""
-            counter_name = '%s.%s' % (prefix, hook_name)
-            self._counters[counter_name] = 0
-            def increment_counter(name): self._counters[name] += 1
-            def create_hook_point(attr_name):
-                # Force the lambda creation at the right time so we refer to
-                # the right counter name
-                return lambda *args: increment_counter(attr_name)
-            label = 'count %s.%s calls' % (prefix, hook_name)
-            hooks.install_named_hook(hook_name, create_hook_point(counter_name),
-                                     label)
-            self.addCleanup(hooks.uninstall_named_hook, hook_name, label)
-
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
-            install_counter_hook(config.ConfigHooks, 'config', hook_name)
+            self.install_counter_hook(config.ConfigHooks, hook_name,
+                                       'config.%s' % (hook_name,))
 
         # The OldConfigHooks are private and need special handling to protect
         # against recursive tests (tests that run other tests), so we just do
@@ -1054,7 +1067,8 @@ class TestCase(testtools.TestCase):
         # us.
         self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
-            install_counter_hook(config.OldConfigHooks, 'old_config', hook_name)
+            self.install_counter_hook(config.OldConfigHooks, hook_name,
+                                      'old_config.%s' % (hook_name,))
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
