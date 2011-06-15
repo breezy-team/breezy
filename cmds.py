@@ -117,6 +117,7 @@ from bzrlib.plugins.builddeb.util import (
         get_source_format,
         guess_build_type,
         lookup_distribution,
+        md5sum_filename,
         open_file,
         open_file_via_transport,
         tarball_name,
@@ -977,7 +978,8 @@ class cmd_import_upstream(Command):
         else:
             raise BzrCommandError('bzr import-upstream --revision takes exactly'
                                   ' one revision specifier.')
-        tag_name, _ = db.import_upstream_tarball(location, version, parents,
+        tarballs = [(location, md5sum_filename(location))]
+        tag_name, _ = db.import_upstream_tarball(tarballs, version, parents,
             upstream_branch=upstream, upstream_revision=upstream_revid)
         self.outf.write('Imported %s as tag:%s.\n' % (location, tag_name))
 
@@ -1207,7 +1209,7 @@ class cmd_dh_make(Command):
 
     def run(self, package_name, version, tarball, bzr_only=None, v3=None):
         tree = dh_make.import_upstream(tarball, package_name,
-                version.encode("utf-8"), use_v3=v3)
+            version.encode("utf-8"), use_v3=v3)
         if not bzr_only:
             tree.lock_write()
             try:

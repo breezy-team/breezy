@@ -27,7 +27,6 @@
 
 
 import os
-import re
 import shutil
 import stat
 import subprocess
@@ -301,6 +300,30 @@ class DistributionBranch(object):
                 pass
         return False
 
+    def _has_upstream_version(self, branch, tag_name, tarballs=None):
+        if branch.tags.has_tag(tag_name):
+            revid = branch.tags.lookup_tag(tag_name)
+            branch.lock_read()
+            try:
+                graph = branch.repository.get_graph()
+                if not graph.is_ancestor(revid, branch.last_revision()):
+                    return False
+            finally:
+                branch.unlock()
+            if tarballs is None:
+                return True
+            if len(tarballs) != 1:
+                raise MultipleUpstreamTarballsNotSupported()
+            (filename, md5) = tarballs[0]
+            rev = branch.repository.get_revision(revid)
+            try:
+                return rev.properties['deb-md5'] == md5
+            except KeyError:
+                warning("tag %s present in branch, but there is no "
+                    "associated 'deb-md5' property" % tag_name)
+                pass
+        return False
+
     def has_version(self, version, md5=None):
         """Whether this branch contains the package version specified.
 
@@ -326,7 +349,7 @@ class DistributionBranch(object):
             return True
         return False
 
-    def has_upstream_version(self, version, md5=None):
+    def has_upstream_version(self, version, tarballs=None):
         """Whether this branch contains the upstream version specified.
 
         The version must be judged present by having the appropriate tag
@@ -336,13 +359,13 @@ class DistributionBranch(object):
 
         :param version: a upstream version number to look for in the upstream 
             branch.
-        :param md5: a string with the md5sum that if not None must be
-            associated with the revision.
+        :param tarballs: list of upstream tarballs that should be present,
+            tuples of filename and md5sum
         :return: True if the upstream branch contains the specified upstream
             version of the package. False otherwise.
         """
         for tag_name in self.pristine_tar_source.possible_tag_names(version):
-            if self._has_version(self.upstream_branch, tag_name, md5=md5):
+            if self._has_upstream_version(self.upstream_branch, tag_name, tarballs=tarballs):
                 return True
         return False
 
@@ -590,7 +613,7 @@ class DistributionBranch(object):
         finally:
             self.branch.unlock()
 
-    def branch_to_pull_upstream_from(self, version, md5):
+    def branch_to_pull_upstream_from(self, version, upstream_tarballs):
         """Checks whether this upstream is a pull from a lesser branch.
 
         Looks in all the other upstream branches for the given
@@ -603,20 +626,15 @@ class DistributionBranch(object):
 
         :param version: the upstream version to use when searching in the 
             lesser branches.
-        :param md5: a String containing the md5 associateed with the
-            upstream version.
         :return: a DistributionBranch object to pull the upstream from
             if that is what should be done, otherwise None.
         """
         assert isinstance(version, str)
-        assert md5 is not None, \
-            ("It's not a good idea to use branch_to_pull_upstream_from with "
-             "md5 == None, as you may pull the wrong revision.")
         up_branch = self.upstream_branch
         up_branch.lock_read()
         try:
             for branch in reversed(self.get_lesser_branches()):
-                if branch.has_upstream_version(version, md5=md5):
+                if branch.has_upstream_version(version, tarballs=upstream_tarballs):
                     # Check that they haven't diverged
                     other_up_branch = branch.upstream_branch
                     other_up_branch.lock_read()
@@ -629,7 +647,7 @@ class DistributionBranch(object):
                     finally:
                         other_up_branch.unlock()
             for branch in self.get_greater_branches():
-                if branch.has_upstream_version(version, md5=md5):
+                if branch.has_upstream_version(version, tarballs=upstream_tarballs):
                     # Check that they haven't diverged
                     other_up_branch = branch.upstream_branch
                     other_up_branch.lock_read()
@@ -837,8 +855,8 @@ class DistributionBranch(object):
         self.branch.fetch(self.upstream_branch, last_revision=revid)
         self.upstream_branch.tags.merge_to(self.branch.tags)
 
-    def import_upstream(self, upstream_part, version, md5, upstream_parents,
-            upstream_tarball=None, upstream_branch=None,
+    def import_upstream(self, upstream_part, version, upstream_parents,
+            upstream_tarballs=None, upstream_branch=None,
             upstream_revision=None, timestamp=None, author=None,
             file_ids_from=None):
         """Import an upstream part on to the upstream branch.
@@ -849,7 +867,6 @@ class DistributionBranch(object):
         :param upstream_part: the path of a directory containing the
             unpacked upstream part of the source package.
         :param version: upstream version that is being imported
-        :param md5: the md5 of the upstream part.
         :param upstream_parents: the parents to give the upstream revision
         :param timestamp: a tuple of (timestamp, timezone) to use for
             the commit, or None to use the current time.
@@ -901,8 +918,12 @@ class DistributionBranch(object):
         finally:
             self_tree.unlock()
         self.upstream_tree.set_parent_ids(upstream_parents)
-        revprops = {"deb-md5": md5}
-        if upstream_tarball is not None:
+        revprops = {}
+        if upstream_tarballs is not None:
+            if len(upstream_tarballs) != 1:
+                raise MultipleUpstreamTarballsNotSupported()
+            (upstream_tarball, md5) = upstream_tarballs[0]
+            revprops["deb-md5"] = md5
             delta_revprops = self.pristine_tar_source.create_delta_revprops(
                 self.upstream_tree, upstream_tarball)
             revprops.update(delta_revprops)
@@ -918,8 +939,8 @@ class DistributionBranch(object):
         tag_name, _ = self.tag_upstream_version(version, revid=revid)
         return tag_name, revid
 
-    def import_upstream_tarball(self, tarball_filename, version, parents,
-        md5sum=None, upstream_branch=None, upstream_revision=None):
+    def import_upstream_tarball(self, tarballs, version, parents,
+        upstream_branch=None, upstream_revision=None):
         """Import an upstream part to the upstream branch.
 
         :param tarball_filename: The tarball to import.
@@ -933,12 +954,13 @@ class DistributionBranch(object):
         :param md5sum: hex digest of the md5sum of the tarball, if known.
         :return: (tag_name, revision_id) of the imported tarball.
         """
-        if not md5sum:
-            md5sum = md5sum_filename(tarball_filename)
+        if len(tarballs) != 1:
+            raise MultipleUpstreamTarballsNotSupported()
+        tarball_filename = tarballs[0][0]
         tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
         try:
-            return self.import_upstream(tarball_dir, version, md5sum, parents,
-                upstream_tarball=tarball_filename,
+            return self.import_upstream(tarball_dir, version, parents,
+                tarballs,
                 upstream_branch=upstream_branch,
                 upstream_revision=upstream_revision)
         finally:
@@ -1132,7 +1154,7 @@ class DistributionBranch(object):
         cl.parse_changelog(open(cl_filename).read(), strict=False)
         return cl
 
-    def _do_import_package(self, version, versions, debian_part, md5,
+    def _import_normal_package(self, version, versions, debian_part, md5,
             upstream_part, upstream_tarballs, timestamp=None, author=None,
             file_ids_from=None, pull_debian=True):
         """Import a source package.
@@ -1151,16 +1173,9 @@ class DistributionBranch(object):
         pull_branch = None
         if pull_debian:
             pull_branch = self.branch_to_pull_version_from(version, md5)
-        if len(upstream_tarballs) == 0:
-            upstream_md5 = None
-            upstream_tarball = None
-        elif len(upstream_tarballs) == 1:
-            (upstream_tarball, upstream_md5) = upstream_tarballs[0]
-        else:
-            raise MultipleUpstreamTarballsNotSupported()
         if pull_branch is not None:
             if (self.branch_to_pull_upstream_from(version.upstream_version,
-                        upstream_md5)
+                        upstream_tarballs)
                     is None):
                 pull_branch = None
         if pull_branch is not None:
@@ -1172,7 +1187,7 @@ class DistributionBranch(object):
             if not self.has_upstream_version(version.upstream_version):
                 up_pull_branch = \
                     self.branch_to_pull_upstream_from(version.upstream_version,
-                            upstream_md5)
+                            upstream_tarballs)
                 if up_pull_branch is not None:
                     self.pull_upstream_from_branch(up_pull_branch,
                             version.upstream_version)
@@ -1184,8 +1199,8 @@ class DistributionBranch(object):
                             version.upstream_version)
                     _, new_revid = self.import_upstream(upstream_part,
                             version.upstream_version,
-                            upstream_md5, upstream_parents,
-                            upstream_tarball=upstream_tarball,
+                            upstream_parents,
+                            upstream_tarballs=upstream_tarballs,
                             timestamp=timestamp, author=author,
                             file_ids_from=file_ids_from)
                     self._fetch_upstream_to_branch(new_revid)
@@ -1295,7 +1310,7 @@ class DistributionBranch(object):
             # should happen if it isn't.
 
             if extractor.extracted_upstream is not None:
-                self._do_import_package(version, versions,
+                self._import_normal_package(version, versions,
                         extractor.extracted_debianised,
                         extractor.unextracted_debian_md5,
                         extractor.extracted_upstream,
@@ -1433,6 +1448,8 @@ class DistributionBranch(object):
                         raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
                 md5sum = md5sum_filename(tarball_filename)
+                # FIXME: What about multiple upstream tarballs?
+                upstream_tarballs = [(tarball_filename, md5sum)]
                 tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
                 try:
                     # FIXME: should use upstream_parents()?
@@ -1440,8 +1457,7 @@ class DistributionBranch(object):
                     if self.upstream_branch.last_revision() != NULL_REVISION:
                         parents = [self.upstream_branch.last_revision()]
                     _, new_revid = self.import_upstream(tarball_dir,
-                            version,
-                            md5sum, parents, upstream_tarball=tarball_filename,
+                            version, parents, upstream_tarballs=upstream_tarballs,
                             upstream_branch=upstream_branch,
                             upstream_revision=upstream_revision)
                     self._fetch_upstream_to_branch(new_revid)
