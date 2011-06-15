@@ -62,7 +62,6 @@ from bzrlib.transport import (
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
     MultipleUpstreamTarballsNotSupported,
-    TarFailed,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
     )
@@ -70,6 +69,7 @@ from bzrlib.plugins.builddeb.util import (
     FORMAT_1_0,
     FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
+    extract_orig_tarballs,
     get_commit_info_from_changelog,
     md5sum_filename,
     open_file_via_transport,
@@ -1379,21 +1379,10 @@ class DistributionBranch(object):
             self.upstream_tree.set_root_id(root_id)
 
     def _extract_tarballs_to_tempdir(self, tarballs):
-        if len(tarballs) != 1:
-            raise MultipleUpstreamTarballsNotSupported()
-        tarball_filename = tarballs[0][0]
-        if tarball_filename.endswith(".tar.bz2"):
-            tar_args = 'xjf'
-        else:
-            tar_args = 'xzf'
         tempdir = tempfile.mkdtemp()
         try:
-            proc = subprocess.Popen(["tar", tar_args, tarball_filename, "-C",
-                    tempdir, "--strip-components", "1"],
-                    preexec_fn=subprocess_setup)
-            proc.communicate()
-            if proc.returncode != 0:
-                raise TarFailed("extract", tarball_filename)
+            extract_orig_tarballs([fn for (fn, md5) in tarballs], tempdir,
+                strip_components=1)
             return tempdir
         except:
             shutil.rmtree(tempdir)

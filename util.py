@@ -24,6 +24,7 @@ except ImportError:
     import md5
 import signal
 import shutil
+import subprocess
 import tempfile
 import os
 import re
@@ -65,7 +66,9 @@ from bzrlib.plugins.builddeb.errors import (
     MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
+    MultipleUpstreamTarballsNotSupported,
     NoPreviousUpload,
+    TarFailed,
     UnableToFindPreviousUpload,
     UnparseableChangelog,
     )
@@ -682,4 +685,24 @@ def guess_build_type(tree, version, contains_upstream_source):
         return BUILD_TYPE_NORMAL
 
 
+def extract_orig_tarballs(tarballs, target, strip_components=None):
+    """Extract orig tarballs to a directory.
 
+    :param tarballs: List of tarball filenames
+    :param target: Target directory (must already exist)
+    """
+    if len(tarballs) != 1:
+        raise MultipleUpstreamTarballsNotSupported()
+    tarball_filename = tarballs[0]
+    tar_args = ["tar"]
+    if tarball_filename.endswith(".tar.bz2"):
+        tar_args.append('xjf')
+    else:
+        tar_args.append('xzf')
+    tar_args.extend([tarball_filename, "-C", target])
+    if strip_components is not None:
+        tar_args.extend(["--strip-components", "1"])
+    proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup)
+    proc.communicate()
+    if proc.returncode != 0:
+        raise TarFailed("extract", tarball_filename)
