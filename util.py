@@ -685,6 +685,32 @@ def guess_build_type(tree, version, contains_upstream_source):
         return BUILD_TYPE_NORMAL
 
 
+def extract_orig_tarball(tarball_filename, component, target, strip_components=None):
+    """Extract an orig tarball.
+
+    :param tarball: Path to the tarball
+    :param component: Component name (or None for top-level)
+    :param target: Target path
+    :param strip_components: Optional number of components to strip
+    """
+    tar_args = ["tar"]
+    if tarball_filename.endswith(".tar.bz2"):
+        tar_args.append('xjf')
+    else:
+        tar_args.append('xzf')
+    if component is not None:
+        target_path = os.path.join(target, component)
+    else:
+        target_path = target
+    tar_args.extend([tarball_filename, "-C", target_path])
+    if strip_components is not None:
+        tar_args.extend(["--strip-components", "1"])
+    proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup)
+    proc.communicate()
+    if proc.returncode != 0:
+        raise TarFailed("extract", tarball_filename)
+
+
 def extract_orig_tarballs(tarballs, target, strip_components=None):
     """Extract orig tarballs to a directory.
 
@@ -694,15 +720,5 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
     if len(tarballs) != 1:
         raise MultipleUpstreamTarballsNotSupported()
     tarball_filename = tarballs[0]
-    tar_args = ["tar"]
-    if tarball_filename.endswith(".tar.bz2"):
-        tar_args.append('xjf')
-    else:
-        tar_args.append('xzf')
-    tar_args.extend([tarball_filename, "-C", target])
-    if strip_components is not None:
-        tar_args.extend(["--strip-components", "1"])
-    proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup)
-    proc.communicate()
-    if proc.returncode != 0:
-        raise TarFailed("extract", tarball_filename)
+    extract_orig_tarball(tarball_filename, None, target,
+            strip_components=strip_components)
