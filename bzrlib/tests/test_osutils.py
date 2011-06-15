@@ -2036,6 +2036,7 @@ class TestTerminalWidth(tests.TestCase):
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
 
+
 class TestCreationOps(tests.TestCaseInTempDir):
     _test_needs_features = [features.chown_feature]
 
@@ -2071,6 +2072,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.uid, s.st_uid)
         self.assertEquals(self.gid, s.st_gid)
 
+
 class TestGetuserUnicode(tests.TestCase):
 
     def test_ascii_user(self):
@@ -2090,6 +2092,15 @@ class TestGetuserUnicode(tests.TestCase):
         self.assertEqual(uni_username, osutils.getuser_unicode())
         self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+
+    def test_no_username_bug_660174(self):
+        self.requireFeature(features.win32_feature)
+        username = osutils.set_or_unset_env('USERNAME', None)
+        def cleanup():
+            osutils.set_or_unset_env('USERNAME', username)
+        self.addCleanup(cleanup)
+        self.assertEqual(u'UNKNOWN', osutils.getuser_unicode())
+
 
 class TestBackupNames(tests.TestCase):
 
