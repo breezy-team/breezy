@@ -372,7 +372,7 @@ class Config(object):
             else:
                 value = self._expand_options_in_string(value)
         for hook in OldConfigHooks['get']:
-            hook(self, option_name, value)        
+            hook(self, option_name, value)
         return value
 
     def get_user_option_as_bool(self, option_name, expand=None):
@@ -1719,7 +1719,7 @@ class AuthenticationConfig(object):
         section[option_name] = value
         self._save()
 
-    def get_credentials(self, scheme, host, port=None, user=None, path=None, 
+    def get_credentials(self, scheme, host, port=None, user=None, path=None,
                         realm=None):
         """Returns the matching credentials from authentication.conf file.
 
@@ -2140,7 +2140,7 @@ class TransportConfig(object):
                 return default
         value = section_obj.get(name, default)
         for hook in OldConfigHooks['get']:
-            hook(self, name, value)        
+            hook(self, name, value)
         return value
 
     def set_option(self, value, name, section=None):
