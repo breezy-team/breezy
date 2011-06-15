@@ -18,6 +18,7 @@
 
 import os
 import stat
+import sys
 
 from bzrlib import tests
 
@@ -131,3 +132,17 @@ class ExecutableFeature(tests.Feature):
 bash_feature = ExecutableFeature('bash')
 sed_feature = ExecutableFeature('sed')
 diff_feature = ExecutableFeature('diff')
+
+
+class Win32Feature(tests.Feature):
+    """Feature testing whether we're running selftest on Windows
+    or Windows-like platform.
+    """
+
+    def _probe(self):
+        return sys.platform == 'win32'
+
+    def feature_name(self):
+        return "win32 platform"
+
+win32_feature = Win32Feature()
