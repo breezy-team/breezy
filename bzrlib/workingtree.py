@@ -1385,11 +1385,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from bzrlib.conflicts import resolve
-        if filenames == []:
-            filenames = None
-            symbol_versioning.warn('Using [] to revert all files is deprecated'
-                ' as of bzr 0.91.  Please use None (the default) instead.',
-                DeprecationWarning, stacklevel=2)
         if old_tree is None:
             basis_tree = self.basis_tree()
             basis_tree.lock_read()
