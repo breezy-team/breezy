@@ -69,6 +69,7 @@ from bzrlib.plugins.builddeb.util import (
     FORMAT_1_0,
     FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
+    component_from_orig_tarball,
     extract_orig_tarballs,
     get_commit_info_from_changelog,
     md5sum_filename,
@@ -76,9 +77,6 @@ from bzrlib.plugins.builddeb.util import (
     open_transport,
     safe_decode,
     subprocess_setup,
-    )
-from bzrlib.plugins.builddeb.upstream.branch import (
-    UpstreamBranchSource,
     )
 from bzrlib.plugins.builddeb.upstream.pristinetar import (
     PristineTarSource,
@@ -895,7 +893,7 @@ class DistributionBranch(object):
         if upstream_tarballs is not None:
             if len(upstream_tarballs) != 1:
                 raise MultipleUpstreamTarballsNotSupported()
-            (upstream_tarball, md5) = upstream_tarballs[0]
+            (upstream_tarball, component, md5) = upstream_tarballs[0]
             revprops["deb-md5"] = md5
             delta_revprops = self.pristine_upstream_source.create_delta_revprops(
                 self.pristine_upstream_tree, upstream_tarball)
@@ -916,7 +914,7 @@ class DistributionBranch(object):
         upstream_branch=None, upstream_revision=None):
         """Import an upstream part to the upstream branch.
 
-        :param tarball_filename: The tarball to import.
+        :param tarballs: List of tarballs / components to extract
         :param version: The upstream version to import.
         :param parents: The tarball-branch parents to use for the import.
             If an upstream branch is supplied, its automatically added to
@@ -1356,8 +1354,9 @@ class DistributionBranch(object):
     def _extract_tarballs_to_tempdir(self, tarballs):
         tempdir = tempfile.mkdtemp()
         try:
-            extract_orig_tarballs([fn for (fn, md5) in tarballs], tempdir,
-                strip_components=1)
+            extract_orig_tarballs(
+                [(fn, component) for (fn, component, md5) in tarballs],
+                tempdir, strip_components=1)
             return tempdir
         except:
             shutil.rmtree(tempdir)
@@ -1405,7 +1404,8 @@ class DistributionBranch(object):
                             self.branch.last_revision()):
                         raise UpstreamBranchAlreadyMerged
                 upstream_tarballs = [
-                    (os.path.abspath(fn), md5sum_filename(fn)) for fn in
+                    (os.path.abspath(fn), component, md5sum_filename(fn)) for
+                    (fn, component) in
                     tarball_filenames]
                 tarball_dir = self._extract_tarballs_to_tempdir(upstream_tarballs)
                 try:
@@ -1502,7 +1502,9 @@ class OneZeroSourceExtractor(SourceExtractor):
                 if part['name'].endswith(".orig.tar.gz"):
                     self.upstream_tarballs.append((os.path.abspath(
                             os.path.join(osutils.dirname(self.dsc_path),
-                                part['name'])), part['md5sum']))
+                                part['name'])),
+                            component_from_orig_tarball(part['name'], name, str(version.upstream_version)),
+                            part['md5sum']))
                 elif part['name'].endswith(".diff.gz"):
                     self.unextracted_debian_md5 = part['md5sum']
 

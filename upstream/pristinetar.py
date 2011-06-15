@@ -166,7 +166,7 @@ class PristineTarSource(UpstreamSource):
             return True
         if len(tarballs) != 1:
             raise MultipleUpstreamTarballsNotSupported()
-        (filename, md5) = tarballs[0]
+        (filename, component, md5) = tarballs[0]
         rev = self.branch.repository.get_revision(revid)
         try:
             return rev.properties['deb-md5'] == md5

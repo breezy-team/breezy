@@ -173,26 +173,26 @@ class DistributionBranchTests(BuilddebTestCase):
         version = "0.1"
         self.assertFalse(db.has_upstream_version("package", version))
         self.assertFalse(db.has_upstream_version("package", version,
-            [("foo.tar.gz", self.fake_md5_1)]))
+            [("foo.tar.gz", None, self.fake_md5_1)]))
         self.do_commit_with_md5(self.up_tree1, "one", self.fake_md5_1)
         db.tag_upstream_version(version)
         self.assertTrue(db.has_upstream_version("package", version))
         self.assertTrue(db.has_upstream_version("package",
-            version, [("foo.tar.gz", self.fake_md5_1)]))
+            version, [("foo.tar.gz", None, self.fake_md5_1)]))
         self.assertFalse(db.has_upstream_version("package", version,
-            [("foo.tar.gz", self.fake_md5_2)]))
+            [("foo.tar.gz", None, self.fake_md5_2)]))
         version = "0.1"
         self.assertTrue(db.has_upstream_version("package", version))
         self.assertTrue(db.has_upstream_version("package", version,
-            [("foo.tar.gz", self.fake_md5_1)]))
+            [("foo.tar.gz", None, self.fake_md5_1)]))
         self.assertFalse(db.has_upstream_version("package", version,
-            [("foo.tar.gz", self.fake_md5_2)]))
+            [("foo.tar.gz", None, self.fake_md5_2)]))
         version = "0.2"
         self.assertFalse(db.has_upstream_version("package", version))
         self.assertFalse(db.has_upstream_version("package", version,
-            [("foo.tar.gz", self.fake_md5_1)]))
+            [("foo.tar.gz", None, self.fake_md5_1)]))
         self.assertFalse(db.has_upstream_version("package", version,
-            [("foo.tar.gz", self.fake_md5_2)]))
+            [("foo.tar.gz", None, self.fake_md5_2)]))
 
     def test_revid_of_version(self):
         db = self.db1
@@ -640,48 +640,48 @@ class DistributionBranchTests(BuilddebTestCase):
         version2 = Version("0.2-1")
         # With no versions tagged everything is None
         branch = self.db2.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_1)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, None)
         branch = self.db2.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_2)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_2)])
         self.assertEqual(branch, None)
         branch = self.db1.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_1)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, None)
         self.do_commit_with_md5(self.up_tree1, "one", self.fake_md5_1)
         self.db1.tag_upstream_version(version1.upstream_version)
         # Version and md5 available, so we get the correct branch.
         branch = self.db2.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_1)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, self.db1)
         # Otherwise (different version or md5) then we get None
         branch = self.db2.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_2)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_2)])
         self.assertEqual(branch, None)
         branch = self.db2.branch_to_pull_upstream_from("package",
                 version2.upstream_version,
-                [("foo.tar.gz", self.fake_md5_1)])
+                [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, None)
         branch = self.db2.branch_to_pull_upstream_from("package",
                 version2.upstream_version,
-                [("foo.tar.gz", self.fake_md5_2)])
+                [("foo.tar.gz", None, self.fake_md5_2)])
         self.assertEqual(branch, None)
         # And we don't get a branch for the one that already has
         # the version
         branch = self.db1.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_1)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, None)
         self.up_tree2.pull(self.up_tree1.branch)
         self.db2.tag_upstream_version(version1.upstream_version)
         # And we get the greatest branch when two lesser branches
         # have what we are looking for.
         branch = self.db3.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_1)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, self.db2)
         # If the branches have diverged then we don't get a branch.
         self.up_tree3.commit("three")
         branch = self.db3.branch_to_pull_upstream_from("package",
-                version1.upstream_version, [("foo.tar.gz", self.fake_md5_1)])
+                version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, None)
 
     def test_pull_from_lesser_branch_no_upstream(self):
@@ -846,7 +846,7 @@ class DistributionBranchTests(BuilddebTestCase):
         finally:
             tf.close()
         self.db1.import_upstream(basedir, version.upstream_version, [],
-                upstream_tarballs=[(os.path.abspath(tar_path), self.fake_md5_1)])
+                upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -874,7 +874,7 @@ class DistributionBranchTests(BuilddebTestCase):
         finally:
             tf.close()
         self.db1.import_upstream(basedir, version.upstream_version,
-            [], upstream_tarballs=[(os.path.abspath(tar_path), self.fake_md5_1)])
+            [], upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -1503,7 +1503,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([tarball_filename], "foo", "0.2", "0.1")
+        conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1")
         self.assertEqual(0,  conflicts)
 
     def test_merge_upstream_initial_with_branch(self):
@@ -1540,7 +1540,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([tarball_filename], "foo", "0.2", "0.1",
+        conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
             upstream_revision=upstream_rev)
         self.assertEqual(0,  conflicts)
@@ -1580,7 +1580,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([tarball_filename], "foo", "0.2", "0.1",
+        conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
             upstream_revision=upstream_rev)
         # ./debian conflicts.
@@ -1621,7 +1621,7 @@ class DistributionBranchTests(BuilddebTestCase):
         dbs.add_branch(db)
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        db.merge_upstream([builder.tar_name()], "package", str(version2),
+        db.merge_upstream([(builder.tar_name(), None)], "package", str(version2),
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revision=upstream_rev)
@@ -1660,7 +1660,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([tarball_filename], "package", "0.2-1",
+        conflicts = db.merge_upstream([(tarball_filename, None)], "package", "0.2-1",
             "0.1")
         # Check that we tagged wiht the dash version
         self.assertTrue(tree.branch.tags.has_tag('upstream-0.2-1'))
@@ -1699,7 +1699,7 @@ class DistributionBranchTests(BuilddebTestCase):
         # We don't add the new file upstream, as the new file id would
         # be picked up from there.
         upstream_rev2 = upstream_tree.commit("two")
-        db.merge_upstream([builder.tar_name()], "package",
+        db.merge_upstream([(builder.tar_name(), None)], "package",
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
@@ -1736,7 +1736,7 @@ class DistributionBranchTests(BuilddebTestCase):
         # We don't add the new file upstream, as the new file id would
         # be picked up from there.
         upstream_rev2 = upstream_tree.commit("two")
-        db.merge_upstream([builder.tar_name()], "package",
+        db.merge_upstream([(builder.tar_name(), None)], "package",
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
@@ -1769,7 +1769,7 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_upstream_file("a", "New a")
         builder.add_upstream_file("b", "Renamed a")
         builder.build()
-        db.merge_upstream([builder.tar_name()], "packaging",
+        db.merge_upstream([(builder.tar_name(), None)], "packaging",
             version2.upstream_version, version1.upstream_version)
         self.assertEqual("a-id", packaging_tree.path2id("b"))
         self.assertEqual("other-a-id", packaging_tree.path2id("a"))
