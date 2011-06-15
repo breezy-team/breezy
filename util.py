@@ -66,7 +66,6 @@ from bzrlib.plugins.builddeb.errors import (
     MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
-    MultipleUpstreamTarballsNotSupported,
     NoPreviousUpload,
     TarFailed,
     UnableToFindPreviousUpload,
