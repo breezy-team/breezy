@@ -24,6 +24,7 @@ except ImportError:
     import md5
 import os
 import shutil
+import tarfile
 
 try:
     from debian.changelog import Changelog, Version
@@ -40,6 +41,7 @@ from bzrlib.plugins.builddeb.config import (
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
+    MultipleUpstreamTarballsNotSupported,
     NoPreviousUpload,
     )
 from bzrlib.plugins.builddeb.tests import (
@@ -50,6 +52,7 @@ from bzrlib.plugins.builddeb.tests import (
 from bzrlib.plugins.builddeb.util import (
     dget,
     dget_changes,
+    extract_orig_tarballs,
     find_bugs_fixed,
     find_changelog,
     find_extra_authors,
@@ -837,3 +840,46 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         self.assertEquals(
             "Inconsistency between source format and version: version is not native, "
             "format is native.", str(e))
+
+
+class TestExtractOrigTarballs(TestCaseInTempDir):
+
+    def create_tarball(self, package, version, compression, part=None):
+        basedir = "%s-%s" % (package, version)
+        os.mkdir(basedir)
+        try:
+            f = open(os.path.join(basedir, "README"), 'w')
+            try:
+                f.write("Hi\n")
+            finally:
+                f.close()
+            tar_path = os.path.abspath("%s_%s.orig.tar.%s" % (package, version,
+                compression))
+            tf = tarfile.open(tar_path, 'w:%s' % compression)
+            try:
+                tf.add(basedir)
+            finally:
+                tf.close()
+        finally:
+            shutil.rmtree(basedir)
+        return tar_path
+
+    def test_single_orig_tar_gz(self):
+        tar_path = self.create_tarball("package", "0.1", "gz")
+        os.mkdir("target")
+        extract_orig_tarballs([tar_path], "target", strip_components=1)
+        self.assertEquals(os.listdir("target"), ["README"])
+
+    def test_single_orig_tar_bz2(self):
+        tar_path = self.create_tarball("package", "0.1", "bz2")
+        os.mkdir("target")
+        extract_orig_tarballs([tar_path], "target", strip_components=1)
+        self.assertEquals(os.listdir("target"), ["README"])
+
+    def test_multiple_tarballs(self):
+        base_tar_path = self.create_tarball("package", "0.1", "bz2")
+        tar_path_extra = self.create_tarball("package", "0.1", "bz2", part="extra")
+        os.mkdir("target")
+        self.assertRaises(MultipleUpstreamTarballsNotSupported,
+            extract_orig_tarballs,
+            [base_tar_path, tar_path_extra], "target")
