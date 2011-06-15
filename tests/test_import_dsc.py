@@ -82,28 +82,28 @@ class DistributionBranchTests(BuilddebTestCase):
         self.up_tree1.set_root_id(root_id)
         self.db1 = DistributionBranch(self.tree1.branch,
                 self.up_tree1.branch, tree=self.tree1,
-                upstream_tree=self.up_tree1)
+                pristine_upstream_tree=self.up_tree1)
         self.tree2 = self.make_branch_and_tree('experimental')
         self.tree2.set_root_id(root_id)
         self.up_tree2 = self.make_branch_and_tree('experimental-upstream')
         self.up_tree2.set_root_id(root_id)
         self.db2 = DistributionBranch(self.tree2.branch,
                 self.up_tree2.branch, tree=self.tree2,
-                upstream_tree=self.up_tree2)
+                pristine_upstream_tree=self.up_tree2)
         self.tree3 = self.make_branch_and_tree('gutsy')
         self.tree3.set_root_id(root_id)
         self.up_tree3 = self.make_branch_and_tree('gutsy-upstream')
         self.up_tree3.set_root_id(root_id)
         self.db3 = DistributionBranch(self.tree3.branch,
                 self.up_tree3.branch, tree=self.tree3,
-                upstream_tree=self.up_tree3)
+                pristine_upstream_tree=self.up_tree3)
         self.tree4 = self.make_branch_and_tree('hardy')
         self.tree4.set_root_id(root_id)
         self.up_tree4 = self.make_branch_and_tree('hardy-upstream')
         self.up_tree4.set_root_id(root_id)
         self.db4 = DistributionBranch(self.tree4.branch,
                 self.up_tree4.branch, tree=self.tree4,
-                upstream_tree=self.up_tree4)
+                pristine_upstream_tree=self.up_tree4)
         self.set = DistributionBranchSet()
         self.set.add_branch(self.db1)
         self.set.add_branch(self.db2)
@@ -128,9 +128,9 @@ class DistributionBranchTests(BuilddebTestCase):
         db = self.db1
         self.assertNotEqual(db, None)
         self.assertEqual(db.branch, self.tree1.branch)
-        self.assertEqual(db.upstream_branch, self.up_tree1.branch)
+        self.assertEqual(db.pristine_upstream_branch, self.up_tree1.branch)
         self.assertEqual(db.tree, self.tree1)
-        self.assertEqual(db.upstream_tree, self.up_tree1)
+        self.assertEqual(db.pristine_upstream_tree, self.up_tree1)
 
     def test_tag_name(self):
         db = self.db1
@@ -153,7 +153,7 @@ class DistributionBranchTests(BuilddebTestCase):
         version = "0.1"
         revid = tree.commit("one")
         db.tag_upstream_version(version)
-        tag_name = db.pristine_tar_source.tag_name(version)
+        tag_name = db.pristine_upstream_source.tag_name(version)
         self.assertEqual(tree.branch.tags.lookup_tag(tag_name), revid)
 
     def test_has_version(self):
@@ -888,7 +888,7 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_default_control()
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        self.db1.upstream_tree = None
+        self.db1.pristine_upstream_tree = None
         builder.new_version(version2)
         builder.build()
         self.db2.import_package(builder.dsc_name())
@@ -903,7 +903,7 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_default_control()
         builder.build()
         self.db2.import_package(builder.dsc_name())
-        self.db2.upstream_tree = None
+        self.db2.pristine_upstream_tree = None
         builder.new_version(version2)
         builder.build()
         self.db1.import_package(builder.dsc_name())
@@ -1482,7 +1482,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.write_changelog(cl, 'work/debian/changelog')
         tree.add(['debian/', 'debian/changelog'])
         orig_debian_rev = tree.commit("two")
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         tarball_filename = "package-0.2.tar.gz"
@@ -1519,7 +1519,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.addCleanup(tree.unlock)
         upstream_tree.lock_read()
         self.addCleanup(upstream_tree.unlock)
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         tarball_filename = "package-0.2.tar.gz"
@@ -1559,7 +1559,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.addCleanup(tree.unlock)
         upstream_tree.lock_read()
         self.addCleanup(upstream_tree.unlock)
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         tarball_filename = "package-0.2.tar.gz"
@@ -1597,7 +1597,7 @@ class DistributionBranchTests(BuilddebTestCase):
         packaging_upstream_tree = self.make_branch_and_tree(
             "packaging-upstream")
         db = DistributionBranch(tree.branch, packaging_upstream_tree.branch,
-            tree=tree, upstream_tree=packaging_upstream_tree)
+            tree=tree, pristine_upstream_tree=packaging_upstream_tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         db.import_package(builder.dsc_name())
@@ -1609,7 +1609,7 @@ class DistributionBranchTests(BuilddebTestCase):
         upstream_tree.add(['a'], ['a-id'])
         upstream_tree.commit("one")
         upstream_rev = upstream_tree.branch.last_revision()
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         tree.lock_write()
@@ -1639,7 +1639,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.write_changelog(cl, 'work/debian/changelog')
         tree.add(['debian/', 'debian/changelog'])
         orig_debian_rev = tree.commit("two")
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         tarball_filename = "package-0.2.tar.gz"
@@ -1675,7 +1675,7 @@ class DistributionBranchTests(BuilddebTestCase):
         upstream_tree.add(['a'], ['a-id'])
         upstream_rev1 = upstream_tree.commit("one")
         tree = upstream_tree.bzrdir.sprout('packaging').open_workingtree()
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         tree.lock_write()
@@ -1711,7 +1711,7 @@ class DistributionBranchTests(BuilddebTestCase):
         upstream_tree.add(['a', 'b'], ['a-id', 'b-id'])
         upstream_rev1 = upstream_tree.commit("one")
         tree = upstream_tree.bzrdir.sprout('packaging').open_workingtree()
-        db = DistributionBranch(tree.branch, None, tree=tree)
+        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         tree.lock_write()
@@ -1747,7 +1747,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.build_tree(['packaging/a'])
         packaging_tree.add(['a'], ['a-id'])
         upstream_rev1 = packaging_tree.commit("one")
-        db = DistributionBranch(packaging_tree.branch, None,
+        db = DistributionBranch(packaging_tree.branch, packaging_tree.branch,
             tree=packaging_tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)

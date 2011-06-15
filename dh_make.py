@@ -84,7 +84,7 @@ def import_upstream(tarball, package_name, version, use_v3=False):
     tarball_filenames  = _get_tarballs(tree, tarball,
             package_name, version, use_v3=use_v3)
     db = import_dsc.DistributionBranch(tree.branch, tree.branch, tree=tree,
-            upstream_tree=tree)
+            pristine_upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()
     dbs.add_branch(db)
     if len(tarball_filenames) > 1:

@@ -88,7 +88,7 @@ class DHMadePackage(Fixture):
         branchpath = test_case.getUniqueString()
         tree = self.upstream.tree.bzrdir.sprout(branchpath).open_workingtree()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree,
-                upstream_tree=tree)
+                pristine_upstream_tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         db.import_upstream_tarball(self.tar.tarball, str(self.tar.version),

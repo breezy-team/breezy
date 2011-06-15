@@ -60,7 +60,7 @@ def _upstream_version_data(source, target):
         db = DistributionBranch(branch, branch)
         uver = _latest_version(branch).upstream_version
         results.append((Version(uver),
-                    db.pristine_tar_source.version_as_revision(None, uver)))
+                    db.pristine_upstream_source.version_as_revision(None, uver)))
 
     return results
 
@@ -137,7 +137,7 @@ def fix_ancestry_as_needed(tree, source):
                 # Extract the merge target's upstream tree into a temporary
                 # directory.
                 db.extract_upstream_tree(ut_revid, tempdir)
-                tmp_target_utree = db.upstream_tree
+                tmp_target_utree = db.pristine_upstream_tree
 
                 # Merge upstream branch tips to obtain a shared upstream parent.
                 # This will add revision K (see graph above) to a temporary merge
