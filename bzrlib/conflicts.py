@@ -597,14 +597,16 @@ class ContentsConflict(PathConflict):
             # where the user deleted it)
             pass
         try:
-            this_tid = tt.trans_id_tree_file_id(self.file_id)
+            this_path = tt._tree.id2path(self.file_id)
         except errors.NoSuchId:
             # The file is not present anymore. This may happen if the user
             # deleted the file either manually or when resolving a conflict on
             # the parent.  We may raise some exception to indicate that the
             # conflict doesn't exist anymore and as such doesn't need to be
-            # resolved ? -- vila 20110615
+            # resolved ? -- vila 20110615 
             this_tid = None
+        else:
+            this_tid = tt.trans_id_tree_path(this_path)
         if this_tid is not None:
             # Rename 'item.suffix_to_remove' (note that if
             # 'item.suffix_to_remove' has been deleted, this is a no-op)
