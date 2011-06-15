@@ -69,7 +69,6 @@ from bzrlib.plugins.builddeb.errors import (
     BuildFailedError,
     DchError,
     MissingChangelogError,
-    MultipleUpstreamTarballsNotSupported,
     NoPreviousUpload,
     PackageVersionNotPresent,
     StrictBuildFailed,

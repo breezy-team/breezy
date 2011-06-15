@@ -151,7 +151,7 @@ class MergeModeDistiller(SourceDistiller):
             tempdir = os.path.join(basetempdir,"export")
             if self.larstiq:
                 os.makedirs(tempdir)
-                export_dir = os.path.join(tempdir,'debian')
+                export_dir = os.path.join(tempdir, 'debian')
             else:
                 export_dir = tempdir
             if self.is_working_tree:
