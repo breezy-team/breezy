@@ -136,7 +136,7 @@ diff_feature = ExecutableFeature('diff')
 
 class Win32Feature(tests.Feature):
     """Feature testing whether we're running selftest on Windows
-    or Winfows-like platform.
+    or Windows-like platform.
     """
 
     def _probe(self):
