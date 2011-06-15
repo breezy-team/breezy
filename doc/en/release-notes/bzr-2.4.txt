@@ -108,8 +108,12 @@ API Changes
    bzrlib.
 
 * Information about held lockdir locks returned from eg `LockDir.peek` is
-  now represented as a `LockHeldInfo` object, rather than a plain Python
-  dict.
+  now represented as a `LockHeldInfo` object, rather than a plain
+  Python dict.
+  (Martin Pool)
+
+* Remove `file_status` function.
+  (Martin Pool)
 
 Internals
 *********
