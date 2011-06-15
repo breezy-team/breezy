@@ -2095,10 +2095,8 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_no_username_bug_660174(self):
         self.requireFeature(features.win32_feature)
-        username = osutils.set_or_unset_env('USERNAME', None)
-        def cleanup():
-            osutils.set_or_unset_env('USERNAME', username)
-        self.addCleanup(cleanup)
+        for name in ('LOGNAME', 'USER', 'LNAME', 'USERNAME'):
+            self.overrideEnv(name, None)
         self.assertEqual(u'UNKNOWN', osutils.getuser_unicode())
 
 
