@@ -2379,7 +2379,7 @@ def getuser_unicode():
         # if there is no USERNAME environment variable set.
         # That could be true if bzr is running as a service,
         # e.g. running `bzr serve` as a service on Windows.
-        # We should not fail with taceback in this case.
+        # We should not fail with traceback in this case.
         username = u'UNKNOWN'
     return username
 
