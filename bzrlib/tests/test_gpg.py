@@ -124,6 +124,17 @@ nswAoNGXAVuR9ONasAKIGBNUE0b+lols
 #FIXME test if gpgme isn't installed?
 #FIXME test for gpgme error?
 
+    def test_set_acceptable_keys(self):
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        my_gpg.set_acceptable_keys("jriddell")
+        self.assertEqual(my_gpg.acceptable_keys,
+                        [u'13C16D03EDE728514473AA73A506E6D4DD4D5088'])
+
+    def test_set_acceptable_keys_unknown(self):
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        my_gpg.set_acceptable_keys("unknown")
+        self.assertEqual(my_gpg.acceptable_keys, [])
+
 class TestDisabled(TestCase):
 
     def test_sign(self):

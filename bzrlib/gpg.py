@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     trace,
     ui,
+    i18n,
     )
 """)
 
@@ -82,6 +83,8 @@ def _set_gpg_tty():
 
 class GPGStrategy(object):
     """GPG Signing and checking facilities."""
+
+    acceptable_keys = None
 
     def _command_line(self):
         return [self._config.gpg_signing_command(), '--clearsign']
@@ -146,6 +149,8 @@ class GPGStrategy(object):
         except gpgme.GpgmeError,error:
             raise errors.VerifyFailed(error[2])
 
+        ##look up keys, if not in, return missing
+
         if len(result) == 0:
             return SIGNATURE_NOT_VALID
         if result[0].summary & gpgme.SIGSUM_VALID:
@@ -154,3 +159,24 @@ class GPGStrategy(object):
             return SIGNATURE_NOT_VALID
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING
+
+    def set_acceptable_keys(self, key_patterns):
+        try:
+            import gpgme
+        except ImportError:
+            raise errors.GpgmeNotInstalled()
+        patterns = key_patterns.split(",")
+
+        self.acceptable_keys = []
+        context = gpgme.Context()
+        for pattern in patterns:
+            result = context.keylist(pattern)
+            found_key = False
+            for key in result:
+                found_key = True
+                self.acceptable_keys.append(key.subkeys[0].fpr)
+                trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
+            if not found_key:
+                trace.note(i18n.gettext(
+                           "No GnuPG key results for pattern: {}"
+                            ).format(pattern))

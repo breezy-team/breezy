@@ -101,6 +101,7 @@ class cmd_verify(Command):
         branch_config = branch.get_config()
 
         gpg_strategy = gpg.GPGStrategy(branch_config)
+        ##gpg_strategy.addacceptablekeys()
 
         count = {gpg.SIGNATURE_VALID: 0,
                  gpg.SIGNATURE_KEY_MISSING: 0,
