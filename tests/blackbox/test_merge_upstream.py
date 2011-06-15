@@ -94,7 +94,7 @@ class DHMadePackage(Fixture):
                 pristine_upstream_tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        db.import_upstream_tarball(
+        db.import_upstream_tarballs(
             [(self.tar.tarball, md5sum_filename(self.tar.tarball))], str(self.tar.version),
             [tree.branch.last_revision()])
         package_builder = SourcePackageBuilder("foo",

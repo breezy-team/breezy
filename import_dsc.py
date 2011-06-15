@@ -618,7 +618,8 @@ class DistributionBranch(object):
                     finally:
                         other_up_branch.unlock()
             for branch in self.get_greater_branches():
-                if branch.has_upstream_version(package, version, tarballs=upstream_tarballs):
+                if branch.has_upstream_version(package, version,
+                        tarballs=upstream_tarballs):
                     # Check that they haven't diverged
                     other_up_branch = branch.pristine_upstream_branch
                     other_up_branch.lock_read()
@@ -911,7 +912,7 @@ class DistributionBranch(object):
         tag_name, _ = self.tag_upstream_version(version, revid=revid)
         return tag_name, revid
 
-    def import_upstream_tarball(self, tarballs, version, parents,
+    def import_upstream_tarballs(self, tarballs, version, parents,
         upstream_branch=None, upstream_revision=None):
         """Import an upstream part to the upstream branch.
 

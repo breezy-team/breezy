@@ -976,7 +976,7 @@ class cmd_import_upstream(Command):
             raise BzrCommandError('bzr import-upstream --revision takes exactly'
                                   ' one revision specifier.')
         tarballs = [(location, md5sum_filename(location))]
-        tag_name, _ = db.import_upstream_tarball(tarballs, version, parents,
+        tag_name, _ = db.import_upstream_tarballs(tarballs, version, parents,
             upstream_branch=upstream, upstream_revision=upstream_revid)
         self.outf.write('Imported %s as tag:%s.\n' % (location, tag_name))
 

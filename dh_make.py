@@ -87,7 +87,7 @@ def import_upstream(tarball, package_name, version, use_v3=False):
             pristine_upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()
     dbs.add_branch(db)
-    db.import_upstream_tarball(tarball_filenames, version, parents)
+    db.import_upstream_tarballs(tarball_filenames, version, parents)
     return tree
 
 
