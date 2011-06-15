@@ -20,20 +20,15 @@
 import glob
 import os
 import shutil
-import subprocess
 import tempfile
 
 from bzrlib import errors as bzr_errors
 
-from bzrlib.plugins.builddeb.errors import (
-        MultipleUpstreamTarballsNotSupported,
-        TarFailed,
-        )
 from bzrlib.plugins.builddeb.util import (
         export,
+        extract_orig_tarballs,
         get_parent_dir,
         recursive_copy,
-        subprocess_setup,
         )
 
 
@@ -123,16 +118,10 @@ class MergeModeDistiller(SourceDistiller):
             os.makedirs(parent_dir)
         if not self.use_existing:
             tarballs = self.upstream_provider.provide(parent_dir)
-            if len(tarballs) > 1:
-                raise MultipleUpstreamTarballsNotSupported()
-            tarball = tarballs[0]
             # Extract it to the right place
             tempdir = tempfile.mkdtemp(prefix='builddeb-merge-')
             try:
-                ret = subprocess.call(['tar', '-C', tempdir, '-xf', tarball],
-                        preexec_fn=subprocess_setup)
-                if ret != 0:
-                    raise TarFailed("uncompress", tarball)
+                extract_orig_tarballs(tarballs, tempdir)
                 files = glob.glob(tempdir+'/*')
                 # If everything is in a single dir then move everything up one
                 # level.
@@ -151,7 +140,7 @@ class MergeModeDistiller(SourceDistiller):
             tempdir = os.path.join(basetempdir,"export")
             if self.larstiq:
                 os.makedirs(tempdir)
-                export_dir = os.path.join(tempdir,'debian')
+                export_dir = os.path.join(tempdir, 'debian')
             else:
                 export_dir = tempdir
             if self.is_working_tree:

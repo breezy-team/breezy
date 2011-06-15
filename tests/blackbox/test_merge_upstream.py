@@ -30,6 +30,9 @@ from bzrlib.plugins.builddeb.import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
     )
+from bzrlib.plugins.builddeb.util import (
+    md5sum_filename,
+    )
 
 
 class Fixture(object):
@@ -91,10 +94,11 @@ class DHMadePackage(Fixture):
                 pristine_upstream_tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        db.import_upstream_tarball(self.tar.tarball, str(self.tar.version),
-                [tree.branch.last_revision()])
+        db.import_upstream_tarballs(
+            [(self.tar.tarball, md5sum_filename(self.tar.tarball))], str(self.tar.version),
+            [tree.branch.last_revision()])
         package_builder = SourcePackageBuilder("foo",
-                str(self.tar.version)+"-1")
+            str(self.tar.version)+"-1")
         package_builder.add_default_control()
         package_builder.write_debian_files(branchpath)
         tree.smart_add([tree.basedir])
