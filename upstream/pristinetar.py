@@ -29,6 +29,7 @@ import subprocess
 import tempfile
 
 from bzrlib.plugins.builddeb.errors import (
+    MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     PerFileTimestampsNotSupported,
     )
@@ -114,6 +115,9 @@ class PristineTarSource(UpstreamSource):
         self.branch = branch
         self.tree = tree
 
+    def __repr__(self):
+        return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
+
     def tag_name(self, version, distro=None):
         """Gets the tag name for the upstream part of version.
 
@@ -147,7 +151,7 @@ class PristineTarSource(UpstreamSource):
             raise PackageVersionNotPresent(package, version, self)
         return [target_filename]
 
-    def _has_version(self, tag_name, md5=None):
+    def _has_version(self, tag_name, tarballs=None):
         if not self.branch.tags.has_tag(tag_name):
             return False
         revid = self.branch.tags.lookup_tag(tag_name)
@@ -158,8 +162,11 @@ class PristineTarSource(UpstreamSource):
                 return False
         finally:
             self.branch.unlock()
-        if md5 is None:
+        if tarballs is None:
             return True
+        if len(tarballs) != 1:
+            raise MultipleUpstreamTarballsNotSupported()
+        (filename, md5) = tarballs[0]
         rev = self.branch.repository.get_revision(revid)
         try:
             return rev.properties['deb-md5'] == md5
@@ -168,10 +175,10 @@ class PristineTarSource(UpstreamSource):
                 "associated 'deb-md5' property" % tag_name)
             return True
 
-    def version_as_revision(self, package, version):
+    def version_as_revision(self, package, version, tarballs=None):
         assert isinstance(version, str)
         for tag_name in self.possible_tag_names(version):
-            if self._has_version(tag_name):
+            if self._has_version(tag_name, tarballs):
                 return self.branch.tags.lookup_tag(tag_name)
         tag_name = self.tag_name(version)
         try:
@@ -179,10 +186,10 @@ class PristineTarSource(UpstreamSource):
         except NoSuchTag:
             raise PackageVersionNotPresent(package, version, self)
 
-    def has_version(self, package, version, md5=None):
+    def has_version(self, package, version, tarballs=None):
         assert isinstance(version, str), str(type(version))
         for tag_name in self.possible_tag_names(version):
-            if self._has_version(tag_name, md5=md5):
+            if self._has_version(tag_name, tarballs=tarballs):
                 return True
         return False
 
