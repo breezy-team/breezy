@@ -561,9 +561,7 @@ class cmd_merge_upstream(Command):
         db = DistributionBranch(tree.branch, None, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        if len(tarball_filenames) > 1:
-            raise MultipleUpstreamTarballsNotSupported()
-        conflicts = db.merge_upstream(tarball_filenames[0], package, version,
+        conflicts = db.merge_upstream(tarball_filenames, package, version,
                 current_version, upstream_branch=upstream_branch,
                 upstream_revision=upstream_revision,
                 merge_type=merge_type, force=force)

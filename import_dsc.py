@@ -954,10 +954,7 @@ class DistributionBranch(object):
         :param md5sum: hex digest of the md5sum of the tarball, if known.
         :return: (tag_name, revision_id) of the imported tarball.
         """
-        if len(tarballs) != 1:
-            raise MultipleUpstreamTarballsNotSupported()
-        tarball_filename = tarballs[0][0]
-        tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
+        tarball_dir = self._extract_tarballs_to_tempdir(tarballs)
         try:
             return self.import_upstream(tarball_dir, version, parents,
                 tarballs,
@@ -1381,12 +1378,15 @@ class DistributionBranch(object):
         if root_id:
             self.upstream_tree.set_root_id(root_id)
 
-    def _extract_tarball_to_tempdir(self, tarball_filename):
-        tempdir = tempfile.mkdtemp()
+    def _extract_tarballs_to_tempdir(self, tarballs):
+        if len(tarballs) != 1:
+            raise MultipleUpstreamTarballsNotSupported()
+        tarball_filename = tarballs[0][0]
         if tarball_filename.endswith(".tar.bz2"):
             tar_args = 'xjf'
         else:
             tar_args = 'xzf'
+        tempdir = tempfile.mkdtemp()
         try:
             proc = subprocess.Popen(["tar", tar_args, tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
@@ -1416,7 +1416,7 @@ class DistributionBranch(object):
                 previous_version,
                 self.pristine_tar_source.tag_name(previous_version)))
 
-    def merge_upstream(self, tarball_filename, package, version, previous_version,
+    def merge_upstream(self, tarball_filenames, package, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None,
             force=False):
         assert self.upstream_branch is None, \
@@ -1446,11 +1446,10 @@ class DistributionBranch(object):
                     if not force and graph.is_ancestor(upstream_revision,
                             self.branch.last_revision()):
                         raise UpstreamBranchAlreadyMerged
-                tarball_filename = os.path.abspath(tarball_filename)
-                md5sum = md5sum_filename(tarball_filename)
-                # FIXME: What about multiple upstream tarballs?
-                upstream_tarballs = [(tarball_filename, md5sum)]
-                tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
+                upstream_tarballs = [
+                    (os.path.abspath(fn), md5sum_filename(fn)) for fn in
+                    tarball_filenames]
+                tarball_dir = self._extract_tarballs_to_tempdir(upstream_tarballs)
                 try:
                     # FIXME: should use upstream_parents()?
                     parents = []
