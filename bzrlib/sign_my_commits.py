@@ -94,14 +94,23 @@ class cmd_verify(Command):
     Verifies that all commits in the branch are signed by known GnuPG keys.
     """
 
-    def run(self):
+    takes_options = [
+            Option('acceptable-keys',
+                   help='Comma separated list of GPG key patterns which are'
+                        ' acceptable for verification.',
+                   short_name='k',
+                   type=str,),
+            ]
+
+    def run(self, acceptable_keys=None):
         bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
         branch_config = branch.get_config()
 
         gpg_strategy = gpg.GPGStrategy(branch_config)
-        ##gpg_strategy.addacceptablekeys()
+        if acceptable_keys is not None:
+            gpg_strategy.set_acceptable_keys(acceptable_keys)
 
         count = {gpg.SIGNATURE_VALID: 0,
                  gpg.SIGNATURE_KEY_MISSING: 0,
