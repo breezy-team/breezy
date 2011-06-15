@@ -153,4 +153,4 @@ class GPGStrategy(object):
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
-            return SIGNATURE_NOT_VALID
+            return SIGNATURE_KEY_MISSING
