@@ -1744,7 +1744,7 @@ class cmd_ancestry(Command):
         graph = b.repository.get_graph()
         revisions = [revid for revid, parents in
             graph.iter_ancestry([last_revision])]
-        for revision_id in graph.iter_topo_order(revisions):
+        for revision_id in reversed(revisions):
             if _mod_revision.is_null(revision_id):
                 continue
             self.outf.write(revision_id + '\n')
