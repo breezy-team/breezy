@@ -478,6 +478,12 @@ def get_svn_py2exe_info(includes, excludes, packages):
     packages.append('sqlite3')
 
 
+def get_fastimport_py2exe_info(includes, excludes, packages):
+    # This is the python-fastimport package, not to be confused with the
+    # bzr-fastimport plugin.
+    packages.append('fastimport')
+
+
 if 'bdist_wininst' in sys.argv:
     def find_docs():
         docs = []
@@ -669,6 +675,9 @@ elif 'py2exe' in sys.argv:
 
     if 'svn' in plugins:
         get_svn_py2exe_info(includes, excludes, packages)
+
+    if 'fastimport' in plugins:
+        get_fastimport_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the
