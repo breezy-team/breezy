@@ -990,8 +990,8 @@ class TestCase(testtools.TestCase):
         self.overrideAttr(config, '_expand_default_value', None)
         self._log_files = set()
         # Each key in the ``_counters`` dict holds a value for a different
-        # counter. When the test ends, testools addDetail() should be used to
-        # output the counter values. This happens in install_counter_hook().
+        # counter. When the test ends, addDetail() should be used to output the
+        # counter values. This happens in install_counter_hook().
         self._counters = {}
         if 'config_stats' in selftest_debug_flags:
             self._install_config_stats_hooks()
