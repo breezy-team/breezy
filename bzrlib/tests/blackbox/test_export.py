@@ -174,8 +174,8 @@ class TestExport(TestCaseWithTransport):
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
         tree = self.make_basic_tree()
         fname = 'test.%s' % (extension,)
-        mode = 'r|%s' % (tarfile_flags,)
         self.run_bzr('export -d tree %s' % (fname,))
+        mode = 'r|%s' % (tarfile_flags,)
         ball = tarfile.open(fname, mode=mode)
         self.assertTarANameAndContent(ball, root='test/')
         content = self.run_bzr('export -d tree --format=%s -' % (extension,))[0]
@@ -386,6 +386,16 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export --per-file-timestamps t branch')
         har_st = os.stat('t/har')
         self.assertEquals(315532800, har_st.st_mtime)
+
+    def test_dir_export_partial_tree_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree(['branch/subdir/', 'branch/subdir/foo.txt'])
+        tree.smart_add(['branch'])
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
+        self.run_bzr('export --per-file-timestamps tpart branch/subdir')
+        foo_st = os.stat('tpart/foo.txt')
+        self.assertEquals(315532800, foo_st.st_mtime)
 
     def test_export_directory(self):
         """Test --directory option"""

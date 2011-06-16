@@ -1002,6 +1002,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             raise AssertionError('_iter_for_revno returned too much history')
         return (True, partial_history[-1])
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -1833,9 +1834,11 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
         it is encountered, history extension will stop.
     """
     start_revision = partial_history_cache[-1]
-    iterator = repo.iter_reverse_revision_history(start_revision)
+    graph = repo.get_graph()
+    iterator = graph.iter_lefthand_ancestry(start_revision,
+        (_mod_revision.NULL_REVISION,))
     try:
-        #skip the last revision in the list
+        # skip the last revision in the list
         iterator.next()
         while True:
             if (stop_index is not None and

@@ -66,7 +66,7 @@ Checklist for reviewers
   blackbox (command-line level) and API-oriented tests?
 
 * If this change will be visible to end users or API users, is it
-  appropriately documented in NEWS and/or in whats-new ?
+  appropriately documented in release notes and/or in whats-new ?
 
 * Does it meet the `coding standards <code-style.html>`_?
 

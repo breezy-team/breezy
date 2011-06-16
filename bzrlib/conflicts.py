@@ -25,7 +25,6 @@ import errno
 
 from bzrlib import (
     cleanup,
-    commands,
     errors,
     osutils,
     rio,
@@ -35,6 +34,7 @@ from bzrlib import (
     )
 """)
 from bzrlib import (
+    commands,
     option,
     registry,
     )
@@ -583,7 +583,7 @@ class ContentsConflict(PathConflict):
         :param tt: The TreeTransform where the conflict is resolved.
         :param suffix_to_remove: Either 'THIS' or 'OTHER'
 
-        The resolution is symmetric, when taking THIS, OTHER is deleted and
+        The resolution is symmetric: when taking THIS, OTHER is deleted and
         item.THIS is renamed into item and vice-versa.
         """
         try:
@@ -596,12 +596,23 @@ class ContentsConflict(PathConflict):
             # never existed or was already deleted (including the case
             # where the user deleted it)
             pass
-        # Rename 'item.suffix_to_remove' (note that if
-        # 'item.suffix_to_remove' has been deleted, this is a no-op)
-        this_tid = tt.trans_id_file_id(self.file_id)
-        parent_tid = tt.get_tree_parent(this_tid)
-        tt.adjust_path(osutils.basename(self.path), parent_tid, this_tid)
-        tt.apply()
+        try:
+            this_path = tt._tree.id2path(self.file_id)
+        except errors.NoSuchId:
+            # The file is not present anymore. This may happen if the user
+            # deleted the file either manually or when resolving a conflict on
+            # the parent.  We may raise some exception to indicate that the
+            # conflict doesn't exist anymore and as such doesn't need to be
+            # resolved ? -- vila 20110615 
+            this_tid = None
+        else:
+            this_tid = tt.trans_id_tree_path(this_path)
+        if this_tid is not None:
+            # Rename 'item.suffix_to_remove' (note that if
+            # 'item.suffix_to_remove' has been deleted, this is a no-op)
+            parent_tid = tt.get_tree_parent(this_tid)
+            tt.adjust_path(osutils.basename(self.path), parent_tid, this_tid)
+            tt.apply()
 
     def action_take_this(self, tree):
         self._resolve_with_cleanups(tree, 'OTHER')

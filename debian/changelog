@@ -1,3 +1,10 @@
+bzr (2.4.0~beta4-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+   + Using "bzr blame" no longer requires user to set identity.  LP: #667408
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 17 Jun 2011 00:57:58 +0200
+
 bzr (2.4.0~beta3-2) unstable; urgency=low
 
   * Add 04_fix_undecodable_argv; cope with $HOME not existing on some
