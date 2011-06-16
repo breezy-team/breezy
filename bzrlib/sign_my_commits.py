@@ -138,9 +138,9 @@ class cmd_verify(Command):
             #all revisions by default including merges
             revisions = repo.get_ancestry(branch.last_revision())[1:]
         for rev_id in revisions:
-            verification_result, name = repo.verify_revision(rev_id,
+            verification_result, uid = repo.verify_revision(rev_id,
 gpg_strategy)
-            result.append([rev_id, verification_result, name])
+            result.append([rev_id, verification_result, uid])
             count[verification_result] += 1
 
         if count[gpg.SIGNATURE_VALID] > 0 and \
@@ -149,14 +149,13 @@ gpg_strategy)
            count[gpg.SIGNATURE_NOT_SIGNED] == 0:
                note("All commits signed with verifiable keys")
                if verbose:
-                   print str(result)
                    signers = {}
-                   for rev_id, validity, name in result:
+                   for rev_id, validity, uid in result:
                        revision = repo.get_revision(rev_id)
-                       signers.setdefault(name, 0)
-                       signers[name] += 1
-                   for name, number in signers.items():
-                       note("{0} signed {1} times".format(name, number))
+                       signers.setdefault(uid, 0)
+                       signers[uid] += 1
+                   for uid, number in signers.items():
+                       note("{0} signed {1} times".format(uid, number))
                return 0
         else:
             if verbose:

@@ -145,7 +145,7 @@ class GPGStrategy(object):
         
         :param content: the commit signature
         
-        :return: SIGNATURE_VALID or a failed SIGNATURE_ value
+        :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid
         """
         try:
             import gpgme
@@ -170,7 +170,8 @@ class GPGStrategy(object):
         if result[0].summary & gpgme.SIGSUM_VALID:
             key = context.get_key(fingerprint)
             name = key.uids[0].name
-            return SIGNATURE_VALID, name
+            email = key.uids[0].email
+            return SIGNATURE_VALID, name + " <" + email + ">"
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
