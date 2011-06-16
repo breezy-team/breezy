@@ -7,6 +7,9 @@
 
   * Fix two mistakes in 'bzr help git'. (Jelmer Vernooij, #791047)
 
+  * Now raises a proper exception when receiving an "Unknown repository"
+    error from GitHub. (Jelmer Vernooij, #798295)
+
 0.6.0	2011-04-12
 
  BUG FIXES

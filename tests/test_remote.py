@@ -16,10 +16,16 @@
 
 """Test the smart client."""
 
+from bzrlib.errors import (
+    BzrError,
+    NotBranchError,
+    )
+
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.git.remote import (
     split_git_url,
+    parse_git_error,
     )
 
 class SplitUrlTests(TestCase):
@@ -47,3 +53,14 @@ class SplitUrlTests(TestCase):
     def test_homedir(self):
         self.assertEquals(("foo", None, None, "~bar"),
             split_git_url("git://foo/~bar"))
+
+
+class ParseGitErrorTests(TestCase):
+
+    def test_unknown(self):
+        e = parse_git_error("url", "foo")
+        self.assertIsInstance(e, BzrError)
+
+    def test_notbrancherror(self):
+        e = parse_git_error("url", "\n Could not find Repository foo/bar")
+        self.assertIsInstance(e, NotBranchError)

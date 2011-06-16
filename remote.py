@@ -102,6 +102,19 @@ def split_git_url(url):
     return (host, port, username, path)
 
 
+def parse_git_error(url, message):
+    """Parse a remote git server error and return a bzr exception.
+
+    :param url: URL of the remote repository
+    :param message: Message sent by the remote git server
+    """
+    message = str(message).strip()
+    if message.startswith("Could not find Repository "):
+        return NotBranchError(url, message)
+    # Don't know, just return it to the user as-is
+    return BzrError(message)
+
+
 class GitSmartTransport(Transport):
 
     def __init__(self, url, _client=None):
@@ -134,7 +147,7 @@ class GitSmartTransport(Transport):
             return client.fetch_pack(self._get_path(), determine_wants,
                 graph_walker, pack_data, progress)
         except GitProtocolError, e:
-            raise BzrError(str(e).strip())
+            raise parse_git_error(self.external_url(), e)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
         client = self._get_client(thin_packs=False)
@@ -142,7 +155,7 @@ class GitSmartTransport(Transport):
             return client.send_pack(self._get_path(), get_changed_refs,
                 generate_pack_contents)
         except GitProtocolError, e:
-            raise BzrError(str(e).strip())
+            raise parse_git_error(self.external_url(), e)
 
     def get(self, path):
         raise NoSuchFile(path)
