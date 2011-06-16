@@ -127,6 +127,10 @@ API Changes
 * Remove `file_status` function.
   (Martin Pool)
 
+* ``Repository.iter_reverse_revision_history`` is now deprecated.
+  Use ``Graph.iter_lefthand_ancestry`` instead.
+  (Jelmer Vernooij, #739481)
+
 Internals
 *********
 
