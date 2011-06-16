@@ -139,8 +139,7 @@ class cmd_verify(Command):
             #all revisions by default including merges
             revisions = repo.get_ancestry(branch.last_revision())[1:]
         for rev_id in revisions:
-            verification_result, uid = repo.verify_revision(rev_id,
-gpg_strategy)
+            verification_result, uid =repo.verify_revision(rev_id,gpg_strategy)
             result.append([rev_id, verification_result, uid])
             count[verification_result] += 1
 
@@ -152,17 +151,27 @@ gpg_strategy)
                if verbose:
                    signers = {}
                    for rev_id, validity, uid in result:
-                       revision = repo.get_revision(rev_id)
-                       signers.setdefault(uid, 0)
-                       signers[uid] += 1
+                       if validity == gpg.SIGNATURE_VALID:
+                           signers.setdefault(uid, 0)
+                           signers[uid] += 1
                    for uid, number in signers.items():
-                       note(gettext("{0} signed {1} times".format(uid, number)))
+                       note(gettext("  {0} signed {1} commits".format(uid,
+number))) #FIXME plural properly
                return 0
         else:
             if verbose:
                 print "verbose"
             note(gettext("{0} commits with valid signatures").format(
                                         count[gpg.SIGNATURE_VALID]))
+            if verbose:
+               signers = {}
+               for rev_id, validity, uid in result:
+                   if validity == gpg.SIGNATURE_VALID:
+                       signers.setdefault(uid, 0)
+                       signers[uid] += 1
+               for uid, number in signers.items():
+                   note(gettext("  {0} signed {1} commits".format(uid, number)))
+            #TODO verbose for the other types too
             note(gettext("{0} commits with unknown keys").format(
                                         count[gpg.SIGNATURE_KEY_MISSING]))
             note(gettext("{0} commits not valid").format(

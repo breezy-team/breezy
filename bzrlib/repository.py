@@ -1210,7 +1210,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
         if not self.has_signature_for_revision_id(revision_id):
-            return gpg.SIGNATURE_NOT_SIGNED
+            return gpg.SIGNATURE_NOT_SIGNED, None
         signature = self.get_signature_text(revision_id)
         return gpg_strategy.verify(signature)
 
