@@ -134,10 +134,9 @@ class cmd_verify(Command):
                 for revno in range(from_revno, to_revno + 1):
                     revisions.append(branch.get_rev_id(revno))
         else:
-            #all revisions by default
+            #all revisions by default including merges
             revisions = repo.get_ancestry(branch.last_revision())[1:]
         for rev_id in revisions:
-            rev = repo.get_revision(rev_id)
             verification_result = repo.verify_revision(rev_id, gpg_strategy)
             result.append([rev_id, verification_result])
             count[verification_result] += 1
