@@ -990,7 +990,7 @@ class TestCase(testtools.TestCase):
         self.overrideAttr(config, '_expand_default_value', None)
         self._log_files = set()
         # Each key in the ``_counters`` dict holds a value for a different
-        # counter. When the test ends, subunit addDetail() should be used to
+        # counter. When the test ends, testools addDetail() should be used to
         # output the counter values. This happens in install_counter_hook().
         self._counters = {}
         if 'config_stats' in selftest_debug_flags:
@@ -3560,8 +3560,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
-#   -Econfig_stats          Will collect statistics using the subunit addDetail
-#                           API
+
+#   -Econfig_stats          Will collect statistics using addDetail
 selftest_debug_flags = set()
 
 

@@ -49,6 +49,7 @@ pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
 sphinx = tests.ModuleAvailableFeature('sphinx')
 subunit = tests.ModuleAvailableFeature('subunit')
+testtools = tests.ModuleAvailableFeature('testtools')
 
 
 class _BackslashDirSeparatorFeature(tests.Feature):
