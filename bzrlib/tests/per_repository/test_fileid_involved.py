@@ -214,16 +214,15 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         if len(history) < 2: return
 
+        graph = self.branch.repository.get_graph()
         for start in range(0,len(history)-1):
             start_id = history[start]
             for end in range(start+1,len(history)):
                 end_id = history[end]
-                old_revs = set(self.branch.repository.get_ancestry(start_id))
-                new_revs = set(self.branch.repository.get_ancestry(end_id))
+                unique_revs = graph.find_unique_ancestors(end_id, [start_id])
                 l1 = self.branch.repository.fileids_altered_by_revision_ids(
-                    new_revs.difference(old_revs))
+                    unique_revs)
                 l1 = set(l1.keys())
-
                 l2 = self.compare_tree_fileids(self.branch, start_id, end_id)
                 self.assertEquals(l1, l2)
 
