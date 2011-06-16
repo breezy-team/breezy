@@ -1742,7 +1742,9 @@ class cmd_ancestry(Command):
 
         self.add_cleanup(b.repository.lock_read().unlock)
         graph = b.repository.get_graph()
-        for revision_id, parents in graph.iter_ancestry([last_revision]):
+        revisions = [revid for revid, parents in
+            graph.iter_ancestry([last_revision])]
+        for revision_id in graph.iter_topo_order(revisions):
             if _mod_revision.is_null(revision_id):
                 continue
             self.outf.write(revision_id + '\n')
