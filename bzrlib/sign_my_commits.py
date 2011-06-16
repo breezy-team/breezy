@@ -22,6 +22,7 @@ lazy_import(globals(), """
 from bzrlib import (
     bzrdir as _mod_bzrdir,
     gpg,
+    revision as _mod_revision,
     )
 """)
 from bzrlib.commands import Command
@@ -64,9 +65,13 @@ class cmd_sign_my_commits(Command):
         count = 0
         repo.lock_write()
         try:
+            graph = repo.get_graph()
             repo.start_write_group()
             try:
-                for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
+                for rev_id, parents in graph.iter_ancestry(
+                        [branch.last_revision()]):
+                    if _mod_revision.is_null(rev_id):
+                        continue
                     if repo.has_signature_for_revision_id(rev_id):
                         continue
                     rev = repo.get_revision(rev_id)
