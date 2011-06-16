@@ -304,11 +304,11 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         history = self.branch.revision_history()
         old_rev = history[0]
         new_rev = history[1]
-        old_revs = set(self.branch.repository.get_ancestry(old_rev))
-        new_revs = set(self.branch.repository.get_ancestry(new_rev))
+        graph = self.branch.repository.get_graph()
+        unique_revs = graph.find_unique_ancestors(new_rev, [old_rev])
 
         l1 = self.branch.repository.fileids_altered_by_revision_ids(
-            new_revs.difference(old_revs))
+            unique_revs)
         l1 = set(l1.keys())
 
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
