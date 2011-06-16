@@ -139,7 +139,7 @@ class cmd_verify(Command):
             #all revisions by default including merges
             revisions = repo.get_ancestry(branch.last_revision())[1:]
         for rev_id in revisions:
-            verification_result, uid =repo.verify_revision(rev_id,gpg_strategy)
+            verification_result, uid = repo.verify_revision(rev_id,gpg_strategy)
             result.append([rev_id, verification_result, uid])
             count[verification_result] += 1
 
@@ -159,8 +159,6 @@ class cmd_verify(Command):
 number))) #FIXME plural properly
                return 0
         else:
-            if verbose:
-                print "verbose"
             note(gettext("{0} commits with valid signatures").format(
                                         count[gpg.SIGNATURE_VALID]))
             if verbose:

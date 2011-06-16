@@ -209,7 +209,7 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual(gpg.SIGNATURE_VALID, my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content))
 
     def test_verify_invalid(self):
         content = """-----BEGIN PGP SIGNED MESSAGE-----
@@ -227,7 +227,8 @@ nswAoNGXAVuR9ONasAKIGBNUE0b+lols
 -----END PGP SIGNATURE-----
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual(gpg.SIGNATURE_NOT_VALID, my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None),
+                            my_gpg.verify(content))
 
     def test_set_acceptable_keys(self):
         try:

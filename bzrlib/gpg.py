@@ -68,7 +68,7 @@ class LoopbackGPGStrategy(object):
                 "-----END PSEUDO-SIGNED CONTENT-----\n")
 
     def verify(self, content):
-        return SIGNATURE_VALID
+        return SIGNATURE_VALID, None
 
     def set_acceptable_keys(self, key_patterns):
         patterns = key_patterns.split(",")
