@@ -109,7 +109,9 @@ class SignMyCommits(tests.TestCaseWithTransport):
 
         out = self.run_bzr('sign-my-commits --dry-run')[0]
 
-        self.assertEquals('A\nB\nC\nSigned 3 revisions\n', out)
+        outlines = out.splitlines()
+        self.assertEquals(4, len(outlines))
+        self.assertEquals('Signed 3 revisions', outlines[-1])
         self.assertUnsigned(repo, 'A')
         self.assertUnsigned(repo, 'B')
         self.assertUnsigned(repo, 'C')
