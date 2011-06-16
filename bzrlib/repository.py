@@ -522,21 +522,21 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         if revid and committers:
             result['committers'] = 0
         if revid and revid != _mod_revision.NULL_REVISION:
+            graph = self.get_graph()
             if committers:
                 all_committers = set()
-            revisions = self.get_ancestry(revid)
-            # pop the leading None
-            revisions.pop(0)
-            first_revision = None
+            revisions = [r for (r, p) in graph.iter_ancestry([revid])
+                        if r != _mod_revision.NULL_REVISION]
+            last_revision = None
             if not committers:
                 # ignore the revisions in the middle - just grab first and last
                 revisions = revisions[0], revisions[-1]
             for revision in self.get_revisions(revisions):
-                if not first_revision:
-                    first_revision = revision
+                if not last_revision:
+                    last_revision = revision
                 if committers:
                     all_committers.add(revision.committer)
-            last_revision = revision
+            first_revision = revision
             if committers:
                 result['committers'] = len(all_committers)
             result['firstrev'] = (first_revision.timestamp,
