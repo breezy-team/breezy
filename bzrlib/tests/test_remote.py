@@ -32,7 +32,7 @@ from bzrlib import (
     config,
     controldir,
     errors,
-    graph,
+    graph as _mod_graph,
     inventory,
     inventory_delta,
     remote,
@@ -3245,7 +3245,7 @@ class TestStacking(tests.TestCaseWithTransport):
         source = stacked.repository._get_source(target_repository_format)
         tip = stacked.last_revision()
         revs = stacked.repository.get_ancestry(tip)
-        search = graph.PendingAncestryResult([tip], stacked.repository)
+        search = _mod_graph.PendingAncestryResult([tip], stacked.repository)
         self.reset_smart_call_log()
         stream = source.get_stream(search)
         if None in revs:
@@ -3358,7 +3358,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
         local.repository.fetch(remote_branch.repository,
-                fetch_spec=graph.EverythingResult(remote_branch.repository))
+                fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
 
     def override_verb(self, verb_name, verb):
@@ -3394,7 +3394,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
         local.repository.fetch(remote_branch.repository,
-                fetch_spec=graph.EverythingResult(remote_branch.repository))
+                fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         # make sure the overridden verb was used
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback
