@@ -295,6 +295,9 @@ Bug Fixes
   not load the whole inventory, which can take 10+s with large trees.
   (Jonathan Riddell, John Arbash Meinel, #781168)
 
+* ``bzr mv --after old_name new_name`` now works if "new_name" is newly
+  added. (Benoît Pierre)
+
 
 Documentation
 *************
