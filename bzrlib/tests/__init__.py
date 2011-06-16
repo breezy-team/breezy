@@ -3310,12 +3310,15 @@ def fork_for_tests(suite):
                 # read from stdin (otherwise its a roulette to see what
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
-                sys.stdin = None
+                # GZ 2011-06-16: Why set stdin to None? Breaks multi fork.
+                #sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = AutoTimingTestResultDecorator(
                     TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
+                # GZ 2011-06-16: Is always exiting with silent success
+                #                really the right thing? Hurts debugging.
                 os._exit(0)
         else:
             os.close(c2pwrite)
