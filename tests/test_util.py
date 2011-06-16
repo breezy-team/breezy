@@ -50,6 +50,7 @@ from bzrlib.plugins.builddeb.tests import (
     TestCaseWithTransport,
     )
 from bzrlib.plugins.builddeb.util import (
+    component_from_orig_tarball,
     dget,
     dget_changes,
     extract_orig_tarballs,
@@ -888,3 +889,26 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
             strip_components=1)
         self.assertEquals(sorted(os.listdir("target")),
             sorted(["README", "extra"]))
+
+
+class ComponentFromOrigTarballTests(TestCase):
+
+    def test_base_tarball(self):
+        self.assertIs(None,
+            component_from_orig_tarball("foo_0.1.orig.tar.gz", "foo", "0.1"))
+        self.assertRaises(ValueError,
+            component_from_orig_tarball, "foo_0.1.orig.tar.gz", "bar", "0.1")
+
+    def test_invalid_extension(self):
+        self.assertRaises(ValueError,
+            component_from_orig_tarball, "foo_0.1.orig.unknown", "foo", "0.1")
+
+    def test_component(self):
+        self.assertEquals("comp",
+            component_from_orig_tarball("foo_0.1.orig-comp.tar.gz", "foo", "0.1"))
+        self.assertEquals("comp-dash",
+            component_from_orig_tarball("foo_0.1.orig-comp-dash.tar.gz", "foo", "0.1"))
+
+    def test_invalid_character(self):
+        self.assertRaises(ValueError,
+            component_from_orig_tarball, "foo_0.1.orig;.tar.gz", "foo", "0.1")
