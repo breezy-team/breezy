@@ -3582,6 +3582,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
             def run_hook_once(self):
                 for hook in self.hooks['myhook']:
                     hook(self)
+
         self.test_class = Test
 
     def assertHookCalls(self, expected_calls, test_name):
