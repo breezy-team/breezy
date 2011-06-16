@@ -30,6 +30,7 @@ from bzrlib.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
     )
+from bzrlib.tests.matchers import MatchesAncestry
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 from bzrlib.uncommit import uncommit
 
@@ -194,8 +195,8 @@ class TestsNeedingReweave(TestReconcile):
             **kwargs):
         # actual low level test.
         repo = aBzrDir.open_repository()
-        if ([None, 'missing', 'references_missing']
-            != repo.get_ancestry('references_missing')):
+        m = MatchesAncestry(repo,'references_missing')
+        if m.matches(['missing', 'references_missing']) is not None:
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do here. Specifically, this test has the inventory
             # 'missing' present and the revision 'missing' missing, so clearly
@@ -215,8 +216,8 @@ class TestsNeedingReweave(TestReconcile):
         self.check_missing_was_removed(repo)
         # and the parent list for 'references_missing' should have that
         # revision a ghost now.
-        self.assertEqual([None, 'references_missing'],
-                         repo.get_ancestry('references_missing'))
+        self.assertThat(['references_missing'],
+            MatchesAncestry(repo, 'references_missing'))
 
     def check_missing_was_removed(self, repo):
         if repo._reconcile_backsup_inventory:
@@ -265,17 +266,17 @@ class TestsNeedingReweave(TestReconcile):
         # now the current inventory should still have 'ghost'
         repo = d.open_repository()
         repo.get_inventory('ghost')
-        self.assertEqual([None, 'ghost'], repo.get_ancestry('ghost'))
+        self.assertThat(['ghost'], MatchesAncestry(repo, 'ghost'))
 
     def test_reweave_inventory_fixes_ancestryfor_a_present_ghost(self):
         d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_ghost_present'))
         repo = d.open_repository()
-        ghost_ancestry = repo.get_ancestry('ghost')
-        if ghost_ancestry == [None, 'the_ghost', 'ghost']:
+        m = MatchesAncestry(repo, 'ghost')
+        if m.matches(['the_ghost', 'ghost']) is None:
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do
             return
-        self.assertEqual([None, 'ghost'], ghost_ancestry)
+        self.assertThat(['ghost'], m)
         reconciler = repo.reconcile()
         # this is a data corrupting error, so a normal reconcile should fix it.
         # one inconsistent parents should have been found : the
@@ -287,8 +288,10 @@ class TestsNeedingReweave(TestReconcile):
         repo = d.open_repository()
         repo.get_inventory('ghost')
         repo.get_inventory('the_ghost')
-        self.assertEqual([None, 'the_ghost', 'ghost'], repo.get_ancestry('ghost'))
-        self.assertEqual([None, 'the_ghost'], repo.get_ancestry('the_ghost'))
+        self.assertThat(['the_ghost', 'ghost'],
+            MatchesAncestry(repo, 'ghost'))
+        self.assertThat(['the_ghost'],
+            MatchesAncestry(repo, 'the_ghost'))
 
     def test_text_from_ghost_revision(self):
         repo = self.make_repository('text-from-ghost')

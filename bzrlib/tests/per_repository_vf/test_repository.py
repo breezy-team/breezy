@@ -28,6 +28,7 @@ from bzrlib import (
     )
 
 from bzrlib.symbol_versioning import deprecated_in
+from bzrlib.tests.matchers import MatchesAncestry
 from bzrlib.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
@@ -387,13 +388,16 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # -> NoSuchRevision
         repo = self.bzrdir.open_repository()
         self.assertRaises(errors.NoSuchRevision,
-            self.applyDeprecated, deprecated_in((2, 4, 0)), repo.get_ancestry, 'orphan')
+            self.applyDeprecated, deprecated_in((2, 4, 0)),
+            repo.get_ancestry, 'orphan')
 
     def test_get_unordered_ancestry(self):
         repo = self.bzrdir.open_repository()
         self.assertEqual(
-            set(self.applyDeprecated(deprecated_in((2, 4, 0)), repo.get_ancestry, 'rev3')),
-            set(self.applyDeprecated(deprecated_in((2, 4, 0)), repo.get_ancestry, 'rev3', topo_sorted=False)))
+            set(self.applyDeprecated(deprecated_in((2, 4, 0)),
+                repo.get_ancestry, 'rev3')),
+            set(self.applyDeprecated(deprecated_in((2, 4, 0)),
+                repo.get_ancestry, 'rev3', topo_sorted=False)))
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')
@@ -460,9 +464,10 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
     def test_corrupt_revision_access_asserts_if_reported_wrong(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')
         repo = _mod_repository.Repository.open(repo_url)
+        m = MatchesAncestry(repo, 'ghost')
         reported_wrong = False
         try:
-            if repo.get_ancestry('ghost') != [None, 'the_ghost', 'ghost']:
+            if m.matches(['the_ghost', 'ghost']) is not None:
                 reported_wrong = True
         except errors.CorruptRepository:
             # caught the bad data:
