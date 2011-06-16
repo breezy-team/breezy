@@ -27,6 +27,7 @@ from bzrlib import (
 from bzrlib.commands import Command
 from bzrlib.option import Option
 from bzrlib.trace import note
+from bzrlib.i18n import gettext
 
 class cmd_sign_my_commits(Command):
     __doc__ = """Sign all commits by a given committer.
@@ -147,7 +148,7 @@ gpg_strategy)
            count[gpg.SIGNATURE_KEY_MISSING] == 0 and \
            count[gpg.SIGNATURE_NOT_VALID] == 0 and \
            count[gpg.SIGNATURE_NOT_SIGNED] == 0:
-               note("All commits signed with verifiable keys")
+               note(gettext("All commits signed with verifiable keys"))
                if verbose:
                    signers = {}
                    for rev_id, validity, uid in result:
@@ -155,17 +156,17 @@ gpg_strategy)
                        signers.setdefault(uid, 0)
                        signers[uid] += 1
                    for uid, number in signers.items():
-                       note("{0} signed {1} times".format(uid, number))
+                       note(gettext("{0} signed {1} times".format(uid, number)))
                return 0
         else:
             if verbose:
                 print "verbose"
-            note("{0} commits with valid signatures".format(
+            note(gettext("{0} commits with valid signatures").format(
                                         count[gpg.SIGNATURE_VALID]))
-            note("{0} commits with unknown keys".format(
+            note(gettext("{0} commits with unknown keys").format(
                                         count[gpg.SIGNATURE_KEY_MISSING]))
-            note("{0} commits not valid".format(
+            note(gettext("{0} commits not valid").format(
                                         count[gpg.SIGNATURE_NOT_VALID]))
-            note("{0} commits not signed".format(
+            note(gettext("{0} commits not signed").format(
                                         count[gpg.SIGNATURE_NOT_SIGNED]))
             return 1
