@@ -3600,5 +3600,4 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
         tt = features.testtools
         if tt.module.__version__ < (0, 9, 8):
             raise tests.TestSkipped('testtools-0.9.8 required for addDetail')
-        self.debug()
         self.assertHookCalls(1, 'run_hook_once')
