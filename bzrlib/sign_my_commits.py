@@ -100,10 +100,11 @@ class cmd_verify(Command):
                         ' acceptable for verification.',
                    short_name='k',
                    type=str,),
-            'revision',
+            'revision', 
+            'verbose',
           ]
 
-    def run(self, acceptable_keys=None, revision=None):
+    def run(self, acceptable_keys=None, revision=None, verbose=None):
         bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
@@ -137,8 +138,9 @@ class cmd_verify(Command):
             #all revisions by default including merges
             revisions = repo.get_ancestry(branch.last_revision())[1:]
         for rev_id in revisions:
-            verification_result = repo.verify_revision(rev_id, gpg_strategy)
-            result.append([rev_id, verification_result])
+            verification_result, name = repo.verify_revision(rev_id,
+gpg_strategy)
+            result.append([rev_id, verification_result, name])
             count[verification_result] += 1
 
         if count[gpg.SIGNATURE_VALID] > 0 and \
@@ -146,8 +148,19 @@ class cmd_verify(Command):
            count[gpg.SIGNATURE_NOT_VALID] == 0 and \
            count[gpg.SIGNATURE_NOT_SIGNED] == 0:
                note("All commits signed with verifiable keys")
+               if verbose:
+                   print str(result)
+                   signers = {}
+                   for rev_id, validity, name in result:
+                       revision = repo.get_revision(rev_id)
+                       signers.setdefault(name, 0)
+                       signers[name] += 1
+                   for name, number in signers.items():
+                       note("{0} signed {1} times".format(name, number))
                return 0
         else:
+            if verbose:
+                print "verbose"
             note("{0} commits with valid signatures".format(
                                         count[gpg.SIGNATURE_VALID]))
             note("{0} commits with unknown keys".format(

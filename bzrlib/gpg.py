@@ -162,23 +162,25 @@ class GPGStrategy(object):
             raise errors.VerifyFailed(error[2])
 
         if len(result) == 0:
-            return SIGNATURE_NOT_VALID
+            return SIGNATURE_NOT_VALID, None
         fingerprint = result[0].fpr
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:
-                return SIGNATURE_KEY_MISSING
+                return SIGNATURE_KEY_MISSING, None
         if result[0].summary & gpgme.SIGSUM_VALID:
-            return SIGNATURE_VALID
+            key = context.get_key(fingerprint)
+            name = key.uids[0].name
+            return SIGNATURE_VALID, name
         if result[0].summary & gpgme.SIGSUM_RED:
-            return SIGNATURE_NOT_VALID
+            return SIGNATURE_NOT_VALID, None
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
-            return SIGNATURE_KEY_MISSING
+            return SIGNATURE_KEY_MISSING, None
         #summary isn't set if sig is valid but key is untrusted
         if result[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
-                return SIGNATURE_VALID
+                return SIGNATURE_VALID, None
         else:
-            return SIGNATURE_KEY_MISSING
+            return SIGNATURE_KEY_MISSING, None
         raise errors.VerifyFailed("Unknown GnuPG key verification result")
 
     def set_acceptable_keys(self, key_patterns):
