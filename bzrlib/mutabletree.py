@@ -554,7 +554,7 @@ class _SmartAddHelper(object):
         entry = self._invdelta.get(inv_path)
         if entry is not None:
             return entry[3]
-        file_id = self.tree.path2id(inv_path)
+        file_id = self.tree.path2id(self.tree._fix_case_of_inventory_path(inv_path))
         if file_id is not None:
             return self.tree.iter_entries_by_dir([file_id]).next()[1]
         return None
