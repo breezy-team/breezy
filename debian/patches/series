@@ -1,4 +1,3 @@
 01_selftest_package
 02_external_configobj
 03_external_elementtree
-04_fix_undecodable_argv

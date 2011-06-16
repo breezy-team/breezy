@@ -3,21 +3,21 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Bug-Debian: http://bugs.debian.org/555336
 
 === modified file 'bzrlib/config.py'
---- old/bzrlib/config.py	2011-04-28 16:54:40 +0000
-+++ new/bzrlib/config.py	2011-04-28 17:03:02 +0000
-@@ -92,7 +92,7 @@
+--- old/bzrlib/config.py	2011-06-16 23:05:13 +0000
++++ new/bzrlib/config.py	2011-06-16 23:18:17 +0000
+@@ -90,7 +90,7 @@
      urlutils,
      win32utils,
      )
 -from bzrlib.util.configobj import configobj
 +import configobj
  """)
- 
- 
+ from bzrlib import (
+     commands,
 
 === modified file 'bzrlib/rules.py'
---- old/bzrlib/rules.py	2011-02-03 18:37:04 +0000
-+++ new/bzrlib/rules.py	2011-04-28 17:03:02 +0000
+--- old/bzrlib/rules.py	2011-05-21 17:34:06 +0000
++++ new/bzrlib/rules.py	2011-06-16 23:18:17 +0000
 @@ -26,7 +26,7 @@
      globbing,
      osutils,
@@ -29,11 +29,11 @@ Bug-Debian: http://bugs.debian.org/555336
  # Name of the file holding rules in a tree
 
 === modified file 'bzrlib/tests/test_config.py'
---- old/bzrlib/tests/test_config.py	2011-04-28 16:54:40 +0000
-+++ new/bzrlib/tests/test_config.py	2011-04-28 17:03:02 +0000
-@@ -45,7 +45,7 @@
-     TestSkipped,
+--- old/bzrlib/tests/test_config.py	2011-06-16 23:05:13 +0000
++++ new/bzrlib/tests/test_config.py	2011-06-16 23:18:17 +0000
+@@ -52,7 +52,7 @@
      scenarios,
+     test_server,
      )
 -from bzrlib.util.configobj import configobj
 +import configobj
