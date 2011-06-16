@@ -1064,6 +1064,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
         This is topologically sorted.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "get_ancestry is linear with history.")
         if _mod_revision.is_null(revision_id):
             return [None]
         if not self.has_revision(revision_id):
