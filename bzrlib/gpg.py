@@ -53,6 +53,9 @@ class DisabledGPGStrategy(object):
     def verify(self, content):
         raise errors.VerifyFailed('Signature verification is disabled.')
 
+    def set_acceptable_keys(self, key_patterns):
+        pass
+
 
 class LoopbackGPGStrategy(object):
     """A GPG Strategy that acts like 'cat' - data is just passed through."""
@@ -66,6 +69,15 @@ class LoopbackGPGStrategy(object):
 
     def verify(self, content):
         return SIGNATURE_VALID
+
+    def set_acceptable_keys(self, key_patterns):
+        patterns = key_patterns.split(",")
+        self.acceptable_keys = []
+        for pattern in patterns:
+            if pattern == "unknown":
+                pass
+            else:
+                self.acceptable_keys.append(pattern)
 
 
 def _set_gpg_tty():
@@ -161,6 +173,13 @@ class GPGStrategy(object):
             return SIGNATURE_NOT_VALID
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING
+        #summary isn't set if sig is valid but key is untrusted
+        if result[0].summary == 0 and self.acceptable_keys is not None:
+            if fingerprint in self.acceptable_keys:
+                return SIGNATURE_VALID
+        else:
+            return SIGNATURE_KEY_MISSING
+        raise errors.VerifyFailed("Unknown GnuPG key verification result")
 
     def set_acceptable_keys(self, key_patterns):
         try:
