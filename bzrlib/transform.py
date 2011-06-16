@@ -137,6 +137,14 @@ class TreeTransformBase(object):
         # A counter of how many files have been renamed
         self.rename_count = 0
 
+    def __enter__(self):
+        """Support Context Manager API."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Support Context Manager API."""
+        self.finalize()
+
     def finalize(self):
         """Release the working tree lock, if held.
 
@@ -244,7 +252,8 @@ class TreeTransformBase(object):
         if (self.tree_file_id(self._new_root) is not None and
             self._new_root not in self._removed_id):
             self.unversion_file(self._new_root)
-        self.version_file(file_id, self._new_root)
+        if file_id is not None:
+            self.version_file(file_id, self._new_root)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't
@@ -384,18 +393,44 @@ class TreeTransformBase(object):
         return sorted(FinalPaths(self).get_paths(new_ids))
 
     def _inventory_altered(self):
-        """Get the trans_ids and paths of files needing new inv entries."""
-        new_ids = set()
-        for id_set in [self._new_name, self._new_parent, self._new_id,
+        """Determine which trans_ids need new Inventory entries.
+
+        An new entry is needed when anything that would be reflected by an
+        inventory entry changes, including file name, file_id, parent file_id,
+        file kind, and the execute bit.
+
+        Some care is taken to return entries with real changes, not cases
+        where the value is deleted and then restored to its original value,
+        but some actually unchanged values may be returned.
+
+        :returns: A list of (path, trans_id) for all items requiring an
+            inventory change. Ordered by path.
+        """
+        changed_ids = set()
+        # Find entries whose file_ids are new (or changed).
+        new_file_id = set(t for t in self._new_id
+                          if self._new_id[t] != self.tree_file_id(t))
+        for id_set in [self._new_name, self._new_parent, new_file_id,
                        self._new_executability]:
-            new_ids.update(id_set)
+            changed_ids.update(id_set)
+        # removing implies a kind change
         changed_kind = set(self._removed_contents)
+        # so does adding
         changed_kind.intersection_update(self._new_contents)
-        changed_kind.difference_update(new_ids)
+        # Ignore entries that are already known to have changed.
+        changed_kind.difference_update(changed_ids)
+        #  to keep only the truly changed ones
         changed_kind = (t for t in changed_kind
                         if self.tree_kind(t) != self.final_kind(t))
-        new_ids.update(changed_kind)
-        return sorted(FinalPaths(self).get_paths(new_ids))
+        # all kind changes will alter the inventory
+        changed_ids.update(changed_kind)
+        # To find entries with changed parent_ids, find parents which existed,
+        # but changed file_id.
+        changed_file_id = set(t for t in new_file_id if t in self._removed_id)
+        # Now add all their children to the set.
+        for parent_trans_id in new_file_id:
+            changed_ids.update(self.iter_tree_children(parent_trans_id))
+        return sorted(FinalPaths(self).get_paths(changed_ids))
 
     def final_kind(self, trans_id):
         """Determine the final file kind, after any changes applied.
@@ -1154,6 +1189,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._deletiondir = None
         # A mapping of transform ids to their limbo filename
         self._limbo_files = {}
+        self._possibly_stale_limbo_files = set()
         # A mapping of transform ids to a set of the transform ids of children
         # that their limbo directory has
         self._limbo_children = {}
@@ -1172,11 +1208,18 @@ class DiskTreeTransform(TreeTransformBase):
         if self._tree is None:
             return
         try:
-            entries = [(self._limbo_name(t), t, k) for t, k in
-                       self._new_contents.iteritems()]
-            entries.sort(reverse=True)
-            for path, trans_id, kind in entries:
-                delete_any(path)
+            limbo_paths = self._limbo_files.values() + list(
+                self._possibly_stale_limbo_files)
+            limbo_paths = sorted(limbo_paths, reverse=True)
+            for path in limbo_paths:
+                try:
+                    delete_any(path)
+                except OSError, e:
+                    if e.errno != errno.ENOENT:
+                        raise
+                    # XXX: warn? perhaps we just got interrupted at an
+                    # inconvenient moment, but perhaps files are disappearing
+                    # from under us?
             try:
                 delete_any(self._limbodir)
             except OSError:
@@ -1231,11 +1274,14 @@ class DiskTreeTransform(TreeTransformBase):
         entries from _limbo_files, because they are now stale.
         """
         for trans_id in trans_ids:
-            old_path = self._limbo_files.pop(trans_id)
+            old_path = self._limbo_files[trans_id]
+            self._possibly_stale_limbo_files.add(old_path)
+            del self._limbo_files[trans_id]
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
             os.rename(old_path, new_path)
+            self._possibly_stale_limbo_files.remove(old_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
@@ -1265,14 +1311,7 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         f = open(name, 'wb')
         try:
-            try:
-                unique_add(self._new_contents, trans_id, 'file')
-            except:
-                # Clean up the file, it never got registered so
-                # TreeTransform.finalize() won't clean it up.
-                f.close()
-                os.unlink(name)
-                raise
+            unique_add(self._new_contents, trans_id, 'file')
             f.writelines(contents)
         finally:
             f.close()
@@ -1788,8 +1827,10 @@ class TreeTransform(DiskTreeTransform):
         tree_paths.sort(reverse=True)
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            for num, data in enumerate(tree_paths):
-                path, trans_id = data
+            for num, (path, trans_id) in enumerate(tree_paths):
+                # do not attempt to move root into a subdirectory of itself.
+                if path == '':
+                    continue
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
@@ -1851,6 +1892,11 @@ class TreeTransform(DiskTreeTransform):
                     self._observed_sha1s[trans_id] = (o_sha1, st)
         finally:
             child_pb.finished()
+        for path, trans_id in new_paths:
+            # new_paths includes stuff like workingtree conflicts. Only the
+            # stuff in new_contents actually comes from limbo.
+            if trans_id in self._limbo_files:
+                del self._limbo_files[trans_id]
         self._new_contents.clear()
         return modified_paths
 

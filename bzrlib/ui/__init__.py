@@ -154,6 +154,8 @@ class UIFactory(object):
             "It is recommended that you upgrade by "
             "running the command\n"
             "  bzr upgrade %(basedir)s"),
+        locks_steal_dead=(
+            u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
         )
 
     def __init__(self):
@@ -204,10 +206,10 @@ class UIFactory(object):
         """
         return self.get_boolean(prompt % prompt_kwargs)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         """Prompt the user for a password.
 
-        :param prompt: The prompt to present the user
+        :param prompt: The prompt to present the user (must be unicode)
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
@@ -304,13 +306,13 @@ class UIFactory(object):
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
-            fail = "failed to format warning %r, %r" % (warning_id, message_args)
-            warnings.warn(fail)   # so tests will fail etc
+            fail = "bzr warning: %r, %r" % (warning_id, message_args)
+            warnings.warn("no template for warning: " + fail)   # so tests will fail etc
             return fail
         try:
             return template % message_args
         except ValueError, e:
-            fail = "failed to format warning %r, %r: %s" % (
+            fail = "bzr unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
             return fail
@@ -483,7 +485,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_integer(self, prompt):
         return self.responses.pop(0)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):

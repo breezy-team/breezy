@@ -22,18 +22,20 @@ See MutableTree for more details.
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import operator
 import os
 import re
 
 from bzrlib import (
     add,
-    bzrdir,
+    controldir,
     errors,
     hooks,
     inventory as _mod_inventory,
     osutils,
     revisiontree,
     trace,
+    transport as _mod_transport,
     tree,
     )
 """)
@@ -392,32 +394,8 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.smart_add)
 
-    def update_basis_by_delta(self, new_revid, delta):
-        """Update the parents of this tree after a commit.
 
-        This gives the tree one parent, with revision id new_revid. The
-        inventory delta is applied to the current basis tree to generate the
-        inventory for the parent new_revid, and all other parent trees are
-        discarded.
-
-        All the changes in the delta should be changes synchronising the basis
-        tree with some or all of the working tree, with a change to a directory
-        requiring that its contents have been recursively included. That is,
-        this is not a general purpose tree modification routine, but a helper
-        for commit which is not required to handle situations that do not arise
-        outside of commit.
-
-        See the inventory developers documentation for the theory behind
-        inventory deltas.
-
-        :param new_revid: The new revision id for the trees parent.
-        :param delta: An inventory delta (see apply_inventory_delta) describing
-            the changes from the current left most parent revision to new_revid.
-        """
-        raise NotImplementedError(self.update_basis_by_delta)
-
-
-class MutableInventoryTree(MutableTree,tree.InventoryTree):
+class MutableInventoryTree(MutableTree, tree.InventoryTree):
 
     @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
@@ -460,202 +438,22 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
-        # not in an inner loop; and we want to remove direct use of this,
-        # so here as a reminder for now. RBC 20070703
-        from bzrlib.inventory import InventoryEntry
-        if action is None:
-            action = add.AddAction()
-
-        if not file_list:
-            # no paths supplied: add the entire tree.
-            # FIXME: this assumes we are running in a working tree subdir :-/
-            # -- vila 20100208
-            file_list = [u'.']
-        # mutter("smart add of %r")
-        inv = self.inventory
-        added = []
-        ignored = {}
-        dirs_to_add = []
-        user_dirs = set()
-        conflicts_related = set()
         # Not all mutable trees can have conflicts
         if getattr(self, 'conflicts', None) is not None:
             # Collect all related files without checking whether they exist or
             # are versioned. It's cheaper to do that once for all conflicts
             # than trying to find the relevant conflict for each added file.
+            conflicts_related = set()
             for c in self.conflicts():
                 conflicts_related.update(c.associated_filenames())
-
-        # expand any symlinks in the directory part, while leaving the
-        # filename alone
-        # only expanding if symlinks are supported avoids windows path bugs
-        if osutils.has_symlinks():
-            file_list = map(osutils.normalizepath, file_list)
-
-        # validate user file paths and convert all paths to tree
-        # relative : it's cheaper to make a tree relative path an abspath
-        # than to convert an abspath to tree relative, and it's cheaper to
-        # perform the canonicalization in bulk.
-        for filepath in osutils.canonical_relpaths(self.basedir, file_list):
-            rf = _FastPath(filepath)
-            # validate user parameters. Our recursive code avoids adding new
-            # files that need such validation
-            if self.is_control_filename(rf.raw_path):
-                raise errors.ForbiddenControlFileError(filename=rf.raw_path)
-
-            abspath = self.abspath(rf.raw_path)
-            kind = osutils.file_kind(abspath)
-            if kind == 'directory':
-                # schedule the dir for scanning
-                user_dirs.add(rf)
-            else:
-                if not InventoryEntry.versionable_kind(kind):
-                    raise errors.BadFileKindError(filename=abspath, kind=kind)
-            # ensure the named path is added, so that ignore rules in the later
-            # directory walk dont skip it.
-            # we dont have a parent ie known yet.: use the relatively slower
-            # inventory probing method
-            versioned = inv.has_filename(rf.raw_path)
-            if versioned:
-                continue
-            added.extend(_add_one_and_parent(self, inv, None, rf, kind, action))
-
-        if not recurse:
-            # no need to walk any directories at all.
-            if len(added) > 0 and save:
-                self._write_inventory(inv)
-            return added, ignored
-
-        # only walk the minimal parents needed: we have user_dirs to override
-        # ignores.
-        prev_dir = None
-
-        is_inside = osutils.is_inside_or_parent_of_any
-        for path in sorted(user_dirs):
-            if (prev_dir is None or not is_inside([prev_dir], path.raw_path)):
-                dirs_to_add.append((path, None))
-            prev_dir = path.raw_path
-
-        illegalpath_re = re.compile(r'[\r\n]')
-        # dirs_to_add is initialised to a list of directories, but as we scan
-        # directories we append files to it.
-        # XXX: We should determine kind of files when we scan them rather than
-        # adding to this list. RBC 20070703
-        for directory, parent_ie in dirs_to_add:
-            # directory is tree-relative
-            abspath = self.abspath(directory.raw_path)
-
-            # get the contents of this directory.
-
-            # find the kind of the path being added.
-            kind = osutils.file_kind(abspath)
-
-            if not InventoryEntry.versionable_kind(kind):
-                trace.warning("skipping %s (can't add file of kind '%s')",
-                              abspath, kind)
-                continue
-            if illegalpath_re.search(directory.raw_path):
-                trace.warning("skipping %r (contains \\n or \\r)" % abspath)
-                continue
-            if directory.raw_path in conflicts_related:
-                # If the file looks like one generated for a conflict, don't
-                # add it.
-                trace.warning(
-                    'skipping %s (generated to help resolve conflicts)',
-                    abspath)
-                continue
-
-            if parent_ie is not None:
-                versioned = directory.base_path in parent_ie.children
-            else:
-                # without the parent ie, use the relatively slower inventory
-                # probing method
-                versioned = inv.has_filename(
-                        self._fix_case_of_inventory_path(directory.raw_path))
-
-            if kind == 'directory':
-                try:
-                    sub_branch = bzrdir.BzrDir.open(abspath)
-                    sub_tree = True
-                except errors.NotBranchError:
-                    sub_tree = False
-                except errors.UnsupportedFormatError:
-                    sub_tree = True
-            else:
-                sub_tree = False
-
-            if directory.raw_path == '':
-                # mutter("tree root doesn't need to be added")
-                sub_tree = False
-            elif versioned:
-                pass
-                # mutter("%r is already versioned", abspath)
-            elif sub_tree:
-                # XXX: This is wrong; people *might* reasonably be trying to
-                # add subtrees as subtrees.  This should probably only be done
-                # in formats which can represent subtrees, and even then
-                # perhaps only when the user asked to add subtrees.  At the
-                # moment you can add them specially through 'join --reference',
-                # which is perhaps reasonable: adding a new reference is a
-                # special operation and can have a special behaviour.  mbp
-                # 20070306
-                trace.mutter("%r is a nested bzr tree", abspath)
-            else:
-                _add_one(self, inv, parent_ie, directory, kind, action)
-                added.append(directory.raw_path)
-
-            if kind == 'directory' and not sub_tree:
-                if parent_ie is not None:
-                    # must be present:
-                    this_ie = parent_ie.children[directory.base_path]
-                else:
-                    # without the parent ie, use the relatively slower inventory
-                    # probing method
-                    this_id = inv.path2id(
-                        self._fix_case_of_inventory_path(directory.raw_path))
-                    if this_id is None:
-                        this_ie = None
-                    else:
-                        this_ie = inv[this_id]
-                        # Same as in _add_one below, if the inventory doesn't
-                        # think this is a directory, update the inventory
-                        if this_ie.kind != 'directory':
-                            this_ie = _mod_inventory.make_entry('directory',
-                                this_ie.name, this_ie.parent_id, this_id)
-                            del inv[this_id]
-                            inv.add(this_ie)
-
-                for subf in sorted(os.listdir(abspath)):
-                    # here we could use TreeDirectory rather than
-                    # string concatenation.
-                    subp = osutils.pathjoin(directory.raw_path, subf)
-                    # TODO: is_control_filename is very slow. Make it faster.
-                    # TreeDirectory.is_control_filename could also make this
-                    # faster - its impossible for a non root dir to have a
-                    # control file.
-                    if self.is_control_filename(subp):
-                        trace.mutter("skip control directory %r", subp)
-                    elif subf in this_ie.children:
-                        # recurse into this already versioned subdir.
-                        dirs_to_add.append((_FastPath(subp, subf), this_ie))
-                    else:
-                        # user selection overrides ignoes
-                        # ignore while selecting files - if we globbed in the
-                        # outer loop we would ignore user files.
-                        ignore_glob = self.is_ignored(subp)
-                        if ignore_glob is not None:
-                            # mutter("skip ignored sub-file %r", subp)
-                            ignored.setdefault(ignore_glob, []).append(subp)
-                        else:
-                            #mutter("queue to add sub-file %r", subp)
-                            dirs_to_add.append((_FastPath(subp, subf), this_ie))
-
-        if len(added) > 0:
-            if save:
-                self._write_inventory(inv)
-            else:
-                self.read_working_inventory()
-        return added, ignored
+        else:
+            conflicts_related = None
+        adder = _SmartAddHelper(self, action, conflicts_related)
+        adder.add(file_list, recurse=recurse)
+        if save:
+            invdelta = adder.get_inventory_delta()
+            self.apply_inventory_delta(invdelta)
+        return adder.added, adder.ignored
 
     def update_basis_by_delta(self, new_revid, delta):
         """Update the parents of this tree after a commit.
@@ -740,81 +538,242 @@ class PostCommitHookParams(object):
         self.mutable_tree = mutable_tree
 
 
-class _FastPath(object):
-    """A path object with fast accessors for things like basename."""
+class _SmartAddHelper(object):
+    """Helper for MutableTree.smart_add."""
 
-    __slots__ = ['raw_path', 'base_path']
+    def get_inventory_delta(self):
+        return self._invdelta.values()
 
-    def __init__(self, path, base_path=None):
-        """Construct a FastPath from path."""
-        if base_path is None:
-            self.base_path = osutils.basename(path)
+    def _get_ie(self, inv_path):
+        """Retrieve the most up to date inventory entry for a path.
+
+        :param inv_path: Normalized inventory path
+        :return: Inventory entry (with possibly invalid .children for
+            directories)
+        """
+        entry = self._invdelta.get(inv_path)
+        if entry is not None:
+            return entry[3]
+        # Find a 'best fit' match if the filesystem is case-insensitive
+        inv_path = self.tree._fix_case_of_inventory_path(inv_path)
+        file_id = self.tree.path2id(inv_path)
+        if file_id is not None:
+            return self.tree.iter_entries_by_dir([file_id]).next()[1]
+        return None
+
+    def _convert_to_directory(self, this_ie, inv_path):
+        """Convert an entry to a directory.
+
+        :param this_ie: Inventory entry
+        :param inv_path: Normalized path for the inventory entry
+        :return: The new inventory entry
+        """
+        # Same as in _add_one below, if the inventory doesn't
+        # think this is a directory, update the inventory
+        this_ie = _mod_inventory.InventoryDirectory(
+            this_ie.file_id, this_ie.name, this_ie.parent_id)
+        self._invdelta[inv_path] = (inv_path, inv_path, this_ie.file_id,
+            this_ie)
+        return this_ie
+
+    def _add_one_and_parent(self, parent_ie, path, kind, inv_path):
+        """Add a new entry to the inventory and automatically add unversioned parents.
+
+        :param parent_ie: Parent inventory entry if known, or None.  If
+            None, the parent is looked up by name and used if present, otherwise it
+            is recursively added.
+        :param kind: Kind of new entry (file, directory, etc)
+        :param action: callback(tree, parent_ie, path, kind); can return file_id
+        :return: Inventory entry for path and a list of paths which have been added.
+        """
+        # Nothing to do if path is already versioned.
+        # This is safe from infinite recursion because the tree root is
+        # always versioned.
+        inv_dirname = osutils.dirname(inv_path)
+        dirname, basename = osutils.split(path)
+        if parent_ie is None:
+            # slower but does not need parent_ie
+            this_ie = self._get_ie(inv_path)
+            if this_ie is not None:
+                return this_ie
+            # its really not there : add the parent
+            # note that the dirname use leads to some extra str copying etc but as
+            # there are a limited number of dirs we can be nested under, it should
+            # generally find it very fast and not recurse after that.
+            parent_ie = self._add_one_and_parent(None,
+                dirname, 'directory', 
+                inv_dirname)
+        # if the parent exists, but isn't a directory, we have to do the
+        # kind change now -- really the inventory shouldn't pretend to know
+        # the kind of wt files, but it does.
+        if parent_ie.kind != 'directory':
+            # nb: this relies on someone else checking that the path we're using
+            # doesn't contain symlinks.
+            parent_ie = self._convert_to_directory(parent_ie, inv_dirname)
+        file_id = self.action(self.tree.inventory, parent_ie, path, kind)
+        entry = _mod_inventory.make_entry(kind, basename, parent_ie.file_id,
+            file_id=file_id)
+        self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
+        self.added.append(inv_path)
+        return entry
+
+    def _gather_dirs_to_add(self, user_dirs):
+        # only walk the minimal parents needed: we have user_dirs to override
+        # ignores.
+        prev_dir = None
+
+        is_inside = osutils.is_inside_or_parent_of_any
+        for path, (inv_path, this_ie) in sorted(
+                user_dirs.iteritems(), key=operator.itemgetter(0)):
+            if (prev_dir is None or not is_inside([prev_dir], path)):
+                yield (path, inv_path, this_ie, None)
+            prev_dir = path
+
+    def __init__(self, tree, action, conflicts_related=None):
+        self.tree = tree
+        if action is None:
+            self.action = add.AddAction()
         else:
-            self.base_path = base_path
-        self.raw_path = path
+            self.action = action
+        self._invdelta = {}
+        self.added = []
+        self.ignored = {}
+        if conflicts_related is None:
+            self.conflicts_related = frozenset()
+        else:
+            self.conflicts_related = conflicts_related
 
-    def __cmp__(self, other):
-        return cmp(self.raw_path, other.raw_path)
+    def add(self, file_list, recurse=True):
+        from bzrlib.inventory import InventoryEntry
+        if not file_list:
+            # no paths supplied: add the entire tree.
+            # FIXME: this assumes we are running in a working tree subdir :-/
+            # -- vila 20100208
+            file_list = [u'.']
 
-    def __hash__(self):
-        return hash(self.raw_path)
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        # only expanding if symlinks are supported avoids windows path bugs
+        if osutils.has_symlinks():
+            file_list = map(osutils.normalizepath, file_list)
 
+        user_dirs = {}
+        # validate user file paths and convert all paths to tree
+        # relative : it's cheaper to make a tree relative path an abspath
+        # than to convert an abspath to tree relative, and it's cheaper to
+        # perform the canonicalization in bulk.
+        for filepath in osutils.canonical_relpaths(self.tree.basedir, file_list):
+            # validate user parameters. Our recursive code avoids adding new
+            # files that need such validation
+            if self.tree.is_control_filename(filepath):
+                raise errors.ForbiddenControlFileError(filename=filepath)
 
-def _add_one_and_parent(tree, inv, parent_ie, path, kind, action):
-    """Add a new entry to the inventory and automatically add unversioned parents.
+            abspath = self.tree.abspath(filepath)
+            kind = osutils.file_kind(abspath)
+            # ensure the named path is added, so that ignore rules in the later
+            # directory walk dont skip it.
+            # we dont have a parent ie known yet.: use the relatively slower
+            # inventory probing method
+            inv_path, _ = osutils.normalized_filename(filepath)
+            this_ie = self._get_ie(inv_path)
+            if this_ie is None:
+                this_ie = self._add_one_and_parent(None, filepath, kind, inv_path)
+            if kind == 'directory':
+                # schedule the dir for scanning
+                user_dirs[filepath] = (inv_path, this_ie)
 
-    :param inv: Inventory which will receive the new entry.
-    :param parent_ie: Parent inventory entry if known, or None.  If
-        None, the parent is looked up by name and used if present, otherwise it
-        is recursively added.
-    :param kind: Kind of new entry (file, directory, etc)
-    :param action: callback(inv, parent_ie, path, kind); return ignored.
-    :return: A list of paths which have been added.
-    """
-    # Nothing to do if path is already versioned.
-    # This is safe from infinite recursion because the tree root is
-    # always versioned.
-    if parent_ie is not None:
-        # we have a parent ie already
-        added = []
-    else:
-        # slower but does not need parent_ie
-        if inv.has_filename(tree._fix_case_of_inventory_path(path.raw_path)):
-            return []
-        # its really not there : add the parent
-        # note that the dirname use leads to some extra str copying etc but as
-        # there are a limited number of dirs we can be nested under, it should
-        # generally find it very fast and not recurse after that.
-        added = _add_one_and_parent(tree, inv, None,
-            _FastPath(osutils.dirname(path.raw_path)), 'directory', action)
-        parent_id = inv.path2id(osutils.dirname(path.raw_path))
-        parent_ie = inv[parent_id]
-    _add_one(tree, inv, parent_ie, path, kind, action)
-    return added + [path.raw_path]
+        if not recurse:
+            # no need to walk any directories at all.
+            return
 
+        things_to_add = list(self._gather_dirs_to_add(user_dirs))
 
-def _add_one(tree, inv, parent_ie, path, kind, file_id_callback):
-    """Add a new entry to the inventory.
+        illegalpath_re = re.compile(r'[\r\n]')
+        for directory, inv_path, this_ie, parent_ie in things_to_add:
+            # directory is tree-relative
+            abspath = self.tree.abspath(directory)
 
-    :param inv: Inventory which will receive the new entry.
-    :param parent_ie: Parent inventory entry.
-    :param kind: Kind of new entry (file, directory, etc)
-    :param file_id_callback: callback(inv, parent_ie, path, kind); return a
-        file_id or None to generate a new file id
-    :returns: None
-    """
-    # if the parent exists, but isn't a directory, we have to do the
-    # kind change now -- really the inventory shouldn't pretend to know
-    # the kind of wt files, but it does.
-    if parent_ie.kind != 'directory':
-        # nb: this relies on someone else checking that the path we're using
-        # doesn't contain symlinks.
-        new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
-            parent_ie.parent_id, parent_ie.file_id)
-        del inv[parent_ie.file_id]
-        inv.add(new_parent_ie)
-        parent_ie = new_parent_ie
-    file_id = file_id_callback(inv, parent_ie, path, kind)
-    entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
-        file_id=file_id)
-    inv.add(entry)
+            # get the contents of this directory.
+
+            # find the kind of the path being added.
+            if this_ie is None:
+                kind = osutils.file_kind(abspath)
+            else:
+                kind = this_ie.kind
+
+            if not InventoryEntry.versionable_kind(kind):
+                trace.warning("skipping %s (can't add file of kind '%s')",
+                              abspath, kind)
+                continue
+            if illegalpath_re.search(directory):
+                trace.warning("skipping %r (contains \\n or \\r)" % abspath)
+                continue
+            if directory in self.conflicts_related:
+                # If the file looks like one generated for a conflict, don't
+                # add it.
+                trace.warning(
+                    'skipping %s (generated to help resolve conflicts)',
+                    abspath)
+                continue
+
+            if kind == 'directory' and directory != '':
+                try:
+                    transport = _mod_transport.get_transport(abspath)
+                    controldir.ControlDirFormat.find_format(transport)
+                    sub_tree = True
+                except errors.NotBranchError:
+                    sub_tree = False
+                except errors.UnsupportedFormatError:
+                    sub_tree = True
+            else:
+                sub_tree = False
+
+            if this_ie is not None:
+                pass
+            elif sub_tree:
+                # XXX: This is wrong; people *might* reasonably be trying to
+                # add subtrees as subtrees.  This should probably only be done
+                # in formats which can represent subtrees, and even then
+                # perhaps only when the user asked to add subtrees.  At the
+                # moment you can add them specially through 'join --reference',
+                # which is perhaps reasonable: adding a new reference is a
+                # special operation and can have a special behaviour.  mbp
+                # 20070306
+                trace.mutter("%r is a nested bzr tree", abspath)
+            else:
+                this_ie = self._add_one_and_parent(parent_ie, directory, kind, inv_path)
+
+            if kind == 'directory' and not sub_tree:
+                if this_ie.kind != 'directory':
+                    this_ie = self._convert_to_directory(this_ie, inv_path)
+
+                for subf in sorted(os.listdir(abspath)):
+                    inv_f, _ = osutils.normalized_filename(subf)
+                    # here we could use TreeDirectory rather than
+                    # string concatenation.
+                    subp = osutils.pathjoin(directory, subf)
+                    # TODO: is_control_filename is very slow. Make it faster.
+                    # TreeDirectory.is_control_filename could also make this
+                    # faster - its impossible for a non root dir to have a
+                    # control file.
+                    if self.tree.is_control_filename(subp):
+                        trace.mutter("skip control directory %r", subp)
+                        continue
+                    sub_invp = osutils.pathjoin(inv_path, inv_f)
+                    entry = self._invdelta.get(sub_invp)
+                    if entry is not None:
+                        sub_ie = entry[3]
+                    else:
+                        sub_ie = this_ie.children.get(inv_f)
+                    if sub_ie is not None:
+                        # recurse into this already versioned subdir.
+                        things_to_add.append((subp, sub_invp, sub_ie, this_ie))
+                    else:
+                        # user selection overrides ignoes
+                        # ignore while selecting files - if we globbed in the
+                        # outer loop we would ignore user files.
+                        ignore_glob = self.tree.is_ignored(subp)
+                        if ignore_glob is not None:
+                            self.ignored.setdefault(ignore_glob, []).append(subp)
+                        else:
+                            things_to_add.append((subp, sub_invp, None, this_ie))

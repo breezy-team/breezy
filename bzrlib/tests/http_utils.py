@@ -284,21 +284,30 @@ class AuthRequestHandler(http_server.TestingHTTPRequestHandler):
     # - auth_header_recv: the header received containing auth
     # - auth_error_code: the error code to indicate auth required
 
+    def _require_authentication(self):
+        # Note that we must update test_case_server *before*
+        # sending the error or the client may try to read it
+        # before we have sent the whole error back.
+        tcs = self.server.test_case_server
+        tcs.auth_required_errors += 1
+        self.send_response(tcs.auth_error_code)
+        self.send_header_auth_reqed()
+        # We do not send a body
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+        return
+
     def do_GET(self):
         if self.authorized():
             return http_server.TestingHTTPRequestHandler.do_GET(self)
         else:
-            # Note that we must update test_case_server *before*
-            # sending the error or the client may try to read it
-            # before we have sent the whole error back.
-            tcs = self.server.test_case_server
-            tcs.auth_required_errors += 1
-            self.send_response(tcs.auth_error_code)
-            self.send_header_auth_reqed()
-            # We do not send a body
-            self.send_header('Content-Length', '0')
-            self.end_headers()
-            return
+            return self._require_authentication()
+
+    def do_HEAD(self):
+        if self.authorized():
+            return http_server.TestingHTTPRequestHandler.do_HEAD(self)
+        else:
+            return self._require_authentication()
 
 
 class BasicAuthRequestHandler(AuthRequestHandler):

@@ -678,16 +678,19 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     """
     br_revno, br_rev_id = branch.last_revision_info()
     repo = branch.repository
+    graph = repo.get_graph()
     if start_rev_id is None and end_rev_id is None:
         cur_revno = br_revno
-        for revision_id in repo.iter_reverse_revision_history(br_rev_id):
+        for revision_id in graph.iter_lefthand_ancestry(br_rev_id,
+            (_mod_revision.NULL_REVISION,)):
             yield revision_id, str(cur_revno), 0
             cur_revno -= 1
     else:
         if end_rev_id is None:
             end_rev_id = br_rev_id
         found_start = start_rev_id is None
-        for revision_id in repo.iter_reverse_revision_history(end_rev_id):
+        for revision_id in graph.iter_lefthand_ancestry(end_rev_id,
+                (_mod_revision.NULL_REVISION,)):
             revno_str = _compute_revno_str(branch, revision_id)
             if not found_start and revision_id == start_rev_id:
                 if not exclude_common_ancestry:
@@ -1086,8 +1089,9 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     cur_revno = branch_revno
     rev_nos = {}
     mainline_revs = []
-    for revision_id in branch.repository.iter_reverse_revision_history(
-                        branch_last_revision):
+    graph = branch.repository.get_graph()
+    for revision_id in graph.iter_lefthand_ancestry(
+            branch_last_revision, (_mod_revision.NULL_REVISION,)):
         if cur_revno < start_revno:
             # We have gone far enough, but we always add 1 more revision
             rev_nos[revision_id] = cur_revno
@@ -1945,8 +1949,9 @@ def get_history_change(old_revision_id, new_revision_id, repository):
     old_revisions = set()
     new_history = []
     new_revisions = set()
-    new_iter = repository.iter_reverse_revision_history(new_revision_id)
-    old_iter = repository.iter_reverse_revision_history(old_revision_id)
+    graph = repository.get_graph()
+    new_iter = graph.iter_lefthand_ancestry(new_revision_id)
+    old_iter = graph.iter_lefthand_ancestry(old_revision_id)
     stop_revision = None
     do_old = True
     do_new = True
