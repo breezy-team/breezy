@@ -85,6 +85,9 @@ Bug Fixes
   because ``build_mo`` became a required step that they didn't know about.
   (John Arbash Meinel, #787122)
 
+* Properly avoid re-adding a file after it changes case on CICP
+  filesystems. (John Arbash Meinel, #798130)
+
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
