@@ -27,8 +27,13 @@ assertions in Test Case objects, so they are recommended for new testing work.
 """
 
 __all__ = [
+    'MatchesAncestry',
     'ReturnsUnlockable',
     ]
+
+from bzrlib import (
+    revision as _mod_revision,
+    )
 
 from testtools.matchers import Mismatch, Matcher
 
@@ -66,3 +71,47 @@ class _IsLocked(Mismatch):
 
     def describe(self):
         return "%s is locked" % self.lockable_thing
+
+
+class _AncestryMismatch(Mismatch):
+    """Ancestry matching mismatch."""
+
+    def __init__(self, tip_revision, got, expected):
+        self.tip_revision = tip_revision
+        self.got = got
+        self.expected = expected
+
+    def describe(self):
+        return "mismatched ancestry for revision %r was %r, expected %r" % (
+            self.tip_revision, self.got, self.expected)
+
+
+class MatchesAncestry(Matcher):
+    """A matcher that checks the ancestry of a particular revision.
+
+    :ivar graph: Graph in which to check the ancestry
+    :ivar revision_id: Revision id of the revision
+    """
+
+    def __init__(self, repository, revision_id):
+        Matcher.__init__(self)
+        self.repository = repository
+        self.revision_id = revision_id
+
+    def __str__(self):
+        return ('MatchesAncestry(repository=%r, revision_id=%r)' % (
+            self.repository, self.revision_id))
+
+    def match(self, expected):
+        self.repository.lock_read()
+        try:
+            graph = self.repository.get_graph()
+            got = [r for r, p in graph.iter_ancestry([self.revision_id])]
+            if not _mod_revision.NULL_REVISION in got:
+                raise AssertionError("Unable to find %r in %r" % (
+                    self.revision_id, self.repository))
+            got.remove(_mod_revision.NULL_REVISION)
+        finally:
+            self.repository.unlock()
+        if sorted(got) != sorted(expected):
+            return _AncestryMismatch(self.revision_id, sorted(got), sorted(expected))
