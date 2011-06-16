@@ -63,7 +63,7 @@ LINES_ZY = 'z\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 LINES_AY = 'a\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 
 
-class TestShelver(tests.TestCaseWithTransport):
+class ShelfTestCase(tests.TestCaseWithTransport):
 
     def create_shelvable_tree(self):
         tree = self.make_branch_and_tree('tree')
@@ -72,6 +72,9 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.commit('added foo')
         self.build_tree_contents([('tree/foo', LINES_ZY)])
         return tree
+
+
+class TestShelver(ShelfTestCase):
 
     def test_unexpected_prompt_failure(self):
         tree = self.create_shelvable_tree()
@@ -308,10 +311,15 @@ class TestShelver(tests.TestCaseWithTransport):
                                 from_revision=revision.NULL_REVISION)
         tree1.commit('Replaced root entry')
         # This is essentially assertNotRaises(InconsistentDelta)
-        self.expectFailure('Cannot shelve replacing a root entry',
-                           self.assertRaises, AssertionError,
-                           self.assertRaises, errors.InconsistentDelta,
-                           self.shelve_all, tree1, rev2)
+        # With testtools 0.99, it can be rewritten as:
+        # with ExpectedException(AssertionError,
+        #                        'InconsistentDelta not raised'):
+        #     with ExpectedException(errors.InconsistentDelta, ''):
+        #         self.shelve_all(tree1, rev2)
+        e = self.assertRaises(AssertionError, self.assertRaises,
+                              errors.InconsistentDelta, self.shelve_all, tree1,
+                              rev2)
+        self.assertContainsRe('InconsistentDelta not raised', str(e))
 
     def test_shelve_split(self):
         outer_tree = self.make_branch_and_tree('outer')
@@ -327,7 +335,7 @@ class TestShelver(tests.TestCaseWithTransport):
                            outer_tree, rev2)
 
 
-class TestApplyReporter(TestShelver):
+class TestApplyReporter(ShelfTestCase):
 
     def test_shelve_not_diff(self):
         tree = self.create_shelvable_tree()

@@ -19,6 +19,7 @@
 from bzrlib import (
     branchbuilder,
     tag,
+    transform,
     )
 from bzrlib.branch import (
     Branch,
@@ -123,10 +124,11 @@ class TestTagging(TestCaseWithTransport):
 
     def make_fork(self, branch):
         fork = branch.create_clone_on_transport(self.get_transport('fork'))
-        builder = branchbuilder.BranchBuilder(branch=fork)
-        builder.build_commit(message='Commit in fork.', rev_id='fork-0')
-        fork.set_last_revision_info(1, 'rev-1')
-        builder.build_commit(message='Commit in fork.', rev_id='fork-1')
+        self.addCleanup(fork.lock_write().unlock)
+        with transform.TransformPreview(fork.basis_tree()) as tt:
+            tt.commit(fork, message='Commit in fork.', revision_id='fork-0')
+        with transform.TransformPreview(fork.basis_tree()) as tt:
+            tt.commit(fork, message='Commit in fork.', revision_id='fork-1')
         return fork
 
     def test_merge_without_commit_does_not_propagate_tags_to_master(self):

@@ -74,7 +74,6 @@ import fnmatch
 import re
 from cStringIO import StringIO
 
-import bzrlib
 from bzrlib import (
     atomicfile,
     bzrdir,
@@ -145,7 +144,6 @@ class ConfigObj(configobj.ConfigObj):
         super(ConfigObj, self).__init__(infile=infile,
                                         interpolation=False,
                                         **kwargs)
-
 
     def get_bool(self, section, key):
         return self[section].as_bool(key)
@@ -375,16 +373,18 @@ class Config(object):
             hook(self, option_name, value)
         return value
 
-    def get_user_option_as_bool(self, option_name, expand=None):
-        """Get a generic option as a boolean - no special process, no default.
+    def get_user_option_as_bool(self, option_name, expand=None, default=None):
+        """Get a generic option as a boolean.
 
+        :param expand: Allow expanding references to other config values.
+        :param default: Default value if nothing is configured
         :return None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
         s = self.get_user_option(option_name, expand=expand)
         if s is None:
             # The option doesn't exist
-            return None
+            return default
         val = ui.bool_from_string(s)
         if val is None:
             # The value can't be interpreted as a boolean
@@ -495,10 +495,10 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
+                #this warning should go away once check_signatures is
+                #implemented (if not before)
                 trace.warning("Please use create_signatures,"
                               " not check_signatures to set signing policy.")
-            if policy == CHECK_ALWAYS:
-                return True
         elif policy == SIGN_ALWAYS:
             return True
         return False
@@ -547,7 +547,7 @@ class Config(object):
         return tools
 
     def find_merge_tool(self, name):
-        # We fake a defaults mechanism here by checking if the given name can 
+        # We fake a defaults mechanism here by checking if the given name can
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
@@ -2806,6 +2806,8 @@ class cmd_config(commands.Command):
         commands.Option('remove', help='Remove the option from'
                         ' the configuration file'),
         ]
+
+    _see_also = ['configuration']
 
     @commands.display_command
     def run(self, name=None, all=False, directory=None, scope=None,

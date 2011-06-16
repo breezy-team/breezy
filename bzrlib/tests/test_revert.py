@@ -134,15 +134,6 @@ class TestRevert(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist('file')
         self.assertEqual({}, tree.merge_modified())
 
-    def test_empty_deprecated(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['file'])
-        tree.add('file')
-        self.callDeprecated(['Using [] to revert all files is deprecated'
-            ' as of bzr 0.91.  Please use None (the default) instead.'],
-            tree.revert, [])
-        self.assertIs(None, tree.path2id('file'))
-
     def test_revert_file_in_deleted_dir(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])

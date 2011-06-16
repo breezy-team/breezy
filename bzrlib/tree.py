@@ -800,59 +800,6 @@ class InventoryTree(Tree):
         return self.get_file(self._inventory.path2id(path), path)
 
 
-######################################################################
-# diff
-
-# TODO: Merge these two functions into a single one that can operate
-# on either a whole tree or a set of files.
-
-# TODO: Return the diff in order by filename, not by category or in
-# random order.  Can probably be done by lock-stepping through the
-# filenames from both trees.
-
-
-def file_status(filename, old_tree, new_tree):
-    """Return single-letter status, old and new names for a file.
-
-    The complexity here is in deciding how to represent renames;
-    many complex cases are possible.
-    """
-    old_inv = old_tree.inventory
-    new_inv = new_tree.inventory
-    new_id = new_inv.path2id(filename)
-    old_id = old_inv.path2id(filename)
-
-    if not new_id and not old_id:
-        # easy: doesn't exist in either; not versioned at all
-        if new_tree.is_ignored(filename):
-            return 'I', None, None
-        else:
-            return '?', None, None
-    elif new_id:
-        # There is now a file of this name, great.
-        pass
-    else:
-        # There is no longer a file of this name, but we can describe
-        # what happened to the file that used to have
-        # this name.  There are two possibilities: either it was
-        # deleted entirely, or renamed.
-        if new_inv.has_id(old_id):
-            return 'X', old_inv.id2path(old_id), new_inv.id2path(old_id)
-        else:
-            return 'D', old_inv.id2path(old_id), None
-
-    # if the file_id is new in this revision, it is added
-    if new_id and not old_inv.has_id(new_id):
-        return 'A'
-
-    # if there used to be a file of this name, but that ID has now
-    # disappeared, it is deleted
-    if old_id and not new_inv.has_id(old_id):
-        return 'D'
-
-    return 'wtf?'
-
-
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.
 

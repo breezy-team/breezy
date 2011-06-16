@@ -2448,3 +2448,30 @@ def find_executable_on_path(name):
             if os.access(f, os.X_OK):
                 return f
     return None
+
+
+def _posix_is_local_pid_dead(pid):
+    """True if pid doesn't correspond to live process on this machine"""
+    try:
+        # Special meaning of unix kill: just check if it's there.
+        os.kill(pid, 0)
+    except OSError, e:
+        if e.errno == errno.ESRCH:
+            # On this machine, and really not found: as sure as we can be
+            # that it's dead.
+            return True
+        elif e.errno == errno.EPERM:
+            # exists, though not ours
+            return False
+        else:
+            mutter("os.kill(%d, 0) failed: %s" % (pid, e))
+            # Don't really know.
+            return False
+    else:
+        # Exists and our process: not dead.
+        return False
+
+if sys.platform == "win32":
+    is_local_pid_dead = win32utils.is_local_pid_dead
+else:
+    is_local_pid_dead = _posix_is_local_pid_dead
