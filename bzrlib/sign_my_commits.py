@@ -100,9 +100,10 @@ class cmd_verify(Command):
                         ' acceptable for verification.',
                    short_name='k',
                    type=str,),
-            ]
+            'revision',
+          ]
 
-    def run(self, acceptable_keys=None):
+    def run(self, acceptable_keys=None, revision=None):
         bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
@@ -117,7 +118,25 @@ class cmd_verify(Command):
                  gpg.SIGNATURE_NOT_VALID: 0,
                  gpg.SIGNATURE_NOT_SIGNED: 0}
         result = []
-        for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
+        revisions = []
+        if revision is not None:
+            if len(revision) == 1:
+                revno, rev_id = revision[0].in_history(branch)
+                revisions.append(rev_id)
+            elif len(revision) == 2:
+                from_revno, from_revid = revision[0].in_history(branch)
+                to_revno, to_revid = revision[1].in_history(branch)
+                if to_revid is None:
+                    to_revno = branch.revno()
+                if from_revno is None or to_revno is None:
+                    raise errors.BzrCommandError('Cannot verify a range of \
+                                                non-revision-history revisions')
+                for revno in range(from_revno, to_revno + 1):
+                    revisions.append(branch.get_rev_id(revno))
+        else:
+            #all revisions by default
+            revisions = repo.get_ancestry(branch.last_revision())[1:]
+        for rev_id in revisions:
             rev = repo.get_revision(rev_id)
             verification_result = repo.verify_revision(rev_id, gpg_strategy)
             result.append([rev_id, verification_result])
