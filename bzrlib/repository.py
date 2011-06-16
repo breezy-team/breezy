@@ -1055,6 +1055,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         raise NotImplementedError(self.revision_trees)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_ancestry(self, revision_id, topo_sorted=True):
         """Return a list of revision-ids integrated by a revision.
 
