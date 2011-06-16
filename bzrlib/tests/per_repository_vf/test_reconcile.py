@@ -196,7 +196,7 @@ class TestsNeedingReweave(TestReconcile):
         # actual low level test.
         repo = aBzrDir.open_repository()
         m = MatchesAncestry(repo,'references_missing')
-        if m.matches(['missing', 'references_missing']) is not None:
+        if m.match(['missing', 'references_missing']) is not None:
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do here. Specifically, this test has the inventory
             # 'missing' present and the revision 'missing' missing, so clearly
@@ -272,7 +272,7 @@ class TestsNeedingReweave(TestReconcile):
         d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_ghost_present'))
         repo = d.open_repository()
         m = MatchesAncestry(repo, 'ghost')
-        if m.matches(['the_ghost', 'ghost']) is None:
+        if m.match(['the_ghost', 'ghost']) is None:
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do
             return
