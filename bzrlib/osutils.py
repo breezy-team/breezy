@@ -2381,6 +2381,18 @@ def getuser_unicode():
     except UnicodeDecodeError:
         raise errors.BzrError("Can't decode username as %s." % \
                 user_encoding)
+    except ImportError, e:
+        if sys.platform != 'win32':
+            raise
+        if str(e) != 'No module named pwd':
+            raise
+        # https://bugs.launchpad.net/bzr/+bug/660174
+        # getpass.getuser() is unable to return username on Windows
+        # if there is no USERNAME environment variable set.
+        # That could be true if bzr is running as a service,
+        # e.g. running `bzr serve` as a service on Windows.
+        # We should not fail with traceback in this case.
+        username = u'UNKNOWN'
     return username
 
 
