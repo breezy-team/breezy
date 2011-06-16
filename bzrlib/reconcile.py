@@ -29,6 +29,7 @@ __all__ = [
 from bzrlib import (
     cleanup,
     errors,
+    revision as _mod_revision,
     ui,
     )
 from bzrlib.trace import mutter
