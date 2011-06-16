@@ -973,8 +973,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         file and change the file_id. That is the normal mode. Second, it can
         only change the file_id without touching any physical file.
 
-        rename_one uses the second mode if 'after == True' and 'to_rel' is not
-        versioned but present in the working tree.
+        rename_one uses the second mode if 'after == True' and 'to_rel' is
+        either not versioned or newly added, and present in the working tree.
 
         rename_one uses the second mode if 'after == False' and 'from_rel' is
         versioned but no longer in the working tree, and 'to_rel' is not
@@ -1385,11 +1385,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from bzrlib.conflicts import resolve
-        if filenames == []:
-            filenames = None
-            symbol_versioning.warn('Using [] to revert all files is deprecated'
-                ' as of bzr 0.91.  Please use None (the default) instead.',
-                DeprecationWarning, stacklevel=2)
         if old_tree is None:
             basis_tree = self.basis_tree()
             basis_tree.lock_read()
@@ -2573,8 +2568,8 @@ class InventoryWorkingTree(WorkingTree,
         inventory. The second mode only updates the inventory without
         touching the file on the filesystem.
 
-        move uses the second mode if 'after == True' and the target is not
-        versioned but present in the working tree.
+        move uses the second mode if 'after == True' and the target is
+        either not versioned or newly added, and present in the working tree.
 
         move uses the second mode if 'after == False' and the source is
         versioned but no longer in the working tree, and the target is not
@@ -2727,7 +2722,8 @@ class InventoryWorkingTree(WorkingTree,
 
     class _RenameEntry(object):
         def __init__(self, from_rel, from_id, from_tail, from_parent_id,
-                     to_rel, to_tail, to_parent_id, only_change_inv=False):
+                     to_rel, to_tail, to_parent_id, only_change_inv=False,
+                     change_id=False):
             self.from_rel = from_rel
             self.from_id = from_id
             self.from_tail = from_tail
@@ -2735,6 +2731,7 @@ class InventoryWorkingTree(WorkingTree,
             self.to_rel = to_rel
             self.to_tail = to_tail
             self.to_parent_id = to_parent_id
+            self.change_id = change_id
             self.only_change_inv = only_change_inv
 
     def _determine_mv_mode(self, rename_entries, after=False):
@@ -2752,14 +2749,27 @@ class InventoryWorkingTree(WorkingTree,
             to_rel = rename_entry.to_rel
             to_id = inv.path2id(to_rel)
             only_change_inv = False
+            change_id = False
 
             # check the inventory for source and destination
             if from_id is None:
                 raise errors.BzrMoveFailedError(from_rel,to_rel,
                     errors.NotVersionedError(path=from_rel))
             if to_id is not None:
-                raise errors.BzrMoveFailedError(from_rel,to_rel,
-                    errors.AlreadyVersionedError(path=to_rel))
+                allowed = False
+                # allow it with --after but only if dest is newly added
+                if after:
+                    basis = self.basis_tree()
+                    basis.lock_read()
+                    try:
+                        if not basis.has_id(to_id):
+                            rename_entry.change_id = True
+                            allowed = True
+                    finally:
+                        basis.unlock()
+                if not allowed:
+                    raise errors.BzrMoveFailedError(from_rel,to_rel,
+                        errors.AlreadyVersionedError(path=to_rel))
 
             # try to determine the mode for rename (only change inv or change
             # inv and file system)
@@ -2836,6 +2846,9 @@ class InventoryWorkingTree(WorkingTree,
             except OSError, e:
                 raise errors.BzrMoveFailedError(entry.from_rel,
                     entry.to_rel, e[1])
+        if entry.change_id:
+            to_id = inv.path2id(entry.to_rel)
+            inv.remove_recursive_id(to_id)
         inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
     @needs_tree_write_lock

@@ -113,6 +113,9 @@ class TestMissing(TestCaseWithTransport):
         lines4 = self.run_bzr('missing ../a --short', retcode=1)[0]
         lines4 = lines4.splitlines()
         self.assertEqual(4, len(lines4))
+        lines4a = self.run_bzr('missing ../a -S', retcode=1)[0]
+        lines4a = lines4a.splitlines()
+        self.assertEqual(lines4, lines4a)
         lines5 = self.run_bzr('missing ../a --line', retcode=1)[0]
         lines5 = lines5.splitlines()
         self.assertEqual(2, len(lines5))

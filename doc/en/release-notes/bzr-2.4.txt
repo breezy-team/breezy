@@ -15,6 +15,9 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* Do not treat configuration option 'check_signatures = require' as if
+  it were 'create_signatures = always' (Jonathan Riddell)
+
 New Features
 ************
 
@@ -30,11 +33,21 @@ New Features
   (Jonathan Riddell, #274578)
 
 
+* New hook set_commit_message in bzrlib.msgeditor to set
+  a commit message and revision properties.  (Jonathan Riddell,
+  #274578)
+
+* Support ``-S`` as an alias for ``--short`` for the ``log`` and
+  ``missing`` commands. (Martin von Gagern, #38655)
+
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+* ``bzr annotate`` can be run without setting whoami data first. (Jonathan
+  Riddell, #667408)
 
 Bug Fixes
 *********
@@ -42,11 +55,21 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Bazaar can now detect when a lock file is held by a dead process
+  originating from the same machine, and steal the lock after printing a
+  message to the user.  This is off by default, for safety, but can be
+  turned on by setting the configuration variable ``locks.steal_dead`` to
+  ``True``.
+  (Martin Pool, #220464)
+
 * Credentials in the log output produced by ``-Dhttp`` are masked so users
   can more freely post them in bug reports. (Vincent Ladeuil, #723074)
 
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
+
+* Fix exporting subdirectory with ``--per-file-timestamps``.
+  (Szilveszter Farkas, #795557)
 
 * Handle files that get created but don't get used during TreeTransform.
   ``open()`` can create a file, and still raise an exception before it
@@ -62,6 +85,9 @@ Bug Fixes
   because ``build_mo`` became a required step that they didn't know about.
   (John Arbash Meinel, #787122)
 
+* Properly avoid re-adding a file after it changes case on CICP
+  filesystems. (John Arbash Meinel, #798130)
+
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
@@ -72,6 +98,8 @@ Bug Fixes
   ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
   unicode prompt to be passed in. (Jelmer Vernooij, #592083)
 
+* Support merging into the empty tree. (Aaron Bentley, #595328)
+
 Documentation
 *************
 
@@ -80,11 +108,28 @@ Documentation
 * Improve documentation of ``bzr merge --force``.
   (Neil Martinsen-Burrell, #767307)
 
+* Make docs for configuration options for digital signatures match 
+  reality. (Jonathan Riddell)
+
+* Add user-guide page on GPG signatures. (Jonathan Riddell)
+
 API Changes
 ***********
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* Information about held lockdir locks returned from eg `LockDir.peek` is
+  now represented as a `LockHeldInfo` object, rather than a plain
+  Python dict.
+  (Martin Pool)
+
+* Remove `file_status` function.
+  (Martin Pool)
+
+* ``Repository.iter_reverse_revision_history`` is now deprecated.
+  Use ``Graph.iter_lefthand_ancestry`` instead.
+  (Jelmer Vernooij, #739481)
 
 Internals
 *********
@@ -114,6 +159,10 @@ Testing
 
 * Fix spurious test failure on OSX for WorkingTreeFormat2.
   (Vincent Ladeuil, #787942)
+
+* Re-target ``bb.test_merge.TestMerge.test_merge_reversed_revision_range``
+  and rewrite it as a parameterized test to avoid unrelated failures.
+  (Vincent Ladeuil, #795456)
 
 * Show log file contents from subprocesses started by
   `start_bzr_subprocess` in test failure details.  This may help diagnose
@@ -252,6 +301,9 @@ Bug Fixes
   by more commands than just commit. Updating with a delta allows us to
   not load the whole inventory, which can take 10+s with large trees.
   (Jonathan Riddell, John Arbash Meinel, #781168)
+
+* ``bzr mv --after old_name new_name`` now works if "new_name" is newly
+  added. (Benoît Pierre)
 
 
 Documentation
