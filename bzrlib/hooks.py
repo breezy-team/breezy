@@ -72,6 +72,7 @@ _builtin_known_hooks = (
     ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
     ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
     ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
+    ('bzrlib.config', 'ConfigHooks', '_ConfigHooks'),
     ('bzrlib.info', 'hooks', 'InfoHooks'),
     ('bzrlib.lock', 'Lock.hooks', 'LockHooks'),
     ('bzrlib.merge', 'Merger.hooks', 'MergeHooks'),
@@ -256,8 +257,7 @@ class Hooks(dict):
         try:
             uninstall = getattr(hook, "uninstall")
         except AttributeError:
-            raise errors.UnsupportedOperation(self.install_named_hook_lazy,
-                self)
+            raise errors.UnsupportedOperation(self.uninstall_named_hook, self)
         else:
             uninstall(label)
 
