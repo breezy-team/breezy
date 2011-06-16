@@ -989,7 +989,7 @@ class TestCase(testtools.TestCase):
         # is addressed -- vila 20110219
         self.overrideAttr(config, '_expand_default_value', None)
         self._log_files = set()
-        self._init_counters()
+        self._counters = {}
         if 'config_stats' in selftest_debug_flags:
             self._install_config_stats_hooks()
 
@@ -1014,19 +1014,6 @@ class TestCase(testtools.TestCase):
         if name in details:
             del details[name]
 
-    def _init_counters(self):
-        """Setup a dict to collect various counters.
-
-        Each key in the dict holds a value for a different counter. When the
-        test ends, subunit addDetail API is used to output the counter values.
-        """
-        self._counters = {}
-        def add_counter_details():
-            for k, v in self._counters.iteritems():
-                self.addDetail('%s' % (k,), content.text_content('%s' % (v,)))
-            self._counters = None
-        self.addCleanup(add_counter_details)
-
     def install_counter_hook(self, hooks, name, counter_name=None):
         """Install a counting hook.
 
@@ -1039,18 +1026,19 @@ class TestCase(testtools.TestCase):
         :param counter_name: The counter identifier in ``_counters``, defaults
             to ``name``.
         """
+        _counters = self._counters # Avoid closing over self
         if counter_name is None:
             counter_name = name
-        if self._counters.has_key(counter_name):
+        if _counters.has_key(counter_name):
             raise AssertionError('%s is already used as a counter name'
                                   % (counter_name,))
-        self._counters[counter_name] = 0
-        def increment_counter():
-            # We can't do that in a lambda...
-            self._counters[counter_name] += 1
+        _counters[counter_name] = 0
+        self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
+            lambda: ['%d' % (_counters[counter_name],)]))
+        def increment_counter(*args, **kwargs):
+            _counters[counter_name] += 1
         label = 'count %s calls' % (counter_name,)
-        hooks.install_named_hook(
-            name, lambda *args, **kwargs: increment_counter(), label)
+        hooks.install_named_hook(name, increment_counter, label)
         self.addCleanup(hooks.uninstall_named_hook, name, label)
 
     def _install_config_stats_hooks(self):
