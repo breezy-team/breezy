@@ -171,7 +171,23 @@ class cmd_verify(Command):
                           "{0} commits not signed",
                           count[gpg.SIGNATURE_NOT_SIGNED]).format(
                                         count[gpg.SIGNATURE_NOT_SIGNED]))
+            if verbose:
+               self._print_verbose_not_signed(result, repo)
             return 1
+
+    def _print_verbose_not_signed(self, result, repo):
+        """takes a verify result and prints out not signed commit info"""
+        signers = {}
+        for rev_id, validity, empty in result:
+            if validity == gpg.SIGNATURE_KEY_MISSING:
+                revision = repo.get_revision(rev_id)
+                authors = ', '.join(revision.get_apparent_authors())
+                signers.setdefault(authors, 0)
+                signers[authors] += 1
+        for authors, number in signers.items():
+            note(gettext(ngettext("  {0} commit by author {1}", 
+                                "  {0} commits by author {1}",
+                            number)).format(number, authors))
 
     def _print_verbose_missing_key_message(self, result):
         """takes a verify result and prints out missing key info"""
