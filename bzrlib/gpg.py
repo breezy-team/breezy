@@ -51,7 +51,8 @@ class DisabledGPGStrategy(object):
         raise errors.SigningFailed('Signing is disabled.')
 
     def verify(self, content, testament):
-        raise errors.VerifyFailed('Signature verification is disabled.')
+        raise errors.SignatureVerificationFailed('Signature verification is \
+disabled.')
 
     def set_acceptable_keys(self, key_patterns):
         pass
@@ -160,7 +161,7 @@ class GPGStrategy(object):
         try:
             result = context.verify(signature, None, plain_output)
         except gpgme.GpgmeError,error:
-            raise errors.VerifyFailed(error[2])
+            raise errors.SignatureVerificationFailed(error[2])
 
         if len(result) == 0:
             return SIGNATURE_NOT_VALID, None
@@ -185,7 +186,8 @@ class GPGStrategy(object):
                 return SIGNATURE_VALID, None
         else:
             return SIGNATURE_KEY_MISSING, None
-        raise errors.VerifyFailed("Unknown GnuPG key verification result")
+        raise errors.SignatureVerificationFailed("Unknown GnuPG key \
+                                                        verification result")
 
     def set_acceptable_keys(self, key_patterns):
         try:

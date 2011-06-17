@@ -1797,7 +1797,7 @@ class SigningFailed(BzrError):
         BzrError.__init__(self, command_line=command_line)
 
 
-class VerifyFailed(BzrError):
+class SignatureVerificationFailed(BzrError):
 
     _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
 

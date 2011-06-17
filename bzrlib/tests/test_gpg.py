@@ -295,6 +295,6 @@ class TestDisabled(TestCase):
                           gpg.DisabledGPGStrategy(None).sign, 'content')
 
     def test_verify(self):
-        self.assertRaises(errors.VerifyFailed,
+        self.assertRaises(errors.SignatureVerificationFailed,
                           gpg.DisabledGPGStrategy(None).verify, 'content',
                           'testament')
