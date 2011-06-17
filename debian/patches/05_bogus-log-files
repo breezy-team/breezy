@@ -1,0 +1,137 @@
+Origin: commit, revision id: v.ladeuil+lp@free.fr-20110617135923-kc4el63uldex6c5n
+Author: Vincent Ladeuil <v.ladeuil+lp@free.fr>
+Last-Update: 2011-06-17
+X-Bzr-Revision-Id: v.ladeuil+lp@free.fr-20110617135923-kc4el63uldex6c5n
+
+=== modified file 'bzrlib/tests/__init__.py'
+--- old/bzrlib/tests/__init__.py	2011-06-16 19:00:24 +0000
++++ new/bzrlib/tests/__init__.py	2011-06-17 13:40:01 +0000
+@@ -1704,7 +1704,7 @@
+     def _finishLogFile(self):
+         """Finished with the log file.
+ 
+-        Close the file and delete it, unless setKeepLogfile was called.
++        Close the file and delete it.
+         """
+         if trace._trace_file:
+             # flush the log file, to get all content
+
+=== modified file 'bzrlib/tests/blackbox/test_exceptions.py'
+--- old/bzrlib/tests/blackbox/test_exceptions.py	2011-06-02 09:21:46 +0000
++++ new/bzrlib/tests/blackbox/test_exceptions.py	2011-06-17 13:53:59 +0000
+@@ -30,10 +30,8 @@
+     )
+ from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
+ 
+-from bzrlib.tests import TestCase
+-
+-
+-class TestExceptionReporting(TestCase):
++
++class TestExceptionReporting(tests.TestCaseInTempDir):
+ 
+     def test_exception_exitcode(self):
+         # we must use a subprocess, because the normal in-memory mechanism
+@@ -63,7 +61,7 @@
+         self.assertEquals(out, "")
+ 
+ 
+-class TestOptParseBugHandling(TestCase):
++class TestOptParseBugHandling(tests.TestCase):
+     "Test that we handle http://bugs.python.org/issue2931"
+ 
+     def test_nonascii_optparse(self):
+
+=== modified file 'bzrlib/tests/test_selftest.py'
+--- old/bzrlib/tests/test_selftest.py	2011-06-16 21:23:44 +0000
++++ new/bzrlib/tests/test_selftest.py	2011-06-17 13:59:23 +0000
+@@ -2506,17 +2506,24 @@
+ 
+ 
+ class TestStartBzrSubProcess(tests.TestCase):
++    """Stub test start_bzr_subprocess."""
+ 
+-    def check_popen_state(self):
+-        """Replace to make assertions when popen is called."""
++    def _subprocess_log_cleanup(self):
++        """Inhibits the base version as we don't produce a log file."""
+ 
+     def _popen(self, *args, **kwargs):
+-        """Record the command that is run, so that we can ensure it is correct"""
++        """Override the base version to record the command that is run.
++
++        From there we can ensure it is correct without spawning a real process.
++        """
+         self.check_popen_state()
+         self._popen_args = args
+         self._popen_kwargs = kwargs
+         raise _DontSpawnProcess()
+ 
++    def check_popen_state(self):
++        """Replace to make assertions when popen is called."""
++
+     def test_run_bzr_subprocess_no_plugins(self):
+         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
+         command = self._popen_args[0]
+@@ -2526,7 +2533,7 @@
+ 
+     def test_allow_plugins(self):
+         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+-            allow_plugins=True)
++                          allow_plugins=True)
+         command = self._popen_args[0]
+         self.assertEqual([], command[2:])
+ 
+@@ -2537,7 +2544,7 @@
+             self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
+         self.check_popen_state = check_environment
+         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+-            env_changes={'EXISTANT_ENV_VAR':'set variable'})
++                          env_changes={'EXISTANT_ENV_VAR':'set variable'})
+         # not set in theparent
+         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
+ 
+@@ -2549,7 +2556,7 @@
+         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
+         self.check_popen_state = check_environment
+         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+-            env_changes={'EXISTANT_ENV_VAR':None})
++                          env_changes={'EXISTANT_ENV_VAR':None})
+         # Still set in parent
+         self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
+         del os.environ['EXISTANT_ENV_VAR']
+@@ -2560,7 +2567,7 @@
+             self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
+         self.check_popen_state = check_environment
+         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+-            env_changes={'NON_EXISTANT_ENV_VAR':None})
++                          env_changes={'NON_EXISTANT_ENV_VAR':None})
+ 
+     def test_working_dir(self):
+         """Test that we can specify the working dir for the child"""
+@@ -2569,18 +2576,12 @@
+         chdirs = []
+         def chdir(path):
+             chdirs.append(path)
+-        os.chdir = chdir
+-        try:
+-            def getcwd():
+-                return 'current'
+-            osutils.getcwd = getcwd
+-            try:
+-                self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+-                    working_dir='foo')
+-            finally:
+-                osutils.getcwd = orig_getcwd
+-        finally:
+-            os.chdir = orig_chdir
++        self.overrideAttr(os, 'chdir', chdir)
++        def getcwd():
++            return 'current'
++        self.overrideAttr(osutils, 'getcwd', getcwd)
++        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
++                          working_dir='foo')
+         self.assertEqual(['foo', 'current'], chdirs)
+ 
+     def test_get_bzr_path_with_cwd_bzrlib(self):
+
