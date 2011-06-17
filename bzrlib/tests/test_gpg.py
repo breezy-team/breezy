@@ -23,6 +23,7 @@ import sys
 from bzrlib import errors, ui
 import bzrlib.gpg as gpg
 from bzrlib.tests import TestCase
+from bzrlib.tests import features
 
 class FakeConfig(object):
 
@@ -184,10 +185,8 @@ Gmk1tz5uh9/6Qiyhr9MAwvC0mhKtfWdebQre9l49EuciCbBXN2Q4iRpElQba1JAW
         context.import_(secret_key)
 
     def test_verify_valid(self):
-        try:
-            self.import_keys()
-        except ImportError:
-            return True #can't test if gpgme isn't installed
+        self.requireFeature(features.gpgme)
+        self.import_keys()
             
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
@@ -217,10 +216,8 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                             plain))
 
     def test_verify_bad_testament(self):
-        try:
-            self.import_keys()
-        except ImportError:
-            return True #can't test if gpgme isn't installed
+        self.requireFeature(features.gpgme)
+        self.import_keys()
             
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
@@ -273,10 +270,8 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                             my_gpg.verify(content, plain))
 
     def test_set_acceptable_keys(self):
-        try:
-            self.import_keys()
-        except ImportError:
-            return True #can't test if gpgme isn't installed
+        self.requireFeature(features.gpgme)
+        self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
         self.assertEqual(my_gpg.acceptable_keys,
@@ -286,7 +281,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("unknown")
         self.assertEqual(my_gpg.acceptable_keys, [])
-        
+
 
 class TestDisabled(TestCase):
 
