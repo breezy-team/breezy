@@ -16,6 +16,9 @@ Bug fixes
 * Avoid Inventory.copy, which has disappeared in newer versions of Bazaar.
   (Jelmer Vernooij, #485788)
 
+* Allow "bzr fast-import-filter" to be used without first argument.
+  (Jelmer Vernooij, #792935)
+
 0.10 08-Mar-2011
 
 Changes

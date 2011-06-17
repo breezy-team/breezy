@@ -135,3 +135,16 @@ class TestFastImport(ExternalBase):
         self.build_tree_contents([('file.fi', simple_fast_import_stream)])
         data = self.run_bzr("fast-import file.fi br")[0]
         self.assertEquals(1, tree.branch.revno())
+
+
+class TestFastImportFilter(ExternalBase):
+
+    def test_empty(self):
+        self.build_tree_contents([('empty.fi', "")])
+        self.make_branch_and_tree("br")
+        self.assertEquals("", self.run_bzr("fast-import-filter -")[0])
+
+    def test_default_stdin(self):
+        self.build_tree_contents([('empty.fi', "")])
+        self.make_branch_and_tree("br")
+        self.assertEquals("", self.run_bzr("fast-import-filter")[0])

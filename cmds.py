@@ -41,7 +41,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
 
 
 def _get_source_stream(source):
-    if source == '-':
+    if source == '-' or source is None:
         import sys
         from fastimport import helpers
         stream = helpers.binary_stream(sys.stdin)
