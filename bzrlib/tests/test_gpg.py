@@ -207,9 +207,14 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 =iwsn
 -----END PGP SIGNATURE-----
 """
+        plain = """bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content,
+                            plain))
 
     def test_verify_invalid(self):
         content = """-----BEGIN PGP SIGNED MESSAGE-----
@@ -226,9 +231,13 @@ nswAoNGXAVuR9ONasAKIGBNUE0b+lols
 =SOuC
 -----END PGP SIGNATURE-----
 """
+        plain = """bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None),
-                            my_gpg.verify(content))
+                            my_gpg.verify(content, plain))
 
     def test_set_acceptable_keys(self):
         try:
@@ -254,4 +263,5 @@ class TestDisabled(TestCase):
 
     def test_verify(self):
         self.assertRaises(errors.VerifyFailed,
-                          gpg.DisabledGPGStrategy(None).verify, 'content')
+                          gpg.DisabledGPGStrategy(None).verify, 'content',
+                          'testament')

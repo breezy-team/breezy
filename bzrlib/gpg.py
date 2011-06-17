@@ -50,7 +50,7 @@ class DisabledGPGStrategy(object):
     def sign(self, content):
         raise errors.SigningFailed('Signing is disabled.')
 
-    def verify(self, content):
+    def verify(self, content, testament):
         raise errors.VerifyFailed('Signature verification is disabled.')
 
     def set_acceptable_keys(self, key_patterns):
@@ -67,7 +67,7 @@ class LoopbackGPGStrategy(object):
         return ("-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
                 "-----END PSEUDO-SIGNED CONTENT-----\n")
 
-    def verify(self, content):
+    def verify(self, content, testament):
         return SIGNATURE_VALID, None
 
     def set_acceptable_keys(self, key_patterns):
@@ -159,7 +159,6 @@ class GPGStrategy(object):
         
         try:
             result = context.verify(signature, None, plain_output)
-            print "plain: " + str(plain_output.getvalue())
         except gpgme.GpgmeError,error:
             raise errors.VerifyFailed(error[2])
 
