@@ -161,6 +161,8 @@ class cmd_verify(Command):
                           "{0} commits with unknown keys",
                           count[gpg.SIGNATURE_KEY_MISSING]).format(
                                         count[gpg.SIGNATURE_KEY_MISSING]))
+            if verbose:
+               self._print_verbose_missing_key_message(result)
             note(ngettext("{0} commit not valid",
                           "{0} commits not valid",
                           count[gpg.SIGNATURE_NOT_VALID]).format(
@@ -170,6 +172,18 @@ class cmd_verify(Command):
                           count[gpg.SIGNATURE_NOT_SIGNED]).format(
                                         count[gpg.SIGNATURE_NOT_SIGNED]))
             return 1
+
+    def _print_verbose_missing_key_message(self, result):
+        """takes a verify result and prints out missing key info"""
+        signers = {}
+        for rev_id, validity, fingerprint in result:
+            if validity == gpg.SIGNATURE_KEY_MISSING:
+                signers.setdefault(fingerprint, 0)
+                signers[fingerprint] += 1
+        for fingerprint, number in signers.items():
+            note(gettext(ngettext("  Unknown key {0} signed {1} commit", 
+                                "  Unknown key {0} signed {1} commits",
+                            number)).format(fingerprint, number))
 
     def _print_verbose_valid_message(self, result):
         """takes a verify result and prints out number of signed commits"""
