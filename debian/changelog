@@ -1,4 +1,4 @@
-bzr (2.4.0~beta4-1) UNRELEASED; urgency=low
+bzr (2.4.0~beta4-1) unstable; urgency=low
 
   * New upstream release.
    + Using "bzr blame" no longer requires user to set identity.  LP: #667408
