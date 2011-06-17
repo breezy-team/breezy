@@ -27,7 +27,7 @@ from bzrlib import (
 from bzrlib.commands import Command
 from bzrlib.option import Option
 from bzrlib.trace import note
-from bzrlib.i18n import gettext
+from bzrlib.i18n import gettext, ngettext
 
 class cmd_sign_my_commits(Command):
     __doc__ = """Sign all commits by a given committer.
@@ -155,8 +155,9 @@ class cmd_verify(Command):
                            signers.setdefault(uid, 0)
                            signers[uid] += 1
                    for uid, number in signers.items():
-                       note(gettext("  {0} signed {1} commits".format(uid,
-number))) #FIXME plural properly
+                       note(ngettext("  {0} signed {1} commit", 
+                                     "  {0} signed {1} commits",
+                                    number).format(uid, number))
                return 0
         else:
             note(gettext("{0} commits with valid signatures").format(
@@ -168,12 +169,20 @@ number))) #FIXME plural properly
                        signers.setdefault(uid, 0)
                        signers[uid] += 1
                for uid, number in signers.items():
-                   note(gettext("  {0} signed {1} commits".format(uid, number)))
+                   note(gettext(ngettext("  {0} signed {1} commit", 
+                                     "  {0} signed {1} commits",
+                                    number)).format(uid, number))
             #TODO verbose for the other types too
-            note(gettext("{0} commits with unknown keys").format(
+            note(ngettext("{0} commit with unknown key",
+                          "{0} commits with unknown keys",
+                          count[gpg.SIGNATURE_KEY_MISSING]).format(
                                         count[gpg.SIGNATURE_KEY_MISSING]))
-            note(gettext("{0} commits not valid").format(
+            note(ngettext("{0} commit not valid",
+                          "{0} commits not valid",
+                          count[gpg.SIGNATURE_NOT_VALID]).format(
                                         count[gpg.SIGNATURE_NOT_VALID]))
-            note(gettext("{0} commits not signed").format(
+            note(ngettext("{0} commit not signed",
+                          "{0} commits not signed",
+                          count[gpg.SIGNATURE_NOT_SIGNED]).format(
                                         count[gpg.SIGNATURE_NOT_SIGNED]))
             return 1

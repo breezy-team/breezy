@@ -125,7 +125,7 @@ class SignMyCommits(tests.TestCaseWithTransport):
         out = self.run_bzr('verify', retcode=1)
 
         self.assertEquals(('', '3 commits with valid signatures\n0 commits \
-with unknown keys\n0 commits not valid\n1 commits not signed\n'), out)
+with unknown keys\n0 commits not valid\n1 commit not signed\n'), out)
 
     def test_verify_commits_acceptable_key(self):
         wt = self.setup_tree()
@@ -137,4 +137,4 @@ with unknown keys\n0 commits not valid\n1 commits not signed\n'), out)
         out = self.run_bzr(['verify', '--acceptable-keys=foo,bar'], retcode=1)
 
         self.assertEquals(('', '3 commits with valid signatures\n0 commits \
-with unknown keys\n0 commits not valid\n1 commits not signed\n'), out)
+with unknown keys\n0 commits not valid\n1 commit not signed\n'), out)
