@@ -2505,13 +2505,19 @@ class _DontSpawnProcess(Exception):
     """A simple exception which just allows us to skip unnecessary steps"""
 
 
-class TestStartBzrSubProcess(tests.TestCase):
+class TestStartBzrSubProcess(tests.TestCaseInTempDir):
+    """Stub test start_bzr_subprocess."""
+
 
     def check_popen_state(self):
         """Replace to make assertions when popen is called."""
+        raise AssertionError('check_popen_state should be overriden')
 
     def _popen(self, *args, **kwargs):
-        """Record the command that is run, so that we can ensure it is correct"""
+        """Override the base version to record the command that is run.
+
+        From there we can ensure it is correct without spawning a real process.
+        """
         self.check_popen_state()
         self._popen_args = args
         self._popen_kwargs = kwargs
@@ -2526,7 +2532,7 @@ class TestStartBzrSubProcess(tests.TestCase):
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            allow_plugins=True)
+                          allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
@@ -2537,7 +2543,7 @@ class TestStartBzrSubProcess(tests.TestCase):
             self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':'set variable'})
+                          env_changes={'EXISTANT_ENV_VAR':'set variable'})
         # not set in theparent
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
@@ -2549,7 +2555,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':None})
+                          env_changes={'EXISTANT_ENV_VAR':None})
         # Still set in parent
         self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         del os.environ['EXISTANT_ENV_VAR']
@@ -2560,7 +2566,7 @@ class TestStartBzrSubProcess(tests.TestCase):
             self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'NON_EXISTANT_ENV_VAR':None})
+                          env_changes={'NON_EXISTANT_ENV_VAR':None})
 
     def test_working_dir(self):
         """Test that we can specify the working dir for the child"""
@@ -2569,18 +2575,12 @@ class TestStartBzrSubProcess(tests.TestCase):
         chdirs = []
         def chdir(path):
             chdirs.append(path)
-        os.chdir = chdir
-        try:
-            def getcwd():
-                return 'current'
-            osutils.getcwd = getcwd
-            try:
-                self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-                    working_dir='foo')
-            finally:
-                osutils.getcwd = orig_getcwd
-        finally:
-            os.chdir = orig_chdir
+        self.overrideAttr(os, 'chdir', chdir)
+        def getcwd():
+            return 'current'
+        self.overrideAttr(osutils, 'getcwd', getcwd)
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+                          working_dir='foo')
         self.assertEqual(['foo', 'current'], chdirs)
 
     def test_get_bzr_path_with_cwd_bzrlib(self):

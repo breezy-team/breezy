@@ -1704,7 +1704,7 @@ class TestCase(testtools.TestCase):
     def _finishLogFile(self):
         """Finished with the log file.
 
-        Close the file and delete it, unless setKeepLogfile was called.
+        Close the file and delete it.
         """
         if trace._trace_file:
             # flush the log file, to get all content
