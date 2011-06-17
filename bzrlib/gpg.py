@@ -140,10 +140,11 @@ class GPGStrategy(object):
             else:
                 raise
 
-    def verify(self, content):
+    def verify(self, content, testament):
         """Check content has a valid signature.
         
         :param content: the commit signature
+        :param testament: the valid testament string for the commit
         
         :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid
         """
@@ -158,6 +159,7 @@ class GPGStrategy(object):
         
         try:
             result = context.verify(signature, None, plain_output)
+            print "plain: " + str(plain_output.getvalue())
         except gpgme.GpgmeError,error:
             raise errors.VerifyFailed(error[2])
 
@@ -167,6 +169,8 @@ class GPGStrategy(object):
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:]
+        if testament != plain_output.getvalue():
+            return SIGNATURE_NOT_VALID, None
         if result[0].summary & gpgme.SIGSUM_VALID:
             key = context.get_key(fingerprint)
             name = key.uids[0].name

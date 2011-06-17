@@ -1202,6 +1202,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         plaintext = testament.as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
+    @needs_write_lock #needed for testament apparantly
     def verify_revision(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
         
@@ -1213,7 +1214,11 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         if not self.has_signature_for_revision_id(revision_id):
             return gpg.SIGNATURE_NOT_SIGNED, None
         signature = self.get_signature_text(revision_id)
-        return gpg_strategy.verify(signature)
+
+        testament = _mod_testament.Testament.from_revision(self, revision_id)
+        plaintext = testament.as_short_text()
+
+        return gpg_strategy.verify(signature, plaintext)
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
