@@ -1805,9 +1805,12 @@ class SignatureVerificationFailed(BzrError):
         BzrError.__init__(self, error=error)
 
 
-class GpgmeNotInstalled(BzrError):
+class GpgmeNotInstalled(DependencyNotPresent):
 
     _fmt = 'python-gpgme is not installed, it is needed to verify signatures'
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'gpgme', error)
 
 
 class WorkingTreeNotRevision(BzrError):
