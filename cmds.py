@@ -756,7 +756,8 @@ class cmd_merge_upstream(Command):
                 conflicts = self._do_merge(tree, tarball_filenames, package,
                     version, current_version, upstream_branch, upstream_revision,
                     merge_type, force)
-            if current_version is not None and Version(current_version) >= Version(version):
+            if (current_version is not None and
+                Version(current_version) >= Version(version)):
                 raise BzrCommandError(
                     "Upstream version %s has already been merged." % version)
             if not tree.has_filename("debian"):
@@ -772,7 +773,8 @@ class cmd_merge_upstream(Command):
         else:
             note("The new upstream version has been imported.")
             if conflicts:
-                note("You should now resolve the conflicts, review the changes, and then commit.")
+                note("You should now resolve the conflicts, review the "
+                     "changes, and then commit.")
             else:
                 note("You should now review the changes and then commit.")
 

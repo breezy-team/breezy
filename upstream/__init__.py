@@ -31,6 +31,7 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
+from bzrlib import osutils
 from bzrlib.trace import (
     note,
     warning,
@@ -486,3 +487,82 @@ class TarfileSource(UpstreamSource):
         if self.version is not None:
             return self.version
         return extract_tarball_version(self.path, package)
+
+
+class LaunchpadReleaseFileSource(UpstreamSource):
+    """Source that retrieves release files from Launchpad."""
+
+    @classmethod
+    def from_package(cls, distribution_name, distroseries_name, package):
+        """Create a LaunchpadReleaseFileSource from a distribution package.
+
+        :param distribution_name: Name of the distribution (e.g. "Ubuntu")
+        :param distroseries_name: Name of the distribution series
+            (e.g. "oneiric")
+        :param package: Package name
+        :return: A `LaunchpadReleaseFileSource`
+        """
+        from bzrlib.plugins.builddeb.launchpad import (
+            get_upstream_projectseries_for_package,
+            )
+        project_series = get_upstream_projectseries_for_package(
+            package, distribution_name, distroseries_name)
+        if project_series is None:
+            return None
+        return cls(project_series=project_series)
+
+    def __init__(self, project=None, project_series=None):
+        if project_series is None:
+            self.project_series = project.development_focus
+        else:
+            self.project_series = project_series
+        if project is None:
+            self.project = project_series.project
+        else:
+            self.project = project
+
+    def fetch_tarball(self, package, version, target_dir):
+        release = self.project.getRelease(version=version)
+        if release is None:
+            raise PackageVersionNotPresent(package, version, self)
+        release_files = []
+        for f in release.files:
+            if f.file_type == "Code Release Tarball":
+                release_files.append(f.file)
+        if len(release_files) == 0:
+            warning("Release %s for package %s found on Launchpad but no "
+                    "associated tarballs.", version, package)
+            raise PackageVersionNotPresent(package, version, self)
+        elif len(release_files) > 1:
+            warning("More than one release file for release %s of package %s"
+                    "found on Launchpad. Using the first.", version, package)
+        hosted_file = release_files[0]
+        dest_name = tarball_name(package, version)
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
+        try:
+            inf = hosted_file.open()
+            try:
+                note("Downloading upstream tarball %s from Launchpad",
+                     inf.filename)
+                filename = inf.filename.encode(osutils._fs_enc)
+                filename = filename.replace("/", "")
+                tmppath = os.path.join(tmpdir, filename)
+                outf = open(tmppath, 'wb')
+                try:
+                    outf.write(inf.read())
+                finally:
+                    outf.close()
+            finally:
+                inf.close()
+            repack_tarball(tmppath, dest_name, target_dir=target_dir,
+                force_gz=True)
+            return os.path.join(target_dir, dest_name)
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def get_latest_version(self, package, version):
+        versions = []
+        for release in self.project_series.releases:
+            versions.append((release.date_released, release.version))
+        versions.sort()
+        return versions[-1][1].encode("utf-8")
