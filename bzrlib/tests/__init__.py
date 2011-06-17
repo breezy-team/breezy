@@ -989,6 +989,12 @@ class TestCase(testtools.TestCase):
         # is addressed -- vila 20110219
         self.overrideAttr(config, '_expand_default_value', None)
         self._log_files = set()
+        # Each key in the ``_counters`` dict holds a value for a different
+        # counter. When the test ends, addDetail() should be used to output the
+        # counter values. This happens in install_counter_hook().
+        self._counters = {}
+        if 'config_stats' in selftest_debug_flags:
+            self._install_config_stats_hooks()
 
     def debug(self):
         # debug a frame up.
@@ -1010,6 +1016,50 @@ class TestCase(testtools.TestCase):
         details = self.getDetails()
         if name in details:
             del details[name]
+
+    def install_counter_hook(self, hooks, name, counter_name=None):
+        """Install a counting hook.
+
+        Any hook can be counted as long as it doesn't need to return a value.
+
+        :param hooks: Where the hook should be installed.
+
+        :param name: The hook name that will be counted.
+
+        :param counter_name: The counter identifier in ``_counters``, defaults
+            to ``name``.
+        """
+        _counters = self._counters # Avoid closing over self
+        if counter_name is None:
+            counter_name = name
+        if _counters.has_key(counter_name):
+            raise AssertionError('%s is already used as a counter name'
+                                  % (counter_name,))
+        _counters[counter_name] = 0
+        self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
+            lambda: ['%d' % (_counters[counter_name],)]))
+        def increment_counter(*args, **kwargs):
+            _counters[counter_name] += 1
+        label = 'count %s calls' % (counter_name,)
+        hooks.install_named_hook(name, increment_counter, label)
+        self.addCleanup(hooks.uninstall_named_hook, name, label)
+
+    def _install_config_stats_hooks(self):
+        """Install config hooks to count hook calls.
+
+        """
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.ConfigHooks, hook_name,
+                                       'config.%s' % (hook_name,))
+
+        # The OldConfigHooks are private and need special handling to protect
+        # against recursive tests (tests that run other tests), so we just do
+        # manually what registering them into _builtin_known_hooks will provide
+        # us.
+        self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.OldConfigHooks, hook_name,
+                                      'old_config.%s' % (hook_name,))
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -3514,6 +3564,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
+
+#   -Econfig_stats          Will collect statistics using addDetail
 selftest_debug_flags = set()
 
 
