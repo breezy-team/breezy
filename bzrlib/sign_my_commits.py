@@ -172,6 +172,7 @@ class cmd_verify(Command):
             return 1
 
     def _print_verbose_valid_message(self, result):
+        """takes a verify result and prints out number of signed commits"""
         signers = {}
         for rev_id, validity, uid in result:
             if validity == gpg.SIGNATURE_VALID:
