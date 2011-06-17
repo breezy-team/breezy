@@ -61,7 +61,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         self.assertEquals(out, "")
 
 
-class TestOptParseBugHandling(TestCase):
+class TestOptParseBugHandling(tests.TestCase):
     "Test that we handle http://bugs.python.org/issue2931"
 
     def test_nonascii_optparse(self):

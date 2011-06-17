@@ -2508,10 +2508,8 @@ class _DontSpawnProcess(Exception):
 class TestStartBzrSubProcess(tests.TestCaseInTempDir):
     """Stub test start_bzr_subprocess."""
 
-
-    def check_popen_state(self):
-        """Replace to make assertions when popen is called."""
-        raise AssertionError('check_popen_state should be overriden')
+    def _subprocess_log_cleanup(self):
+        """Inhibits the base version as we don't produce a log file."""
 
     def _popen(self, *args, **kwargs):
         """Override the base version to record the command that is run.
@@ -2522,6 +2520,9 @@ class TestStartBzrSubProcess(tests.TestCaseInTempDir):
         self._popen_args = args
         self._popen_kwargs = kwargs
         raise _DontSpawnProcess()
+
+    def check_popen_state(self):
+        """Replace to make assertions when popen is called."""
 
     def test_run_bzr_subprocess_no_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
