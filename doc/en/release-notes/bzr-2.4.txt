@@ -56,6 +56,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Fix test failures when running as a homeless user (debian buildd). Tests
+  leaking into ``${HOME}/.bzr.log`` should be detected properly now.
+  (Vincent Ladeuil, #798698)
 
 bzr 2.4b4
 #########
