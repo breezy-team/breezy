@@ -19,6 +19,7 @@
 from bzrlib import errors
 from bzrlib.commands import Command, display_command
 from bzrlib.option import Option, ListOption
+from bzrlib.config import GlobalConfig
 
 # FIXME: _parse_levels should be shared with bzrlib.builtins. this is a copy
 # to avoid the error
@@ -143,7 +144,7 @@ class cmd_grep(Command):
             from_root=False, null=False, levels=None, line_number=False,
             path_list=None, revision=None, pattern=None, include=None,
             exclude=None, fixed_string=False, files_with_matches=False,
-            files_without_match=False, color='never', diff=False):
+            files_without_match=False, color=None, diff=False):
         from bzrlib.plugins.grep import (
             grep,
             termcolor,
@@ -158,6 +159,14 @@ class cmd_grep(Command):
         if files_with_matches and files_without_match:
             raise errors.BzrCommandError('cannot specify both '
                 '-l/--files-with-matches and -L/--files-without-matches.')
+
+        global_config = GlobalConfig()
+
+        if color is None:
+            color = global_config.get_user_option('grep_color')
+
+        if color is None:
+            color = 'never'
 
         if color not in ['always', 'never', 'auto']:
             raise errors.BzrCommandError('Valid values for --color are '
