@@ -2505,7 +2505,7 @@ class _DontSpawnProcess(Exception):
     """A simple exception which just allows us to skip unnecessary steps"""
 
 
-class TestStartBzrSubProcess(tests.TestCaseInTempDir):
+class TestStartBzrSubProcess(tests.TestCase):
     """Stub test start_bzr_subprocess."""
 
     def _subprocess_log_cleanup(self):
