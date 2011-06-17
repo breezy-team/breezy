@@ -149,29 +149,13 @@ class cmd_verify(Command):
            count[gpg.SIGNATURE_NOT_SIGNED] == 0:
                note(gettext("All commits signed with verifiable keys"))
                if verbose:
-                   signers = {}
-                   for rev_id, validity, uid in result:
-                       if validity == gpg.SIGNATURE_VALID:
-                           signers.setdefault(uid, 0)
-                           signers[uid] += 1
-                   for uid, number in signers.items():
-                       note(ngettext("  {0} signed {1} commit", 
-                                     "  {0} signed {1} commits",
-                                    number).format(uid, number))
+                   self._print_verbose_valid_message(result)
                return 0
         else:
             note(gettext("{0} commits with valid signatures").format(
                                         count[gpg.SIGNATURE_VALID]))
             if verbose:
-               signers = {}
-               for rev_id, validity, uid in result:
-                   if validity == gpg.SIGNATURE_VALID:
-                       signers.setdefault(uid, 0)
-                       signers[uid] += 1
-               for uid, number in signers.items():
-                   note(gettext(ngettext("  {0} signed {1} commit", 
-                                     "  {0} signed {1} commits",
-                                    number)).format(uid, number))
+               self._print_verbose_valid_message(result)
             #TODO verbose for the other types too
             note(ngettext("{0} commit with unknown key",
                           "{0} commits with unknown keys",
@@ -186,3 +170,15 @@ class cmd_verify(Command):
                           count[gpg.SIGNATURE_NOT_SIGNED]).format(
                                         count[gpg.SIGNATURE_NOT_SIGNED]))
             return 1
+
+    def _print_verbose_valid_message(self, result):
+        signers = {}
+        for rev_id, validity, uid in result:
+            if validity == gpg.SIGNATURE_VALID:
+                signers.setdefault(uid, 0)
+                signers[uid] += 1
+        for uid, number in signers.items():
+            note(gettext(ngettext("  {0} signed {1} commit", 
+                                "  {0} signed {1} commits",
+                            number)).format(uid, number))
+        
