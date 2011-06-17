@@ -216,6 +216,39 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content,
                             plain))
 
+    def test_verify_bad_testament(self):
+        try:
+            self.import_keys()
+        except ImportError:
+            return True #can't test if gpgme isn't installed
+            
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQEcBAEBAgAGBQJN+ekFAAoJEIdoGx7jCA5FGtEH/i+XxJRvqU6wdBtLVrGBMAGk
+FZ5VP+KyXYtymSbgSstj/vM12NeMIeFs3xGnNnYuX1MIcY6We5TKtCH0epY6ym5+
+6g2Q2QpQ5/sT2d0mWzR0K4uVngmxVQaXTdk5PdZ40O7ULeDLW6CxzxMHyUL1rsIx
+7UBUTBh1O/1n3ZfD99hUkm3hVcnsN90uTKH59zV9NWwArU0cug60+5eDKJhSJDbG
+rIwlqbFAjDZ7L/48e+IaYIJwBZFzMBpJKdCxzALLtauMf+KK8hGiL2hrRbWm7ty6
+NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
+=iwsn
+-----END PGP SIGNATURE-----
+"""
+        plain = """bazaar-ng testament short form 1
+revision-id: doctor@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        my_gpg.set_acceptable_keys("bazaar@example.com")
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
+                            plain))
+
     def test_verify_invalid(self):
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
