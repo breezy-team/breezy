@@ -32,7 +32,11 @@ override_dh_auto_install:
 override_dh_install:
 	mkdir -p debian/python-bzrlib.tests/usr/lib \
 		debian/python-bzrlib.tests/usr/share/pyshared/bzrlib
-	for py in $(shell pyversions -r); do { mkdir -p debian/python-bzrlib.tests/usr/lib/$$py/dist-packages/bzrlib; mv debian/tmp/usr/lib/$$py/dist-packages/bzrlib/tests debian/python-bzrlib.tests/usr/lib/$$py/dist-packages/bzrlib/tests; } done
+	for py in $(shell pyversions -r); do \
+		mkdir -p debian/python-bzrlib.tests/usr/lib/$$py/dist-packages/bzrlib; \
+		mv debian/tmp/usr/lib/$$py/dist-packages/bzrlib/tests \
+			debian/python-bzrlib.tests/usr/lib/$$py/dist-packages/bzrlib/tests; \
+	done
 	dh_install --list-missing --fail-missing
 	# Install the documentation; since html and txt and intermixed
 	# under doc/, this is handier than trying to do it from bzr-doc.install. 
