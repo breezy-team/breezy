@@ -9,7 +9,6 @@ Uploaders: Jeff Bailey <jbailey@raspberryginger.com>,
 Build-Depends: cython | python-pyrex,
                debhelper (>> 7.4.16),
                python (>= 2.6.6-3),
-               python (>> 2.5) | python-celementtree | python-elementtree,
                python-all-dev (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
@@ -59,8 +58,7 @@ Description: easy to use distributed version control system
 Package: python-bzrlib
 Architecture: any
 Section: python
-Depends: python (>> 2.5) | python-celementtree | python-elementtree,
-         python-configobj,
+Depends: python-configobj,
          ${misc:Depends},
          ${python:Depends},
          ${shlibs:Depends}
