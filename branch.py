@@ -456,8 +456,9 @@ class LocalGitBranch(GitBranch):
     def _gen_revision_history(self):
         if self.head is None:
             return []
-        ret = list(self.repository.iter_reverse_revision_history(
-            self.last_revision()))
+        graph = self.repository.get_graph()
+        ret = list(graph.iter_lefthand_ancestry(self.last_revision(),
+            (revision.NULL_REVISION, )))
         ret.reverse()
         return ret
 
