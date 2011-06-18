@@ -10,6 +10,15 @@
   * Now raises a proper exception when receiving an "Unknown repository"
     error from GitHub. (Jelmer Vernooij, #798295)
 
+  * Support the new limit argument to InterBranch.fetch. (Jelmer Vernooij, #750175)
+
+  * Support the new testament API that accepts a tree rather than an
+    inventory. (Jelmer Vernooij, #762608)
+
+  * Remove InterBranch.update_revisions. (Jelmer Vernooij, #771765)
+
+  * Implement Repository.set_make_working_trees(). (Jelmer Vernooij, #777065)
+
 0.6.0	2011-04-12
 
  BUG FIXES
