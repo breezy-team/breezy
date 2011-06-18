@@ -5,10 +5,73 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.4b5
+#########
+
+:2.4b5: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* Fix test failures when running as a homeless user (debian buildd). Tests
+  leaking into ``${HOME}/.bzr.log`` should be detected properly now.
+  (Vincent Ladeuil, #798698)
+
 bzr 2.4b4
 #########
 
-:2.4b4: NOT RELEASED YET
+:2.4b4: 2011-06-16
+
+This is the fourth beta of the 2.4 series, leading to a 2.4.0 release in
+August 2011. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
 
 External Compatibility Breaks
 *****************************
@@ -23,9 +86,15 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Hooks have been added for config stacks: ``get``, ``set`` and ``remove``
+  are called when an option is repsectively read, modified or deleted. Also
+  added ``load`` and ``save`` hooks for config stores, called when the
+  stores are loaded or saved.  (Vincent Ladeuil)
+
 * New hook server_exception in bzrlib.smart.server to catch any
-  exception caused while running bzr serve.  (Jonathan Riddell,
-  #274578)
+  exception caused while running bzr serve.
+  (Jonathan Riddell, #274578)
+
 
 * New hook set_commit_message in bzrlib.msgeditor to set
   a commit message and revision properties.  (Jonathan Riddell,
@@ -62,6 +131,9 @@ Bug Fixes
 * Fix a race condition for ``server_started`` hooks leading to a spurious
   test failure. (Vincent Ladeuil, #789167)
 
+* Fix exporting subdirectory with ``--per-file-timestamps``.
+  (Szilveszter Farkas, #795557)
+
 * Handle files that get created but don't get used during TreeTransform.
   ``open()`` can create a file, and still raise an exception before it
   returns. So anything we might have created, make sure we destroy during
@@ -75,6 +147,9 @@ Bug Fixes
   setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
   because ``build_mo`` became a required step that they didn't know about.
   (John Arbash Meinel, #787122)
+
+* Properly avoid re-adding a file after it changes case on CICP
+  filesystems. (John Arbash Meinel, #798130)
 
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
@@ -108,8 +183,16 @@ API Changes
    bzrlib.
 
 * Information about held lockdir locks returned from eg `LockDir.peek` is
-  now represented as a `LockHeldInfo` object, rather than a plain Python
-  dict.
+  now represented as a `LockHeldInfo` object, rather than a plain
+  Python dict.
+  (Martin Pool)
+
+* Remove `file_status` function.
+  (Martin Pool)
+
+* ``Repository.iter_reverse_revision_history`` is now deprecated.
+  Use ``Graph.iter_lefthand_ancestry`` instead.
+  (Jelmer Vernooij, #739481)
 
 * ``Repository.get_ancestry`` has been deprecated. Use
   ``Graph.iter_ancestry`` instead.
@@ -285,6 +368,9 @@ Bug Fixes
   by more commands than just commit. Updating with a delta allows us to
   not load the whole inventory, which can take 10+s with large trees.
   (Jonathan Riddell, John Arbash Meinel, #781168)
+
+* ``bzr mv --after old_name new_name`` now works if "new_name" is newly
+  added. (Benoît Pierre)
 
 
 Documentation

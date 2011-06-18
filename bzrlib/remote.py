@@ -1975,6 +1975,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def supports_rich_root(self):
         return self._format.rich_root_data
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def iter_reverse_revision_history(self, revision_id):
         self._ensure_real()
         return self._real_repository.iter_reverse_revision_history(revision_id)
@@ -3102,22 +3103,32 @@ class RemoteConfig(object):
         """
         try:
             configobj = self._get_configobj()
+            section_obj = None
             if section is None:
                 section_obj = configobj
             else:
                 try:
                     section_obj = configobj[section]
                 except KeyError:
-                    return default
-            return section_obj.get(name, default)
+                    pass
+            if section_obj is None:
+                value = default
+            else:
+                value = section_obj.get(name, default)
         except errors.UnknownSmartMethod:
-            return self._vfs_get_option(name, section, default)
+            value = self._vfs_get_option(name, section, default)
+        for hook in config.OldConfigHooks['get']:
+            hook(self, name, value)
+        return value
 
     def _response_to_configobj(self, response):
         if len(response[0]) and response[0][0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
-        return config.ConfigObj(lines, encoding='utf-8')
+        conf = config.ConfigObj(lines, encoding='utf-8')
+        for hook in config.OldConfigHooks['load']:
+            hook(self)
+        return conf
 
 
 class RemoteBranchConfig(RemoteConfig):

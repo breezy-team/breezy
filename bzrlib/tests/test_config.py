@@ -37,6 +37,7 @@ from bzrlib import (
     ui,
     urlutils,
     registry,
+    remote,
     tests,
     trace,
     transport,
@@ -45,11 +46,11 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
-from bzrlib.transport import remote
+from bzrlib.transport import remote as transport_remote
 from bzrlib.tests import (
     features,
-    TestSkipped,
     scenarios,
+    test_server,
     )
 from bzrlib.util.configobj import configobj
 
@@ -118,7 +119,8 @@ config.test_store_builder_registry.register('branch', build_branch_store)
 def build_remote_branch_store(test):
     # There is only one permutation (but we won't be able to handle more with
     # this design anyway)
-    (transport_class, server_class) = remote.get_test_permutations()[0]
+    (transport_class,
+     server_class) = transport_remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
     return config.BranchStore(b)
@@ -142,7 +144,8 @@ config.test_stack_builder_registry.register('branch', build_branch_stack)
 def build_remote_branch_stack(test):
     # There is only one permutation (but we won't be able to handle more with
     # this design anyway)
-    (transport_class, server_class) = remote.get_test_permutations()[0]
+    (transport_class,
+     server_class) = transport_remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
     return config.BranchStack(b)
@@ -1906,6 +1909,247 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestOldConfigHooks(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestOldConfigHooks, self).setUp()
+        create_configs_with_file_option(self)
+
+    def assertGetHook(self, conf, name, value):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('get', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'get', None)
+        self.assertLength(0, calls)
+        actual_value = conf.get_user_option(name)
+        self.assertEquals(value, actual_value)
+        self.assertLength(1, calls)
+        self.assertEquals((conf, name, value), calls[0])
+
+    def test_get_hook_bazaar(self):
+        self.assertGetHook(self.bazaar_config, 'file', 'bazaar')
+
+    def test_get_hook_locations(self):
+        self.assertGetHook(self.locations_config, 'file', 'locations')
+
+    def test_get_hook_branch(self):
+        # Since locations masks branch, we define a different option
+        self.branch_config.set_user_option('file2', 'branch')
+        self.assertGetHook(self.branch_config, 'file2', 'branch')
+
+    def assertSetHook(self, conf, name, value):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('set', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'set', None)
+        self.assertLength(0, calls)
+        conf.set_user_option(name, value)
+        self.assertLength(1, calls)
+        # We can't assert the conf object below as different configs use
+        # different means to implement set_user_option and we care only about
+        # coverage here.
+        self.assertEquals((name, value), calls[0][1:])
+
+    def test_set_hook_bazaar(self):
+        self.assertSetHook(self.bazaar_config, 'foo', 'bazaar')
+
+    def test_set_hook_locations(self):
+        self.assertSetHook(self.locations_config, 'foo', 'locations')
+
+    def test_set_hook_branch(self):
+        self.assertSetHook(self.branch_config, 'foo', 'branch')
+
+    def assertRemoveHook(self, conf, name, section_name=None):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('remove', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'remove', None)
+        self.assertLength(0, calls)
+        conf.remove_user_option(name, section_name)
+        self.assertLength(1, calls)
+        # We can't assert the conf object below as different configs use
+        # different means to implement remove_user_option and we care only about
+        # coverage here.
+        self.assertEquals((name,), calls[0][1:])
+
+    def test_remove_hook_bazaar(self):
+        self.assertRemoveHook(self.bazaar_config, 'file')
+
+    def test_remove_hook_locations(self):
+        self.assertRemoveHook(self.locations_config, 'file',
+                              self.locations_config.location)
+
+    def test_remove_hook_branch(self):
+        self.assertRemoveHook(self.branch_config, 'file')
+
+    def assertLoadHook(self, name, conf_class, *conf_args):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('load', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'load', None)
+        self.assertLength(0, calls)
+        # Build a config
+        conf = conf_class(*conf_args)
+        # Access an option to trigger a load
+        conf.get_user_option(name)
+        self.assertLength(1, calls)
+        # Since we can't assert about conf, we just use the number of calls ;-/
+
+    def test_load_hook_bazaar(self):
+        self.assertLoadHook('file', config.GlobalConfig)
+
+    def test_load_hook_locations(self):
+        self.assertLoadHook('file', config.LocationConfig, self.tree.basedir)
+
+    def test_load_hook_branch(self):
+        self.assertLoadHook('file', config.BranchConfig, self.tree.branch)
+
+    def assertSaveHook(self, conf):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('save', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'save', None)
+        self.assertLength(0, calls)
+        # Setting an option triggers a save
+        conf.set_user_option('foo', 'bar')
+        self.assertLength(1, calls)
+        # Since we can't assert about conf, we just use the number of calls ;-/
+
+    def test_save_hook_bazaar(self):
+        self.assertSaveHook(self.bazaar_config)
+
+    def test_save_hook_locations(self):
+        self.assertSaveHook(self.locations_config)
+
+    def test_save_hook_branch(self):
+        self.assertSaveHook(self.branch_config)
+
+
+class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
+    """Tests config hooks for remote configs.
+
+    No tests for the remove hook as this is not implemented there.
+    """
+
+    def setUp(self):
+        super(TestOldConfigHooksForRemote, self).setUp()
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        create_configs_with_file_option(self)
+
+    def assertGetHook(self, conf, name, value):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('get', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'get', None)
+        self.assertLength(0, calls)
+        actual_value = conf.get_option(name)
+        self.assertEquals(value, actual_value)
+        self.assertLength(1, calls)
+        self.assertEquals((conf, name, value), calls[0])
+
+    def test_get_hook_remote_branch(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.assertGetHook(remote_branch._get_config(), 'file', 'branch')
+
+    def test_get_hook_remote_bzrdir(self):
+        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        conf = remote_bzrdir._get_config()
+        conf.set_option('remotedir', 'file')
+        self.assertGetHook(conf, 'file', 'remotedir')
+
+    def assertSetHook(self, conf, name, value):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('set', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'set', None)
+        self.assertLength(0, calls)
+        conf.set_option(value, name)
+        self.assertLength(1, calls)
+        # We can't assert the conf object below as different configs use
+        # different means to implement set_user_option and we care only about
+        # coverage here.
+        self.assertEquals((name, value), calls[0][1:])
+
+    def test_set_hook_remote_branch(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        self.assertSetHook(remote_branch._get_config(), 'file', 'remote')
+
+    def test_set_hook_remote_bzrdir(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        self.assertSetHook(remote_bzrdir._get_config(), 'file', 'remotedir')
+
+    def assertLoadHook(self, expected_nb_calls, name, conf_class, *conf_args):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('load', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'load', None)
+        self.assertLength(0, calls)
+        # Build a config
+        conf = conf_class(*conf_args)
+        # Access an option to trigger a load
+        conf.get_option(name)
+        self.assertLength(expected_nb_calls, calls)
+        # Since we can't assert about conf, we just use the number of calls ;-/
+
+    def test_load_hook_remote_branch(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.assertLoadHook(1, 'file', remote.RemoteBranchConfig, remote_branch)
+
+    def test_load_hook_remote_bzrdir(self):
+        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        # The config file doesn't exist, set an option to force its creation
+        conf = remote_bzrdir._get_config()
+        conf.set_option('remotedir', 'file')
+        # We get one call for the server and one call for the client, this is
+        # caused by the differences in implementations betwen
+        # SmartServerBzrDirRequestConfigFile (in smart/bzrdir.py) and
+        # SmartServerBranchGetConfigFile (in smart/branch.py)
+        self.assertLoadHook(2 ,'file', remote.RemoteBzrDirConfig, remote_bzrdir)
+
+    def assertSaveHook(self, conf):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.OldConfigHooks.install_named_hook('save', hook, None)
+        self.addCleanup(
+            config.OldConfigHooks.uninstall_named_hook, 'save', None)
+        self.assertLength(0, calls)
+        # Setting an option triggers a save
+        conf.set_option('foo', 'bar')
+        self.assertLength(1, calls)
+        # Since we can't assert about conf, we just use the number of calls ;-/
+
+    def test_save_hook_remote_branch(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        self.assertSaveHook(remote_branch._get_config())
+
+    def test_save_hook_remote_bzrdir(self):
+        remote_branch = branch.Branch.open(self.get_url('tree'))
+        self.addCleanup(remote_branch.lock_write().unlock)
+        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        self.assertSaveHook(remote_bzrdir._get_config())
+
+
 class TestOption(tests.TestCase):
 
     def test_default_value(self):
@@ -2166,6 +2410,36 @@ class TestMutableStore(TestStore):
         sections = list(modified_store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
+
+    def test_load_hook(self):
+        # We first needs to ensure that the store exists
+        store = self.get_store(self)
+        section = store.get_mutable_section('baz')
+        section.set('foo', 'bar')
+        store.save()
+        # Now we can try to load it
+        store = self.get_store(self)
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('load', hook, None)
+        self.assertLength(0, calls)
+        store.load()
+        self.assertLength(1, calls)
+        self.assertEquals((store,), calls[0])
+
+    def test_save_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('save', hook, None)
+        self.assertLength(0, calls)
+        store = self.get_store(self)
+        section = store.get_mutable_section('baz')
+        section.set('foo', 'bar')
+        store.save()
+        self.assertLength(1, calls)
+        self.assertEquals((store,), calls[0])
 
 
 class TestIniFileStore(TestStore):
@@ -2494,10 +2768,6 @@ class TestStackGet(tests.TestCase):
         conf_stack = config.Stack([conf1, conf2])
         self.assertEquals('baz', conf_stack.get('foo'))
 
-    def test_get_for_empty_stack(self):
-        conf_stack = config.Stack([])
-        self.assertEquals(None, conf_stack.get('foo'))
-
     def test_get_for_empty_section_callable(self):
         conf_stack = config.Stack([lambda : []])
         self.assertEquals(None, conf_stack.get('foo'))
@@ -2521,6 +2791,26 @@ class TestConcreteStacks(TestStackWithTransport):
         stack = self.get_stack(self)
 
 
+class TestStackGet(TestStackWithTransport):
+
+    def test_get_for_empty_stack(self):
+        conf = self.get_stack(self)
+        self.assertEquals(None, conf.get('foo'))
+
+    def test_get_hook(self):
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('get', hook, None)
+        self.assertLength(0, calls)
+        value = conf.get('foo')
+        self.assertEquals('bar', value)
+        self.assertLength(1, calls)
+        self.assertEquals((conf, 'foo', 'bar'), calls[0])
+
+
 class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):
@@ -2536,6 +2826,17 @@ class TestStackSet(TestStackWithTransport):
         conf.set('foo', 'baz')
         self.assertEquals, 'baz', conf.get('foo')
 
+    def test_set_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('set', hook, None)
+        self.assertLength(0, calls)
+        conf = self.get_stack(self)
+        conf.set('foo', 'bar')
+        self.assertLength(1, calls)
+        self.assertEquals((conf, 'foo', 'bar'), calls[0])
+
 
 class TestStackRemove(TestStackWithTransport):
 
@@ -2550,6 +2851,18 @@ class TestStackRemove(TestStackWithTransport):
     def test_remove_unknown(self):
         conf = self.get_stack(self)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+    def test_remove_hook(self):
+        calls = []
+        def hook(*args):
+            calls.append(args)
+        config.ConfigHooks.install_named_hook('remove', hook, None)
+        self.assertLength(0, calls)
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        conf.remove('foo')
+        self.assertLength(1, calls)
+        self.assertEquals((conf, 'foo'), calls[0])
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
@@ -3216,7 +3529,8 @@ class TestAutoUserId(tests.TestCase):
         to be able to choose a user name with no configuration.
         """
         if sys.platform == 'win32':
-            raise TestSkipped("User name inference not implemented on win32")
+            raise tests.TestSkipped(
+                "User name inference not implemented on win32")
         realname, address = config._auto_user_id()
         if os.path.exists('/etc/mailname'):
             self.assertIsNot(None, realname)
