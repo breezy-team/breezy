@@ -121,6 +121,20 @@ class TestMerge(TestCaseWithTransport):
         finally:
             wt1.unlock()
 
+    def test_merge_into_null_tree(self):
+        wt = self.make_branch_and_tree('tree')
+        null_tree = wt.basis_tree()
+        self.build_tree(['tree/file'])
+        wt.add('file')
+        wt.commit('tree with root')
+        merger = _mod_merge.Merge3Merger(null_tree, null_tree, null_tree, wt,
+                                         this_branch=wt.branch,
+                                         do_merge=False)
+        with merger.make_preview_transform() as tt:
+            self.assertEqual([], tt.find_conflicts())
+            preview = tt.get_preview_tree()
+            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
         tree =self.make_branch_and_tree('.')
@@ -386,6 +400,26 @@ class TestMerge(TestCaseWithTransport):
                              'c\n'
                              '>>>>>>> MERGE-SOURCE\n',
                              'this/file')
+
+    def test_merge_reverse_revision_range(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit("added a")
+        first_rev = tree.branch.revision_history()[0]
+        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+                                          _mod_revision.NULL_REVISION,
+                                          first_rev)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.interesting_files = 'a'
+        conflict_count = merger.do_merge()
+        self.assertEqual(0, conflict_count)
+
+        self.assertPathDoesNotExist("a")
+        tree.revert()
+        self.assertPathExists("a")
 
     def test_make_merger(self):
         this_tree = self.make_branch_and_tree('this')

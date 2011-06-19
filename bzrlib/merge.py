@@ -868,7 +868,7 @@ class Merge3Merger(object):
                     executable3, file_status, resolver=resolver)
         finally:
             child_pb.finished()
-        self.fix_root()
+        self.tt.fixup_new_roots()
         self._finish_computing_transform()
 
     def _finish_computing_transform(self):
@@ -1093,6 +1093,7 @@ class Merge3Merger(object):
                           ))
         return result
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def fix_root(self):
         if self.tt.final_kind(self.tt.root) is None:
             self.tt.cancel_deletion(self.tt.root)
@@ -1317,16 +1318,26 @@ class Merge3Merger(object):
             self._raw_conflicts.append(('path conflict', trans_id, file_id,
                                         this_parent, this_name,
                                         other_parent, other_name))
-        if other_name is None:
+        if not self.other_tree.has_id(file_id):
             # it doesn't matter whether the result was 'other' or
-            # 'conflict'-- if there's no 'other', we leave it alone.
+            # 'conflict'-- if it has no file id, we leave it alone.
             return
         parent_id = parents[self.winner_idx[parent_id_winner]]
-        if parent_id is not None:
+        name = names[self.winner_idx[name_winner]]
+        if parent_id is not None or name is not None:
             # if we get here, name_winner and parent_winner are set to safe
             # values.
-            self.tt.adjust_path(names[self.winner_idx[name_winner]],
-                                self.tt.trans_id_file_id(parent_id),
+            if parent_id is None and name is not None:
+                # if parent_id is None and name is non-None, current file is
+                # the tree root.
+                if names[self.winner_idx[parent_id_winner]] != '':
+                    raise AssertionError(
+                        'File looks like a root, but named %s' %
+                        names[self.winner_idx[parent_id_winner]])
+                parent_trans_id = transform.ROOT_PARENT
+            else:
+                parent_trans_id = self.tt.trans_id_file_id(parent_id)
+            self.tt.adjust_path(name, parent_trans_id,
                                 self.tt.trans_id_file_id(file_id))
 
     def _do_merge_contents(self, file_id):

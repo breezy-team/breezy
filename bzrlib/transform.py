@@ -252,7 +252,8 @@ class TreeTransformBase(object):
         if (self.tree_file_id(self._new_root) is not None and
             self._new_root not in self._removed_id):
             self.unversion_file(self._new_root)
-        self.version_file(file_id, self._new_root)
+        if file_id is not None:
+            self.version_file(file_id, self._new_root)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't
@@ -1826,8 +1827,10 @@ class TreeTransform(DiskTreeTransform):
         tree_paths.sort(reverse=True)
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            for num, data in enumerate(tree_paths):
-                path, trans_id = data
+            for num, (path, trans_id) in enumerate(tree_paths):
+                # do not attempt to move root into a subdirectory of itself.
+                if path == '':
+                    continue
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:

@@ -2381,6 +2381,18 @@ def getuser_unicode():
     except UnicodeDecodeError:
         raise errors.BzrError("Can't decode username as %s." % \
                 user_encoding)
+    except ImportError, e:
+        if sys.platform != 'win32':
+            raise
+        if str(e) != 'No module named pwd':
+            raise
+        # https://bugs.launchpad.net/bzr/+bug/660174
+        # getpass.getuser() is unable to return username on Windows
+        # if there is no USERNAME environment variable set.
+        # That could be true if bzr is running as a service,
+        # e.g. running `bzr serve` as a service on Windows.
+        # We should not fail with traceback in this case.
+        username = u'UNKNOWN'
     return username
 
 
@@ -2448,3 +2460,30 @@ def find_executable_on_path(name):
             if os.access(f, os.X_OK):
                 return f
     return None
+
+
+def _posix_is_local_pid_dead(pid):
+    """True if pid doesn't correspond to live process on this machine"""
+    try:
+        # Special meaning of unix kill: just check if it's there.
+        os.kill(pid, 0)
+    except OSError, e:
+        if e.errno == errno.ESRCH:
+            # On this machine, and really not found: as sure as we can be
+            # that it's dead.
+            return True
+        elif e.errno == errno.EPERM:
+            # exists, though not ours
+            return False
+        else:
+            mutter("os.kill(%d, 0) failed: %s" % (pid, e))
+            # Don't really know.
+            return False
+    else:
+        # Exists and our process: not dead.
+        return False
+
+if sys.platform == "win32":
+    is_local_pid_dead = win32utils.is_local_pid_dead
+else:
+    is_local_pid_dead = _posix_is_local_pid_dead

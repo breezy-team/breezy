@@ -311,10 +311,15 @@ class TestShelver(ShelfTestCase):
                                 from_revision=revision.NULL_REVISION)
         tree1.commit('Replaced root entry')
         # This is essentially assertNotRaises(InconsistentDelta)
-        self.expectFailure('Cannot shelve replacing a root entry',
-                           self.assertRaises, AssertionError,
-                           self.assertRaises, errors.InconsistentDelta,
-                           self.shelve_all, tree1, rev2)
+        # With testtools 0.99, it can be rewritten as:
+        # with ExpectedException(AssertionError,
+        #                        'InconsistentDelta not raised'):
+        #     with ExpectedException(errors.InconsistentDelta, ''):
+        #         self.shelve_all(tree1, rev2)
+        e = self.assertRaises(AssertionError, self.assertRaises,
+                              errors.InconsistentDelta, self.shelve_all, tree1,
+                              rev2)
+        self.assertContainsRe('InconsistentDelta not raised', str(e))
 
     def test_shelve_split(self):
         outer_tree = self.make_branch_and_tree('outer')
