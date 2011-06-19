@@ -73,11 +73,10 @@ class cmd_sign_my_commits(Command):
                         [branch.last_revision()]):
                     if _mod_revision.is_null(rev_id):
                         continue
-                    try:
-                        if repo.has_signature_for_revision_id(rev_id):
-                            continue
-                    except errors.NoSuchRevision:
-                        # Ghost
+                    if parents is None:
+                        # Ignore ghosts
+                        continue
+                    if repo.has_signature_for_revision_id(rev_id):
                         continue
                     rev = repo.get_revision(rev_id)
                     if rev.committer != committer:
