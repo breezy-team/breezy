@@ -1,7 +1,7 @@
-bzr (2.4.0~beta4-3) UNRELEASED; urgency=low
+bzr (2.4.0~beta4-3) unstable; urgency=low
 
   * Drop no longer necessary dependency on python-elementtree, as it is
-    already present in supported versions of Python.
+    included in all currently supported versions of Python.
   * Add python-bzrlib-dbg package.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 19 Jun 2011 03:45:44 +0200
