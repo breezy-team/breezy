@@ -195,7 +195,7 @@ class TestsNeedingReweave(TestReconcile):
             **kwargs):
         # actual low level test.
         repo = aBzrDir.open_repository()
-        m = MatchesAncestry(repo,'references_missing')
+        m = MatchesAncestry(repo, 'references_missing')
         if m.match(['missing', 'references_missing']) is not None:
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do here. Specifically, this test has the inventory

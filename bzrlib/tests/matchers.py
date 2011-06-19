@@ -107,10 +107,8 @@ class MatchesAncestry(Matcher):
         try:
             graph = self.repository.get_graph()
             got = [r for r, p in graph.iter_ancestry([self.revision_id])]
-            if not _mod_revision.NULL_REVISION in got:
-                raise AssertionError("Unable to find %r in %r" % (
-                    self.revision_id, self.repository))
-            got.remove(_mod_revision.NULL_REVISION)
+            if _mod_revision.NULL_REVISION in got:
+                got.remove(_mod_revision.NULL_REVISION)
         finally:
             self.repository.unlock()
         if sorted(got) != sorted(expected):
