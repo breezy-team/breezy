@@ -6,10 +6,11 @@ Uploaders: Jeff Bailey <jbailey@raspberryginger.com>,
            Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Reinhard Tartler <siretart@tauware.de>,
            Jelmer Vernooij <jelmer@debian.org>
-Build-Depends: cython | python-pyrex,
+Build-Depends: cython-dbg | python-pyrex,
                debhelper (>> 7.4.16),
                python (>= 2.6.6-3),
                python-all-dev (>= 2.6.6-3),
+               python-all-dbg (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
                python-lzma,
@@ -66,6 +67,7 @@ Recommends: ca-certificates, python-launchpadlib, python-paramiko
 Suggests: python-bzrlib.tests,
           python-kerberos (>= 1.0+svn2455-1),
           python-pycurl,
+          python-bzrlib-dbg,
           xdg-utils
 Breaks: bzr (<< 2.3.0-2)
 Provides: ${python:Provides}
@@ -80,6 +82,19 @@ Description: distributed version control system - python library
  Install python-paramiko if you are going to push branches to remote
  hosts with sftp, and python-pycurl if you'd like for SSL certificates
  always to be verified.
+
+Package: python-bzrlib-dbg
+Architecture: any
+Priority: extra
+Section: debug
+Depends: ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}, python-dbg, python-bzrlib (= ${binary:Version})
+Provides: ${python:Provides}
+Description: distributed version control system - debug extension
+ Bazaar is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ This package contains the debug extension for the Bazaar Python library.
 
 Package: python-bzrlib.tests
 Architecture: all

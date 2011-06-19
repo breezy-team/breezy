@@ -1,0 +1,17 @@
+=== modified file 'bzrlib/tests/test_selftest.py'
+--- old/bzrlib/tests/test_selftest.py	2011-06-16 23:05:13 +0000
++++ new/bzrlib/tests/test_selftest.py	2011-06-18 22:00:51 +0000
+@@ -876,10 +876,8 @@
+         output = result_stream.getvalue()[prefix:]
+         lines = output.splitlines()
+         self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
+-        if sys.version_info > (2, 7):
+-            self.expectFailure("_ExpectedFailure on 2.7 loses the message",
+-                self.assertNotEqual, lines[1], '    ')
+-        self.assertEqual(lines[1], '    foo')
++        self.expectFailure("_ExpectedFailure on 2.7 loses the message",
++            self.assertNotEqual, lines[1], '    ')
+         self.assertEqual(2, len(lines))
+ 
+     def get_passing_test(self):
+

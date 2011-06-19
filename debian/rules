@@ -1,5 +1,14 @@
 #!/usr/bin/make -f
 
+# Get the suppoirted Python versions
+PYVERS = $(shell pyversions -r -v)
+# Get the default Python version
+PYVERSION = $(shell pyversions -d -v)
+
+# Callable functions to determine the correct PYTHONPATH
+pythonpath = $$(ls -d $(CURDIR)/build/lib.*-$(1))
+pythonpath_dbg = $$(ls -d $(CURDIR)/build/lib_d.*-$(1) 2>/dev/null || ls -d $(CURDIR)/build/lib.*$(1)-pydebug)
+
 %:
 	dh --with python2 --buildsystem=python_distutils $*
 
@@ -9,15 +18,23 @@ endif
 
 PYTHON_CURRENT_VERSION = $(shell pyversions -vd)
 
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	[ -d debian/bzrhome ] || mkdir debian/bzrhome
-	$(CONCURRENCY) \
-	BZR_HOME=debian/bzrhome \
-	BZR_PLUGIN_PATH=-site:-user \
-	BZR_DISABLE_PLUGINS=launchpad \
-	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PYTHON_CURRENT_VERSION)) \
-	$(CURDIR)/build/scripts-$(PYTHON_CURRENT_VERSION)/bzr selftest -v --parallel=fork
+	set -e -x; \
+	for py in $(PYVERS); do \
+		cd "$(call pythonpath,$$py)"; \
+		$(CONCURRENCY) PYTHONPATH="$(call pythonpath,$$py)" \
+		BZR_HOME="$(CURDIR)/debian/bzrhome" \
+		BZR_PLUGIN_PATH=-site:-user BZR_DISABLE_PLUGINS=launchpad \
+		python$$py $(CURDIR)/build/scripts-$$py/bzr selftest -v --parallel=fork; \
+		cd "$(call pythonpath_dbg,$$py)"; \
+		$(CONCURRENCY) PYTHONPATH="$(call pythonpath_dbg,$$py)" \
+		BZR_HOME="$(CURDIR)/debian/bzrhome" \
+		BZR_PLUGIN_PATH=-site:-user \
+		BZR_DISABLE_PLUGINS=launchpad \
+		python$$py-dbg $(CURDIR)/build/scripts-$$py/bzr selftest -v --parallel=fork
+	done
 endif
 
 override_dh_auto_clean:
@@ -25,9 +42,6 @@ override_dh_auto_clean:
 	$(MAKE) clean-docs
 	rm -rf debian/bzrhome
 	rm -f bzrlib/*_pyx.c
-
-override_dh_auto_install:
-	dh_auto_install --buildsystem=python_distutils -- --install-data=/usr/share
 
 override_dh_install:
 	mkdir -p debian/python-bzrlib.tests/usr/lib \
@@ -56,3 +70,6 @@ override_dh_auto_build:
 
 override_dh_compress:
 	dh_compress -X.xvg -X.pdf
+
+override_dh_strip:
+	dh_strip -ppython-bzrlib --dbg-package=python-bzrlib-dbg
