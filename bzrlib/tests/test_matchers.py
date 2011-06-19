@@ -88,7 +88,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         m = MatchesAncestry(branch.repository, revid1)
         self.assertThat([revid1], m)
         m = MatchesAncestry(branch.repository, "unknown")
-        self.assertRaises(AssertionError, m.match, [])
+        self.assertThat(["unknown"], m)
 
     def test_mismatch(self):
         b = self.make_branch_builder('.')

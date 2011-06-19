@@ -195,8 +195,7 @@ class TestsNeedingReweave(TestReconcile):
             **kwargs):
         # actual low level test.
         repo = aBzrDir.open_repository()
-        m = MatchesAncestry(repo, 'references_missing')
-        if m.match(['missing', 'references_missing']) is not None:
+        if not repo.has_revision('missing'):
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do here. Specifically, this test has the inventory
             # 'missing' present and the revision 'missing' missing, so clearly
@@ -216,8 +215,7 @@ class TestsNeedingReweave(TestReconcile):
         self.check_missing_was_removed(repo)
         # and the parent list for 'references_missing' should have that
         # revision a ghost now.
-        self.assertThat(['references_missing'],
-            MatchesAncestry(repo, 'references_missing'))
+        self.assertFalse(repo.has_revision('missing'))
 
     def check_missing_was_removed(self, repo):
         if repo._reconcile_backsup_inventory:
@@ -266,7 +264,7 @@ class TestsNeedingReweave(TestReconcile):
         # now the current inventory should still have 'ghost'
         repo = d.open_repository()
         repo.get_inventory('ghost')
-        self.assertThat(['ghost'], MatchesAncestry(repo, 'ghost'))
+        self.assertThat(['ghost', 'the_ghost'], MatchesAncestry(repo, 'ghost'))
 
     def test_reweave_inventory_fixes_ancestryfor_a_present_ghost(self):
         d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_ghost_present'))

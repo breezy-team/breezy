@@ -467,7 +467,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         m = MatchesAncestry(repo, 'ghost')
         reported_wrong = False
         try:
-            if m.matches(['the_ghost', 'ghost']) is not None:
+            if m.match(['the_ghost', 'ghost']) is not None:
                 reported_wrong = True
         except errors.CorruptRepository:
             # caught the bad data:
