@@ -28,12 +28,6 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 		BZR_HOME="$(CURDIR)/debian/bzrhome" \
 		BZR_PLUGIN_PATH=-site:-user BZR_DISABLE_PLUGINS=launchpad \
 		python$$py $(CURDIR)/build/scripts-$$py/bzr selftest -v --parallel=fork; \
-		cd "$(call pythonpath_dbg,$$py)"; \
-		$(CONCURRENCY) PYTHONPATH="$(call pythonpath_dbg,$$py)" \
-		BZR_HOME="$(CURDIR)/debian/bzrhome" \
-		BZR_PLUGIN_PATH=-site:-user \
-		BZR_DISABLE_PLUGINS=launchpad \
-		python$$py-dbg $(CURDIR)/build/scripts-$$py/bzr selftest -v --parallel=fork
 	done
 endif
 

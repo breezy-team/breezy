@@ -7,15 +7,15 @@ Uploaders: Jeff Bailey <jbailey@raspberryginger.com>,
            Reinhard Tartler <siretart@tauware.de>,
            Jelmer Vernooij <jelmer@debian.org>
 Build-Depends: cython-dbg | python-pyrex,
-               debhelper (>> 7.4.16),
+               debhelper (>> 8.1.0~),
                python (>= 2.6.6-3),
                python-all-dev (>= 2.6.6-3),
                python-all-dbg (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
-               python-lzma,
+               python-lzma-dbg,
                python-medusa,
-               python-meliae,
+               python-meliae-dbg,
                python-subunit,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.2
@@ -87,8 +87,10 @@ Package: python-bzrlib-dbg
 Architecture: any
 Priority: extra
 Section: debug
-Depends: ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}, python-dbg, python-bzrlib (= ${binary:Version})
+Depends: ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}, python-bzrlib (= ${binary:Version})
 Provides: ${python:Provides}
+Recommends: python-dbg
+Suggests: python-meliae-dbg, python-lzma-dbg
 Description: distributed version control system - debug extension
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
