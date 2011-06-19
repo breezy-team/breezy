@@ -21,6 +21,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     bzrdir as _mod_bzrdir,
+    errors,
     gpg,
     revision as _mod_revision,
     )
@@ -72,7 +73,11 @@ class cmd_sign_my_commits(Command):
                         [branch.last_revision()]):
                     if _mod_revision.is_null(rev_id):
                         continue
-                    if repo.has_signature_for_revision_id(rev_id):
+                    try:
+                        if repo.has_signature_for_revision_id(rev_id):
+                            continue
+                    except errors.NoSuchRevision:
+                        # Ghost
                         continue
                     rev = repo.get_revision(rev_id)
                     if rev.committer != committer:
