@@ -3244,12 +3244,14 @@ class TestStacking(tests.TestCaseWithTransport):
         _, stacked = branch_factory()
         source = stacked.repository._get_source(target_repository_format)
         tip = stacked.last_revision()
-        revs = stacked.repository.get_ancestry(tip)
+        stacked.repository._ensure_real()
+        graph = stacked.repository.get_graph()
+        revs = [r for (r,ps) in graph.iter_ancestry([tip])
+                if r != NULL_REVISION]
+        revs.reverse()
         search = _mod_graph.PendingAncestryResult([tip], stacked.repository)
         self.reset_smart_call_log()
         stream = source.get_stream(search)
-        if None in revs:
-            revs.remove(None)
         # We trust that if a revision is in the stream the rest of the new
         # content for it is too, as per our main fetch tests; here we are
         # checking that the revisions are actually included at all, and their
@@ -3294,7 +3296,7 @@ class TestStacking(tests.TestCaseWithTransport):
         self.assertEqual(expected_revs, rev_ord)
         # Getting topological sort requires VFS calls still - one of which is
         # pushing up from the bound branch.
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with
