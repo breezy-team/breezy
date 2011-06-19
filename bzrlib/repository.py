@@ -522,21 +522,21 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         if revid and committers:
             result['committers'] = 0
         if revid and revid != _mod_revision.NULL_REVISION:
+            graph = self.get_graph()
             if committers:
                 all_committers = set()
-            revisions = self.get_ancestry(revid)
-            # pop the leading None
-            revisions.pop(0)
-            first_revision = None
+            revisions = [r for (r, p) in graph.iter_ancestry([revid])
+                        if r != _mod_revision.NULL_REVISION]
+            last_revision = None
             if not committers:
                 # ignore the revisions in the middle - just grab first and last
                 revisions = revisions[0], revisions[-1]
             for revision in self.get_revisions(revisions):
-                if not first_revision:
-                    first_revision = revision
+                if not last_revision:
+                    last_revision = revision
                 if committers:
                     all_committers.add(revision.committer)
-            last_revision = revision
+            first_revision = revision
             if committers:
                 result['committers'] = len(all_committers)
             result['firstrev'] = (first_revision.timestamp,
@@ -1056,6 +1056,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         raise NotImplementedError(self.revision_trees)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_ancestry(self, revision_id, topo_sorted=True):
         """Return a list of revision-ids integrated by a revision.
 
@@ -1065,6 +1067,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
         This is topologically sorted.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "get_ancestry is linear with history.")
         if _mod_revision.is_null(revision_id):
             return [None]
         if not self.has_revision(revision_id):

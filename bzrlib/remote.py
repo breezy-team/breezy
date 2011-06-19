@@ -32,7 +32,6 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
     urlutils,
-    versionedfile,
     vf_repository,
     )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
@@ -1661,6 +1660,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._real_repository.create_bundle(target, base, fileobj, format)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
         return self._real_repository.get_ancestry(revision_id, topo_sorted)

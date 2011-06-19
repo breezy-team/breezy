@@ -194,6 +194,10 @@ API Changes
   Use ``Graph.iter_lefthand_ancestry`` instead.
   (Jelmer Vernooij, #739481)
 
+* ``Repository.get_ancestry`` has been deprecated. Use
+  ``Graph.iter_ancestry`` instead.
+  (Jelmer Vernooij, #784511)
+
 Internals
 *********
 

@@ -26,13 +26,18 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
-from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
-                           LockContention)
+from bzrlib.errors import (
+    PointlessCommit,
+    BzrError,
+    SigningFailed,
+    LockContention,
+    )
 from bzrlib.tests import (
     SymlinkFeature,
     TestCaseWithTransport,
     test_foreign,
     )
+from bzrlib.tests.matchers import MatchesAncestry
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -357,8 +362,8 @@ class TestCommit(TestCaseWithTransport):
         eq = self.assertEquals
         eq(b.revision_history(), rev_ids)
         for i in range(4):
-            anc = b.repository.get_ancestry(rev_ids[i])
-            eq(anc, [None] + rev_ids[:i+1])
+            self.assertThat(rev_ids[:i+1],
+                MatchesAncestry(b.repository, rev_ids[i]))
 
     def test_commit_new_subdir_child_selective(self):
         wt = self.make_branch_and_tree('.')
