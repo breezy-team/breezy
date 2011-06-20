@@ -1202,7 +1202,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         plaintext = testament.as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
-    ##@needs_write_lock #needed for testament apparantly
+    @needs_read_lock
     def verify_revision(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
         
