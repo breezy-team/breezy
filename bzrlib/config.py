@@ -2298,14 +2298,10 @@ class Store(object):
         """Loads the Store from persistent storage."""
         raise NotImplementedError(self.load)
 
-    def _load_from_string(self, str_or_unicode):
+    def _load_from_string(self, bytes):
         """Create a store from a string in configobj syntax.
 
-        :param str_or_unicode: A string representing the file content. This will
-            be encoded to suit store needs internally.
-
-        This is for tests and should not be used in production unless a
-        convincing use case can be demonstrated :)
+        :param bytes: A string representing the file content.
         """
         raise NotImplementedError(self._load_from_string)
 
@@ -2383,15 +2379,14 @@ class IniFileStore(Store):
         for hook in ConfigHooks['load']:
             hook(self)
 
-    def _load_from_string(self, str_or_unicode):
+    def _load_from_string(self, bytes):
         """Create a config store from a string.
 
-        :param str_or_unicode: A string representing the file content. This will
-            be utf-8 encoded internally.
+        :param bytes: A string representing the file content.
         """
         if self.is_loaded():
             raise AssertionError('Already loaded: %r' % (self._config_obj,))
-        co_input = StringIO(str_or_unicode)
+        co_input = StringIO(bytes)
         try:
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8')
