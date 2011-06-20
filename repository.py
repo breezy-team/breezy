@@ -268,21 +268,6 @@ class LocalGitRepository(GitRepository):
             parent_map[revision_id] = tuple(parents)
         return parent_map
 
-    def get_ancestry(self, revision_id, topo_sorted=True):
-        """See Repository.get_ancestry().
-        """
-        if revision_id is None:
-            return [None, revision.NULL_REVISION] + self._all_revision_ids()
-        assert isinstance(revision_id, str)
-        ancestry = []
-        graph = self.get_graph()
-        for rev, parents in graph.iter_ancestry([revision_id]):
-            ancestry.append(rev)
-        if revision.NULL_REVISION in ancestry:
-            ancestry.remove(revision.NULL_REVISION)
-        ancestry.reverse()
-        return [None] + ancestry
-
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 

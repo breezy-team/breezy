@@ -163,9 +163,6 @@ class TestGitRepository(tests.TestCaseWithTransport):
                 set([default_mapping.revision_id_foreign_to_bzr(commit_id)]),
                 self.git_repo.all_revision_ids())
 
-    def test_get_ancestry_null(self):
-        self.assertEquals([None], self.git_repo.get_ancestry(revision.NULL_REVISION))
-
     def assertIsNullInventory(self, inv):
         self.assertEqual(inv.root, None)
         self.assertEqual(inv.revision_id, revision.NULL_REVISION)
