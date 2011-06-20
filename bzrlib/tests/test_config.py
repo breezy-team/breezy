@@ -1871,9 +1871,34 @@ class TestTreeConfig(tests.TestCaseWithTransport):
 
 class TestTransportConfig(tests.TestCaseWithTransport):
 
+    def test_load_utf8(self):
+        """Ensure we can load an utf8-encoded file."""
+        t = self.get_transport()
+        unicode_user = u'b\N{Euro Sign}ar'
+        unicode_content = u'user=%s' % (unicode_user,)
+        utf8_content = unicode_content.encode('utf8')
+        # Store the raw content in the config file
+        t.put_bytes('foo.conf', utf8_content)
+        conf = config.TransportConfig(t, 'foo.conf')
+        self.assertEquals(unicode_user, conf.get_option('user'))
+
+    def test_load_non_ascii(self):
+        """Ensure we display a proper error on non-ascii, non utf-8 content."""
+        t = self.get_transport()
+        t.put_bytes('foo.conf', 'user=foo\n#\xff\n')
+        conf = config.TransportConfig(t, 'foo.conf')
+        self.assertRaises(errors.ConfigContentError, conf._get_configobj)
+
+    def test_load_erroneous_content(self):
+        """Ensure we display a proper error on content that can't be parsed."""
+        t = self.get_transport()
+        t.put_bytes('foo.conf', '[open_section\n')
+        conf = config.TransportConfig(t, 'foo.conf')
+        self.assertRaises(errors.ParseConfigError, conf._get_configobj)
+
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
-        bzrdir_config = config.TransportConfig(transport.get_transport('.'),
+        bzrdir_config = config.TransportConfig(self.get_transport('.'),
                                                'control.conf')
         bzrdir_config.set_option('value', 'key', 'SECTION')
         bzrdir_config.set_option('value2', 'key2')
@@ -2358,7 +2383,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t = self.get_transport()
         t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
         store = config.IniFileStore(t, 'foo.conf')
-        self.assertRaises(errors.ParseConfigError, store.load)
+        self.assertRaises(errors.ConfigContentError, store.load)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
@@ -2396,7 +2421,7 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
         with open('foo.conf', 'wb') as f:
             f.write('user=foo\n#%s\n' % (self.invalid_utf8_char,))
         conf = config.IniBasedConfig(file_name='foo.conf')
-        self.assertRaises(errors.ParseConfigError, conf._get_parser)
+        self.assertRaises(errors.ConfigContentError, conf._get_parser)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""

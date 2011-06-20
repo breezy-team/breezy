@@ -29,8 +29,9 @@ Improvements
 Bug Fixes
 *********
 
-* Display a proper error message when ``authentication.conf`` content cannot
-  be decoded as UTF-8. (Vincent Ladeuil, #792246)
+* Display a proper error message when a config file content cannot be
+  decoded as UTF-8 or when it cannot be parsed.
+  (Vincent Ladeuil, #502060, #688677, #792246)
 
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
 

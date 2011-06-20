@@ -692,6 +692,8 @@ class IniBasedConfig(Config):
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
+        except UnicodeDecodeError:
+            raise errors.ConfigContentError(self.file_name)
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
         for hook in OldConfigHooks['load']:
@@ -1697,7 +1699,7 @@ class AuthenticationConfig(object):
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
-        except UnicodeError, e:
+        except UnicodeError:
             raise errors.ConfigContentError(self._filename)
         return self._config
 
@@ -2180,12 +2182,21 @@ class TransportConfig(object):
         except errors.NoSuchFile:
             return StringIO()
 
+    def _external_url(self):
+        return urlutils.join(self._transport.external_url(), self._filename)
+
     def _get_configobj(self):
         f = self._get_config_file()
         try:
-            return ConfigObj(f, encoding='utf-8')
+            try:
+                conf = ConfigObj(f, encoding='utf-8')
+            except configobj.ConfigObjError, e:
+                raise errors.ParseConfigError(e.errors, self._external_url())
+            except UnicodeDecodeError:
+                raise errors.ConfigContentError(self._external_url())
         finally:
             f.close()
+        return conf
 
     def _set_configobj(self, configobj):
         out_file = StringIO()
@@ -2387,6 +2398,8 @@ class IniFileStore(Store):
         except configobj.ConfigObjError, e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
+        except UnicodeDecodeError:
+            raise errors.ConfigContentError(self.external_url())
 
     def save(self):
         if not self.is_loaded():
