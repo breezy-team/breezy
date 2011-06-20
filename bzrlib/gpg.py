@@ -186,8 +186,8 @@ class GPGStrategy(object):
                 return SIGNATURE_VALID, None
         else:
             return SIGNATURE_KEY_MISSING, None
-        raise errors.SignatureVerificationFailed("Unknown GnuPG key \
-                                                        verification result")
+        raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
+                                                 "verification result")
 
     def set_acceptable_keys(self, key_patterns):
         try:
