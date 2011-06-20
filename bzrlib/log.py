@@ -74,6 +74,7 @@ from bzrlib import (
     revision as _mod_revision,
     revisionspec,
     tsort,
+    i18n,
     )
 """)
 
@@ -441,13 +442,13 @@ class _DefaultLogGenerator(LogGenerator):
         gpg_strategy = gpg.GPGStrategy(branch_config)
         result = repo.verify_revision(rev_id, gpg_strategy)
         if result[0] == gpg.SIGNATURE_VALID:
-            return "valid signature from " + str(result[1]) #FIXME i18n
+            return i18n.gettext("valid signature from {0}").format(result[1])
         if result[0] == gpg.SIGNATURE_KEY_MISSING:
-            return "unknown key " + str(result[1])
+            return i18n.gettext("unknown key {0}").format(result[1])
         if result[0] == gpg.SIGNATURE_NOT_VALID:
-            return "invalid signature!"
+            return i18n.gettext("invalid signature!")
         if result[0] == gpg.SIGNATURE_NOT_SIGNED:
-            return "no signature"
+            return i18n.gettext("no signature")
 
     def _format_diff(self, rev, rev_id, diff_type):
         repo = self.branch.repository
