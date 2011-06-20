@@ -1,5 +1,9 @@
 0.6.2	UNRELEASED
 
+ FEATURES
+
+  * Provide Repository.get_known_graph_ancestry(). (Jelmer Vernooij)
+
 0.6.1	2011-06-18
 
  BUG FIXES

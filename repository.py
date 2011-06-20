@@ -20,6 +20,7 @@
 from bzrlib import (
     check,
     errors,
+    graph as _mod_graph,
     inventory,
     repository,
     revision,
@@ -267,6 +268,19 @@ class LocalGitRepository(GitRepository):
                 parents = [revision.NULL_REVISION]
             parent_map[revision_id] = tuple(parents)
         return parent_map
+
+    def get_known_graph_ancestry(self, revision_ids):
+        """Return the known graph for a set of revision ids and their ancestors.
+        """
+        pending = set(revision_ids)
+        parent_map = {}
+        while pending:
+            this_parent_map = self.get_parent_map(pending)
+            parent_map.update(this_parent_map)
+            pending = set()
+            map(pending.update, this_parent_map.itervalues())
+            pending = pending.difference(parent_map)
+        return _mod_graph.KnownGraph(parent_map)
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
