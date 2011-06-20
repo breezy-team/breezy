@@ -2518,6 +2518,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry,
+            signature=True #FIXME add command option
             )
         Logger(b, rqst).show(lf)
 
