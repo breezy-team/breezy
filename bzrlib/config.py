@@ -1697,6 +1697,8 @@ class AuthenticationConfig(object):
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
+        except UnicodeError, e:
+            raise errors.ConfigContentError(self._filename)
         return self._config
 
     def _save(self):

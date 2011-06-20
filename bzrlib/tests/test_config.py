@@ -3117,7 +3117,7 @@ class TestAuthenticationConfigFile(tests.TestCase):
     def test_non_utf8_config(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 'foo = bar\xff'))
-        self.assertRaises(errors.ParseConfigError, conf._get_config)
+        self.assertRaises(errors.ConfigContentError, conf._get_config)
         
     def test_missing_auth_section_header(self):
         conf = config.AuthenticationConfig(_file=StringIO('foo = bar'))

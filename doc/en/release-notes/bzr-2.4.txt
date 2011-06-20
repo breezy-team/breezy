@@ -29,6 +29,9 @@ Improvements
 Bug Fixes
 *********
 
+* Display a proper error message when ``authentication.conf`` content cannot
+  be decoded as UTF-8. (Vincent Ladeuil, #792246)
+
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
 
 .. Fixes for situations where bzr would previously crash or give incorrect
