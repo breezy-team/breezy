@@ -36,6 +36,10 @@ from bzrlib.foreign import (
 from bzrlib.plugins.git.commit import (
     GitCommitBuilder,
     )
+from bzrlib.plugins.git.filegraph import (
+    GitFileLastChangeScanner,
+    GitFileParentProvider,
+    )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     foreign_vcs_git,
@@ -113,6 +117,10 @@ class GitRepository(ForeignRepository):
                           push.InterToLocalGitRepository,
                           push.InterToRemoteGitRepository]:
             repository.InterRepository.register_optimiser(optimiser)
+        self.signatures = None
+        self.revisions = None
+        self.inventories = None
+        self.texts = None
 
     def add_fallback_repository(self, basis_url):
         raise errors.UnstackableRepositoryFormat(self._format, self.control_transport.base)
@@ -157,10 +165,7 @@ class LocalGitRepository(GitRepository):
         GitRepository.__init__(self, gitdir, lockfiles)
         self.base = gitdir.root_transport.base
         self._git = gitdir._git
-        self.signatures = None
-        self.revisions = None
-        self.inventories = None
-        self.texts = None
+        self._file_change_scanner = GitFileLastChangeScanner(self)
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -182,6 +187,9 @@ class LocalGitRepository(GitRepository):
         return GitCommitBuilder(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
+
+    def get_file_graph(self):
+        return _mod_graph.Graph(GitFileParentProvider(self._file_change_scanner))
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.

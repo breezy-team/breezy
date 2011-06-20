@@ -44,13 +44,29 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._repository = repository
         self.store = repository._git.object_store
         assert isinstance(revision_id, str)
-        git_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
+        self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         try:
-            commit = self.store[git_id]
+            commit = self.store[self.commit_id]
         except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
         self.tree = commit.tree
         self.fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
+
+    def get_file_revision(self, file_id, path=None):
+        if path is None:
+            path = self.id2path(file_id)
+        change_scanner = self._repository._file_change_scanner
+        (path, commit_id) = change_scanner.find_last_change_revision(path,
+            self.commit_id)
+        return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
+
+    def get_file_mtime(self, file_id, path=None):
+        revid = self.get_file_revision(file_id, path)
+        try:
+            rev = self._repository.get_revision(revid)
+        except errors.NoSuchRevision:
+            raise errors.FileTimestampUnavailable(path)
+        return rev.timestamp
 
     def id2path(self, file_id):
         return self.fileid_map.lookup_path(file_id)
@@ -74,7 +90,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def kind(self, file_id, path=None):
         if path is None:
             path = self.id2path(file_id)
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
+        try:
+            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
+                path)
+        except KeyError:
+            raise errors.NoSuchId(self, file_id)
         if mode is None:
             # the tree root is a directory
             return "directory"
