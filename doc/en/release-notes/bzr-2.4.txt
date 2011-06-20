@@ -32,7 +32,7 @@ Bug Fixes
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
 
 * ``GraphThunkIdsToKeys.merge_sort`` now properly returns
-  keys rather thanids. (Jelmer Vernooij, #799677)
+  keys rather than ids. (Jelmer Vernooij, #799677)
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
