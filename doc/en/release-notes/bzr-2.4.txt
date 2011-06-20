@@ -29,6 +29,8 @@ Improvements
 Bug Fixes
 *********
 
+* Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
+
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 

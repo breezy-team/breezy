@@ -2328,6 +2328,22 @@ class TestReadonlyStore(TestStore):
         self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
 
 
+class TestBug799212(TestStore):
+
+   def test_load_utf8(self):
+        t = self.get_transport()
+        # From http://pad.lv/799212
+        unicode_user = u'Piotr O\u017carowski'
+        unicode_content = u'user=%s' % (unicode_user,)
+        utf8_content = unicode_content.encode('utf8')
+        # Store the raw content in the config file
+        t.put_bytes('foo.conf', utf8_content)
+        store = config.IniFileStore(t, 'foo.conf')
+        store.load()
+        stack = config.Stack([store.get_sections], store)
+        self.assertEquals(unicode_user, stack.get('user'))
+
+
 class TestMutableStore(TestStore):
 
     scenarios = [(key, {'store_id': key, 'get_store': builder}) for key, builder

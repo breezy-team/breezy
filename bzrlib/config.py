@@ -2375,13 +2375,10 @@ class IniFileStore(Store):
 
         :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded internally.
-
-        This is for tests and should not be used in production unless a
-        convincing use case can be demonstrated :)
         """
         if self.is_loaded():
             raise AssertionError('Already loaded: %r' % (self._config_obj,))
-        co_input = StringIO(str_or_unicode.encode('utf-8'))
+        co_input = StringIO(str_or_unicode)
         try:
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8')
