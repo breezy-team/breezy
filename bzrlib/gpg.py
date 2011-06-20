@@ -151,8 +151,8 @@ class GPGStrategy(object):
         """
         try:
             import gpgme
-        except ImportError:
-            raise errors.GpgmeNotInstalled()
+        except ImportError, error:
+            raise errors.GpgmeNotInstalled(error)
 
         context = gpgme.Context()
         signature = StringIO(content)
@@ -192,8 +192,8 @@ class GPGStrategy(object):
     def set_acceptable_keys(self, key_patterns):
         try:
             import gpgme
-        except ImportError:
-            raise errors.GpgmeNotInstalled()
+        except ImportError, error:
+            raise errors.GpgmeNotInstalled(error)
         patterns = key_patterns.split(",")
 
         self.acceptable_keys = []
