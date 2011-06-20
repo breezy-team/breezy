@@ -29,6 +29,7 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     test_log,
+    features,
     )
 
 
