@@ -224,7 +224,7 @@ class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
             "      ('ddd',) 'initial ddd content'\n",
             c_map._dump_tree())
 
-    def test_one_deep_map_16(self):
+    def test_root_only_aaa_ddd_16(self):
         c_map = self.make_root_only_aaa_ddd_map(
                 search_key_func=chk_map._search_key_16)
         # We use 'aaa' and 'ddd' because they happen to map to 'F' when using
