@@ -2389,7 +2389,9 @@ class cmd_log(Command):
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
-                   )
+                   ),
+            Option('signatures',
+                   help='Show digital signature validity'),
             ]
     encoding_type = 'replace'
 
@@ -2408,6 +2410,7 @@ class cmd_log(Command):
             include_merges=False,
             authors=None,
             exclude_common_ancestry=False,
+            signatures=False,
             ):
         from bzrlib.log import (
             Logger,
@@ -2518,7 +2521,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry,
-            signature=True #FIXME add command option
+            signature=signatures #FIXME add command option
             )
         Logger(b, rqst).show(lf)
 
