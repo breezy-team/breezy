@@ -2438,6 +2438,12 @@ class cmd_log(Command):
             else:
                 revision = change
 
+        if signatures:
+            try:
+                import gpgme
+            except ImportError, error:
+                raise errors.GpgmeNotInstalled(error)
+
         file_ids = []
         filter_by_dir = False
         if file_list:
@@ -2521,7 +2527,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry,
-            signature=signatures #FIXME add command option
+            signature=signatures
             )
         Logger(b, rqst).show(lf)
 
