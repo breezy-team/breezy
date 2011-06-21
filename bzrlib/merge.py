@@ -1663,6 +1663,8 @@ class Merge3Merger(object):
             else:
                 raise AssertionError('bad conflict type: %r' % (conflict,))
             cooked_conflicts.append(c)
+
+        self.cooked_conflicts = []
         # We want to get rid of path conflicts when a corresponding contents
         # conflict exists. This can occur when one branch deletes a file while
         # the other renames *and* modifies it. In this case, the content
