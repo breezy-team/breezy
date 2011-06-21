@@ -1,4 +1,4 @@
-bzr (2.4.0~beta4-4) UNRELEASED; urgency=low
+bzr (2.4.0~beta4-4) unstable; urgency=low
 
   * Add 09_utf8_config_files.
     + Fixes use of configuration files with non-ascii characters. Closes: #630872
