@@ -98,7 +98,7 @@ class cmd_sign_my_commits(Command):
         print 'Signed %d revisions' % (count,)
 
 
-class cmd_verify(Command):
+class cmd_verify_signatures(Command):
     __doc__ = """Verify all commit signatures.
 
     Verifies that all commits in the branch are signed by known GnuPG keys.

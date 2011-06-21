@@ -1740,13 +1740,9 @@ class cmd_ancestry(Command):
             b = wt.branch
             last_revision = wt.last_revision()
 
-        self.add_cleanup(b.repository.lock_read().unlock)
-        graph = b.repository.get_graph()
-        revisions = [revid for revid, parents in
-            graph.iter_ancestry([last_revision])]
-        for revision_id in reversed(revisions):
-            if _mod_revision.is_null(revision_id):
-                continue
+        revision_ids = b.repository.get_ancestry(last_revision)
+        revision_ids.pop(0)
+        for revision_id in revision_ids:
             self.outf.write(revision_id + '\n')
 
 
@@ -6230,7 +6226,8 @@ def _register_lazy_builtins():
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
-        ('cmd_verify', [], 'bzrlib.commit_signature_commands'),
+        ('cmd_verify_signatures', ['verify'],
+                                        'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
