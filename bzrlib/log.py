@@ -308,6 +308,27 @@ def _apply_log_request_defaults(rqst):
     return result
 
 
+def format_signature_validity(rev_id, repo):
+    """get the signature validity
+    
+    :param rev_id: revision id to validate
+    :param repo: repository of revision
+    :return: human readable string to print to log
+    """
+    from bzrlib import gpg
+
+    gpg_strategy = gpg.GPGStrategy(None)
+    result = repo.verify_revision(rev_id, gpg_strategy)
+    if result[0] == gpg.SIGNATURE_VALID:
+        return i18n.gettext("valid signature from {0}").format(result[1])
+    if result[0] == gpg.SIGNATURE_KEY_MISSING:
+        return i18n.gettext("unknown key {0}").format(result[1])
+    if result[0] == gpg.SIGNATURE_NOT_VALID:
+        return i18n.gettext("invalid signature!")
+    if result[0] == gpg.SIGNATURE_NOT_SIGNED:
+        return i18n.gettext("no signature")
+
+
 class LogGenerator(object):
     """A generator of log revisions."""
 
@@ -419,7 +440,8 @@ class _DefaultLogGenerator(LogGenerator):
                 else:
                     diff = self._format_diff(rev, rev_id, diff_type)
                 if show_signature:
-                    signature = self._format_signature_validity(rev_id)
+                    signature = format_signature_validity(rev_id,
+                                                self.branch.repository)
                 else:
                     signature = None
                 yield LogRevision(rev, revno, merge_depth, delta,
@@ -428,27 +450,6 @@ class _DefaultLogGenerator(LogGenerator):
                     log_count += 1
                     if log_count >= limit:
                         return
-
-    def _format_signature_validity(self, rev_id):
-        """get the signature validity
-        
-        :param rev_id: revision id to validate
-        :return: human readable English string to print to log
-        """
-        repo = self.branch.repository
-        branch_config = self.branch.get_config()
-        from bzrlib import gpg
-
-        gpg_strategy = gpg.GPGStrategy(branch_config)
-        result = repo.verify_revision(rev_id, gpg_strategy)
-        if result[0] == gpg.SIGNATURE_VALID:
-            return i18n.gettext("valid signature from {0}").format(result[1])
-        if result[0] == gpg.SIGNATURE_KEY_MISSING:
-            return i18n.gettext("unknown key {0}").format(result[1])
-        if result[0] == gpg.SIGNATURE_NOT_VALID:
-            return i18n.gettext("invalid signature!")
-        if result[0] == gpg.SIGNATURE_NOT_SIGNED:
-            return i18n.gettext("no signature")
 
     def _format_diff(self, rev, rev_id, diff_type):
         repo = self.branch.repository
