@@ -1871,9 +1871,34 @@ class TestTreeConfig(tests.TestCaseWithTransport):
 
 class TestTransportConfig(tests.TestCaseWithTransport):
 
+    def test_load_utf8(self):
+        """Ensure we can load an utf8-encoded file."""
+        t = self.get_transport()
+        unicode_user = u'b\N{Euro Sign}ar'
+        unicode_content = u'user=%s' % (unicode_user,)
+        utf8_content = unicode_content.encode('utf8')
+        # Store the raw content in the config file
+        t.put_bytes('foo.conf', utf8_content)
+        conf = config.TransportConfig(t, 'foo.conf')
+        self.assertEquals(unicode_user, conf.get_option('user'))
+
+    def test_load_non_ascii(self):
+        """Ensure we display a proper error on non-ascii, non utf-8 content."""
+        t = self.get_transport()
+        t.put_bytes('foo.conf', 'user=foo\n#\xff\n')
+        conf = config.TransportConfig(t, 'foo.conf')
+        self.assertRaises(errors.ConfigContentError, conf._get_configobj)
+
+    def test_load_erroneous_content(self):
+        """Ensure we display a proper error on content that can't be parsed."""
+        t = self.get_transport()
+        t.put_bytes('foo.conf', '[open_section\n')
+        conf = config.TransportConfig(t, 'foo.conf')
+        self.assertRaises(errors.ParseConfigError, conf._get_configobj)
+
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
-        bzrdir_config = config.TransportConfig(transport.get_transport('.'),
+        bzrdir_config = config.TransportConfig(self.get_transport('.'),
                                                'control.conf')
         bzrdir_config.set_option('value', 'key', 'SECTION')
         bzrdir_config.set_option('value2', 'key2')
@@ -2326,6 +2351,84 @@ class TestReadonlyStore(TestStore):
         store = self.get_store(self)
         store._load_from_string('foo=bar')
         self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
+
+
+class TestIniFileStoreContent(tests.TestCaseWithTransport):
+    """Simulate loading a config store without content of various encodings.
+
+    All files produced by bzr are in utf8 content.
+
+    Users may modify them manually and end up with a file that can't be
+    loaded. We need to issue proper error messages in this case.
+    """
+
+    invalid_utf8_char = '\xff'
+
+    def test_load_utf8(self):
+        """Ensure we can load an utf8-encoded file."""
+        t = self.get_transport()
+        # From http://pad.lv/799212
+        unicode_user = u'b\N{Euro Sign}ar'
+        unicode_content = u'user=%s' % (unicode_user,)
+        utf8_content = unicode_content.encode('utf8')
+        # Store the raw content in the config file
+        t.put_bytes('foo.conf', utf8_content)
+        store = config.IniFileStore(t, 'foo.conf')
+        store.load()
+        stack = config.Stack([store.get_sections], store)
+        self.assertEquals(unicode_user, stack.get('user'))
+
+    def test_load_non_ascii(self):
+        """Ensure we display a proper error on non-ascii, non utf-8 content."""
+        t = self.get_transport()
+        t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
+        store = config.IniFileStore(t, 'foo.conf')
+        self.assertRaises(errors.ConfigContentError, store.load)
+
+    def test_load_erroneous_content(self):
+        """Ensure we display a proper error on content that can't be parsed."""
+        t = self.get_transport()
+        t.put_bytes('foo.conf', '[open_section\n')
+        store = config.IniFileStore(t, 'foo.conf')
+        self.assertRaises(errors.ParseConfigError, store.load)
+
+
+class TestIniConfigContent(tests.TestCaseWithTransport):
+    """Simulate loading a IniBasedConfig without content of various encodings.
+
+    All files produced by bzr are in utf8 content.
+
+    Users may modify them manually and end up with a file that can't be
+    loaded. We need to issue proper error messages in this case.
+    """
+
+    invalid_utf8_char = '\xff'
+
+    def test_load_utf8(self):
+        """Ensure we can load an utf8-encoded file."""
+        # From http://pad.lv/799212
+        unicode_user = u'b\N{Euro Sign}ar'
+        unicode_content = u'user=%s' % (unicode_user,)
+        utf8_content = unicode_content.encode('utf8')
+        # Store the raw content in the config file
+        with open('foo.conf', 'wb') as f:
+            f.write(utf8_content)
+        conf = config.IniBasedConfig(file_name='foo.conf')
+        self.assertEquals(unicode_user, conf.get_user_option('user'))
+
+    def test_load_badly_encoded_content(self):
+        """Ensure we display a proper error on non-ascii, non utf-8 content."""
+        with open('foo.conf', 'wb') as f:
+            f.write('user=foo\n#%s\n' % (self.invalid_utf8_char,))
+        conf = config.IniBasedConfig(file_name='foo.conf')
+        self.assertRaises(errors.ConfigContentError, conf._get_parser)
+
+    def test_load_erroneous_content(self):
+        """Ensure we display a proper error on content that can't be parsed."""
+        with open('foo.conf', 'wb') as f:
+            f.write('[open_section\n')
+        conf = config.IniBasedConfig(file_name='foo.conf')
+        self.assertRaises(errors.ParseConfigError, conf._get_parser)
 
 
 class TestMutableStore(TestStore):
@@ -3036,6 +3139,11 @@ class TestAuthenticationConfigFile(tests.TestCase):
         self.assertEquals({}, conf._get_config())
         self._got_user_passwd(None, None, conf, 'http', 'foo.net')
 
+    def test_non_utf8_config(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                'foo = bar\xff'))
+        self.assertRaises(errors.ConfigContentError, conf._get_config)
+        
     def test_missing_auth_section_header(self):
         conf = config.AuthenticationConfig(_file=StringIO('foo = bar'))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')

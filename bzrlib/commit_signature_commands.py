@@ -21,7 +21,9 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     bzrdir as _mod_bzrdir,
+    errors,
     gpg,
+    revision as _mod_revision,
     )
 """)
 from bzrlib.commands import Command
@@ -65,9 +67,16 @@ class cmd_sign_my_commits(Command):
         count = 0
         repo.lock_write()
         try:
+            graph = repo.get_graph()
             repo.start_write_group()
             try:
-                for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
+                for rev_id, parents in graph.iter_ancestry(
+                        [branch.last_revision()]):
+                    if _mod_revision.is_null(rev_id):
+                        continue
+                    if parents is None:
+                        # Ignore ghosts
+                        continue
                     if repo.has_signature_for_revision_id(rev_id):
                         continue
                     rev = repo.get_revision(rev_id)
@@ -121,6 +130,7 @@ class cmd_verify(Command):
                  gpg.SIGNATURE_NOT_SIGNED: 0}
         result = []
         revisions = []
+
         if revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(branch)
@@ -137,7 +147,18 @@ class cmd_verify(Command):
                     revisions.append(branch.get_rev_id(revno))
         else:
             #all revisions by default including merges
-            revisions = repo.get_ancestry(branch.last_revision())[1:]
+            graph = repo.get_graph()
+            revisions = []
+            repo.lock_read()
+            for rev_id, parents in graph.iter_ancestry(
+                    [branch.last_revision()]):
+                if _mod_revision.is_null(rev_id):
+                    continue
+                if parents is None:
+                    # Ignore ghosts
+                    continue
+                revisions.append(rev_id)
+            repo.unlock()
         for rev_id in revisions:
             verification_result, uid = repo.verify_revision(rev_id,gpg_strategy)
             result.append([rev_id, verification_result, uid])
@@ -228,4 +249,3 @@ class cmd_verify(Command):
             note(gettext(ngettext("  {0} signed {1} commit", 
                                 "  {0} signed {1} commits",
                             number)).format(uid, number))
-        

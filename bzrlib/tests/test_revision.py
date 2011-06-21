@@ -27,7 +27,7 @@ from bzrlib.errors import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.trace import mutter
+from bzrlib.tests.matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
 warnings.filterwarnings('ignore',
@@ -104,7 +104,7 @@ class TestIsAncestor(TestCaseWithTransport):
              ('a@u-0-5', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4',
                           'b@u-0-3', 'b@u-0-4',
                           'b@u-0-5', 'a@u-0-5']),
-             ('b@u-0-6', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2',
+             ('b@u-0-6', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-4',
                           'b@u-0-3', 'b@u-0-4',
                           'b@u-0-5', 'b@u-0-6']),
              ]
@@ -116,10 +116,8 @@ class TestIsAncestor(TestCaseWithTransport):
                     continue
                 if rev_id in br2_only and not branch is br2:
                     continue
-                mutter('ancestry of {%s}: %r',
-                       rev_id, branch.repository.get_ancestry(rev_id))
-                result = sorted(branch.repository.get_ancestry(rev_id))
-                self.assertEquals(result, [None] + sorted(anc))
+                self.assertThat(anc,
+                    MatchesAncestry(branch.repository, rev_id))
 
 
 class TestIntermediateRevisions(TestCaseWithTransport):

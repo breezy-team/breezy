@@ -29,6 +29,12 @@ Improvements
 Bug Fixes
 *********
 
+* Display a proper error message when a config file content cannot be
+  decoded as UTF-8 or when it cannot be parsed.
+  (Vincent Ladeuil, #502060, #688677, #792246)
+
+* Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
+
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
@@ -56,6 +62,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Fix test failures when running as a homeless user (debian buildd). Tests
+  leaking into ``${HOME}/.bzr.log`` should be detected properly now.
+  (Vincent Ladeuil, #798698)
 
 bzr 2.4b4
 #########
@@ -190,6 +199,10 @@ API Changes
 * ``Repository.iter_reverse_revision_history`` is now deprecated.
   Use ``Graph.iter_lefthand_ancestry`` instead.
   (Jelmer Vernooij, #739481)
+
+* ``Repository.get_ancestry`` has been deprecated. Use
+  ``Graph.iter_ancestry`` instead.
+  (Jelmer Vernooij, #784511)
 
 Internals
 *********

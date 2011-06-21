@@ -21,7 +21,6 @@ from bzrlib import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
-from bzrlib.symbol_versioning import deprecated_in
 
 
 # Ancestry 1:

@@ -1770,6 +1770,15 @@ class ConflictsInTree(BzrError):
     _fmt = "Working tree has conflicts."
 
 
+class ConfigContentError(BzrError):
+
+    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
+
+    def __init__(self, filename):
+        BzrError.__init__(self)
+        self.filename = filename
+
+
 class ParseConfigError(BzrError):
 
     _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
