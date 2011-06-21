@@ -29,6 +29,10 @@ Improvements
 Bug Fixes
 *********
 
+* Generate a single conflict (instead of two) when merging a branch
+  modifying and renaming a file in a branch that deleted it (or vice-versa).
+  (Vincent Ladeuil, #688101)
+
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
 
 .. Fixes for situations where bzr would previously crash or give incorrect
