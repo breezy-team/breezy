@@ -112,10 +112,12 @@ class cmd_verify_signatures(Command):
                    type=str,),
             'revision', 
             'verbose',
+            'directory',
           ]
 
-    def run(self, acceptable_keys=None, revision=None, verbose=None):
-        bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
+    def run(self, acceptable_keys=None, revision=None, verbose=None,
+                                                            directory=u'.'):
+        bzrdir = _mod_bzrdir.BzrDir.open_containing(directory)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
         branch_config = branch.get_config()
