@@ -1,3 +1,11 @@
+bzr (2.4.0~beta4-4) UNRELEASED; urgency=low
+
+  * Add 09_utf8_config_files.
+    + Fixes use of configuration files with non-ascii characters. Closes: #630872
+      LP: #799212
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 21 Jun 2011 21:57:29 +0200
+
 bzr (2.4.0~beta4-3) unstable; urgency=low
 
   * Drop no longer necessary dependency on python-elementtree, as it is

@@ -1,0 +1,67 @@
+Description: Properly load utf8-encoded config files
+Origin: commit, revision id: pqm@pqm.ubuntu.com-20110620104625-ih5t1e8w288pc4l2
+Author: Vincent Ladeuil <v.ladeuil+lp@free.fr>
+Bug: https://launchpad.net/bugs/799212
+Last-Update: 2011-06-20
+Applied-Upstream: merged in revision 5988
+X-Bzr-Revision-Id: pqm@pqm.ubuntu.com-20110620104625-ih5t1e8w288pc4l2
+
+=== modified file 'bzrlib/config.py'
+--- old/bzrlib/config.py	2011-06-19 02:48:01 +0000
++++ new/bzrlib/config.py	2011-06-20 09:31:17 +0000
+@@ -2375,13 +2375,10 @@
+ 
+         :param str_or_unicode: A string representing the file content. This will
+             be utf-8 encoded internally.
+-
+-        This is for tests and should not be used in production unless a
+-        convincing use case can be demonstrated :)
+         """
+         if self.is_loaded():
+             raise AssertionError('Already loaded: %r' % (self._config_obj,))
+-        co_input = StringIO(str_or_unicode.encode('utf-8'))
++        co_input = StringIO(str_or_unicode)
+         try:
+             # The config files are always stored utf8-encoded
+             self._config_obj = ConfigObj(co_input, encoding='utf-8')
+
+=== modified file 'bzrlib/tests/test_config.py'
+--- old/bzrlib/tests/test_config.py	2011-06-14 10:07:16 +0000
++++ new/bzrlib/tests/test_config.py	2011-06-20 09:31:17 +0000
+@@ -2328,6 +2328,22 @@
+         self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
+ 
+ 
++class TestBug799212(TestStore):
++
++   def test_load_utf8(self):
++        t = self.get_transport()
++        # From http://pad.lv/799212
++        unicode_user = u'Piotr O\u017carowski'
++        unicode_content = u'user=%s' % (unicode_user,)
++        utf8_content = unicode_content.encode('utf8')
++        # Store the raw content in the config file
++        t.put_bytes('foo.conf', utf8_content)
++        store = config.IniFileStore(t, 'foo.conf')
++        store.load()
++        stack = config.Stack([store.get_sections], store)
++        self.assertEquals(unicode_user, stack.get('user'))
++
++
+ class TestMutableStore(TestStore):
+ 
+     scenarios = [(key, {'store_id': key, 'get_store': builder}) for key, builder
+
+=== modified file 'doc/en/release-notes/bzr-2.4.txt'
+--- old/doc/en/release-notes/bzr-2.4.txt	2011-06-18 13:57:17 +0000
++++ new/doc/en/release-notes/bzr-2.4.txt	2011-06-20 09:31:17 +0000
+@@ -29,6 +29,8 @@
+ Bug Fixes
+ *********
+ 
++* Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
++
+ .. Fixes for situations where bzr would previously crash or give incorrect
+    or undesirable results.
+ 
+

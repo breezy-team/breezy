@@ -4,3 +4,4 @@
 04_selftest_pdb
 05_bogus-log-files
 08_selftest_py2.6
+09_utf8_config_files
