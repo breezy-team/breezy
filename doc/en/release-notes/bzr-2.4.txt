@@ -29,11 +29,18 @@ Improvements
 Bug Fixes
 *********
 
+* Display a proper error message when a config file content cannot be
+  decoded as UTF-8 or when it cannot be parsed.
+  (Vincent Ladeuil, #502060, #688677, #792246)
+
 * Generate a single conflict (instead of two) when merging a branch
   modifying and renaming a file in a branch that deleted it (or vice-versa).
   (Vincent Ladeuil, #688101)
 
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
+
+* ``GraphThunkIdsToKeys.merge_sort`` now properly returns
+  keys rather than ids. (Jelmer Vernooij, #799677)
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
@@ -93,7 +100,7 @@ New Features
 .. New commands, options, etc that users may wish to try out.
 
 * Hooks have been added for config stacks: ``get``, ``set`` and ``remove``
-  are called when an option is repsectively read, modified or deleted. Also
+  are called when an option is respectively read, modified or deleted. Also
   added ``load`` and ``save`` hooks for config stores, called when the
   stores are loaded or saved.  (Vincent Ladeuil)
 
