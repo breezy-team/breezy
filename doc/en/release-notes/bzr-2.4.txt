@@ -93,7 +93,7 @@ New Features
 .. New commands, options, etc that users may wish to try out.
 
 * Hooks have been added for config stacks: ``get``, ``set`` and ``remove``
-  are called when an option is repsectively read, modified or deleted. Also
+  are called when an option is respectively read, modified or deleted. Also
   added ``load`` and ``save`` hooks for config stores, called when the
   stores are loaded or saved.  (Vincent Ladeuil)
 
