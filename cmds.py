@@ -1234,7 +1234,7 @@ class cmd_dep3_patch(Command):
     no_upstream_check_opt = Option('no-upstream-check',
         help="Don't check whether patch has been merged upstream.")
 
-    takes_options = [directory_opt, "revision", no_upstream_check_opt]
+    takes_options = [directory_opt, "revision", "change", no_upstream_check_opt]
 
     def run(self, location, directory=".", revision=None, no_upstream_check=False):
         from bzrlib.plugins.builddeb.dep3 import (
@@ -1259,17 +1259,23 @@ class cmd_dep3_patch(Command):
             else:
                 base_revid = graph.find_unique_lca(revision_id,
                     packaging_branch.last_revision())
-            interesting_revision_ids = graph.find_unique_ancestors(revision_id, [base_revid])
+            interesting_revision_ids = graph.find_unique_ancestors(revision_id,
+                [base_revid])
             if len(interesting_revision_ids) == 0:
                 raise BzrCommandError("No unmerged revisions")
             (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
                 interesting_revision_ids)
             config = branch.get_config()
             description = config.get_user_option("description")
-            if description is None and len(interesting_revision_ids) == 1:
-                # if there's just one revision, use that revisions commits message
-                rev = branch.repository.get_revision(iter(interesting_revision_ids).next())
-                description = rev.message
+            if description is None:
+                # if there's just one revision in the mainline history, use
+                # that revisions commits message
+                lhs_history = graph.iter_lefthand_ancestry(revision_id, [base_revid])
+                rev = branch.repository.get_revision(lhs_history.next())
+                try:
+                    lhs_history.next()
+                except StopIteration:
+                    description = rev.message
             origin = describe_origin(branch, revision_id)
             if packaging_tree is None:
                 packaging_tree = packaging_branch.basis_tree()
