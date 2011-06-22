@@ -28,7 +28,6 @@ from bzrlib import (
 """)
 from bzrlib.commands import Command
 from bzrlib.option import Option
-from bzrlib.trace import note
 from bzrlib.i18n import gettext, ngettext
 
 class cmd_sign_my_commits(Command):
@@ -178,30 +177,31 @@ class cmd_verify_signatures(Command):
            count[gpg.SIGNATURE_KEY_MISSING] == 0 and \
            count[gpg.SIGNATURE_NOT_VALID] == 0 and \
            count[gpg.SIGNATURE_NOT_SIGNED] == 0:
-               note(gettext("All commits signed with verifiable keys"))
+               self.outf.write(gettext(
+                            "All commits signed with verifiable keys\n"))
                if verbose:
                    self._print_verbose_valid_message(result)
                return 0
         else:
-            note(gettext("{0} commits with valid signatures").format(
+            self.outf.write(gettext(
+                                 "{0} commits with valid signatures\n").format(
                                         count[gpg.SIGNATURE_VALID]))
             if verbose:
                self._print_verbose_valid_message(result)
-            #TODO verbose for the other types too
-            note(ngettext("{0} commit with unknown key",
-                          "{0} commits with unknown keys",
+            self.outf.write(ngettext("{0} commit with unknown key\n",
+                          "{0} commits with unknown keys\n",
                           count[gpg.SIGNATURE_KEY_MISSING]).format(
                                         count[gpg.SIGNATURE_KEY_MISSING]))
             if verbose:
                self._print_verbose_missing_key_message(result)
-            note(ngettext("{0} commit not valid",
-                          "{0} commits not valid",
+            self.outf.write(ngettext("{0} commit not valid\n",
+                          "{0} commits not valid\n",
                           count[gpg.SIGNATURE_NOT_VALID]).format(
                                         count[gpg.SIGNATURE_NOT_VALID]))
             if verbose:
                self._print_verbose_not_valid(result, repo)
-            note(ngettext("{0} commit not signed",
-                          "{0} commits not signed",
+            self.outf.write(ngettext("{0} commit not signed\n",
+                          "{0} commits not signed\n",
                           count[gpg.SIGNATURE_NOT_SIGNED]).format(
                                         count[gpg.SIGNATURE_NOT_SIGNED]))
             if verbose:
@@ -218,8 +218,8 @@ class cmd_verify_signatures(Command):
                 signers.setdefault(authors, 0)
                 signers[authors] += 1
         for authors, number in signers.items():
-            note(gettext(ngettext("  {0} commit by author {1}", 
-                                "  {0} commits by author {1}",
+            self.outf.write(gettext(ngettext("  {0} commit by author {1}\n", 
+                                "  {0} commits by author {1}\n",
                             number)).format(number, authors))
 
     def _print_verbose_not_signed(self, result, repo):
@@ -232,8 +232,8 @@ class cmd_verify_signatures(Command):
                 signers.setdefault(authors, 0)
                 signers[authors] += 1
         for authors, number in signers.items():
-            note(gettext(ngettext("  {0} commit by author {1}", 
-                                "  {0} commits by author {1}",
+            self.outf.write(gettext(ngettext("  {0} commit by author {1}\n", 
+                                "  {0} commits by author {1}\n",
                             number)).format(number, authors))
 
     def _print_verbose_missing_key_message(self, result):
@@ -244,8 +244,9 @@ class cmd_verify_signatures(Command):
                 signers.setdefault(fingerprint, 0)
                 signers[fingerprint] += 1
         for fingerprint, number in signers.items():
-            note(gettext(ngettext("  Unknown key {0} signed {1} commit", 
-                                "  Unknown key {0} signed {1} commits",
+            self.outf.write(gettext(ngettext(
+                                "  Unknown key {0} signed {1} commit\n", 
+                                "  Unknown key {0} signed {1} commits\n",
                             number)).format(fingerprint, number))
 
     def _print_verbose_valid_message(self, result):
@@ -256,6 +257,6 @@ class cmd_verify_signatures(Command):
                 signers.setdefault(uid, 0)
                 signers[uid] += 1
         for uid, number in signers.items():
-            note(gettext(ngettext("  {0} signed {1} commit", 
-                                "  {0} signed {1} commits",
+            self.outf.write(gettext(ngettext("  {0} signed {1} commit\n", 
+                                "  {0} signed {1} commits\n",
                             number)).format(uid, number))
