@@ -56,18 +56,18 @@ To sign a single commit or a range of commits use the (hidden) command
 Verifying Commits
 -----------------
 
-Signatures can be verified with the ``bzr verify`` command.  By default this
-will check all commits in the branch and notify that all commits are signed by
-known trusted signatures.  If not all commits have trusted signatures it will
-give a summary of the number of commits which are invalid, having missing keys
-or are not signed.
+Signatures can be verified with the ``bzr verify-signatures`` command.  By
+default this will check all commits in the branch and notify that all commits
+are signed by known trusted signatures.  If not all commits have trusted
+signatures it will give a summary of the number of commits which are invalid,
+having missing keys or are not signed.
 
-The ``verify`` command can be given a comma separated list of key patters to
-specify a list of acceptable keys.  It can also take a range of commits to
-verify in the current branch.  Finally using the verbose option will list each
-key that is valid or authors for commits which failed::
+The ``verify-signatures`` command can be given a comma separated list of key
+patters to specify a list of acceptable keys.  It can also take a range of
+commits to verify in the current branch.  Finally using the verbose option will
+list each key that is valid or authors for commits which failed::
 
-  $bzr verify -kamy -v -r 1..5
+  $bzr verify-signatures -kamy -v -r 1..5
   1 commit with valid signature
     Amy Pond <amy@example.com> signed 4 commits
   0 commits with unknown keys
