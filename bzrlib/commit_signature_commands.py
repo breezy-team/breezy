@@ -121,9 +121,17 @@ class cmd_verify_signatures(Command):
         branch = bzrdir.open_branch()
         repo = branch.repository
         branch_config = branch.get_config()
-
         gpg_strategy = gpg.GPGStrategy(branch_config)
-        if acceptable_keys is not None:
+
+        acceptable_keys_config = branch_config.acceptable_keys()
+        try:
+            acceptable_keys_config = str(acceptable_keys_config)
+        except UnicodeEncodeError:
+            raise errors.BzrCommandError('Only ASCII permitted in option names')
+
+        if acceptable_keys_config is not None:
+            gpg_strategy.set_acceptable_keys(acceptable_keys_config)
+        if acceptable_keys is not None: #command line overrides config
             gpg_strategy.set_acceptable_keys(acceptable_keys)
 
         count = {gpg.SIGNATURE_VALID: 0,
