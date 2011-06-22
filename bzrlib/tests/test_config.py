@@ -513,6 +513,14 @@ class TestConfig(tests.TestCase):
         my_config = config.Config()
         self.assertEqual('long', my_config.log_format())
 
+    def test_acceptable_keys_default(self):
+        my_config = config.Config()
+        self.assertEqual(None, my_config.acceptable_keys())
+
+    def test_validate_signatures_in_log_default(self):
+        my_config = config.Config()
+        self.assertEqual(False, my_config.validate_signatures_in_log())
+
     def test_get_change_editor(self):
         my_config = InstrumentedConfig()
         change_editor = my_config.get_change_editor('old_tree', 'new_tree')
