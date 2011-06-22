@@ -1740,9 +1740,13 @@ class cmd_ancestry(Command):
             b = wt.branch
             last_revision = wt.last_revision()
 
-        revision_ids = b.repository.get_ancestry(last_revision)
-        revision_ids.pop(0)
-        for revision_id in revision_ids:
+        self.add_cleanup(b.repository.lock_read().unlock)
+        graph = b.repository.get_graph()
+        revisions = [revid for revid, parents in
+            graph.iter_ancestry([last_revision])]
+        for revision_id in reversed(revisions):
+            if _mod_revision.is_null(revision_id):
+                continue
             self.outf.write(revision_id + '\n')
 
 
