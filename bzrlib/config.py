@@ -29,6 +29,7 @@ check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
 log_format=name-of-format
+validate_signatures_in_log=true|false(default)
 
 in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -39,6 +40,7 @@ recurse=False|True(default)
 email= as above
 check_signatures= as above
 create_signatures= as above.
+validate_signatures_in_log=as above
 
 explanation of options
 ----------------------
@@ -52,6 +54,7 @@ create_signatures - this option controls whether bzr will always create
                     branch is configured to require them.
 log_format - this option sets the default log format.  Possible values are
              long, short, line, or a plugin can register new formats.
+validate_signatures_in_log - show GPG signature validity in log output
 
 In bazaar.conf you can also define aliases in the ALIASES sections, example
 
@@ -425,6 +428,19 @@ class Config(object):
 
     def _log_format(self):
         """See log_format()."""
+        return None
+
+    def validate_signatures_in_log(self):
+        """Show GPG signature validity in log"""
+        result = self._validate_signatures_in_log()
+        if result == "true":
+            result = True
+        else:
+            result = False
+        return result
+
+    def _validate_signatures_in_log(self):
+        """See validate_signatures_in_log()."""
         return None
 
     def post_commit(self):
@@ -829,6 +845,10 @@ class IniBasedConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_user_option('log_format')
+
+    def _validate_signatures_in_log(self):
+        """See Config.log_format."""
+        return self._get_user_option('validate_signatures_in_log')
 
     def _post_commit(self):
         """See Config.post_commit."""
@@ -1409,6 +1429,10 @@ class BranchConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_best_value('_log_format')
+
+    def _validate_signatures_in_log(self):
+        """See Config.validate_signatures_in_log."""
+        return self._get_best_value('_validate_signatures_in_log')
 
 
 def ensure_config_dir_exists(path=None):

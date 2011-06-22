@@ -2438,12 +2438,6 @@ class cmd_log(Command):
             else:
                 revision = change
 
-        if signatures:
-            try:
-                import gpgme
-            except ImportError, error:
-                raise errors.GpgmeNotInstalled(error)
-
         file_ids = []
         filter_by_dir = False
         if file_list:
@@ -2475,6 +2469,16 @@ class cmd_log(Command):
             b = dir.open_branch()
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
+
+        if b.get_config().validate_signatures_in_log():
+            signatures = True
+
+        if signatures:
+            try:
+                import gpgme
+            except ImportError, error:
+                raise errors.GpgmeNotInstalled(error)
+
 
         # Decide on the type of delta & diff filtering to use
         # TODO: add an --all-files option to make this configurable & consistent
