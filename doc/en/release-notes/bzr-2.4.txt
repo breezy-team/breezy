@@ -20,6 +20,18 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* New command ``verify-signatures`` to check if all commits or specified commits
+  have digital signatures from trusted keys.  Requires python-gpgme to be
+  installed.
+
+* New option ``--signatures`` for ``bzr log`` to display digital signature
+  verification results for each commit.
+
+* Config option acceptable_keys to list which GPG keys are verified as trusted.
+
+* Config option validate_signatures_in_log to always show signatures in 
+  ``bzr log``.
+
 Improvements
 ************
 
