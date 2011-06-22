@@ -44,6 +44,10 @@ SIGNATURE_NOT_SIGNED = 3
 class DisabledGPGStrategy(object):
     """A GPG Strategy that makes everything fail."""
 
+    @staticmethod
+    def verify_signatures_available():
+        return True
+
     def __init__(self, ignored):
         """Real strategies take a configuration."""
 
@@ -60,6 +64,10 @@ disabled.')
 
 class LoopbackGPGStrategy(object):
     """A GPG Strategy that acts like 'cat' - data is just passed through."""
+
+    @staticmethod
+    def verify_signatures_available():
+        return True
 
     def __init__(self, ignored):
         """Real strategies take a configuration."""
@@ -98,6 +106,14 @@ class GPGStrategy(object):
     """GPG Signing and checking facilities."""
 
     acceptable_keys = None
+
+    @staticmethod
+    def verify_signatures_available():
+        try:
+            import gpgme
+            return True
+        except ImportError, error:
+            return False
 
     def _command_line(self):
         return [self._config.gpg_signing_command(), '--clearsign']

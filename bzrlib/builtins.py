@@ -49,6 +49,7 @@ from bzrlib import (
     ui,
     urlutils,
     views,
+    gpg,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
@@ -2478,11 +2479,8 @@ class cmd_log(Command):
             signatures = True
 
         if signatures:
-            try:
-                import gpgme
-            except ImportError, error:
-                raise errors.GpgmeNotInstalled(error)
-
+            if not gpg.GPGStrategy.verify_signatures_available():
+                raise errors.GpgmeNotInstalled(None)
 
         # Decide on the type of delta & diff filtering to use
         # TODO: add an --all-files option to make this configurable & consistent
