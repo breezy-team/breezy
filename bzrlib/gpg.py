@@ -120,6 +120,11 @@ class GPGStrategy(object):
 
     def __init__(self, config):
         self._config = config
+        try:
+            import gpgme
+            self.context = gpgme.Context()
+        except ImportError, error:
+            pass # can't use verify()
 
     def sign(self, content):
         if isinstance(content, unicode):
@@ -170,12 +175,11 @@ class GPGStrategy(object):
         except ImportError, error:
             raise errors.GpgmeNotInstalled(error)
 
-        context = gpgme.Context()
         signature = StringIO(content)
         plain_output = StringIO()
         
         try:
-            result = context.verify(signature, None, plain_output)
+            result = self.context.verify(signature, None, plain_output)
         except gpgme.GpgmeError,error:
             raise errors.SignatureVerificationFailed(error[2])
 
@@ -188,7 +192,7 @@ class GPGStrategy(object):
         if testament != plain_output.getvalue():
             return SIGNATURE_NOT_VALID, None
         if result[0].summary & gpgme.SIGSUM_VALID:
-            key = context.get_key(fingerprint)
+            key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
             return SIGNATURE_VALID, name + " <" + email + ">"
@@ -206,16 +210,11 @@ class GPGStrategy(object):
                                                  "verification result")
 
     def set_acceptable_keys(self, key_patterns):
-        try:
-            import gpgme
-        except ImportError, error:
-            raise errors.GpgmeNotInstalled(error)
         patterns = key_patterns.split(",")
 
         self.acceptable_keys = []
-        context = gpgme.Context()
         for pattern in patterns:
-            result = context.keylist(pattern)
+            result = self.context.keylist(pattern)
             found_key = False
             for key in result:
                 found_key = True
