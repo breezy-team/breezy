@@ -160,83 +160,33 @@ class cmd_verify_signatures(Command):
                self.outf.write(gettext(
                             "All commits signed with verifiable keys\n"))
                if verbose:
-                   self._print_verbose_valid_message(result)
+                   self.outf.write(gpg_strategy.verbose_valid_message(result))
                return 0
         else:
             self.outf.write(gettext(
                                  "{0} commits with valid signatures\n").format(
                                         count[gpg.SIGNATURE_VALID]))
             if verbose:
-               self._print_verbose_valid_message(result)
+               self.outf.write(gpg_strategy.verbose_valid_message(result))
             self.outf.write(ngettext("{0} commit with unknown key\n",
                           "{0} commits with unknown keys\n",
                           count[gpg.SIGNATURE_KEY_MISSING]).format(
                                         count[gpg.SIGNATURE_KEY_MISSING]))
             if verbose:
-               self._print_verbose_missing_key_message(result)
+                self.outf.write(gpg_strategy.verbose_missing_key_message(
+                                                                        result))
             self.outf.write(ngettext("{0} commit not valid\n",
                           "{0} commits not valid\n",
                           count[gpg.SIGNATURE_NOT_VALID]).format(
                                         count[gpg.SIGNATURE_NOT_VALID]))
             if verbose:
-               self._print_verbose_not_valid(result, repo)
+                self.outf.write(gpg_strategy.verbose_not_valid_message(result,
+                                                                        repo))
             self.outf.write(ngettext("{0} commit not signed\n",
                           "{0} commits not signed\n",
                           count[gpg.SIGNATURE_NOT_SIGNED]).format(
                                         count[gpg.SIGNATURE_NOT_SIGNED]))
             if verbose:
-               self._print_verbose_not_signed(result, repo)
+                self.outf.write(gpg_strategy.verbose_not_signed_message(result,
+                                                                          repo))
             return 1
-
-    def _print_verbose_not_valid(self, result, repo):
-        """takes a verify result and prints out not signed commit info"""
-        signers = {}
-        for rev_id, validity, empty in result:
-            if validity == gpg.SIGNATURE_NOT_VALID:
-                revision = repo.get_revision(rev_id)
-                authors = ', '.join(revision.get_apparent_authors())
-                signers.setdefault(authors, 0)
-                signers[authors] += 1
-        for authors, number in signers.items():
-            self.outf.write(gettext(ngettext("  {0} commit by author {1}\n", 
-                                "  {0} commits by author {1}\n",
-                            number)).format(number, authors))
-
-    def _print_verbose_not_signed(self, result, repo):
-        """takes a verify result and prints out not signed commit info"""
-        signers = {}
-        for rev_id, validity, empty in result:
-            if validity == gpg.SIGNATURE_KEY_MISSING:
-                revision = repo.get_revision(rev_id)
-                authors = ', '.join(revision.get_apparent_authors())
-                signers.setdefault(authors, 0)
-                signers[authors] += 1
-        for authors, number in signers.items():
-            self.outf.write(gettext(ngettext("  {0} commit by author {1}\n", 
-                                "  {0} commits by author {1}\n",
-                            number)).format(number, authors))
-
-    def _print_verbose_missing_key_message(self, result):
-        """takes a verify result and prints out missing key info"""
-        signers = {}
-        for rev_id, validity, fingerprint in result:
-            if validity == gpg.SIGNATURE_KEY_MISSING:
-                signers.setdefault(fingerprint, 0)
-                signers[fingerprint] += 1
-        for fingerprint, number in signers.items():
-            self.outf.write(gettext(ngettext(
-                                "  Unknown key {0} signed {1} commit\n", 
-                                "  Unknown key {0} signed {1} commits\n",
-                            number)).format(fingerprint, number))
-
-    def _print_verbose_valid_message(self, result):
-        """takes a verify result and prints out number of signed commits"""
-        signers = {}
-        for rev_id, validity, uid in result:
-            if validity == gpg.SIGNATURE_VALID:
-                signers.setdefault(uid, 0)
-                signers[uid] += 1
-        for uid, number in signers.items():
-            self.outf.write(gettext(ngettext("  {0} signed {1} commit\n", 
-                                "  {0} signed {1} commits\n",
-                            number)).format(uid, number))

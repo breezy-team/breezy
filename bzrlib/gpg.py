@@ -285,3 +285,56 @@ class GPGStrategy(object):
             if verification_result != SIGNATURE_VALID:
                 all_verifiable = False
         return (count, result, all_verifiable)
+
+    def verbose_valid_message(self, result):
+        """takes a verify result and prints out number of signed commits"""
+        signers = {}
+        for rev_id, validity, uid in result:
+            if validity == SIGNATURE_VALID:
+                signers.setdefault(uid, 0)
+                signers[uid] += 1
+        for uid, number in signers.items():
+             return i18n.ngettext("  {0} signed {1} commit\n", 
+                             "  {0} signed {1} commits\n",
+                             number).format(uid, number)
+
+
+    def verbose_not_valid_message(self, result, repo):
+        """takes a verify result and prints out not signed commit info"""
+        signers = {}
+        for rev_id, validity, empty in result:
+            if validity == SIGNATURE_NOT_VALID:
+                revision = repo.get_revision(rev_id)
+                authors = ', '.join(revision.get_apparent_authors())
+                signers.setdefault(authors, 0)
+                signers[authors] += 1
+        for authors, number in signers.items():
+            return i18n.ngettext("  {0} commit by author {1}\n", 
+                                 "  {0} commits by author {1}\n",
+                                 number).format(number, authors)
+
+    def verbose_not_signed_message(self, result, repo):
+        """takes a verify result and prints out not signed commit info"""
+        signers = {}
+        for rev_id, validity, empty in result:
+            if validity == SIGNATURE_KEY_MISSING:
+                revision = repo.get_revision(rev_id)
+                authors = ', '.join(revision.get_apparent_authors())
+                signers.setdefault(authors, 0)
+                signers[authors] += 1
+        for authors, number in signers.items():
+            return i18n.ngettext("  {0} commit by author {1}\n", 
+                                 "  {0} commits by author {1}\n",
+                                 number).format(number, authors)
+
+    def verbose_missing_key_message(self, result):
+        """takes a verify result and prints out missing key info"""
+        signers = {}
+        for rev_id, validity, fingerprint in result:
+            if validity == SIGNATURE_KEY_MISSING:
+                signers.setdefault(fingerprint, 0)
+                signers[fingerprint] += 1
+        for fingerprint, number in signers.items():
+            return i18n.ngettext("  Unknown key {0} signed {1} commit\n", 
+                                 "  Unknown key {0} signed {1} commits\n",
+                                 number).format(fingerprint, number)
