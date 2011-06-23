@@ -773,7 +773,8 @@ class DistributionBranchTests(BuilddebTestCase):
             contents = [(basedir + '/' + element[0],) + element[1:] for
                 element in contents]
         self.build_tree_contents(contents)
-        self.db1.import_upstream(basedir, "package", version.upstream_version, [])
+        self.db1.import_upstream(basedir, "package", version.upstream_version,
+            [], [(None, None, None)])
         return version
 
     def test_import_upstream(self):
@@ -807,14 +808,15 @@ class DistributionBranchTests(BuilddebTestCase):
         write_to_file(os.path.join(basedir, "README"), "Hi\n")
         write_to_file(os.path.join(basedir, "BUGS"), "")
         write_to_file(os.path.join(basedir, "COPYING"), "")
-        self.db1.import_upstream(basedir, "package", version1.upstream_version, [])
+        self.db1.import_upstream(basedir, "package", version1.upstream_version, [],
+            [(None, None, None)])
         basedir = name + "-" + str(version2.upstream_version)
         os.mkdir(basedir)
         write_to_file(os.path.join(basedir, "README"), "Now even better\n")
         write_to_file(os.path.join(basedir, "BUGS"), "")
         write_to_file(os.path.join(basedir, "NEWS"), "")
         self.db1.import_upstream(basedir, "package", version2.upstream_version,
-                [self.up_tree1.branch.last_revision()])
+                [self.up_tree1.branch.last_revision()], [(None, None, None)])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()

@@ -820,7 +820,7 @@ class DistributionBranch(object):
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
     def import_upstream(self, upstream_part, package, version, upstream_parents,
-            upstream_tarballs=None, upstream_branch=None,
+            upstream_tarballs, upstream_branch=None,
             upstream_revision=None, timestamp=None, author=None,
             file_ids_from=None):
         """Import an upstream part on to the upstream branch.
@@ -881,13 +881,12 @@ class DistributionBranch(object):
             self_tree.unlock()
         revprops = {}
         ret = []
-        if upstream_tarballs is not None:
-            for (tarball, component, md5) in upstream_tarballs:
-                (tag, revid) = self.pristine_upstream_source.import_component_tarball(
-                    package, version, self.pristine_upstream_tree, component,
-                    md5, tarball, author=author, timestamp=timestamp,
-                    parent_ids=upstream_parents)
-                ret.append((component, tag, revid))
+        for (tarball, component, md5) in upstream_tarballs:
+            (tag, revid) = self.pristine_upstream_source.import_component_tarball(
+                package, version, self.pristine_upstream_tree, component,
+                md5, tarball, author=author, timestamp=timestamp,
+                parent_ids=upstream_parents)
+            ret.append((component, tag, revid))
         self.branch.fetch(self.pristine_upstream_branch)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
         return ret
