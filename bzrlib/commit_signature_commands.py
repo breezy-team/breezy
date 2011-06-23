@@ -123,13 +123,9 @@ class cmd_verify_signatures(Command):
         gpg_strategy = gpg.GPGStrategy(branch_config)
 
         gpg_strategy.set_acceptable_keys(acceptable_keys)
-        count = {gpg.SIGNATURE_VALID: 0,
-                 gpg.SIGNATURE_KEY_MISSING: 0,
-                 gpg.SIGNATURE_NOT_VALID: 0,
-                 gpg.SIGNATURE_NOT_SIGNED: 0}
-        result = []
-        revisions = []
 
+        #get our list of revisions
+        revisions = []
         if revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(branch)
@@ -158,15 +154,9 @@ class cmd_verify_signatures(Command):
                     continue
                 revisions.append(rev_id)
             repo.unlock()
-        for rev_id in revisions:
-            verification_result, uid = repo.verify_revision(rev_id,gpg_strategy)
-            result.append([rev_id, verification_result, uid])
-            count[verification_result] += 1
-
-        if count[gpg.SIGNATURE_VALID] > 0 and \
-           count[gpg.SIGNATURE_KEY_MISSING] == 0 and \
-           count[gpg.SIGNATURE_NOT_VALID] == 0 and \
-           count[gpg.SIGNATURE_NOT_SIGNED] == 0:
+        count, result, all_verifiable =\
+                                gpg_strategy.do_verifications(revisions, repo)
+        if all_verifiable:
                self.outf.write(gettext(
                             "All commits signed with verifiable keys\n"))
                if verbose:

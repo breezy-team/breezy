@@ -89,6 +89,22 @@ class LoopbackGPGStrategy(object):
                 else:
                     self.acceptable_keys.append(pattern)
 
+    def do_verifications(self, revisions, repository):
+        count = {SIGNATURE_VALID: 0,
+                 SIGNATURE_KEY_MISSING: 0,
+                 SIGNATURE_NOT_VALID: 0,
+                 SIGNATURE_NOT_SIGNED: 0}
+        result = []
+        all_verifiable = True
+        for rev_id in revisions:
+            verification_result, uid =\
+                                repository.verify_revision(rev_id,self)
+            result.append([rev_id, verification_result, uid])
+            count[verification_result] += 1
+            if verification_result != SIGNATURE_VALID:
+                all_verifiable = False
+        return (count, result, all_verifiable)
+            
 
 def _set_gpg_tty():
     tty = os.environ.get('TTY')
@@ -244,3 +260,28 @@ class GPGStrategy(object):
                     trace.note(i18n.gettext(
                             "No GnuPG key results for pattern: {}"
                                 ).format(pattern))
+
+    def do_verifications(self, revisions, repository):
+        """do verifications on a set of revisions
+        
+        :param revisions: list of revision ids to verify
+        :param repository: repository object
+        
+        :return: count dictionary of results of each type,
+                 result list for each revision,
+                 boolean True if all results are verified successfully
+        """
+        count = {SIGNATURE_VALID: 0,
+                 SIGNATURE_KEY_MISSING: 0,
+                 SIGNATURE_NOT_VALID: 0,
+                 SIGNATURE_NOT_SIGNED: 0}
+        result = []
+        all_verifiable = True
+        for rev_id in revisions:
+            verification_result, uid =\
+                                repository.verify_revision(rev_id,self)
+            result.append([rev_id, verification_result, uid])
+            count[verification_result] += 1
+            if verification_result != SIGNATURE_VALID:
+                all_verifiable = False
+        return (count, result, all_verifiable)
