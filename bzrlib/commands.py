@@ -413,6 +413,7 @@ class Command(object):
     takes_options = []
     encoding_type = 'strict'
     invoked_as = None
+    l10n = True
 
     hidden = False
 
@@ -497,7 +498,9 @@ class Command(object):
             # translate the usage string.
             # Though, bzr export-pot don't exports :Usage: section and it must
             # not be translated.
-            doc = self.gettext(doc)
+            if self.l10n:
+                i18n_install()  # Install i18n only for get_help_text for now.
+                doc = self.gettext(doc)
         else:
             doc = gettext("No help for this command.")
 
@@ -1100,9 +1103,6 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         i += 1
 
     debug.set_debug_flags_from_config()
-    if not opt_no_l10n:
-        # selftest uninstalls i18n later.
-        i18n_install()
 
     if not opt_no_plugins:
         load_plugins()
@@ -1127,6 +1127,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     cmd = argv.pop(0)
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
+    if opt_no_l10n:
+        cmd.l10n = False
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]
 
