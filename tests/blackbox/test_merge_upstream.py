@@ -95,7 +95,9 @@ class DHMadePackage(Fixture):
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         db.import_upstream_tarballs(
-            [(self.tar.tarball, None, md5sum_filename(self.tar.tarball))], str(self.tar.version),
+            [(self.tar.tarball, None, md5sum_filename(self.tar.tarball))],
+            "foo",
+            str(self.tar.version),
             [tree.branch.last_revision()])
         package_builder = SourcePackageBuilder("foo",
             str(self.tar.version)+"-1")

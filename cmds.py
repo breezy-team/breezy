@@ -981,9 +981,15 @@ class cmd_import_upstream(Command):
             raise BzrCommandError('bzr import-upstream --revision takes exactly'
                                   ' one revision specifier.')
         tarballs = [(location, None, md5sum_filename(location))]
-        tag_name, _ = db.import_upstream_tarballs(tarballs, version, parents,
-            upstream_branch=upstream, upstream_revision=upstream_revid)
-        self.outf.write('Imported %s as tag:%s.\n' % (location, tag_name))
+        for (component, tag, revid) in db.import_upstream_tarballs(tarballs,
+                None, version, parents, upstream_branch=upstream,
+                upstream_revision=upstream_revid):
+            if component is None:
+                self.outf.write('Imported %s as tag:%s.\n' % (
+                    location, tag_name))
+            else:
+                self.outf.write('Imported %s (%s) as tag:%s.\n' % (
+                    location, component, tag_name))
 
 
 class cmd_bd_do(Command):
