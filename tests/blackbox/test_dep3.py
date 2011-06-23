@@ -51,7 +51,7 @@ class TestDep3Patch(ExternalBase):
         self.feature_tree.commit(message="A message", timestamp=1304850124,
             timezone=0, authors=["Jelmer <jelmer@debian.org>"], rev_id="therevid")
         (out, err) = self.run_bzr("dep3-patch -d packaging feature")
-        self.assertEquals(out, "Description: A message\n"
+        self.assertEqualDiff(out, "Description: A message\n"
             "Origin: commit, revision id: therevid\n"
             "Author: Jelmer <jelmer@debian.org>\n"
             "Last-Update: 2011-05-08\n"
@@ -102,3 +102,27 @@ class TestDep3Patch(ExternalBase):
         self.feature_tree.commit(message="a message")
         (out, err) = self.run_bzr("dep3-patch --no-upstream-check -d packaging feature")
         self.assertNotContainsRe(out, "Applied-Upstream")
+
+    def test_range(self):
+        # A range of revisions can be specified.
+        self.build_tree_contents([("feature/foo", "bar\n")])
+        self.feature_tree.add("foo")
+        self.feature_tree.commit(message="Another message", timestamp=1304850124,
+            timezone=0, authors=["Jelmer <jelmer@debian.org>"], rev_id="baserevid")
+        self.build_tree_contents([("feature/foo", "bla\n")])
+        self.feature_tree.commit(message="A message", timestamp=1304850124,
+            timezone=0, authors=["Jelmer <jelmer@debian.org>"], rev_id="therevid")
+        (out, err) = self.run_bzr("dep3-patch -c -1 -d packaging feature")
+        self.assertEqualDiff(out, "Description: A message\n"
+            "Origin: commit, revision id: therevid\n"
+            "Author: Jelmer <jelmer@debian.org>\n"
+            "Last-Update: 2011-05-08\n"
+            "X-Bzr-Revision-Id: therevid\n"
+            "\n"
+            "=== modified file 'foo'\n"
+            "--- old/foo\t2011-05-08 10:22:04 +0000\n"
+            "+++ new/foo\t2011-05-08 10:22:04 +0000\n"
+            "@@ -1,1 +1,1 @@\n"
+            "-bar\n"
+            "+bla\n"
+            "\n")
