@@ -157,6 +157,8 @@ class PristineTarSource(UpstreamSource):
         :param version: Upstream version
         :param component: Component name (None for base)
         """
+        if component is not None:
+            raise BzrError("Importing non-base tarballs not yet supported")
         tree.set_parent_ids(parent_ids)
         revprops = {}
         if md5 is not None:
