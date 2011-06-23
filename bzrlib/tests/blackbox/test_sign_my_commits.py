@@ -119,7 +119,7 @@ class SignMyCommits(tests.TestCaseWithTransport):
         wt = self.setup_tree()
         self.monkey_patch_gpg()
         self.run_bzr('sign-my-commits')
-        out = self.run_bzr('verify', retcode=1)
+        out = self.run_bzr('verify-signatures', retcode=1)
         self.assertEquals(('4 commits with valid signatures\n'
                            '0 commits with unknown keys\n'
                            '0 commits not valid\n'
@@ -129,7 +129,8 @@ class SignMyCommits(tests.TestCaseWithTransport):
         wt = self.setup_tree()
         self.monkey_patch_gpg()
         self.run_bzr('sign-my-commits')
-        out = self.run_bzr(['verify', '--acceptable-keys=foo,bar'], retcode=1)
+        out = self.run_bzr(['verify-signatures', '--acceptable-keys=foo,bar'],
+                            retcode=1)
         self.assertEquals(('4 commits with valid signatures\n'
                            '0 commits with unknown keys\n'
                            '0 commits not valid\n'
