@@ -117,10 +117,6 @@ class GitRepository(ForeignRepository):
                           push.InterToLocalGitRepository,
                           push.InterToRemoteGitRepository]:
             repository.InterRepository.register_optimiser(optimiser)
-        self.signatures = None
-        self.revisions = None
-        self.inventories = None
-        self.texts = None
 
     def add_fallback_repository(self, basis_url):
         raise errors.UnstackableRepositoryFormat(self._format, self.control_transport.base)

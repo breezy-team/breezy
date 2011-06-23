@@ -36,7 +36,7 @@ class GitFileLastChangeScanner(object):
 
     def find_last_change_revision(self, path, commit_id):
         commit = self.store[commit_id]
-        target_mode, target_sha= tree_lookup_path(self.store.__getitem__,
+        target_mode, target_sha = tree_lookup_path(self.store.__getitem__,
             commit.tree, path)
         while True:
             parent_commits = [self.store[c] for c in commit.parents]
