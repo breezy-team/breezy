@@ -161,22 +161,31 @@ class GitRevisionTree(revisiontree.RevisionTree):
             posixpath.basename(path).decode("utf-8"), parent_id)
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
-        # FIXME: Support specific_file_ids
-        #FIXME: yield actual inventory entries
+        # FIXME: Support yield parents
         if specific_file_ids is not None:
-            raise NotImplementedError(self.iter_entries_by_dir)
+            specific_paths = [self.id2path(file_id) for file_id in specific_file_ids]
+            if specific_paths in ([u""], []):
+                specific_paths = None
+            else:
+                specific_paths = set(specific_paths)
+        else:
+            specific_paths = None
         todo = set([("", self.tree, None)])
         while todo:
             path, tree_sha, parent_id = todo.pop()
             ie = self._get_dir_ie(path, parent_id)
-            yield path, ie
+            if specific_paths is None or path in specific_paths:
+                yield path, ie
             tree = self.store[tree_sha]
             for name, mode, hexsha  in tree.iteritems():
                 child_path = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
-                    todo.add((child_path, hexsha, ie.file_id))
-                else:
-                    yield child_path, self._get_file_ie(path, name, mode, hexsha, ie.file_id)
+                    if (specific_paths is None or
+                        any(filter(lambda p: p.startswith(child_path), specific_paths))):
+                        todo.add((child_path, hexsha, ie.file_id))
+                elif specific_paths is None or child_path in specific_paths:
+                    yield (child_path, self._get_file_ie(path, name, mode, hexsha,
+                           ie.file_id))
 
     def get_revision_id(self):
         """See RevisionTree.get_revision_id."""
