@@ -887,8 +887,8 @@ class DistributionBranch(object):
                 md5, tarball, author=author, timestamp=timestamp,
                 parent_ids=upstream_parents)
             ret.append((component, tag, revid))
-        self.branch.fetch(self.pristine_upstream_branch)
-        self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
+            self.branch.fetch(self.pristine_upstream_branch)
+            self.branch.tags.set_tag(tag, revid)
         return ret
 
     def import_upstream_tarballs(self, tarballs, package, version, parents,
