@@ -30,6 +30,9 @@ class FakeConfig(object):
     def gpg_signing_command(self):
         return "false"
 
+    def acceptable_keys(self):
+        return None
+
 
 class TestCommandLine(TestCase):
 

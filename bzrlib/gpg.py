@@ -58,7 +58,7 @@ class DisabledGPGStrategy(object):
         raise errors.SignatureVerificationFailed('Signature verification is \
 disabled.')
 
-    def set_acceptable_keys(self, key_patterns):
+    def set_acceptable_keys(self, command_line_input):
         pass
 
 
@@ -79,14 +79,15 @@ class LoopbackGPGStrategy(object):
     def verify(self, content, testament):
         return SIGNATURE_VALID, None
 
-    def set_acceptable_keys(self, key_patterns):
-        patterns = key_patterns.split(",")
-        self.acceptable_keys = []
-        for pattern in patterns:
-            if pattern == "unknown":
-                pass
-            else:
-                self.acceptable_keys.append(pattern)
+    def set_acceptable_keys(self, command_line_input):
+        if command_line_input is not None:
+            patterns = command_line_input.split(",")
+            self.acceptable_keys = []
+            for pattern in patterns:
+                if pattern == "unknown":
+                    pass
+                else:
+                    self.acceptable_keys.append(pattern)
 
 
 def _set_gpg_tty():
@@ -209,18 +210,37 @@ class GPGStrategy(object):
         raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
                                                  "verification result")
 
-    def set_acceptable_keys(self, key_patterns):
-        patterns = key_patterns.split(",")
+    def set_acceptable_keys(self, command_line_input):
+        """sets the acceptable keys for verifying with this GPGStrategy
+        
+        :param command_line_input: comma separated list of patterns from
+                                command line
+        :return: nothing
+        """
+        key_patterns = None
+        acceptable_keys_config = self._config.acceptable_keys()
+        try:
+            if isinstance(acceptable_keys_config, unicode):
+                acceptable_keys_config = str(acceptable_keys_config)
+        except UnicodeEncodeError:
+            raise errors.BzrCommandError('Only ASCII permitted in option names')
 
-        self.acceptable_keys = []
-        for pattern in patterns:
-            result = self.context.keylist(pattern)
-            found_key = False
-            for key in result:
-                found_key = True
-                self.acceptable_keys.append(key.subkeys[0].fpr)
-                trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
-            if not found_key:
-                trace.note(i18n.gettext(
-                           "No GnuPG key results for pattern: {}"
-                            ).format(pattern))
+        if acceptable_keys_config is not None:
+            key_patterns = acceptable_keys_config
+        if command_line_input is not None: #command line overrides config
+            key_patterns = command_line_input
+        if key_patterns is not None:
+            patterns = key_patterns.split(",")
+
+            self.acceptable_keys = []
+            for pattern in patterns:
+                result = self.context.keylist(pattern)
+                found_key = False
+                for key in result:
+                    found_key = True
+                    self.acceptable_keys.append(key.subkeys[0].fpr)
+                    trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
+                if not found_key:
+                    trace.note(i18n.gettext(
+                            "No GnuPG key results for pattern: {}"
+                                ).format(pattern))
