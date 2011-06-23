@@ -163,29 +163,18 @@ class cmd_verify_signatures(Command):
                    self.outf.write(gpg_strategy.verbose_valid_message(result))
                return 0
         else:
-            self.outf.write(gettext(
-                                 "{0} commits with valid signatures\n").format(
-                                        count[gpg.SIGNATURE_VALID]))
+            self.outf.write(gpg_strategy.valid_commits_message(count))
             if verbose:
                self.outf.write(gpg_strategy.verbose_valid_message(result))
-            self.outf.write(ngettext("{0} commit with unknown key\n",
-                          "{0} commits with unknown keys\n",
-                          count[gpg.SIGNATURE_KEY_MISSING]).format(
-                                        count[gpg.SIGNATURE_KEY_MISSING]))
+            self.outf.write(gpg_strategy.unknown_key_message(count))
             if verbose:
                 self.outf.write(gpg_strategy.verbose_missing_key_message(
                                                                         result))
-            self.outf.write(ngettext("{0} commit not valid\n",
-                          "{0} commits not valid\n",
-                          count[gpg.SIGNATURE_NOT_VALID]).format(
-                                        count[gpg.SIGNATURE_NOT_VALID]))
+            self.outf.write(gpg_strategy.commit_not_valid_message(count))
             if verbose:
                 self.outf.write(gpg_strategy.verbose_not_valid_message(result,
                                                                         repo))
-            self.outf.write(ngettext("{0} commit not signed\n",
-                          "{0} commits not signed\n",
-                          count[gpg.SIGNATURE_NOT_SIGNED]).format(
-                                        count[gpg.SIGNATURE_NOT_SIGNED]))
+            self.outf.write(gpg_strategy.commit_not_signed_message(count))
             if verbose:
                 self.outf.write(gpg_strategy.verbose_not_signed_message(result,
                                                                           repo))
