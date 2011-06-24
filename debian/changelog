@@ -16,6 +16,11 @@ bzr-builddeb (2.7.5) UNRELEASED; urgency=low
   * Fix deprecation warnings for TestCase.failUnlessExists and
     TestCase.failIfExists in bzr 2.4.
 
+  [ Scott Kitterman ]
+  * Delete debian/bzr-builddeb.dirs so the long obsolete and empty
+    /usr/lib/python2.4/site-packages/bzrlib/plugins/bzr-builddeb/ is no
+    longer created. Closes: #631564
+
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 13 Jun 2011 23:10:20 +0100
 
 bzr-builddeb (2.7.4) unstable; urgency=low
