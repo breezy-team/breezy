@@ -15,8 +15,9 @@ bzr-builddeb (2.7.5) UNRELEASED; urgency=low
     sources.list. LP: #796853
   * Fix deprecation warnings for TestCase.failUnlessExists and
     TestCase.failIfExists in bzr 2.4.
+  * Add support for xz and lzma tarballs. LP: #553668
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 13 Jun 2011 23:10:20 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 24 Jun 2011 16:51:51 +0200
 
 bzr-builddeb (2.7.4) unstable; urgency=low
 
