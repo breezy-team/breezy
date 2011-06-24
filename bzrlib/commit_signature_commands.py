@@ -124,6 +124,11 @@ class cmd_verify_signatures(Command):
 
         gpg_strategy.set_acceptable_keys(acceptable_keys)
 
+        def write(string):
+            self.outf.write(string + "\n")
+        def write_verbose(string):
+            self.outf.write("  " + string + "\n")
+
         #get our list of revisions
         revisions = []
         if revision is not None:
@@ -157,25 +162,24 @@ class cmd_verify_signatures(Command):
         count, result, all_verifiable =\
                                 gpg_strategy.do_verifications(revisions, repo)
         if all_verifiable:
-               self.outf.write(gettext(
+               write(gettext(
                             "All commits signed with verifiable keys\n"))
                if verbose:
-                   self.outf.write(gpg_strategy.verbose_valid_message(result))
+                   write(gpg_strategy.verbose_valid_message(result))
                return 0
         else:
-            self.outf.write(gpg_strategy.valid_commits_message(count))
+            write(gpg_strategy.valid_commits_message(count))
             if verbose:
-               self.outf.write(gpg_strategy.verbose_valid_message(result))
-            self.outf.write(gpg_strategy.unknown_key_message(count))
+               write_verbose(gpg_strategy.verbose_valid_message(result))
+            write(gpg_strategy.unknown_key_message(count))
             if verbose:
-                self.outf.write(gpg_strategy.verbose_missing_key_message(
-                                                                        result))
-            self.outf.write(gpg_strategy.commit_not_valid_message(count))
+                write_verbose(gpg_strategy.verbose_missing_key_message(result))
+            write(gpg_strategy.commit_not_valid_message(count))
             if verbose:
-                self.outf.write(gpg_strategy.verbose_not_valid_message(result,
+                write_verbose(gpg_strategy.verbose_not_valid_message(result,
                                                                         repo))
-            self.outf.write(gpg_strategy.commit_not_signed_message(count))
+            write(gpg_strategy.commit_not_signed_message(count))
             if verbose:
-                self.outf.write(gpg_strategy.verbose_not_signed_message(result,
-                                                                          repo))
+                write_verbose(gpg_strategy.verbose_not_signed_message(result,
+                                                                        repo))
             return 1

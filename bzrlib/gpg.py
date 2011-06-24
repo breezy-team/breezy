@@ -106,24 +106,24 @@ class LoopbackGPGStrategy(object):
         return (count, result, all_verifiable)
 
     def valid_commits_message(self, count):
-        return i18n.gettext("{0} commits with valid signatures\n").format(
+        return i18n.gettext("{0} commits with valid signatures").format(
                                         count[SIGNATURE_VALID])            
 
     def unknown_key_message(self, count):
-        return i18n.ngettext("{0} commit with unknown key\n",
-                             "{0} commits with unknown keys\n",
+        return i18n.ngettext("{0} commit with unknown key",
+                             "{0} commits with unknown keys",
                              count[SIGNATURE_KEY_MISSING]).format(
                                         count[SIGNATURE_KEY_MISSING])
 
     def commit_not_valid_message(self, count):
-        return i18n.ngettext("{0} commit not valid\n",
-                             "{0} commits not valid\n",
+        return i18n.ngettext("{0} commit not valid",
+                             "{0} commits not valid",
                              count[SIGNATURE_NOT_VALID]).format(
                                             count[SIGNATURE_NOT_VALID])
 
     def commit_not_signed_message(self, count):
-        return i18n.ngettext("{0} commit not signed\n",
-                             "{0} commits not signed\n",
+        return i18n.ngettext("{0} commit not signed",
+                             "{0} commits not signed",
                              count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
 
@@ -316,8 +316,8 @@ class GPGStrategy(object):
                 signers.setdefault(uid, 0)
                 signers[uid] += 1
         for uid, number in signers.items():
-             return i18n.ngettext("  {0} signed {1} commit\n", 
-                             "  {0} signed {1} commits\n",
+             return i18n.ngettext("{0} signed {1} commit", 
+                             "{0} signed {1} commits",
                              number).format(uid, number)
 
 
@@ -331,8 +331,8 @@ class GPGStrategy(object):
                 signers.setdefault(authors, 0)
                 signers[authors] += 1
         for authors, number in signers.items():
-            return i18n.ngettext("  {0} commit by author {1}\n", 
-                                 "  {0} commits by author {1}\n",
+            return i18n.ngettext("{0} commit by author {1}", 
+                                 "{0} commits by author {1}",
                                  number).format(number, authors)
 
     def verbose_not_signed_message(self, result, repo):
@@ -345,8 +345,8 @@ class GPGStrategy(object):
                 signers.setdefault(authors, 0)
                 signers[authors] += 1
         for authors, number in signers.items():
-            return i18n.ngettext("  {0} commit by author {1}\n", 
-                                 "  {0} commits by author {1}\n",
+            return i18n.ngettext("{0} commit by author {1}", 
+                                 "{0} commits by author {1}",
                                  number).format(number, authors)
 
     def verbose_missing_key_message(self, result):
@@ -357,32 +357,32 @@ class GPGStrategy(object):
                 signers.setdefault(fingerprint, 0)
                 signers[fingerprint] += 1
         for fingerprint, number in signers.items():
-            return i18n.ngettext("  Unknown key {0} signed {1} commit\n", 
-                                 "  Unknown key {0} signed {1} commits\n",
+            return i18n.ngettext("Unknown key {0} signed {1} commit", 
+                                 "Unknown key {0} signed {1} commits",
                                  number).format(fingerprint, number)
 
     def valid_commits_message(self, count):
         """returns message for number of commits"""
-        return i18n.gettext("{0} commits with valid signatures\n").format(
+        return i18n.gettext("{0} commits with valid signatures").format(
                                         count[SIGNATURE_VALID])
 
     def unknown_key_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext("{0} commit with unknown key\n",
-                             "{0} commits with unknown keys\n",
+        return i18n.ngettext("{0} commit with unknown key",
+                             "{0} commits with unknown keys",
                              count[SIGNATURE_KEY_MISSING]).format(
                                         count[SIGNATURE_KEY_MISSING])
 
     def commit_not_valid_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext("{0} commit not valid\n",
-                             "{0} commits not valid\n",
+        return i18n.ngettext("{0} commit not valid",
+                             "{0} commits not valid",
                              count[SIGNATURE_NOT_VALID]).format(
                                             count[SIGNATURE_NOT_VALID])
 
     def commit_not_signed_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext("{0} commit not signed\n",
-                             "{0} commits not signed\n",
+        return i18n.ngettext("{0} commit not signed",
+                             "{0} commits not signed",
                              count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
