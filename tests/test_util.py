@@ -38,10 +38,10 @@ from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
     )
-from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
+from bzrlib.plugins.builddeb.errors import (
+    MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
-    MultipleUpstreamTarballsNotSupported,
     NoPreviousUpload,
     )
 from bzrlib.plugins.builddeb.tests import (
@@ -50,6 +50,7 @@ from bzrlib.plugins.builddeb.tests import (
     TestCaseWithTransport,
     )
 from bzrlib.plugins.builddeb.util import (
+    component_from_orig_tarball,
     dget,
     dget_changes,
     extract_orig_tarballs,
@@ -853,8 +854,10 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
                 f.write("Hi\n")
             finally:
                 f.close()
-            tar_path = os.path.abspath("%s_%s.orig.tar.%s" % (package, version,
-                compression))
+            prefix = "%s_%s.orig" % (package, version)
+            if part is not None:
+                prefix += "-%s" % part
+            tar_path = os.path.abspath(prefix + ".tar." + compression)
             tf = tarfile.open(tar_path, 'w:%s' % compression)
             try:
                 tf.add(basedir)
@@ -867,19 +870,45 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
     def test_single_orig_tar_gz(self):
         tar_path = self.create_tarball("package", "0.1", "gz")
         os.mkdir("target")
-        extract_orig_tarballs([tar_path], "target", strip_components=1)
+        extract_orig_tarballs([(tar_path, None)], "target",
+            strip_components=1)
         self.assertEquals(os.listdir("target"), ["README"])
 
     def test_single_orig_tar_bz2(self):
         tar_path = self.create_tarball("package", "0.1", "bz2")
         os.mkdir("target")
-        extract_orig_tarballs([tar_path], "target", strip_components=1)
+        extract_orig_tarballs([(tar_path, None)], "target",
+            strip_components=1)
         self.assertEquals(os.listdir("target"), ["README"])
 
     def test_multiple_tarballs(self):
         base_tar_path = self.create_tarball("package", "0.1", "bz2")
         tar_path_extra = self.create_tarball("package", "0.1", "bz2", part="extra")
         os.mkdir("target")
-        self.assertRaises(MultipleUpstreamTarballsNotSupported,
-            extract_orig_tarballs,
-            [base_tar_path, tar_path_extra], "target")
+        extract_orig_tarballs([(base_tar_path, None), (tar_path_extra, "extra")], "target",
+            strip_components=1)
+        self.assertEquals(sorted(os.listdir("target")),
+            sorted(["README", "extra"]))
+
+
+class ComponentFromOrigTarballTests(TestCase):
+
+    def test_base_tarball(self):
+        self.assertIs(None,
+            component_from_orig_tarball("foo_0.1.orig.tar.gz", "foo", "0.1"))
+        self.assertRaises(ValueError,
+            component_from_orig_tarball, "foo_0.1.orig.tar.gz", "bar", "0.1")
+
+    def test_invalid_extension(self):
+        self.assertRaises(ValueError,
+            component_from_orig_tarball, "foo_0.1.orig.unknown", "foo", "0.1")
+
+    def test_component(self):
+        self.assertEquals("comp",
+            component_from_orig_tarball("foo_0.1.orig-comp.tar.gz", "foo", "0.1"))
+        self.assertEquals("comp-dash",
+            component_from_orig_tarball("foo_0.1.orig-comp-dash.tar.gz", "foo", "0.1"))
+
+    def test_invalid_character(self):
+        self.assertRaises(ValueError,
+            component_from_orig_tarball, "foo_0.1.orig;.tar.gz", "foo", "0.1")

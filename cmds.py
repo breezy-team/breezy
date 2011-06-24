@@ -108,6 +108,7 @@ from bzrlib.plugins.builddeb.upstream.pristinetar import (
 from bzrlib.plugins.builddeb.util import (
         FORMAT_3_0_QUILT,
         FORMAT_3_0_NATIVE,
+        component_from_orig_tarball,
         debuild_config,
         dget_changes,
         find_changelog,
@@ -560,7 +561,9 @@ class cmd_merge_upstream(Command):
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        conflicts = db.merge_upstream(tarball_filenames, package, version,
+        tarballs = [(p, component_from_orig_tarball(p, package, version)) for p
+                in tarball_filenames]
+        conflicts = db.merge_upstream(tarballs, package, version,
                 current_version, upstream_branch=upstream_branch,
                 upstream_revision=upstream_revision,
                 merge_type=merge_type, force=force)
@@ -588,7 +591,7 @@ class cmd_merge_upstream(Command):
             ret.append(tarball_filename)
         return ret
 
-    def _get_tarball(self, config, tree, package, version, upstream_branch,
+    def _get_tarballs(self, config, tree, package, version, upstream_branch,
             upstream_revision, v3, locations):
         orig_dir = config.orig_dir or default_orig_dir
         orig_dir = os.path.join(tree.basedir, orig_dir)
@@ -747,7 +750,7 @@ class cmd_merge_upstream(Command):
                 source_format = get_source_format(tree)
                 v3 = (source_format in [
                     FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
-                tarball_filenames = self._get_tarball(config, tree, package,
+                tarball_filenames = self._get_tarballs(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     locations)
                 conflicts = self._do_merge(tree, tarball_filenames, package,
@@ -977,10 +980,16 @@ class cmd_import_upstream(Command):
         else:
             raise BzrCommandError('bzr import-upstream --revision takes exactly'
                                   ' one revision specifier.')
-        tarballs = [(location, md5sum_filename(location))]
-        tag_name, _ = db.import_upstream_tarballs(tarballs, version, parents,
-            upstream_branch=upstream, upstream_revision=upstream_revid)
-        self.outf.write('Imported %s as tag:%s.\n' % (location, tag_name))
+        tarballs = [(location, None, md5sum_filename(location))]
+        for (component, tag_name, revid) in db.import_upstream_tarballs(
+                tarballs, None, version, parents, upstream_branch=upstream,
+                upstream_revision=upstream_revid):
+            if component is None:
+                self.outf.write('Imported %s as tag:%s.\n' % (
+                    location, tag_name))
+            else:
+                self.outf.write('Imported %s (%s) as tag:%s.\n' % (
+                    location, component, tag_name))
 
 
 class cmd_bd_do(Command):

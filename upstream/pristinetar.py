@@ -130,6 +130,52 @@ class PristineTarSource(UpstreamSource):
             return "upstream-" + version
         return "upstream-%s-%s" % (distro, version)
 
+    def tag_version(self, version, revid):
+        """Tags the upstream branch's last revision with an upstream version.
+
+        Sets a tag on the last revision of the upstream branch and on the main
+        branch with a tag that refers to the upstream part of the version
+        provided.
+
+        :param version: the upstream part of the version number to derive the 
+            tag name from.
+        :param revid: the revid to associate the tag with, or None for the
+            tip of self.pristine_upstream_branch.
+        :return The tag name, revid of the added tag.
+        """
+        assert isinstance(version, str)
+        tag_name = self.tag_name(version)
+        self.branch.tags.set_tag(tag_name, revid)
+        return tag_name, revid
+
+    def import_component_tarball(self, package, version, tree, component=None,
+            md5=None, tarball=None, author=None, timestamp=None,
+            parent_ids=None):
+        """Import a tarball.
+
+        :param package: Package name
+        :param version: Upstream version
+        :param component: Component name (None for base)
+        """
+        if component is not None:
+            raise BzrError("Importing non-base tarballs not yet supported")
+        tree.set_parent_ids(parent_ids)
+        revprops = {}
+        if md5 is not None:
+            revprops["deb-md5"] = md5
+            delta_revprops = self.create_delta_revprops(tree, tarball)
+            revprops.update(delta_revprops)
+        if author is not None:
+            revprops['authors'] = author
+        timezone = None
+        if timestamp is not None:
+            timezone = timestamp[1]
+            timestamp = timestamp[0]
+        revid = tree.commit("Import upstream version %s" % (version,),
+                revprops=revprops, timestamp=timestamp, timezone=timezone)
+        tag_name, _ = self.tag_version(version, revid=revid)
+        return tag_name, revid
+
     def fetch_tarball(self, package, version, target_dir):
         revid = self.version_as_revision(package, version)
         try:
@@ -166,7 +212,7 @@ class PristineTarSource(UpstreamSource):
             return True
         if len(tarballs) != 1:
             raise MultipleUpstreamTarballsNotSupported()
-        (filename, md5) = tarballs[0]
+        (filename, component, md5) = tarballs[0]
         rev = self.branch.repository.get_revision(revid)
         try:
             return rev.properties['deb-md5'] == md5

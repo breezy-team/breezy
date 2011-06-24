@@ -24,7 +24,6 @@
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
 import os
-import re
 
 import bzrlib
 from bzrlib.commands import plugin_cmds

@@ -66,7 +66,6 @@ from bzrlib.plugins.builddeb.errors import (
     MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
-    MultipleUpstreamTarballsNotSupported,
     NoPreviousUpload,
     TarFailed,
     UnableToFindPreviousUpload,
@@ -685,24 +684,64 @@ def guess_build_type(tree, version, contains_upstream_source):
         return BUILD_TYPE_NORMAL
 
 
-def extract_orig_tarballs(tarballs, target, strip_components=None):
-    """Extract orig tarballs to a directory.
+def component_from_orig_tarball(tarball_filename, package, version):
+    tarball_filename = os.path.basename(tarball_filename)
+    prefix = "%s_%s.orig" % (package, version)
+    if not tarball_filename.startswith(prefix):
+        raise ValueError(
+            "invalid orig tarball file %s does not have expected prefix %s" % (
+                tarball_filename, prefix))
+    base = tarball_filename[len(prefix):]
+    for ext in (".tar.gz", ".tar.bz2", ".tar.lzma", ".tar.xz"):
+        if tarball_filename.endswith(ext):
+            base = base[:-len(ext)]
+            break
+    else:
+        raise ValueError(
+            "orig tarball file %s has unknown extension" % tarball_filename)
+    if base == "":
+        return None
+    elif base[0] == "-":
+        # Extra component
+        return base[1:]
+    else:
+        raise ValueError("Invalid extra characters in tarball filename %s" %
+            tarball_filename)
 
-    :param tarballs: List of tarball filenames
-    :param target: Target directory (must already exist)
+
+def extract_orig_tarball(tarball_filename, component, target, strip_components=None):
+    """Extract an orig tarball.
+
+    :param tarball: Path to the tarball
+    :param component: Component name (or None for top-level)
+    :param target: Target path
+    :param strip_components: Optional number of components to strip
     """
-    if len(tarballs) != 1:
-        raise MultipleUpstreamTarballsNotSupported()
-    tarball_filename = tarballs[0]
     tar_args = ["tar"]
     if tarball_filename.endswith(".tar.bz2"):
         tar_args.append('xjf')
     else:
         tar_args.append('xzf')
-    tar_args.extend([tarball_filename, "-C", target])
+    if component is not None:
+        target_path = os.path.join(target, component)
+        os.mkdir(target_path)
+    else:
+        target_path = target
+    tar_args.extend([tarball_filename, "-C", target_path])
     if strip_components is not None:
         tar_args.extend(["--strip-components", "1"])
     proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup)
     proc.communicate()
     if proc.returncode != 0:
         raise TarFailed("extract", tarball_filename)
+
+
+def extract_orig_tarballs(tarballs, target, strip_components=None):
+    """Extract orig tarballs to a directory.
+
+    :param tarballs: List of tarball filenames
+    :param target: Target directory (must already exist)
+    """
+    for tarball_filename, component in tarballs:
+        extract_orig_tarball(tarball_filename, component, target,
+            strip_components=strip_components)

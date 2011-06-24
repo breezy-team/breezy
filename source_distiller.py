@@ -25,11 +25,11 @@ import tempfile
 from bzrlib import errors as bzr_errors
 
 from bzrlib.plugins.builddeb.util import (
-        export,
-        extract_orig_tarballs,
-        get_parent_dir,
-        recursive_copy,
-        )
+    export,
+    extract_orig_tarballs,
+    get_parent_dir,
+    recursive_copy,
+    )
 
 
 class SourceDistiller(object):

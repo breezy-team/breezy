@@ -44,6 +44,7 @@ from bzrlib.plugins.builddeb.errors import (
     )
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 from bzrlib.plugins.builddeb.util import (
+    component_from_orig_tarball,
     export,
     tarball_name,
     )
@@ -395,7 +396,8 @@ class UpstreamProvider(object):
         if in_target is not None:
             note("Upstream tarball already exists in build directory, "
                     "using that")
-            return in_target
+            return [(p, component_from_orig_tarball(p,
+                self.package, self.version)) for p in in_target]
         if self.already_exists_in_store() is None:
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
@@ -410,7 +412,8 @@ class UpstreamProvider(object):
                  self.store_dir)
         paths = self.provide_from_store_dir(target_dir)
         assert paths is not None
-        return paths
+        return [(p, component_from_orig_tarball(p, self.package, self.version))
+                for p in paths]
 
     def _gather_orig_files(self, path):
         prefix = "%s_%s.orig" % (self.package, self.version)

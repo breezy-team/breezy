@@ -57,6 +57,9 @@ from bzrlib.plugins.builddeb.upstream import (
     UScanSource,
     extract_tarball_version,
     )
+from bzrlib.plugins.builddeb.util import (
+    component_from_orig_tarball,
+    )
 from bzrlib.plugins.builddeb.upstream.branch import (
     get_export_upstream_revision,
     get_snapshot_revision,
@@ -803,7 +806,8 @@ class _SimpleUpstreamProvider(UpstreamProvider):
         paths = (self.already_exists_in_target(target_dir)
                 or self.provide_from_store_dir(target_dir))
         if paths is not None:
-            return paths
+            return [(p, component_from_orig_tarball(p, self.package,
+                self.version)) for p in paths]
         raise MissingUpstreamTarball(self.package, self.version)
 
 

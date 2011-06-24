@@ -70,8 +70,8 @@ def _get_tarballs(tree, tarball, package_name, version, use_v3=False):
             orig_dir, [])
     orig_files = provider.provide(os.path.join(tree.basedir, ".."))
     ret = []
-    for filename in orig_files:
-        ret.append((filename, util.md5sum_filename(filename)))
+    for filename, component in orig_files:
+        ret.append((filename, component, util.md5sum_filename(filename)))
     return ret
 
 
@@ -87,7 +87,8 @@ def import_upstream(tarball, package_name, version, use_v3=False):
             pristine_upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()
     dbs.add_branch(db)
-    db.import_upstream_tarballs(tarball_filenames, version, parents)
+    db.import_upstream_tarballs(tarball_filenames, package_name, version,
+        parents)
     return tree
 
 
