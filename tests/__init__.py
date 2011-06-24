@@ -36,7 +36,7 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version, Changelog
 
-from bzrlib.tests import TestUtil, multiply_tests
+from bzrlib.tests import TestUtil, multiply_tests, ModuleAvailableFeature
 
 
 def make_new_upstream_dir(source, dest):
@@ -435,3 +435,6 @@ class SourcePackageBuilder(object):
         assert ret == 0, "dpkg-genchanges failed, output:\n%s" % \
                 (proc.stdout.read(),)
         shutil.rmtree(basedir)
+
+
+LzmaFeature = ModuleAvailableFeature("lzma")

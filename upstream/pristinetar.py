@@ -249,13 +249,16 @@ class PristineTarSource(UpstreamSource):
 
     def has_pristine_tar_delta(self, rev):
         return ('deb-pristine-delta' in rev.properties
-                or 'deb-pristine-delta-bz2' in rev.properties)
+                or 'deb-pristine-delta-bz2' in rev.properties
+                or 'deb-pristine-delta-lzma' in rev.properties)
 
     def pristine_tar_format(self, rev):
         if 'deb-pristine-delta' in rev.properties:
             return 'gz'
         elif 'deb-pristine-delta-bz2' in rev.properties:
             return 'bz2'
+        elif 'deb-pristine-delta-lzma' in rev.properties:
+            return 'lzma'
         assert self.has_pristine_tar_delta(rev)
         raise AssertionError("Not handled new delta type in "
                 "pristine_tar_format")
@@ -265,6 +268,8 @@ class PristineTarSource(UpstreamSource):
             uuencoded = rev.properties['deb-pristine-delta']
         elif 'deb-pristine-delta-bz2' in rev.properties:
             uuencoded = rev.properties['deb-pristine-delta-bz2']
+        elif 'deb-pristine-delta-lzma' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta-lzma']
         else:
             assert self.has_pristine_tar_delta(rev)
             raise AssertionError("Not handled new delta type in "
@@ -315,6 +320,8 @@ class PristineTarSource(UpstreamSource):
         uuencoded = standard_b64encode(delta)
         if tarball.endswith(".tar.bz2"):
             ret["deb-pristine-delta-bz2"] = uuencoded
+        elif tarball.endswith(".tar.lzma"):
+            ret["deb-pristine-delta-lzma"] = uuencoded
         else:
             ret["deb-pristine-delta"] = uuencoded
         return ret

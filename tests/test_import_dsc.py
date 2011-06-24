@@ -45,6 +45,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         )
 from bzrlib.plugins.builddeb.tests import (
         BuilddebTestCase,
+        LzmaFeature,
         SourcePackageBuilder,
         )
 
@@ -888,6 +889,40 @@ class DistributionBranchTests(BuilddebTestCase):
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
         self.assertTrue('deb-pristine-delta-bz2' in rev.properties)
+
+    def test_import_upstream_with_lzma_tarball(self):
+        self.requireFeature(PristineTarFeature)
+        self.requireFeature(LzmaFeature)
+        import lzma
+        version = Version("0.1-1")
+        name = "package"
+        basedir = name + "-" + str(version.upstream_version)
+        os.mkdir(basedir)
+        write_to_file(os.path.join(basedir, "README"), "Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), "")
+        tar_path = "package_0.1.orig.tar.lzma"
+        f = lzma.LZMAFile(tar_path, 'w')
+        try:
+            tf = tarfile.open(None, 'w', f)
+            try:
+                tf.add(basedir)
+            finally:
+                tf.close()
+        finally:
+            f.close()
+        self.db1.import_upstream(basedir, "package", version.upstream_version,
+            [], upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
+        tree = self.up_tree1
+        branch = tree.branch
+        rh = branch.revision_history()
+        self.assertEqual(len(rh), 1)
+        self.assertEqual(self.db1.revid_of_upstream_version(
+            "package", version.upstream_version), rh[0])
+        rev = branch.repository.get_revision(rh[0])
+        self.assertEqual(rev.message,
+                "Import upstream version %s" % str(version.upstream_version))
+        self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
+        self.assertTrue('deb-pristine-delta-lzma' in rev.properties)
 
     def test_import_package_init_from_other(self):
         self.requireFeature(PristineTarFeature)

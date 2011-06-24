@@ -35,6 +35,7 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import (
     Feature,
+    KnownFailure,
     TestCase,
     )
 from bzrlib.plugins.builddeb.config import (
@@ -46,6 +47,7 @@ from bzrlib.plugins.builddeb.errors import (
     WatchFileMissing,
     )
 from bzrlib.plugins.builddeb.tests import (
+    LzmaFeature,
     TestCaseWithTransport,
     )
 from bzrlib.plugins.builddeb.upstream import (
@@ -215,6 +217,18 @@ class AptSourceTests(TestCase):
         paths = src.fetch_tarball("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.bz2"])
+
+    def test_apt_provider_right_version_lzma(self):
+        caller = MockAptCaller(work=True)
+        sources = MockSources(["0.1-1", "0.2-1"],
+            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0L, "apackage_0.2.orig.tar.lzma", "tar")]])
+        apt_pkg = MockAptPkg(sources)
+        src = AptSource()
+        src._run_apt_source = caller.call
+        paths = src.fetch_tarball("apackage", "0.2", "target",
+            _apt_pkg=apt_pkg)
+        self.assertEquals(paths, ["target/apackage_0.2.orig.tar.lzma"])
 
     def test_apt_provider_right_version(self):
         caller = MockAptCaller(work=True)
@@ -693,6 +707,11 @@ class PristineTarSourceTests(TestCaseWithTransport):
         rev.properties["deb-pristine-delta-bz2"] = "1"
         self.assertEquals("bz2", self.source.pristine_tar_format(rev))
 
+    def test_pristine_tar_format_lzma(self):
+        rev = Revision("myrevid")
+        rev.properties["deb-pristine-delta-lzma"] = "1"
+        self.assertEquals("lzma", self.source.pristine_tar_format(rev))
+
     def test_pristine_tar_format_unknown(self):
         rev = Revision("myrevid")
         self.assertRaises(AssertionError,
@@ -768,6 +787,24 @@ class TarfileSourceTests(TestCaseWithTransport):
             source.fetch_tarball("foo", "1.0", "bar"))
         self.assertPathExists("bar/foo_1.0.orig.tar.gz")
         gzip.open("bar/foo_1.0.orig.tar.gz").close()
+
+    def test_fetch_tarball_lzma(self):
+        self.requireFeature(LzmaFeature)
+        import lzma
+        lzma_f = lzma.LZMAFile("foo-1.0.tar.lzma", 'w')
+        try:
+            tar = tarfile.open("foo-1.0.tar", "w", lzma_f)
+            tar.close()
+        finally:
+            lzma_f.close()
+        source = TarfileSource("foo-1.0.tar.lzma", "1.0")
+        os.mkdir("bar")
+        raise KnownFailure("pristine-tar does not support tar.lzma yet."
+                           "http://bugs.debian.org/499489")
+        self.assertEquals(["bar/foo_1.0.orig.tar.lzma"],
+            source.fetch_tarball("foo", "1.0", "bar"))
+        self.assertPathExists("bar/foo_1.0.orig.tar.lzma")
+        gzip.open("bar/foo_1.0.orig.tar.lzma").close()
 
 
 class _MissingUpstreamProvider(UpstreamProvider):
