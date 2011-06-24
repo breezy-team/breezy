@@ -23,10 +23,8 @@ import subprocess
 import tarfile
 import zipfile
 
-from copy import deepcopy
 import doctest
 import os
-from unittest import TestSuite
 
 from bzrlib import tests
 
