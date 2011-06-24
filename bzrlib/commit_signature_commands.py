@@ -111,12 +111,12 @@ class cmd_verify_signatures(Command):
                    type=str,),
             'revision', 
             'verbose',
-            'directory',
           ]
+    takes_args = ['location?']
 
     def run(self, acceptable_keys=None, revision=None, verbose=None,
-                                                            directory=u'.'):
-        bzrdir = _mod_bzrdir.BzrDir.open_containing(directory)[0]
+                                                            location=u'.'):
+        bzrdir = _mod_bzrdir.BzrDir.open_containing(location)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
         branch_config = branch.get_config()
@@ -163,7 +163,7 @@ class cmd_verify_signatures(Command):
                                 gpg_strategy.do_verifications(revisions, repo)
         if all_verifiable:
                write(gettext(
-                            "All commits signed with verifiable keys\n"))
+                            "All commits signed with verifiable keys"))
                if verbose:
                    write(gpg_strategy.verbose_valid_message(result))
                return 0
