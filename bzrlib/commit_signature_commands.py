@@ -170,16 +170,20 @@ class cmd_verify_signatures(Command):
         else:
             write(gpg_strategy.valid_commits_message(count))
             if verbose:
-               write_verbose(gpg_strategy.verbose_valid_message(result))
+               for message in gpg_strategy.verbose_valid_message(result):
+                   write_verbose(message)
             write(gpg_strategy.unknown_key_message(count))
             if verbose:
-                write_verbose(gpg_strategy.verbose_missing_key_message(result))
+                for message in gpg_strategy.verbose_missing_key_message(result):
+                    write_verbose(message)
             write(gpg_strategy.commit_not_valid_message(count))
             if verbose:
-                write_verbose(gpg_strategy.verbose_not_valid_message(result,
-                                                                        repo))
+                for message in gpg_strategy.verbose_not_valid_message(result,
+                                                                        repo):
+                   write_verbose(message)
             write(gpg_strategy.commit_not_signed_message(count))
             if verbose:
-                write_verbose(gpg_strategy.verbose_not_signed_message(result,
-                                                                        repo))
+                for message in gpg_strategy.verbose_not_signed_message(result,
+                                                                          repo):
+                    write_verbose(message)
             return 1
