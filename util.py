@@ -692,7 +692,7 @@ def component_from_orig_tarball(tarball_filename, package, version):
             "invalid orig tarball file %s does not have expected prefix %s" % (
                 tarball_filename, prefix))
     base = tarball_filename[len(prefix):]
-    for ext in (".tar.gz", ".tar.bz2", ".tar.lzma", ".tar.xz"):
+    for ext in (".tar.gz", ".tar.bz2", ".tar.lzma"):
         if tarball_filename.endswith(ext):
             base = base[:-len(ext)]
             break
@@ -720,6 +720,8 @@ def extract_orig_tarball(tarball_filename, component, target, strip_components=N
     tar_args = ["tar"]
     if tarball_filename.endswith(".tar.bz2"):
         tar_args.append('xjf')
+    elif tarball_filename.endswith(".tar.lzma"):
+        tar_args.append('xJf')
     else:
         tar_args.append('xzf')
     if component is not None:

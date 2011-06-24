@@ -62,6 +62,8 @@ def _get_tarballs(tree, tarball, package_name, version, use_v3=False):
     if use_v3:
         if tarball.endswith(".tar.bz2") or tarball.endswith(".tbz2"):
             format = "bz2"
+        elif tarball.endswith(".tar.lzma"):
+            format = "lzma"
     dest_name = util.tarball_name(package_name, version, format=format)
     trace.note("Fetching tarball")
     repack_tarball(tarball, dest_name, target_dir=orig_dir,

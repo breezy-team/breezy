@@ -1,6 +1,6 @@
 #    test_repack_tarball.py -- Testsuite for repacking of tarballs
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
