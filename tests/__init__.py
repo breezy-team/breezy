@@ -84,33 +84,31 @@ def make_new_upstream_tarball_bare(source, dest):
     shutil.rmtree(source)
 
 
-tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
-                     ('.tar.gz', make_new_upstream_tarball,
-                      '../package-0.2.tar.gz'),
-                     ('.tar.bz2', make_new_upstream_tarball_bz2,
-                      '../package-0.2.tar.bz2'),
-                     ('.zip', make_new_upstream_tarball_zip,
-                      '../package-0.2.zip'),
-                     ('.tar', make_new_upstream_tarball_bare,
-                      '../package-0.2.tar'),
-                     ]
+def make_new_upstream_tarball_xz(source, dest):
+    import lzma
+    f = lzma.LZMAFile(dest, 'w')
+    try:
+        tar = tarfile.open(None, 'w', f)
+        try:
+            tar.add(source)
+        finally:
+            tar.close()
+    finally:
+        f.close()
+    shutil.rmtree(source)
 
-
-class RepackTarballAdaptor(object):
-
-    def adapt(self, test):
-        result = TestSuite()
-        for (name, function, source) in tarball_functions:
-            new_test = deepcopy(test)
-            source = os.path.basename(source)
-            new_test.build_tarball = function(source)
-            new_test.old_tarball = source
-            def make_new_id():
-                new_id = '%s(%s)' % (test.id(), name)
-                return lambda: new_id
-            new_test.id = make_new_id()
-            result.addTest(new_test)
-        return result
+def make_new_upstream_tarball_lzma(source, dest):
+    import lzma
+    f = lzma.LZMAFile(dest, 'w', options={'format': 'alone'})
+    try:
+        tar = tarfile.open(None, 'w', f)
+        try:
+            tar.add(source)
+        finally:
+            tar.close()
+    finally:
+        f.close()
+    shutil.rmtree(source)
 
 
 def load_tests(standard_tests, module, loader):
@@ -151,6 +149,10 @@ def load_tests(standard_tests, module, loader):
                               old_tarball='../package-0.2.tar.gz')),
                  ('.tar.bz2', dict(build_tarball=make_new_upstream_tarball_bz2,
                               old_tarball='../package-0.2.tar.bz2')),
+                 ('.tar.xz', dict(build_tarball=make_new_upstream_tarball_xz,
+                              old_tarball='../package-0.2.tar.xz')),
+                 ('.tar.lzma', dict(build_tarball=make_new_upstream_tarball_lzma,
+                              old_tarball='../package-0.2.tar.lzma')),
                  ('.zip', dict(build_tarball=make_new_upstream_tarball_zip,
                               old_tarball='../package-0.2.zip')),
                  ('.tar', dict(build_tarball=make_new_upstream_tarball_bare,
