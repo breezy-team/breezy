@@ -799,12 +799,10 @@ class TarfileSourceTests(TestCaseWithTransport):
             lzma_f.close()
         source = TarfileSource("foo-1.0.tar.lzma", "1.0")
         os.mkdir("bar")
-        raise KnownFailure("pristine-tar does not support tar.lzma yet."
-                           "http://bugs.debian.org/499489")
-        self.assertEquals(["bar/foo_1.0.orig.tar.lzma"],
+        self.assertEquals(["bar/foo_1.0.orig.tar.gz"],
             source.fetch_tarball("foo", "1.0", "bar"))
-        self.assertPathExists("bar/foo_1.0.orig.tar.lzma")
-        gzip.open("bar/foo_1.0.orig.tar.lzma").close()
+        self.assertPathExists("bar/foo_1.0.orig.tar.gz")
+        gzip.open("bar/foo_1.0.orig.tar.gz").close()
 
 
 class _MissingUpstreamProvider(UpstreamProvider):
