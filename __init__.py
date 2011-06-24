@@ -62,8 +62,8 @@ default_orig_dir = '..'
 default_result_dir = '..'
 
 
-directories.register_lazy("apt:", 'bzrlib.plugins.builddeb.directory', 
-        'VcsDirectory', 
+directories.register_lazy("apt:", 'bzrlib.plugins.builddeb.directory',
+        'VcsDirectory',
         "Directory that uses Debian Vcs-* control fields to look up branches")
 
 
@@ -114,14 +114,15 @@ def debian_changelog_commit(commit, start_message):
     """hooked into bzrlib.msgeditor set_commit_message.
      Set the commit message from debian/changelog and set any LP: #1234 to bug
      fixed tags."""
-   
+    from bzrlib.plugins.builddeb.util import find_bugs_fixed
+
     changes = debian_changelog_commit_message(commit, start_message)
     if changes is None:
         return None
 
-    bugs_fixed = util.find_bugs_fixed([changes], commit.work_tree.branch)
+    bugs_fixed = find_bugs_fixed([changes], commit.work_tree.branch)
     commit.builder._revprops["bugs"] = "\n".join(bugs_fixed)
-    
+
     return debian_changelog_commit_message(commit, start_message)
 
 
