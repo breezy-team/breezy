@@ -120,10 +120,10 @@ class MergePackageTests(TestCaseWithTransport):
         v3 = "1.2"
         v4 = "1.10"
         db1 = DistributionBranch(ubup.branch, ubup.branch)
-        self.assertEqual(db1.has_upstream_version("package", v3), True)
+        self.assertEqual(db1.pristine_upstream_source.has_version("package", v3), True)
         # This version is in the diverged debian upstream tree and will
         # hence not be present in the target ubuntu packaging branch.
-        self.assertEqual(db1.has_upstream_version("package", v4), False)
+        self.assertEqual(db1.pristine_upstream_source.has_version("package", v4), False)
 
         # The ubuntu upstream branch tip.
         ubuu_tip = ubuu.branch.revision_history()[-1]
@@ -143,11 +143,11 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Check the versions present in the tree with the fixed ancestry.
         db2 = DistributionBranch(ubup.branch, ubup.branch)
-        self.assertEqual(db2.has_upstream_version("package", v3), True)
+        self.assertEqual(db2.pristine_upstream_source.has_version("package", v3), True)
         # The ancestry has been fixed and the missing debian upstream
         # version should now be present in the target ubuntu packaging
         # branch.
-        self.assertEqual(db2.has_upstream_version("package", v4), True)
+        self.assertEqual(db2.pristine_upstream_source.has_version("package", v4), True)
 
         # Now let's take a look at the fixed ubuntu packaging branch.
         ubup_tip_post_fix = ubup.branch.revision_history()[-1]

@@ -168,30 +168,30 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertFalse(db.has_version(version, self.fake_md5_1))
         self.assertFalse(db.has_version(version, self.fake_md5_2))
 
-    def test_has_upstream_version(self):
+    def test_pristine_upstream_source_has_version(self):
         db = self.db1
         version = "0.1"
-        self.assertFalse(db.has_upstream_version("package", version))
-        self.assertFalse(db.has_upstream_version("package", version,
+        self.assertFalse(db.pristine_upstream_source.has_version("package", version))
+        self.assertFalse(db.pristine_upstream_source.has_version("package", version,
             [("foo.tar.gz", None, self.fake_md5_1)]))
         self.do_commit_with_md5(self.up_tree1, "one", self.fake_md5_1)
         db.tag_upstream_version(version)
-        self.assertTrue(db.has_upstream_version("package", version))
-        self.assertTrue(db.has_upstream_version("package",
+        self.assertTrue(db.pristine_upstream_source.has_version("package", version))
+        self.assertTrue(db.pristine_upstream_source.has_version("package",
             version, [("foo.tar.gz", None, self.fake_md5_1)]))
-        self.assertFalse(db.has_upstream_version("package", version,
+        self.assertFalse(db.pristine_upstream_source.has_version("package", version,
             [("foo.tar.gz", None, self.fake_md5_2)]))
         version = "0.1"
-        self.assertTrue(db.has_upstream_version("package", version))
-        self.assertTrue(db.has_upstream_version("package", version,
+        self.assertTrue(db.pristine_upstream_source.has_version("package", version))
+        self.assertTrue(db.pristine_upstream_source.has_version("package", version,
             [("foo.tar.gz", None, self.fake_md5_1)]))
-        self.assertFalse(db.has_upstream_version("package", version,
+        self.assertFalse(db.pristine_upstream_source.has_version("package", version,
             [("foo.tar.gz", None, self.fake_md5_2)]))
         version = "0.2"
-        self.assertFalse(db.has_upstream_version("package", version))
-        self.assertFalse(db.has_upstream_version("package", version,
+        self.assertFalse(db.pristine_upstream_source.has_version("package", version))
+        self.assertFalse(db.pristine_upstream_source.has_version("package", version,
             [("foo.tar.gz", None, self.fake_md5_1)]))
-        self.assertFalse(db.has_upstream_version("package", version,
+        self.assertFalse(db.pristine_upstream_source.has_version("package", version,
             [("foo.tar.gz", None, self.fake_md5_2)]))
 
     def test_revid_of_version(self):
