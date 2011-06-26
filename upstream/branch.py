@@ -262,7 +262,7 @@ class UpstreamBranchSource(UpstreamSource):
                 raise PackageVersionNotPresent(package, version, self)
             note("Exporting upstream branch revision %s to create the tarball",
                  revid)
-            target_filename = self._tarball_path(package, version, target_dir)
+            target_filename = self._tarball_path(package, version, None, target_dir)
             tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
             export(rev_tree, target_filename, 'tgz', tarball_base)

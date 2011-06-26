@@ -192,9 +192,7 @@ class PristineTarSource(UpstreamSource):
         return tag_name, revid
 
     def fetch_component_tarball(self, package, version, component, target_dir):
-        if component is not None:
-            raise BzrError("Fetching non-base tarballs not yet supported")
-        revid = self.version_as_revision(package, version)
+        revid = self.version_component_as_revision(package, version, component)
         try:
             rev = self.branch.repository.get_revision(revid)
         except NoSuchRevision:
@@ -204,7 +202,7 @@ class PristineTarSource(UpstreamSource):
             format = self.pristine_tar_format(rev)
         else:
             format = 'gz'
-        target_filename = self._tarball_path(package, version,
+        target_filename = self._tarball_path(package, version, component,
                                              target_dir, format=format)
         try:
             self.reconstruct_pristine_tar(revid, package, version, target_filename)

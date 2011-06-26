@@ -292,7 +292,7 @@ class RecordingSource(UpstreamSource):
         self._specific_versions.append((package, version, target_dir))
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)
-        return [self._tarball_path(package, version, target_dir)]
+        return [self._tarball_path(package, version, None, target_dir)]
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__

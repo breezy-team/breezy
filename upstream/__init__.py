@@ -91,8 +91,8 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.fetch_tarballs)
 
-    def _tarball_path(self, package, version, target_dir, format=None):
-        return os.path.join(target_dir, tarball_name(package, version,
+    def _tarball_path(self, package, version, component, target_dir, format=None):
+        return os.path.join(target_dir, tarball_name(package, version, component,
                     format=format))
 
 
@@ -285,7 +285,8 @@ class UScanSource(UpstreamSource):
         if r != 0:
             note("uscan could not find the needed tarball.")
             raise PackageVersionNotPresent(package, version, self)
-        return [self._tarball_path(package, version, target_dir)]
+        # FIXME: What about the other component tarballs?
+        return [self._tarball_path(package, version, None, target_dir)]
 
 
 class SelfSplitSource(UpstreamSource):
@@ -311,7 +312,7 @@ class SelfSplitSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir):
         note("Using the current branch without the 'debian' directory "
                 "to create the tarball")
-        tarball_path = self._tarball_path(package, version, target_dir)
+        tarball_path = self._tarball_path(package, version, None, target_dir)
         self._split(package, version, tarball_path)
         return [tarball_path]
 

@@ -577,7 +577,7 @@ class cmd_merge_upstream(Command):
             if v3:
                 if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
                     format = "bz2"
-            dest_name = tarball_name(package, version, format=format)
+            dest_name = tarball_name(package, version, None, format=format)
             tarball_filename = os.path.join(orig_dir, dest_name)
             try:
                 repack_tarball(location, dest_name, target_dir=orig_dir,
