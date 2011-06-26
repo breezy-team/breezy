@@ -86,10 +86,6 @@ from bzrlib.plugins.builddeb.source_distiller import (
         MergeModeDistiller,
         NativeSourceDistiller,
         )
-from bzrlib.plugins.builddeb.tagging import (
-        is_upstream_tag,
-        upstream_tag_version,
-        )
 from bzrlib.plugins.builddeb.upstream import (
         AptSource,
         GetOrigSourceSource,
@@ -952,11 +948,8 @@ class cmd_import_upstream(Command):
         if db.pristine_upstream_source.has_version(None, version):
             raise BzrCommandError("Version %s is already present." % version)
         tagged_versions = {}
-        for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():
-            if not is_upstream_tag(tag_name):
-                continue
-            tag_version = Version(upstream_tag_version(tag_name))
-            tagged_versions[tag_version] = tag_revid
+        for tag, tag_version, revid in db.pristine_upstream_source.iter_versions():
+            tagged_versions[Version(tag_version)] = revid
         tag_order = sorted(tagged_versions.keys())
         if tag_order:
             parents = [tagged_versions[tag_order[-1]]]
