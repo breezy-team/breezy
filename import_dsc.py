@@ -574,6 +574,34 @@ class DistributionBranch(object):
         finally:
             self.branch.unlock()
 
+    def can_pull_upstream_from_branch(self, branch, package, version,
+            upstream_tarballs=None):
+        """Check if a version can be pulled from another branch into this one.
+
+        :param branch: Branch with upstream version
+        :param package: Package name
+        :param version: Package version
+        :param upstream_tarballs: Required upstream tarballs (optional)
+        """
+        if not branch.has_upstream_version(package, version, tarballs=upstream_tarballs):
+            return False
+
+        up_branch = self.pristine_upstream_branch
+        up_branch.lock_read()
+        try:
+            # Check that they haven't diverged
+            other_up_branch = branch.pristine_upstream_branch
+            other_up_branch.lock_read()
+            try:
+                graph = other_up_branch.repository.get_graph(
+                        up_branch.repository)
+                return graph.is_ancestor(up_branch.last_revision(),
+                        branch.revid_of_upstream_version(package, version))
+            finally:
+                other_up_branch.unlock()
+        finally:
+            up_branch.unlock()
+
     def branch_to_pull_upstream_from(self, package, version, upstream_tarballs):
         """Checks whether this upstream is a pull from a lesser branch.
 
@@ -591,40 +619,15 @@ class DistributionBranch(object):
             if that is what should be done, otherwise None.
         """
         assert isinstance(version, str)
-        up_branch = self.pristine_upstream_branch
-        up_branch.lock_read()
-        try:
-            for branch in reversed(self.get_lesser_branches()):
-                if branch.has_upstream_version(package, version,
-                        tarballs=upstream_tarballs):
-                    # Check that they haven't diverged
-                    other_up_branch = branch.pristine_upstream_branch
-                    other_up_branch.lock_read()
-                    try:
-                        graph = other_up_branch.repository.get_graph(
-                                up_branch.repository)
-                        if graph.is_ancestor(up_branch.last_revision(),
-                                branch.revid_of_upstream_version(package, version)):
-                            return branch
-                    finally:
-                        other_up_branch.unlock()
-            for branch in self.get_greater_branches():
-                if branch.has_upstream_version(package, version,
-                        tarballs=upstream_tarballs):
-                    # Check that they haven't diverged
-                    other_up_branch = branch.pristine_upstream_branch
-                    other_up_branch.lock_read()
-                    try:
-                        graph = other_up_branch.repository.get_graph(
-                                up_branch.repository)
-                        if graph.is_ancestor(up_branch.last_revision(),
-                                branch.revid_of_upstream_version(package, version)):
-                            return branch
-                    finally:
-                        other_up_branch.unlock()
-            return None
-        finally:
-            up_branch.unlock()
+        for branch in reversed(self.get_lesser_branches()):
+            if self.can_pull_upstream_from_branch(branch, package, version,
+                    upstream_tarballs):
+                return branch
+        for branch in self.get_greater_branches():
+            if self.can_pull_upstream_from_branch(branch, package, version,
+                    upstream_tarballs):
+                return branch
+        return None
 
     def get_parents(self, versions):
         """Return the list of parents for a specific version.
