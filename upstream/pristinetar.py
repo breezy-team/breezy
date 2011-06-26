@@ -29,7 +29,6 @@ import subprocess
 import tempfile
 
 from bzrlib.plugins.builddeb.errors import (
-    MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     PerFileTimestampsNotSupported,
     )
@@ -118,19 +117,25 @@ class PristineTarSource(UpstreamSource):
     def __repr__(self):
         return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
 
-    def tag_name(self, version, distro=None):
+    def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
 
         :param version: the Version object to extract the upstream
             part of the version number from.
+        :param component: Name of the component (None for base)
+        :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
         assert isinstance(version, str)
         if distro is None:
-            return "upstream-" + version
-        return "upstream-%s-%s" % (distro, version)
+            name = "upstream-" + version
+        else:
+            name = "upstream-%s-%s" % (distro, version)
+        if component is not None:
+            name += "/%s" % component
+        return name
 
-    def tag_version(self, version, revid):
+    def tag_version(self, version, revid, component=None):
         """Tags the upstream branch's last revision with an upstream version.
 
         Sets a tag on the last revision of the upstream branch and on the main
@@ -139,12 +144,14 @@ class PristineTarSource(UpstreamSource):
 
         :param version: the upstream part of the version number to derive the 
             tag name from.
+        :param component: name of the component that is being imported
+            (None for base)
         :param revid: the revid to associate the tag with, or None for the
             tip of self.pristine_upstream_branch.
         :return The tag name, revid of the added tag.
         """
         assert isinstance(version, str)
-        tag_name = self.tag_name(version)
+        tag_name = self.tag_name(version, component=component)
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
 
