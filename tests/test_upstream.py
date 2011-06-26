@@ -164,7 +164,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -180,7 +180,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -198,7 +198,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        paths = src.fetch_tarball("apackage", "0.2", "target",
+        paths = src.fetch_tarballs("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEquals(paths, [
             "target/apackage_0.2.orig.tar.bz2",
@@ -212,7 +212,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        paths = src.fetch_tarball("apackage", "0.2", "target",
+        paths = src.fetch_tarballs("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.bz2"])
 
@@ -224,7 +224,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        paths = src.fetch_tarball("apackage", "0.2", "target",
+        paths = src.fetch_tarballs("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.gz"])
         self.assertEqual(1, apt_pkg.init_called_times)
@@ -246,7 +246,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
             "apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
@@ -268,7 +268,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -288,7 +288,7 @@ class RecordingSource(UpstreamSource):
     def get_latest_version(self, package, current_version):
         return self._latest
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         self._specific_versions.append((package, version, target_dir))
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)
@@ -300,12 +300,12 @@ class RecordingSource(UpstreamSource):
 
 class StackedUpstreamSourceTests(TestCase):
 
-    def test_fetch_tarball_first_wins(self):
+    def test_fetch_tarballs_first_wins(self):
         a = RecordingSource(False)
         b = RecordingSource(True)
         c = RecordingSource(False)
         stack = StackedUpstreamSource([a, b, c])
-        stack.fetch_tarball("mypkg", "1.0", "bla")
+        stack.fetch_tarballs("mypkg", "1.0", "bla")
         self.assertEquals([("mypkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("mypkg", "1.0", "bla")], a._specific_versions)
         self.assertEquals([], c._specific_versions)
@@ -327,7 +327,7 @@ class StackedUpstreamSourceTests(TestCase):
         b = RecordingSource(False)
         stack = StackedUpstreamSource([a, b])
         self.assertRaises(PackageVersionNotPresent,
-                stack.fetch_tarball, "pkg", "1.0", "bla")
+                stack.fetch_tarballs, "pkg", "1.0", "bla")
         self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
 
@@ -387,21 +387,21 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         super(UpstreamBranchSourceTests, self).setUp()
         self.tree = self.make_branch_and_tree('.')
 
-    def test_fetch_tarball(self):
+    def test_fetch_tarballs(self):
         self.tree.commit("msg")
         self.tree.branch.tags.set_tag("1.0", self.tree.branch.last_revision())
         source = UpstreamBranchSource(self.tree.branch,
             {"1.0": self.tree.branch.last_revision()})
         os.mkdir("mydir")
         self.assertEquals(["mydir/foo_1.0.orig.tar.gz"],
-            source.fetch_tarball("foo", "1.0", "mydir"))
+            source.fetch_tarballs("foo", "1.0", "mydir"))
         self.assertPathExists("mydir/foo_1.0.orig.tar.gz")
 
-    def test_fetch_tarball_not_found(self):
+    def test_fetch_tarballs_not_found(self):
         source = UpstreamBranchSource(self.tree.branch)
         self.tree.commit("msg")
         self.assertRaises(PackageVersionNotPresent,
-            source.fetch_tarball, "foo", "1.0", "mydir")
+            source.fetch_tarballs, "foo", "1.0", "mydir")
 
     def test_get_latest_version(self):
         self.tree.commit("msg")
@@ -452,7 +452,7 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
         super(LazyUpstreamBranchSourceTests, self).setUp()
         self.tree = self.make_branch_and_tree('.')
 
-    def test_fetch_tarball(self):
+    def test_fetch_tarballs(self):
         self.tree.commit("msg")
         self.tree.branch.tags.set_tag("1.0", self.tree.branch.last_revision())
         source = LazyUpstreamBranchSource(self.tree.branch.base,
@@ -460,16 +460,16 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertIs(None, source._upstream_branch)
         os.mkdir("mydir")
         self.assertEquals(["mydir/foo_1.0.orig.tar.gz"],
-            source.fetch_tarball("foo", "1.0", "mydir"))
+            source.fetch_tarballs("foo", "1.0", "mydir"))
         self.assertPathExists("mydir/foo_1.0.orig.tar.gz")
         self.assertIsNot(None, source._upstream_branch)
 
-    def test_fetch_tarball_not_found(self):
+    def test_fetch_tarballs_not_found(self):
         source = LazyUpstreamBranchSource(self.tree.branch.base)
         self.assertIs(None, source._upstream_branch)
         self.tree.commit("msg")
         self.assertRaises(PackageVersionNotPresent,
-            source.fetch_tarball, "foo", "1.0", "mydir")
+            source.fetch_tarballs, "foo", "1.0", "mydir")
         self.assertIsNot(None, source._upstream_branch)
 
     def test_get_latest_version(self):
@@ -675,7 +675,7 @@ class PristineTarSourceTests(TestCaseWithTransport):
                 "upstream-" + upstream_v_no)
 
     def test_tag_name_distro(self):
-        self.assertEquals(self.source.tag_name("0.3", "ubuntu"),
+        self.assertEquals(self.source.tag_name("0.3", distro="ubuntu"),
                 "upstream-ubuntu-0.3")
 
     def test_version(self):
@@ -734,30 +734,30 @@ class TarfileSourceTests(TestCaseWithTransport):
         source = TarfileSource("foo-1.0.tar.gz")
         self.assertEquals("1.0", source.get_latest_version("foo", "0.9"))
 
-    def test_fetch_tarball(self):
+    def test_fetch_tarballs(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
         os.mkdir("bar")
         self.assertEquals(["bar/foo_1.0.orig.tar.gz"],
-            source.fetch_tarball("foo", "1.0", "bar"))
+            source.fetch_tarballs("foo", "1.0", "bar"))
         self.assertPathExists("bar/foo_1.0.orig.tar.gz")
 
-    def test_fetch_tarball_repack(self):
+    def test_fetch_tarballs_repack(self):
         zf = zipfile.ZipFile("bla-2.0.zip", "w")
         zf.writestr('avoid', 'empty zip to make the repacker happy\n')
         zf.close()
         source = TarfileSource("bla-2.0.zip", "2.0")
         os.mkdir("bar")
         self.assertEquals(["bar/foo_2.0.orig.tar.gz"],
-            source.fetch_tarball("foo", "2.0", "bar"))
+            source.fetch_tarballs("foo", "2.0", "bar"))
         self.assertPathExists("bar/foo_2.0.orig.tar.gz")
 
-    def test_fetch_tarball_not_present(self):
+    def test_fetch_tarballs_not_present(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
         os.mkdir("bar")
         self.assertRaises(PackageVersionNotPresent,
-            source.fetch_tarball, "foo", "0.9", "bar")
+            source.fetch_tarballs, "foo", "0.9", "bar")
 
-    def test_fetch_tarball_bz2(self):
+    def test_fetch_tarballs_bz2(self):
         tar = tarfile.open("foo-1.0.tar.bz2", "w:bz2")
         tar.close()
         # verify this is a bzip2 file
@@ -765,7 +765,7 @@ class TarfileSourceTests(TestCaseWithTransport):
         source = TarfileSource("foo-1.0.tar.bz2", "1.0")
         os.mkdir("bar")
         self.assertEquals(["bar/foo_1.0.orig.tar.gz"],
-            source.fetch_tarball("foo", "1.0", "bar"))
+            source.fetch_tarballs("foo", "1.0", "bar"))
         self.assertPathExists("bar/foo_1.0.orig.tar.gz")
         gzip.open("bar/foo_1.0.orig.tar.gz").close()
 

@@ -176,7 +176,7 @@ class PristineTarSource(UpstreamSource):
         tag_name, _ = self.tag_version(version, revid=revid)
         return tag_name, revid
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         revid = self.version_as_revision(package, version)
         try:
             rev = self.branch.repository.get_revision(revid)

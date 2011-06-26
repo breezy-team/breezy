@@ -254,7 +254,7 @@ class UpstreamBranchSource(UpstreamSource):
         finally:
             self.upstream_branch.unlock()
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         self.upstream_branch.lock_read()
         try:
             revid = self.version_as_revision(package, version)

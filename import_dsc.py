@@ -710,10 +710,9 @@ class DistributionBranch(object):
         pull_revision = pull_branch.revid_of_upstream_version(package, version)
         mutter("Pulling upstream part of %s from revision %s" % \
                 (version, pull_revision))
-        up_pull_branch = pull_branch.pristine_upstream_branch
         assert self.pristine_upstream_tree is not None, \
             "Can't pull upstream with no tree"
-        self.pristine_upstream_tree.pull(up_pull_branch,
+        self.pristine_upstream_tree.pull(pull_branch.pristine_upstream_branch,
                 stop_revision=pull_revision)
         self.pristine_upstream_source.tag_version(version, pull_revision)
         self.branch.fetch(self.pristine_upstream_branch, last_revision=pull_revision)
@@ -1131,7 +1130,8 @@ class DistributionBranch(object):
             # We need to import at least the diff, possibly upstream.
             # Work out if we need the upstream part first.
             imported_upstream = False
-            if not self.pristine_upstream_source.has_version(package, version.upstream_version):
+            if not self.pristine_upstream_source.has_version(package,
+                    version.upstream_version):
                 up_pull_branch = \
                     self.branch_to_pull_upstream_from(package, version.upstream_version,
                             upstream_tarballs)
