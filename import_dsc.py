@@ -60,6 +60,7 @@ from bzrlib.transport import (
 
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
+    PackageVersionNotPresent,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
     )
@@ -1345,16 +1346,16 @@ class DistributionBranch(object):
     def _export_previous_upstream_tree(self, package, previous_version, tempdir):
         assert isinstance(previous_version, str), \
             "Should pass upstream version as str, not Version."
-        if self.pristine_upstream_source.has_version(package, previous_version):
+        try:
             upstream_tip = self.pristine_upstream_source.version_as_revision(
                     package, previous_version)
-            self.extract_upstream_tree(upstream_tip, tempdir)
-        else:
+        except PackageVersionNotPresent:
             raise BzrCommandError("Unable to find the tag for the "
                     "previous upstream version, %s, in the branch: "
                     "%s" % (
                 previous_version,
                 self.pristine_upstream_source.tag_name(previous_version)))
+        self.extract_upstream_tree(upstream_tip, tempdir)
 
     def merge_upstream(self, tarball_filenames, package, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None,
