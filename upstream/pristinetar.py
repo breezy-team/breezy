@@ -176,7 +176,9 @@ class PristineTarSource(UpstreamSource):
         tag_name, _ = self.tag_version(version, revid=revid)
         return tag_name, revid
 
-    def fetch_tarballs(self, package, version, target_dir):
+    def fetch_component_tarball(self, package, version, component, target_dir):
+        if component is not None:
+            raise BzrError("Fetching non-base tarballs not yet supported")
         revid = self.version_as_revision(package, version)
         try:
             rev = self.branch.repository.get_revision(revid)
@@ -195,7 +197,10 @@ class PristineTarSource(UpstreamSource):
             raise PackageVersionNotPresent(package, version, self)
         except PerFileTimestampsNotSupported:
             raise PackageVersionNotPresent(package, version, self)
-        return [target_filename]
+        return target_filename
+
+    def fetch_tarballs(self, package, version, target_dir):
+        return [self.fetch_component_tarball(package, version, None, target_dir)]
 
     def _has_version(self, tag_name, tarballs=None):
         if not self.branch.tags.has_tag(tag_name):
