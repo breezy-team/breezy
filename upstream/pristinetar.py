@@ -163,16 +163,23 @@ class PristineTarSource(UpstreamSource):
         revprops = {}
         if md5 is not None:
             revprops["deb-md5"] = md5
-            delta_revprops = self.create_delta_revprops(tree, tarball)
-            revprops.update(delta_revprops)
+            delta = self.make_pristine_tar_delta(tree, tarball)
+            uuencoded = standard_b64encode(delta)
+            if tarball.endswith(".tar.bz2"):
+                revprops["deb-pristine-delta-bz2"] = uuencoded
+            else:
+                revprops["deb-pristine-delta"] = uuencoded
         if author is not None:
             revprops['authors'] = author
         timezone = None
         if timestamp is not None:
             timezone = timestamp[1]
             timestamp = timestamp[0]
-        revid = tree.commit("Import upstream version %s" % (version,),
-                revprops=revprops, timestamp=timestamp, timezone=timezone)
+        message = "Import upstream version %s" % (version,)
+        if component is not None:
+            message += ", component %s" % component
+        revid = tree.commit(message, revprops=revprops, timestamp=timestamp,
+            timezone=timezone)
         tag_name, _ = self.tag_version(version, revid=revid)
         return tag_name, revid
 
@@ -307,19 +314,3 @@ class PristineTarSource(UpstreamSource):
             return make_pristine_tar_delta(dest, tarball_path)
         finally:
             shutil.rmtree(tmpdir)
-
-    def create_delta_revprops(self, tree, tarball):
-        """Create the revision properties with the pristine tar delta.
-
-        :param tree: Bazaar Tree to diff against
-        :param tarball: The pristine tarball
-        :return: Dictionary with extra revision properties
-        """
-        ret = {}
-        delta = self.make_pristine_tar_delta(tree, tarball)
-        uuencoded = standard_b64encode(delta)
-        if tarball.endswith(".tar.bz2"):
-            ret["deb-pristine-delta-bz2"] = uuencoded
-        else:
-            ret["deb-pristine-delta"] = uuencoded
-        return ret
