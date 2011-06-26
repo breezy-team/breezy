@@ -29,6 +29,7 @@ import subprocess
 import tempfile
 
 from bzrlib.plugins.builddeb.errors import (
+    MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     PerFileTimestampsNotSupported,
     )
@@ -216,7 +217,7 @@ class PristineTarSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir):
         return [self.fetch_component_tarball(package, version, None, target_dir)]
 
-    def _has_version(self, tag_name, tarballs=None):
+    def _has_version_component(self, tag_name, md5=None):
         if not self.branch.tags.has_tag(tag_name):
             return False
         revid = self.branch.tags.lookup_tag(tag_name)
@@ -227,11 +228,8 @@ class PristineTarSource(UpstreamSource):
                 return False
         finally:
             self.branch.unlock()
-        if tarballs is None:
+        if md5 is None:
             return True
-        if len(tarballs) != 1:
-            raise MultipleUpstreamTarballsNotSupported()
-        (filename, component, md5) = tarballs[0]
         rev = self.branch.repository.get_revision(revid)
         try:
             return rev.properties['deb-md5'] == md5
@@ -241,29 +239,49 @@ class PristineTarSource(UpstreamSource):
             return True
 
     def version_as_revision(self, package, version, tarballs=None):
+        if tarballs is None:
+            return self.version_component_as_revision(package, version, component=None)
+        elif len(tarballs) > 1:
+            raise MultipleUpstreamTarballsNotSupported()
+        else:
+            return self.version_component_as_revision(package, version, tarballs[0][1])
+
+    def version_component_as_revision(self, package, version, component, tarballs=None):
         assert isinstance(version, str)
-        for tag_name in self.possible_tag_names(version):
-            if self._has_version(tag_name, tarballs):
+        for tag_name in self.possible_tag_names(version, component=component):
+            if self._has_version_component(tag_name, tarballs):
                 return self.branch.tags.lookup_tag(tag_name)
-        tag_name = self.tag_name(version)
+        tag_name = self.tag_name(version, component=component)
         try:
             return self.branch.tags.lookup_tag(tag_name)
         except NoSuchTag:
             raise PackageVersionNotPresent(package, version, self)
 
     def has_version(self, package, version, tarballs=None):
+        if tarballs is None:
+            return self.has_version_component(package, version, component=None)
+        elif len(tarballs) > 1:
+            raise MultipleUpstreamTarballsNotSupported()
+        else:
+            return self.has_version_component(package, version, tarballs[0][1],
+                    tarballs[0][2])
+
+    def has_version_component(self, package, version, component, md5=None):
         assert isinstance(version, str), str(type(version))
-        for tag_name in self.possible_tag_names(version):
-            if self._has_version(tag_name, tarballs=tarballs):
+        for tag_name in self.possible_tag_names(version, component=component):
+            if self._has_version_component(tag_name, md5=md5):
                 return True
         return False
 
-    def possible_tag_names(self, version):
+    def possible_tag_names(self, version, component):
         assert isinstance(version, str)
-        tags = [self.tag_name(version),
-                self.tag_name(version, distro="debian"),
-                self.tag_name(version, distro="ubuntu"),
-                "upstream/%s" % version]
+        tags = [self.tag_name(version, component=component),
+                self.tag_name(version, component=component, distro="debian"),
+                self.tag_name(version, component=component, distro="ubuntu"),
+                ]
+        if component is None:
+            # compatibility with git-buildpackage
+            tags += ["upstream/%s" % version]
         return tags
 
     def has_pristine_tar_delta(self, rev):

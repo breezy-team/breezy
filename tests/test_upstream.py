@@ -681,7 +681,12 @@ class PristineTarSourceTests(TestCaseWithTransport):
     def test_version(self):
         self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
             'upstream-ubuntu-3.3', 'upstream/3.3'],
-            self.source.possible_tag_names("3.3"))
+            self.source.possible_tag_names("3.3", component=None))
+
+    def test_version_component(self):
+        self.assertEquals(['upstream-3.3/extlib', 'upstream-debian-3.3/extlib',
+            'upstream-ubuntu-3.3/extlib'],
+            self.source.possible_tag_names("3.3", component="extlib"))
 
     def test_pristine_tar_format_gz(self):
         rev = Revision("myrevid")
