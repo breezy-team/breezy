@@ -320,7 +320,7 @@ class TestCommandHelpI18n(tests.TestCase):
 
     def setUp(self):
         super(TestCommandHelpI18n, self).setUp()
-        self.overrideAttr(i18n, '_translation', ZzzTranslationsForDoc())
+        self.overrideAttr(i18n, '_translations', ZzzTranslationsForDoc())
 
     def assertCmdHelp(self, expected, cmd):
         self.assertEqualDiff(textwrap.dedent(expected), cmd.get_help_text())
@@ -334,10 +334,10 @@ class TestCommandHelpI18n(tests.TestCase):
             }}zz{{:Usage:   bzr WithSeeAlso
             }}
             zz{{:Options:
-              --usage        zz{{Show usage message and options.}}
-              -v, --verbose  zz{{Display more information.}}
-              -q, --quiet    zz{{Only display errors and warnings.}}
-              -h, --help     zz{{Show help message.}}
+              --usage        Show usage message and options.
+              -v, --verbose  Display more information.
+              -q, --quiet    Only display errors and warnings.
+              -h, --help     Show help message.
             }}
             zz{{:See also: bar, foo}}
             ''',
@@ -352,10 +352,10 @@ class TestCommandHelpI18n(tests.TestCase):
             }}zz{{:Usage:   bzr Demo
             }}
             zz{{:Options:
-              --usage        zz{{Show usage message and options.}}
-              -v, --verbose  zz{{Display more information.}}
-              -q, --quiet    zz{{Only display errors and warnings.}}
-              -h, --help     zz{{Show help message.}}
+              --usage        Show usage message and options.
+              -v, --verbose  Display more information.
+              -q, --quiet    Only display errors and warnings.
+              -h, --help     Show help message.
             }}
             ''',
                            cmd_Demo())
@@ -414,10 +414,10 @@ class TestCommandHelpI18n(tests.TestCase):
             }}zz{{:Usage:   bzr Demo
             }}
             zz{{:Options:
-              --usage        zz{{Show usage message and options.}}
-              -v, --verbose  zz{{Display more information.}}
-              -q, --quiet    zz{{Only display errors and warnings.}}
-              -h, --help     zz{{Show help message.}}
+              --usage        Show usage message and options.
+              -v, --verbose  Display more information.
+              -q, --quiet    Only display errors and warnings.
+              -h, --help     Show help message.
             }}
             Description:
               zz{{zz{{Blah blah blah.}}
@@ -457,10 +457,10 @@ class TestCommandHelpI18n(tests.TestCase):
 
             }}
             zz{{:Options:
-              --usage        zz{{Show usage message and options.}}
-              -v, --verbose  zz{{Display more information.}}
-              -q, --quiet    zz{{Only display errors and warnings.}}
-              -h, --help     zz{{Show help message.}}
+              --usage        Show usage message and options.
+              -v, --verbose  Display more information.
+              -q, --quiet    Only display errors and warnings.
+              -h, --help     Show help message.
             }}
             Description:
               zz{{zz{{Blah blah blah.}}

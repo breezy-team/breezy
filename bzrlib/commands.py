@@ -36,6 +36,7 @@ from bzrlib import (
     cmdline,
     debug,
     errors,
+    i18n,
     option,
     osutils,
     trace,
@@ -44,11 +45,7 @@ from bzrlib import (
 """)
 
 from bzrlib.hooks import Hooks
-from bzrlib.i18n import (
-    gettext,
-    gettext_per_paragraph,
-    install as i18n_install,
-    )
+from bzrlib.i18n import gettext
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -491,6 +488,8 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
+        if self.l10n and not i18n.installed():
+            i18n.install()  # Install i18n only for get_help_text for now.
         doc = self.help()
         if doc:
             # Note: If self.gettext() translates ':Usage:\n', the section will
@@ -498,9 +497,7 @@ class Command(object):
             # translate the usage string.
             # Though, bzr export-pot don't exports :Usage: section and it must
             # not be translated.
-            if self.l10n:
-                i18n_install()  # Install i18n only for get_help_text for now.
-                doc = self.gettext(doc)
+            doc = self.gettext(doc)
         else:
             doc = gettext("No help for this command.")
 
@@ -515,7 +512,7 @@ class Command(object):
 
         # The header is the purpose and usage
         result = ""
-        result += gettext(':Purpose: %s\n') % (purpose,)
+        result += i18n.gettext(':Purpose: %s\n') % (purpose,)
         if usage.find('\n') >= 0:
             result += gettext(':Usage:\n%s\n') % (usage,)
         else:
@@ -768,7 +765,7 @@ class Command(object):
         Commands provided by plugins should override this to use their
         own i18n system.
         """
-        return gettext_per_paragraph(message)
+        return i18n.gettext_per_paragraph(message)
 
     def name(self):
         """Return the canonical name for this command.

@@ -26,7 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
-_translation = _gettext.NullTranslations()
+_translations = None
 
 
 def gettext(message):
@@ -34,7 +34,7 @@ def gettext(message):
     
     :returns: translated message as unicode.
     """
-    return _translation.ugettext(message)
+    return _translations.ugettext(message)
 
 
 def ngettext(s, p, n):
@@ -42,7 +42,7 @@ def ngettext(s, p, n):
 
     :returns: translated message as unicode.
     """
-    return _translation.ungettext(s, p, n)
+    return _translations.ungettext(s, p, n)
 
 
 def N_(msg):
@@ -56,17 +56,21 @@ def gettext_per_paragraph(message):
     :returns: concatenated translated message as unicode.
     """
     paragraphs = message.split(u'\n\n')
-    ugettext = _translation.ugettext
+    ugettext = _translations.ugettext
     # Be careful not to translate the empty string -- it holds the
     # meta data of the .po file.
     return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
 
 
+def installed():
+    return _translations is not None
+
+
 def install(lang=None):
-    global _translation
+    global _translations
     if lang is None:
         lang = _get_current_locale()
-    _translation = _gettext.translation(
+    _translations = _gettext.translation(
             'bzr',
             localedir=_get_locale_dir(),
             languages=lang.split(':'),
@@ -74,8 +78,8 @@ def install(lang=None):
 
 
 def uninstall():
-    global _translation
-    _translation = _gettext.NullTranslations()
+    global _translations
+    _translations = None
 
 
 def _get_locale_dir():
