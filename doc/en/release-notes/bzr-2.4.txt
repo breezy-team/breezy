@@ -58,6 +58,10 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Start implementing localization, starting with command help text (but not
+  the command options themselves). This will allow bootstrapping the bzr
+  internationalization process. (Inada Naoki)
+
 Testing
 *******
 
