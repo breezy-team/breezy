@@ -36,6 +36,7 @@ from bzrlib import (
     cmdline,
     debug,
     errors,
+    i18n,
     option,
     osutils,
     trace,
@@ -44,6 +45,7 @@ from bzrlib import (
 """)
 
 from bzrlib.hooks import Hooks
+from bzrlib.i18n import gettext
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -408,6 +410,7 @@ class Command(object):
     takes_options = []
     encoding_type = 'strict'
     invoked_as = None
+    l10n = True
 
     hidden = False
 
@@ -485,9 +488,18 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
+        if self.l10n and not i18n.installed():
+            i18n.install()  # Install i18n only for get_help_text for now.
         doc = self.help()
-        if not doc:
-            doc = "No help for this command."
+        if doc:
+            # Note: If self.gettext() translates ':Usage:\n', the section will
+            # be shown after "Description" section and we don't want to
+            # translate the usage string.
+            # Though, bzr export-pot don't exports :Usage: section and it must
+            # not be translated.
+            doc = self.gettext(doc)
+        else:
+            doc = gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
         purpose,sections,order = self._get_help_parts(doc)
@@ -500,11 +512,11 @@ class Command(object):
 
         # The header is the purpose and usage
         result = ""
-        result += ':Purpose: %s\n' % purpose
+        result += gettext(':Purpose: %s\n') % (purpose,)
         if usage.find('\n') >= 0:
-            result += ':Usage:\n%s\n' % usage
+            result += gettext(':Usage:\n%s\n') % (usage,)
         else:
-            result += ':Usage:   %s\n' % usage
+            result += gettext(':Usage:   %s\n') % (usage,)
         result += '\n'
 
         # Add the options
@@ -512,7 +524,8 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        options = option.get_optparser(self.options()).format_option_help()
+        parser = option.get_optparser(self.options())
+        options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
         # at least).  As that pattern always appears in the commands that
@@ -522,10 +535,7 @@ class Command(object):
         if not plain and options.find('  --1.14  ') != -1:
             options = options.replace(' format:\n', ' format::\n\n', 1)
         if options.startswith('Options:'):
-            result += ':' + options
-        elif options.startswith('options:'):
-            # Python 2.4 version of optparse
-            result += ':Options:' + options[len('options:'):]
+            result += gettext(':Options:%s') % (options[len('options:'):],)
         else:
             result += options
         result += '\n'
@@ -536,26 +546,26 @@ class Command(object):
             if sections.has_key(None):
                 text = sections.pop(None)
                 text = '\n  '.join(text.splitlines())
-                result += ':%s:\n  %s\n\n' % ('Description',text)
+                result += gettext(':Description:\n  %s\n\n') % (text,)
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
             if sections:
                 for label in order:
-                    if sections.has_key(label):
-                        result += ':%s:\n%s\n' % (label,sections[label])
+                    if label in sections:
+                        result += ':%s:\n%s\n' % (label, sections[label])
                 result += '\n'
         else:
-            result += ("See bzr help %s for more details and examples.\n\n"
+            result += (gettext("See bzr help %s for more details and examples.\n\n")
                 % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
-            result += ':Aliases:  '
+            result += gettext(':Aliases:  ')
             result += ', '.join(self.aliases) + '\n'
         plugin_name = self.plugin_name()
         if plugin_name is not None:
-            result += ':From:     plugin "%s"\n' % plugin_name
+            result += gettext(':From:     plugin "%s"\n') % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
             if not plain and see_also_as_links:
@@ -567,11 +577,10 @@ class Command(object):
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = ":doc:`%s <%s-help>`" % (item, item)
+                        link_text = gettext(":doc:`%s <%s-help>`") % (item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
-            result += ':See also: '
-            result += ', '.join(see_also) + '\n'
+            result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
 
         # If this will be rendered as plain text, convert it
         if plain:
@@ -658,13 +667,14 @@ class Command(object):
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         args, opts = parse_args(self, argv, alias_argv)
+        self._setup_outf()
 
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
-            sys.stdout.write(self.get_help_text())
+            self.outf.write(self.get_help_text())
             return 0
         if 'usage' in opts:  # e.g. bzr add --usage
-            sys.stdout.write(self.get_help_text(verbose=False))
+            self.outf.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
         if 'verbose' in self.supported_std_options:
@@ -684,8 +694,6 @@ class Command(object):
 
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
-
-        self._setup_outf()
 
         try:
             return self.run(**all_cmd_args)
@@ -750,6 +758,14 @@ class Command(object):
         if self.__doc__ is Command.__doc__:
             return None
         return getdoc(self)
+
+    def gettext(self, message):
+        """Returns the gettext function used to translate this command's help.
+
+        Commands provided by plugins should override this to use their
+        own i18n system.
+        """
+        return i18n.gettext_per_paragraph(message)
 
     def name(self):
         """Return the canonical name for this command.
@@ -1041,8 +1057,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("bzr arguments: %r", argv)
 
-    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
-                opt_no_aliases = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = \
+            opt_no_l10n = opt_no_aliases = False
     opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
@@ -1065,6 +1081,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             opt_no_plugins = True
         elif a == '--no-aliases':
             opt_no_aliases = True
+        elif a == '--no-l10n':
+            opt_no_l10n = True
         elif a == '--builtin':
             opt_builtin = True
         elif a == '--concurrency':
@@ -1106,6 +1124,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     cmd = argv.pop(0)
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
+    if opt_no_l10n:
+        cmd.l10n = False
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]
 
