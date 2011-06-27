@@ -44,7 +44,11 @@ from bzrlib import (
 """)
 
 from bzrlib.hooks import Hooks
-from bzrlib.i18n import install as i18n_install, gettext
+from bzrlib.i18n import (
+    gettext,
+    gettext_per_paragraph,
+    install as i18n_install,
+    )
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -409,6 +413,7 @@ class Command(object):
     takes_options = []
     encoding_type = 'strict'
     invoked_as = None
+    l10n = True
 
     hidden = False
 
@@ -488,9 +493,14 @@ class Command(object):
         """
         doc = self.help()
         if doc:
-            # Note: If cmd_gettext translates ':Usage:\n', the section will
-            # be shown after "Description" section.
-            doc = self.gettext(doc)
+            # Note: If self.gettext() translates ':Usage:\n', the section will
+            # be shown after "Description" section and we don't want to
+            # translate the usage string.
+            # Though, bzr export-pot don't exports :Usage: section and it must
+            # not be translated.
+            if self.l10n:
+                i18n_install()  # Install i18n only for get_help_text for now.
+                doc = self.gettext(doc)
         else:
             doc = gettext("No help for this command.")
 
@@ -517,7 +527,7 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        parser = option.get_optparser(self.options(), True)
+        parser = option.get_optparser(self.options())
         options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
@@ -660,14 +670,13 @@ class Command(object):
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         args, opts = parse_args(self, argv, alias_argv)
+        self._setup_outf()
 
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
-            self._setup_outf()
             self.outf.write(self.get_help_text())
             return 0
         if 'usage' in opts:  # e.g. bzr add --usage
-            self._setup_outf()
             self.outf.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
@@ -688,8 +697,6 @@ class Command(object):
 
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
-
-        self._setup_outf()
 
         try:
             return self.run(**all_cmd_args)
@@ -755,15 +762,13 @@ class Command(object):
             return None
         return getdoc(self)
 
-    @property
-    def gettext(self):
+    def gettext(self, message):
         """Returns the gettext function used to translate this command's help.
 
         Commands provided by plugins should override this to use their
         own i18n system.
         """
-        import bzrlib.i18n
-        return bzrlib.i18n.gettext_per_paragraph
+        return gettext_per_paragraph(message)
 
     def name(self):
         """Return the canonical name for this command.
@@ -1098,9 +1103,6 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         i += 1
 
     debug.set_debug_flags_from_config()
-    if not opt_no_l10n:
-        # selftest uninstalls i18n later.
-        i18n_install()
 
     if not opt_no_plugins:
         load_plugins()
@@ -1125,6 +1127,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     cmd = argv.pop(0)
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
+    if opt_no_l10n:
+        cmd.l10n = False
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]
 

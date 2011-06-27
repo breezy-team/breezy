@@ -368,9 +368,9 @@ class TestCommandHelpI18n(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -v, --verbose  zz{{Display more information.}}\n'
-            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
-            '  -h, --help     zz{{Show help message.}}\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '}}\n'
             'zz{{:See also: bar, foo, gam}}\n')
 
@@ -382,10 +382,10 @@ class TestCommandHelpI18n(tests.TestCase):
         self.assertEndsWith(
             helptext,
             'zz{{:Options:\n'
-            '  --usage        zz{{Show usage message and options.}}\n'
-            '  -v, --verbose  zz{{Display more information.}}\n'
-            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
-            '  -h, --help     zz{{Show help message.}}\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '}}\n'
             'zz{{:See also: gam}}\n')
 
@@ -448,9 +448,6 @@ class TestCommandHelpI18n(tests.TestCase):
 
             Blah blah blah.
             """
-#        cmd = cmd_Demo()
-#        helptext = cmd.get_help_text()
-#        self.assertEquals(helptext,
         self.assertCmdHelp('''\
             zz{{:Purpose: zz{{A sample command.}}
             }}zz{{:Usage:
