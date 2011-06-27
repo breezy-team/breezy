@@ -409,18 +409,6 @@ class DistributionBranch(object):
             return self.branch.tags.lookup_tag(ubuntu_tag_name)
         return self.branch.tags.lookup_tag(tag_name)
 
-    def revid_of_upstream_version(self, package, version, tarballs=None):
-        """Returns the revision id corresponding to the upstream version.
-
-        :param version: the Version object to extract the upstream version
-            from to retrieve the revid of. The upstream version must be
-            present in the upstream branch.
-        :return: the revision id corresponding to the upstream portion
-            of the version
-        """
-        return self.pristine_upstream_source.version_as_revision(package, version,
-            tarballs)
-
     def tag_version(self, version, revid=None):
         """Tags the branch's last revision with the given version.
 
@@ -581,7 +569,7 @@ class DistributionBranch(object):
                 graph = other_up_branch.repository.get_graph(
                         up_branch.repository)
                 return graph.is_ancestor(up_branch.last_revision(),
-                        branch.revid_of_upstream_version(package, version))
+                        branch.pristine_upstream_source.version_as_revision(package, version))
             finally:
                 other_up_branch.unlock()
         finally:
@@ -695,7 +683,7 @@ class DistributionBranch(object):
         :param version: the upstream version string
         """
         assert isinstance(version, str)
-        pull_revision = pull_branch.revid_of_upstream_version(package, version)
+        pull_revision = pull_branch.pristine_upstream_source.version_as_revision(package, version)
         mutter("Pulling upstream part of %s from revision %s" % \
                 (version, pull_revision))
         assert self.pristine_upstream_tree is not None, \
@@ -789,7 +777,7 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            parent_revid = self.revid_of_upstream_version(package,
+            parent_revid = self.pristine_upstream_source.version_as_revision(package,
                 version.upstream_version)
             if len(parents) > 0:
                 real_parents.insert(1, parent_revid)
@@ -1069,7 +1057,7 @@ class DistributionBranch(object):
                 pull_branch = pull_parents[1][0]
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
-                pull_revid = pull_branch.revid_of_upstream_version(
+                pull_revid = pull_branch.pristine_upstream_source.version_as_revision(
                     package, pull_version.upstream_version)
                 mutter("Initialising upstream from %s, version %s",
                     str(pull_branch), str(pull_version))

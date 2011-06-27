@@ -202,14 +202,14 @@ class DistributionBranchTests(BuilddebTestCase):
         db.tag_version(version)
         self.assertEqual(db.revid_of_version(version), revid)
 
-    def test_revid_of_upstream_version(self):
+    def test_upstream_version_as_revid(self):
         db = self.db1
         tree = self.up_tree1
         version = "0.1"
         revid = tree.commit("one")
         db.tag_upstream_version(version)
         self.assertEqual(
-            db.revid_of_upstream_version("package", version), revid)
+            db.pristine_upstream_source.version_as_revision("package", version), revid)
 
     def test_contained_versions(self):
         db = self.db1
@@ -699,7 +699,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(self.tree2.branch.last_revision(), revid)
         self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
         self.assertEqual(self.db2.revid_of_version(version), revid)
-        self.assertEqual(self.db2.revid_of_upstream_version(
+        self.assertEqual(self.db2.pristine_upstream_source.version_as_revision(
             "package", version.upstream_version), up_revid)
 
     def test_pull_from_lesser_branch_with_upstream(self):
@@ -715,7 +715,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(self.tree2.branch.last_revision(), revid)
         self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
         self.assertEqual(self.db2.revid_of_version(version), revid)
-        self.assertEqual(self.db2.revid_of_upstream_version(
+        self.assertEqual(self.db2.pristine_upstream_source.version_as_revision(
             "package", version.upstream_version), up_revid)
 
     def test_pull_upstream_from_branch(self):
@@ -726,7 +726,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertNotEqual(self.up_tree2.branch.last_revision(), up_revid)
         self.db2.pull_upstream_from_branch(self.db1, "package", version)
         self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
-        self.assertEqual(self.db2.revid_of_upstream_version("package", version),
+        self.assertEqual(self.db2.pristine_upstream_source.version_as_revision("package", version),
                 up_revid)
 
     def check_changes(self, changes, added=[], removed=[], modified=[],
@@ -783,7 +783,7 @@ class DistributionBranchTests(BuilddebTestCase):
         branch = tree.branch
         rh = branch.revision_history()
         self.assertEqual(len(rh), 1)
-        self.assertEqual(self.db1.revid_of_upstream_version(
+        self.assertEqual(self.db1.pristine_upstream_source.version_as_revision(
             "package", version.upstream_version), rh[0])
         rev = branch.repository.get_revision(rh[0])
         self.assertEqual(rev.message,
@@ -822,7 +822,7 @@ class DistributionBranchTests(BuilddebTestCase):
         rh = branch.revision_history()
         self.assertEqual(len(rh), 2)
         self.assertEqual(
-            self.db1.revid_of_upstream_version("package", version2.upstream_version), rh[1])
+            self.db1.pristine_upstream_source.version_as_revision("package", version2.upstream_version), rh[1])
         rev = branch.repository.get_revision(rh[1])
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version2.upstream_version))
@@ -853,7 +853,7 @@ class DistributionBranchTests(BuilddebTestCase):
         branch = tree.branch
         rh = branch.revision_history()
         self.assertEqual(len(rh), 1)
-        self.assertEqual(self.db1.revid_of_upstream_version(
+        self.assertEqual(self.db1.pristine_upstream_source.version_as_revision(
             "package", version.upstream_version), rh[0])
         rev = branch.repository.get_revision(rh[0])
         self.assertEqual(rev.message,
@@ -881,7 +881,7 @@ class DistributionBranchTests(BuilddebTestCase):
         branch = tree.branch
         rh = branch.revision_history()
         self.assertEqual(len(rh), 1)
-        self.assertEqual(self.db1.revid_of_upstream_version(
+        self.assertEqual(self.db1.pristine_upstream_source.version_as_revision(
             "package", version.upstream_version), rh[0])
         rev = branch.repository.get_revision(rh[0])
         self.assertEqual(rev.message,
@@ -1321,7 +1321,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
         self.assertEqual(self.db1.revid_of_version(version3), rh1[3])
         self.assertEqual(
-            self.db1.revid_of_upstream_version("package", version1.upstream_version),
+            self.db1.pristine_upstream_source.version_as_revision("package", version1.upstream_version),
             up_rh1[0])
         self.tree1.lock_read()
         self.addCleanup(self.tree1.unlock)
@@ -1374,10 +1374,10 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
         self.assertEqual(self.db1.revid_of_version(version3), rh1[3])
         self.assertEqual(
-            self.db1.revid_of_upstream_version("package", version1.upstream_version),
+            self.db1.pristine_upstream_source.version_as_revision("package", version1.upstream_version),
             up_rh1[0])
         self.assertEqual(
-            self.db1.revid_of_upstream_version("package", version3.upstream_version),
+            self.db1.pristine_upstream_source.version_as_revision("package", version3.upstream_version),
             up_rh1[1])
         self.tree1.lock_read()
         self.addCleanup(self.tree1.unlock)
@@ -1429,10 +1429,10 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
         self.assertEqual(self.db1.revid_of_version(version3), rh1[3])
         self.assertEqual(
-            self.db1.revid_of_upstream_version("package", version1.upstream_version),
+            self.db1.pristine_upstream_source.version_as_revision("package", version1.upstream_version),
             up_rh1[0])
         self.assertEqual(
-            self.db1.revid_of_upstream_version("package", version3.upstream_version),
+            self.db1.pristine_upstream_source.version_as_revision("package", version3.upstream_version),
             up_rh1[1])
         self.tree1.lock_read()
         self.addCleanup(self.tree1.unlock)
