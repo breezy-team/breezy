@@ -142,7 +142,10 @@ isolated_environ = {
     'BZREMAIL': None, # may still be present in the environment
     'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
     'BZR_PROGRESS_BAR': None,
-    'BZR_LOG': None,
+    # This should trap leaks to ~/.bzr.log. This occurs when tests use TestCase
+    # as a base class instead of TestCaseInTempDir. Tests inheriting from
+    # TestCase should not use disk resources, BZR_LOG is one.
+    'BZR_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
     'BZR_PLUGIN_PATH': None,
     'BZR_DISABLE_PLUGINS': None,
     'BZR_PLUGINS_AT': None,
@@ -928,7 +931,7 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-    
+
     kwargs['setUp'] = isolated_doctest_setUp
     kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
@@ -988,6 +991,13 @@ class TestCase(testtools.TestCase):
         # settled on or a the FIXME associated with _get_expand_default_value
         # is addressed -- vila 20110219
         self.overrideAttr(config, '_expand_default_value', None)
+        self._log_files = set()
+        # Each key in the ``_counters`` dict holds a value for a different
+        # counter. When the test ends, addDetail() should be used to output the
+        # counter values. This happens in install_counter_hook().
+        self._counters = {}
+        if 'config_stats' in selftest_debug_flags:
+            self._install_config_stats_hooks()
 
     def debug(self):
         # debug a frame up.
@@ -1009,6 +1019,50 @@ class TestCase(testtools.TestCase):
         details = self.getDetails()
         if name in details:
             del details[name]
+
+    def install_counter_hook(self, hooks, name, counter_name=None):
+        """Install a counting hook.
+
+        Any hook can be counted as long as it doesn't need to return a value.
+
+        :param hooks: Where the hook should be installed.
+
+        :param name: The hook name that will be counted.
+
+        :param counter_name: The counter identifier in ``_counters``, defaults
+            to ``name``.
+        """
+        _counters = self._counters # Avoid closing over self
+        if counter_name is None:
+            counter_name = name
+        if _counters.has_key(counter_name):
+            raise AssertionError('%s is already used as a counter name'
+                                  % (counter_name,))
+        _counters[counter_name] = 0
+        self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
+            lambda: ['%d' % (_counters[counter_name],)]))
+        def increment_counter(*args, **kwargs):
+            _counters[counter_name] += 1
+        label = 'count %s calls' % (counter_name,)
+        hooks.install_named_hook(name, increment_counter, label)
+        self.addCleanup(hooks.uninstall_named_hook, name, label)
+
+    def _install_config_stats_hooks(self):
+        """Install config hooks to count hook calls.
+
+        """
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.ConfigHooks, hook_name,
+                                       'config.%s' % (hook_name,))
+
+        # The OldConfigHooks are private and need special handling to protect
+        # against recursive tests (tests that run other tests), so we just do
+        # manually what registering them into _builtin_known_hooks will provide
+        # us.
+        self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.OldConfigHooks, hook_name,
+                                      'old_config.%s' % (hook_name,))
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -1069,9 +1123,13 @@ class TestCase(testtools.TestCase):
         # break some locks on purpose and should be taken into account by
         # considering that breaking a lock is just a dirty way of releasing it.
         if len(acquired_locks) != (len(released_locks) + len(broken_locks)):
-            message = ('Different number of acquired and '
-                       'released or broken locks. (%s, %s + %s)' %
-                       (acquired_locks, released_locks, broken_locks))
+            message = (
+                'Different number of acquired and '
+                'released or broken locks.\n'
+                'acquired=%s\n'
+                'released=%s\n'
+                'broken=%s\n' %
+                (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
                 print "Broken test %s: %s" % (self, message)
@@ -1546,7 +1604,8 @@ class TestCase(testtools.TestCase):
         not other callers that go direct to the warning module.
 
         To test that a deprecated method raises an error, do something like
-        this::
+        this (remember that both assertRaises and applyDeprecated delays *args
+        and **kwargs passing)::
 
             self.assertRaises(errors.ReservedId,
                 self.applyDeprecated,
@@ -1637,7 +1696,7 @@ class TestCase(testtools.TestCase):
         pseudo_log_file = StringIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
-                "utf-8", "replace").encode("utf-8")]          
+                "utf-8", "replace").encode("utf-8")]
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
             _get_log_contents_for_weird_testtools_api))
@@ -1648,7 +1707,7 @@ class TestCase(testtools.TestCase):
     def _finishLogFile(self):
         """Finished with the log file.
 
-        Close the file and delete it, unless setKeepLogfile was called.
+        Close the file and delete it.
         """
         if trace._trace_file:
             # flush the log file, to get all content
@@ -2065,6 +2124,9 @@ class TestCase(testtools.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
+            # Include the subprocess's log file in the test details, in case
+            # the test fails due to an error in the subprocess.
+            self._add_subprocess_log(trace._get_bzr_log_filename())
             command = [sys.executable]
             # frozen executables don't need the path to bzr
             if getattr(sys, "frozen", None) is None:
@@ -2081,6 +2143,33 @@ class TestCase(testtools.TestCase):
                 os.chdir(cwd)
 
         return process
+
+    def _add_subprocess_log(self, log_file_path):
+        if len(self._log_files) == 0:
+            # Register an addCleanup func.  We do this on the first call to
+            # _add_subprocess_log rather than in TestCase.setUp so that this
+            # addCleanup is registered after any cleanups for tempdirs that
+            # subclasses might create, which will probably remove the log file
+            # we want to read.
+            self.addCleanup(self._subprocess_log_cleanup)
+        # self._log_files is a set, so if a log file is reused we won't grab it
+        # twice.
+        self._log_files.add(log_file_path)
+
+    def _subprocess_log_cleanup(self):
+        for count, log_file_path in enumerate(self._log_files):
+            # We use buffer_now=True to avoid holding the file open beyond
+            # the life of this function, which might interfere with e.g.
+            # cleaning tempdirs on Windows.
+            # XXX: Testtools 0.9.5 doesn't have the content_from_file helper
+            #detail_content = content.content_from_file(
+            #    log_file_path, buffer_now=True)
+            with open(log_file_path, 'rb') as log_file:
+                log_file_bytes = log_file.read()
+            detail_content = content.Content(content.ContentType("text",
+                "plain", {"charset": "utf8"}), lambda: [log_file_bytes])
+            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+                detail_content)
 
     def _popen(self, *args, **kwargs):
         """Place a call to Popen.
@@ -2239,20 +2328,21 @@ class CapturedCall(object):
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
-    Tests that need disk resources should derive from TestCaseWithTransport.
+    Tests that need disk resources should derive from TestCaseInTempDir
+    orTestCaseWithTransport.
 
     TestCaseWithMemoryTransport sets the TEST_ROOT variable for all bzr tests.
 
-    For TestCaseWithMemoryTransport the test_home_dir is set to the name of
+    For TestCaseWithMemoryTransport the ``test_home_dir`` is set to the name of
     a directory which does not exist. This serves to help ensure test isolation
-    is preserved. test_dir is set to the TEST_ROOT, as is cwd, because they
-    must exist. However, TestCaseWithMemoryTransport does not offer local
-    file defaults for the transport in tests, nor does it obey the command line
+    is preserved. ``test_dir`` is set to the TEST_ROOT, as is cwd, because they
+    must exist. However, TestCaseWithMemoryTransport does not offer local file
+    defaults for the transport in tests, nor does it obey the command line
     override, so tests that accidentally write to the common directory should
     be rare.
 
-    :cvar TEST_ROOT: Directory containing all temporary directories, plus
-    a .bzr directory that stops us ascending higher into the filesystem.
+    :cvar TEST_ROOT: Directory containing all temporary directories, plus a
+        ``.bzr`` directory that stops us ascending higher into the filesystem.
     """
 
     TEST_ROOT = None
@@ -2581,6 +2671,12 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     """
 
     OVERRIDE_PYTHON = 'python'
+
+    def setUp(self):
+        super(TestCaseInTempDir, self).setUp()
+        # Remove the protection set in isolated_environ, we have a proper
+        # access to disk resources now.
+        self.overrideEnv('BZR_LOG', None)
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
@@ -3478,6 +3574,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
+
+#   -Econfig_stats          Will collect statistics using addDetail
 selftest_debug_flags = set()
 
 

@@ -1770,6 +1770,15 @@ class ConflictsInTree(BzrError):
     _fmt = "Working tree has conflicts."
 
 
+class ConfigContentError(BzrError):
+
+    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
+
+    def __init__(self, filename):
+        BzrError.__init__(self)
+        self.filename = filename
+
+
 class ParseConfigError(BzrError):
 
     _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
@@ -3079,6 +3088,18 @@ class TipChangeRejected(BzrError):
 class ShelfCorrupt(BzrError):
 
     _fmt = "Shelf corrupt."
+
+
+class DecompressCorruption(BzrError):
+
+    _fmt = "Corruption while decompressing repository file%(orig_error)s"
+
+    def __init__(self, orig_error=None):
+        if orig_error is not None:
+            self.orig_error = ", %s" % (orig_error,)
+        else:
+            self.orig_error = ""
+        BzrError.__init__(self)
 
 
 class NoSuchShelfId(BzrError):

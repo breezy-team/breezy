@@ -17,7 +17,7 @@
 """Tests for display of exceptions."""
 
 import os
-import sys
+import re
 
 from bzrlib import (
     bzrdir,
@@ -30,10 +30,8 @@ from bzrlib import (
     )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 
-from bzrlib.tests import TestCase
 
-
-class TestExceptionReporting(TestCase):
+class TestExceptionReporting(tests.TestCaseInTempDir):
 
     def test_exception_exitcode(self):
         # we must use a subprocess, because the normal in-memory mechanism
@@ -58,11 +56,12 @@ class TestExceptionReporting(TestCase):
             env_changes={"LANG": "C", "LC_ALL": "C"},
             universal_newlines=True,
             retcode=errors.EXIT_ERROR)
-        self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported")
+        self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported",
+            flags=re.MULTILINE)
         self.assertEquals(out, "")
 
 
-class TestOptParseBugHandling(TestCase):
+class TestOptParseBugHandling(tests.TestCase):
     "Test that we handle http://bugs.python.org/issue2931"
 
     def test_nonascii_optparse(self):

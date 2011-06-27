@@ -21,7 +21,6 @@ import os
 from bzrlib import (
     config,
     errors,
-    graph,
     inventory,
     osutils,
     repository,

@@ -33,6 +33,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Don't fail with traceback if `bzr serve` is running as a service on Windows,
+  and there is no USERNAME, nor BZR_EMAIL or other whoami-related environment
+  variables set. (Alexander Belchenko, Bug #660174)
+
 Documentation
 *************
 
@@ -61,6 +65,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Remove the deprecation decorators for ``failUnlessExists`` and
+  ``failIfExists``. The deprecation "will" occur in 2.4, not
+  before. Providing the wrappers is enough as far as 2.3 is concerned.
+  (Vincent Ladeuil #794960)
 
 bzr 2.3.3
 #########

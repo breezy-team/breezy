@@ -1740,9 +1740,13 @@ class cmd_ancestry(Command):
             b = wt.branch
             last_revision = wt.last_revision()
 
-        revision_ids = b.repository.get_ancestry(last_revision)
-        revision_ids.pop(0)
-        for revision_id in revision_ids:
+        self.add_cleanup(b.repository.lock_read().unlock)
+        graph = b.repository.get_graph()
+        revisions = [revid for revid, parents in
+            graph.iter_ancestry([last_revision])]
+        for revision_id in reversed(revisions):
+            if _mod_revision.is_null(revision_id):
+                continue
             self.outf.write(revision_id + '\n')
 
 
@@ -3193,7 +3197,8 @@ class cmd_commit(Command):
         from bzrlib.msgeditor import (
             edit_commit_message_encoded,
             generate_commit_message_template,
-            make_commit_message_template_encoded
+            make_commit_message_template_encoded,
+            set_commit_message,
         )
 
         commit_stamp = offset = None
@@ -3265,9 +3270,11 @@ class cmd_commit(Command):
                 # make_commit_message_template_encoded returns user encoding.
                 # We probably want to be using edit_commit_message instead to
                 # avoid this.
-                start_message = generate_commit_message_template(commit_obj)
-                my_message = edit_commit_message_encoded(text,
-                    start_message=start_message)
+                my_message = set_commit_message(commit_obj)
+                if my_message is None:
+                    start_message = generate_commit_message_template(commit_obj)
+                    my_message = edit_commit_message_encoded(text,
+                        start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
@@ -3879,7 +3886,9 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given. The --force option can also be used to create a
+    --force is given.  If --force is given, then the changes from the source 
+    will be merged with the current working tree, including any uncommitted
+    changes in the tree.  The --force option can also be used to create a
     merge revision which has more than two parents.
 
     If one would like to merge changes from the working tree of the other

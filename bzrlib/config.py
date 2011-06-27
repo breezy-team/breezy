@@ -66,7 +66,7 @@ import os
 import string
 import sys
 
-from bzrlib import commands
+
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -74,7 +74,6 @@ import fnmatch
 import re
 from cStringIO import StringIO
 
-import bzrlib
 from bzrlib import (
     atomicfile,
     bzrdir,
@@ -94,7 +93,13 @@ from bzrlib import (
 from bzrlib.util.configobj import configobj
 """)
 from bzrlib import (
+    commands,
+    hooks,
     registry,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
     )
 
 
@@ -140,7 +145,6 @@ class ConfigObj(configobj.ConfigObj):
                                         interpolation=False,
                                         **kwargs)
 
-
     def get_bool(self, section, key):
         return self[section].as_bool(key)
 
@@ -154,7 +158,7 @@ class ConfigObj(configobj.ConfigObj):
         return self[section][name]
 
 
-# FIXME: Until we can guarantee that each config file is loaded once and and
+# FIXME: Until we can guarantee that each config file is loaded once and
 # only once for a given bzrlib session, we don't want to re-read the file every
 # time we query for an option so we cache the value (bad ! watch out for tests
 # needing to restore the proper value).This shouldn't be part of 2.4.0 final,
@@ -187,6 +191,7 @@ class Config(object):
         """Returns a unique ID for the config."""
         raise NotImplementedError(self.config_id)
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
@@ -198,7 +203,6 @@ class Config(object):
             return None
         return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
                                              sys.stdout)
-
 
     def get_mail_client(self):
         """Get a mail client to use"""
@@ -365,18 +369,22 @@ class Config(object):
                               % (option_name,))
             else:
                 value = self._expand_options_in_string(value)
+        for hook in OldConfigHooks['get']:
+            hook(self, option_name, value)
         return value
 
-    def get_user_option_as_bool(self, option_name, expand=None):
-        """Get a generic option as a boolean - no special process, no default.
+    def get_user_option_as_bool(self, option_name, expand=None, default=None):
+        """Get a generic option as a boolean.
 
+        :param expand: Allow expanding references to other config values.
+        :param default: Default value if nothing is configured
         :return None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
         s = self.get_user_option(option_name, expand=expand)
         if s is None:
             # The option doesn't exist
-            return None
+            return default
         val = ui.bool_from_string(s)
         if val is None:
             # The value can't be interpreted as a boolean
@@ -487,10 +495,10 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
+                #this warning should go away once check_signatures is
+                #implemented (if not before)
                 trace.warning("Please use create_signatures,"
                               " not check_signatures to set signing policy.")
-            if policy == CHECK_ALWAYS:
-                return True
         elif policy == SIGN_ALWAYS:
             return True
         return False
@@ -539,7 +547,7 @@ class Config(object):
         return tools
 
     def find_merge_tool(self, name):
-        # We fake a defaults mechanism here by checking if the given name can 
+        # We fake a defaults mechanism here by checking if the given name can
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
@@ -547,6 +555,76 @@ class Config(object):
                                              expand=False)
                         or mergetools.known_merge_tools.get(name, None))
         return command_line
+
+
+class _ConfigHooks(hooks.Hooks):
+    """A dict mapping hook names and a list of callables for configs.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        super(_ConfigHooks, self).__init__('bzrlib.config', 'ConfigHooks')
+        self.add_hook('load',
+                      'Invoked when a config store is loaded.'
+                      ' The signature is (store).',
+                      (2, 4))
+        self.add_hook('save',
+                      'Invoked when a config store is saved.'
+                      ' The signature is (store).',
+                      (2, 4))
+        # The hooks for config options
+        self.add_hook('get',
+                      'Invoked when a config option is read.'
+                      ' The signature is (stack, name, value).',
+                      (2, 4))
+        self.add_hook('set',
+                      'Invoked when a config option is set.'
+                      ' The signature is (stack, name, value).',
+                      (2, 4))
+        self.add_hook('remove',
+                      'Invoked when a config option is removed.'
+                      ' The signature is (stack, name).',
+                      (2, 4))
+ConfigHooks = _ConfigHooks()
+
+
+class _OldConfigHooks(hooks.Hooks):
+    """A dict mapping hook names and a list of callables for configs.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        super(_OldConfigHooks, self).__init__('bzrlib.config', 'OldConfigHooks')
+        self.add_hook('load',
+                      'Invoked when a config store is loaded.'
+                      ' The signature is (config).',
+                      (2, 4))
+        self.add_hook('save',
+                      'Invoked when a config store is saved.'
+                      ' The signature is (config).',
+                      (2, 4))
+        # The hooks for config options
+        self.add_hook('get',
+                      'Invoked when a config option is read.'
+                      ' The signature is (config, name, value).',
+                      (2, 4))
+        self.add_hook('set',
+                      'Invoked when a config option is set.'
+                      ' The signature is (config, name, value).',
+                      (2, 4))
+        self.add_hook('remove',
+                      'Invoked when a config option is removed.'
+                      ' The signature is (config, name).',
+                      (2, 4))
+OldConfigHooks = _OldConfigHooks()
 
 
 class IniBasedConfig(Config):
@@ -614,8 +692,12 @@ class IniBasedConfig(Config):
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
+        except UnicodeDecodeError:
+            raise errors.ConfigContentError(self.file_name)
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
+        for hook in OldConfigHooks['load']:
+            hook(self)
         return self._parser
 
     def reload(self):
@@ -624,6 +706,8 @@ class IniBasedConfig(Config):
             raise AssertionError('We need a file name to reload the config')
         if self._parser is not None:
             self._parser.reload()
+        for hook in ConfigHooks['load']:
+            hook(self)
 
     def _get_matching_sections(self):
         """Return an ordered list of (section_name, extra_path) pairs.
@@ -801,6 +885,8 @@ class IniBasedConfig(Config):
         except KeyError:
             raise errors.NoSuchConfigOption(option_name)
         self._write_config_file()
+        for hook in OldConfigHooks['remove']:
+            hook(self, option_name)
 
     def _write_config_file(self):
         if self.file_name is None:
@@ -812,6 +898,8 @@ class IniBasedConfig(Config):
         atomic_file.commit()
         atomic_file.close()
         osutils.copy_ownership_from_path(self.file_name)
+        for hook in OldConfigHooks['save']:
+            hook(self)
 
 
 class LockableConfig(IniBasedConfig):
@@ -910,6 +998,7 @@ class GlobalConfig(LockableConfig):
         conf._create_from_string(str_or_unicode, save)
         return conf
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def get_editor(self):
         return self._get_user_option('editor')
 
@@ -944,7 +1033,8 @@ class GlobalConfig(LockableConfig):
         self.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
-
+        for hook in OldConfigHooks['set']:
+            hook(self, option, value)
 
     def _get_sections(self, name=None):
         """See IniBasedConfig._get_sections()."""
@@ -1146,6 +1236,8 @@ class LocationConfig(LockableConfig):
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
         self._write_config_file()
+        for hook in OldConfigHooks['set']:
+            hook(self, option, value)
 
 
 class BranchConfig(Config):
@@ -1607,6 +1699,8 @@ class AuthenticationConfig(object):
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
+        except UnicodeError:
+            raise errors.ConfigContentError(self._filename)
         return self._config
 
     def _save(self):
@@ -1629,7 +1723,7 @@ class AuthenticationConfig(object):
         section[option_name] = value
         self._save()
 
-    def get_credentials(self, scheme, host, port=None, user=None, path=None, 
+    def get_credentials(self, scheme, host, port=None, user=None, path=None,
                         realm=None):
         """Returns the matching credentials from authentication.conf file.
 
@@ -2048,7 +2142,10 @@ class TransportConfig(object):
                 section_obj = configobj[section]
             except KeyError:
                 return default
-        return section_obj.get(name, default)
+        value = section_obj.get(name, default)
+        for hook in OldConfigHooks['get']:
+            hook(self, name, value)
+        return value
 
     def set_option(self, value, name, section=None):
         """Set the value associated with a named option.
@@ -2062,6 +2159,8 @@ class TransportConfig(object):
             configobj[name] = value
         else:
             configobj.setdefault(section, {})[name] = value
+        for hook in OldConfigHooks['set']:
+            hook(self, name, value)
         self._set_configobj(configobj)
 
     def remove_option(self, option_name, section_name=None):
@@ -2070,30 +2169,73 @@ class TransportConfig(object):
             del configobj[option_name]
         else:
             del configobj[section_name][option_name]
+        for hook in OldConfigHooks['remove']:
+            hook(self, option_name)
         self._set_configobj(configobj)
 
     def _get_config_file(self):
         try:
-            return StringIO(self._transport.get_bytes(self._filename))
+            f = StringIO(self._transport.get_bytes(self._filename))
+            for hook in OldConfigHooks['load']:
+                hook(self)
+            return f
         except errors.NoSuchFile:
             return StringIO()
+
+    def _external_url(self):
+        return urlutils.join(self._transport.external_url(), self._filename)
 
     def _get_configobj(self):
         f = self._get_config_file()
         try:
-            return ConfigObj(f, encoding='utf-8')
+            try:
+                conf = ConfigObj(f, encoding='utf-8')
+            except configobj.ConfigObjError, e:
+                raise errors.ParseConfigError(e.errors, self._external_url())
+            except UnicodeDecodeError:
+                raise errors.ConfigContentError(self._external_url())
         finally:
             f.close()
+        return conf
 
     def _set_configobj(self, configobj):
         out_file = StringIO()
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
+        for hook in OldConfigHooks['save']:
+            hook(self)
+
+
+class Option(object):
+    """An option definition.
+
+    The option *values* are stored in config files and found in sections.
+
+    Here we define various properties about the option itself, its default
+    value, in which config files it can be stored, etc (TBC).
+    """
+
+    def __init__(self, name, default=None):
+        self.name = name
+        self.default = default
+
+    def get_default(self):
+        return self.default
+
+
+# Options registry
+
+option_registry = registry.Registry()
+
+
+option_registry.register(
+    'editor', Option('editor'),
+    help='The command called to launch an editor to enter a message.')
 
 
 class Section(object):
-    """A section defines a dict of options.
+    """A section defines a dict of option name => value.
 
     This is merely a read-only dict which can add some knowledge about the
     options. It is *not* a python dict object though and doesn't try to mimic
@@ -2156,16 +2298,21 @@ class Store(object):
         """Loads the Store from persistent storage."""
         raise NotImplementedError(self.load)
 
-    def _load_from_string(self, str_or_unicode):
+    def _load_from_string(self, bytes):
         """Create a store from a string in configobj syntax.
 
-        :param str_or_unicode: A string representing the file content. This will
-            be encoded to suit store needs internally.
-
-        This is for tests and should not be used in production unless a
-        convincing use case can be demonstrated :)
+        :param bytes: A string representing the file content.
         """
         raise NotImplementedError(self._load_from_string)
+
+    def unload(self):
+        """Unloads the Store.
+
+        This should make is_loaded() return False. This is used when the caller
+        knows that the persistent storage has changed or may have change since
+        the last load.
+        """
+        raise NotImplementedError(self.unload)
 
     def save(self):
         """Saves the Store to persistent storage."""
@@ -2220,31 +2367,34 @@ class IniFileStore(Store):
     def is_loaded(self):
         return self._config_obj != None
 
+    def unload(self):
+        self._config_obj = None
+
     def load(self):
         """Load the store from the associated file."""
         if self.is_loaded():
             return
         content = self.transport.get_bytes(self.file_name)
         self._load_from_string(content)
+        for hook in ConfigHooks['load']:
+            hook(self)
 
-    def _load_from_string(self, str_or_unicode):
+    def _load_from_string(self, bytes):
         """Create a config store from a string.
 
-        :param str_or_unicode: A string representing the file content. This will
-            be utf-8 encoded internally.
-
-        This is for tests and should not be used in production unless a
-        convincing use case can be demonstrated :)
+        :param bytes: A string representing the file content.
         """
         if self.is_loaded():
             raise AssertionError('Already loaded: %r' % (self._config_obj,))
-        co_input = StringIO(str_or_unicode.encode('utf-8'))
+        co_input = StringIO(bytes)
         try:
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
+        except UnicodeDecodeError:
+            raise errors.ConfigContentError(self.external_url())
 
     def save(self):
         if not self.is_loaded():
@@ -2253,6 +2403,8 @@ class IniFileStore(Store):
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
+        for hook in ConfigHooks['save']:
+            hook(self)
 
     def external_url(self):
         # FIXME: external_url should really accepts an optional relpath
@@ -2334,6 +2486,10 @@ class LockableIniFileStore(IniFileStore):
 
     @needs_write_lock
     def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
         super(LockableIniFileStore, self).save()
 
 
@@ -2366,6 +2522,22 @@ class BranchStore(IniFileStore):
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
+        self.branch = branch
+
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
+        super(BranchStore, self).save()
+
 
 class SectionMatcher(object):
     """Select sections into a given Store.
@@ -2496,7 +2668,7 @@ class Stack(object):
         existence) require loading the store (even partially).
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
-
+        value = None
         # Ensuring lazy loading is achieved by delaying section matching (which
         # implies querying the persistent storage) until it can't be avoided
         # anymore by using callables to describe (possibly empty) section
@@ -2510,9 +2682,21 @@ class Stack(object):
             for section in sections:
                 value = section.get(name)
                 if value is not None:
-                    return value
-        # No definition was found
-        return None
+                    break
+            if value is not None:
+                break
+        if value is None:
+            # If the option is registered, it may provide a default value
+            try:
+                opt = option_registry.get(name)
+            except KeyError:
+                # Not registered
+                opt = None
+            if opt is not None:
+                value = opt.get_default()
+        for hook in ConfigHooks['get']:
+            hook(self, name, value)
+        return value
 
     def _get_mutable_section(self):
         """Get the MutableSection for the Stack.
@@ -2529,18 +2713,46 @@ class Stack(object):
         """Set a new value for the option."""
         section = self._get_mutable_section()
         section.set(name, value)
+        for hook in ConfigHooks['set']:
+            hook(self, name, value)
 
     def remove(self, name):
         """Remove an existing option."""
         section = self._get_mutable_section()
         section.remove(name)
+        for hook in ConfigHooks['remove']:
+            hook(self, name)
 
     def __repr__(self):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
 
-class GlobalStack(Stack):
+class _CompatibleStack(Stack):
+    """Place holder for compatibility with previous design.
+
+    This is intended to ease the transition from the Config-based design to the
+    Stack-based design and should not be used nor relied upon by plugins.
+
+    One assumption made here is that the daughter classes will all use Stores
+    derived from LockableIniFileStore).
+
+    It implements set() by re-loading the store before applying the
+    modification and saving it.
+
+    The long term plan being to implement a single write by store to save
+    all modifications, this class should not be used in the interim.
+    """
+
+    def set(self, name, value):
+        # Force a reload
+        self.store.unload()
+        super(_CompatibleStack, self).set(name, value)
+        # Force a write to persistent storage
+        self.store.save()
+
+
+class GlobalStack(_CompatibleStack):
 
     def __init__(self):
         # Get a GlobalStore
@@ -2548,7 +2760,7 @@ class GlobalStack(Stack):
         super(GlobalStack, self).__init__([gstore.get_sections], gstore)
 
 
-class LocationStack(Stack):
+class LocationStack(_CompatibleStack):
 
     def __init__(self, location):
         lstore = LocationStore()
@@ -2557,8 +2769,7 @@ class LocationStack(Stack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
-
-class BranchStack(Stack):
+class BranchStack(_CompatibleStack):
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
@@ -2568,6 +2779,7 @@ class BranchStack(Stack):
         super(BranchStack, self).__init__(
             [matcher.get_sections, bstore.get_sections, gstore.get_sections],
             bstore)
+        self.branch = branch
 
 
 class cmd_config(commands.Command):
@@ -2601,6 +2813,8 @@ class cmd_config(commands.Command):
         commands.Option('remove', help='Remove the option from'
                         ' the configuration file'),
         ]
+
+    _see_also = ['configuration']
 
     @commands.display_command
     def run(self, name=None, all=False, directory=None, scope=None,
@@ -2733,3 +2947,23 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfig(scope)
         if not removed:
             raise errors.NoSuchConfigOption(name)
+
+# Test registries
+#
+# We need adapters that can build a Store or a Stack in a test context. Test
+# classes, based on TestCaseWithTransport, can use the registry to parametrize
+# themselves. The builder will receive a test instance and should return a
+# ready-to-use store or stack.  Plugins that define new store/stacks can also
+# register themselves here to be tested against the tests defined in
+# bzrlib.tests.test_config. Note that the builder can be called multiple times
+# for the same tests.
+
+# The registered object should be a callable receiving a test instance
+# parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
+# object.
+test_store_builder_registry = registry.Registry()
+
+# The registered object should be a callable receiving a test instance
+# parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
+# object.
+test_stack_builder_registry = registry.Registry()
