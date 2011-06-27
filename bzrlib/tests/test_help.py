@@ -33,34 +33,46 @@ from bzrlib.tests.test_i18n import ZzzTranslations
 import re
 
 
-class TestHelp(tests.TestCase):
-
-    def setUp(self):
-        tests.TestCase.setUp(self)
-        commands.install_bzr_command_hooks()
-
-
 class TestCommandHelp(tests.TestCase):
     """Tests for help on commands."""
+
+    def assertCmdHelp(self, expected, cmd):
+        self.assertEqualDiff(textwrap.dedent(expected), cmd.get_help_text())
 
     def test_command_help_includes_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
             _see_also = ['foo', 'bar']
-        cmd = cmd_WithSeeAlso()
-        helptext = cmd.get_help_text()
-        self.assertEndsWith(
-            helptext,
-            '  -v, --verbose  Display more information.\n'
-            '  -q, --quiet    Only display errors and warnings.\n'
-            '  -h, --help     Show help message.\n'
-            '\n'
-            'See also: bar, foo\n')
+        self.assertCmdHelp('''\
+            Purpose: A sample command.
+            Usage:   bzr WithSeeAlso
+            
+            Options:
+              --usage        Show usage message and options.
+              -v, --verbose  Display more information.
+              -q, --quiet    Only display errors and warnings.
+              -h, --help     Show help message.
+            
+            See also: bar, foo
+            ''',
+                           cmd_WithSeeAlso())
 
     def test_get_help_text(self):
         """Commands have a get_help_text method which returns their help."""
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command."""
+        self.assertCmdHelp('''\
+            Purpose: A sample command.
+            Usage:   bzr Demo
+            
+            Options:
+              --usage        Show usage message and options.
+              -v, --verbose  Display more information.
+              -q, --quiet    Only display errors and warnings.
+              -h, --help     Show help message.
+
+            ''',
+                           cmd_Demo())
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext,
@@ -470,6 +482,13 @@ class TestCommandHelpI18n(tests.TestCase):
                            cmd_Demo())
 
 
+class TestHelp(tests.TestCase):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        commands.install_bzr_command_hooks()
+
+
 class TestRegisteredTopic(TestHelp):
     """Tests for the RegisteredTopic class."""
 
@@ -481,10 +500,10 @@ class TestRegisteredTopic(TestHelp):
         self.assertEqual('basic', topic.topic)
 
     def test_get_help_text(self):
-        """A RegisteredTopic returns the get_detail results for get_help_text."""
+        """RegisteredTopic returns the get_detail results for get_help_text."""
         topic = help_topics.RegisteredTopic('commands')
         self.assertEqual(help_topics.topic_registry.get_detail('commands'),
-            topic.get_help_text())
+                         topic.get_help_text())
 
     def test_get_help_text_with_additional_see_also(self):
         topic = help_topics.RegisteredTopic('commands')
@@ -502,7 +521,7 @@ class TestRegisteredTopic(TestHelp):
             '\n')
 
     def test_get_help_topic(self):
-        """The help topic for a RegisteredTopic is its topic from construction."""
+        """The help topic for RegisteredTopic is its topic from construction."""
         topic = help_topics.RegisteredTopic('foobar')
         self.assertEqual('foobar', topic.get_help_topic())
         topic = help_topics.RegisteredTopic('baz')

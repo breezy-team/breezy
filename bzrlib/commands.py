@@ -512,7 +512,7 @@ class Command(object):
 
         # The header is the purpose and usage
         result = ""
-        result += i18n.gettext(':Purpose: %s\n') % (purpose,)
+        result += gettext(':Purpose: %s\n') % (purpose,)
         if usage.find('\n') >= 0:
             result += gettext(':Usage:\n%s\n') % (usage,)
         else:
