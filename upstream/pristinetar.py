@@ -242,12 +242,13 @@ class PristineTarSource(UpstreamSource):
         elif len(tarballs) > 1:
             raise MultipleUpstreamTarballsNotSupported()
         else:
-            return self.version_component_as_revision(package, version, tarballs[0][1])
+            return self.version_component_as_revision(package, version, tarballs[0][1],
+                tarballs[0][2])
 
-    def version_component_as_revision(self, package, version, component, tarballs=None):
+    def version_component_as_revision(self, package, version, component, md5=None):
         assert isinstance(version, str)
         for tag_name in self.possible_tag_names(version, component=component):
-            if self._has_version_component(tag_name, tarballs):
+            if self._has_version_component(tag_name, md5=md5):
                 return self.branch.tags.lookup_tag(tag_name)
         tag_name = self.tag_name(version, component=component)
         try:
