@@ -741,7 +741,7 @@ class DistributionBranch(object):
                     "present in the upstream branch")
 
     def get_parents_with_upstream(self, package, version, versions,
-            force_upstream_parent=False):
+            tarballs, force_upstream_parent=False):
         """Get the list of parents including any upstream parents.
 
         Further to get_parents this method includes any upstream parents
@@ -753,7 +753,7 @@ class DistributionBranch(object):
         If force_upstream_parent is True then the upstream parent will
         be included, even if another parent is already using that
         upstream. This is for use in cases where the .orig.tar.gz
-        is different in two ditributions.
+        is different in two distributions.
 
         :param version: the Version that we are currently importing.
         :param versions: the list of Versions that are ancestors of
@@ -778,7 +778,7 @@ class DistributionBranch(object):
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
             parent_revid = self.pristine_upstream_source.version_as_revision(package,
-                version.upstream_version)
+                version.upstream_version, tarballs)
             if len(parents) > 0:
                 real_parents.insert(1, parent_revid)
             else:
@@ -1130,7 +1130,7 @@ class DistributionBranch(object):
             else:
                 mutter("We already have the needed upstream part")
             parents = self.get_parents_with_upstream(package, version, versions,
-                    force_upstream_parent=imported_upstream)
+                    upstream_tarballs, force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
             self.import_debian(debian_part, version, parents, md5,
                     timestamp=timestamp, file_ids_from=file_ids_from)
