@@ -215,10 +215,7 @@ class PristineTarSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir):
         return [self.fetch_component_tarball(package, version, None, target_dir)]
 
-    def _has_version_component(self, tag_name, md5=None):
-        if not self.branch.tags.has_tag(tag_name):
-            return False
-        revid = self.branch.tags.lookup_tag(tag_name)
+    def _has_revision(self, revid, md5=None):
         self.branch.lock_read()
         try:
             graph = self.branch.repository.get_graph()
@@ -232,8 +229,9 @@ class PristineTarSource(UpstreamSource):
         try:
             return rev.properties['deb-md5'] == md5
         except KeyError:
-            warning("tag %s present in branch, but there is no "
-                "associated 'deb-md5' property" % tag_name)
+            warning("tag present in branch, but there is no "
+                "associated 'deb-md5' property in associated "
+                "revision %s", revid)
             return True
 
     def version_as_revision(self, package, version, tarballs=None):
@@ -248,8 +246,13 @@ class PristineTarSource(UpstreamSource):
     def version_component_as_revision(self, package, version, component, md5=None):
         assert isinstance(version, str)
         for tag_name in self.possible_tag_names(version, component=component):
-            if self._has_version_component(tag_name, md5=md5):
-                return self.branch.tags.lookup_tag(tag_name)
+            try:
+                revid = self.branch.tags.lookup_tag(tag_name)
+            except NoSuchTag:
+                continue
+            else:
+                if self._has_revision(revid, md5=md5):
+                    return revid
         tag_name = self.tag_name(version, component=component)
         try:
             return self.branch.tags.lookup_tag(tag_name)
@@ -268,8 +271,13 @@ class PristineTarSource(UpstreamSource):
     def has_version_component(self, package, version, component, md5=None):
         assert isinstance(version, str), str(type(version))
         for tag_name in self.possible_tag_names(version, component=component):
-            if self._has_version_component(tag_name, md5=md5):
-                return True
+            try:
+                revid = self.branch.tags.lookup_tag(tag_name)
+            except NoSuchTag:
+                continue
+            else:
+                if self._has_revision(revid, md5=md5):
+                    return True
         return False
 
     def possible_tag_names(self, version, component):
