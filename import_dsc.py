@@ -494,6 +494,21 @@ class DistributionBranch(object):
         except KeyError:
             return False
 
+    def can_pull_from_branch(self, branch, version, md5):
+        if not branch.has_version(version, md5=md5):
+            return False
+
+        # Check that they haven't diverged
+        branch.branch.lock_read()
+        try:
+            graph = branch.branch.repository.get_graph(
+                    self.branch.repository)
+            return graph.is_ancestor(self.branch.last_revision(),
+                    branch.revid_of_version(version))
+        finally:
+            branch.branch.unlock()
+
+
     def branch_to_pull_version_from(self, version, md5):
         """Checks whether this upload is a pull from a lesser branch.
 
@@ -519,29 +534,11 @@ class DistributionBranch(object):
         self.branch.lock_read()
         try:
             for branch in reversed(self.get_lesser_branches()):
-                if branch.has_version(version, md5=md5):
-                    # Check that they haven't diverged
-                    branch.branch.lock_read()
-                    try:
-                        graph = branch.branch.repository.get_graph(
-                                self.branch.repository)
-                        if graph.is_ancestor(self.branch.last_revision(),
-                                branch.revid_of_version(version)):
-                            return branch
-                    finally:
-                        branch.branch.unlock()
+                if self.can_pull_from_branch(branch, version, md5):
+                    return branch
             for branch in self.get_greater_branches():
-                if branch.has_version(version, md5=md5):
-                    # Check that they haven't diverged
-                    branch.branch.lock_read()
-                    try:
-                        graph = branch.branch.repository.get_graph(
-                                self.branch.repository)
-                        if graph.is_ancestor(self.branch.last_revision(),
-                                branch.revid_of_version(version)):
-                            return branch
-                    finally:
-                        branch.branch.unlock()
+                if self.can_pull_from_branch(branch, version, md5):
+                    return branch
             return None
         finally:
             self.branch.unlock()
