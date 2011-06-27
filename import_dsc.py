@@ -277,25 +277,25 @@ class DistributionBranch(object):
         return str(version)
 
     def _has_version(self, branch, tag_name, md5=None):
-        if branch.tags.has_tag(tag_name):
-            revid = branch.tags.lookup_tag(tag_name)
-            branch.lock_read()
-            try:
-                graph = branch.repository.get_graph()
-                if not graph.is_ancestor(revid, branch.last_revision()):
-                    return False
-            finally:
-                branch.unlock()
-            if md5 is None:
-                return True
-            rev = branch.repository.get_revision(revid)
-            try:
-                return rev.properties['deb-md5'] == md5
-            except KeyError:
-                warning("tag %s present in branch, but there is no "
-                    "associated 'deb-md5' property" % tag_name)
-                pass
-        return False
+        if not branch.tags.has_tag(tag_name):
+            return False
+        revid = branch.tags.lookup_tag(tag_name)
+        branch.lock_read()
+        try:
+            graph = branch.repository.get_graph()
+            if not graph.is_ancestor(revid, branch.last_revision()):
+                return False
+        finally:
+            branch.unlock()
+        if md5 is None:
+            return True
+        rev = branch.repository.get_revision(revid)
+        try:
+            return rev.properties['deb-md5'] == md5
+        except KeyError:
+            warning("tag %s present in branch, but there is no "
+                "associated 'deb-md5' property" % tag_name)
+            return False
 
     def has_version(self, version, md5=None):
         """Whether this branch contains the package version specified.
