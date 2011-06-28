@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import bz2
+import gzip
 try:
     import hashlib as md5
 except ImportError:
@@ -33,7 +35,6 @@ except ImportError:
     from debian_bundle.changelog import Changelog, Version
 
 from bzrlib.plugins.builddeb.config import (
-    DebBuildConfig,
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
@@ -45,6 +46,7 @@ from bzrlib.plugins.builddeb.errors import (
     NoPreviousUpload,
     )
 from bzrlib.plugins.builddeb.tests import (
+    LzmaFeature,
     SourcePackageBuilder,
     TestCaseInTempDir,
     TestCaseWithTransport,
@@ -860,11 +862,24 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
             if part is not None:
                 prefix += "-%s" % part
             tar_path = os.path.abspath(prefix + ".tar." + compression)
-            tf = tarfile.open(tar_path, 'w:%s' % compression)
+            if compression == "gz":
+                f = gzip.GzipFile(tar_path, "w")
+            elif compression == "bz2":
+                f = bz2.BZ2File(tar_path, "w")
+            elif compression == "lzma":
+                import lzma
+                f = lzma.LZMAFile(tar_path, "w")
+            else:
+                raise AssertionError("Unknown compressin type %r" %
+                    compression)
             try:
-                tf.add(basedir)
+                tf = tarfile.open(None, 'w', f)
+                try:
+                    tf.add(basedir)
+                finally:
+                    tf.close()
             finally:
-                tf.close()
+                f.close()
         finally:
             shutil.rmtree(basedir)
         return tar_path
@@ -878,6 +893,14 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
 
     def test_single_orig_tar_bz2(self):
         tar_path = self.create_tarball("package", "0.1", "bz2")
+        os.mkdir("target")
+        extract_orig_tarballs([(tar_path, None)], "target",
+            strip_components=1)
+        self.assertEquals(os.listdir("target"), ["README"])
+
+    def test_single_orig_tar_lzma(self):
+        self.requireFeature(LzmaFeature)
+        tar_path = self.create_tarball("package", "0.1", "lzma")
         os.mkdir("target")
         extract_orig_tarballs([(tar_path, None)], "target",
             strip_components=1)

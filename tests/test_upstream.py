@@ -35,6 +35,7 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import (
     Feature,
+    KnownFailure,
     TestCase,
     )
 from bzrlib.plugins.builddeb.config import (
@@ -46,6 +47,7 @@ from bzrlib.plugins.builddeb.errors import (
     WatchFileMissing,
     )
 from bzrlib.plugins.builddeb.tests import (
+    LzmaFeature,
     TestCaseWithTransport,
     )
 from bzrlib.plugins.builddeb.upstream import (
@@ -71,6 +73,8 @@ from bzrlib.plugins.builddeb.upstream.branch import (
     )
 from bzrlib.plugins.builddeb.upstream.pristinetar import (
     PristineTarSource,
+    is_upstream_tag,
+    upstream_tag_version,
     )
 
 
@@ -215,6 +219,18 @@ class AptSourceTests(TestCase):
         paths = src.fetch_tarballs("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.bz2"])
+
+    def test_apt_provider_right_version_lzma(self):
+        caller = MockAptCaller(work=True)
+        sources = MockSources(["0.1-1", "0.2-1"],
+            [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
+             [("checksum", 0L, "apackage_0.2.orig.tar.lzma", "tar")]])
+        apt_pkg = MockAptPkg(sources)
+        src = AptSource()
+        src._run_apt_source = caller.call
+        paths = src.fetch_tarballs("apackage", "0.2", "target",
+            _apt_pkg=apt_pkg)
+        self.assertEquals(paths, ["target/apackage_0.2.orig.tar.lzma"])
 
     def test_apt_provider_right_version(self):
         caller = MockAptCaller(work=True)
@@ -661,6 +677,34 @@ class GetRevisionSnapshotTests(TestCase):
         self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
 
 
+class TestIsUpstreamTag(TestCase):
+
+    def test_plain_version(self):
+        self.assertFalse(is_upstream_tag('2.1'))
+
+    def test_simple_upstream(self):
+        self.assertTrue(is_upstream_tag('upstream-2.1'))
+
+    def test_distro_upstream(self):
+        self.assertTrue(is_upstream_tag('upstream-debian-2.1'))
+
+    def test_git_upstream(self):
+        self.assertTrue(is_upstream_tag('upstream/2.1'))
+
+
+class TestUpstreamTagVersion(TestCase):
+
+    def test_simple_upstream(self):
+        self.assertEqual('2.1', upstream_tag_version('upstream-2.1'))
+
+    def test_distro_upstream(self):
+        self.assertEqual('2.1',
+            upstream_tag_version('upstream-debian-2.1'))
+
+    def test_git_upstream(self):
+        self.assertEqual('2.1', upstream_tag_version('upstream/2.1'))
+
+
 class PristineTarSourceTests(TestCaseWithTransport):
 
     def setUp(self):
@@ -697,6 +741,11 @@ class PristineTarSourceTests(TestCaseWithTransport):
         rev = Revision("myrevid")
         rev.properties["deb-pristine-delta-bz2"] = "1"
         self.assertEquals("bz2", self.source.pristine_tar_format(rev))
+
+    def test_pristine_tar_format_lzma(self):
+        rev = Revision("myrevid")
+        rev.properties["deb-pristine-delta-lzma"] = "1"
+        self.assertEquals("lzma", self.source.pristine_tar_format(rev))
 
     def test_pristine_tar_format_unknown(self):
         rev = Revision("myrevid")
@@ -768,6 +817,22 @@ class TarfileSourceTests(TestCaseWithTransport):
         # verify this is a bzip2 file
         bz2.BZ2File("foo-1.0.tar.bz2").close()
         source = TarfileSource("foo-1.0.tar.bz2", "1.0")
+        os.mkdir("bar")
+        self.assertEquals(["bar/foo_1.0.orig.tar.gz"],
+            source.fetch_tarballs("foo", "1.0", "bar"))
+        self.assertPathExists("bar/foo_1.0.orig.tar.gz")
+        gzip.open("bar/foo_1.0.orig.tar.gz").close()
+
+    def test_fetch_tarball_lzma(self):
+        self.requireFeature(LzmaFeature)
+        import lzma
+        lzma_f = lzma.LZMAFile("foo-1.0.tar.lzma", 'w')
+        try:
+            tar = tarfile.open("foo-1.0.tar", "w", lzma_f)
+            tar.close()
+        finally:
+            lzma_f.close()
+        source = TarfileSource("foo-1.0.tar.lzma", "1.0")
         os.mkdir("bar")
         self.assertEquals(["bar/foo_1.0.orig.tar.gz"],
             source.fetch_tarballs("foo", "1.0", "bar"))

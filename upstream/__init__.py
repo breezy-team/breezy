@@ -452,7 +452,8 @@ def extract_tarball_version(path, packagename):
     :param packagename: Name of the package (e.g. "bzr-builddeb")
     """
     basename = os.path.basename(path)
-    for extension in [".tar.gz", ".tgz", ".tar.bz2", ".zip"]:
+    for extension in [".tar.gz", ".tgz", ".tar.bz2", ".tar.lzma", ".tar.xz",
+            ".zip"]:
         if basename.endswith(extension):
             basename = basename[:-len(extension)]
             break

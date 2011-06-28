@@ -1478,7 +1478,8 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
         self.extracted_upstream = None
         for part in self.dsc['files']:
             if (part['name'].endswith(".tar.gz")
-                    or part['name'].endswith(".tar.bz2")):
+                    or part['name'].endswith(".tar.bz2")
+                    or part['name'].endswith(".tar.lzma")):
                 self.unextracted_debian_md5 = part['md5sum']
 
 
@@ -1518,12 +1519,13 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                         os.path.join(osutils.dirname(self.dsc_path),
                             part['name'])), part['md5sum']))
             elif (part['name'].endswith(".debian.tar.gz")
-                    or part['name'].endswith(".debian.tar.bz2")):
+                    or part['name'].endswith(".debian.tar.bz2")
+                    or part['name'].endswith(".debian.tar.lzma")):
                 self.unextracted_debian_md5 = part['md5sum']
         assert self.upstream_tarballs is not None, \
-            "Can't handle non gz|bz2 tarballs yet"
+            "Can't handle non gz|bz2|lzma tarballs yet"
         assert self.unextracted_debian_md5 is not None, \
-            "Can't handle non gz|bz2 tarballs yet"
+            "Can't handle non gz|bz2|lzma tarballs yet"
 
 
 SOURCE_EXTRACTORS = {}

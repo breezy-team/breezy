@@ -48,7 +48,7 @@ def create_basedir(basedir, files):
             touch(filename)
 
 
-def make_new_upstream_tarball(tarball):
+def make_new_upstream_tarball_gz(tarball):
     tar = tarfile.open(tarball, 'w:gz')
     try:
         tar.add('package-0.2')
@@ -79,11 +79,11 @@ class TestRepackTarballExtra(TestCaseInTempDir):
     def test_conditional_repack_tarball_different(self):
         tarball_name = 'package-0.2.tar.gz'
         create_basedir('package-0.2/', files=['README'])
-        make_new_upstream_tarball(tarball_name)
+        make_new_upstream_tarball_gz(tarball_name)
         target_dir = 'target'
         os.mkdir(target_dir)
         create_basedir('package-0.2/', files=['README', 'NEWS'])
-        make_new_upstream_tarball(os.path.join(target_dir, tarball_name))
+        make_new_upstream_tarball_gz(os.path.join(target_dir, tarball_name))
         self.assertRaises(FileExists, repack_tarball, tarball_name,
             tarball_name, target_dir=target_dir)
         self.assertPathExists(tarball_name)
@@ -92,7 +92,7 @@ class TestRepackTarballExtra(TestCaseInTempDir):
     def test_conditional_repack_tarball_same(self):
         tarball_name = 'package-0.2.tar.gz'
         create_basedir('package-0.2/', files=['README'])
-        make_new_upstream_tarball(tarball_name)
+        make_new_upstream_tarball_gz(tarball_name)
         target_dir = 'target'
         os.mkdir(target_dir)
         shutil.copy(tarball_name, target_dir)
@@ -108,7 +108,7 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         target_dir = 'target'
         os.mkdir(target_dir)
         create_basedir('package-0.2/', files=['README'])
-        make_new_upstream_tarball(os.path.join(target_dir, tarball_name))
+        make_new_upstream_tarball_gz(os.path.join(target_dir, tarball_name))
         self.assertRaises(FileExists, repack_tarball, bz2_tarball_name,
             tarball_name, target_dir=target_dir)
         self.assertPathExists(bz2_tarball_name)
@@ -129,7 +129,7 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         target_dir = 'target'
         os.mkdir(target_dir)
         create_basedir('package-0.2/', files=['COPYING'])
-        make_new_upstream_tarball(os.path.join(target_dir, bz2_tarball_name))
+        make_new_upstream_tarball_gz(os.path.join(target_dir, bz2_tarball_name))
         self.assertRaises(FileExists, repack_tarball, bz2_tarball_name,
             bz2_tarball_name, target_dir=target_dir)
         self.assertPathExists(bz2_tarball_name)

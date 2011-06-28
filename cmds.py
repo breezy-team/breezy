@@ -86,10 +86,6 @@ from bzrlib.plugins.builddeb.source_distiller import (
         MergeModeDistiller,
         NativeSourceDistiller,
         )
-from bzrlib.plugins.builddeb.tagging import (
-        is_upstream_tag,
-        upstream_tag_version,
-        )
 from bzrlib.plugins.builddeb.upstream import (
         AptSource,
         GetOrigSourceSource,
@@ -471,8 +467,8 @@ class cmd_merge_upstream(Command):
 
     You must supply the source to import from, and in some cases
     the version number of the new release. The source can be a .tar.gz, .tar,
-    .tar.bz2, .tgz or .zip archive, a directory or a branch. The source may
-    also be a remote file described by a URL.
+    .tar.bz2, .tar.lzma, .tgz or .zip archive, a directory or a branch. The
+    source may also be a remote file described by a URL.
 
     In most situations the version can be guessed from the upstream source.
     If the upstream version can not be guessed or if it is guessed
@@ -577,6 +573,8 @@ class cmd_merge_upstream(Command):
             if v3:
                 if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
                     format = "bz2"
+                elif location.endswith(".tar.lzma"):
+                    format = "lzma"
             dest_name = tarball_name(package, version, None, format=format)
             tarball_filename = os.path.join(orig_dir, dest_name)
             try:
@@ -952,11 +950,8 @@ class cmd_import_upstream(Command):
         if db.pristine_upstream_source.has_version(None, version):
             raise BzrCommandError("Version %s is already present." % version)
         tagged_versions = {}
-        for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():
-            if not is_upstream_tag(tag_name):
-                continue
-            tag_version = Version(upstream_tag_version(tag_name))
-            tagged_versions[tag_version] = tag_revid
+        for tag, tag_version, revid in db.pristine_upstream_source.iter_versions():
+            tagged_versions[Version(tag_version)] = revid
         tag_order = sorted(tagged_versions.keys())
         if tag_order:
             parents = [tagged_versions[tag_order[-1]]]
