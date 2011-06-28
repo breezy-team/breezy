@@ -38,6 +38,9 @@ Bug Fixes
 * ``GraphThunkIdsToKeys.merge_sort`` now properly returns
   keys rather than ids. (Jelmer Vernooij, #799677)
 
+* ``TreeTransformBase.fixup_new_roots`` can now check that a tree root
+  is present. (Jelmer Vernooij, #801257)
+
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 

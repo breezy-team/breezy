@@ -291,6 +291,21 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.fixup_new_roots()
         self.assertNotIn(transform.root, transform._new_id)
 
+    def test_remove_root_fixup(self):
+        transform, root = self.get_transform()
+        old_root_id = self.wt.get_root_id()
+        self.assertNotEqual('new-root-id', old_root_id)
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots(require_tree_root=True)
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
+
+        transform, root = self.get_transform()
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'new-root-id')
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
+        self.assertRaises(ValueError, transform.fixup_new_roots)
+
     def test_apply_retains_root_directory(self):
         # Do not attempt to delete the physical root directory, because that
         # is impossible.

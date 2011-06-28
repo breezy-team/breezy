@@ -225,6 +225,9 @@ class TreeTransformBase(object):
         This means that the old root trans-id becomes obsolete, so it is
         recommended only to invoke this after the root trans-id has become
         irrelevant.
+
+        :param require_tree_root: Whether to make sure that the
+            resulting tree has a root.
         """
         new_roots = [k for k, v in self._new_parent.iteritems() if v is
                      ROOT_PARENT]

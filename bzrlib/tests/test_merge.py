@@ -490,7 +490,7 @@ class TestMerge(TestCaseWithTransport):
         finally:
             tree_file.close()
 
-    def test_merge_disallow_rootless(self):
+    def test_merge_require_tree_root(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -502,7 +502,7 @@ class TestMerge(TestCaseWithTransport):
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
-        merger.allow_rootless_tree = False
+        merger.require_tree_root = True
         merger.merge_type = _mod_merge.Merge3Merger
         conflict_count = merger.do_merge()
         self.assertEqual(0, conflict_count)
@@ -520,12 +520,11 @@ class TestMerge(TestCaseWithTransport):
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
-        merger.allow_rootless_tree = True
+        merger.require_tree_root = False
         merger.merge_type = _mod_merge.Merge3Merger
         conflict_count = merger.do_merge()
         self.assertEqual(0, conflict_count)
         self.assertEquals(set(), tree.all_file_ids())
-        tree.set_parent_ids([])
 
     def test_merge_add_into_deleted_root(self):
         # Yes, people actually do this.  And report bugs if it breaks.
