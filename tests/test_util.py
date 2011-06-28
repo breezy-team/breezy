@@ -273,14 +273,16 @@ class StripChangelogMessageTests(TestCase):
 class TarballNameTests(TestCase):
 
     def test_tarball_name(self):
-        self.assertEqual(tarball_name("package", "0.1"),
+        self.assertEqual(tarball_name("package", "0.1", None),
                 "package_0.1.orig.tar.gz")
-        self.assertEqual(tarball_name("package", Version("0.1")),
+        self.assertEqual(tarball_name("package", Version("0.1"), None),
                 "package_0.1.orig.tar.gz")
-        self.assertEqual(tarball_name("package", Version("0.1"),
+        self.assertEqual(tarball_name("package", Version("0.1"), None,
                     format='bz2'), "package_0.1.orig.tar.bz2")
-        self.assertEqual(tarball_name("package", Version("0.1"),
+        self.assertEqual(tarball_name("package", Version("0.1"), None,
                     format='lzma'), "package_0.1.orig.tar.lzma")
+        self.assertEqual(tarball_name("package", Version("0.1"), "la",
+                    format='lzma'), "package_0.1.orig-la.tar.lzma")
 
 
 class SuiteToDistributionTests(TestCase):

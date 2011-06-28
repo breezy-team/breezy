@@ -575,7 +575,7 @@ class cmd_merge_upstream(Command):
                     format = "bz2"
                 elif location.endswith(".tar.lzma"):
                     format = "lzma"
-            dest_name = tarball_name(package, version, format=format)
+            dest_name = tarball_name(package, version, None, format=format)
             tarball_filename = os.path.join(orig_dir, dest_name)
             try:
                 repack_tarball(location, dest_name, target_dir=orig_dir,
@@ -743,7 +743,7 @@ class cmd_merge_upstream(Command):
                         (version, upstream_branch_source))
             if need_upstream_tarball:
                 target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
-                locations = primary_upstream_source.fetch_tarball(
+                locations = primary_upstream_source.fetch_tarballs(
                     package, version, target_dir)
                 source_format = get_source_format(tree)
                 v3 = (source_format in [

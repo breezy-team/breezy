@@ -209,19 +209,22 @@ def strip_changelog_message(changes):
         return changes
 
 
-def tarball_name(package, version, format=None):
+def tarball_name(package, version, component=None, format=None):
     """Return the name of the .orig.tar.gz for the given package and version.
 
     :param package: the name of the source package.
     :param version: the upstream version of the package.
+    :param component: Component name (None for base)
     :param format: the format for the tarball. If None then 'gz' will be
          used. You probably want on of 'gz', 'bz2', or 'lzma'.
     :return: a string that is the name of the upstream tarball to use.
     """
     if format is None:
         format = 'gz'
-    return "%s_%s.orig.tar.%s" % (package, str(version), format)
-
+    name = "%s_%s.orig" % (package, str(version))
+    if component is not None:
+        name += "-" + component
+    return "%s.tar.%s" % (name, format)
 
 
 def suite_to_distribution(suite):

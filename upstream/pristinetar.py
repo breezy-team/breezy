@@ -118,19 +118,25 @@ class PristineTarSource(UpstreamSource):
     def __repr__(self):
         return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
 
-    def tag_name(self, version, distro=None):
+    def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
 
         :param version: the Version object to extract the upstream
             part of the version number from.
+        :param component: Name of the component (None for base)
+        :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
         assert isinstance(version, str)
         if distro is None:
-            return "upstream-" + version
-        return "upstream-%s-%s" % (distro, version)
+            name = "upstream-" + version
+        else:
+            name = "upstream-%s-%s" % (distro, version)
+        if component is not None:
+            name += "/%s" % component
+        return name
 
-    def tag_version(self, version, revid):
+    def tag_version(self, version, revid, component=None):
         """Tags the upstream branch's last revision with an upstream version.
 
         Sets a tag on the last revision of the upstream branch and on the main
@@ -139,12 +145,14 @@ class PristineTarSource(UpstreamSource):
 
         :param version: the upstream part of the version number to derive the 
             tag name from.
+        :param component: name of the component that is being imported
+            (None for base)
         :param revid: the revid to associate the tag with, or None for the
             tip of self.pristine_upstream_branch.
         :return The tag name, revid of the added tag.
         """
         assert isinstance(version, str)
-        tag_name = self.tag_name(version)
+        tag_name = self.tag_name(version, component=component)
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
 
@@ -163,21 +171,30 @@ class PristineTarSource(UpstreamSource):
         revprops = {}
         if md5 is not None:
             revprops["deb-md5"] = md5
-            delta_revprops = self.create_delta_revprops(tree, tarball)
-            revprops.update(delta_revprops)
+            delta = self.make_pristine_tar_delta(tree, tarball)
+            uuencoded = standard_b64encode(delta)
+            if tarball.endswith(".tar.bz2"):
+                revprops["deb-pristine-delta-bz2"] = uuencoded
+            elif tarball.endswith(".tar.lzma"):
+                revprops["deb-pristine-delta-lzma"] = uuencoded
+            else:
+                revprops["deb-pristine-delta"] = uuencoded
         if author is not None:
             revprops['authors'] = author
         timezone = None
         if timestamp is not None:
             timezone = timestamp[1]
             timestamp = timestamp[0]
-        revid = tree.commit("Import upstream version %s" % (version,),
-                revprops=revprops, timestamp=timestamp, timezone=timezone)
+        message = "Import upstream version %s" % (version,)
+        if component is not None:
+            message += ", component %s" % component
+        revid = tree.commit(message, revprops=revprops, timestamp=timestamp,
+            timezone=timezone)
         tag_name, _ = self.tag_version(version, revid=revid)
         return tag_name, revid
 
-    def fetch_tarball(self, package, version, target_dir):
-        revid = self.version_as_revision(package, version)
+    def fetch_component_tarball(self, package, version, component, target_dir):
+        revid = self.version_component_as_revision(package, version, component)
         try:
             rev = self.branch.repository.get_revision(revid)
         except NoSuchRevision:
@@ -187,7 +204,7 @@ class PristineTarSource(UpstreamSource):
             format = self.pristine_tar_format(rev)
         else:
             format = 'gz'
-        target_filename = self._tarball_path(package, version,
+        target_filename = self._tarball_path(package, version, component,
                                              target_dir, format=format)
         try:
             self.reconstruct_pristine_tar(revid, package, version, target_filename)
@@ -195,9 +212,12 @@ class PristineTarSource(UpstreamSource):
             raise PackageVersionNotPresent(package, version, self)
         except PerFileTimestampsNotSupported:
             raise PackageVersionNotPresent(package, version, self)
-        return [target_filename]
+        return target_filename
 
-    def _has_version(self, tag_name, tarballs=None):
+    def fetch_tarballs(self, package, version, target_dir):
+        return [self.fetch_component_tarball(package, version, None, target_dir)]
+
+    def _has_version_component(self, tag_name, md5=None):
         if not self.branch.tags.has_tag(tag_name):
             return False
         revid = self.branch.tags.lookup_tag(tag_name)
@@ -208,11 +228,8 @@ class PristineTarSource(UpstreamSource):
                 return False
         finally:
             self.branch.unlock()
-        if tarballs is None:
+        if md5 is None:
             return True
-        if len(tarballs) != 1:
-            raise MultipleUpstreamTarballsNotSupported()
-        (filename, component, md5) = tarballs[0]
         rev = self.branch.repository.get_revision(revid)
         try:
             return rev.properties['deb-md5'] == md5
@@ -222,29 +239,49 @@ class PristineTarSource(UpstreamSource):
             return True
 
     def version_as_revision(self, package, version, tarballs=None):
+        if tarballs is None:
+            return self.version_component_as_revision(package, version, component=None)
+        elif len(tarballs) > 1:
+            raise MultipleUpstreamTarballsNotSupported()
+        else:
+            return self.version_component_as_revision(package, version, tarballs[0][1])
+
+    def version_component_as_revision(self, package, version, component, tarballs=None):
         assert isinstance(version, str)
-        for tag_name in self.possible_tag_names(version):
-            if self._has_version(tag_name, tarballs):
+        for tag_name in self.possible_tag_names(version, component=component):
+            if self._has_version_component(tag_name, tarballs):
                 return self.branch.tags.lookup_tag(tag_name)
-        tag_name = self.tag_name(version)
+        tag_name = self.tag_name(version, component=component)
         try:
             return self.branch.tags.lookup_tag(tag_name)
         except NoSuchTag:
             raise PackageVersionNotPresent(package, version, self)
 
     def has_version(self, package, version, tarballs=None):
+        if tarballs is None:
+            return self.has_version_component(package, version, component=None)
+        elif len(tarballs) > 1:
+            raise MultipleUpstreamTarballsNotSupported()
+        else:
+            return self.has_version_component(package, version, tarballs[0][1],
+                    tarballs[0][2])
+
+    def has_version_component(self, package, version, component, md5=None):
         assert isinstance(version, str), str(type(version))
-        for tag_name in self.possible_tag_names(version):
-            if self._has_version(tag_name, tarballs=tarballs):
+        for tag_name in self.possible_tag_names(version, component=component):
+            if self._has_version_component(tag_name, md5=md5):
                 return True
         return False
 
-    def possible_tag_names(self, version):
+    def possible_tag_names(self, version, component):
         assert isinstance(version, str)
-        tags = [self.tag_name(version),
-                self.tag_name(version, distro="debian"),
-                self.tag_name(version, distro="ubuntu"),
-                "upstream/%s" % version]
+        tags = [self.tag_name(version, component=component),
+                self.tag_name(version, component=component, distro="debian"),
+                self.tag_name(version, component=component, distro="ubuntu"),
+                ]
+        if component is None:
+            # compatibility with git-buildpackage
+            tags += ["upstream/%s" % version]
         return tags
 
     def has_pristine_tar_delta(self, rev):
@@ -307,24 +344,6 @@ class PristineTarSource(UpstreamSource):
             return make_pristine_tar_delta(dest, tarball_path)
         finally:
             shutil.rmtree(tmpdir)
-
-    def create_delta_revprops(self, tree, tarball):
-        """Create the revision properties with the pristine tar delta.
-
-        :param tree: Bazaar Tree to diff against
-        :param tarball: The pristine tarball
-        :return: Dictionary with extra revision properties
-        """
-        ret = {}
-        delta = self.make_pristine_tar_delta(tree, tarball)
-        uuencoded = standard_b64encode(delta)
-        if tarball.endswith(".tar.bz2"):
-            ret["deb-pristine-delta-bz2"] = uuencoded
-        elif tarball.endswith(".tar.lzma"):
-            ret["deb-pristine-delta-lzma"] = uuencoded
-        else:
-            ret["deb-pristine-delta"] = uuencoded
-        return ret
 
     def iter_versions(self):
         """Iterate over all upstream versions.

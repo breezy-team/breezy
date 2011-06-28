@@ -81,7 +81,7 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.has_version)
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         """Fetch the source tarball for a particular version.
 
         :param package: Name of the package
@@ -89,17 +89,17 @@ class UpstreamSource(object):
         :param target_dir: Directory in which to store the tarball
         :return: Paths of the fetched tarballs
         """
-        raise NotImplementedError(self.fetch_tarball)
+        raise NotImplementedError(self.fetch_tarballs)
 
-    def _tarball_path(self, package, version, target_dir, format=None):
-        return os.path.join(target_dir, tarball_name(package, version,
+    def _tarball_path(self, package, version, component, target_dir, format=None):
+        return os.path.join(target_dir, tarball_name(package, version, component,
                     format=format))
 
 
 class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
-    def fetch_tarball(self, package, upstream_version, target_dir, 
+    def fetch_tarballs(self, package, upstream_version, target_dir, 
             _apt_pkg=None):
         if _apt_pkg is None:
             import apt_pkg
@@ -184,7 +184,7 @@ class GetOrigSourceSource(UpstreamSource):
         note("get-orig-source did not create file with prefix %s", prefix)
         return None
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         if self.larstiq:
             rules_name = 'rules'
         else:
@@ -266,7 +266,7 @@ class UScanSource(UpstreamSource):
             os.unlink(tempfilename)
         return self._xml_report_extract_upstream_version(stdout)
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         note("Using uscan to look for the upstream tarball.")
         try:
             tempfilename = self._export_watchfile()
@@ -285,7 +285,8 @@ class UScanSource(UpstreamSource):
         if r != 0:
             note("uscan could not find the needed tarball.")
             raise PackageVersionNotPresent(package, version, self)
-        return [self._tarball_path(package, version, target_dir)]
+        # FIXME: What about the other component tarballs?
+        return [self._tarball_path(package, version, None, target_dir)]
 
 
 class SelfSplitSource(UpstreamSource):
@@ -308,10 +309,10 @@ class SelfSplitSource(UpstreamSource):
         finally:
             shutil.rmtree(tmpdir)
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         note("Using the current branch without the 'debian' directory "
                 "to create the tarball")
-        tarball_path = self._tarball_path(package, version, target_dir)
+        tarball_path = self._tarball_path(package, version, None, target_dir)
         self._split(package, version, tarball_path)
         return [tarball_path]
 
@@ -328,10 +329,10 @@ class StackedUpstreamSource(UpstreamSource):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._sources)
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         for source in self._sources:
             try:
-                paths = source.fetch_tarball(package, version, target_dir)
+                paths = source.fetch_tarballs(package, version, target_dir)
             except PackageVersionNotPresent:
                 pass
             else:
@@ -402,7 +403,7 @@ class UpstreamProvider(object):
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
-                paths = self.source.fetch_tarball(self.package,
+                paths = self.source.fetch_tarballs(self.package,
                     self.version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self.package, self.version)
@@ -477,7 +478,7 @@ class TarfileSource(UpstreamSource):
         self.path = path
         self.version = version
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         if version != self.version:
             raise PackageVersionNotPresent(package, version, self)
         dest_name = tarball_name(package, version)
@@ -522,7 +523,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         else:
             self.project = project
 
-    def fetch_tarball(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir):
         release = self.project.getRelease(version=version)
         if release is None:
             raise PackageVersionNotPresent(package, version, self)

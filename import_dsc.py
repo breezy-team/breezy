@@ -60,6 +60,7 @@ from bzrlib.transport import (
 
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
+    PackageVersionNotPresent,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
     )
@@ -321,23 +322,6 @@ class DistributionBranch(object):
             return True
         return False
 
-    def has_upstream_version(self, package, version, tarballs=None):
-        """Whether this branch contains the upstream version specified.
-
-        The version must be judged present by having the appropriate tag
-        in the upstream branch. If the md5 argument is not None then the
-        string passed must the the md5sum that is associated with the
-        revision pointed to by the tag.
-
-        :param version: a upstream version number to look for in the upstream 
-            branch.
-        :param tarballs: list of upstream tarballs that should be present,
-            tuples of filename and md5sum
-        :return: True if the upstream branch contains the specified upstream
-            version of the package. False otherwise.
-        """
-        return self.pristine_upstream_source.has_version(package, version, tarballs)
-
     def contained_versions(self, versions):
         """Splits a list of versions depending on presence in the branch.
 
@@ -574,6 +558,35 @@ class DistributionBranch(object):
         finally:
             self.branch.unlock()
 
+    def can_pull_upstream_from_branch(self, branch, package, version,
+            upstream_tarballs=None):
+        """Check if a version can be pulled from another branch into this one.
+
+        :param branch: Branch with upstream version
+        :param package: Package name
+        :param version: Package version
+        :param upstream_tarballs: Required upstream tarballs (optional)
+        """
+        if not branch.pristine_upstream_source.has_version(package, version,
+                tarballs=upstream_tarballs):
+            return False
+
+        up_branch = self.pristine_upstream_branch
+        up_branch.lock_read()
+        try:
+            # Check that they haven't diverged
+            other_up_branch = branch.pristine_upstream_branch
+            other_up_branch.lock_read()
+            try:
+                graph = other_up_branch.repository.get_graph(
+                        up_branch.repository)
+                return graph.is_ancestor(up_branch.last_revision(),
+                        branch.revid_of_upstream_version(package, version))
+            finally:
+                other_up_branch.unlock()
+        finally:
+            up_branch.unlock()
+
     def branch_to_pull_upstream_from(self, package, version, upstream_tarballs):
         """Checks whether this upstream is a pull from a lesser branch.
 
@@ -591,40 +604,15 @@ class DistributionBranch(object):
             if that is what should be done, otherwise None.
         """
         assert isinstance(version, str)
-        up_branch = self.pristine_upstream_branch
-        up_branch.lock_read()
-        try:
-            for branch in reversed(self.get_lesser_branches()):
-                if branch.has_upstream_version(package, version,
-                        tarballs=upstream_tarballs):
-                    # Check that they haven't diverged
-                    other_up_branch = branch.pristine_upstream_branch
-                    other_up_branch.lock_read()
-                    try:
-                        graph = other_up_branch.repository.get_graph(
-                                up_branch.repository)
-                        if graph.is_ancestor(up_branch.last_revision(),
-                                branch.revid_of_upstream_version(package, version)):
-                            return branch
-                    finally:
-                        other_up_branch.unlock()
-            for branch in self.get_greater_branches():
-                if branch.has_upstream_version(package, version,
-                        tarballs=upstream_tarballs):
-                    # Check that they haven't diverged
-                    other_up_branch = branch.pristine_upstream_branch
-                    other_up_branch.lock_read()
-                    try:
-                        graph = other_up_branch.repository.get_graph(
-                                up_branch.repository)
-                        if graph.is_ancestor(up_branch.last_revision(),
-                                branch.revid_of_upstream_version(package, version)):
-                            return branch
-                    finally:
-                        other_up_branch.unlock()
-            return None
-        finally:
-            up_branch.unlock()
+        for branch in reversed(self.get_lesser_branches()):
+            if self.can_pull_upstream_from_branch(branch, package, version,
+                    upstream_tarballs):
+                return branch
+        for branch in self.get_greater_branches():
+            if self.can_pull_upstream_from_branch(branch, package, version,
+                    upstream_tarballs):
+                return branch
+        return None
 
     def get_parents(self, versions):
         """Return the list of parents for a specific version.
@@ -710,10 +698,9 @@ class DistributionBranch(object):
         pull_revision = pull_branch.revid_of_upstream_version(package, version)
         mutter("Pulling upstream part of %s from revision %s" % \
                 (version, pull_revision))
-        up_pull_branch = pull_branch.pristine_upstream_branch
         assert self.pristine_upstream_tree is not None, \
             "Can't pull upstream with no tree"
-        self.pristine_upstream_tree.pull(up_pull_branch,
+        self.pristine_upstream_tree.pull(pull_branch.pristine_upstream_branch,
                 stop_revision=pull_revision)
         self.pristine_upstream_source.tag_version(version, pull_revision)
         self.branch.fetch(self.pristine_upstream_branch, last_revision=pull_revision)
@@ -746,8 +733,8 @@ class DistributionBranch(object):
         assert self.tree is not None, "Can't pull branch with no tree"
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
         self.tag_version(version, revid=pull_revision)
-        if not native and not self.has_upstream_version(package, version.upstream_version):
-            if pull_branch.has_upstream_version(package, version.upstream_version):
+        if not native and not self.pristine_upstream_source.has_version(package, version.upstream_version):
+            if pull_branch.pristine_upstream_source.has_version(package, version.upstream_version):
                 self.pull_upstream_from_branch(pull_branch, 
                     package, version.upstream_version)
             else:
@@ -1066,7 +1053,7 @@ class DistributionBranch(object):
             # upstream as a non-native version (i.e. it wasn't a mistaken
             # native -2 version), then we want to add an extra parent.
             if (self.is_version_native(last_contained_version)
-                and not self.has_upstream_version(package,
+                and not self.pristine_upstream_source.has_version(package,
                     last_contained_version.upstream_version)):
                 revid = self.revid_of_version(last_contained_version)
                 parents.append(revid)
@@ -1131,7 +1118,8 @@ class DistributionBranch(object):
             # We need to import at least the diff, possibly upstream.
             # Work out if we need the upstream part first.
             imported_upstream = False
-            if not self.pristine_upstream_source.has_version(package, version.upstream_version):
+            if not self.pristine_upstream_source.has_version(package,
+                    version.upstream_version):
                 up_pull_branch = \
                     self.branch_to_pull_upstream_from(package, version.upstream_version,
                             upstream_tarballs)
@@ -1342,16 +1330,16 @@ class DistributionBranch(object):
     def _export_previous_upstream_tree(self, package, previous_version, tempdir):
         assert isinstance(previous_version, str), \
             "Should pass upstream version as str, not Version."
-        if self.pristine_upstream_source.has_version(package, previous_version):
+        try:
             upstream_tip = self.pristine_upstream_source.version_as_revision(
                     package, previous_version)
-            self.extract_upstream_tree(upstream_tip, tempdir)
-        else:
+        except PackageVersionNotPresent:
             raise BzrCommandError("Unable to find the tag for the "
                     "previous upstream version, %s, in the branch: "
                     "%s" % (
                 previous_version,
                 self.pristine_upstream_source.tag_name(previous_version)))
+        self.extract_upstream_tree(upstream_tip, tempdir)
 
     def merge_upstream(self, tarball_filenames, package, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None,
