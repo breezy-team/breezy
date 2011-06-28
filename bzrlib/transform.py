@@ -32,6 +32,7 @@ from bzrlib import (
     bencode,
     bzrdir,
     commit,
+    conflicts,
     delta,
     errors,
     inventory,
@@ -3156,13 +3157,11 @@ def conflict_pass(tt, conflicts, path_tree=None):
 
 def cook_conflicts(raw_conflicts, tt):
     """Generate a list of cooked conflicts, sorted by file path"""
-    from bzrlib.conflicts import Conflict
     conflict_iter = iter_cook_conflicts(raw_conflicts, tt)
-    return sorted(conflict_iter, key=Conflict.sort_key)
+    return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
 
 
 def iter_cook_conflicts(raw_conflicts, tt):
-    from bzrlib.conflicts import Conflict
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
@@ -3170,16 +3169,17 @@ def iter_cook_conflicts(raw_conflicts, tt):
         modified_path = fp.get_path(conflict[2])
         modified_id = tt.final_file_id(conflict[2])
         if len(conflict) == 3:
-            yield Conflict.factory(c_type, action=action, path=modified_path,
-                                     file_id=modified_id)
+            yield conflicts.Conflict.factory(
+                c_type, action=action, path=modified_path, file_id=modified_id)
 
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
-            yield Conflict.factory(c_type, action=action, path=modified_path,
-                                   file_id=modified_id,
-                                   conflict_path=conflicting_path,
-                                   conflict_file_id=conflicting_id)
+            yield conflicts.Conflict.factory(
+                c_type, action=action, path=modified_path,
+                file_id=modified_id,
+                conflict_path=conflicting_path,
+                conflict_file_id=conflicting_id)
 
 
 class _FileMover(object):

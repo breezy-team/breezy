@@ -33,6 +33,10 @@ Bug Fixes
   decoded as UTF-8 or when it cannot be parsed.
   (Vincent Ladeuil, #502060, #688677, #792246)
 
+* Generate a single conflict (instead of two) when merging a branch
+  modifying and renaming a file in a branch that deleted it (or vice-versa).
+  (Vincent Ladeuil, #688101)
+
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
 
 * ``GraphThunkIdsToKeys.merge_sort`` now properly returns
