@@ -25,34 +25,6 @@ from bzrlib.tests import (
     )
 
 
-class TestIsUpstreamTag(TestCase):
-
-    def test_plain_version(self):
-        self.assertFalse(tagging.is_upstream_tag('2.1'))
-
-    def test_simple_upstream(self):
-        self.assertTrue(tagging.is_upstream_tag('upstream-2.1'))
-
-    def test_distro_upstream(self):
-        self.assertTrue(tagging.is_upstream_tag('upstream-debian-2.1'))
-
-    def test_git_upstream(self):
-        self.assertTrue(tagging.is_upstream_tag('upstream/2.1'))
-
-
-class TestUpstreamTagVersion(TestCase):
-
-    def test_simple_upstream(self):
-        self.assertEqual('2.1', tagging.upstream_tag_version('upstream-2.1'))
-
-    def test_distro_upstream(self):
-        self.assertEqual('2.1',
-            tagging.upstream_tag_version('upstream-debian-2.1'))
-
-    def test_git_upstream(self):
-        self.assertEqual('2.1', tagging.upstream_tag_version('upstream/2.1'))
-
-
 class TestDebVersionSort(TestCase):
 
     def test_sort(self):

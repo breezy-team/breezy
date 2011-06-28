@@ -73,6 +73,8 @@ from bzrlib.plugins.builddeb.upstream.branch import (
     )
 from bzrlib.plugins.builddeb.upstream.pristinetar import (
     PristineTarSource,
+    is_upstream_tag,
+    upstream_tag_version,
     )
 
 
@@ -673,6 +675,34 @@ class GetRevisionSnapshotTests(TestCase):
 
     def test_with_svn_snapshot_plus(self):
         self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
+
+
+class TestIsUpstreamTag(TestCase):
+
+    def test_plain_version(self):
+        self.assertFalse(is_upstream_tag('2.1'))
+
+    def test_simple_upstream(self):
+        self.assertTrue(is_upstream_tag('upstream-2.1'))
+
+    def test_distro_upstream(self):
+        self.assertTrue(is_upstream_tag('upstream-debian-2.1'))
+
+    def test_git_upstream(self):
+        self.assertTrue(is_upstream_tag('upstream/2.1'))
+
+
+class TestUpstreamTagVersion(TestCase):
+
+    def test_simple_upstream(self):
+        self.assertEqual('2.1', upstream_tag_version('upstream-2.1'))
+
+    def test_distro_upstream(self):
+        self.assertEqual('2.1',
+            upstream_tag_version('upstream-debian-2.1'))
+
+    def test_git_upstream(self):
+        self.assertEqual('2.1', upstream_tag_version('upstream/2.1'))
 
 
 class PristineTarSourceTests(TestCaseWithTransport):
