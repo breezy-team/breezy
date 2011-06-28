@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a non-versioned directory.
+"""Export a Tree to a zip file.
 """
 
 import os
@@ -34,8 +34,8 @@ from bzrlib.filters import (
 from bzrlib.trace import mutter
 
 
-# Windows expects this bit to be set in the 'external_attr' section
-# Or it won't consider the entry a directory
+# Windows expects this bit to be set in the 'external_attr' section,
+# or it won't consider the entry a directory.
 ZIP_DIRECTORY_BIT = (1 << 4)
 FILE_PERMISSIONS = (0644 << 16)
 DIR_PERMISSIONS = (0755 << 16)
@@ -44,8 +44,8 @@ _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
-def zip_exporter_generator(tree, dest, root, subdir=None, filtered=False, 
-                 force_mtime=None, fileobj=None):
+def zip_exporter_generator(tree, dest, root, subdir=None, filtered=False,
+    force_mtime=None, fileobj=None):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -95,7 +95,7 @@ def zip_exporter_generator(tree, dest, root, subdir=None, filtered=False,
                             date_time=date_time)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _DIR_ATTR
-                zipf.writestr(zinfo,'')
+                zipf.writestr(zinfo, '')
             elif ie.kind == "symlink":
                 zinfo = zipfile.ZipInfo(
                             filename=(filename + '.lnk'),
@@ -112,10 +112,3 @@ def zip_exporter_generator(tree, dest, root, subdir=None, filtered=False,
         os.remove(dest)
         from bzrlib.errors import BzrError
         raise BzrError("Can't export non-ascii filenames to zip")
-
-
-def zip_exporter(tree, dest, root, subdir=None, filtered=False,
-                 force_mtime=None, fileobj=None):
-    for _ in zip_exporter_generator(tree, dest, root, subdir, filtered,
-                                    force_mtime, fileobj):
-        pass

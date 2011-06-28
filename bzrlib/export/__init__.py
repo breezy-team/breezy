@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export functionality, which can take a Tree and create a different representation.
-
-Such as non-controlled directories, tarfiles, zipfiles, etc.
+"""Export trees to tarballs, non-controlled directories, zipfiles, etc.
 """
 
 import os
@@ -31,6 +29,7 @@ from bzrlib import (
 _exporters = {}
 # Maps filename extensions => export format name
 _exporter_extensions = {}
+
 
 def register_exporter(format, extensions, func, override=False):
     """Register an exporter.
@@ -61,15 +60,17 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
     """
     def _loader(tree, dest, root, subdir, filtered, force_mtime, fileobj):
         func = pyutils.get_named_object(module, funcname)
-        return func(tree, dest, root, subdir, filtered=filtered, 
+        return func(tree, dest, root, subdir, filtered=filtered,
                     force_mtime=force_mtime, fileobj=fileobj)
+
     register_exporter(scheme, extensions, _loader)
-    
+
+
 def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
                          filtered=False, per_file_timestamps=False,
                          fileobj=None):
     """Returns a generator that exports the given tree.
-    
+
     The generator is expected to yield None while exporting the tree while the
     actual export is written to ``fileobj``.
 
@@ -123,17 +124,17 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
 
     try:
         tree.lock_read()
-    
+
         for _ in _exporters[format](tree, dest, root, subdir,
-                                    filtered=filtered, 
+                                    filtered=filtered,
                                     force_mtime=force_mtime, fileobj=fileobj):
-            
+
             yield
-    finally:    
+    finally:
         tree.unlock()
 
 
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False, 
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
            per_file_timestamps=False, fileobj=None):
     """Export the given Tree to the specific destination.
 
@@ -153,15 +154,15 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
         a directory to start exporting from.
     :param filtered: If True, content filtering is applied to the
                      files exported.
-    :param per_file_timestamps: Whether to use the timestamp stored in the 
-        tree rather than now(). This will do a revision lookup 
+    :param per_file_timestamps: Whether to use the timestamp stored in the
+        tree rather than now(). This will do a revision lookup
         for every file so will be significantly slower.
     :param fileobj: Optional file object to use
     """
-    for _ in get_export_generator(tree, dest, format, root, subdir, filtered, 
+    for _ in get_export_generator(tree, dest, format, root, subdir, filtered,
                                   per_file_timestamps, fileobj):
-        
         pass
+
 
 def get_root_name(dest):
     """Get just the root name for an export.
@@ -190,7 +191,7 @@ def _export_iter_entries(tree, subdir, skip_special=True):
     if subdir is not None:
         subdir = subdir.rstrip('/')
     entries = tree.iter_entries_by_dir()
-    entries.next() # skip root
+    entries.next()  # skip root
     for path, entry in entries:
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
@@ -209,7 +210,7 @@ def _export_iter_entries(tree, subdir, skip_special=True):
             final_path = path
         if not tree.has_filename(path):
             continue
-        
+
         yield final_path, entry
 
 
@@ -219,7 +220,8 @@ register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter',
                        'dir_exporter_generator')
 register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter',
                        'plain_tar_exporter_generator')
-register_lazy_exporter('tgz', ['.tar.gz', '.tgz'], 'bzrlib.export.tar_exporter',
+register_lazy_exporter('tgz', ['.tar.gz', '.tgz'],
+                       'bzrlib.export.tar_exporter',
                        'tgz_exporter_generator')
 register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'],
                        'bzrlib.export.tar_exporter', 'tbz_exporter_generator')
@@ -229,4 +231,3 @@ register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter',
                        'tar_xz_exporter_generator')
 register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter',
                        'zip_exporter_generator')
-
