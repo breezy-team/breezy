@@ -496,13 +496,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         finally:
             file.close()
 
-    def _get_ancestors(self, default_revision):
-        ancestors = set([default_revision])
-        for parent_id in self.get_parent_ids():
-            ancestors.update(self.branch.repository.get_ancestry(
-                             parent_id, topo_sorted=False))
-        return ancestors
-
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
 
@@ -3020,6 +3013,8 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
+
+    supports_versioned_directories = None
 
     @classmethod
     def find_format_string(klass, a_bzrdir):

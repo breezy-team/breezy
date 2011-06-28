@@ -21,7 +21,6 @@ from bzrlib import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
-from bzrlib.symbol_versioning import deprecated_in
 
 
 # Ancestry 1:
@@ -1646,6 +1645,15 @@ class TestGraphThunkIdsToKeys(tests.TestCase):
         graph_thunk.add_node("D", ["A", "C"])
         self.assertEqual(['B', 'D'],
             sorted(graph_thunk.heads(['D', 'B', 'A'])))
+
+    def test_merge_sort(self):
+        d = {('C',):[('A',)], ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.KnownGraph(d)
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        graph_thunk.add_node("D", ["A", "C"])
+        self.assertEqual([('C', 0, (2,), False), ('A', 0, (1,), True)],
+            [(n.key, n.merge_depth, n.revno, n.end_of_merge)
+                 for n in graph_thunk.merge_sort('C')])
 
 
 class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):

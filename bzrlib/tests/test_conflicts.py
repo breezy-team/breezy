@@ -446,6 +446,14 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
+            # File renamed-modified/deleted
+            (dict(_base_actions='create_file',
+                  _path='new-file', _file_id='file-id'),
+             ('file_renamed_and_modified',
+              dict(actions='modify_and_rename_file',
+                   check='file_renamed_and_more_content')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_doesnt_exist')),),
             # File modified/deleted in dir
             (dict(_base_actions='create_file_in_dir',
                   _path='dir/file', _file_id='file-id'),
@@ -463,8 +471,15 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     def do_modify_file(self):
         return [('modify', ('file-id', 'trunk content\nmore content\n'))]
 
+    def do_modify_and_rename_file(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n')),
+                ('rename', ('file', 'new-file'))]
+
     def check_file_has_more_content(self):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+
+    def check_file_renamed_and_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/new-file')
 
     def do_delete_file(self):
         return [('unversion', 'file-id')]

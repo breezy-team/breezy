@@ -78,6 +78,7 @@ class VersionedFileRepositoryFormat(RepositoryFormat):
     """Base class for all repository formats that are VersionedFiles-based."""
 
     supports_full_versioned_files = True
+    supports_versioned_directories = True
 
     # Should commit add an inventory, or an inventory delta to the repository.
     _commit_inv_deltas = True

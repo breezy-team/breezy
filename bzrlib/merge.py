@@ -1617,8 +1617,8 @@ class Merge3Merger(object):
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
-        self.cooked_conflicts.extend(transform.cook_conflicts(
-                fs_conflicts, self.tt))
+        content_conflict_file_ids = set()
+        cooked_conflicts = transform.cook_conflicts(fs_conflicts, self.tt)
         fp = transform.FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
@@ -1654,6 +1654,7 @@ class Merge3Merger(object):
                         break
                 c = _mod_conflicts.Conflict.factory(conflict_type,
                                                     path=path, file_id=file_id)
+                content_conflict_file_ids.add(file_id)
             elif conflict_type == 'text conflict':
                 trans_id = conflict[1]
                 path = fp.get_path(trans_id)
@@ -1662,6 +1663,17 @@ class Merge3Merger(object):
                                                     path=path, file_id=file_id)
             else:
                 raise AssertionError('bad conflict type: %r' % (conflict,))
+            cooked_conflicts.append(c)
+
+        self.cooked_conflicts = []
+        # We want to get rid of path conflicts when a corresponding contents
+        # conflict exists. This can occur when one branch deletes a file while
+        # the other renames *and* modifies it. In this case, the content
+        # conflict is enough.
+        for c in cooked_conflicts:
+            if (c.typestring == 'path conflict'
+                and c.file_id in content_conflict_file_ids):
+                continue
             self.cooked_conflicts.append(c)
         self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
 
@@ -1955,7 +1967,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     """
     if this_tree is None:
         raise errors.BzrError("bzrlib.merge.merge_inner requires a this_tree "
-                              "parameter as of bzrlib version 0.8.")
+                              "parameter")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb, change_reporter=change_reporter)
     merger.backup_files = backup_files
