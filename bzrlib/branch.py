@@ -2942,7 +2942,11 @@ class BzrBranch8(BzrBranch):
         # you can always ask for the URL; but you might not be able to use it
         # if the repo can't support stacking.
         ## self._check_stackable_repo()
-        stacked_url = self._get_config_location('stacked_on_location')
+        # stacked_on_location is only ever defined in branch.conf, so don't
+        # waste effort reading the whole stack of config files.
+        config = self.get_config()._get_branch_data_config()
+        stacked_url = self._get_config_location('stacked_on_location',
+            config=config)
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
