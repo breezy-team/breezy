@@ -125,6 +125,8 @@ class TestInstallLazyCompile(tests.TestCase):
     """
 
     def test_install(self):
+        # Don't count on it being present
+        lazy_regex.install_lazy_compile()
         pattern = re.compile('foo')
         self.assertIsInstance(pattern, lazy_regex.LazyRegex)
 
