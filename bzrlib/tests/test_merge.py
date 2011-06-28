@@ -490,6 +490,25 @@ class TestMerge(TestCaseWithTransport):
         finally:
             tree_file.close()
 
+    def test_merge_disallow_rootless(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit("added a")
+        old_root_id = tree.get_root_id()
+        first_rev = tree.branch.revision_history()[0]
+        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+                                          _mod_revision.NULL_REVISION,
+                                          first_rev)
+        merger.allow_rootless_tree = False
+        merger.merge_type = _mod_merge.Merge3Merger
+        conflict_count = merger.do_merge()
+        self.assertEqual(0, conflict_count)
+        self.assertEquals(set([old_root_id]), tree.all_file_ids())
+        tree.set_parent_ids([])
+
     def test_merge_rootless(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -501,9 +520,11 @@ class TestMerge(TestCaseWithTransport):
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
+        merger.allow_rootless_tree = True
         merger.merge_type = _mod_merge.Merge3Merger
         conflict_count = merger.do_merge()
         self.assertEqual(0, conflict_count)
+        self.assertEquals(set(), tree.all_file_ids())
         tree.set_parent_ids([])
 
     def test_merge_add_into_deleted_root(self):
