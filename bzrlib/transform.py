@@ -215,7 +215,7 @@ class TreeTransformBase(object):
         self.version_file(old_root_file_id, old_root)
         self.unversion_file(self._new_root)
 
-    def fixup_new_roots(self, require_tree_root=False):
+    def fixup_new_roots(self):
         """Reinterpret requests to change the root directory
 
         Instead of creating a root directory, or moving an existing directory,
@@ -226,18 +226,15 @@ class TreeTransformBase(object):
         recommended only to invoke this after the root trans-id has become
         irrelevant.
 
-        :param require_tree_root: Whether to make sure that the
-            resulting tree has a root.
         """
         new_roots = [k for k, v in self._new_parent.iteritems() if v is
                      ROOT_PARENT]
         if len(new_roots) < 1:
-            if require_tree_root:
-                if self.final_kind(self.root) is None:
-                    self.cancel_deletion(self.root)
-                if self.final_file_id(self.root) is None:
-                    self.version_file(self.tree_file_id(self.root),
-                                         self.root)
+            if self.final_kind(self.root) is None:
+                self.cancel_deletion(self.root)
+            if self.final_file_id(self.root) is None:
+                self.version_file(self.tree_file_id(self.root),
+                                     self.root)
             return
         if len(new_roots) != 1:
             raise ValueError('A tree cannot have two roots!')

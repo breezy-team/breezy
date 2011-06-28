@@ -297,7 +297,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertNotEqual('new-root-id', old_root_id)
         transform.delete_contents(root)
         transform.unversion_file(root)
-        transform.fixup_new_roots(require_tree_root=True)
+        transform.fixup_new_roots()
         transform.apply()
         self.assertEqual(old_root_id, self.wt.get_root_id())
 

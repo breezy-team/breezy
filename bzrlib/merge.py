@@ -278,7 +278,6 @@ class Merger(object):
         self.this_basis_tree = None
         self.other_tree = other_tree
         self.other_branch = None
-        self.require_tree_root = True
         self.base_tree = base_tree
         self.ignore_zero = False
         self.backup_files = False
@@ -672,8 +671,6 @@ class Merger(object):
         if self._is_criss_cross and getattr(self.merge_type,
                                             'supports_lca_trees', False):
             kwargs['lca_trees'] = self._lca_trees
-        if getattr(self.merge_type, "supports_require_tree_root", False):
-            kwargs['require_tree_root'] = self.require_tree_root
         return self.merge_type(pb=None,
                                change_reporter=self.change_reporter,
                                **kwargs)
@@ -749,14 +746,12 @@ class Merge3Merger(object):
     supports_reverse_cherrypick = True
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
     supports_lca_trees = True
-    supports_require_tree_root = True
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree,
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=None, pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
-                 cherrypick=False, lca_trees=None, this_branch=None,
-                 require_tree_root=False):
+                 cherrypick=False, lca_trees=None, this_branch=None):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -783,8 +778,6 @@ class Merge3Merger(object):
         :param lca_trees: Can be set to a dictionary of {revision_id:rev_tree}
             if the ancestry was found to include a criss-cross merge.
             Otherwise should be None.
-        :param require_tree_root: If True, make sure that the resulting tree
-            has a root.
         """
         object.__init__(self)
         if interesting_files is not None and interesting_ids is not None:
@@ -792,7 +785,6 @@ class Merge3Merger(object):
                 'specify either interesting_ids or interesting_files')
         if this_branch is None:
             this_branch = this_tree.branch
-        self.require_tree_root = require_tree_root
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
@@ -876,7 +868,7 @@ class Merge3Merger(object):
                     executable3, file_status, resolver=resolver)
         finally:
             child_pb.finished()
-        self.tt.fixup_new_roots(self.require_tree_root)
+        self.tt.fixup_new_roots()
         self._finish_computing_transform()
 
     def _finish_computing_transform(self):
@@ -1952,8 +1944,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 interesting_files=None,
                 this_tree=None,
                 pb=None,
-                change_reporter=None,
-                require_tree_root=True):
+                change_reporter=None):
     """Primary interface for merging.
 
     Typical use is probably::
@@ -1966,7 +1957,6 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                               "parameter")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb, change_reporter=change_reporter)
-    merger.require_tree_root = require_tree_root
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
