@@ -1159,3 +1159,11 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
         # If the config entry is invalid, default to 10
         # TODO: This writes a warning to the user, trap it somehow
         self.assertEqual(10, wt._worth_saving_limit())
+
+
+class TestFormatAttributes(TestCaseWithWorkingTree):
+
+    def test_versioned_directories(self):
+        self.assertSubset(
+            [self.workingtree_format.supports_versioned_directories],
+            (True, False))

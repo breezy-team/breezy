@@ -59,6 +59,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* New attributes ``WorkingTreeFormat.supports_versioned_directories`` and
+  ``RepositoryFormat.supports_versioned_directories``.
+  (Jelmer Vernooij, #765815)
+
 Internals
 *********
 
