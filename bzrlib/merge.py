@@ -868,7 +868,7 @@ class Merge3Merger(object):
                     executable3, file_status, resolver=resolver)
         finally:
             child_pb.finished()
-        self.fix_root()
+        self.tt.fixup_new_roots()
         self._finish_computing_transform()
 
     def _finish_computing_transform(self):
@@ -1093,6 +1093,7 @@ class Merge3Merger(object):
                           ))
         return result
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def fix_root(self):
         if self.tt.final_kind(self.tt.root) is None:
             self.tt.cancel_deletion(self.tt.root)
@@ -1316,16 +1317,26 @@ class Merge3Merger(object):
             self._raw_conflicts.append(('path conflict', trans_id, file_id,
                                         this_parent, this_name,
                                         other_parent, other_name))
-        if other_name is None:
+        if not self.other_tree.has_id(file_id):
             # it doesn't matter whether the result was 'other' or
-            # 'conflict'-- if there's no 'other', we leave it alone.
+            # 'conflict'-- if it has no file id, we leave it alone.
             return
         parent_id = parents[self.winner_idx[parent_id_winner]]
-        if parent_id is not None:
+        name = names[self.winner_idx[name_winner]]
+        if parent_id is not None or name is not None:
             # if we get here, name_winner and parent_winner are set to safe
             # values.
-            self.tt.adjust_path(names[self.winner_idx[name_winner]],
-                                self.tt.trans_id_file_id(parent_id),
+            if parent_id is None and name is not None:
+                # if parent_id is None and name is non-None, current file is
+                # the tree root.
+                if names[self.winner_idx[parent_id_winner]] != '':
+                    raise AssertionError(
+                        'File looks like a root, but named %s' %
+                        names[self.winner_idx[parent_id_winner]])
+                parent_trans_id = transform.ROOT_PARENT
+            else:
+                parent_trans_id = self.tt.trans_id_file_id(parent_id)
+            self.tt.adjust_path(name, parent_trans_id,
                                 self.tt.trans_id_file_id(file_id))
 
     def _do_merge_contents(self, file_id):
@@ -1605,8 +1616,8 @@ class Merge3Merger(object):
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
-        self.cooked_conflicts.extend(transform.cook_conflicts(
-                fs_conflicts, self.tt))
+        content_conflict_file_ids = set()
+        cooked_conflicts = transform.cook_conflicts(fs_conflicts, self.tt)
         fp = transform.FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
@@ -1642,6 +1653,7 @@ class Merge3Merger(object):
                         break
                 c = _mod_conflicts.Conflict.factory(conflict_type,
                                                     path=path, file_id=file_id)
+                content_conflict_file_ids.add(file_id)
             elif conflict_type == 'text conflict':
                 trans_id = conflict[1]
                 path = fp.get_path(trans_id)
@@ -1650,6 +1662,17 @@ class Merge3Merger(object):
                                                     path=path, file_id=file_id)
             else:
                 raise AssertionError('bad conflict type: %r' % (conflict,))
+            cooked_conflicts.append(c)
+
+        self.cooked_conflicts = []
+        # We want to get rid of path conflicts when a corresponding contents
+        # conflict exists. This can occur when one branch deletes a file while
+        # the other renames *and* modifies it. In this case, the content
+        # conflict is enough.
+        for c in cooked_conflicts:
+            if (c.typestring == 'path conflict'
+                and c.file_id in content_conflict_file_ids):
+                continue
             self.cooked_conflicts.append(c)
         self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
 

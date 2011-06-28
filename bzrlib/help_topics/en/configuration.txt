@@ -386,7 +386,8 @@ value is ``long``.
 check_signatures
 ~~~~~~~~~~~~~~~~
 
-Defines the behavior for signatures.
+Reserved for future use.  These options will allow a policy for branches to
+require signatures.
 
 require
     The gnupg signature for revisions must be present and must be valid.
@@ -402,18 +403,22 @@ check-available
 create_signatures
 ~~~~~~~~~~~~~~~~~
 
-Defines the behaviour of signing revisions.
+Defines the behaviour of signing revisions on commits.  By default bzr will not
+sign new commits.
 
 always
-    Sign every new revision that is committed.
+    Sign every new revision that is committed.  If the signing fails then the
+    commit will not be made.
 
 when-required
-    (default) Sign newly committed revisions only when the branch requires
-    signed revisions.
+    Reserved for future use.
 
 never
-    Refuse to sign newly committed revisions, even if the branch
-    requires signatures.
+    Reserved for future use.
+
+In future it is planned that ``when-required`` will sign newly
+committed revisions only when the branch requires them.  ``never`` will refuse
+to sign newly committed revisions, even if the branch requires signatures.
 
 recurse
 ~~~~~~~
@@ -461,6 +466,14 @@ User and password to authenticate to the SMTP server. If smtp_username
 is set, and smtp_password is not, Bazaar will prompt for a password.
 These settings are only needed if the SMTP server requires authentication
 to send mail.
+
+locks.steal_dead
+~~~~~~~~~~~~~~~~
+
+If set to true, bzr will automatically break locks held by processes from
+the same machine and user that are no longer alive.  Otherwise, it will
+print a message and you can break the lock manually, if you are satisfied
+the object is no longer in use.
 
 mail_client
 ~~~~~~~~~~~

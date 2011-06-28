@@ -43,6 +43,7 @@ from bzrlib import (
     branchbuilder,
     bzrdir,
     errors,
+    hooks,
     lockdir,
     memorytree,
     osutils,
@@ -2505,16 +2506,23 @@ class _DontSpawnProcess(Exception):
 
 
 class TestStartBzrSubProcess(tests.TestCase):
+    """Stub test start_bzr_subprocess."""
 
-    def check_popen_state(self):
-        """Replace to make assertions when popen is called."""
+    def _subprocess_log_cleanup(self):
+        """Inhibits the base version as we don't produce a log file."""
 
     def _popen(self, *args, **kwargs):
-        """Record the command that is run, so that we can ensure it is correct"""
+        """Override the base version to record the command that is run.
+
+        From there we can ensure it is correct without spawning a real process.
+        """
         self.check_popen_state()
         self._popen_args = args
         self._popen_kwargs = kwargs
         raise _DontSpawnProcess()
+
+    def check_popen_state(self):
+        """Replace to make assertions when popen is called."""
 
     def test_run_bzr_subprocess_no_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
@@ -2525,7 +2533,7 @@ class TestStartBzrSubProcess(tests.TestCase):
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            allow_plugins=True)
+                          allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
@@ -2536,7 +2544,7 @@ class TestStartBzrSubProcess(tests.TestCase):
             self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':'set variable'})
+                          env_changes={'EXISTANT_ENV_VAR':'set variable'})
         # not set in theparent
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
@@ -2548,7 +2556,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':None})
+                          env_changes={'EXISTANT_ENV_VAR':None})
         # Still set in parent
         self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         del os.environ['EXISTANT_ENV_VAR']
@@ -2559,7 +2567,7 @@ class TestStartBzrSubProcess(tests.TestCase):
             self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'NON_EXISTANT_ENV_VAR':None})
+                          env_changes={'NON_EXISTANT_ENV_VAR':None})
 
     def test_working_dir(self):
         """Test that we can specify the working dir for the child"""
@@ -2568,18 +2576,12 @@ class TestStartBzrSubProcess(tests.TestCase):
         chdirs = []
         def chdir(path):
             chdirs.append(path)
-        os.chdir = chdir
-        try:
-            def getcwd():
-                return 'current'
-            osutils.getcwd = getcwd
-            try:
-                self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-                    working_dir='foo')
-            finally:
-                osutils.getcwd = orig_getcwd
-        finally:
-            os.chdir = orig_chdir
+        self.overrideAttr(os, 'chdir', chdir)
+        def getcwd():
+            return 'current'
+        self.overrideAttr(osutils, 'getcwd', getcwd)
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+                          working_dir='foo')
         self.assertEqual(['foo', 'current'], chdirs)
 
     def test_get_bzr_path_with_cwd_bzrlib(self):
@@ -3559,3 +3561,44 @@ class TestSelftestExcludePatterns(tests.TestCase):
 
     def test_mutiple_excludes(self):
         self.assertTestList(['c'], '-x', 'a', '-x', 'b')
+
+
+class TestCounterHooks(tests.TestCase, SelfTestHelper):
+
+    _test_needs_features = [features.subunit]
+
+    def setUp(self):
+        super(TestCounterHooks, self).setUp()
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                super(Test, self).setUp()
+                self.hooks = hooks.Hooks()
+                self.hooks.add_hook('myhook', 'Foo bar blah', (2,4))
+                self.install_counter_hook(self.hooks, 'myhook')
+
+            def no_hook(self):
+                pass
+
+            def run_hook_once(self):
+                for hook in self.hooks['myhook']:
+                    hook(self)
+
+        self.test_class = Test
+
+    def assertHookCalls(self, expected_calls, test_name):
+        test = self.test_class(test_name)
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertTrue(hasattr(test, '_counters'))
+        self.assertTrue(test._counters.has_key('myhook'))
+        self.assertEquals(expected_calls, test._counters['myhook'])
+
+    def test_no_hook(self):
+        self.assertHookCalls(0, 'no_hook')
+
+    def test_run_hook_once(self):
+        tt = features.testtools
+        if tt.module.__version__ < (0, 9, 8):
+            raise tests.TestSkipped('testtools-0.9.8 required for addDetail')
+        self.assertHookCalls(1, 'run_hook_once')

@@ -32,6 +32,7 @@ from bzrlib import (
     bencode,
     bzrdir,
     commit,
+    conflicts,
     delta,
     errors,
     inventory,
@@ -252,7 +253,8 @@ class TreeTransformBase(object):
         if (self.tree_file_id(self._new_root) is not None and
             self._new_root not in self._removed_id):
             self.unversion_file(self._new_root)
-        self.version_file(file_id, self._new_root)
+        if file_id is not None:
+            self.version_file(file_id, self._new_root)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't
@@ -1826,8 +1828,10 @@ class TreeTransform(DiskTreeTransform):
         tree_paths.sort(reverse=True)
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            for num, data in enumerate(tree_paths):
-                path, trans_id = data
+            for num, (path, trans_id) in enumerate(tree_paths):
+                # do not attempt to move root into a subdirectory of itself.
+                if path == '':
+                    continue
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
@@ -3153,13 +3157,11 @@ def conflict_pass(tt, conflicts, path_tree=None):
 
 def cook_conflicts(raw_conflicts, tt):
     """Generate a list of cooked conflicts, sorted by file path"""
-    from bzrlib.conflicts import Conflict
     conflict_iter = iter_cook_conflicts(raw_conflicts, tt)
-    return sorted(conflict_iter, key=Conflict.sort_key)
+    return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
 
 
 def iter_cook_conflicts(raw_conflicts, tt):
-    from bzrlib.conflicts import Conflict
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
@@ -3167,16 +3169,17 @@ def iter_cook_conflicts(raw_conflicts, tt):
         modified_path = fp.get_path(conflict[2])
         modified_id = tt.final_file_id(conflict[2])
         if len(conflict) == 3:
-            yield Conflict.factory(c_type, action=action, path=modified_path,
-                                     file_id=modified_id)
+            yield conflicts.Conflict.factory(
+                c_type, action=action, path=modified_path, file_id=modified_id)
 
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
-            yield Conflict.factory(c_type, action=action, path=modified_path,
-                                   file_id=modified_id,
-                                   conflict_path=conflicting_path,
-                                   conflict_file_id=conflicting_id)
+            yield conflicts.Conflict.factory(
+                c_type, action=action, path=modified_path,
+                file_id=modified_id,
+                conflict_path=conflicting_path,
+                conflict_file_id=conflicting_id)
 
 
 class _FileMover(object):

@@ -17,14 +17,10 @@
 
 """Black-box tests for bzr sign-my-commits."""
 
-import os
-
 from bzrlib import (
     gpg,
     tests,
     )
-from bzrlib.testament import Testament
-from bzrlib.workingtree import WorkingTree
 
 
 class SignMyCommits(tests.TestCaseWithTransport):
@@ -45,7 +41,8 @@ class SignMyCommits(tests.TestCaseWithTransport):
         wt.commit("base C", allow_pointless=True, rev_id='C')
         wt.commit("base D", allow_pointless=True, rev_id='D',
                 committer='Alternate <alt@foo.com>')
-
+        wt.add_parent_tree_id("aghost")
+        wt.commit("base E", allow_pointless=True, rev_id='E')
         return wt
 
     def assertUnsigned(self, repo, revision_id):
@@ -109,8 +106,11 @@ class SignMyCommits(tests.TestCaseWithTransport):
 
         out = self.run_bzr('sign-my-commits --dry-run')[0]
 
-        self.assertEquals('A\nB\nC\nSigned 3 revisions\n', out)
+        outlines = out.splitlines()
+        self.assertEquals(5, len(outlines))
+        self.assertEquals('Signed 4 revisions', outlines[-1])
         self.assertUnsigned(repo, 'A')
         self.assertUnsigned(repo, 'B')
         self.assertUnsigned(repo, 'C')
         self.assertUnsigned(repo, 'D')
+        self.assertUnsigned(repo, 'E')

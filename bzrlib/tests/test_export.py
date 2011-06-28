@@ -149,6 +149,25 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.assertEqual(a_time, t.stat('a').st_mtime)
         self.assertEqual(b_time, t.stat('b').st_mtime)
 
+    def test_subdir_files_per_timestamps(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        foo_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
+        builder.build_snapshot(None, None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('subdir', 'subdir-id', 'directory', '')),
+            ('add', ('subdir/foo.txt', 'foo-id', 'file', 'content\n'))],
+            timestamp=foo_time)
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        tree = b.basis_tree()
+        export.export(tree, 'target', format='dir', subdir='subdir',
+            per_file_timestamps=True)
+        t = self.get_transport('target')
+        self.assertEquals(foo_time, t.stat('foo.txt').st_mtime)
+
 
 class TarExporterTests(tests.TestCaseWithTransport):
 

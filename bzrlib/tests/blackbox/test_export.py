@@ -387,6 +387,16 @@ class TestExport(TestCaseWithTransport):
         har_st = os.stat('t/har')
         self.assertEquals(315532800, har_st.st_mtime)
 
+    def test_dir_export_partial_tree_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree(['branch/subdir/', 'branch/subdir/foo.txt'])
+        tree.smart_add(['branch'])
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
+        self.run_bzr('export --per-file-timestamps tpart branch/subdir')
+        foo_st = os.stat('tpart/foo.txt')
+        self.assertEquals(315532800, foo_st.st_mtime)
+
     def test_export_directory(self):
         """Test --directory option"""
         self.example_branch()
