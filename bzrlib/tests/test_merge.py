@@ -490,6 +490,22 @@ class TestMerge(TestCaseWithTransport):
         finally:
             tree_file.close()
 
+    def test_merge_rootless(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit("added a")
+        first_rev = tree.branch.revision_history()[0]
+        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+                                          _mod_revision.NULL_REVISION,
+                                          first_rev)
+        merger.merge_type = _mod_merge.Merge3Merger
+        conflict_count = merger.do_merge()
+        self.assertEqual(0, conflict_count)
+        tree.set_parent_ids([])
+
     def test_merge_add_into_deleted_root(self):
         # Yes, people actually do this.  And report bugs if it breaks.
         source = self.make_branch_and_tree('source', format='rich-root-pack')

@@ -278,6 +278,7 @@ class Merger(object):
         self.this_basis_tree = None
         self.other_tree = other_tree
         self.other_branch = None
+        self.allow_rootless_tree = True
         self.base_tree = base_tree
         self.ignore_zero = False
         self.backup_files = False
@@ -1944,7 +1945,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 interesting_files=None,
                 this_tree=None,
                 pb=None,
-                change_reporter=None):
+                change_reporter=None,
+                allow_rootless_tree=False):
     """Primary interface for merging.
 
     Typical use is probably::
@@ -1954,9 +1956,10 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     """
     if this_tree is None:
         raise errors.BzrError("bzrlib.merge.merge_inner requires a this_tree "
-                              "parameter as of bzrlib version 0.8.")
+                              "parameter")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb, change_reporter=change_reporter)
+    merger.allow_rootless_tree = allow_rootless_tree
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
