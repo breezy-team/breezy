@@ -471,8 +471,8 @@ class cmd_merge_upstream(Command):
 
     You must supply the source to import from, and in some cases
     the version number of the new release. The source can be a .tar.gz, .tar,
-    .tar.bz2, .tgz or .zip archive, a directory or a branch. The source may
-    also be a remote file described by a URL.
+    .tar.bz2, .tar.lzma, .tgz or .zip archive, a directory or a branch. The
+    source may also be a remote file described by a URL.
 
     In most situations the version can be guessed from the upstream source.
     If the upstream version can not be guessed or if it is guessed
@@ -577,6 +577,8 @@ class cmd_merge_upstream(Command):
             if v3:
                 if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
                     format = "bz2"
+                elif location.endswith(".tar.lzma"):
+                    format = "lzma"
             dest_name = tarball_name(package, version, format=format)
             tarball_filename = os.path.join(orig_dir, dest_name)
             try:

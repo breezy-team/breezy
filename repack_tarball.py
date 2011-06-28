@@ -36,8 +36,9 @@ import time
 import zipfile
 
 from bzrlib.errors import (
-                           FileExists,
-                           )
+    DependencyNotPresent,
+    FileExists,
+    )
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
@@ -64,8 +65,8 @@ class TgzRepacker(object):
         raise NotImplementedError(self.repack)
 
 
-class TgzTgzRepacker(TgzRepacker):
-    """A TgzRepacker that just copies."""
+class CopyRepacker(TgzRepacker):
+    """A Repacker that just copies."""
 
     def repack(self, target_f):
         shutil.copyfileobj(self.source_f, target_f)
@@ -87,6 +88,22 @@ class Tbz2TgzRepacker(TgzRepacker):
 
     def repack(self, target_f):
         content = bz2.decompress(self.source_f.read())
+        gz = gzip.GzipFile(mode='w', fileobj=target_f)
+        try:
+            gz.write(content)
+        finally:
+            gz.close()
+
+
+class TarLzma2TgzRepacker(TgzRepacker):
+    """A TgzRepacker that repacks from a .tar.lzma or .tar.xz."""
+
+    def repack(self, target_f):
+        try:
+            import lzma
+        except ImportError, e:
+            raise DependencyNotPresent('lzma', e)
+        content = lzma.decompress(self.source_f.read())
         gz = gzip.GzipFile(mode='w', fileobj=target_f)
         try:
             gz.write(content)
@@ -124,7 +141,8 @@ class ZipTgzRepacker(TgzRepacker):
 
 
 def get_filetype(filename):
-    types = [".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar", ".zip"]
+    types = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".tar.lzma", ".tbz2",
+             ".tar", ".zip"]
     for filetype in types:
         if filename.endswith(filetype):
             return filetype
@@ -134,11 +152,17 @@ def get_repacker_class(source_filename, force_gz=True):
     """Return the appropriate repacker based on the file extension."""
     filetype = get_filetype(source_filename)
     if (filetype == ".tar.gz" or filetype == ".tgz"):
-        return TgzTgzRepacker
+        return CopyRepacker
     if (filetype == ".tar.bz2" or filetype == ".tbz2"):
         if force_gz:
             return Tbz2TgzRepacker
-        return TgzTgzRepacker
+        return CopyRepacker
+    if filetype == ".tar.lzma":
+        if force_gz:
+            return TarLzma2TgzRepacker
+        return CopyRepacker
+    if filetype == ".tar.xz":
+        return TarLzma2TgzRepacker
     if filetype == ".tar":
         return TarTgzRepacker
     if filetype == ".zip":
