@@ -1187,7 +1187,8 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved push location: %s\n" % display_url)
+                if not is_quiet():
+                    self.outf.write("Using saved push location: %s\n" % display_url)
                 location = stored_loc
 
         _show_push_branch(br_from, revision_id, location, self.outf,
