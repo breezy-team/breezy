@@ -1409,6 +1409,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     revision_graph_can_have_wrong_parents = None
     # Does this format support rich root data?
     rich_root_data = None
+    # Does this format support explicitly versioned directories?
+    supports_versioned_directories = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
