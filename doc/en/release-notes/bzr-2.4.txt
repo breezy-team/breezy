@@ -58,6 +58,10 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Start implementing localization, starting with command help text (but not
+  the command options themselves). This will allow bootstrapping the bzr
+  internationalization process. (Inada Naoki)
+
 Testing
 *******
 
@@ -105,9 +109,8 @@ New Features
   (Jonathan Riddell, #274578)
 
 
-* New hook set_commit_message in bzrlib.msgeditor to set
-  a commit message and revision properties.  (Jonathan Riddell,
-  #274578)
+* New hook set_commit_message in bzrlib.msgeditor to set a commit message
+  and revision properties.  (Jonathan Riddell, #274578)
 
 * Support ``-S`` as an alias for ``--short`` for the ``log`` and
   ``missing`` commands. (Martin von Gagern, #38655)
@@ -118,8 +121,8 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* ``bzr annotate`` can be run without setting whoami data first. (Jonathan
-  Riddell, #667408)
+* ``bzr annotate`` can be run without setting whoami data first.
+  (Jonathan Riddell, #667408)
 
 Bug Fixes
 *********
@@ -369,8 +372,8 @@ Bug Fixes
 * Merging into empty branches now gives an error as this is currently
   not supported. (Jonathan Riddell, #242175)
 
-* Do not show exception to user on pointless commit error (Jonathan
-  Riddell #317357)
+* Do not show exception to user on pointless commit error.
+  (Jonathan Riddell #317357)
 
 * ``WT.update_basis_by_delta`` no longer requires that the deltas match
   the current WT state. This allows ``update_basis_by_delta`` to be used
