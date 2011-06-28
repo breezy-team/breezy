@@ -110,12 +110,14 @@ def export_tarball_generator(tree, ball, root, subdir=None, filtered=False,
     :param force_mtime: Option mtime to force, instead of using tree
         timestamps.
     """
-    for final_path, entry in _export_iter_entries(tree, subdir):
-        (item, fileobj) = prepare_tarball_item(
-            tree, root, final_path, entry, filtered, force_mtime)
-        ball.addfile(item, fileobj)
-        yield
-    ball.close()
+    try:
+        for final_path, entry in _export_iter_entries(tree, subdir):
+            (item, fileobj) = prepare_tarball_item(
+                tree, root, final_path, entry, filtered, force_mtime)
+            ball.addfile(item, fileobj)
+            yield
+    finally:
+        ball.close()
 
 
 def tgz_exporter_generator(tree, dest, root, subdir, filtered=False,
