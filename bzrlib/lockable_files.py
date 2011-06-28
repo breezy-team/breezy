@@ -203,10 +203,6 @@ class LockableFiles(object):
             finally:
                 self._lock_mode = self._lock_count = None
 
-    @property
-    def _lock_count(self):
-        return self._lock_count
-
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
         return self._lock_count >= 1
