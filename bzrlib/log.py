@@ -78,6 +78,7 @@ from bzrlib import (
 """)
 
 from bzrlib import (
+    lazy_regex,
     registry,
     )
 from bzrlib.osutils import (
@@ -826,7 +827,7 @@ def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
     """
     if search is None:
         return log_rev_iterator
-    searchRE = re.compile(search, re.IGNORECASE)
+    searchRE = lazy_regex.lazy_compile(search, re.IGNORECASE)
     return _filter_message_re(searchRE, log_rev_iterator)
 
 
