@@ -41,7 +41,7 @@ class Replacer(object):
     must not contain capturing groups.
     """
 
-    _expand = re.compile(ur'\\&')
+    _expand = lazy_regex.lazy_compile(ur'\\&')
 
     def __init__(self, source=None):
         self._pat = None
@@ -77,7 +77,7 @@ class Replacer(object):
 
     def __call__(self, text):
         if not self._pat:
-            self._pat = re.compile(
+            self._pat = lazy_regex.lazy_compile(
                     u'|'.join([u'(%s)' % p for p in self._pats]),
                     re.UNICODE)
         return self._pat.sub(self._do_sub, text)
@@ -282,7 +282,7 @@ class Globster(object):
         translator = Globster.pattern_info[Globster.identify(pattern)]["translator"]
         tpattern = '(%s)' % translator(pattern)
         try:
-            re_obj = re.compile(tpattern, re.UNICODE)
+            re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("") # force compile
         except errors.InvalidPattern, e:
             result = False
@@ -341,7 +341,7 @@ class _OrderedGlobster(Globster):
                 Globster.pattern_info[t]["prefix"])
 
 
-_slashes = re.compile(r'[\\/]+')
+_slashes = lazy_regex.lazy_compile(r'[\\/]+')
 def normalize_pattern(pattern):
     """Converts backslashes in path patterns to forward slashes.
 
