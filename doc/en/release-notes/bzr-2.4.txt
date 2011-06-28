@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``Branch.open`` is now about 3x faster (about 2ms instead of 6.5ms).
+  (Andrew Bennetts).
+
 Bug Fixes
 *********
 
