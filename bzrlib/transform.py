@@ -2945,7 +2945,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-                        if file_id in basis_tree:
+                        if basis_tree.has_id(file_id):
                             if wt_sha1 != basis_tree.get_file_sha1(file_id):
                                 keep_content = True
                         elif target_kind is None and not target_versioned:
@@ -2981,8 +2981,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
                     new_sha1 = target_tree.get_file_sha1(file_id)
-                    if (file_id in basis_tree and new_sha1 ==
-                        basis_tree.get_file_sha1(file_id)):
+                    if (basis_tree.has_id(file_id) and
+                        new_sha1 == basis_tree.get_file_sha1(file_id)):
                         if file_id in merge_modified:
                             del merge_modified[file_id]
                     else:
@@ -3139,7 +3139,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'unversioned parent':
             file_id = tt.inactive_file_id(conflict[1])
             # special-case the other tree root (move its children instead)
-            if path_tree and file_id in path_tree:
+            if path_tree and path_tree.has_id(file_id):
                 if path_tree.path2id('') == file_id:
                     # This is the root entry, skip it
                     continue
