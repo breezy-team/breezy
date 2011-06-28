@@ -3016,6 +3016,8 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
 
+    supports_versioned_directories = None
+
     @classmethod
     def find_format_string(klass, a_bzrdir):
         """Return format name for the working tree object in a_bzrdir."""
