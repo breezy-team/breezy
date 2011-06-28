@@ -1966,7 +1966,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     """
     if this_tree is None:
         raise errors.BzrError("bzrlib.merge.merge_inner requires a this_tree "
-                              "parameter as of bzrlib version 0.8.")
+                              "parameter")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb, change_reporter=change_reporter)
     merger.backup_files = backup_files
