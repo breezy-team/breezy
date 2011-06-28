@@ -171,8 +171,8 @@ class TestExportCommandHelp(PoEntryTestCase):
 
         export_pot._write_command_help(self._outf, cmd_Demo())
         result = self._outf.getvalue()
-        # We don't concern abount filename and lineno here.
-        result = re.sub(r'^#: [^\n]+\n', '', result, flags=re.MULTILINE)
+        # We don't care about filename and lineno here.
+        result = re.sub(r'(?m)^#: [^\n]+\n', '', result)
 
         self.assertEqualDiff(
                 'msgid "A sample command."\n'
