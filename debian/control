@@ -30,6 +30,7 @@ Depends: python-bzrlib (>= ${source:Version}),
          python-bzrlib (<= ${source:Version}.1~),
          ${misc:Depends},
          ${python:Depends}
+Breaks: python-bzrlib (<< 2.4.0~beta3~)
 Recommends: bzrtools
 Suggests: bzr-doc, bzr-gtk, bzr-svn, python-bzrlib.tests
 Description: easy to use distributed version control system
