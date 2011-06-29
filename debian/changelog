@@ -1,3 +1,9 @@
+bzr (2.4.0~beta4-5) UNRELEASED; urgency=low
+
+  * Fix typo in package description. Thanks Paul Stewart.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 27 Jun 2011 10:31:00 +0200
+
 bzr (2.4.0~beta4-4) unstable; urgency=low
 
   * Add 09_utf8_config_files.
@@ -19,6 +25,12 @@ bzr (2.4.0~beta4-2) unstable; urgency=low
   * Fix tests when home directory does not exist. Thanks Vincent Ladeuil.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 17 Jun 2011 16:10:52 +0200
+
+bzr (2.4.0~beta4-1ubuntu1) oneiric; urgency=low
+
+  * Merge from Debian.
+
+ -- Jelmer Vernooij <jelmer@ubuntu.com>  Fri, 17 Jun 2011 12:30:59 +0200
 
 bzr (2.4.0~beta4-1) unstable; urgency=low
 
@@ -55,6 +67,15 @@ bzr (2.4.0~beta2-3) unstable; urgency=low
   * Update 05_fix_locale_test to cope with home directory not existing.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 01 May 2011 01:52:14 +0200
+
+bzr (2.4.0~beta2-2ubuntu1) oneiric; urgency=low
+
+  * Merge from Debian experimental.
+   + Remove build dependencies not present in main: python-medusa,
+     python-subunit, python-meliae, python-lzma.
+   + Disable parallel testing.
+
+ -- Jelmer Vernooij <jelmer@ubuntu.com>  Sat, 30 Apr 2011 16:20:58 +0200
 
 bzr (2.4.0~beta2-2) experimental; urgency=low
 
@@ -113,6 +134,13 @@ bzr (2.3.1-1) unstable; urgency=low
   * Switch to debhelper 7, drop cdbs.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 13 Mar 2011 15:08:21 +0100
+
+bzr (2.3.0-7) unstable; urgency=low
+
+  * Switch to dh_python2.
+  * Switch to debhelper 7, drop cdbs.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 07 Mar 2011 12:02:02 +0100
 
 bzr (2.3.0-6) unstable; urgency=low
 
