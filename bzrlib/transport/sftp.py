@@ -114,12 +114,6 @@ class SFTPLock(object):
         except FileExists:
             raise LockError('File %r already locked' % (self.path,))
 
-    def __del__(self):
-        """Should this warn, or actually try to cleanup?"""
-        if self.lock_file:
-            warning("SFTPLock %r not explicitly unlocked" % (self.path,))
-            self.unlock()
-
     def unlock(self):
         if not self.lock_file:
             return
