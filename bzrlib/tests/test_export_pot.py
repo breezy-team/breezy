@@ -18,9 +18,13 @@ from cStringIO import StringIO
 import textwrap
 
 from bzrlib import (
+    commands,
     export_pot,
     tests,
     )
+
+import re
+
 
 class TestEscape(tests.TestCase):
 
@@ -145,3 +149,45 @@ class TestPoentryPerPergraph(PoEntryTestCase):
                 "EGG\\n"
                 msgstr ""\n
                 ''')
+
+
+class TestExportCommandHelp(PoEntryTestCase):
+
+    def test_command_help(self):
+
+        class cmd_Demo(commands.Command):
+            __doc__ = """A sample command.
+
+            :Usage:
+                bzr demo
+
+            :Examples:
+                Example 1::
+
+                    cmd arg1
+
+            Blah Blah Blah
+            """
+
+        export_pot._write_command_help(self._outf, cmd_Demo())
+        result = self._outf.getvalue()
+        # We don't care about filename and lineno here.
+        result = re.sub(r'(?m)^#: [^\n]+\n', '', result)
+
+        self.assertEqualDiff(
+                'msgid "A sample command."\n'
+                'msgstr ""\n'
+                '\n'                # :Usage: should not be translated.
+                'msgid ""\n'
+                '":Examples:\\n"\n'
+                '"    Example 1::"\n'
+                'msgstr ""\n'
+                '\n'
+                'msgid "        cmd arg1"\n'
+                'msgstr ""\n'
+                '\n'
+                'msgid "Blah Blah Blah"\n'
+                'msgstr ""\n'
+                '\n',
+                result
+                )

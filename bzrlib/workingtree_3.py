@@ -102,6 +102,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
     missing_parent_conflicts = True
 
+    supports_versioned_directories = True
+
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"

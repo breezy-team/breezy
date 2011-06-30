@@ -1462,6 +1462,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat):
 
     missing_parent_conflicts = True
 
+    supports_versioned_directories = True
+
     _lock_class = LockDir
     _lock_file_name = 'lock'
 

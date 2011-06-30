@@ -38,6 +38,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``Branch.open`` is now about 3x faster (about 2ms instead of 6.5ms).
+  (Andrew Bennetts).
+
 Bug Fixes
 *********
 
@@ -45,7 +48,17 @@ Bug Fixes
   decoded as UTF-8 or when it cannot be parsed.
   (Vincent Ladeuil, #502060, #688677, #792246)
 
+* Generate a single conflict (instead of two) when merging a branch
+  modifying and renaming a file in a branch that deleted it (or vice-versa).
+  (Vincent Ladeuil, #688101)
+
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
+
+* ``GraphThunkIdsToKeys.merge_sort`` now properly returns
+  keys rather than ids. (Jelmer Vernooij, #799677)
+
+* ``TreeTransformBase.fixup_new_roots`` can now check that a tree root
+  is present. (Jelmer Vernooij, #801257)
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
@@ -61,11 +74,19 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* New attributes ``WorkingTreeFormat.supports_versioned_directories`` and
+  ``RepositoryFormat.supports_versioned_directories``.
+  (Jelmer Vernooij, #765815)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* Start implementing localization, starting with command help text (but not
+  the command options themselves). This will allow bootstrapping the bzr
+  internationalization process. (Inada Naoki)
 
 Testing
 *******
@@ -105,7 +126,7 @@ New Features
 .. New commands, options, etc that users may wish to try out.
 
 * Hooks have been added for config stacks: ``get``, ``set`` and ``remove``
-  are called when an option is repsectively read, modified or deleted. Also
+  are called when an option is respectively read, modified or deleted. Also
   added ``load`` and ``save`` hooks for config stores, called when the
   stores are loaded or saved.  (Vincent Ladeuil)
 
@@ -114,9 +135,8 @@ New Features
   (Jonathan Riddell, #274578)
 
 
-* New hook set_commit_message in bzrlib.msgeditor to set
-  a commit message and revision properties.  (Jonathan Riddell,
-  #274578)
+* New hook set_commit_message in bzrlib.msgeditor to set a commit message
+  and revision properties.  (Jonathan Riddell, #274578)
 
 * Support ``-S`` as an alias for ``--short`` for the ``log`` and
   ``missing`` commands. (Martin von Gagern, #38655)
@@ -127,8 +147,8 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* ``bzr annotate`` can be run without setting whoami data first. (Jonathan
-  Riddell, #667408)
+* ``bzr annotate`` can be run without setting whoami data first.
+  (Jonathan Riddell, #667408)
 
 Bug Fixes
 *********
@@ -199,6 +219,14 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* Checking for a file id in a `Tree` or `Inventory` using ``in`` is now
+  deprecated.  Instead, use `has_id`.
+  (Martin Pool)
+
+* Exporters are now all exposed as generators, rather than as single-call
+  functions, so that calling code can take stream the output.
+  (Xaav, Martin Pool)
 
 * Information about held lockdir locks returned from eg `LockDir.peek` is
   now represented as a `LockHeldInfo` object, rather than a plain
@@ -378,8 +406,8 @@ Bug Fixes
 * Merging into empty branches now gives an error as this is currently
   not supported. (Jonathan Riddell, #242175)
 
-* Do not show exception to user on pointless commit error (Jonathan
-  Riddell #317357)
+* Do not show exception to user on pointless commit error.
+  (Jonathan Riddell #317357)
 
 * ``WT.update_basis_by_delta`` no longer requires that the deltas match
   the current WT state. This allows ``update_basis_by_delta`` to be used

@@ -513,7 +513,7 @@ class Branch(controldir.ControlComponent):
         rev_iter = iter(merge_sorted_revisions)
         if start_revision_id is not None:
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id != start_revision_id:
                     continue
                 else:
@@ -525,19 +525,19 @@ class Branch(controldir.ControlComponent):
         if stop_revision_id is None:
             # Yield everything
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
         elif stop_rule == 'exclude':
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id == stop_revision_id:
                     return
                 yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
         elif stop_rule == 'include':
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
                 if rev_id == stop_revision_id:
@@ -549,7 +549,7 @@ class Branch(controldir.ControlComponent):
             ancestors = graph.find_unique_ancestors(start_revision_id,
                                                     [stop_revision_id])
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id not in ancestors:
                     continue
                 yield (rev_id, node.merge_depth, node.revno,
@@ -565,7 +565,7 @@ class Branch(controldir.ControlComponent):
             reached_stop_revision_id = False
             revision_id_whitelist = []
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id == left_parent:
                     # reached the left parent after the stop_revision
                     return
@@ -2942,7 +2942,11 @@ class BzrBranch8(BzrBranch):
         # you can always ask for the URL; but you might not be able to use it
         # if the repo can't support stacking.
         ## self._check_stackable_repo()
-        stacked_url = self._get_config_location('stacked_on_location')
+        # stacked_on_location is only ever defined in branch.conf, so don't
+        # waste effort reading the whole stack of config files.
+        config = self.get_config()._get_branch_data_config()
+        stacked_url = self._get_config_location('stacked_on_location',
+            config=config)
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
