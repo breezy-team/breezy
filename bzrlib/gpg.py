@@ -300,11 +300,14 @@ class GPGStrategy(object):
                             "No GnuPG key results for pattern: {}"
                                 ).format(pattern))
 
-    def do_verifications(self, revisions, repository):
+    def do_verifications(self, revisions, repository,
+                            process_events_callback=None):
         """do verifications on a set of revisions
         
         :param revisions: list of revision ids to verify
         :param repository: repository object
+        :param process_events_callback: method to call for GUI frontends that
+                                                want to keep their UI refreshed
         
         :return: count dictionary of results of each type,
                  result list for each revision,
@@ -323,6 +326,8 @@ class GPGStrategy(object):
             count[verification_result] += 1
             if verification_result != SIGNATURE_VALID:
                 all_verifiable = False
+            if process_events_callback is not None:
+                process_events_callback()
         return (count, result, all_verifiable)
 
     def verbose_valid_message(self, result):
