@@ -76,7 +76,8 @@ disabled.')
 
 
 class LoopbackGPGStrategy(object):
-    """A GPG Strategy that acts like 'cat' - data is just passed through."""
+    """A GPG Strategy that acts like 'cat' - data is just passed through.
+    Used in tests."""
 
     @staticmethod
     def verify_signatures_available():
@@ -119,24 +120,24 @@ class LoopbackGPGStrategy(object):
         return (count, result, all_verifiable)
 
     def valid_commits_message(self, count):
-        return i18n.gettext("{0} commits with valid signatures").format(
+        return i18n.gettext(u"{0} commits with valid signatures").format(
                                         count[SIGNATURE_VALID])            
 
     def unknown_key_message(self, count):
-        return i18n.ngettext("{0} commit with unknown key",
-                             "{0} commits with unknown keys",
+        return i18n.ngettext(u"{0} commit with unknown key",
+                             u"{0} commits with unknown keys",
                              count[SIGNATURE_KEY_MISSING]).format(
                                         count[SIGNATURE_KEY_MISSING])
 
     def commit_not_valid_message(self, count):
-        return i18n.ngettext("{0} commit not valid",
-                             "{0} commits not valid",
+        return i18n.ngettext(u"{0} commit not valid",
+                             u"{0} commits not valid",
                              count[SIGNATURE_NOT_VALID]).format(
                                             count[SIGNATURE_NOT_VALID])
 
     def commit_not_signed_message(self, count):
-        return i18n.ngettext("{0} commit not signed",
-                             "{0} commits not signed",
+        return i18n.ngettext(u"{0} commit not signed",
+                             u"{0} commits not signed",
                              count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
 
