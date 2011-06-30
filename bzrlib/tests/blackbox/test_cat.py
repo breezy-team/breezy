@@ -39,6 +39,12 @@ class TestCat(tests.TestCaseWithTransport):
 
         self.assertEquals(self.run_bzr(['cat', 'a'])[0], 'foo\n')
 
+        # On Windows, we used to have a bug where newlines got changed into
+        # crlf, whereas cat ought to write out the file exactly as it's
+        # recorded (by default.)  That problem can't be reproduced in-process,
+        # so we need just one test here that 
+        self.assertEquals(self.run_bzr_subprocess(['cat', 'a'])[0], 'foo\n')
+
         tree.commit(message='2')
         self.assertEquals(self.run_bzr(['cat', 'a'])[0], 'baz\n')
         self.assertEquals(self.run_bzr(
