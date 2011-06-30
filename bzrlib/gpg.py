@@ -30,9 +30,22 @@ from bzrlib import (
     errors,
     trace,
     ui,
-    i18n,
     )
 """)
+
+class i18n:
+    """this class is ready to use bzrlib.i18n but bzrlib.i18n is not ready to
+    use so here is a stub until it is"""
+    @staticmethod
+    def gettext(string):
+        return string
+        
+    @staticmethod
+    def ngettext(single, plural, number):
+        if number == 1:
+            return single
+        else:
+            return plural
 
 #verification results
 SIGNATURE_VALID = 0
