@@ -161,6 +161,9 @@ class GPGStrategy(object):
 
     @staticmethod
     def verify_signatures_available():
+        """
+        :return: boolean if this strategy can verify signatures
+        """
         try:
             import gpgme
             return True
