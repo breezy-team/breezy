@@ -1,0 +1,25 @@
+Special character handling in URLs
+==================================
+
+Internally bzr treats paths to branches as URLs. For convenience, it
+generally allows users to specify locations as regular paths, and then
+will determine the appropriate URL representation. There are a few
+characters which have special meaning in URLs and need careful handling to
+avoid ambiguities.
+
+If a string is supplied which appears to be a valid fully qualified URL,
+then bzr will not try to escape any characters. For example, if you have a
+directory named '/tmp/%2False' these are all valid ways of accessing the
+content::
+  cd /tmp
+  bzr log /tmp/%2False
+  bzr log %2False
+  bzr log file:///tmp/%2EFalse
+
+These are not valid::
+  bzr log file:///tmp/%2False (refers to a file called /tmp/False)
+  bzr log %2EFalse (refers to a file called /tmp/%2EFalse)
+
+Comma also has special meaning in URLs, because it denotes `segment parameters`_
+
+_`segment parameters`: http://www.ietf.org/rfc/rfc3986.txt
