@@ -161,6 +161,8 @@ editor=vim
 change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
+validate_signatures_in_log=true
+acceptable_keys=amy
 user_global_option=something
 bzr.mergetool.sometool=sometool {base} {this} {other} -o {result}
 bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
@@ -512,6 +514,14 @@ class TestConfig(tests.TestCase):
     def test_log_format_default(self):
         my_config = config.Config()
         self.assertEqual('long', my_config.log_format())
+
+    def test_acceptable_keys_default(self):
+        my_config = config.Config()
+        self.assertEqual(None, my_config.acceptable_keys())
+
+    def test_validate_signatures_in_log_default(self):
+        my_config = config.Config()
+        self.assertEqual(False, my_config.validate_signatures_in_log())
 
     def test_get_change_editor(self):
         my_config = InstrumentedConfig()
@@ -1239,6 +1249,14 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_configured_logformat(self):
         my_config = self._get_sample_config()
         self.assertEqual("short", my_config.log_format())
+
+    def test_configured_acceptable_keys(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("amy", my_config.acceptable_keys())
+
+    def test_configured_validate_signatures_in_log(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(True, my_config.validate_signatures_in_log())
 
     def test_get_alias(self):
         my_config = self._get_sample_config()

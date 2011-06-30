@@ -37,12 +37,16 @@ def gettext(message):
     return _translations.ugettext(message)
 
 
-def ngettext(s, p, n):
-    """Translate message based on `n`.
+def ngettext(singular, plural, number):
+    """Translate message with plural forms based on `number`.
+
+    :param singular: English language message in singular form
+    :param plural: English language message in plural form
+    :param number: the number this message should be translated for
 
     :returns: translated message as unicode.
     """
-    return _translations.ungettext(s, p, n)
+    return _translations.ungettext(singular, plural, number)
 
 
 def N_(msg):

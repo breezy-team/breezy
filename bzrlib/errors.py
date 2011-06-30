@@ -1800,10 +1800,34 @@ class NoEmailInUsername(BzrError):
 
 class SigningFailed(BzrError):
 
-    _fmt = 'Failed to gpg sign data with command "%(command_line)s"'
+    _fmt = 'Failed to GPG sign data with command "%(command_line)s"'
 
     def __init__(self, command_line):
         BzrError.__init__(self, command_line=command_line)
+
+
+class SignatureVerificationFailed(BzrError):
+
+    _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)
+
+
+class DependencyNotPresent(BzrError):
+
+    _fmt = 'Unable to import library "%(library)s": %(error)s'
+
+    def __init__(self, library, error):
+        BzrError.__init__(self, library=library, error=error)
+
+
+class GpgmeNotInstalled(DependencyNotPresent):
+
+    _fmt = 'python-gpgme is not installed, it is needed to verify signatures'
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'gpgme', error)
 
 
 class WorkingTreeNotRevision(BzrError):
@@ -2062,14 +2086,6 @@ class BzrBadParameterUnicode(BzrBadParameter):
 class BzrBadParameterContainsNewline(BzrBadParameter):
 
     _fmt = "Parameter %(param)s contains a newline."
-
-
-class DependencyNotPresent(BzrError):
-
-    _fmt = 'Unable to import library "%(library)s": %(error)s'
-
-    def __init__(self, library, error):
-        BzrError.__init__(self, library=library, error=error)
 
 
 class ParamikoNotPresent(DependencyNotPresent):

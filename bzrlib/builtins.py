@@ -49,6 +49,7 @@ from bzrlib import (
     ui,
     urlutils,
     views,
+    gpg,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
@@ -2394,7 +2395,9 @@ class cmd_log(Command):
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
-                   )
+                   ),
+            Option('signatures',
+                   help='Show digital signature validity'),
             ]
     encoding_type = 'replace'
 
@@ -2413,6 +2416,7 @@ class cmd_log(Command):
             include_merges=False,
             authors=None,
             exclude_common_ancestry=False,
+            signatures=False,
             ):
         from bzrlib.log import (
             Logger,
@@ -2472,6 +2476,13 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
+        if b.get_config().validate_signatures_in_log():
+            signatures = True
+
+        if signatures:
+            if not gpg.GPGStrategy.verify_signatures_available():
+                raise errors.GpgmeNotInstalled(None)
+
         # Decide on the type of delta & diff filtering to use
         # TODO: add an --all-files option to make this configurable & consistent
         if not verbose:
@@ -2523,6 +2534,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry,
+            signature=signatures
             )
         Logger(b, rqst).show(lf)
 
@@ -6220,7 +6232,9 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
-        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
+        ('cmd_verify_signatures', [],
+                                        'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
