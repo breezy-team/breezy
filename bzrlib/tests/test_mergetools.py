@@ -81,8 +81,11 @@ class TestCheckAvailability(tests.TestCaseInTempDir):
         self.assertTrue(mergetools.check_availability(sys.executable))
 
     def test_exe_on_path(self):
-        self.assertTrue(mergetools.check_availability(
-            os.path.basename(sys.executable)))
+        if sys.platform == 'win32':
+            exe = 'cmd.exe'
+        else:
+            exe = 'sh'
+        self.assertTrue(mergetools.check_availability(exe))
 
     def test_nonexistent(self):
         self.assertFalse(mergetools.check_availability('DOES NOT EXIST'))
