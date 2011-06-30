@@ -250,6 +250,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                             plain))
 
     def test_verify_invalid(self):
+        self.requireFeature(features.gpgme)
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -281,6 +282,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
     def test_set_acceptable_keys_unknown(self):
+        self.requireFeature(features.gpgme)
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("unknown")
         self.assertEqual(my_gpg.acceptable_keys, [])
