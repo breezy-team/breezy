@@ -37,6 +37,11 @@ Bug Fixes
   modifying and renaming a file in a branch that deleted it (or vice-versa).
   (Vincent Ladeuil, #688101)
 
+* Give a more helpful message when the bzr executable doesn't match the
+  library.  (This typically happens because of a misconfigured PYTHONPATH
+  or half-installed bzr.)  
+  (Martin Pool, #804553)
+
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
 
 * ``GraphThunkIdsToKeys.merge_sort`` now properly returns
