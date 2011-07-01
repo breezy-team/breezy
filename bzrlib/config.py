@@ -88,6 +88,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    lazy_regex,
     lockdir,
     mail_client,
     mergetools,
@@ -2943,9 +2944,10 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfigOption(name)
 
     def _show_matching_options(self, name, directory, scope):
-        name = re.compile(name)
+        name = lazy_regex.lazy_compile(name)
         # We want any error in the regexp to be raised *now* so we need to
-        # avoid the delay introduced by the lazy regexp.
+        # avoid the delay introduced by the lazy regexp.  But, we still do
+        # want the nicer errors raised by lazy_regex.
         name._compile_and_collapse()
         cur_conf_id = None
         cur_section = None
