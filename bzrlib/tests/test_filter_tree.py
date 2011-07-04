@@ -17,6 +17,7 @@
 """Tests for ContentFilterTree"""
 
 import tarfile
+import zipfile
 
 from bzrlib import (
     export,
@@ -57,3 +58,11 @@ class TestFilterTree(tests.TestCaseWithTransport):
         self.assertEquals(
             'HELLO WORLD',
             ball.extractfile('out/hello').read())
+
+    def test_zip_export_content_filter_tree(self):
+        self.make_tree()
+        export.export(self.filter_tree, 'out.zip')
+        zipf = zipfile.ZipFile('out.zip', 'r')
+        self.assertEquals(
+            'HELLO WORLD',
+            zipf.read('out/hello'))

@@ -26,10 +26,6 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.export import _export_iter_entries
-from bzrlib.filters import (
-    ContentFilterContext,
-    filtered_output_bytes,
-    )
 
 
 def prepare_tarball_item(tree, root, final_path, entry, filtered=False,
