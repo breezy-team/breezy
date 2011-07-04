@@ -19,6 +19,8 @@
 
 import os
 import time
+import warnings
+
 from bzrlib import (
     errors,
     pyutils,
@@ -91,7 +93,8 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
         a directory to start exporting from.
 
     :param filtered: If True, content filtering is applied to the exported
-        files.
+        files.  Deprecated in favour of passing a ContentFilterTree
+        as the source.
 
     :param per_file_timestamps: Whether to use the timestamp stored in the tree
         rather than now(). This will do a revision lookup for every file so
@@ -122,13 +125,18 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
 
     trace.mutter('export version %r', tree)
 
+    if filtered:
+        from bzrlib.filter_tree import ContentFilterTree
+        warnings.warn(
+            "passing filtered=True to export is deprecated in bzr 2.4",
+            stacklevel=2)
+        tree = ContentFilterTree(tree, tree._content_filter_stack)
+
+    tree.lock_read()
     try:
-        tree.lock_read()
-
-        for _ in _exporters[format](tree, dest, root, subdir,
-                                    filtered=filtered,
-                                    force_mtime=force_mtime, fileobj=fileobj):
-
+        for _ in _exporters[format](
+            tree, dest, root, subdir, filtered=filtered,
+            force_mtime=force_mtime, fileobj=fileobj):
             yield
     finally:
         tree.unlock()
@@ -153,7 +161,7 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
         the entire tree, and anything else should specify the relative path to
         a directory to start exporting from.
     :param filtered: If True, content filtering is applied to the
-                     files exported.
+        files exported.  Deprecated in favor of passing an ContentFilterTree.
     :param per_file_timestamps: Whether to use the timestamp stored in the
         tree rather than now(). This will do a revision lookup
         for every file so will be significantly slower.

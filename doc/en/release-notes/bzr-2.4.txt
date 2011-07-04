@@ -74,6 +74,11 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* There is a new class `ContentFilterTree` that provides a facade for 
+  content filtering.  The `filtered` parameter to `export` is deprecated 
+  in favor of passing a filtered tree. 
+  (Martin Pool)
+
 * New attributes ``WorkingTreeFormat.supports_versioned_directories`` and
   ``RepositoryFormat.supports_versioned_directories``.
   (Jelmer Vernooij, #765815)
