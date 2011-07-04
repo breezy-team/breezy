@@ -14,8 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for ContentFilterTree"""
+
+import tarfile
 
 from bzrlib import (
+    export,
     filter_tree,
     tests,
     )
@@ -44,3 +48,12 @@ class TestFilterTree(tests.TestCaseWithTransport):
         self.assertEquals(
             self.filter_tree.get_file_text('hello-id'),
             'HELLO WORLD')
+
+    def test_tar_export_content_filter_tree(self):
+        # TODO: this could usefully be run generically across all exporters.
+        self.make_tree()
+        export.export(self.filter_tree, "out.tgz")
+        ball = tarfile.open("out.tgz", "r:gz")
+        self.assertEquals(
+            'HELLO WORLD',
+            ball.extractfile('out/hello').read())

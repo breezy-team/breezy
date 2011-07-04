@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a non-versioned directory."""
+"""Export a tree to a tarball."""
 
 import os
 import StringIO
@@ -62,16 +62,15 @@ def prepare_tarball_item(tree, root, final_path, entry, filtered=False,
         else:
             item.mode = 0644
         if filtered:
-            chunks = tree.get_file_lines(entry.file_id)
-            filters = tree._content_filter_stack(final_path)
-            context = ContentFilterContext(final_path, tree, entry)
-            contents = filtered_output_bytes(chunks, filters, context)
-            content = ''.join(contents)
-            item.size = len(content)
-            fileobj = StringIO.StringIO(content)
-        else:
-            item.size = tree.get_file_size(entry.file_id)
-            fileobj = tree.get_file(entry.file_id)
+            raise AssertionError("exporters should now be given a "
+                "ContentFilterTree instead of filtered=True")
+        # This brings the whole file into memory, but that's almost needed for
+        # the tarfile contract, which wants the size of the file up front.  We
+        # want to make sure it doesn't change, and we need to read it in one
+        # go for content filtering.
+        content = tree.get_file_text(entry.file_id)
+        item.size = len(content)
+        fileobj = StringIO.StringIO(content)
     elif entry.kind == "directory":
         item.type = tarfile.DIRTYPE
         item.name += '/'

@@ -58,3 +58,25 @@ class ContentFilterTree(tree.Tree):
         contents = filtered_output_bytes(chunks, filters, context)
         content = ''.join(contents)
         return content
+
+    def has_filename(self, filename):
+        return self.backing_tree.has_filename
+
+    def is_executable(self, file_id, path=None):
+        return self.backing_tree.is_executable(file_id, path)
+
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=None):
+        # NB: This simply returns the parent tree's entries; the length may be
+        # wrong but it can't easily be calculated without filtering the whole
+        # text.  Currently all callers cope with this; perhaps they should be
+        # updated to a narrower interface that only provides things guaranteed
+        # cheaply available across all trees. -- mbp 20110705
+        return self.backing_tree.iter_entries_by_dir(
+            specific_file_ids=specific_file_ids,
+            yield_parents=yield_parents)
+
+    def lock_read(self):
+        return self.backing_tree.lock_read()
+
+    def unlock(self):
+        return self.backing_tree.unlock()
