@@ -76,7 +76,8 @@ API Changes
 
 * There is a new class `ContentFilterTree` that provides a facade for 
   content filtering.  The `filtered` parameter to `export` is deprecated 
-  in favor of passing a filtered tree. 
+  in favor of passing a filtered tree, and the specific exporter plugins
+  no longer support it.
   (Martin Pool)
 
 * New attributes ``WorkingTreeFormat.supports_versioned_directories`` and

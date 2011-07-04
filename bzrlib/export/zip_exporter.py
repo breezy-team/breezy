@@ -27,10 +27,6 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.export import _export_iter_entries
-from bzrlib.filters import (
-    ContentFilterContext,
-    filtered_output_bytes,
-    )
 from bzrlib.trace import mutter
 
 
@@ -44,7 +40,7 @@ _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
-def zip_exporter_generator(tree, dest, root, subdir=None, filtered=False,
+def zip_exporter_generator(tree, dest, root, subdir=None,
     force_mtime=None, fileobj=None):
     """ Export this tree to a new zip file.
 
@@ -77,14 +73,7 @@ def zip_exporter_generator(tree, dest, root, subdir=None, filtered=False,
                             date_time=date_time)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
-                if filtered:
-                    chunks = tree.get_file_lines(file_id)
-                    filters = tree._content_filter_stack(dp)
-                    context = ContentFilterContext(dp, tree, ie)
-                    contents = filtered_output_bytes(chunks, filters, context)
-                    content = ''.join(contents)
-                else:
-                    content = tree.get_file_text(file_id)
+                content = tree.get_file_text(file_id)
                 zipf.writestr(zinfo, content)
             elif ie.kind == "directory":
                 # Directories must contain a trailing slash, to indicate

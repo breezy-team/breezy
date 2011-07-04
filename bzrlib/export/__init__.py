@@ -60,10 +60,10 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir, filtered, force_mtime, fileobj):
+    def _loader(tree, dest, root, subdir, force_mtime, fileobj):
         func = pyutils.get_named_object(module, funcname)
-        return func(tree, dest, root, subdir, filtered=filtered,
-                    force_mtime=force_mtime, fileobj=fileobj)
+        return func(tree, dest, root, subdir, force_mtime=force_mtime,
+            fileobj=fileobj)
 
     register_exporter(scheme, extensions, _loader)
 
@@ -131,11 +131,21 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
             "passing filtered=True to export is deprecated in bzr 2.4",
             stacklevel=2)
         tree = ContentFilterTree(tree, tree._content_filter_stack)
+        # We don't want things re-filtered by the specific exporter.
+        filtered = False
+
+    tree.lock_read()
+    if filtered:
+        from bzrlib.filter_tree import ContentFilterTree
+        warnings.warn(
+            "passing filtered=True to export is deprecated in bzr 2.4",
+            stacklevel=2)
+        tree = ContentFilterTree(tree, tree._content_filter_stack)
 
     tree.lock_read()
     try:
         for _ in _exporters[format](
-            tree, dest, root, subdir, filtered=filtered,
+            tree, dest, root, subdir,
             force_mtime=force_mtime, fileobj=fileobj):
             yield
     finally:
