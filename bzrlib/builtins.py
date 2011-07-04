@@ -3026,6 +3026,10 @@ class cmd_cat(Command):
 
         old_file_id = rev_tree.path2id(relpath)
 
+        # TODO: Split out this code to something that generically finds the
+        # best id for a path across one or more trees; it's like
+        # find_ids_across_trees but restricted to find just one. -- mbp
+        # 20110705.
         if name_from_revision:
             # Try in revision if requested
             if old_file_id is None:
