@@ -48,78 +48,66 @@ from bzrlib.tests import (
 class TestTransport(tests.TestCase):
     """Test the non transport-concrete class functionality."""
 
-    # FIXME: These tests should use addCleanup() and/or overrideAttr() instead
-    # of try/finally -- vila 20100205
-
     def test__get_set_protocol_handlers(self):
         handlers = transport._get_protocol_handlers()
-        self.assertNotEqual([], handlers.keys( ))
-        try:
-            transport._clear_protocol_handlers()
-            self.assertEqual([], transport._get_protocol_handlers().keys())
-        finally:
-            transport._set_protocol_handlers(handlers)
+        self.assertNotEqual([], handlers.keys())
+        transport._clear_protocol_handlers()
+        self.addCleanup(transport._set_protocol_handlers, handlers)
+        self.assertEqual([], transport._get_protocol_handlers().keys())
 
     def test_get_transport_modules(self):
         handlers = transport._get_protocol_handlers()
+        self.addCleanup(transport._set_protocol_handlers, handlers)
         # don't pollute the current handlers
         transport._clear_protocol_handlers()
         class SampleHandler(object):
             """I exist, isnt that enough?"""
-        try:
-            transport._clear_protocol_handlers()
-            transport.register_transport_proto('foo')
-            transport.register_lazy_transport('foo',
-                                              'bzrlib.tests.test_transport',
-                                              'TestTransport.SampleHandler')
-            transport.register_transport_proto('bar')
-            transport.register_lazy_transport('bar',
-                                              'bzrlib.tests.test_transport',
-                                              'TestTransport.SampleHandler')
-            self.assertEqual([SampleHandler.__module__,
-                              'bzrlib.transport.chroot',
-                              'bzrlib.transport.pathfilter'],
-                             transport._get_transport_modules())
-        finally:
-            transport._set_protocol_handlers(handlers)
+        transport._clear_protocol_handlers()
+        transport.register_transport_proto('foo')
+        transport.register_lazy_transport('foo',
+                                            'bzrlib.tests.test_transport',
+                                            'TestTransport.SampleHandler')
+        transport.register_transport_proto('bar')
+        transport.register_lazy_transport('bar',
+                                            'bzrlib.tests.test_transport',
+                                            'TestTransport.SampleHandler')
+        self.assertEqual([SampleHandler.__module__,
+                            'bzrlib.transport.chroot',
+                            'bzrlib.transport.pathfilter'],
+                            transport._get_transport_modules())
 
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = transport._get_protocol_handlers()
+        self.addCleanup(transport._set_protocol_handlers, saved_handlers)
         # don't pollute the current handlers
         transport._clear_protocol_handlers()
+        transport.register_transport_proto('foo')
+        transport.register_lazy_transport(
+            'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
         try:
-            transport.register_transport_proto('foo')
-            transport.register_lazy_transport(
-                'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
-            try:
-                transport.get_transport('foo://fooserver/foo')
-            except errors.UnsupportedProtocol, e:
-                e_str = str(e)
-                self.assertEquals('Unsupported protocol'
-                                  ' for url "foo://fooserver/foo":'
-                                  ' Unable to import library "some_lib":'
-                                  ' testing missing dependency', str(e))
-            else:
-                self.fail('Did not raise UnsupportedProtocol')
-        finally:
-            # restore original values
-            transport._set_protocol_handlers(saved_handlers)
+            transport.get_transport('foo://fooserver/foo')
+        except errors.UnsupportedProtocol, e:
+            e_str = str(e)
+            self.assertEquals('Unsupported protocol'
+                                ' for url "foo://fooserver/foo":'
+                                ' Unable to import library "some_lib":'
+                                ' testing missing dependency', str(e))
+        else:
+            self.fail('Did not raise UnsupportedProtocol')
 
     def test_transport_fallback(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = transport._get_protocol_handlers()
-        try:
-            transport._clear_protocol_handlers()
-            transport.register_transport_proto('foo')
-            transport.register_lazy_transport(
-                'foo', 'bzrlib.tests.test_transport', 'BackupTransportHandler')
-            transport.register_lazy_transport(
-                'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
-            t = transport.get_transport('foo://fooserver/foo')
-            self.assertTrue(isinstance(t, BackupTransportHandler))
-        finally:
-            transport._set_protocol_handlers(saved_handlers)
+        self.addCleanup(transport._set_protocol_handlers, saved_handlers)
+        transport._clear_protocol_handlers()
+        transport.register_transport_proto('foo')
+        transport.register_lazy_transport(
+            'foo', 'bzrlib.tests.test_transport', 'BackupTransportHandler')
+        transport.register_lazy_transport(
+            'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
+        t = transport.get_transport('foo://fooserver/foo')
+        self.assertTrue(isinstance(t, BackupTransportHandler))
 
     def test_ssh_hints(self):
         """Transport ssh:// should raise an error pointing out bzr+ssh://"""
@@ -440,11 +428,9 @@ class TestChrootServer(tests.TestCase):
         backing_transport = memory.MemoryTransport()
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
-        try:
-            self.assertTrue(server.scheme
-                            in transport._get_protocol_handlers().keys())
-        finally:
-            server.stop_server()
+        self.addCleanup(server.stop_server)
+        self.assertTrue(server.scheme
+                        in transport._get_protocol_handlers().keys())
 
     def test_stop_server(self):
         backing_transport = memory.MemoryTransport()
@@ -458,10 +444,8 @@ class TestChrootServer(tests.TestCase):
         backing_transport = memory.MemoryTransport()
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
-        try:
-            self.assertEqual('chroot-%d:///' % id(server), server.get_url())
-        finally:
-            server.stop_server()
+        self.addCleanup(server.stop_server)
+        self.assertEqual('chroot-%d:///' % id(server), server.get_url())
 
 
 class PathFilteringDecoratorTransportTest(tests.TestCase):
