@@ -16,12 +16,6 @@
 
 """Testing framework extensions"""
 
-# TODO: Perhaps there should be an API to find out if bzr running under the
-# test suite -- some plugins might want to avoid making intrusive changes if
-# this is the case.  However, we want behaviour under to test to diverge as
-# little as possible, so this should be used rarely if it's added at all.
-# (Suggestion from j-a-meinel, 2005-11-24)
-
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
 # general style of bzrlib.  Please continue that consistency when adding e.g.
@@ -3892,6 +3886,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_fixtures',
         'bzrlib.tests.test_fifo_cache',
         'bzrlib.tests.test_filters',
+        'bzrlib.tests.test_filter_tree',
         'bzrlib.tests.test_ftp_transport',
         'bzrlib.tests.test_foreign',
         'bzrlib.tests.test_generate_docs',

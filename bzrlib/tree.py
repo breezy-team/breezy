@@ -277,8 +277,11 @@ class Tree(object):
 
         :param file_id: The file_id of the file.
         :param path: The path of the file.
+
         If both file_id and path are supplied, an implementation may use
         either one.
+
+        :returns: A single byte string for the whole file.
         """
         my_file = self.get_file(file_id, path)
         try:
