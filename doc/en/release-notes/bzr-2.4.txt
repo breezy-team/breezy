@@ -46,7 +46,7 @@ Bug Fixes
 
 * Display a proper error message when a config file content cannot be
   decoded as UTF-8 or when it cannot be parsed.
-  (Vincent Ladeuil, #502060, #688677, #792246)
+  (Vincent Ladeuil, #502060, #688677, #797246)
 
 * Generate a single conflict (instead of two) when merging a branch
   modifying and renaming a file in a branch that deleted it (or vice-versa).
