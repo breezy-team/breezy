@@ -1083,6 +1083,7 @@ $ bzr commit -m 'rename file to dir/file for debian'
 # Create an experimental branch with a new root-id
 $ cd ..
 $ bzr init experimental
+Created a standalone tree (format: 2a)
 $ cd experimental
 # merge debian even without a common ancestor
 $ bzr merge ../debian -r0..2
@@ -1097,6 +1098,7 @@ $ bzr commit -m 'merging debian into experimental'
 # Create an ubuntu branch with yet another root-id
 $ cd ..
 $ bzr init ubuntu
+Created a standalone tree (format: 2a)
 $ cd ubuntu
 # Also merge debian
 $ bzr merge ../debian -r0..2
