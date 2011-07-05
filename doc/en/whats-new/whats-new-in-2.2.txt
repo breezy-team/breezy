@@ -36,7 +36,7 @@ Bazaar 2.2.3 focused on fixes related to interactions with the launchpad
 server and python-2.7 compatibility.
 
 Bazaar 2.2.4 fixed a regression for some interactions with the launchpad
-server .
+server.
 
 See the :doc:`../release-notes/index` for details.
 
