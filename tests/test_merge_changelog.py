@@ -92,13 +92,6 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
 """.splitlines(True)
 
 
-class TestReadChangelog(tests.TestCase):
-
-    def test_read_changelog(self):
-        cl = merge_changelog.read_changelog(v_112_1)
-        self.assertEqual(1, len(cl._blocks))
-
-
 class TestMergeChangelog(tests.TestCase):
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
