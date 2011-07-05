@@ -1051,6 +1051,70 @@ $ bzr merge ../trunk
 """)
 
 
+class TestNoFinalPath(script.TestCaseWithTransportAndScript):
+
+    def test_bug_805809(self):
+        self.run_script("""
+$ bzr init trunk
+Created a standalone tree (format: 2a)
+$ cd trunk
+$ echo trunk >file
+$ bzr add
+adding file
+$ bzr commit -m 'create file on trunk'
+2>Committing to: .../trunk/
+2>added file
+2>Committed revision 1.
+# Create a debian branch based on trunk
+$ cd ..
+$ bzr branch trunk -r 1 debian
+2>Branched 1 revision(s).
+$ cd debian
+$ mkdir dir
+$ bzr add
+adding dir
+$ bzr mv file dir
+file => dir/file
+$ bzr commit -m 'rename file to dir/file for debian'
+2>Committing to: .../debian/
+2>added dir
+2>renamed file => dir/file
+2>Committed revision 2.
+# Create an experimental branch with a new root-id
+$ cd ..
+$ bzr init experimental
+$ cd experimental
+# merge debian even without a common ancestor
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian into experimental'
+2>Committing to: .../experimental/
+2>deleted 
+2>modified dir
+2>Committed revision 1.
+# Create an ubuntu branch with yet another root-id
+$ cd ..
+$ bzr init ubuntu
+$ cd ubuntu
+# Also merge debian
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian'
+2>Committing to: .../ubuntu/
+2>deleted 
+2>modified dir
+2>Committed revision 1.
+# Now try to merge experimental
+$ bzr merge ../experimental
+2>Path conflict: dir / dir
+2>1 conflicts encountered.
+""")
+
+
 class TestResolveActionOption(tests.TestCase):
 
     def setUp(self):
