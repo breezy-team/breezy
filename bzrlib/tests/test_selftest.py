@@ -1684,6 +1684,18 @@ class TestTestCase(tests.TestCase):
         test.run(unittest.TestResult())
         self.assertEqual('original', obj.test_attr)
 
+    def test_recordCalls(self):
+        from bzrlib.tests import test_selftest
+        calls = self.recordCalls(
+            test_selftest, '_add_numbers')
+        self.assertEqual(test_selftest._add_numbers(2, 10),
+            12)
+        self.assertEquals([(2, 10), {}], calls)
+
+
+def _add_numbers(a, b):
+    return a + b
+
 
 class _MissingFeature(tests.Feature):
     def _probe(self):

@@ -1760,6 +1760,26 @@ class TestCase(testtools.TestCase):
         self.addCleanup(osutils.set_or_unset_env, name, value)
         return value
 
+    def recordCalls(self, obj, attr_name):
+        """Monkeypatch in a wrapper that will record calls.
+
+        The monkeypatch is automatically removed when the test concludes.
+
+        :param obj: The namespace holding the reference to be replaced;
+            typically a module, class, or object.
+        :param attr_name: A string for the name of the attribute to 
+            patch.
+        :returns: A list that will be extended with one item every time the
+            function is called, with a tuple of (args, kwargs).
+        """
+        calls = []
+
+        def decorator(*args, **kwargs):
+            calls.extend((args, kwargs))
+            return orig(*args, **kwargs)
+        orig = self.overrideAttr(obj, attr_name, decorator)
+        return calls
+
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
             self.overrideEnv(name, value)
