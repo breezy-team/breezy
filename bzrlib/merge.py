@@ -1625,7 +1625,7 @@ class Merge3Merger(object):
                     other_path = '<deleted>'
                 else:
                     if other_parent == self.other_tree.get_root_id():
-                        # The tree transform don't know about the other root,
+                        # The tree transform doesn't know about the other root,
                         # so we special case here to avoid a NoFinalPath
                         # exception
                         parent_path = ''
