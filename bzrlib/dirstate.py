@@ -2527,6 +2527,7 @@ class DirState(object):
                 self._state_file.writelines(lines)
                 self._state_file.truncate()
                 self._state_file.flush()
+                os.fdatasync(self._state_file.fileno())
                 self._mark_unmodified()
             finally:
                 if grabbed_write_lock:

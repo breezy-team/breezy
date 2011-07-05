@@ -245,6 +245,11 @@ class GraphIndexBuilder(object):
         """
         
     def finish(self):
+        """Finish the index.
+
+        :returns: cStringIO holding the full context of the index as it 
+        should be written to disk.
+        """
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')

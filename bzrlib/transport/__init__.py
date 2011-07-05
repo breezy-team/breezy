@@ -232,7 +232,12 @@ class FileStream(object):
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
 
-    def close(self):
+    def close(self, want_fdatasync=False):
+        if want_fdatasync:
+            try:
+                self.fdatasync()
+            except errors.TransportNotPossible:
+                pass
         self._close()
         del _file_streams[self.transport.abspath(self.relpath)]
 
@@ -242,7 +247,7 @@ class FileStream(object):
         :raises TransportNotPossible: If this transport has no way to 
             flush to disk.
         """
-        raise TransportNotPossible(
+        raise errors.TransportNotPossible(
             "%s cannot fdatasync" % (self.transport,))
 
 
@@ -262,7 +267,11 @@ class FileFileStream(FileStream):
     def fdatasync(self):
         """Force data out to physical disk if possible."""
         self.file_handle.flush()
-        os.fdatasync(self.file_handle.fileno())
+        try:
+            fileno = self.file_handle.fileno()
+        except AttributeError:
+            raise errors.TransportNotPossible()
+        os.fdatasync(fileno)
 
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)

@@ -41,6 +41,10 @@ Improvements
 * ``Branch.open`` is now about 3x faster (about 2ms instead of 6.5ms).
   (Andrew Bennetts).
 
+* Pack, dirstate, and index files are synced to persistent storage if 
+  possible when writing finishes, to reduce the risk of problems caused by
+  a machine crash or similar problem.  (Martin Pool)
+
 Bug Fixes
 *********
 

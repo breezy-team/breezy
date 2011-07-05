@@ -478,7 +478,8 @@ class NewPack(Pack):
         # visible is smaller.  On the other hand none will be seen until
         # they're in the names list.
         self.index_sizes = [None, None, None, None]
-        self._write_index('revision', self.revision_index, 'revision', suspend)
+        self._write_index('revision', self.revision_index, 'revision',
+            suspend)
         self._write_index('inventory', self.inventory_index, 'inventory',
             suspend)
         self._write_index('text', self.text_index, 'file texts', suspend)
@@ -488,7 +489,7 @@ class NewPack(Pack):
             self.index_sizes.append(None)
             self._write_index('chk', self.chk_index,
                 'content hash bytes', suspend)
-        self.write_stream.close()
+        self.write_stream.close(want_fdatasync=True)
         # Note that this will clobber an existing pack with the same name,
         # without checking for hash collisions. While this is undesirable this
         # is something that can be rectified in a subsequent release. One way
@@ -537,8 +538,13 @@ class NewPack(Pack):
             transport = self.upload_transport
         else:
             transport = self.index_transport
-        self.index_sizes[self.index_offset(index_type)] = transport.put_file(
-            index_name, index.finish(), mode=self._file_mode)
+        index_tempfile = index.finish()
+        index_bytes = index_tempfile.read()
+        write_stream = transport.open_write_stream(index_name,
+            mode=self._file_mode)
+        write_stream.write(index_bytes)
+        write_stream.close(want_fdatasync=True)
+        self.index_sizes[self.index_offset(index_type)] = len(index_bytes)
         if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
