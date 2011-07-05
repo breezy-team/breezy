@@ -327,10 +327,9 @@ class LocalTransport(transport.Transport):
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
-        # initialise the file
-        self.put_bytes_non_atomic(relpath, "", mode=mode)
         abspath = self._abspath(relpath)
         handle = osutils.open_file(abspath, 'wb')
+        handle.truncate()
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle
