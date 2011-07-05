@@ -60,6 +60,7 @@ class TestTransport(tests.TestCase):
         self.addCleanup(transport._set_protocol_handlers, handlers)
         # don't pollute the current handlers
         transport._clear_protocol_handlers()
+
         class SampleHandler(object):
             """I exist, isnt that enough?"""
         transport._clear_protocol_handlers()
@@ -206,33 +207,32 @@ class TestCoalesceOffsets(tests.TestCase):
 
     def test_coalesce_fudge(self):
         self.check([(10, 30, [(0, 10), (20, 10)]),
-                    (100, 10, [(0, 10),]),
+                    (100, 10, [(0, 10)]),
                    ], [(10, 10), (30, 10), (100, 10)],
-                   fudge=10
-                  )
+                   fudge=10)
+
     def test_coalesce_max_size(self):
         self.check([(10, 20, [(0, 10), (10, 10)]),
                     (30, 50, [(0, 50)]),
                     # If one range is above max_size, it gets its own coalesced
                     # offset
-                    (100, 80, [(0, 80),]),],
+                    (100, 80, [(0, 80)]),],
                    [(10, 10), (20, 10), (30, 50), (100, 80)],
-                   max_size=50
-                  )
+                   max_size=50)
 
     def test_coalesce_no_max_size(self):
-        self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)]),],
+        self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)])],
                    [(10, 10), (20, 10), (30, 50), (80, 100)],
                   )
 
     def test_coalesce_default_limit(self):
         # By default we use a 100MB max size.
-        ten_mb = 10*1024*1024
-        self.check([(0, 10*ten_mb, [(i*ten_mb, ten_mb) for i in range(10)]),
+        ten_mb = 10 * 1024 * 1024
+        self.check([(0, 10 * ten_mb, [(i * ten_mb, ten_mb) for i in range(10)]),
                     (10*ten_mb, ten_mb, [(0, ten_mb)])],
                    [(i*ten_mb, ten_mb) for i in range(11)])
-        self.check([(0, 11*ten_mb, [(i*ten_mb, ten_mb) for i in range(11)]),],
-                   [(i*ten_mb, ten_mb) for i in range(11)],
+        self.check([(0, 11 * ten_mb, [(i * ten_mb, ten_mb) for i in range(11)])],
+                   [(i * ten_mb, ten_mb) for i in range(11)],
                    max_size=1*1024*1024*1024)
 
 
@@ -410,7 +410,8 @@ class ChrootDecoratorTransportTest(tests.TestCase):
             parent_url = urlutils.join(url, '..')
             new_t = transport.get_transport(parent_url)
         """
-        server = chroot.ChrootServer(transport.get_transport('memory:///path/'))
+        server = chroot.ChrootServer(
+            transport.get_transport('memory:///path/'))
         self.start_server(server)
         t = transport.get_transport(server.get_url())
         self.assertRaises(
@@ -466,7 +467,7 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
 
     def make_pf_transport(self, filter_func=None):
         """Make a PathFilteringTransport backed by a MemoryTransport.
-        
+
         :param filter_func: by default this will be a no-op function.  Use this
             parameter to override it."""
         if filter_func is None:
@@ -494,6 +495,7 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
 
     def test_filter_invocation(self):
         filter_log = []
+
         def filter(path):
             filter_log.append(path)
             return path
@@ -760,7 +762,8 @@ class TestConnectedTransport(tests.TestCase):
     def test_relpath(self):
         t = transport.ConnectedTransport('sftp://user@host.com/abs/path')
 
-        self.assertEquals(t.relpath('sftp://user@host.com/abs/path/sub'), 'sub')
+        self.assertEquals(t.relpath('sftp://user@host.com/abs/path/sub'),
+            'sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
                           'http://user@host.com/abs/path/sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
@@ -839,7 +842,8 @@ class TestTransportTrace(tests.TestCase):
 
     def test_get(self):
         t = transport.get_transport('trace+memory://')
-        self.assertIsInstance(t, bzrlib.transport.trace.TransportTraceDecorator)
+        self.assertIsInstance(
+            t, bzrlib.transport.trace.TransportTraceDecorator)
 
     def test_clone_preserves_activity(self):
         t = transport.get_transport('trace+memory://')
@@ -880,7 +884,7 @@ class TestTransportTrace(tests.TestCase):
 class TestSSHConnections(tests.TestCaseWithTransport):
 
     def test_bzr_connect_to_bzr_ssh(self):
-        """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
+        """get_transport of a bzr+ssh:// behaves correctly.
 
         bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
         """
@@ -902,6 +906,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # SSH channel ourselves.  Surely this has already been implemented
         # elsewhere?
         started = []
+
         class StubSSHServer(stub_sftp.StubServer):
 
             test = self
@@ -913,8 +918,8 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 # XXX: horribly inefficient, not to mention ugly.
-                # Start a thread for each of stdin/out/err, and relay bytes from
-                # the subprocess to channel and vice versa.
+                # Start a thread for each of stdin/out/err, and relay bytes
+                # from the subprocess to channel and vice versa.
                 def ferry_bytes(read, write, close):
                     while True:
                         bytes = read(1)
