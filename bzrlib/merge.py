@@ -1619,8 +1619,14 @@ class Merge3Merger(object):
                 if other_parent is None or other_name is None:
                     other_path = '<deleted>'
                 else:
-                    parent_path =  fp.get_path(
-                        self.tt.trans_id_file_id(other_parent))
+                    if other_parent == self.other_tree.get_root_id():
+                        # The tree transform doesn't know about the other root,
+                        # so we special case here to avoid a NoFinalPath
+                        # exception
+                        parent_path = ''
+                    else:
+                        parent_path =  fp.get_path(
+                            self.tt.trans_id_file_id(other_parent))
                     other_path = osutils.pathjoin(parent_path, other_name)
                 c = _mod_conflicts.Conflict.factory(
                     'path conflict', path=this_path,
