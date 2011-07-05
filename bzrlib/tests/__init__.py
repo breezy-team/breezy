@@ -1775,7 +1775,7 @@ class TestCase(testtools.TestCase):
         calls = []
 
         def decorator(*args, **kwargs):
-            calls.extend((args, kwargs))
+            calls.append((args, kwargs))
             return orig(*args, **kwargs)
         orig = self.overrideAttr(obj, attr_name, decorator)
         return calls
