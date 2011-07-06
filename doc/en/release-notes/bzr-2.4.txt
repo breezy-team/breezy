@@ -83,6 +83,9 @@ API Changes
   ``RepositoryFormat.supports_versioned_directories``.
   (Jelmer Vernooij, #765815)
 
+* The "revno" field type when using the python version-info format is now
+  a string (to handle dotted revnos) (Benoît Pierre, #796259)
+
 Internals
 *********
 
@@ -167,6 +170,9 @@ Bug Fixes
   turned on by setting the configuration variable ``locks.steal_dead`` to
   ``True``.
   (Martin Pool, #220464)
+
+* ``bzr version-info`` now works when the tree is on a dotted revno.
+  (Benoît Pierre, #796259)
 
 * Credentials in the log output produced by ``-Dhttp`` are masked so users
   can more freely post them in bug reports. (Vincent Ladeuil, #723074)
