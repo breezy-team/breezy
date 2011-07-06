@@ -32,11 +32,14 @@ import threading
 import bzrlib
 from bzrlib import (
     bzrdir,
+    cethread,
     config,
+    debug,
     errors,
     osutils,
     remote as _mod_remote,
     tests,
+    trace,
     transport,
     ui,
     )
@@ -90,22 +93,34 @@ def vary_by_http_protocol_version():
         ]
 
 
-def vary_by_http_proxy_auth_scheme():
-    return [
-        ('basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
-        ('digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
-        ('basicdigest',
-            dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
-        ]
-
-
 def vary_by_http_auth_scheme():
-    return [
+    scenarios = [
         ('basic', dict(_auth_server=http_utils.HTTPBasicAuthServer)),
         ('digest', dict(_auth_server=http_utils.HTTPDigestAuthServer)),
         ('basicdigest',
             dict(_auth_server=http_utils.HTTPBasicAndDigestAuthServer)),
         ]
+    # Add some attributes common to all scenarios
+    for scenario_id, scenario_dict in scenarios:
+        scenario_dict.update(_auth_header='Authorization',
+                             _username_prompt_prefix='',
+                             _password_prompt_prefix='')
+    return scenarios
+
+
+def vary_by_http_proxy_auth_scheme():
+    scenarios = [
+        ('proxy-basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
+        ('proxy-digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
+        ('proxy-basicdigest',
+            dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
+        ]
+    # Add some attributes common to all scenarios
+    for scenario_id, scenario_dict in scenarios:
+        scenario_dict.update(_auth_header='Proxy-Authorization',
+                             _username_prompt_prefix='Proxy ',
+                             _password_prompt_prefix='Proxy ')
+    return scenarios
 
 
 def vary_by_http_activity():
@@ -178,8 +193,8 @@ class RecordingServer(object):
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
         self._ready = threading.Event()
-        self._thread = test_server.ThreadWithException(
-            event=self._ready, target=self._accept_read_and_reply)
+        self._thread = test_server.TestThread(
+            sync_event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
             sys.stderr.write('Thread started: %s\n' % (self._thread.ident,))
@@ -252,6 +267,40 @@ class TestAuthHeader(tests.TestCase):
             'Digest realm="Thou should not pass"')
         self.assertEqual('digest', scheme)
         self.assertEqual('realm="Thou should not pass"', remainder)
+
+
+class TestHTTPRangeParsing(tests.TestCase):
+
+    def setUp(self):
+        super(TestHTTPRangeParsing, self).setUp()
+        # We focus on range  parsing here and ignore everything else
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+            def setup(self): pass
+            def handle(self): pass
+            def finish(self): pass
+
+        self.req_handler = RequestHandler(None, None, None)
+
+    def assertRanges(self, ranges, header, file_size):
+        self.assertEquals(ranges,
+                          self.req_handler._parse_ranges(header, file_size))
+
+    def test_simple_range(self):
+        self.assertRanges([(0,2)], 'bytes=0-2', 12)
+
+    def test_tail(self):
+        self.assertRanges([(8, 11)], 'bytes=-4', 12)
+
+    def test_tail_bigger_than_file(self):
+        self.assertRanges([(0, 11)], 'bytes=-99', 12)
+
+    def test_range_without_end(self):
+        self.assertRanges([(4, 11)], 'bytes=4-', 12)
+
+    def test_invalid_ranges(self):
+        self.assertRanges(None, 'bytes=12-22', 12)
+        self.assertRanges(None, 'bytes=1-3,12-22', 12)
+        self.assertRanges(None, 'bytes=-', 12)
 
 
 class TestHTTPServer(tests.TestCase):
@@ -427,7 +476,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
     """Test the http connections."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -492,7 +541,7 @@ class TestHttpTransportRegistration(tests.TestCase):
 class TestPost(tests.TestCase):
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -551,7 +600,7 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1029,7 +1078,7 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
     """Tests readv requests against a server erroring out on too much ranges."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1075,12 +1124,23 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def _proxied_request(self):
         handler = _urllib2_wrappers.ProxyHandler()
-        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
+        request = _urllib2_wrappers.Request('GET', 'http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
+    def assertEvaluateProxyBypass(self, expected, host, no_proxy):
+        handler = _urllib2_wrappers.ProxyHandler()
+        self.assertEquals(expected,
+                          handler.evaluate_proxy_bypass(host, no_proxy))
+
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
+        request = self._proxied_request()
+        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+
+    def test_user_with_at(self):
+        self.overrideEnv('http_proxy',
+                         'http://username@domain:password@proxy_host:1234')
         request = self._proxied_request()
         self.assertFalse(request.headers.has_key('Proxy-authorization'))
 
@@ -1088,6 +1148,26 @@ class TestHttpProxyWhiteBox(tests.TestCase):
         """A proxy env variable without scheme"""
         self.overrideEnv('http_proxy', 'host:1234')
         self.assertRaises(errors.InvalidURL, self._proxied_request)
+
+    def test_evaluate_proxy_bypass_true(self):
+        """The host is not proxied"""
+        self.assertEvaluateProxyBypass(True, 'example.com', 'example.com')
+        self.assertEvaluateProxyBypass(True, 'bzr.example.com', '*example.com')
+
+    def test_evaluate_proxy_bypass_false(self):
+        """The host is proxied"""
+        self.assertEvaluateProxyBypass(False, 'bzr.example.com', None)
+
+    def test_evaluate_proxy_bypass_unknown(self):
+        """The host is not explicitly proxied"""
+        self.assertEvaluateProxyBypass(None, 'example.com', 'not.example.com')
+        self.assertEvaluateProxyBypass(None, 'bzr.example.com', 'example.com')
+
+    def test_evaluate_proxy_bypass_empty_entries(self):
+        """Ignore empty entries"""
+        self.assertEvaluateProxyBypass(None, 'example.com', '')
+        self.assertEvaluateProxyBypass(None, 'example.com', ',')
+        self.assertEvaluateProxyBypass(None, 'example.com', 'foo,,bar')
 
 
 class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
@@ -1100,7 +1180,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1197,7 +1277,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     """Test the Range header in GET methods."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1247,7 +1327,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirection between http servers."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1320,7 +1400,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1375,7 +1455,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test transport.do_catching_redirections."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1423,6 +1503,35 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
                           self.get_a, self.old_transport, redirected)
 
 
+def _setup_authentication_config(**kwargs):
+    conf = config.AuthenticationConfig()
+    conf._get_config().update({'httptest': kwargs})
+    conf._save()
+
+
+class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
+    """Unit tests for glue by which urllib2 asks us for authentication"""
+
+    def test_get_user_password_without_port(self):
+        """We cope if urllib2 doesn't tell us the port.
+
+        See https://bugs.launchpad.net/bzr/+bug/654684
+        """
+        user = 'joe'
+        password = 'foo'
+        _setup_authentication_config(scheme='http', host='localhost',
+                                     user=user, password=password)
+        handler = _urllib2_wrappers.HTTPAuthHandler()
+        got_pass = handler.get_user_password(dict(
+            user='joe',
+            protocol='http',
+            host='localhost',
+            path='/',
+            realm='Realm',
+            ))
+        self.assertEquals((user, password), got_pass)
+
+
 class TestAuth(http_utils.TestCaseWithWebserver):
     """Test authentication scheme"""
 
@@ -1431,12 +1540,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         vary_by_http_protocol_version(),
         vary_by_http_auth_scheme(),
         )
-
-    _auth_header = 'Authorization'
-    _password_prompt_prefix = ''
-    _username_prompt_prefix = ''
-    # Set by load_tests
-    _auth_server = None
 
     def setUp(self):
         super(TestAuth, self).setUp()
@@ -1584,11 +1687,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
                                             stderr=tests.StringIOWrapper())
         # Create a minimal config file with the right password
-        _setup_authentication_config(
-            scheme='http', 
-            port=self.server.port,
-            user=user,
-            password=password)
+        _setup_authentication_config(scheme='http', port=self.server.port,
+                                     user=user, password=password)
         # Issue a request to the server to connect
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should have  been left untouched
@@ -1624,63 +1724,53 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         user = 'joe'
         password = 'foo'
         self.server.add_user(user, password)
-        _setup_authentication_config(
-            scheme='http', 
-            port=self.server.port,
-            user=user,
-            password=password)
+        _setup_authentication_config(scheme='http', port=self.server.port,
+                                     user=user, password=password)
         t = self.get_user_transport(None, None)
         # Issue a request to the server to connect
         self.assertEqual('contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
-
-def _setup_authentication_config(**kwargs):
-    conf = config.AuthenticationConfig()
-    conf._get_config().update({'httptest': kwargs})
-    conf._save()
-
-
-
-class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
-    """Unit tests for glue by which urllib2 asks us for authentication"""
-
-    def test_get_user_password_without_port(self):
-        """We cope if urllib2 doesn't tell us the port.
-
-        See https://bugs.launchpad.net/bzr/+bug/654684
-        """
+    def test_no_credential_leaks_in_log(self):
+        self.overrideAttr(debug, 'debug_flags', set(['http']))
         user = 'joe'
-        password = 'foo'
-        _setup_authentication_config(
-            scheme='http', 
-            host='localhost',
-            user=user,
-            password=password)
-        handler = _urllib2_wrappers.HTTPAuthHandler()
-        got_pass = handler.get_user_password(dict(
-            user='joe',
-            protocol='http',
-            host='localhost',
-            path='/',
-            realm='Realm',
-            ))
-        self.assertEquals((user, password), got_pass)
+        password = 'very-sensitive-password'
+        self.server.add_user(user, password)
+        t = self.get_user_transport(user, password)
+        # Capture the debug calls to mutter
+        self.mutters = []
+        def mutter(*args):
+            lines = args[0] % args[1:]
+            # Some calls output multiple lines, just split them now since we
+            # care about a single one later.
+            self.mutters.extend(lines.splitlines())
+        self.overrideAttr(trace, 'mutter', mutter)
+        # Issue a request to the server to connect
+        self.assertEqual(True, t.has('a'))
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+        # Since the authentification succeeded, there should be a corresponding
+        # debug line
+        sent_auth_headers = [line for line in self.mutters
+                             if line.startswith('> %s' % (self._auth_header,))]
+        self.assertLength(1, sent_auth_headers)
+        self.assertStartsWith(sent_auth_headers[0],
+                              '> %s: <masked>' % (self._auth_header,))
 
 
 class TestProxyAuth(TestAuth):
-    """Test proxy authentication schemes."""
+    """Test proxy authentication schemes.
+
+    This inherits from TestAuth to tweak the setUp and filter some failing
+    tests.
+    """
 
     scenarios = multiply_scenarios(
         vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         vary_by_http_proxy_auth_scheme(),
         )
-
-    _auth_header = 'Proxy-authorization'
-    _password_prompt_prefix = 'Proxy '
-    _username_prompt_prefix = 'Proxy '
 
     def setUp(self):
         super(TestProxyAuth, self).setUp()
@@ -1730,7 +1820,7 @@ class SampleSocket(object):
 class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1947,11 +2037,12 @@ class TestActivityMixin(object):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
-        self.activities = {}
+        _activities = {} # Don't close over self and create a cycle
         def report_activity(t, bytes, direction):
-            count = self.activities.get(direction, 0)
+            count = _activities.get(direction, 0)
             count += bytes
-            self.activities[direction] = count
+            _activities[direction] = count
+        self.activities = _activities
 
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
@@ -2181,5 +2272,4 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
         self.assertEqual('', stdout.getvalue())
-
 

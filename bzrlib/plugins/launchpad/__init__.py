@@ -47,7 +47,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
-    errors,
     ui,
     trace,
     )
@@ -55,13 +54,13 @@ from bzrlib import (
 
 from bzrlib import bzrdir
 from bzrlib.commands import (
-        Command,
-        register_command,
-)
+    Command,
+    register_command,
+    )
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
     BzrCommandError,
-    DependencyNotPresent,
+    InvalidRevisionSpec,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
@@ -296,11 +295,12 @@ class cmd_launchpad_mirror(Command):
     def run(self, location='.'):
         from bzrlib.plugins.launchpad import lp_api
         from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
-        branch = _mod_branch.Branch.open(location)
+        branch, _ = _mod_branch.Branch.open_containing(location)
         service = LaunchpadService()
         launchpad = lp_api.login(service)
-        lp_branch = lp_api.load_branch(launchpad, branch)
-        lp_branch.requestMirror()
+        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
+                create_missing=False)
+        lp_branch.lp.requestMirror()
 
 
 register_command(cmd_launchpad_mirror)
@@ -420,7 +420,7 @@ class cmd_lp_find_proposal(Command):
             merging_revision = graph.find_lefthand_merger(
                 revision_id, b.last_revision())
             if merging_revision is None:
-                raise errors.InvalidRevisionSpec(revision[0].user_spec, b)
+                raise InvalidRevisionSpec(revision[0].user_spec, b)
         pb.update('Finding revno')
         return b.revision_id_to_revno(merging_revision)
 

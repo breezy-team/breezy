@@ -22,6 +22,7 @@ from bzrlib import (
     controldir,
     errors,
     option,
+    registry,
     )
 from bzrlib.builtins import cmd_commit
 from bzrlib.commands import parse_args
@@ -396,6 +397,14 @@ class TestOptionDefinitions(TestCase):
         self.assertTrue(format.is_hidden('hidden'))
         self.assertFalse(format.is_hidden('visible'))
 
+    def test_short_name(self):
+        registry = controldir.ControlDirFormatRegistry()
+        opt = option.RegistryOption('format', help='', registry=registry)
+        self.assertEquals(None, opt.short_name())
+        opt = option.RegistryOption('format', short_name='F', help='',
+            registry=registry)
+        self.assertEquals('F', opt.short_name())
+
     def test_option_custom_help(self):
         the_opt = option.Option.OPTIONS['help']
         orig_help = the_opt.help[:]
@@ -403,6 +412,17 @@ class TestOptionDefinitions(TestCase):
         # Confirm that my_opt has my help and the original is unchanged
         self.assertEqual('suggest lottery numbers', my_opt.help)
         self.assertEqual(orig_help, the_opt.help)
+
+    def test_short_value_switches(self):
+        reg = registry.Registry()
+        reg.register('short', 'ShortChoice')
+        reg.register('long', 'LongChoice')
+        ropt = option.RegistryOption('choice', '', reg, value_switches=True,
+            short_value_switches={'short': 's'})
+        opts, args = parse([ropt], ['--short'])
+        self.assertEqual('ShortChoice', opts.choice)
+        opts, args = parse([ropt], ['-s'])
+        self.assertEqual('ShortChoice', opts.choice)
 
 
 class TestVerboseQuietLinkage(TestCase):

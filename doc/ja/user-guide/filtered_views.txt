@@ -25,11 +25,8 @@ diff, commit, etc - に暗黙的に毎回そのファイルリストが渡され
 どちらのケースでも、Bazaarはユーザーに毎回viewが使われていることを\
 報告するので、操作や出力がマスクされていることが判ります。
 
-.. 2aになったらこのnoteは要らない
-.. Note: Bazaar's default format does not yet support filtered views. That
-   is likely to change in the near future. To use filtered views in the
-   meantime, you currently need to upgrade to ``development-wt6`` (or
-   ``development-wt6-rich-root``) format first.
+ノート: filtered view は 2a フォーマット(Bazaar 2.0 以降でデフォルトの
+フォーマット)でのみ有効です。
 
 
 view を作る

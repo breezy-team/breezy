@@ -41,6 +41,13 @@ class DoErrorRequest(request.SmartServerRequest):
         raise errors.NoSuchFile('xyzzy')
 
 
+class DoUnexpectedErrorRequest(request.SmartServerRequest):
+    """A request that encounters a generic error in self.do()"""
+
+    def do(self):
+        dict()[1]
+
+
 class ChunkErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do_chunk()."""
     
@@ -149,6 +156,14 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
         handler.end_received()
         self.assertResponseIsTranslatedError(handler)
 
+    def test_unexpected_error_translation(self):
+        handler = request.SmartServerRequestHandler(
+            None, {'foo': DoUnexpectedErrorRequest}, '/')
+        handler.args_received(('foo',))
+        self.assertEqual(
+            request.FailedSmartServerResponse(('error', 'KeyError', "1")),
+            handler.response)
+
 
 class TestRequestHanderErrorTranslation(TestCase):
     """Tests for bzrlib.smart.request._translate_error."""
@@ -171,6 +186,23 @@ class TestRequestHanderErrorTranslation(TestCase):
         self.assertTranslationEqual(
             ('TokenMismatch', 'some-token', 'actual-token'),
             errors.TokenMismatch('some-token', 'actual-token'))
+
+    def test_MemoryError(self):
+        self.assertTranslationEqual(("MemoryError",), MemoryError())
+
+    def test_generic_Exception(self):
+        self.assertTranslationEqual(('error', 'Exception', ""),
+            Exception())
+
+    def test_generic_BzrError(self):
+        self.assertTranslationEqual(('error', 'BzrError', "some text"),
+            errors.BzrError(msg="some text"))
+
+    def test_generic_zlib_error(self):
+        from zlib import error
+        msg = "Error -3 while decompressing data: incorrect data check"
+        self.assertTranslationEqual(('error', 'zlib.error', msg),
+            error(msg))
 
 
 class TestRequestJail(TestCaseWithMemoryTransport):

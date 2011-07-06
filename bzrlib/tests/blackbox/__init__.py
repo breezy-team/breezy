@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@ def load_tests(basic_tests, module, loader):
                      'test_annotate',
                      'test_branch',
                      'test_break_lock',
-                     'test_breakin',
                      'test_bound_branches',
                      'test_bundle_info',
                      'test_cat',
@@ -98,7 +97,9 @@ def load_tests(basic_tests, module, loader):
                      'test_remerge',
                      'test_remove',
                      'test_re_sign',
+                     'test_remember_option',
                      'test_remove_tree',
+                     'test_repair_workingtree',
                      'test_resolve',
                      'test_revert',
                      'test_revno',

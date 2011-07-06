@@ -18,7 +18,9 @@
 
 import sys
 
-import bzrlib.osutils
+from bzrlib import (
+    osutils,
+    )
 
 
 class AddAction(object):
@@ -38,7 +40,7 @@ class AddAction(object):
         if should_print is not None:
             self.should_print = should_print
 
-    def __call__(self, inv, parent_ie, path, kind, _quote=bzrlib.osutils.quotefn):
+    def __call__(self, inv, parent_ie, path, kind, _quote=osutils.quotefn):
         """Add path to inventory.
 
         The default action does nothing.
@@ -48,7 +50,7 @@ class AddAction(object):
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('adding %s\n' % _quote(path.raw_path))
+            self._to_file.write('adding %s\n' % _quote(path))
         return None
 
 
@@ -68,7 +70,7 @@ class AddFromBaseAction(AddAction):
         if file_id is not None:
             if self.should_print:
                 self._to_file.write('adding %s w/ file id from %s\n'
-                                    % (path.raw_path, base_path))
+                                    % (path, base_path))
         else:
             # we aren't doing anything special, so let the default
             # reporter happen
@@ -84,12 +86,13 @@ class AddFromBaseAction(AddAction):
         Else, we look for an entry in the base tree with the same path.
         """
 
-        if (parent_ie.file_id in self.base_tree):
+        if self.base_tree.has_id(parent_ie.file_id):
             base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
-            base_child_ie = base_parent_ie.children.get(path.base_path)
+            base_child_ie = base_parent_ie.children.get(
+                osutils.basename(path))
             if base_child_ie is not None:
                 return (base_child_ie.file_id,
                         self.base_tree.id2path(base_child_ie.file_id))
-        full_base_path = bzrlib.osutils.pathjoin(self.base_path, path.raw_path)
+        full_base_path = osutils.pathjoin(self.base_path, path)
         # This may return None, but it is our last attempt
         return self.base_tree.path2id(full_base_path), full_base_path

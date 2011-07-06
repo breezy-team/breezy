@@ -189,15 +189,21 @@ what can be done inside them.
    why in a comment.
 
 1. Never rely on a ``__del__`` method running.  If there is code that
-   must run, do it from a ``finally`` block instead.
+   must run, instead have a ``finally`` block or an ``addCleanup`` call an
+   explicit ``close`` method.
 
 2. Never ``import`` from inside a ``__del__`` method, or you may crash the
    interpreter!!
 
-3. In some places we raise a warning from the destructor if the object
-   has not been cleaned up or closed.  This is considered OK: the warning
-   may not catch every case but it's still useful sometimes.
-
+3. Prior to bzr 2.4, we sometimes used to raise warnings from del methods
+   that the object was not cleaned up or closed.  We no longer do this:
+   failure to close the object doesn't cause a test failure; the warning
+   appears an arbitrary long time after the problem occurred (the object
+   being leaked); merely having a del method inhibits Python gc; the
+   warnings appear to users and upset them; they can also break tests that
+   are checking what appears on stderr.
+   
+In short, just don't use ``__del__``.
 
 Cleanup methods
 ===============

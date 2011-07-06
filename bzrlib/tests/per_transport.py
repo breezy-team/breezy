@@ -207,8 +207,17 @@ class TransportTests(TestTransportImplementation):
                     ]
         self.build_tree(files, transport=t, line_endings='binary')
         self.assertRaises(NoSuchFile, t.get, 'c')
-        self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
-        self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
+        def iterate_and_close(func, *args):
+            for f in func(*args):
+                # We call f.read() here because things like paramiko actually
+                # spawn a thread to prefetch the content, which we want to
+                # consume before we close the handle.
+                content = f.read()
+                f.close()
+        self.assertRaises(NoSuchFile, iterate_and_close,
+                          t.get_multi, ['a', 'b', 'c'])
+        self.assertRaises(NoSuchFile, iterate_and_close,
+                          t.get_multi, iter(['a', 'b', 'c']))
 
     def test_get_directory_read_gives_ReadError(self):
         """consistent errors for read() on a file returned by get()."""
@@ -1079,8 +1088,8 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises(NoSuchFile, t.stat_multi, iter(['a', 'c', 'd']))
         self.build_tree(['subdir/', 'subdir/file'], transport=t)
         subdir = t.clone('subdir')
-        subdir.stat('./file')
-        subdir.stat('.')
+        st = subdir.stat('./file')
+        st = subdir.stat('.')
 
     def test_hardlink(self):
         from stat import ST_NLINK
@@ -1617,7 +1626,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            file('a', 'w').write('0123456789')
+            with file('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', '0123456789')
 
@@ -1633,7 +1642,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv_out_of_order(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            file('a', 'w').write('0123456789')
+            with file('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', '01234567890')
 
@@ -1711,7 +1720,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         # test from observed failure case.
         if transport.is_readonly():
-            file('a', 'w').write('a'*1024*1024)
+            with file('a', 'w') as f: f.write('a'*1024*1024)
         else:
             transport.put_bytes('a', 'a'*1024*1024)
         broken_vector = [(465219, 800), (225221, 800), (445548, 800),
@@ -1751,7 +1760,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv_short_read(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            file('a', 'w').write('0123456789')
+            with file('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', '01234567890')
 

@@ -189,20 +189,6 @@ class SFTPNonServerTest(TestCase):
 class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
 
-    def test_lock_file(self):
-        # old format branches use a special lock file on sftp.
-        b = self.make_branch('', format=bzrdir.BzrDirFormat6())
-        b = bzrlib.branch.Branch.open(self.get_url())
-        self.assertPathExists('.bzr/')
-        self.assertPathExists('.bzr/branch-format')
-        self.assertPathExists('.bzr/branch-lock')
-
-        self.assertPathDoesNotExist('.bzr/branch-lock.write-lock')
-        b.lock_write()
-        self.assertPathExists('.bzr/branch-lock.write-lock')
-        b.unlock()
-        self.assertPathDoesNotExist('.bzr/branch-lock.write-lock')
-
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
         t = bzrdir.BzrDir.create_standalone_workingtree('a')
@@ -431,7 +417,7 @@ class TestSocketDelay(TestCase):
 
 
 class ReadvFile(object):
-    """An object that acts like Paramiko's SFTPFile.readv()"""
+    """An object that acts like Paramiko's SFTPFile when readv() is used"""
 
     def __init__(self, data):
         self._data = data
@@ -439,6 +425,9 @@ class ReadvFile(object):
     def readv(self, requests):
         for start, length in requests:
             yield self._data[start:start+length]
+
+    def close(self):
+        pass
 
 
 def _null_report_activity(*a, **k):

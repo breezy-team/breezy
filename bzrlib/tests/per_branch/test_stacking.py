@@ -23,7 +23,7 @@ from bzrlib import (
     errors,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestNotApplicable, transport_util
+from bzrlib.tests import fixtures, TestNotApplicable, transport_util
 from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
@@ -176,17 +176,20 @@ class TestStacking(TestCaseWithBranch):
 
     def test_unstack_fetches(self):
         """Removing the stacked-on branch pulls across all data"""
-        # We have a mainline
-        trunk_tree = self.make_branch_and_tree('mainline')
-        trunk_revid = trunk_tree.commit('revision on mainline')
-        # and make branch from it which is stacked
         try:
-            new_dir = trunk_tree.bzrdir.sprout(self.get_url('newbranch'),
-                stacked=True)
+            builder = self.make_branch_builder('trunk')
+        except errors.UninitializableFormat:
+            raise TestNotApplicable('uninitializeable format')
+        # We have a mainline
+        trunk = fixtures.build_branch_with_non_ancestral_rev(builder)
+        mainline_revid = 'rev-1'
+        # and make branch from it which is stacked (with no tags)
+        try:
+            new_dir = trunk.bzrdir.sprout(self.get_url('newbranch'), stacked=True)
         except unstackable_format_errors, e:
             raise TestNotApplicable(e)
         # stacked repository
-        self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        self.assertRevisionNotInRepository('newbranch', mainline_revid)
         # TODO: we'd like to commit in the stacked repository; that requires
         # some care (maybe a BranchBuilder) if it's remote and has no
         # workingtree
@@ -195,13 +198,21 @@ class TestStacking(TestCaseWithBranch):
         # now when we unstack that should implicitly fetch, to make sure that
         # the branch will still work
         new_branch = new_dir.open_branch()
+        try:
+            new_branch.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            tags_supported = False
+        else:
+            tags_supported = True
         new_branch.set_stacked_on_url(None)
-        self.assertRevisionInRepository('newbranch', trunk_revid)
+        self.assertRevisionInRepository('newbranch', mainline_revid)
         # of course it's still in the mainline
-        self.assertRevisionInRepository('mainline', trunk_revid)
+        self.assertRevisionInRepository('trunk', mainline_revid)
+        if tags_supported:
+            # the tagged revision in trunk is now in newbranch too
+            self.assertRevisionInRepository('newbranch', 'rev-2')
         # and now we're no longer stacked
-        self.assertRaises(errors.NotStacked,
-            new_branch.get_stacked_on_url)
+        self.assertRaises(errors.NotStacked, new_branch.get_stacked_on_url)
 
     def test_unstack_already_locked(self):
         """Removing the stacked-on branch with an already write-locked branch
@@ -318,7 +329,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if self.bzrdir_format.fixed_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -335,7 +346,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if self.bzrdir_format.fixed_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -352,8 +363,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_to_smart_server_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
-            raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
+        if not self.branch_format.supports_leaving_lock():
+            raise TestNotApplicable('Branch format is not usable via HPSS.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')

@@ -30,11 +30,11 @@ class AddCustomIDAction(add.AddAction):
         # The first part just logs if appropriate
         # Now generate a custom id
         file_id = osutils.safe_file_id(kind + '-'
-                                       + path.raw_path.replace('/', '%'),
+                                       + path.replace('/', '%'),
                                        warn=False)
         if self.should_print:
             self._to_file.write('added %s with id %s\n'
-                                % (path.raw_path, file_id))
+                                % (path, file_id))
         return file_id
 
 
@@ -115,11 +115,11 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, c_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertFalse(c_id in self.base_tree)
+        self.assertFalse(self.base_tree.has_id(c_id))
 
         d_id = new_tree.path2id('subdir/d')
         self.assertNotEqual(None, d_id)
-        self.assertFalse(d_id in self.base_tree)
+        self.assertFalse(self.base_tree.has_id(d_id))
 
     def test_copy_existing_dir(self):
         self.make_base_tree()
@@ -140,7 +140,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, a_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertFalse(a_id in self.base_tree)
+        self.assertFalse(self.base_tree.has_id(a_id))
 
 
 class TestAddActions(tests.TestCase):
@@ -152,11 +152,10 @@ class TestAddActions(tests.TestCase):
         self.run_action("adding path\n")
 
     def run_action(self, output):
-        from bzrlib.mutabletree import _FastPath
         inv = inventory.Inventory()
         stdout = StringIO()
         action = add.AddAction(to_file=stdout, should_print=bool(output))
 
         self.apply_redirected(None, stdout, None, action, inv, None,
-            _FastPath('path'), 'file')
+            'path', 'file')
         self.assertEqual(stdout.getvalue(), output)

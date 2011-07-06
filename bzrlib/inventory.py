@@ -31,7 +31,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
 import copy
-import os
 import re
 import tarfile
 
@@ -43,12 +42,16 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.errors import (
-    BzrCheckError,
-    BzrError,
+from bzrlib import (
+    lazy_regex,
+    trace,
     )
-from bzrlib.trace import mutter
+
 from bzrlib.static_tuple import StaticTuple
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 class InventoryEntry(object):
@@ -101,8 +104,6 @@ class InventoryEntry(object):
     InventoryDirectory('2325', 'wibble', parent_id='123', revision=None)
     >>> i.path2id('src/wibble')
     '2325'
-    >>> '2325' in i
-    True
     >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
     InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None, revision=None)
     >>> i['2326']
@@ -171,7 +172,7 @@ class InventoryEntry(object):
         candidates = {}
         # identify candidate head revision ids.
         for inv in previous_inventories:
-            if self.file_id in inv:
+            if inv.has_id(self.file_id):
                 ie = inv[self.file_id]
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
@@ -224,7 +225,7 @@ class InventoryEntry(object):
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
-        raise BzrError('unknown kind %r' % self.kind)
+        raise errors.BzrError('unknown kind %r' % self.kind)
 
     known_kinds = ('file', 'directory', 'symlink')
 
@@ -250,8 +251,9 @@ class InventoryEntry(object):
         """
         if self.parent_id is not None:
             if not inv.has_id(self.parent_id):
-                raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
-                        % (self.parent_id, rev_id))
+                raise errors.BzrCheckError(
+                    'missing parent {%s} in inventory for revision {%s}' % (
+                        self.parent_id, rev_id))
         checker._add_entry_to_text_key_references(inv, self)
         self._check(checker, rev_id)
 
@@ -539,7 +541,7 @@ class InventoryLink(InventoryEntry):
         # FIXME: which _modified field should we use ? RBC 20051003
         text_modified = (self.symlink_target != old_entry.symlink_target)
         if text_modified:
-            mutter("    symlink target changed")
+            trace.mutter("    symlink target changed")
         meta_modified = False
         return text_modified, meta_modified
 
@@ -629,15 +631,16 @@ class CommonInventory(object):
     inserted, other than through the Inventory API.
     """
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def __contains__(self, file_id):
         """True if this entry contains a file with given id.
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
         InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> '123' in inv
+        >>> inv.has_id('123')
         True
-        >>> '456' in inv
+        >>> inv.has_id('456')
         False
 
         Note that this method along with __iter__ are not encouraged for use as
@@ -756,7 +759,7 @@ class CommonInventory(object):
             if (not yield_parents and specific_file_ids is not None and
                 len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
-                if file_id in self:
+                if self.has_id(file_id):
                     yield self.id2path(file_id), self[file_id]
                 return
             from_dir = self.root
@@ -772,7 +775,7 @@ class CommonInventory(object):
             parents = set()
             byid = self
             def add_ancestors(file_id):
-                if file_id not in byid:
+                if not byid.has_id(file_id):
                     return
                 parent_id = byid[file_id].parent_id
                 if parent_id is None:
@@ -821,14 +824,6 @@ class CommonInventory(object):
                 delta.append((old.id2path(file_id), self.id2path(file_id),
                     file_id, self[file_id]))
         return delta
-
-    def _get_mutable_inventory(self):
-        """Returns a mutable copy of the object.
-
-        Some inventories are immutable, yet working trees, for example, needs
-        to mutate exisiting inventories instead of creating a new one.
-        """
-        raise NotImplementedError(self._get_mutable_inventory)
 
     def make_entry(self, kind, name, parent_id, file_id=None):
         """Simple thunk to bzrlib.inventory.make_entry."""
@@ -970,7 +965,7 @@ class Inventory(CommonInventory):
 
     >>> inv.path2id('hello.c')
     '123-123'
-    >>> '123-123' in inv
+    >>> inv.has_id('123-123')
     True
 
     There are iterators over the contents:
@@ -1133,10 +1128,6 @@ class Inventory(CommonInventory):
             other.add(entry.copy())
         return other
 
-    def _get_mutable_inventory(self):
-        """See CommonInventory._get_mutable_inventory."""
-        return copy.deepcopy(self)
-
     def __iter__(self):
         """Iterate over all file-ids."""
         return iter(self._byid)
@@ -1182,8 +1173,9 @@ class Inventory(CommonInventory):
     def _add_child(self, entry):
         """Add an entry to the inventory, without adding it to its parent"""
         if entry.file_id in self._byid:
-            raise BzrError("inventory already contains entry with id {%s}" %
-                           entry.file_id)
+            raise errors.BzrError(
+                "inventory already contains entry with id {%s}" %
+                entry.file_id)
         self._byid[entry.file_id] = entry
         for child in getattr(entry, 'children', {}).itervalues():
             self._add_child(child)
@@ -1242,10 +1234,10 @@ class Inventory(CommonInventory):
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
         InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> '123' in inv
+        >>> inv.has_id('123')
         True
         >>> del inv['123']
-        >>> '123' in inv
+        >>> inv.has_id('123')
         False
         """
         ie = self[file_id]
@@ -1353,15 +1345,17 @@ class Inventory(CommonInventory):
         """
         new_name = ensure_normalized_name(new_name)
         if not is_valid_name(new_name):
-            raise BzrError("not an acceptable filename: %r" % new_name)
+            raise errors.BzrError("not an acceptable filename: %r" % new_name)
 
         new_parent = self._byid[new_parent_id]
         if new_name in new_parent.children:
-            raise BzrError("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
+            raise errors.BzrError("%r already exists in %r" %
+                (new_name, self.id2path(new_parent_id)))
 
         new_parent_idpath = self.get_idpath(new_parent_id)
         if file_id in new_parent_idpath:
-            raise BzrError("cannot move directory %r into a subdirectory of itself, %r"
+            raise errors.BzrError(
+                "cannot move directory %r into a subdirectory of itself, %r"
                     % (self.id2path(file_id), self.id2path(new_parent_id)))
 
         file_ie = self._byid[file_id]
@@ -1615,14 +1609,6 @@ class CHKInventory(CommonInventory):
             result.parent_id = None
         self._fileid_to_entry_cache[result.file_id] = result
         return result
-
-    def _get_mutable_inventory(self):
-        """See CommonInventory._get_mutable_inventory."""
-        entries = self.iter_entries()
-        inv = Inventory(None, self.revision_id)
-        for path, inv_entry in entries:
-            inv.add(inv_entry.copy())
-        return inv
 
     def create_by_apply_delta(self, inventory_delta, new_revision_id,
         propagate_caches=False):
@@ -2299,13 +2285,9 @@ def ensure_normalized_name(name):
     return name
 
 
-_NAME_RE = None
+_NAME_RE = lazy_regex.lazy_compile(r'^[^/\\]+$')
 
 def is_valid_name(name):
-    global _NAME_RE
-    if _NAME_RE is None:
-        _NAME_RE = re.compile(r'^[^/\\]+$')
-
     return bool(_NAME_RE.match(name))
 
 
@@ -2401,3 +2383,15 @@ def _check_delta_new_path_entry_both_or_None(delta):
             raise errors.InconsistentDelta(new_path, item[1],
                 "new_path with no entry")
         yield item
+
+
+def mutable_inventory_from_tree(tree):
+    """Create a new inventory that has the same contents as a specified tree.
+
+    :param tree: Revision tree to create inventory from
+    """
+    entries = tree.iter_entries_by_dir()
+    inv = Inventory(None, tree.get_revision_id())
+    for path, inv_entry in entries:
+        inv.add(inv_entry.copy())
+    return inv

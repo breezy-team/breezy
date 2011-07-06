@@ -11,8 +11,8 @@ import os.path
 import sys
 import copy
 
-if sys.version_info < (2, 4):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
+if sys.version_info < (2, 6):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
     sys.exit(1)
 
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
@@ -69,7 +69,8 @@ PKG_DATA = {# install files from selftest suite
                                         'tests/ssl_certs/ca.crt',
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
-                                        'tests/ssl_certs/server.crt'
+                                        'tests/ssl_certs/server.crt',
+                                        'locale/*/LC_MESSAGES/*.mo',
                                        ]},
            }
 
@@ -152,6 +153,10 @@ class bzr_build(build):
     Generate bzr.1.
     """
 
+    sub_commands = build.sub_commands + [
+            ('build_mo', lambda _: True),
+            ]
+
     def run(self):
         build.run(self)
 
@@ -163,20 +168,24 @@ class bzr_build(build):
 ## Setup
 ########################
 
+from tools.build_mo import build_mo
+
 command_classes = {'install_scripts': my_install_scripts,
-                   'build': bzr_build}
+                   'build': bzr_build,
+                   'build_mo': build_mo,
+                   }
 from distutils import log
 from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
     try:
-        from Pyrex.Distutils import build_ext
-        from Pyrex.Compiler.Version import version as pyrex_version
-    except ImportError:
-        print("No Pyrex, trying Cython...")
         from Cython.Distutils import build_ext
         from Cython.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print("No Cython, trying Pyrex...")
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
@@ -499,13 +508,13 @@ if 'bdist_wininst' in sys.argv:
             # help pages
             'data_files': find_docs(),
             # for building pyrex extensions
-            'cmdclass': {'build_ext': build_ext_if_possible},
+            'cmdclass': command_classes,
            }
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)
-    
+
     setup(**ARGS)
 
 elif 'py2exe' in sys.argv:
@@ -725,13 +734,14 @@ elif 'py2exe' in sys.argv:
             self.optimize = 2
 
     if __name__ == '__main__':
+        command_classes['install_data'] = install_data_with_bytecompile
+        command_classes['py2exe'] = py2exe_no_oo_exe
         setup(options=options_list,
               console=console_targets,
               windows=gui_targets,
               zipfile='lib/library.zip',
               data_files=data_files,
-              cmdclass={'install_data': install_data_with_bytecompile,
-                        'py2exe': py2exe_no_oo_exe},
+              cmdclass=command_classes,
               )
 
 else:

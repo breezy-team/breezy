@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@ from testtools import matchers
 
 from bzrlib import (
     branch,
-    branchbuilder,
     bzrdir,
     conflicts,
     merge_directive,
@@ -35,6 +34,13 @@ from bzrlib import (
     urlutils,
     workingtree,
     )
+from bzrlib.tests import (
+    scenarios,
+    script,
+    )
+
+
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 class TestMerge(tests.TestCaseWithTransport):
@@ -353,6 +359,17 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertPathExists('file1')
         self.assertPathDoesNotExist('file2')
 
+    def test_merge_nonexistent_file(self):
+        """It should not be possible to merge changes from a file which
+        does not exist."""
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'bar\n')])
+        tree_a.add(['file'])
+        tree_a.commit('commit 1')
+        os.chdir('tree_a')
+        self.run_bzr_error(('Path\(s\) do not exist: non/existing',),
+                           ['merge', 'non/existing'])
+
     def pullable_branch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree_contents([('a/file', 'bar\n')])
@@ -534,6 +551,7 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_merge_from_submit(self):
         tree_a = self.make_branch_and_tree('a')
+        tree_a.commit('test')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         tree_c = tree_a.bzrdir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
@@ -544,6 +562,7 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')
+        tree_a.commit('rev1')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         self.assertIs(tree_b.branch.get_submit_branch(), None)
 
@@ -555,6 +574,23 @@ class TestMerge(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['merge', '-d', 'b', 'a'])
         self.assertEqual(tree_b.branch.get_submit_branch(),
                          tree_a.bzrdir.root_transport.base)
+
+    def test_no_remember_dont_set_submit(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/file', "a\n")])
+        tree_a.add('file')
+        tree_a.commit('rev1')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.assertIs(tree_b.branch.get_submit_branch(), None)
+
+        # Remember should not happen if using default from parent
+        out, err = self.run_bzr(['merge', '-d', 'b', '--no-remember'])
+        self.assertEquals(None, tree_b.branch.get_submit_branch())
+
+        # Remember should not happen if user supplies location but ask for not
+        # remembering it
+        out, err = self.run_bzr(['merge', '-d', 'b', '--no-remember', 'a'])
+        self.assertEqual(None, tree_b.branch.get_submit_branch())
 
     def test_weave_cherrypick(self):
         this_tree = self.make_branch_and_tree('this')
@@ -625,24 +661,66 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_merge_interactive_unlocks_branch(self):
         this = self.make_branch_and_tree('this')
-        other = self.make_branch_and_tree('other')
-        other.commit('empty commit')
+        this.commit('empty commit')
+        other = this.bzrdir.sprout('other').open_workingtree()
+        other.commit('empty commit 2')
         self.run_bzr('merge -i -d this other')
         this.lock_write()
         this.unlock()
 
-    def test_merge_reversed_revision_range(self):
-        tree = self.make_branch_and_tree(".")
+    def test_merge_fetches_tags(self):
+        """Tags are updated by merge, and revisions named in those tags are
+        fetched.
+        """
+        # Make a source, sprout a target off it
+        builder = self.make_branch_builder('source')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        source = builder.get_branch()
+        target_bzrdir = source.bzrdir.sprout('target')
+        # Add a non-ancestry tag to source
+        builder.build_commit(message="Rev 2a", rev_id='rev-2a')
+        source.tags.set_tag('tag-a', 'rev-2a')
+        source.set_last_revision_info(1, 'rev-1')
+        builder.build_commit(message="Rev 2b", rev_id='rev-2b')
+        # Merge from source
+        self.run_bzr('merge -d target source')
+        target = target_bzrdir.open_branch()
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2a', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2a')
+
+
+class TestMergeRevisionRange(tests.TestCaseWithTransport):
+
+    scenarios = (('whole-tree', dict(context='.')),
+                 ('file-only', dict(context='a')))
+
+    def setUp(self):
+        super(TestMergeRevisionRange, self).setUp()
+        self.tree = self.make_branch_and_tree(".")
+        self.tree.commit('initial commit')
         for f in ("a", "b"):
             self.build_tree([f])
-            tree.add(f)
-            tree.commit("added "+f)
-        for context in (".", "", "a"):
-            self.run_bzr("merge -r 1..0 " + context)
-            self.assertPathDoesNotExist("a")
-            tree.revert()
-            self.assertPathExists("a")
+            self.tree.add(f)
+            self.tree.commit("added " + f)
 
+    def test_merge_reversed_revision_range(self):
+        self.run_bzr("merge -r 2..1 " + self.context)
+        self.assertPathDoesNotExist("a")
+        self.assertPathExists("b")
+
+
+class TestMergeScript(script.TestCaseWithTransportAndScript):
+    def test_merge_empty_branch(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/a'])
+        source.add('a')
+        source.commit('Added a', rev_id='rev1')
+        target = self.make_branch_and_tree('target')
+        self.run_script("""\
+$ bzr merge -d target source
+2>bzr: ERROR: Merging into empty branches not currently supported, https://bugs.launchpad.net/bzr/+bug/308562
+""")
 
 class TestMergeForce(tests.TestCaseWithTransport):
 

@@ -120,8 +120,9 @@ def report_bug_to_apport(exc_info, stderr):
     # this function is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
 
-    # if the import fails, the exception will be caught at a higher level and
-    # we'll report the error by other means
+    # This import is apparently not used, but we're doing it so that if the
+    # import fails, the exception will be caught at a higher level and we'll
+    # report the error by other means.
     import apport
 
     crash_filename = _write_apport_report_to_file(exc_info)
@@ -151,10 +152,11 @@ def _write_apport_report_to_file(exc_info):
     exc_type, exc_object, exc_tb = exc_info
 
     pr = Report()
-    # add_proc_info gives you the memory map of the process, which is not so
-    # useful for Bazaar but does tell you what binary libraries are loaded.
-    # More importantly it sets the ExecutablePath, InterpreterPath, etc.
+    # add_proc_info sets the ExecutablePath, InterpreterPath, etc.
     pr.add_proc_info()
+    # It also adds ProcMaps which for us is rarely useful and mostly noise, so
+    # let's remove it.
+    del pr['ProcMaps']
     pr.add_user_info()
 
     # Package and SourcePackage are needed so that apport will report about even
@@ -262,11 +264,7 @@ def _open_crash_file():
 
 
 def _format_plugin_list():
-    plugin_lines = []
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        plugin_lines.append("  %-20s %s [%s]" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    return '\n'.join(plugin_lines)
+    return ''.join(plugin.describe_plugins(show_paths=True))
 
 
 def _format_module_list():

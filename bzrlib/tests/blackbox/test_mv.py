@@ -28,6 +28,7 @@ from bzrlib.tests import (
     CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
     TestCaseWithTransport,
+    UnicodeFilename,
     )
 
 
@@ -504,3 +505,11 @@ class TestMove(TestCaseWithTransport):
         # If this fails, the tree is trying to acquire a branch lock, which it
         # shouldn't.
         self.run_bzr(['mv', 'tree/path', 'tree/path2'])
+
+    def test_mv_unversioned_non_ascii(self):
+        """Clear error on mv of an unversioned non-ascii file, see lp:707954"""
+        self.requireFeature(UnicodeFilename)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree([u"\xA7"])
+        out, err = self.run_bzr_error(["Could not rename", "not versioned"],
+            ["mv", u"\xA7", "b"])

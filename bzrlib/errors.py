@@ -54,12 +54,12 @@ class BzrError(StandardError):
     Base class for errors raised by bzrlib.
 
     :cvar internal_error: if True this was probably caused by a bzr bug and
-    should be displayed with a traceback; if False (or absent) this was
-    probably a user or environment error and they don't need the gory details.
-    (That can be overridden by -Derror on the command line.)
+        should be displayed with a traceback; if False (or absent) this was
+        probably a user or environment error and they don't need the gory
+        details.  (That can be overridden by -Derror on the command line.)
 
     :cvar _fmt: Format string to display the error; this is expanded
-    by the instance's dict.
+        by the instance's dict.
     """
 
     internal_error = False
@@ -304,7 +304,7 @@ class ReservedId(BzrError):
 class RootMissing(InternalBzrError):
 
     _fmt = ("The root entry of a tree must be the first entry supplied to "
-        "record_entry_contents.")
+        "the commit builder.")
 
 
 class NoPublicBranch(BzrError):
@@ -864,9 +864,9 @@ class AlreadyVersionedError(BzrError):
         """Construct a new AlreadyVersionedError.
 
         :param path: This is the path which is versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to not be versioned.
+            which could explain why this is expected to not be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -885,9 +885,9 @@ class NotVersionedError(BzrError):
         """Construct a new NotVersionedError.
 
         :param path: This is the path which is not versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to be versioned.
+            which could explain why this is expected to be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -1138,6 +1138,15 @@ class CannotCommitSelectedFileMerge(BzrError):
     def __init__(self, files):
         files_str = ', '.join(files)
         BzrError.__init__(self, files=files, files_str=files_str)
+
+
+class ExcludesUnsupported(BzrError):
+
+    _fmt = ('Excluding paths during commit is not supported by '
+            'repository at %(repository)r.')
+
+    def __init__(self, repository):
+        BzrError.__init__(self, repository=repository)
 
 
 class BadCommitMessageEncoding(BzrError):
@@ -1706,10 +1715,16 @@ class InvalidRange(TransportError):
 
 class InvalidHttpResponse(TransportError):
 
-    _fmt = "Invalid http response for %(path)s: %(msg)s"
+    _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
 
     def __init__(self, path, msg, orig_error=None):
         self.path = path
+        if orig_error is None:
+            orig_error = ''
+        else:
+            # This is reached for obscure and unusual errors so we want to
+            # preserve as much info as possible to ease debug.
+            orig_error = ': %r' % (orig_error,)
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
@@ -1755,14 +1770,23 @@ class ConflictsInTree(BzrError):
     _fmt = "Working tree has conflicts."
 
 
+class ConfigContentError(BzrError):
+
+    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
+
+    def __init__(self, filename):
+        BzrError.__init__(self)
+        self.filename = filename
+
+
 class ParseConfigError(BzrError):
 
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
     def __init__(self, errors, filename):
-        if filename is None:
-            filename = ""
-        message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.msg for e in errors)))
-        BzrError.__init__(self, message)
+        BzrError.__init__(self)
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
 
 
 class NoEmailInUsername(BzrError):
@@ -1776,10 +1800,34 @@ class NoEmailInUsername(BzrError):
 
 class SigningFailed(BzrError):
 
-    _fmt = 'Failed to gpg sign data with command "%(command_line)s"'
+    _fmt = 'Failed to GPG sign data with command "%(command_line)s"'
 
     def __init__(self, command_line):
         BzrError.__init__(self, command_line=command_line)
+
+
+class SignatureVerificationFailed(BzrError):
+
+    _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)
+
+
+class DependencyNotPresent(BzrError):
+
+    _fmt = 'Unable to import library "%(library)s": %(error)s'
+
+    def __init__(self, library, error):
+        BzrError.__init__(self, library=library, error=error)
+
+
+class GpgmeNotInstalled(DependencyNotPresent):
+
+    _fmt = 'python-gpgme is not installed, it is needed to verify signatures'
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'gpgme', error)
 
 
 class WorkingTreeNotRevision(BzrError):
@@ -1960,15 +2008,16 @@ class TransformRenameFailed(BzrError):
 
 class BzrMoveFailedError(BzrError):
 
-    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not move %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path='', to_path='', extra=None):
         from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
-            self.extra = ': ' + str(extra)
+            self.extra, self._has_extra = extra, ': '
         else:
-            self.extra = ''
+            self.extra = self._has_extra = ''
 
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
@@ -1995,10 +2044,12 @@ class BzrMoveFailedError(BzrError):
 
 class BzrRenameFailedError(BzrMoveFailedError):
 
-    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not rename %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
 
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
@@ -2035,14 +2086,6 @@ class BzrBadParameterUnicode(BzrBadParameter):
 class BzrBadParameterContainsNewline(BzrBadParameter):
 
     _fmt = "Parameter %(param)s contains a newline."
-
-
-class DependencyNotPresent(BzrError):
-
-    _fmt = 'Unable to import library "%(library)s": %(error)s'
-
-    def __init__(self, library, error):
-        BzrError.__init__(self, library=library, error=error)
 
 
 class ParamikoNotPresent(DependencyNotPresent):
@@ -2653,11 +2696,12 @@ class UnknownErrorFromSmartServer(BzrError):
 
     This is distinct from ErrorFromSmartServer so that it is possible to
     distinguish between the following two cases:
-      - ErrorFromSmartServer was uncaught.  This is logic error in the client
-        and so should provoke a traceback to the user.
-      - ErrorFromSmartServer was caught but its error_tuple could not be
-        translated.  This is probably because the server sent us garbage, and
-        should not provoke a traceback.
+
+    - ErrorFromSmartServer was uncaught.  This is logic error in the client
+      and so should provoke a traceback to the user.
+    - ErrorFromSmartServer was caught but its error_tuple could not be
+      translated.  This is probably because the server sent us garbage, and
+      should not provoke a traceback.
     """
 
     _fmt = "Server sent an unexpected error: %(error_tuple)r"
@@ -3062,6 +3106,18 @@ class ShelfCorrupt(BzrError):
     _fmt = "Shelf corrupt."
 
 
+class DecompressCorruption(BzrError):
+
+    _fmt = "Corruption while decompressing repository file%(orig_error)s"
+
+    def __init__(self, orig_error=None):
+        if orig_error is not None:
+            self.orig_error = ", %s" % (orig_error,)
+        else:
+            self.orig_error = ""
+        BzrError.__init__(self)
+
+
 class NoSuchShelfId(BzrError):
 
     _fmt = 'No changes are shelved with id "%(shelf_id)d".'
@@ -3218,3 +3274,32 @@ class RecursiveBind(BzrError):
     def __init__(self, branch_url):
         self.branch_url = branch_url
 
+
+# FIXME: I would prefer to define the config related exception classes in
+# config.py but the lazy import mechanism proscribes this -- vila 20101222
+class OptionExpansionLoop(BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(BzrError):
+
+    _fmt = 'Option %(name)s is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string
+
+
+class NoCompatibleInter(BzrError):
+
+    _fmt = ('No compatible object available for operations from %(source)r '
+            'to %(target)r.')
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target

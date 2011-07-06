@@ -19,6 +19,7 @@ import time
 
 from bzrlib import (
     errors,
+    inventory,
     remote,
     revision as _mod_revision,
     tests,
@@ -213,16 +214,15 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         if len(history) < 2: return
 
+        graph = self.branch.repository.get_graph()
         for start in range(0,len(history)-1):
             start_id = history[start]
             for end in range(start+1,len(history)):
                 end_id = history[end]
-                old_revs = set(self.branch.repository.get_ancestry(start_id))
-                new_revs = set(self.branch.repository.get_ancestry(end_id))
+                unique_revs = graph.find_unique_ancestors(end_id, [start_id])
                 l1 = self.branch.repository.fileids_altered_by_revision_ids(
-                    new_revs.difference(old_revs))
+                    unique_revs)
                 l1 = set(l1.keys())
-
                 l2 = self.compare_tree_fileids(self.branch, start_id, end_id)
                 self.assertEquals(l1, l2)
 
@@ -304,11 +304,11 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         history = self.branch.revision_history()
         old_rev = history[0]
         new_rev = history[1]
-        old_revs = set(self.branch.repository.get_ancestry(old_rev))
-        new_revs = set(self.branch.repository.get_ancestry(new_rev))
+        graph = self.branch.repository.get_graph()
+        unique_revs = graph.find_unique_ancestors(new_rev, [old_rev])
 
         l1 = self.branch.repository.fileids_altered_by_revision_ids(
-            new_revs.difference(old_revs))
+            unique_revs)
         l1 = set(l1.keys())
 
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
@@ -325,7 +325,7 @@ class FileIdInvolvedWGhosts(per_repository.TestCaseWithRepository):
             ('add', ('a', 'a-file-id', 'file', 'some content\n'))])
         b = builder.get_branch()
         old_rt = b.repository.revision_tree('A-id')
-        new_inv = old_rt.inventory._get_mutable_inventory()
+        new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = 'B-id'
         new_inv['a-file-id'].revision = 'ghost-id'
         new_rev = _mod_revision.Revision('B-id',

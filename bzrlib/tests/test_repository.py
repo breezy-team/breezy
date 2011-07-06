@@ -23,16 +23,16 @@ also see this file.
 """
 
 from stat import S_ISDIR
-import sys
 
 import bzrlib
-from bzrlib.errors import (NoSuchFile,
-                           UnknownFormatError,
-                           UnsupportedFormatError,
-                           )
+from bzrlib.errors import (
+    UnknownFormatError,
+    UnsupportedFormatError,
+    )
 from bzrlib import (
     btree_index,
     graph,
+    symbol_versioning,
     tests,
     transport,
     )
@@ -52,13 +52,14 @@ from bzrlib import (
     revision as _mod_revision,
     upgrade,
     versionedfile,
+    vf_repository,
     workingtree,
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
     knitrepo,
+    knitpack_repo,
     pack_repo,
-    weaverepo,
     )
 
 
@@ -67,7 +68,7 @@ class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):
         old_default = bzrdir.format_registry.get('default')
         private_default = old_default().repository_format.__class__
-        old_format = repository.RepositoryFormat.get_default_format()
+        old_format = repository.format_registry.get_default()
         self.assertTrue(isinstance(old_format, private_default))
         def make_sample_bzrdir():
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
@@ -87,7 +88,7 @@ class TestDefaultFormat(TestCase):
             bzrdir.format_registry.remove('default')
             bzrdir.format_registry.remove('sample')
             bzrdir.format_registry.register('default', old_default, '')
-        self.assertIsInstance(repository.RepositoryFormat.get_default_format(),
+        self.assertIsInstance(repository.format_registry.get_default(),
                               old_format.__class__)
 
 
@@ -115,6 +116,15 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
         return "opened repository."
 
 
+class SampleExtraRepositoryFormat(repository.RepositoryFormat):
+    """A sample format that can not be used in a metadir
+
+    """
+
+    def get_format_string(self):
+        raise NotImplementedError
+
+
 class TestRepositoryFormat(TestCaseWithTransport):
     """Tests for the Repository format detection used by the bzr meta dir facility.BzrBranchFormat facility."""
 
@@ -129,7 +139,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
-        check_format(weaverepo.RepositoryFormat7(), "bar")
+        check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -145,207 +155,57 @@ class TestRepositoryFormat(TestCaseWithTransport):
                           dir)
 
     def test_register_unregister_format(self):
+        # Test deprecated format registration functions
         format = SampleRepositoryFormat()
         # make a control dir
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         # make a repo
         format.initialize(dir)
         # register a format for it.
-        repository.RepositoryFormat.register_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            repository.RepositoryFormat.register_format, format)
         # which repository.Open will refuse (not supported)
-        self.assertRaises(UnsupportedFormatError, repository.Repository.open, self.get_url())
+        self.assertRaises(UnsupportedFormatError, repository.Repository.open,
+            self.get_url())
         # but open(unsupported) will work
         self.assertEqual(format.open(dir), "opened repository.")
         # unregister the format
-        repository.RepositoryFormat.unregister_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            repository.RepositoryFormat.unregister_format, format)
 
 
-class TestFormat6(TestCaseWithTransport):
+class TestRepositoryFormatRegistry(TestCase):
 
-    def test_attribute__fetch_order(self):
-        """Weaves need topological data insertion."""
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual('topological', repo._format._fetch_order)
+    def setUp(self):
+        super(TestRepositoryFormatRegistry, self).setUp()
+        self.registry = repository.RepositoryFormatRegistry()
 
-    def test_attribute__fetch_uses_deltas(self):
-        """Weaves do not reuse deltas."""
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(False, repo._format._fetch_uses_deltas)
+    def test_register_unregister_format(self):
+        format = SampleRepositoryFormat()
+        self.registry.register(format)
+        self.assertEquals(format, self.registry.get("Sample .bzr repository format."))
+        self.registry.remove(format)
+        self.assertRaises(KeyError, self.registry.get, "Sample .bzr repository format.")
 
-    def test_attribute__fetch_reconcile(self):
-        """Weave repositories need a reconcile after fetch."""
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(True, repo._format._fetch_reconcile)
+    def test_get_all(self):
+        format = SampleRepositoryFormat()
+        self.assertEquals([], self.registry._get_all())
+        self.registry.register(format)
+        self.assertEquals([format], self.registry._get_all())
 
-    def test_no_ancestry_weave(self):
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        # We no longer need to create the ancestry.weave file
-        # since it is *never* used.
-        self.assertRaises(NoSuchFile,
-                          control.transport.get,
-                          'ancestry.weave')
+    def test_register_extra(self):
+        format = SampleExtraRepositoryFormat()
+        self.assertEquals([], self.registry._get_all())
+        self.registry.register_extra(format)
+        self.assertEquals([format], self.registry._get_all())
 
-    def test_supports_external_lookups(self):
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertFalse(repo._format.supports_external_lookups)
-
-
-class TestFormat7(TestCaseWithTransport):
-
-    def test_attribute__fetch_order(self):
-        """Weaves need topological data insertion."""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual('topological', repo._format._fetch_order)
-
-    def test_attribute__fetch_uses_deltas(self):
-        """Weaves do not reuse deltas."""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(False, repo._format._fetch_uses_deltas)
-
-    def test_attribute__fetch_reconcile(self):
-        """Weave repositories need a reconcile after fetch."""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(True, repo._format._fetch_reconcile)
-
-    def test_disk_layout(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        # in case of side effects of locking.
-        repo.lock_write()
-        repo.unlock()
-        # we want:
-        # format 'Bazaar-NG Repository format 7'
-        # lock ''
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
-        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
-        # Creating a file with id Foo:Bar results in a non-escaped file name on
-        # disk.
-        control.create_branch()
-        tree = control.create_workingtree()
-        tree.add(['foo'], ['Foo:Bar'], ['file'])
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'content\n')
-        try:
-            tree.commit('first post', rev_id='first')
-        except errors.IllegalPath:
-            if sys.platform != 'win32':
-                raise
-            self.knownFailure('Foo:Bar cannot be used as a file-id on windows'
-                              ' in repo format 7')
-            return
-        self.assertEqualDiff(
-            '# bzr weave file v5\n'
-            'i\n'
-            '1 7fe70820e08a1aac0ef224d9c66ab66831cc4ab1\n'
-            'n first\n'
-            '\n'
-            'w\n'
-            '{ 0\n'
-            '. content\n'
-            '}\n'
-            'W\n',
-            t.get('weaves/74/Foo%3ABar.weave').read())
-
-    def test_shared_disk_layout(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        # we want:
-        # format 'Bazaar-NG Repository format 7'
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        # a 'shared-storage' marker file.
-        # lock is not present when unlocked
-        t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
-        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
-        self.assertFalse(t.has('branch-lock'))
-
-    def test_creates_lockdir(self):
-        """Make sure it appears to be controlled by a LockDir existence"""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        t = control.get_repository_transport(None)
-        # TODO: Should check there is a 'lock' toplevel directory,
-        # regardless of contents
-        self.assertFalse(t.has('lock/held/info'))
-        repo.lock_write()
-        try:
-            self.assertTrue(t.has('lock/held/info'))
-        finally:
-            # unlock so we don't get a warning about failing to do so
-            repo.unlock()
-
-    def test_uses_lockdir(self):
-        """repo format 7 actually locks on lockdir"""
-        base_url = self.get_url()
-        control = bzrdir.BzrDirMetaFormat1().initialize(base_url)
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        t = control.get_repository_transport(None)
-        repo.lock_write()
-        repo.unlock()
-        del repo
-        # make sure the same lock is created by opening it
-        repo = repository.Repository.open(base_url)
-        repo.lock_write()
-        self.assertTrue(t.has('lock/held/info'))
-        repo.unlock()
-        self.assertFalse(t.has('lock/held/info'))
-
-    def test_shared_no_tree_disk_layout(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        repo.set_make_working_trees(False)
-        # we want:
-        # format 'Bazaar-NG Repository format 7'
-        # lock ''
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        # a 'shared-storage' marker file.
-        t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
-        ## self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertEqualDiff('', t.get('no-working-trees').read())
-        repo.set_make_working_trees(True)
-        self.assertFalse(t.has('no-working-trees'))
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
-        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
-
-    def test_supports_external_lookups(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertFalse(repo._format.supports_external_lookups)
+    def test_register_extra_lazy(self):
+        self.assertEquals([], self.registry._get_all())
+        self.registry.register_extra_lazy("bzrlib.tests.test_repository",
+            "SampleExtraRepositoryFormat")
+        formats = self.registry._get_all()
+        self.assertEquals(1, len(formats))
+        self.assertIsInstance(formats[0], SampleExtraRepositoryFormat)
 
 
 class TestFormatKnit1(TestCaseWithTransport):
@@ -519,7 +379,11 @@ class TestInterRepository(TestCaseWithTransport):
         # classes do not barf inappropriately when a surprising repository type
         # is handed to them.
         dummy_a = DummyRepository()
+        dummy_a._format = RepositoryFormat()
+        dummy_a._format.supports_full_versioned_files = True
         dummy_b = DummyRepository()
+        dummy_b._format = RepositoryFormat()
+        dummy_b._format.supports_full_versioned_files = True
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):
@@ -529,7 +393,7 @@ class TestInterRepository(TestCaseWithTransport):
         no actual sane default in the presence of incompatible data models.
         """
         inter_repo = repository.InterRepository.get(repo_a, repo_b)
-        self.assertEqual(repository.InterSameDataRepository,
+        self.assertEqual(vf_repository.InterSameDataRepository,
                          inter_repo.__class__)
         self.assertEqual(repo_a, inter_repo.source)
         self.assertEqual(repo_b, inter_repo.target)
@@ -549,9 +413,11 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_a._serializer = repo._serializer
         dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_a._format.rich_root_data = repo._format.rich_root_data
+        dummy_a._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
         dummy_b._serializer = repo._serializer
         dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_b._format.rich_root_data = repo._format.rich_root_data
+        dummy_b._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
@@ -570,45 +436,33 @@ class TestInterRepository(TestCaseWithTransport):
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
 
-class TestInterWeaveRepo(TestCaseWithTransport):
+class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
-    def test_is_compatible_and_registered(self):
-        # InterWeaveRepo is compatible when either side
-        # is a format 5/6/7 branch
-        from bzrlib.repofmt import knitrepo, weaverepo
-        formats = [weaverepo.RepositoryFormat5(),
-                   weaverepo.RepositoryFormat6(),
-                   weaverepo.RepositoryFormat7()]
-        incompatible_formats = [weaverepo.RepositoryFormat4(),
-                                knitrepo.RepositoryFormatKnit1(),
-                                ]
-        repo_a = self.make_repository('a')
-        repo_b = self.make_repository('b')
-        is_compatible = weaverepo.InterWeaveRepo.is_compatible
-        for source in incompatible_formats:
-            # force incompatible left then right
-            repo_a._format = source
-            repo_b._format = formats[0]
-            self.assertFalse(is_compatible(repo_a, repo_b))
-            self.assertFalse(is_compatible(repo_b, repo_a))
-        for source in formats:
-            repo_a._format = source
-            for target in formats:
-                repo_b._format = target
-                self.assertTrue(is_compatible(repo_a, repo_b))
-        self.assertEqual(weaverepo.InterWeaveRepo,
-                         repository.InterRepository.get(repo_a,
-                                                        repo_b).__class__)
+    def get_format_string(self):
+        return "Test Format 1"
+
+
+class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
+
+    def get_format_string(self):
+        return "Test Format 2"
 
 
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
+        source_format = TestRepositoryFormat1()
+        target_format = TestRepositoryFormat2()
+        repository.format_registry.register(source_format)
+        self.addCleanup(repository.format_registry.remove,
+            source_format)
+        repository.format_registry.register(target_format)
+        self.addCleanup(repository.format_registry.remove,
+            target_format)
         t = self.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
-        repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
-        target_format = knitrepo.RepositoryFormatKnit1()
+        repo = TestRepositoryFormat1().initialize(repo_dir)
         converter = repository.CopyConverter(target_format)
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -617,13 +471,6 @@ class TestRepositoryConverter(TestCaseWithTransport):
             pb.finished()
         repo = repo_dir.open_repository()
         self.assertTrue(isinstance(target_format, repo._format.__class__))
-
-
-class TestMisc(TestCase):
-
-    def test_unescape_xml(self):
-        """We get some kind of error when malformed entities are passed"""
-        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;')
 
 
 class TestRepositoryFormatKnit3(TestCaseWithTransport):
@@ -826,7 +673,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='rich-root-pack')
         stream = source._get_source(target._format)
         # We don't want the child GroupCHKStreamSource
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
         source_builder = self.make_branch_builder('source',
@@ -908,25 +755,25 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='pack-0.92')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_rich_root_pack(self):
         source = self.make_repository('source', format='rich-root-pack')
         target = self.make_repository('target', format='rich-root-pack')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19(self):
         source = self.make_repository('source', format='1.9')
         target = self.make_repository('target', format='1.9')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19_rich_root(self):
         source = self.make_repository('source', format='1.9-rich-root')
         target = self.make_repository('target', format='1.9-rich-root')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_remote_exact_pack_19(self):
         trans = self.make_smart_server('target')
@@ -935,19 +782,19 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='1.9')
         target = repository.Repository.open(trans.base)
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_stream_source_to_non_exact(self):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='1.9')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_stream_source_to_non_exact_rich_root(self):
         source = self.make_repository('source', format='1.9')
         target = self.make_repository('target', format='1.9-rich-root')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_source_to_remote_non_exact_pack_19(self):
         trans = self.make_smart_server('target')
@@ -956,13 +803,13 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='1.6')
         target = repository.Repository.open(trans.base)
         stream_source = source._get_source(target._format)
-        self.assertIs(type(stream_source), repository.StreamSource)
+        self.assertIs(type(stream_source), vf_repository.StreamSource)
 
     def test_stream_source_to_knit(self):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='dirstate')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
 
 class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
@@ -1604,7 +1451,7 @@ class TestPacker(TestCaseWithTransport):
         # Because of how they were built, they correspond to
         # ['D', 'C', 'B', 'A']
         packs = b.repository._pack_collection.packs
-        packer = pack_repo.Packer(b.repository._pack_collection,
+        packer = knitpack_repo.KnitPacker(b.repository._pack_collection,
                                   packs, 'testing',
                                   revision_ids=['B', 'C'])
         # Now, when we are copying the B & C revisions, their pack files should
@@ -1624,7 +1471,7 @@ class TestOptimisingPacker(TestCaseWithTransport):
         return repo._pack_collection
 
     def test_open_pack_will_optimise(self):
-        packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
+        packer = knitpack_repo.OptimisingKnitPacker(self.get_pack_collection(),
                                             [], '.test')
         new_pack = packer.open_pack()
         self.addCleanup(new_pack.abort) # ensure cleanup
@@ -1755,9 +1602,9 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.addCleanup(target.unlock)
         source = source_tree.branch.repository._get_source(target._format)
         self.orig_pack = target.pack
-        target.pack = self.log_pack
+        self.overrideAttr(target, "pack", self.log_pack)
         search = target.search_missing_revision_ids(
-            source_tree.branch.repository, tip)
+            source_tree.branch.repository, revision_ids=[tip])
         stream = source.get_stream(search)
         from_format = source_tree.branch.repository._format
         sink = target._get_sink()
@@ -1779,7 +1626,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.addCleanup(target.unlock)
         source = source_tree.branch.repository
         self.orig_pack = target.pack
-        target.pack = self.log_pack
+        self.overrideAttr(target, "pack", self.log_pack)
         target.fetch(source)
         if expect_pack_called:
             self.assertLength(1, self.calls)

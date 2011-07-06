@@ -20,7 +20,10 @@ import os
 import stat
 import sys
 
-from bzrlib import tests
+from bzrlib import (
+    osutils,
+    tests,
+    )
 
 
 class _NotRunningAsRoot(tests.Feature):
@@ -40,12 +43,15 @@ class _NotRunningAsRoot(tests.Feature):
 not_running_as_root = _NotRunningAsRoot()
 
 apport = tests.ModuleAvailableFeature('apport')
+gpgme = tests.ModuleAvailableFeature('gpgme')
+lzma = tests.ModuleAvailableFeature('lzma')
 meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
 sphinx = tests.ModuleAvailableFeature('sphinx')
 subunit = tests.ModuleAvailableFeature('subunit')
+testtools = tests.ModuleAvailableFeature('testtools')
 
 
 class _BackslashDirSeparatorFeature(tests.Feature):
@@ -114,16 +120,8 @@ class ExecutableFeature(tests.Feature):
         return self._path
 
     def _probe(self):
-        path = os.environ.get('PATH')
-        if path is None:
-            return False
-        for d in path.split(os.pathsep):
-            if d:
-                f = os.path.join(d, self.name)
-                if os.access(f, os.X_OK):
-                    self._path = f
-                    return True
-        return False
+        self._path = osutils.find_executable_on_path(self.name)
+        return self._path is not None
 
     def feature_name(self):
         return '%s executable' % self.name

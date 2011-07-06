@@ -27,10 +27,8 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import errno
 import threading
-from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -38,15 +36,16 @@ from bzrlib import (
     cmdline,
     debug,
     errors,
+    i18n,
     option,
     osutils,
     trace,
     ui,
-    win32utils,
     )
 """)
 
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
+from bzrlib.i18n import gettext
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -276,6 +275,8 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     # Allow plugins to extend commands
     for hook in Command.hooks['extend_command']:
         hook(cmd)
+    if getattr(cmd, 'invoked_as', None) is None:
+        cmd.invoked_as = cmd_name
     return cmd
 
 
@@ -358,57 +359,58 @@ class Command(object):
     summary, then a complete description of the command.  A grammar
     description will be inserted.
 
-    aliases
-        Other accepted names for this command.
+    :cvar aliases: Other accepted names for this command.
 
-    takes_args
-        List of argument forms, marked with whether they are optional,
-        repeated, etc.
+    :cvar takes_args: List of argument forms, marked with whether they are
+        optional, repeated, etc.  Examples::
 
-                Examples:
+            ['to_location', 'from_branch?', 'file*']
 
-                ['to_location', 'from_branch?', 'file*']
+        * 'to_location' is required
+        * 'from_branch' is optional
+        * 'file' can be specified 0 or more times
 
-                'to_location' is required
-                'from_branch' is optional
-                'file' can be specified 0 or more times
+    :cvar takes_options: List of options that may be given for this command.
+        These can be either strings, referring to globally-defined options, or
+        option objects.  Retrieve through options().
 
-    takes_options
-        List of options that may be given for this command.  These can
-        be either strings, referring to globally-defined options,
-        or option objects.  Retrieve through options().
-
-    hidden
-        If true, this command isn't advertised.  This is typically
+    :cvar hidden: If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
 
-    encoding_type
-        Command objects will get a 'outf' attribute, which has been
-        setup to properly handle encoding of unicode strings.
-        encoding_type determines what will happen when characters cannot
-        be encoded
-            strict - abort if we cannot decode
-            replace - put in a bogus character (typically '?')
-            exact - do not encode sys.stdout
+    :cvar encoding_type: Command objects will get a 'outf' attribute, which has
+        been setup to properly handle encoding of unicode strings.
+        encoding_type determines what will happen when characters cannot be
+        encoded:
 
-            NOTE: by default on Windows, sys.stdout is opened as a text
-            stream, therefore LF line-endings are converted to CRLF.
-            When a command uses encoding_type = 'exact', then
-            sys.stdout is forced to be a binary stream, and line-endings
-            will not mangled.
+        * strict - abort if we cannot decode
+        * replace - put in a bogus character (typically '?')
+        * exact - do not encode sys.stdout
+
+        NOTE: by default on Windows, sys.stdout is opened as a text stream,
+        therefore LF line-endings are converted to CRLF.  When a command uses
+        encoding_type = 'exact', then sys.stdout is forced to be a binary
+        stream, and line-endings will not mangled.
+
+    :cvar invoked_as:
+        A string indicating the real name under which this command was
+        invoked, before expansion of aliases.
+        (This may be None if the command was constructed and run in-process.)
 
     :cvar hooks: An instance of CommandHooks.
-    :ivar __doc__: The help shown by 'bzr help command' for this command.
+
+    :cvar __doc__: The help shown by 'bzr help command' for this command.
         This is set by assigning explicitly to __doc__ so that -OO can
         be used::
 
-        class Foo(Command):
-            __doc__ = "My help goes here"
+            class Foo(Command):
+                __doc__ = "My help goes here"
     """
     aliases = []
     takes_args = []
     takes_options = []
     encoding_type = 'strict'
+    invoked_as = None
+    l10n = True
 
     hidden = False
 
@@ -486,9 +488,18 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
+        if self.l10n and not i18n.installed():
+            i18n.install()  # Install i18n only for get_help_text for now.
         doc = self.help()
-        if not doc:
-            doc = "No help for this command."
+        if doc:
+            # Note: If self.gettext() translates ':Usage:\n', the section will
+            # be shown after "Description" section and we don't want to
+            # translate the usage string.
+            # Though, bzr export-pot don't exports :Usage: section and it must
+            # not be translated.
+            doc = self.gettext(doc)
+        else:
+            doc = gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
         purpose,sections,order = self._get_help_parts(doc)
@@ -501,11 +512,11 @@ class Command(object):
 
         # The header is the purpose and usage
         result = ""
-        result += ':Purpose: %s\n' % purpose
+        result += gettext(':Purpose: %s\n') % (purpose,)
         if usage.find('\n') >= 0:
-            result += ':Usage:\n%s\n' % usage
+            result += gettext(':Usage:\n%s\n') % (usage,)
         else:
-            result += ':Usage:   %s\n' % usage
+            result += gettext(':Usage:   %s\n') % (usage,)
         result += '\n'
 
         # Add the options
@@ -513,7 +524,8 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        options = option.get_optparser(self.options()).format_option_help()
+        parser = option.get_optparser(self.options())
+        options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
         # at least).  As that pattern always appears in the commands that
@@ -523,10 +535,7 @@ class Command(object):
         if not plain and options.find('  --1.14  ') != -1:
             options = options.replace(' format:\n', ' format::\n\n', 1)
         if options.startswith('Options:'):
-            result += ':' + options
-        elif options.startswith('options:'):
-            # Python 2.4 version of optparse
-            result += ':Options:' + options[len('options:'):]
+            result += gettext(':Options:%s') % (options[len('options:'):],)
         else:
             result += options
         result += '\n'
@@ -537,26 +546,26 @@ class Command(object):
             if sections.has_key(None):
                 text = sections.pop(None)
                 text = '\n  '.join(text.splitlines())
-                result += ':%s:\n  %s\n\n' % ('Description',text)
+                result += gettext(':Description:\n  %s\n\n') % (text,)
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
             if sections:
                 for label in order:
-                    if sections.has_key(label):
-                        result += ':%s:\n%s\n' % (label,sections[label])
+                    if label in sections:
+                        result += ':%s:\n%s\n' % (label, sections[label])
                 result += '\n'
         else:
-            result += ("See bzr help %s for more details and examples.\n\n"
+            result += (gettext("See bzr help %s for more details and examples.\n\n")
                 % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
-            result += ':Aliases:  '
+            result += gettext(':Aliases:  ')
             result += ', '.join(self.aliases) + '\n'
         plugin_name = self.plugin_name()
         if plugin_name is not None:
-            result += ':From:     plugin "%s"\n' % plugin_name
+            result += gettext(':From:     plugin "%s"\n') % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
             if not plain and see_also_as_links:
@@ -568,11 +577,10 @@ class Command(object):
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = ":doc:`%s <%s-help>`" % (item, item)
+                        link_text = gettext(":doc:`%s <%s-help>`") % (item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
-            result += ':See also: '
-            result += ', '.join(see_also) + '\n'
+            result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
 
         # If this will be rendered as plain text, convert it
         if plain:
@@ -659,13 +667,14 @@ class Command(object):
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         args, opts = parse_args(self, argv, alias_argv)
+        self._setup_outf()
 
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
-            sys.stdout.write(self.get_help_text())
+            self.outf.write(self.get_help_text())
             return 0
         if 'usage' in opts:  # e.g. bzr add --usage
-            sys.stdout.write(self.get_help_text(verbose=False))
+            self.outf.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
         if 'verbose' in self.supported_std_options:
@@ -685,8 +694,6 @@ class Command(object):
 
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
-
-        self._setup_outf()
 
         try:
             return self.run(**all_cmd_args)
@@ -752,7 +759,19 @@ class Command(object):
             return None
         return getdoc(self)
 
+    def gettext(self, message):
+        """Returns the gettext function used to translate this command's help.
+
+        Commands provided by plugins should override this to use their
+        own i18n system.
+        """
+        return i18n.gettext_per_paragraph(message)
+
     def name(self):
+        """Return the canonical name for this command.
+
+        The name under which it was actually invoked is available in invoked_as.
+        """
         return _unsquish_command_name(self.__class__.__name__)
 
     def plugin_name(self):
@@ -776,30 +795,30 @@ class CommandHooks(Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('extend_command',
+        Hooks.__init__(self, "bzrlib.commands", "Command.hooks")
+        self.add_hook('extend_command',
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
-            "new bzrlib.commands.Command object.", (1, 13), None))
-        self.create_hook(HookPoint('get_command',
+            "new bzrlib.commands.Command object.", (1, 13))
+        self.add_hook('get_command',
             "Called when creating a single command. Called with "
             "(cmd_or_None, command_name). get_command should either return "
             "the cmd_or_None parameter, or a replacement Command object that "
             "should be used for the command. Note that the Command.hooks "
             "hooks are core infrastructure. Many users will prefer to use "
             "bzrlib.commands.register_command or plugin_cmds.register_lazy.",
-            (1, 17), None))
-        self.create_hook(HookPoint('get_missing_command',
+            (1, 17))
+        self.add_hook('get_missing_command',
             "Called when creating a single command if no command could be "
             "found. Called with (command_name). get_missing_command should "
             "either return None, or a Command object to be used for the "
-            "command.", (1, 17), None))
-        self.create_hook(HookPoint('list_commands',
+            "command.", (1, 17))
+        self.add_hook('list_commands',
             "Called when enumerating commands. Called with a set of "
             "cmd_name strings for all the commands found so far. This set "
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
-            (1, 17), None))
+            (1, 17))
 
 Command.hooks = CommandHooks()
 
@@ -1035,11 +1054,11 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Specify the number of processes that can be run concurrently (selftest).
     """
     trace.mutter("bazaar version: " + bzrlib.__version__)
-    argv = list(argv)
+    argv = _specified_or_unicode_argv(argv)
     trace.mutter("bzr arguments: %r", argv)
 
-    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
-                opt_no_aliases = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = \
+            opt_no_l10n = opt_no_aliases = False
     opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
@@ -1062,6 +1081,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             opt_no_plugins = True
         elif a == '--no-aliases':
             opt_no_aliases = True
+        elif a == '--no-l10n':
+            opt_no_l10n = True
         elif a == '--builtin':
             opt_builtin = True
         elif a == '--concurrency':
@@ -1103,6 +1124,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     cmd = argv.pop(0)
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
+    if opt_no_l10n:
+        cmd.l10n = False
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]
 
@@ -1181,7 +1204,7 @@ def _specified_or_unicode_argv(argv):
         new_argv = []
         try:
             # ensure all arguments are unicode strings
-            for a in argv[1:]:
+            for a in argv:
                 if isinstance(a, unicode):
                     new_argv.append(a)
                 else:
@@ -1203,7 +1226,8 @@ def main(argv=None):
 
     :return: exit code of bzr command.
     """
-    argv = _specified_or_unicode_argv(argv)
+    if argv is not None:
+        argv = argv[1:]
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
@@ -1264,19 +1288,19 @@ class HelpCommandIndex(object):
 
 
 class Provider(object):
-    '''Generic class to be overriden by plugins'''
+    """Generic class to be overriden by plugins"""
 
     def plugin_for_command(self, cmd_name):
-        '''Takes a command and returns the information for that plugin
+        """Takes a command and returns the information for that plugin
 
         :return: A dictionary with all the available information
-        for the requested plugin
-        '''
+            for the requested plugin
+        """
         raise NotImplementedError
 
 
 class ProvidersRegistry(registry.Registry):
-    '''This registry exists to allow other providers to exist'''
+    """This registry exists to allow other providers to exist"""
 
     def __iter__(self):
         for key, provider in self.iteritems():

@@ -152,8 +152,9 @@ Bug Fixes
   (Alexander Belchenko, #743256)
 
 * When reporting a crash without apport, don't print the full list of
-   plugins because it's often too long.
-   (Martin Pool, #716389)
+  plugins because it's often too long.
+  (Martin Pool, #716389)
+
 
 API Changes
 ***********

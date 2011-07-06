@@ -20,6 +20,7 @@ import os
 import xmlrpclib
 
 from bzrlib import (
+    debug,
     errors,
     tests,
     transport,
@@ -62,10 +63,12 @@ def load_tests(standard_tests, module, loader):
 
 
 class FakeResolveFactory(object):
+
     def __init__(self, test, expected_path, result):
         self._test = test
         self._expected_path = expected_path
         self._result = result
+        self._submitted = False
 
     def __call__(self, path):
         self._test.assertEqual(self._expected_path, path)
@@ -73,7 +76,134 @@ class FakeResolveFactory(object):
 
     def submit(self, service):
         self._service_url = service.service_url
+        self._submitted = True
         return self._result
+
+
+class LocalDirectoryURLTests(TestCaseInTempDir):
+    """Tests for branch urls that we try to pass through local resolution."""
+
+    def assertResolve(self, expected, url, submitted=False):
+        path = url[url.index(':')+1:].lstrip('/')
+        factory = FakeResolveFactory(self, path,
+                    dict(urls=['bzr+ssh://fake-resolved']))
+        directory = LaunchpadDirectory()
+        self.assertEqual(expected,
+            directory._resolve(url, factory, _lp_login='user'))
+        # We are testing local resolution, and the fallback when necessary.
+        self.assertEqual(submitted, factory._submitted)
+
+    def test_short_form(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
+                           'lp:apt')
+
+    def test_two_part_form(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt/2.2',
+                           'lp:apt/2.2')
+
+    def test_two_part_plus_subdir(self):
+        # We allow you to pass more than just what resolves. That way you can
+        # do things like "bzr log lp:apt/2.2/BUGS"
+        # Though the virtual FS implementation currently aborts when given a
+        # URL like this, rather than letting you recurse upwards to find the
+        # real branch at lp:apt/2.2
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt/2.2/BUGS',
+                           'lp:apt/2.2/BUGS')
+
+    def test_user_expansion(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/~user/apt/foo',
+                           'lp:~/apt/foo')
+
+    def test_ubuntu(self):
+        # Confirmed against xmlrpc. If you don't have a ~user, xmlrpc doesn't
+        # care that you are asking for 'ubuntu'
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu',
+                           'lp:ubuntu')
+
+    def test_ubuntu_apt(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/apt',
+                           'lp:ubuntu/apt')
+
+    def test_ubuntu_natty_apt(self):
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/natty/apt',
+            'lp:ubuntu/natty/apt')
+
+    def test_ubuntu_natty_apt_filename(self):
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/natty/apt/filename',
+            'lp:ubuntu/natty/apt/filename')
+
+    def test_user_two_part(self):
+        # We fall back to the ResolveFactory. The real Launchpad one will raise
+        # InvalidURL for this case.
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/apt',
+                           submitted=True)
+
+    def test_user_three_part(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/~jameinel/apt/foo',
+                           'lp:~jameinel/apt/foo')
+
+    def test_user_three_part_plus_filename(self):
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/~jameinel/apt/foo/fname',
+            'lp:~jameinel/apt/foo/fname')
+
+    def test_user_ubuntu_two_part(self):
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/ubuntu',
+                           submitted=True)
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/debian',
+                           submitted=True)
+
+    def test_user_ubuntu_three_part(self):
+        self.assertResolve('bzr+ssh://fake-resolved',
+                           'lp:~jameinel/ubuntu/natty', submitted=True)
+        self.assertResolve('bzr+ssh://fake-resolved',
+                           'lp:~jameinel/debian/sid', submitted=True)
+
+    def test_user_ubuntu_four_part(self):
+        self.assertResolve('bzr+ssh://fake-resolved',
+                           'lp:~jameinel/ubuntu/natty/project', submitted=True)
+        self.assertResolve('bzr+ssh://fake-resolved',
+                           'lp:~jameinel/debian/sid/project', submitted=True)
+
+    def test_user_ubuntu_five_part(self):
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/~jameinel/ubuntu/natty/apt/branch',
+            'lp:~jameinel/ubuntu/natty/apt/branch')
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/~jameinel/debian/sid/apt/branch',
+            'lp:~jameinel/debian/sid/apt/branch')
+
+    def test_user_ubuntu_five_part_plus_subdir(self):
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/~jameinel/ubuntu/natty/apt/branch/f',
+            'lp:~jameinel/ubuntu/natty/apt/branch/f')
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/~jameinel/debian/sid/apt/branch/f',
+            'lp:~jameinel/debian/sid/apt/branch/f')
+
+    def test_handles_special_lp(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt', 'lp:apt')
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
+                           'lp:///apt')
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
+                           'lp://production/apt')
+        self.assertResolve('bzr+ssh://bazaar.launchpad.dev/+branch/apt',
+                           'lp://dev/apt')
+        self.assertResolve('bzr+ssh://bazaar.staging.launchpad.net/+branch/apt',
+                           'lp://staging/apt')
+        self.assertResolve('bzr+ssh://bazaar.qastaging.launchpad.net/+branch/apt',
+                           'lp://qastaging/apt')
+        self.assertResolve('bzr+ssh://bazaar.demo.launchpad.net/+branch/apt',
+                           'lp://demo/apt')
+
+    def test_debug_launchpad_uses_resolver(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/bzr',
+                           'lp:bzr', submitted=False)
+        debug.debug_flags.add('launchpad')
+        self.addCleanup(debug.debug_flags.discard, 'launchpad')
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:bzr', submitted=True)
 
 
 class DirectoryUrlTests(TestCaseInTempDir):
@@ -89,6 +219,19 @@ class DirectoryUrlTests(TestCaseInTempDir):
                           directory._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
         self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
+                          factory._service_url)
+
+    def test_qastaging(self):
+        """A launchpad url should map to a http url"""
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']))
+        url = 'lp://qastaging/apt'
+        directory = LaunchpadDirectory()
+        self.assertEquals('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
+                          directory._resolve(url, factory))
+        # Make sure that resolve went to the qastaging server.
+        self.assertEquals('https://xmlrpc.qastaging.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_staging(self):
@@ -167,16 +310,16 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
-    def test_rewrite_bzr_ssh_launchpad_net(self):
+    def test_with_login_avoid_resolve_factory(self):
         # Test that bzr+ssh URLs get rewritten to include the user's
         # Launchpad ID (assuming we know the Launchpad ID).
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+                    'bzr+ssh://my-super-custom/special/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEquals(
-            'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+            'bzr+ssh://bazaar.launchpad.net/+branch/apt',
             directory._resolve('lp:///apt', factory, _lp_login='username'))
 
     def test_no_rewrite_of_other_bzr_ssh(self):
@@ -199,7 +342,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
     def test_resolve_tilde_to_user(self):
         factory = FakeResolveFactory(
             self, '~username/apt/test', dict(urls=[
-                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+                'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
         directory = LaunchpadDirectory()
         self.assertEquals(
             'bzr+ssh://bazaar.launchpad.net/~username/apt/test',

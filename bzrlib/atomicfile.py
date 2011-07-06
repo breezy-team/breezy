@@ -20,7 +20,6 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import stat
-import socket
 import warnings
 
 from bzrlib import (
@@ -119,7 +118,3 @@ class AtomicFile(object):
         """Discard the file unless already committed."""
         if self._fd is not None:
             self.abort()
-
-    def __del__(self):
-        if self._fd is not None:
-            warnings.warn("%r leaked" % self)

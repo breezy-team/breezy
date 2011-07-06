@@ -1,0 +1,171 @@
+=============
+Fetching data
+=============
+
+Overview of a fetch
+===================
+
+Inside bzr, a typical fetch happens like this:
+
+* a user runs a command like ``bzr branch`` or ``bzr pull``
+
+* ``Repository.fetch`` is called (by a higher-level method such as
+  ``ControlDir.sprout``, ``Branch.fetch``, etc).
+
+* An ``InterRepository`` object is created.  The exact implementation of
+  ``InterRepository`` chosen depends on the format/capabilities of the
+  source and target repos.
+
+* The source and target repositories are compared to determine which data
+  needs to be transferred.
+
+* The repository data is copied.  Often this is done by creating a
+  ``StreamSource`` and ``StreamSink`` from the source and target
+  repositories and feeding the stream from the source into the sink, but
+  some ``InterRepository`` implementations do differently.
+
+
+How objects to be transferred are determined
+============================================
+
+See ``InterRepository._walk_to_common_revisions``.  The basic idea is to
+do a breadth-first search in the source repository's revision graph
+(starting from the head or heads the caller asked for), and look in the
+target repository to see if those revisions are already present.
+Eventually this will find the common ancestors in both graphs, and thus
+the set of revisions to be copied has been identified.
+
+All inventories for the copied revisions need to be present (and all
+parent inventories at the stacking boundary too, to support stacking).
+
+All texts versions introduced by those inventories need to be transferred
+(but see also stacking constraints).
+
+Fetch specs
+===========
+
+The most ``fetch`` methods accept a ``fetch_spec`` parameter.  This is how
+the caller controls what is fetched: e.g. all revisions for a given head
+(that aren't already present in the target), the full ancestry for one or
+more heads, or even the full contents of the source repository.
+
+The ``fetch_spec`` parameter is an object that implements the interface
+defined by ``AbstractSearchResult`` in ``bzrlib.graph``.  It describes
+which keys should be fetched.  Current implementations are
+``SearchResult``, ``PendingAncestryResult``, ``EmptySearchResult``, and
+``EverythingResult``.  Some have options controlling if missing revisions
+cause errors or not, etc.
+
+There are also some “search” objects, which can be used to conveniently
+construct a search result for common cases: ``EverythingNotInOther`` and
+``NotInOtherForRevs``.  They provide an ``execute`` method that performs
+the search and returns a search result.
+
+Also, ``Graph._make_breadth_first_searcher`` returns an object with a
+``get_result`` method that returns a search result.
+
+
+Streams
+=======
+
+A **stream** is an iterable of (substream type, substream) pairs.
+The **substream type** is a ``str`` that will be one of ``texts``,
+``inventories``, ``inventory-deltas``, ``chk_bytes``, ``revisions`` or
+``signatures``.  A **substream** is a record stream.  The format of those
+records depends on the repository format being streamed, except for
+``inventory-deltas`` records which are format-independent.
+
+A stream source can be constructed with ``repo._get_source(to_format)``,
+and it provides a ``get_stream(search)`` method (among others).  A stream
+sink can be constructed with ``repo._get_sink()``, and provides an
+``insert_stream(stream, src_format, resume_tokens)`` method (among
+others).
+
+
+Stacking constraints
+====================
+
+**In short the rule is:** "repositories must hold revisions' parent
+inventories and their new texts (or else all texts for those revisions)."
+
+This is sometimes called "the stacking invariant."
+
+Why that rule?
+--------------
+
+A stacked repository needs to be capable of generating a complete stream
+for the revisions it does hold without access to its fallback
+repositories [#]_.  "Complete" here means that the stream for a revision (or
+set of revisions) can be inserted into a repository that already contains
+the parent(s) of that revision, and that repository will have a fully
+usable copy of that revision: a working tree can be built for that
+revision, etc.
+
+Assuming for a moment the stream has the necessary inventory, signature
+and CHK records to have a usable revision, what texts are required to have
+a usable revision?  The simple way to satisfy the requirement is to have
+*every* text for every revision at the stacking boundary.  Thus the
+revisions at the stacking boundary and all their descendants have their
+texts present and so can be fully reconstructed.  But this is expensive:
+it implies each stacked repository much contain *O(tree)* data even for a
+single revision of a 1-line change, and also implies transferring
+*O(tree)* data to fetch that revision.
+
+Because the goal is a usable revision *when added to a repository with the
+parent revision(s)* most of those texts will be redundant.  The minimal
+set that is needed is just those texts that are new in the revisions in
+our repository.  However, we need enough inventory data to be able to
+determine that set of texts.  So to make this possible every revision must
+have its parent inventories present so that the inventory delta between
+revisions can be calculated, and of course the CHK pages associated with
+that delta.  In fact the entire inventory does not need to be present,
+just enough of it to find the delta (assuming a repository format, like
+2a, that allows only part of an inventory to be stored).  Thus the stacked
+repository can contain only *O(changes)* data [#]_ and still deliver
+complete streams of that data.
+
+What about revisions at the stacking boundary with more than one parent?
+All of the parent inventories must be present, as a client may ask for a
+stream up to any parent, not just the left-hand parent.  If any parent is
+absent then all texts must be present instead.  Otherwise there will be
+the strange situation where some fetches of a revision will succeed and
+others fail depending the precise details of the fetch.
+
+Implications for fetching
+-------------------------
+
+Fetches must retrieve the records necessary to satisfy that rule.  The
+stream source will attempt to send the necessary records, and the stream
+sink will check for any missing records and make a second fetch for just
+those missing records before committing the write group.
+
+Our repository implementations check this constraint is satisfied before
+committing a write group, to prevent a bad stream from creating a corrupt
+repository.  So a fetch from a bad source (e.g. a damaged repository, or a
+buggy foreign-format import) may trigger ``BzrCheckError`` during
+``commit_write_group``.
+
+To fetch from a stacked repository via a smart server, the smart client:
+
+* first fetches a stream of as many of the requested revisions as possible
+  from the initial repository,
+* then while there are still missing revisions and untried fallback
+  repositories fetches the outstanding revisions from the next fallback
+  until either all revisions have been found (success) or the list of
+  fallbacks has been exhausted (failure).
+
+
+.. [#] This is not just a theoretical concern.  The smart server always
+   opens repositories without opening fallbacks, as it cannot assume it
+   can access the fallbacks that the client can.
+
+.. [#] Actually *O(changes)* isn't quite right in practice.  In the
+   current implementation the fulltext of a changed file must be
+   transferred, not just a delta, so a 1-line change to a 10MB file will
+   still transfer 10MB of text data.  This is because current formats
+   require records' compression parents to be present in the same
+   repository.
+
+
+..
+   vim: ft=rst tw=74 ai

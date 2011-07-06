@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 They are useful for testing code quality, checking coverage metric etc.
 """
 
-# import system imports here
 import os
 import parser
 import re
@@ -27,7 +26,6 @@ import symbol
 import sys
 import token
 
-#import bzrlib specific imports here
 from bzrlib import (
     osutils,
     )
@@ -113,8 +111,9 @@ class TestSource(TestSourceHelper):
 
         # Avoid the case when bzrlib is packaged in a zip file
         if not os.path.isdir(source_dir):
-            raise TestSkipped('Cannot find bzrlib source directory. Expected %s'
-                              % source_dir)
+            raise TestSkipped(
+                'Cannot find bzrlib source directory. Expected %s'
+                % source_dir)
         return source_dir
 
     def get_source_files(self, extensions=None):
@@ -154,7 +153,7 @@ class TestSource(TestSourceHelper):
             yield fname, text
 
     def is_our_code(self, fname):
-        """Return true if it's a "real" part of bzrlib rather than external code"""
+        """True if it's a "real" part of bzrlib rather than external code"""
         if '/util/' in fname or '/plugins/' in fname:
             return False
         else:
@@ -194,10 +193,9 @@ class TestSource(TestSourceHelper):
 
         copyright_re = re.compile('#\\s*copyright.*(?=\n)', re.I)
         copyright_canonical_re = re.compile(
-            r'# Copyright \(C\) ' # Opening "# Copyright (C)"
-            r'(\d+)(, \d+)*' # Followed by a series of dates
-            r'.*Canonical Ltd' # And containing 'Canonical Ltd'
-            )
+            r'# Copyright \(C\) '  # Opening "# Copyright (C)"
+            r'(\d+)(, \d+)*'       # followed by a series of dates
+            r'.*Canonical Ltd')    # and containing 'Canonical Ltd'.
 
         for fname, text in self.get_source_file_contents(
                 extensions=('.py', '.pyx')):
@@ -230,7 +228,7 @@ class TestSource(TestSourceHelper):
                         ]
             for fname, comment in incorrect:
                 help_text.append(fname)
-                help_text.append((' '*4) + comment)
+                help_text.append((' ' * 4) + comment)
 
             self.fail('\n'.join(help_text))
 
@@ -269,10 +267,9 @@ class TestSource(TestSourceHelper):
                          " LICENSE_EXCEPTIONS in"
                          " bzrlib/tests/test_source.py",
                          "Or add the following text to the beginning:",
-                         gpl_txt
-                        ]
+                         gpl_txt]
             for fname in incorrect:
-                help_text.append((' '*4) + fname)
+                help_text.append((' ' * 4) + fname)
 
             self.fail('\n'.join(help_text))
 
@@ -283,7 +280,7 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = ["%s: %s" % (f, ', '.join([str(i+1) for i in lines]))
+        files = ["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
                 for f, lines in dict_.items()]
         files.sort()
         return message + '\n\n    %s' % ('\n    '.join(files))
@@ -291,19 +288,16 @@ class TestSource(TestSourceHelper):
     def test_coding_style(self):
         """Check if bazaar code conforms to some coding style conventions.
 
-        Currently we assert that the following is not present:
-         * any tab characters
-         * non-unix newlines
-         * no newline at end of files
+        Generally we expect PEP8, but we do not generally strictly enforce
+        this, and there are existing files that do not comply.  The 'pep8'
+        tool, available separately, will check for more cases.
 
-        Print how many files have
-         * trailing white space
-         * lines longer than 79 chars
+        This test only enforces conditions that are globally true at the
+        moment, and that should cause a patch to be rejected: spaces rather
+        than tabs, unix newlines, and a newline at the end of the file.
         """
         tabs = {}
-        trailing_ws = {}
         illegal_newlines = {}
-        long_lines = {}
         no_newline_at_eof = []
         for fname, text in self.get_source_file_contents(
                 extensions=('.py', '.pyx')):
@@ -315,12 +309,8 @@ class TestSource(TestSourceHelper):
                 if '\t' in line:
                     self._push_file(tabs, fname, line_no)
                 if not line.endswith('\n') or line.endswith('\r\n'):
-                    if line_no != last_line_no: # not no_newline_at_eof
+                    if line_no != last_line_no:  # not no_newline_at_eof
                         self._push_file(illegal_newlines, fname, line_no)
-                if line.endswith(' \n'):
-                    self._push_file(trailing_ws, fname, line_no)
-                if len(line) > 80:
-                    self._push_file(long_lines, fname, line_no)
             if not lines[-1].endswith('\n'):
                 no_newline_at_eof.append(fname)
         problems = []
@@ -328,17 +318,9 @@ class TestSource(TestSourceHelper):
             problems.append(self._format_message(tabs,
                 'Tab characters were found in the following source files.'
                 '\nThey should either be replaced by "\\t" or by spaces:'))
-        if trailing_ws:
-            print ("There are %i lines with trailing white space in %i files."
-                % (sum([len(lines) for f, lines in trailing_ws.items()]),
-                    len(trailing_ws)))
         if illegal_newlines:
             problems.append(self._format_message(illegal_newlines,
                 'Non-unix newlines were found in the following source files:'))
-        if long_lines:
-            print ("There are %i lines longer than 79 characters in %i files."
-                % (sum([len(lines) for f, lines in long_lines.items()]),
-                    len(long_lines)))
         if no_newline_at_eof:
             no_newline_at_eof.sort()
             problems.append("The following source files doesn't have a "
@@ -382,9 +364,9 @@ class TestSource(TestSourceHelper):
     def test_extension_exceptions(self):
         """Extension functions should propagate exceptions.
 
-        Either they should return an object, have an 'except' clause, or have a
-        "# cannot_raise" to indicate that we've audited them and defined them as not
-        raising exceptions.
+        Either they should return an object, have an 'except' clause, or
+        have a "# cannot_raise" to indicate that we've audited them and
+        defined them as not raising exceptions.
         """
         both_exc_and_no_exc = []
         missing_except = []
@@ -392,13 +374,13 @@ class TestSource(TestSourceHelper):
                               r'(api\s+)?class (\w+).*:', re.MULTILINE)
         extern_class_re = re.compile(r'## extern cdef class (\w+)',
                                      re.MULTILINE)
-        except_re = re.compile(r'cdef\s+' # start with cdef
-                               r'([\w *]*?)\s*' # this is the return signature
-                               r'(\w+)\s*\(' # the function name
-                               r'[^)]*\)\s*' # parameters
-                               r'(.*)\s*:' # the except clause
-                               r'\s*(#\s*cannot[- _]raise)?' # cannot raise comment
-                              )
+        except_re = re.compile(
+            r'cdef\s+'        # start with cdef
+            r'([\w *]*?)\s*'  # this is the return signature
+            r'(\w+)\s*\('     # the function name
+            r'[^)]*\)\s*'     # parameters
+            r'(.*)\s*:'       # the except clause
+            r'\s*(#\s*cannot[- _]raise)?')  # cannot raise comment
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
             known_classes = set([m[-1] for m in class_re.findall(text)])
@@ -417,15 +399,18 @@ class TestSource(TestSourceHelper):
                     missing_except.append((fname, func))
         error_msg = []
         if both_exc_and_no_exc:
-            error_msg.append('The following functions had "cannot raise" comments'
-                             ' but did have an except clause set:')
+            error_msg.append(
+                'The following functions had "cannot raise" comments'
+                ' but did have an except clause set:')
             for fname, func in both_exc_and_no_exc:
                 error_msg.append('%s:%s' % (fname, func))
             error_msg.extend(('', ''))
         if missing_except:
-            error_msg.append('The following functions have fixed return types,'
-                             ' but no except clause.')
-            error_msg.append('Either add an except or append "# cannot_raise".')
+            error_msg.append(
+                'The following functions have fixed return types,'
+                ' but no except clause.')
+            error_msg.append(
+                'Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:
                 error_msg.append('%s:%s' % (fname, func))
             error_msg.extend(('', ''))

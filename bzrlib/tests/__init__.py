@@ -142,7 +142,10 @@ isolated_environ = {
     'BZREMAIL': None, # may still be present in the environment
     'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
     'BZR_PROGRESS_BAR': None,
-    'BZR_LOG': None,
+    # This should trap leaks to ~/.bzr.log. This occurs when tests use TestCase
+    # as a base class instead of TestCaseInTempDir. Tests inheriting from
+    # TestCase should not use disk resources, BZR_LOG is one.
+    'BZR_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
     'BZR_PLUGIN_PATH': None,
     'BZR_DISABLE_PLUGINS': None,
     'BZR_PLUGINS_AT': None,
@@ -377,12 +380,20 @@ class ExtendedTestResult(testtools.TextTestResult):
         if isinstance(test, TestCase):
             test.addCleanup(self._check_leaked_threads, test)
 
+    def stopTest(self, test):
+        super(ExtendedTestResult, self).stopTest(test)
+        # Manually break cycles, means touching various private things but hey
+        getDetails = getattr(test, "getDetails", None)
+        if getDetails is not None:
+            getDetails().clear()
+        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+        if type_equality_funcs is not None:
+            type_equality_funcs.clear()
+        self._traceback_from_test = None
+
     def startTests(self):
         self.report_tests_starting()
         self._active_threads = threading.enumerate()
-
-    def stopTest(self, test):
-        self._traceback_from_test = None
 
     def _check_leaked_threads(self, test):
         """See if any threads have leaked since last call
@@ -448,6 +459,19 @@ class ExtendedTestResult(testtools.TextTestResult):
     def addExpectedFailure(self, test, err):
         self.known_failure_count += 1
         self.report_known_failure(test, err)
+
+    def addUnexpectedSuccess(self, test, details=None):
+        """Tell result the test unexpectedly passed, counting as a failure
+
+        When the minimum version of testtools required becomes 0.9.8 this
+        can be updated to use the new handling there.
+        """
+        super(ExtendedTestResult, self).addFailure(test, details=details)
+        self.failure_count += 1
+        self.report_unexpected_success(test,
+            "".join(details["reason"].iter_text()))
+        if self.stop_early:
+            self.stop()
 
     def addNotSupported(self, test, feature):
         """The test will not be run because of a missing feature.
@@ -613,6 +637,13 @@ class TextTestResult(ExtendedTestResult):
     def report_known_failure(self, test, err):
         pass
 
+    def report_unexpected_success(self, test, reason):
+        self.stream.write('FAIL: %s\n    %s: %s\n' % (
+            self._test_description(test),
+            "Unexpected success. Should have failed",
+            reason,
+            ))
+
     def report_skip(self, test, reason):
         pass
 
@@ -669,6 +700,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write('XFAIL %s\n%s\n'
                 % (self._testTimeString(test),
                    self._error_summary(err)))
+
+    def report_unexpected_success(self, test, reason):
+        self.stream.write(' FAIL %s\n%s: %s\n'
+                % (self._testTimeString(test),
+                   "Unexpected success. Should have failed",
+                   reason))
 
     def report_success(self, test):
         self.stream.write('   OK %s\n' % self._testTimeString(test))
@@ -894,7 +931,7 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-    
+
     kwargs['setUp'] = isolated_doctest_setUp
     kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
@@ -937,10 +974,6 @@ class TestCase(testtools.TestCase):
         super(TestCase, self).setUp()
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
-        self._log_contents = None
-        self.addDetail("log", content.Content(content.ContentType("text",
-            "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -954,6 +987,17 @@ class TestCase(testtools.TestCase):
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
         self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
+        # Isolate config option expansion until its default value for bzrlib is
+        # settled on or a the FIXME associated with _get_expand_default_value
+        # is addressed -- vila 20110219
+        self.overrideAttr(config, '_expand_default_value', None)
+        self._log_files = set()
+        # Each key in the ``_counters`` dict holds a value for a different
+        # counter. When the test ends, addDetail() should be used to output the
+        # counter values. This happens in install_counter_hook().
+        self._counters = {}
+        if 'config_stats' in selftest_debug_flags:
+            self._install_config_stats_hooks()
 
     def debug(self):
         # debug a frame up.
@@ -976,6 +1020,50 @@ class TestCase(testtools.TestCase):
         if name in details:
             del details[name]
 
+    def install_counter_hook(self, hooks, name, counter_name=None):
+        """Install a counting hook.
+
+        Any hook can be counted as long as it doesn't need to return a value.
+
+        :param hooks: Where the hook should be installed.
+
+        :param name: The hook name that will be counted.
+
+        :param counter_name: The counter identifier in ``_counters``, defaults
+            to ``name``.
+        """
+        _counters = self._counters # Avoid closing over self
+        if counter_name is None:
+            counter_name = name
+        if _counters.has_key(counter_name):
+            raise AssertionError('%s is already used as a counter name'
+                                  % (counter_name,))
+        _counters[counter_name] = 0
+        self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
+            lambda: ['%d' % (_counters[counter_name],)]))
+        def increment_counter(*args, **kwargs):
+            _counters[counter_name] += 1
+        label = 'count %s calls' % (counter_name,)
+        hooks.install_named_hook(name, increment_counter, label)
+        self.addCleanup(hooks.uninstall_named_hook, name, label)
+
+    def _install_config_stats_hooks(self):
+        """Install config hooks to count hook calls.
+
+        """
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.ConfigHooks, hook_name,
+                                       'config.%s' % (hook_name,))
+
+        # The OldConfigHooks are private and need special handling to protect
+        # against recursive tests (tests that run other tests), so we just do
+        # manually what registering them into _builtin_known_hooks will provide
+        # us.
+        self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.OldConfigHooks, hook_name,
+                                      'old_config.%s' % (hook_name,))
+
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
 
@@ -996,6 +1084,8 @@ class TestCase(testtools.TestCase):
         for key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
+        self._preserved_lazy_hooks = hooks._lazy_hooks
+        hooks._lazy_hooks = {}
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
@@ -1033,9 +1123,13 @@ class TestCase(testtools.TestCase):
         # break some locks on purpose and should be taken into account by
         # considering that breaking a lock is just a dirty way of releasing it.
         if len(acquired_locks) != (len(released_locks) + len(broken_locks)):
-            message = ('Different number of acquired and '
-                       'released or broken locks. (%s, %s + %s)' %
-                       (acquired_locks, released_locks, broken_locks))
+            message = (
+                'Different number of acquired and '
+                'released or broken locks.\n'
+                'acquired=%s\n'
+                'released=%s\n'
+                'broken=%s\n' %
+                (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
                 print "Broken test %s: %s" % (self, message)
@@ -1261,11 +1355,15 @@ class TestCase(testtools.TestCase):
                          'st_mtime did not match')
         self.assertEqual(expected.st_ctime, actual.st_ctime,
                          'st_ctime did not match')
-        if sys.platform != 'win32':
+        if sys.platform == 'win32':
             # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
             # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
-            # odd. Regardless we shouldn't actually try to assert anything
-            # about their values
+            # odd. We just force it to always be 0 to avoid any problems.
+            self.assertEqual(0, expected.st_dev)
+            self.assertEqual(0, actual.st_dev)
+            self.assertEqual(0, expected.st_ino)
+            self.assertEqual(0, actual.st_ino)
+        else:
             self.assertEqual(expected.st_dev, actual.st_dev,
                              'st_dev did not match')
             self.assertEqual(expected.st_ino, actual.st_ino,
@@ -1280,20 +1378,20 @@ class TestCase(testtools.TestCase):
                 length, len(obj_with_len), obj_with_len))
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """Assert that `func(*args, **kwargs)` quietly logs a specific error.
         """
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly
         try:
             def capture():
                 orig_log_exception_quietly()
-                captured.append(sys.exc_info())
+                captured.append(sys.exc_info()[1])
             trace.log_exception_quietly = capture
             func(*args, **kwargs)
         finally:
             trace.log_exception_quietly = orig_log_exception_quietly
         self.assertLength(1, captured)
-        err = captured[0][1]
+        err = captured[0]
         self.assertIsInstance(err, exception_class)
         return err
 
@@ -1450,6 +1548,7 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failUnlessExists(self, path):
         return self.assertPathExists(path)
 
@@ -1462,6 +1561,7 @@ class TestCase(testtools.TestCase):
             self.assertTrue(osutils.lexists(path),
                 path + " does not exist")
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failIfExists(self, path):
         return self.assertPathDoesNotExist(path)
 
@@ -1504,7 +1604,8 @@ class TestCase(testtools.TestCase):
         not other callers that go direct to the warning module.
 
         To test that a deprecated method raises an error, do something like
-        this::
+        this (remember that both assertRaises and applyDeprecated delays *args
+        and **kwargs passing)::
 
             self.assertRaises(errors.ReservedId,
                 self.applyDeprecated,
@@ -1592,21 +1693,26 @@ class TestCase(testtools.TestCase):
 
         The file is removed as the test is torn down.
         """
-        self._log_file = StringIO()
+        pseudo_log_file = StringIO()
+        def _get_log_contents_for_weird_testtools_api():
+            return [pseudo_log_file.getvalue().decode(
+                "utf-8", "replace").encode("utf-8")]
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            _get_log_contents_for_weird_testtools_api))
+        self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
     def _finishLogFile(self):
         """Finished with the log file.
 
-        Close the file and delete it, unless setKeepLogfile was called.
+        Close the file and delete it.
         """
         if trace._trace_file:
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
-        # Cache the log result and delete the file on disk
-        self._get_log(False)
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1661,6 +1767,9 @@ class TestCase(testtools.TestCase):
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
+        self._preserved_hooks.clear()
+        bzrlib.hooks._lazy_hooks = self._preserved_lazy_hooks
+        self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -1757,41 +1866,6 @@ class TestCase(testtools.TestCase):
 
     def log(self, *args):
         trace.mutter(*args)
-
-    def _get_log(self, keep_log_file=False):
-        """Internal helper to get the log from bzrlib.trace for this test.
-
-        Please use self.getDetails, or self.get_log to access this in test case
-        code.
-
-        :param keep_log_file: When True, if the log is still a file on disk
-            leave it as a file on disk. When False, if the log is still a file
-            on disk, the log file is deleted and the log preserved as
-            self._log_contents.
-        :return: A string containing the log.
-        """
-        if self._log_contents is not None:
-            try:
-                self._log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = self._log_contents.decode('utf8', 'replace')
-                self._log_contents = unicodestr.encode('utf8')
-            return self._log_contents
-        if self._log_file is not None:
-            log_contents = self._log_file.getvalue()
-            try:
-                log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = log_contents.decode('utf8', 'replace')
-                log_contents = unicodestr.encode('utf8')
-            if not keep_log_file:
-                self._log_file = None
-                # Permit multiple calls to get_log until we clean it up in
-                # finishLogFile
-                self._log_contents = log_contents
-            return log_contents
-        else:
-            return "No log file content."
 
     def get_log(self):
         """Get a unicode string containing the log from bzrlib.trace.
@@ -1998,7 +2072,7 @@ class TestCase(testtools.TestCase):
     def start_bzr_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
-                             allow_plugins=False):
+                             allow_plugins=False, stderr=subprocess.PIPE):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -2016,6 +2090,9 @@ class TestCase(testtools.TestCase):
         :param skip_if_plan_to_signal: raise TestSkipped when true and system
             doesn't support signalling subprocesses.
         :param allow_plugins: If False (default) pass --no-plugins to bzr.
+        :param stderr: file to use for the subprocess's stderr.  Valid values
+            are those valid for the stderr argument of `subprocess.Popen`.
+            Default value is ``subprocess.PIPE``.
 
         :returns: Popen object for the started process.
         """
@@ -2047,6 +2124,9 @@ class TestCase(testtools.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
+            # Include the subprocess's log file in the test details, in case
+            # the test fails due to an error in the subprocess.
+            self._add_subprocess_log(trace._get_bzr_log_filename())
             command = [sys.executable]
             # frozen executables don't need the path to bzr
             if getattr(sys, "frozen", None) is None:
@@ -2056,13 +2136,40 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+                                  stderr=stderr)
         finally:
             restore_environment()
             if cwd is not None:
                 os.chdir(cwd)
 
         return process
+
+    def _add_subprocess_log(self, log_file_path):
+        if len(self._log_files) == 0:
+            # Register an addCleanup func.  We do this on the first call to
+            # _add_subprocess_log rather than in TestCase.setUp so that this
+            # addCleanup is registered after any cleanups for tempdirs that
+            # subclasses might create, which will probably remove the log file
+            # we want to read.
+            self.addCleanup(self._subprocess_log_cleanup)
+        # self._log_files is a set, so if a log file is reused we won't grab it
+        # twice.
+        self._log_files.add(log_file_path)
+
+    def _subprocess_log_cleanup(self):
+        for count, log_file_path in enumerate(self._log_files):
+            # We use buffer_now=True to avoid holding the file open beyond
+            # the life of this function, which might interfere with e.g.
+            # cleaning tempdirs on Windows.
+            # XXX: Testtools 0.9.5 doesn't have the content_from_file helper
+            #detail_content = content.content_from_file(
+            #    log_file_path, buffer_now=True)
+            with open(log_file_path, 'rb') as log_file:
+                log_file_bytes = log_file.read()
+            detail_content = content.Content(content.ContentType("text",
+                "plain", {"charset": "utf8"}), lambda: [log_file_bytes])
+            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+                detail_content)
 
     def _popen(self, *args, **kwargs):
         """Place a call to Popen.
@@ -2112,18 +2219,20 @@ class TestCase(testtools.TestCase):
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
-    def check_inventory_shape(self, inv, shape):
-        """Compare an inventory to a list of expected names.
+    def check_tree_shape(self, tree, shape):
+        """Compare a tree to a list of expected names.
 
         Fail if they are not precisely equal.
         """
         extras = []
         shape = list(shape)             # copy
-        for path, ie in inv.entries():
+        for path, ie in tree.iter_entries_by_dir():
             name = path.replace('\\', '/')
             if ie.kind == 'directory':
                 name = name + '/'
-            if name in shape:
+            if name == "/":
+                pass # ignore root entry
+            elif name in shape:
                 shape.remove(name)
             else:
                 extras.append(name)
@@ -2219,20 +2328,21 @@ class CapturedCall(object):
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
-    Tests that need disk resources should derive from TestCaseWithTransport.
+    Tests that need disk resources should derive from TestCaseInTempDir
+    orTestCaseWithTransport.
 
     TestCaseWithMemoryTransport sets the TEST_ROOT variable for all bzr tests.
 
-    For TestCaseWithMemoryTransport the test_home_dir is set to the name of
+    For TestCaseWithMemoryTransport the ``test_home_dir`` is set to the name of
     a directory which does not exist. This serves to help ensure test isolation
-    is preserved. test_dir is set to the TEST_ROOT, as is cwd, because they
-    must exist. However, TestCaseWithMemoryTransport does not offer local
-    file defaults for the transport in tests, nor does it obey the command line
+    is preserved. ``test_dir`` is set to the TEST_ROOT, as is cwd, because they
+    must exist. However, TestCaseWithMemoryTransport does not offer local file
+    defaults for the transport in tests, nor does it obey the command line
     override, so tests that accidentally write to the common directory should
     be rare.
 
-    :cvar TEST_ROOT: Directory containing all temporary directories, plus
-    a .bzr directory that stops us ascending higher into the filesystem.
+    :cvar TEST_ROOT: Directory containing all temporary directories, plus a
+        ``.bzr`` directory that stops us ascending higher into the filesystem.
     """
 
     TEST_ROOT = None
@@ -2561,6 +2671,12 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     """
 
     OVERRIDE_PYTHON = 'python'
+
+    def setUp(self):
+        super(TestCaseInTempDir, self).setUp()
+        # Remove the protection set in isolated_environ, we have a proper
+        # access to disk resources now.
+        self.overrideEnv('BZR_LOG', None)
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
@@ -3458,6 +3574,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
+
+#   -Econfig_stats          Will collect statistics using addDetail
 selftest_debug_flags = set()
 
 
@@ -3715,6 +3833,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_repository',
         'bzrlib.tests.per_repository_chk',
         'bzrlib.tests.per_repository_reference',
+        'bzrlib.tests.per_repository_vf',
         'bzrlib.tests.per_uifactory',
         'bzrlib.tests.per_versionedfile',
         'bzrlib.tests.per_workingtree',
@@ -3754,12 +3873,12 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_commit_merge',
         'bzrlib.tests.test_config',
         'bzrlib.tests.test_conflicts',
+        'bzrlib.tests.test_controldir',
         'bzrlib.tests.test_counted_lock',
         'bzrlib.tests.test_crash',
         'bzrlib.tests.test_decorators',
         'bzrlib.tests.test_delta',
         'bzrlib.tests.test_debug',
-        'bzrlib.tests.test_deprecated_graph',
         'bzrlib.tests.test_diff',
         'bzrlib.tests.test_directory_service',
         'bzrlib.tests.test_dirstate',
@@ -3767,6 +3886,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_eol_filters',
         'bzrlib.tests.test_errors',
         'bzrlib.tests.test_export',
+        'bzrlib.tests.test_export_pot',
         'bzrlib.tests.test_extract',
         'bzrlib.tests.test_fetch',
         'bzrlib.tests.test_fixtures',
@@ -3786,6 +3906,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_http',
         'bzrlib.tests.test_http_response',
         'bzrlib.tests.test_https_ca_bundle',
+        'bzrlib.tests.test_i18n',
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
         'bzrlib.tests.test_index',
@@ -3810,6 +3931,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_merge3',
         'bzrlib.tests.test_merge_core',
         'bzrlib.tests.test_merge_directive',
+        'bzrlib.tests.test_mergetools',
         'bzrlib.tests.test_missing',
         'bzrlib.tests.test_msgeditor',
         'bzrlib.tests.test_multiparent',
@@ -3865,6 +3987,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_testament',
         'bzrlib.tests.test_textfile',
         'bzrlib.tests.test_textmerge',
+        'bzrlib.tests.test_cethread',
         'bzrlib.tests.test_timestamp',
         'bzrlib.tests.test_trace',
         'bzrlib.tests.test_transactions',
@@ -3881,6 +4004,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_upgrade',
         'bzrlib.tests.test_upgrade_stacked',
         'bzrlib.tests.test_urlutils',
+        'bzrlib.tests.test_utextwrap',
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
@@ -3903,7 +4027,6 @@ def _test_suite_modules_to_doctest():
         'bzrlib',
         'bzrlib.branchbuilder',
         'bzrlib.decorators',
-        'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
         'bzrlib.lockdir',

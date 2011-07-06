@@ -18,9 +18,9 @@
 
 from bzrlib import (
     errors,
-    osutils,
     tests,
     )
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -92,7 +92,8 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        rev_history = repo.iter_reverse_revision_history('rev4')
+        rev_history = self.applyDeprecated(deprecated_in((2, 4, 0)),
+            repo.iter_reverse_revision_history, 'rev4')
         self.assertEqual('rev4', rev_history.next())
         self.assertEqual('rev3', rev_history.next())
         self.assertEqual('rev2', rev_history.next())
@@ -103,7 +104,8 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
         """Assert the return values of iter_reverse_revision_history."""
         repo.lock_read()
         try:
-            actual = list(repo.iter_reverse_revision_history(revision_id))
+            actual = list(self.applyDeprecated(deprecated_in((2, 4, 0)),
+                repo.iter_reverse_revision_history, revision_id))
         finally:
             repo.unlock()
         self.assertEqual(expected, actual)
@@ -156,7 +158,8 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
             tree.commit('2', rev_id='rev2')
         finally:
             tree.unlock()
-        iter = tree.branch.repository.iter_reverse_revision_history('rev2')
+        iter = self.applyDeprecated(deprecated_in((2, 4, 0)),
+            tree.branch.repository.iter_reverse_revision_history, 'rev2')
         tree.branch.repository.lock_read()
         try:
             self.assertEquals('rev2', iter.next())

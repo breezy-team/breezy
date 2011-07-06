@@ -17,49 +17,24 @@ Bazaarユーザガイドで説明したように、"ふさわしい"プロセス
 それに見合ったワークフローをサポートするBazaarのようなツールを使うことは、\
 大きな手助けになるでしょう。
 
-.. The team of people required to create the initial release
-   of a piece of software may vary in size from one person
-   to several thousand people. Depending on the requirements,
-   the challenges involved, both technical and managerial,
-   can be immense. As explained in the Bazaar User Guide, selecting
-   "just right" processes and using tools like Bazaar to support
-   matching workflows can greatly help.
-
 しかし、ソフトウェアによる成功のためには、すばらしいチーム以上のものが\
 必要です。 - それは、健全で活発な *コミュニティ* です。
 このグループは、通常はチームよりもはるかに大きく、なぜならそのソフトウェアに\
 関心のあるすべての人 - 開発チーム、ユーザ、トレーニングパートナー、\
 サポートパートナー、サードパーティの開発者など - を含むからです。
 
-.. Success with software though requires more than a great team - it
-   requires a healthy, active *community*. This group is typically
-   far larger than the team as it includes everyone interested in
-   the software: the team, users, training partners, support partners,
-   third-party developers and so on.
-
-すばらしいコミュニティというものはオープンソースの世界では良く理解されています。
-しかし、その適用はオープンソースの世界を越えて広がっています。: もっとも成功している\
-商業ソフトウェアのベンダーは、そのフラッグシッププロダクトと共に成長するコミュニティ\
+すばらしいコミュニティというものはフリー(自由)ソフトウェア
+コミュニティでは良く理解されています。
+しかし、その適用はオープンソースの世界を越えて広がっています。
+もっとも成功している商業ソフトウェアのベンダーは、
+そのフラッグシッププロダクトと共に成長するコミュニティ\
 を作り上げ、運営することがたくみなのです。
-
-.. Great communities are well understood in the open source world.
-   Their applicability extends well beyond that though: most
-   successful commercial software vendors are well skilled at
-   building and managing the communities that grow up around
-   their flagship products.
 
 すばらしいチームと同じように、すばらしいコミュニティも偶然できるものではありません。
 良いポリシーとガイドラインが、参加者同士の健全なコミュニケーションと正しい振る舞い\
 を育てるために不可欠です。
 この話題についてもっと深く知りたければ、Karl Fogelのすばらしい著書 - \
 `Producing Open Source Software <http://www.producingoss.com/>`_ - を見てください。
-
-.. Like great teams, great communities don't just happen.
-   Good policies and guidelines are essential for
-   fostering the right sort of behaviour and healthy
-   relationships between participants. For a deeper look at
-   this topic, see Karl Fogel's landmark book:
-   `Producing Open Source Software <http://www.producingoss.com/>`_.
 
 
 協調開発に必要なもの
@@ -73,25 +48,13 @@ Bazaarユーザガイドで説明したように、"ふさわしい"プロセス
 `java.net <http://java.net>`_ 、
 `SAP Community Network <https://www.sdn.sap.com/irj/sdn>`_ などに、CDEsの例があります。
 
-.. An intelligent toolset is also important for tracking and managing
-   community information and workflows. These tools are called
-   Collaborative Development Environments (CDEs). These toolsets are
-   typically web-based and manage things such as announcements,
-   issues/bugs, questions and answers, downloads, documents and
-   source code. Some examples of CDEs include
-   `Launchpad <https://launchpad.net>`_,
-   `SourceForge <http://sourceforge.net>`_,
-   `java.net <http://java.net>`_ and
-   `SAP Community Network <https://www.sdn.sap.com/irj/sdn>`_.
-
-
 関係するコミュニティとの協調を助ける
 -------------------------------------------------
 
 多くの成功しているプロダクトは、その下流にそれを使うたくさんのプロダクトがあります。
 言いかえると、他のコミュニティとやりとりをして、自分の変更が彼らにどんな影響を与えるかを\
 理解することで、新しい挑戦が成功するのです。
-これは、以下のようなプロダクトで特に明白です。:
+これは、以下のようなプロダクトでは特に明白です。:
 
 * プログラム言語、たとえばPyhon、PHP、Ruby、Java、Perlなど
 * コンパイラ、たとえばgcc、JDKなど
@@ -106,17 +69,8 @@ Bazaarユーザガイドで説明したように、"ふさわしい"プロセス
    communities and understanding how your changes will impact them. This is
    most obvious for projects like:
 
-.. * software languages, e.g. Python, PHP, Ruby, Java, Perl, etc.
-   * compilers, e.g. gcc, JDK, etc.
-   * libraries, e.g. zlib, openssl, etc.
-   * frameworks, e.g. Zope, Ruby on Rails, Spring, etc.
-
 しかし、アドオン機能を持つメジャーなアプリケーション、たとえばFirefox、Thundervird、\
 OpenOffice.org、Drupal、Wordpress、Joomlaなどにも、このことはあてはまります。
-
-.. However it applies equally for popular applications on which add-ons are
-   built, e.g. Firefox, Thunderbird, OpenOffice.org, Drupal, Wordpress, Joomla,
-   etc.
 
 コミュニティの境界をこえて案件や障害修正の追跡と管理をするための作業をサポートして\
 くれるツールが必要です。
@@ -130,38 +84,21 @@ OpenOffice.org、Drupal、Wordpress、Joomlaなどにも、このことはあて
   たとえば、「グラフィックライブラリのバグを修正することにより、これらの10個のOS上の\
   5つのアプリケーションに恩恵がある」など
 
-.. Tools that assist communities work together to track and manage
-   issues and fixes across community boundaries are required. These
-   tools help people at both ends of the spectrum:
-
-.. * users can report problems in their terms, e.g. rendering of image
-     type X is broken in application Y on operating system Z
-
-.. * developers can better appreciate the downstream impact of making a
-     change or fix, e.g. fixing this bug in a graphics library will
-     make the users of these 5 applications on these 10 operating
-     systems happy.
-
 その間にいる人々は、 *点線をつなぎ* 、上流と下流との間のコミュニケーションを担うという\
 重要な役割を果たします。
 多くの場合、彼らはエンドユーザのためにバグを修正したり、パッチをリリースしたり、上流の\
 開発チームに修正内容を提示したりします。
 それらすべてを持続可能な方法で常に追跡しつづけることは、簡単なことではありません。
 
-.. People in the middle play the essential role of *joining the dots* and
-   communicating up and down the line. In many cases, they may also fix the
-   problem for end users, releasing a patch and pushing a suggested fix
-   to the upstream development team. Keeping track of all that over time
-   in a sustainable way is no easy task.
-
-
 Launchpad: 開発をもっと効果的に、摩擦は少なく
 -------------------------------------------------
 
-`Ubuntu <http://www.ubuntu.com>`_ の開発に出資しているのと同じように、Canonicalは\
-オープンソースコミュニティ向けの無料のサービスとしてLaunchpad(https:launchpad.net)も\
-提供しています。
-Launchpadは、以下の注目すべき理由から、もっともエキサイティングなCDEsのひとつです。:
+Canonical は、 `Ubuntu <http://www.ubuntu.com>`_ や `Bazaar <http://bazaar.canonical.com>`_
+の開発に出資しているのと同じように、
+オープンソースコミュニティ向けの無料のサービスとして
+Launchpad <https:launchpad.net> も提供しています。
+Launchpadは、以下の注目すべき理由から、もっともエキサイティングな
+CDEsのひとつです。
 
 * トラッキング対象のたくさんのもの同士の関係を具体化しています。
   たとえば、ソースコードのブランチをバグ修正に関連づけることができます。
@@ -175,37 +112,10 @@ Launchpadは、以下の注目すべき理由から、もっともエキサイ�
 * 違うコミュニティ同士が、関連する案件やロードマップに対してともに作業するための結びつきを\
   提供します。
 
-.. As well as sponsoring `Ubuntu <http://www.ubuntu.com>`_ and
-   `Bazaar <http://bazaar.canonical.com>`_ development, Canonical
-   provides Launchpad, https://launchpad.net, as a free service
-   for the open source community. Launchpad is one of the most
-   exciting CDEs around for several notable reasons:
-
-.. * it models relationships between many of things tracked, e.g.
-     source code branches can be associated with bug fixes
-
-.. * as well are managing historical knowledge,
-     it supports future development planning and tracking by providing
-     features such as roadmaps, milestones and blueprints
-
-.. * it provides translation tools and packaging services so that
-     barriers are reduced for translators and testers wishing to
-     join your community and help out
-
-.. * it provides a nexus for different communities to work
-     together on related issues and roadmaps.
-
 言いかえると、Launchpadは、あなたのコミュニティの成長を助け、 *コミュニティ内* と\
 *コミュニティ間* との両方でワークフローの摩擦を減らすようにデザインされています。
 究極的には、機械的なタスクにつかう時間をなくし、興味ぶかい開発により多くの時間を\
 さけるようにすることを意味しています。
-
-.. In other words, Launchpad has been designed to help your
-   community grow and to reduce the workflow friction both
-   *within* your community and *between* communities. Ultimately,
-   that means less time on mechanical tasks and more time for
-   interesting development.
-
 
 Bazaar: Launchpadのバージョン管理クライアント
 ---------------------------------------------
@@ -217,76 +127,62 @@ Bazaar: Launchpadのバージョン管理クライアント
 1. BazaarはLaunchpadなしで使うこともできます。
 2. LaunchpadはBazaarなしで使うこともできます。
 
-それでも、別々に使うよりも一緒に使った方がよりパワフルになるよう設計されています。
-
-.. This tutorial looks at how Bazaar and Launchpad can be used together
-   and how they complement each other. It is important to remember that:
-
-.. 1. Bazaar can be used without Launchpad
-.. 2. Launchpad can be used without Bazaar.
-
-.. By design though, their sum is greater than the individual
-   parts.
+それでも、別々に使うよりも一緒に使った方がより大きな力を発揮するように設計されています。
 
 
-Finding and browsing branches using Launchpad
-=============================================
+Launchpadでのブランチの検索、閲覧
+===================================
 
-Finding available branches
+利用できるブランチの検索
 --------------------------
 
-While there are many advantages in adopting distributed version
-control, one of the things that disappears is the all-knowing
-central server with knowledge about all available branches. Indeed
-in a distributed environment, interesting branches can literally
-exist in 100s of locations across the Internet (or within an
-Intranet for that matter).
+分散型バージョン管理を導入することには多くの利点がありますが、できなくなってしまうこと\
+のひとつとして、利用できるすべてのブランチについて知っている中央サーバがないという点が\
+あります。
+実際、分散環境では、関連するブランチは、インターネット中の文字どおり100もの場所に存在する\
+可能性があります。(もしくは、イントラネットの中でも同様です。)
 
-Launchpad fills this gap by providing a registry of branches.
+Launchpadは、ブランチのデータベースを提供することによって、このギャップをなくします。
 
-
-Registering branches
+ブランチの登録
 --------------------
 
-Branches can be uploaded to Launchpad or simply registered
-as being available in an external location. Branches can also
-be given a Status such as *New*, *Development*, *Mature* or
-*Abandoned*.
+ブランチはLaunchPadにアップロードすることもできますし、別の場所にあるブランチを単に登録する\
+こともできます。
+また、ブランチには *New(新規)* 、 *Development(開発バージョン)* 、 *Mature(安定)* 、 *Abandoned(破棄)*
+というステータスを付加することができます。
 
-Note: External branches can even be hosted in legacy version control
-tools, i.e. CVS and Subversion. Code in these systems will be
-scanned and converted to Bazaar branches on a periodic basis.
-For maximum fidelity of course, it is preferable for external
-branches to be hosted in Bazaar.
+Note: 外部のブランチは、CVSやSubversionのような従来のバージョン管理ツールでホストされて\
+いても構いません。
+これらのシステム上のコードは定期的にスキャンされ、Bazaarのブランチに変換されます。
+もちろん、最大限の正確さを求めるのであれば、外部のブランチをBazaarでホストすることが望ましいです。
 
-
-Browsing branches
+ブランチの閲覧
 -----------------
 
-Branches can be listed, filtered and sorted by numerous
-attributes including Name, Registrant, Author, Status, Age and
-time of last commit. Browsing of branches is also provided making
-it easy to see things such as:
+ブランチは、名前、登録者、作者、ステータス、世代、最終コミット時刻などの多くの属性によって\
+リストアップやフィルタリング、並べ替えができます。
+また、ブランチを閲覧することによって、以下のようなことが簡単に分かります。:
 
-* where the branch can be downloaded from
-* how to upload changes
-* recent commits and the changes made by each
-* the source code of individual files for a given version.
+* ブランチがどこからダウンロードできるか
+* 変更をアップロードする方法
+* それぞれで行った最近のコミットと変更内容
+* 指定したバージョンの個々のファイルのソースコード
 
 
-Accessing code in Launchpad using Bazaar
-========================================
+Launchpad上のコードへのBazaarでのアクセス
+=========================================
 
-Getting the code for an open source project
--------------------------------------------
+プロジェクトのコードの取得
+----------------------------
 
-As Launchpad keeps track of thousands of open source projects
-and their latest code whether it be managed by Bazaar, CVS or Subversion,
-Bazaar users can grab that code as easily as this::
+Launchpad 上には多数のプロジェクトがあり、その最新のコードがBazaarで
+管理されていても、CVSやSubversionで管理されていても、Bazaarを使って
+以下のように簡単にコードを取得することができます。 ::
 
   bzr branch lp:project-name
 
-where `project-name` is the Launchpad project ID. Here are some examples::
+`project-name` は、Launchpad上のプロジェクトIDです。以下にいくつか例を挙げます。::
 
   bzr branch lp:inkscape
   bzr branch lp:amarok
@@ -294,259 +190,270 @@ where `project-name` is the Launchpad project ID. Here are some examples::
   bzr branch lp:rails
   bzr branch lp:java-gnome
 
-You can then browse the code locally using your favorite editor or IDE and
-change the code if you wish.
+そのあと、好きなエディタやIDEを使って、コードを手元で参照したり、必要があれば編集したり\
+することができます。
 
-If a project has multiple series registered (e.g. a development series and a
-maintenance series), the latest code for a given series can be fetched using::
+もし、プロジェクトに複数のシリーズ(例えば、開発用とメンテナンス用)が登録されている場合は、\
+以下のコマンドで指定したシリーズの最新のコードを取得することができます。::
 
-  bzr branch lp:project-name/series
+ bzr branch lp:project-name/series
 
-Publishing your changes
+変更内容の公開
 -----------------------
 
-Having fixed that annoying bug or added that cool feature you've always
-wanted, it's time to impress your friends and make the world a better
-place by making your code available to others. As explained earlier,
-Launchpad is a free Bazaar code hosting service so you can push your
-branch to it and others can access your code from there. For example,
-assuming you are a member of the relevant team, login to launchpad like this::
+イライラするバグを修正したり、ずっと欲しかったクールな機能を追加したりしたら、それを友達に\
+アピールしたり、そのコードを他の人に公開して世の中をもっと良くするときです。
+これまでに説明したとおり、LaunchpadはBazaarによる無料のコードホスティングサービスなので、自分の\
+ブランチをプッシュして他の人がそこからコードにアクセスできるようにすることができます。
+例えば、あなたが関連するチームのメンバーだとすると、以下のようにLaunchpadにログインします。::
 
   bzr launchpad-login userid
 
-where `userid` is your Launchpad user ID.
-You can then push your changes to a team branch like this::
+`userid` は、LaunchpadのユーザIDです。
+そのあと、以下のように変更をチームのブランチにプッシュすることができます。::
 
   bzr push lp:~team-name/project-name/branch-name
 
-Others can then download your code like this::
+他の人は、以下のようにそのコードをダウンロードすることができます。::
 
   bzr branch lp:~team-name/project-name/branch-name
 
 
-Personal branches
+自分用のブランチ
 -----------------
 
-Even if you are not a member of a team, Launchpad can be used to publish
-your changes. In this case, simply create a personal branch like this::
+あなたがチームのメンバーではなかったとしても、Launcpadであなたの変更内容を公開することができます。
+この場合、以下のようにして単純に自分用のブランチを作成します。::
 
   bzr push lp:~userid/project-name/branch-name
 
-Others can then download your code like this::
+他の人は、以下のようにそのコードをダウンロードすることができます。::
 
   bzr branch lp:~userid/project-name/branch-name
 
-Note: Even when publishing to a personal branch, it is polite to notify the
-upstream developers about your branch so they can pull your changes from
-it if they are generally applicable to all users and meet the project's
-quality standards.
+Note: 自分用のブランチに公開したときも、ちゃんと上流の開発者にあなたのブランチについて通知されるので、\
+全てのユーザに一般的に適用できる内容で、かつプロジェクトの品質基準を満たしていれば、彼らはその変更を\
+プルすることができます。
+
+.. Package source branches
+
+パッケージのソースブランチ
+-----------------------------
+
+`maintaining packages for Ubuntu using Bazaar` に書かれているとおり、
+Launchpad から簡単にパッケージのソースブランチにアクセスできます。
+現在の(デフォルトの)系列のパッケージのソースブランチは、次のようなコマンドで
+ダウンロードできます。 ::
+
+  bzr branch ubuntu:package
+
+ここで、 *package* はアクセスしたい Ubuntu のパッケージ名です。
+Ubuntu の特定の系列 (例: Maverick, Lucid) のパッケージブランチを
+ダウンロードするには、次のコマンドを使います。 ::
+
+  bzr branch ubuntu:maverick/package
+
+Ubuntu の系列は単に最初の文字を使う形に省略することができます。
+たとえば、上の例は次のようにも書けます。
+
+  bzr branch ubuntu:m/package
+
+いくつかの Debian の系列でも、 Launchpad からソースブランチをダウンロードする
+ことができます。デフォルトの系列であれば次のようにダウンロードできます。 ::
+
+  bzr branch debianlp:package
+
+そして、特定の系列の場合は次のようになります。 ::
+
+  bzr branch debianlp:lenny/package
+
+``debianlp:`` スキーマは　Launchpad にある Debian のソースブランチにしか
+アクセスできないので注意してください。
+
+.. _`maintaining packages for Ubuntu using Bazaar`: https://wiki.ubuntu.com/DistributedDevelopment
 
 
-Linking branches using Launchpad
-================================
+Lanchpadでのブランチの関連づけ
+===============================
 
-Associating a branch with a bug
+ブランチをバグと関連付ける
 -------------------------------
 
-After registering a branch, you can associate it to a bug so that
-people interested in that bug can track and download the fix as
-it becomes available.
+ブランチを登録したあと、それにバグを関連づけることができます。
+そうすることで、そのバグに関心をもつ人々がそのブランチを追いかけ、修正が公開されたらダウンロード\
+することができます。
 
-To do this, the steps are:
+そのための手順は以下のとおりです。
 
-1. Navigate to the bug in question.
+1. Questionから、そのバグに移動します。
 
-2. Select `Add branch` under `Actions`.
+2. `Actions` から `Add branch` を選択します。
 
-3. Select the branch.
+3. ブランチを選択します。
 
-4. Optionally set the State of the relationship. This is
-   *Fix In Progress* by default but you may wish to set it
-   to another state such as *Fix Available* if the branch already
-   addresses the issue.
+4. 必要に応じて、関連づけのステータスを設定します。
+   *Fix In Progress(修正中)* がデフォルトですが、すでにブランチ内にで問題に対処しているのなら、\
+   *Fix Available(修正済)* に設定することもできます。
 
-If you wish, you can also provide some arbitrary comments about
-the relationship between the bug and the branch.
+もし望むのなら、バグとブランチとの関連づけに好きなコメントをつけることもできます。
 
-
-Changing the state in Launchpad while committing in Bazaar
+BazaarでのコミットによるLaunchpadのステータスの変化
 ----------------------------------------------------------
 
-Bazaar and Launchpad can work together to reduce some of
-the status housekeeping for you. When you commit using Bazaar,
-use the --fixes option like this::
+BazzarとLaunchpadを一緒につかうことで、ステータスのメンテナンス作業をへらすことができます。
+Bazaarでコミットしたときに、以下のように--fixesオプションを指定します。::
 
   bzr commit --fixes lp:1234 -m "..."
 
-where 1234 is the bug ID. This will changes the State of the
-bug-branch relationship to *Fix Available*. If the one commit
-fixes multiple issues, the --fixes option can be specified multiple
-times.
+この1234というのはバグIDです。こうすると、バグ-ブランチ間の関連づけのステータスが *Fix Available* \
+に変わります。
+一回のコミットで複数の問題を修正する場合には、--fixesオプションを複数回指定できます。
 
-One of the cool things about this feature is that Launchpad does
-not need to be accessible when making the commit. The ``--fixes``
-option works by storing metadata which Launchpad will detect next
-time the branch is pushed to it or scanned once online again.
+この機能のすばらしい点のひとつは、コミットするときにLaunchpadにアクセスできなくてもいいということです。
+``--fixes`` オプションではメタデータを保存し、次にそのブランチがLaunchpadにプッシュされたときか、\
+オンラインで再スキャンされたときに、Launchpadはそのメタデータを検出します。
 
-Note: Launchpad will not implicitly close a bug just because a
-branch is available that fixes it. There are several reasons for this.
-Firstly, the branch usually needs to be merged into the trunk
-(main development branch) before most teams consider it fixed.
-Secondly, many teams have a separate process for confirming
-bugs are fixed over and above a developer saying so.
+Note: Launchpadは、ブランチでバグが修正されたからといって勝手にバグをクローズすることはありません。
+これにはいくつかの理由があります。
+一つ目の理由は、ほとんどのチームでは、たいていブランチをトランク(メインの開発ブランチ)にマージしないと\
+バグが修正されたとはみなさないためです。
+二つ目の理由は、多くのチームでは、バグが修正されたことを確認するためには、「開発者がそう言っている」と\
+いうだけではなくそれ以外のプロセスがあるためです。
 
-As explained later, merge control features are currently under
-development in Launchpad and automatically changing the status of
-bugs to *Fix Committed* will be more appropriate once those features
-are in place.
+あとで説明しますが、マージ管理機能が現在Launchpadで開発されており、この機能がリリースされれば、バグの\
+ステータスを *Fix Committed* に自動変更する機能がもっと適切なものになります。
 
 
-Associating a branch with a blueprint
+ブランチをブループリントと関連づける
 -------------------------------------
 
-After registering a branch, you can associate it to a blueprint so that
-people interested in that blueprint can track and test the feature as
-it develops.
+ブランチを登録したあと、それにブループリントを関連付けることができます。
+そうすることで、そのブループリントに関心を持つ人々がそのブランチを追いかけ、開発中の新機能をテストする\
+ことができます。
 
-To do this, the steps are:
+そのための手順は以下の通りです。
 
-1. Navigate to the blueprint in question.
+1. Questionから、そのブループリントに移動します。
 
-2. Select `Link branch` under `Actions`.
+2. `Actions` から `Link branch` を選択します。
 
-3. Select the branch.
+3. ブランチを選択します。
 
-If you wish, you can also provide some arbitrary comments about
-the relationship between the blueprint and the branch.
+もし望むのなら、ブループリントとブランチとの関連づけに好きなコメントをつけることもできます。
 
 
-Managing releases using Launchpad
+Launchpadをつかったリリースの管理
 =================================
 
-Integrating changes
+変更内容の統合
 -------------------
 
-Once a branch has been developed and published, communities
-typically go through a rigorous process before those changes
-are integrated into the core product and rolled out to end users.
-Some of the steps involved may include:
+ブランチが開発され、公開されたら、コミュニティでは一般的に、その変更内容をコアプロダクトに統合して\
+エンドユーザにリリースする前に厳格なプロセスを通します。
+その中には、以下のような手順が含まれるでしょう。:
 
-* peer review of the changes
+* 仲間による変更内容のレビュー
 
-* deciding which releases to include the changes in, e.g. the
-  next maintenance release, the next major release, or both
+* どのリリースにその変更を含めるかの決定。たとえば、次のメンテナンスリリース、次のメジャーリリース、\
+  もしくはその両方。
 
-* running functional regression tests
+* 機能の回帰テストの実行
 
-* benchmarking to ensure performance remains acceptable
+* パフォーマンスが基準を満たすかどうかを確認するためのベンチマーキング
 
-* packaging into early access releases for end user testing
+* エンドユーザテストのための早期提供リリースの作成
 
-* documentation updates, e.g. Release Notes for the targeted
-  releases
+* ドキュメントの更新。たとえば、そのリリースのためのリリースノートなど
 
-* translation of the user interface and documentation into
-  multiple languages.
+* ユーザインターフェイスやドキュメントの他言語への翻訳
 
-This section briefly looks at some of the features in Launchpad that
-help get good quality code into production. Strong integration with
-Bazaar is core to making this happen smoothly.
+このセクションでは、プロダクトのコードの品質を高めるために役立つLaunchpadの機能のいくつかについて簡単に\
+説明します。
+Bazaarとの強力な一体化が、それをスムーズにするためのポイントです。
 
-Note: Where indicated, some of the features below are still under
-development. If one or more of these features interest you, please
-consider joining the Launchpad beta test team at this link:
-https://help.launchpad.net/JoiningLaunchpadBetaTesters. You can
-then get early access to features and provide feedback to the
-developers before wider roll-out.
+Note: 以下にあげる機能の中には、まだ開発中のものもあります。
+もし、これらの機能に興味があるのなら、以下のリンクでLaunchpadベータテストチームへの参加を検討してください。:
+https://help.launchpad.net/JoiningLaunchpadBetaTesters
+そうすれば、各機能の早期提供版を手に入れて、広くリリースされる前に開発者にフィードバックを送ることができます。
 
 
-Branch merge proposals
-----------------------
+ブランチのマージの提案
+-----------------------
 
-After navigating to a branch in Launchpad, one of the available actions
-is *Propose for merging*. This lets you nominate which branch this code
-ought to be merged into.
+Launchpadでブランチに移動したあとに実行できるアクションのひとつに、 *Propose for merging(マージの提案)*
+があります。
+この機能では、どのブランチがこのコードを取り入れるべきかを指定します。
 
-Tracking the knowledge about which branches are proposed to be merged
-into a codeline helps Release Managers keep on top of what still needs
-to be completed, or can be completed, before a ship date. Using this
-information, they can ensure branches are merged after completing any
-necessary reviews. In the simple case, the Release Manager may manually
-merge branches. In more advanced cases, the merging could be automatically
-done by a robot (like `PQM`_) when the branch reaches the right state
-(e.g. *Review completed*).
+どのブランチがコードラインへのマージ提案中なのかという情報を追跡することは、リリース管理者が、\
+リリース日までに何を完了させなければならないか、または何を完了させることができるかを常に把握するために役立ちます。
+この情報をもとに、必要なレビューを実行してからブランチをマージすることを確実に行うことができます。
+単純なケースでは、リリース管理者は手作業でブランチをマージします。
+もっと高度なケースでは、ブランチがあるべきステータス(たとえば、 *Review completed(レビュー完了)*)になった\
+ときにロボット(`PQM`_ のような)に自動的にマージさせることができます。
 
 .. _PQM: https://launchpad.net/pqm
 
 
-Code review tracking
---------------------
+コードレビューの追跡
+----------------------
 
-A number of features are under development in Launchpad to track the
-states, conversations and outcomes of code reviews. These features are
-expected to be integrated with branch merge proposals and branch
-browsing features.
+コードレビューの状態や会話の内容、成果物を追跡するために、Launchpadでたくさんの機能が開発されています。
+これらの機能は、ブランチのマージ提案やブランチ閲覧の機能に統合されると思われます。
 
 
-Personal Package Archives (PPAs)
---------------------------------
+パーソナルパッケージアーカイブ(PPA)
+------------------------------------
 
-PPAs help developers and development teams get custom builds into the
-hands of users for early testing and feedback. In other words, a PPA
-allows a developer to form a community of testers who are interested
-in their changes. The testing community can install the packages,
-run them for the test period and then remove them cleanly from their
-system.
+PPAは、開発者や開発チームが、早期提供版でテストとフィードバックを行うユーザにカスタムビルドモジュールを渡す\
+手助けをします。
+言い方を変えると、PPAによって、開発者はその変更内容に関心を持つテスターのコミュニティを結成することが\
+できるようになります。
+テスティングコミュニティは、パッケージをインストールし、テスト期間中にそれを実行し、その後はシステムから\
+きれいに削除することができます。
 
-See https://help.launchpad.net/PPAQuickStart for further details.
+より詳細な情報は、 https://help.launchpad.net/PPAQuickStart を参照してください。
 
 
-Translations
+翻訳
 ------------
 
-The Translations module in Launchpad is designed to make it easy for
-anyone to get involved translating applications to languages they know.
-Translators are shielded from the low level details.
+Launchpadの翻訳モジュールは、誰もがアプリケーションを自分が知る言語に簡単に翻訳できるように設計されています。
+翻訳者は、深いレベルの詳細を知る必要はありません。
 
-Launchpad keeps track of the translations for each major version of a
-project separately, allowing translators to continue to improve the
-translations of your stable releases while others start work on newer
-versions that are still in development. Translation speed in reduced
-by sharing resources across projects. Automatic suggestions, from a
-library of 750,000 translated strings, and a community of 19,000
-registered translators can radically cut the time required to
-localise your project into many languages.
+Launchpadは、プロジェクトの各メジャーバージョンに対する翻訳を別々に記録するので、だれかが新しい開発バージョンの\
+作業を始めていても、安定版の翻訳の改良を続けることができます。
+プロジェクトをまたがってリソースを共有することにより、翻訳のスピードを短縮しています。
+75万件の翻訳済みのテキストのライブラリからの自動抽出機能と、1万9千人の翻訳者のコミュニティとが、プロジェクトを\
+多くの言語に翻訳する時間を短縮してくれます。
 
+.. XXX Translation speed in reduces by sharing resources across projects. > in は isの間違いだと思われる。
 
-Summary
+要約
 =======
 
-The communities we join, whether off-line or on-line,
-say a lot about the sort of people we are. The flip-side
-to this is that the tools you choose for your community - particularly
-the CDE and version control tool - can have a large impact on who
-joins and how easily they can contribute.
+私たちが参加するコミュニティは、それがオフラインであれオンラインであれ、私たちがどのような種類の人間であるかを\
+表すものです。
+逆に言うと、あなたがコミュニティのために選ぶツール - 特に、CDEとバージョン管理ツール - は、誰がそのコミュニティ\
+に参加するのかということ、また、その人たちがどれだけ簡単にコミュニティに貢献できるかということに大きな影響を与えます。
 
-In their own right, Launchpad and Bazaar are highly useful tools.
-Together, they can:
+LaunchpadとBazaarは、単独でもとても役に立つツールです。
+一緒に使えば、以下のことが可能になります。:
 
-* help your community track major assets such as source code and knowledge
-* help it grow by reducing barriers to entry
-* help it interact with related communities.
+* コミュニティの、ソースコードやナレッジのような資産の追跡を助ける。
+* コミュニティへの参加の妨げを軽減して、コミュニティの成長を促す。
+* 関係するコミュニティとのやりとりを助ける。
 
-In particular, Launchpad is a free code hosting service for your Bazaar
-branches, branches can be browsed online, branches can be linked to bugs
-and blueprints, and the status of bug-branch relationships can be
-automatically managed by mentioning the bug while committing in Bazaar.
-Further integration is under development with the aim of streamlining
-the process from *great idea* to *running code in the hands of end users*.
+具体的には、LaunchpadはあなたのBazaarブランチを管理する無料のコードホスティングサービスであり、ブランチをオンラインで\
+閲覧でき、ブランチとバグやブループリントを関連づけることができ、Bazaarへのコミット時にバグについて記述することによって\
+ブランチ-バグ間のステータスを自動的に変更することができます。
+*すばらしいアイデア* を、 *エンドユーザの元で実行されるコード* にするまでのプロセスを合理化するための、より進んだ統合\
+機能が現在開発中です。
 
-If you have any feedback on how you'd like to see Bazaar and Launchpad
-further integrated, please contact us on the Bazaar mailing list,
+もし、BazaarとLaunchpadがさらにどのように統合されてほしいかについて、何かフィードバックすることがあるのなら、\
+Bazzarメーリングリストで私たちに連絡してください。
 bazaar@lists.canonical.com.
 
-While designed as a free service to support open source projects,
-Canonical may make Launchpad available to commercial software developers
-depending on their requirements. We would be happy to hear from you
-if you think Launchpad would be useful for managing your community,
-open source or otherwise.
+Launchpadは自由ソフトウェアプロジェクトをサポートするための無料のサービスとしてデザインされていますが、Canonicalはこれを\
+商業ソフトウェアの開発者にも、その要望次第で提供することができます。
+オープンソースであってもなくても、Launchpadがあなたのコミュニティの運営に役立つと考えていただけるのならば幸いです。
+

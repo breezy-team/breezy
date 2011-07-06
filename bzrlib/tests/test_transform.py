@@ -93,6 +93,16 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.addCleanup(transform.finalize)
         return transform, transform.root
 
+    def get_transform_for_sha1_test(self):
+        trans, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
+        contents = ['just some content\n']
+        sha1 = osutils.sha_strings(contents)
+        # Roll back the clock
+        trans._creation_mtime = time.time() - 20.0
+        return trans, root, contents, sha1
+
     def test_existing_limbo(self):
         transform, root = self.get_transform()
         limbo_name = transform._limbodir
@@ -161,6 +171,67 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.finalize()
         transform.finalize()
 
+    def test_apply_informs_tree_of_observed_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.new_file('file1', root, contents, file_id='file1-id',
+                                  sha1=sha1)
+        calls = []
+        orig = self.wt._observed_sha1
+        def _observed_sha1(*args):
+            calls.append(args)
+            orig(*args)
+        self.wt._observed_sha1 = _observed_sha1
+        trans.apply()
+        self.assertEqual([(None, 'file1', trans._observed_sha1s[trans_id])],
+                         calls)
+
+    def test_create_file_caches_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.create_path('file1', root)
+        trans.create_file(contents, trans_id, sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+
+    def test__apply_insertions_updates_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.create_path('file1', root)
+        trans.create_file(contents, trans_id, sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+        creation_mtime = trans._creation_mtime + 10.0
+        # We fake a time difference from when the file was created until now it
+        # is being renamed by using os.utime. Note that the change we actually
+        # want to see is the real ctime change from 'os.rename()', but as long
+        # as we observe a new stat value, we should be fine.
+        os.utime(trans._limbo_name(trans_id), (creation_mtime, creation_mtime))
+        trans.apply()
+        new_st_val = osutils.lstat(self.wt.abspath('file1'))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, new_st_val)
+        self.assertNotEqual(st_val.st_mtime, new_st_val.st_mtime)
+
+    def test_new_file_caches_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.new_file('file1', root, contents, file_id='file1-id',
+                                  sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+
+    def test_cancel_creation_removes_observed_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.new_file('file1', root, contents, file_id='file1-id',
+                                  sha1=sha1)
+        self.assertTrue(trans_id in trans._observed_sha1s)
+        trans.cancel_creation(trans_id)
+        self.assertFalse(trans_id in trans._observed_sha1s)
+
     def test_create_files_same_timestamp(self):
         transform, root = self.get_transform()
         self.wt.lock_tree_write()
@@ -213,6 +284,38 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         new_trans_id = transform.new_directory('', ROOT_PARENT, 'new-root-id')
         new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
         self.assertRaises(ValueError, transform.fixup_new_roots)
+
+    def test_add_unversioned_root(self):
+        transform, root = self.get_transform()
+        new_trans_id = transform.new_directory('', ROOT_PARENT, None)
+        transform.fixup_new_roots()
+        self.assertNotIn(transform.root, transform._new_id)
+
+    def test_remove_root_fixup(self):
+        transform, root = self.get_transform()
+        old_root_id = self.wt.get_root_id()
+        self.assertNotEqual('new-root-id', old_root_id)
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots()
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
+
+        transform, root = self.get_transform()
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'new-root-id')
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
+        self.assertRaises(ValueError, transform.fixup_new_roots)
+
+    def test_apply_retains_root_directory(self):
+        # Do not attempt to delete the physical root directory, because that
+        # is impossible.
+        transform, root = self.get_transform()
+        with transform:
+            transform.delete_contents(root)
+            e = self.assertRaises(AssertionError, self.assertRaises,
+                                  errors.TransformRenameFailed,
+                                  transform.apply)
+        self.assertContainsRe('TransformRenameFailed not raised', str(e))
 
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -740,7 +843,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
-        conflicts_s = [str(c) for c in cooked_conflicts]
+        conflicts_s = [unicode(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
                                          'Moved existing file to '
@@ -1528,6 +1631,38 @@ def conflict_text(tree, merge):
     return template % ('<' * 7, tree, '=' * 7, merge, '>' * 7)
 
 
+class TestInventoryAltered(tests.TestCaseWithTransport):
+
+    def test_inventory_altered_unchanged(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            self.assertEqual([], tt._inventory_altered())
+
+    def test_inventory_altered_changed_parent_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            tt.unversion_file(tt.root)
+            tt.version_file('new-id', tt.root)
+            foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+            foo_tuple = ('foo', foo_trans_id)
+            root_tuple = ('', tt.root)
+            self.assertEqual([root_tuple, foo_tuple], tt._inventory_altered())
+
+    def test_inventory_altered_noop_changed_parent_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            tt.unversion_file(tt.root)
+            tt.version_file(tree.get_root_id(), tt.root)
+            foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+            self.assertEqual([], tt._inventory_altered())
+
+
 class TestTransformMerge(TestCaseInTempDir):
 
     def test_text_merge(self):
@@ -1899,6 +2034,18 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target.iter_changes(revision_tree)))
 
+    def test_build_tree_accelerator_tree_observes_sha1(self):
+        source = self.create_ab_tree()
+        sha1 = osutils.sha_string('A')
+        target = self.make_branch_and_tree('target')
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        state = target.current_dirstate()
+        state._cutoff_time = time.time() + 60
+        build_tree(source.basis_tree(), target, source)
+        entry = state._get_entry(0, path_utf8='file1')
+        self.assertEqual(sha1, entry[1][0][1])
+
     def test_build_tree_accelerator_tree_missing_file(self):
         source = self.create_ab_tree()
         os.unlink('source/file1')
@@ -2061,6 +2208,42 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(source.basis_tree(), target, source, delta_from_tree=True)
         self.assertEqual('file.moved', target.id2path('lower-id'))
         self.assertEqual('FILE', target.id2path('upper-id'))
+
+    def test_build_tree_observes_sha(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1', 'source/dir/', 'source/dir/file2'])
+        source.add(['file1', 'dir', 'dir/file2'],
+                   ['file1-id', 'dir-id', 'file2-id'])
+        source.commit('new files')
+        target = self.make_branch_and_tree('target')
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        # We make use of the fact that DirState caches its cutoff time. So we
+        # set the 'safe' time to one minute in the future.
+        state = target.current_dirstate()
+        state._cutoff_time = time.time() + 60
+        build_tree(source.basis_tree(), target)
+        entry1_sha = osutils.sha_file_by_name('source/file1')
+        entry2_sha = osutils.sha_file_by_name('source/dir/file2')
+        # entry[1] is the state information, entry[1][0] is the state of the
+        # working tree, entry[1][0][1] is the sha value for the current working
+        # tree
+        entry1 = state._get_entry(0, path_utf8='file1')
+        self.assertEqual(entry1_sha, entry1[1][0][1])
+        # The 'size' field must also be set.
+        self.assertEqual(25, entry1[1][0][2])
+        entry1_state = entry1[1][0]
+        entry2 = state._get_entry(0, path_utf8='dir/file2')
+        self.assertEqual(entry2_sha, entry2[1][0][1])
+        self.assertEqual(29, entry2[1][0][2])
+        entry2_state = entry2[1][0]
+        # Now, make sure that we don't have to re-read the content. The
+        # packed_stat should match exactly.
+        self.assertEqual(entry1_sha, target.get_file_sha1('file1-id', 'file1'))
+        self.assertEqual(entry2_sha,
+                         target.get_file_sha1('file2-id', 'dir/file2'))
+        self.assertEqual(entry1_state, entry1[1][0])
+        self.assertEqual(entry2_state, entry2[1][0])
 
 
 class TestCommitTransform(tests.TestCaseWithTransport):
@@ -2345,6 +2528,130 @@ class TestTransformRollback(tests.TestCaseWithTransport):
         self.assertPathExists('a/b')
 
 
+class TestFinalizeRobustness(tests.TestCaseWithTransport):
+    """Ensure treetransform creation errors can be safely cleaned up after"""
+
+    def _override_globals_in_method(self, instance, method_name, globals):
+        """Replace method on instance with one with updated globals"""
+        import types
+        func = getattr(instance, method_name).im_func
+        new_globals = dict(func.func_globals)
+        new_globals.update(globals)
+        new_func = types.FunctionType(func.func_code, new_globals,
+            func.func_name, func.func_defaults)
+        setattr(instance, method_name,
+            types.MethodType(new_func, instance, instance.__class__))
+        self.addCleanup(delattr, instance, method_name)
+
+    @staticmethod
+    def _fake_open_raises_before(name, mode):
+        """Like open() but raises before doing anything"""
+        raise RuntimeError
+
+    @staticmethod
+    def _fake_open_raises_after(name, mode):
+        """Like open() but raises after creating file without returning"""
+        open(name, mode).close()
+        raise RuntimeError
+
+    def create_transform_and_root_trans_id(self):
+        """Setup a transform creating a file in limbo"""
+        tree = self.make_branch_and_tree('.')
+        tt = TreeTransform(tree)
+        return tt, tt.create_path("a", tt.root)
+
+    def create_transform_and_subdir_trans_id(self):
+        """Setup a transform creating a directory containing a file in limbo"""
+        tree = self.make_branch_and_tree('.')
+        tt = TreeTransform(tree)
+        d_trans_id = tt.create_path("d", tt.root)
+        tt.create_directory(d_trans_id)
+        f_trans_id = tt.create_path("a", d_trans_id)
+        tt.adjust_path("a", d_trans_id, f_trans_id)
+        return tt, f_trans_id
+
+    def test_root_create_file_open_raises_before_creation(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_before})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathDoesNotExist(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_root_create_file_open_raises_after_creation(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_after})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_subdir_create_file_open_raises_before_creation(self):
+        tt, trans_id = self.create_transform_and_subdir_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_before})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathDoesNotExist(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_subdir_create_file_open_raises_after_creation(self):
+        tt, trans_id = self.create_transform_and_subdir_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_after})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_rename_in_limbo_rename_raises_after_rename(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        parent1 = tt.new_directory('parent1', tt.root)
+        child1 = tt.new_file('child1', parent1, 'contents')
+        parent2 = tt.new_directory('parent2', tt.root)
+
+        class FakeOSModule(object):
+            def rename(self, old, new):
+                os.rename(old, new)
+                raise RuntimeError
+        self._override_globals_in_method(tt, "_rename_in_limbo",
+            {"os": FakeOSModule()})
+        self.assertRaises(
+            RuntimeError, tt.adjust_path, "child1", parent2, child1)
+        path = osutils.pathjoin(tt._limbo_name(parent2), "child1")
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_rename_in_limbo_rename_raises_before_rename(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        parent1 = tt.new_directory('parent1', tt.root)
+        child1 = tt.new_file('child1', parent1, 'contents')
+        parent2 = tt.new_directory('parent2', tt.root)
+
+        class FakeOSModule(object):
+            def rename(self, old, new):
+                raise RuntimeError
+        self._override_globals_in_method(tt, "_rename_in_limbo",
+            {"os": FakeOSModule()})
+        self.assertRaises(
+            RuntimeError, tt.adjust_path, "child1", parent2, child1)
+        path = osutils.pathjoin(tt._limbo_name(parent1), "child1")
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+
 class TestTransformMissingParent(tests.TestCaseWithTransport):
 
     def make_tt_with_versioned_dir(self):
@@ -2531,6 +2838,18 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_tree = preview.get_preview_tree()
         preview_mtime = preview_tree.get_file_mtime('file-id', 'renamed')
         work_mtime = work_tree.get_file_mtime('file-id', 'file')
+
+    def test_get_file_size(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/old', 'old')])
+        work_tree.add('old', 'old-id')
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        new_id = preview.new_file('name', preview.root, 'contents', 'new-id',
+                                  'executable')
+        tree = preview.get_preview_tree()
+        self.assertEqual(len('old'), tree.get_file_size('old-id'))
+        self.assertEqual(len('contents'), tree.get_file_size('new-id'))
 
     def test_get_file(self):
         preview = self.get_empty_preview()
@@ -2948,6 +3267,24 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                                          pb, tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
+
+    def test_has_filename(self):
+        wt = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/unmodified', 'tree/removed', 'tree/modified'])
+        tt = TransformPreview(wt)
+        removed_id = tt.trans_id_tree_path('removed')
+        tt.delete_contents(removed_id)
+        tt.new_file('new', tt.root, 'contents')
+        modified_id = tt.trans_id_tree_path('modified')
+        tt.delete_contents(modified_id)
+        tt.create_file('modified-contents', modified_id)
+        self.addCleanup(tt.finalize)
+        tree = tt.get_preview_tree()
+        self.assertTrue(tree.has_filename('unmodified'))
+        self.assertFalse(tree.has_filename('not-present'))
+        self.assertFalse(tree.has_filename('removed'))
+        self.assertTrue(tree.has_filename('new'))
+        self.assertTrue(tree.has_filename('modified'))
 
     def test_is_executable(self):
         tree = self.make_branch_and_tree('tree')

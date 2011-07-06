@@ -26,19 +26,21 @@
 プラグインが見つかる場所
 -------------------------
 
-http://wiki.bazaar.canonical.com/BzrPlugins ページでプラグインのリストが見つかります。
+http://wiki.bazaar.canonical.com/BzrPlugins ページで
+プラグインのリストが見つかります。
 
 プラグインをインストールする方法
 ---------------------------------
 
 プラグインのインストール作業はとても簡単です！　まだ作られていなければ、
 Bazaarの設定ディレクトリの元で ``plugins`` ディレクトリを作ります。
-Linuxの場合は ``~/.bazaar/`` でWindowsの場合は
+Unix の場合は ``~/.bazaar/`` でWindowsの場合は
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\`` です。
 このディレクトリの範囲内では(下記では$BZR_HOMEとして言及される) それぞれのプラグインは独自のサブディレクトリに設置されます。
 
 プラグインはとりわけBazaarのブランチとよく連携します。
-たとえば、Linuxのメインのユーザーアカウント用にbzrtoolsプラグインをインストールするためには、次のコマンドを実行します::
+たとえば、 GNU/Linux のメインのユーザーアカウント用に bzrtools
+プラグインをインストールするためには、次のコマンドを実行します::
 
     bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools
     ~/.bazaar/plugins/bzrtools
@@ -50,20 +52,14 @@ Linuxの場合は ``~/.bazaar/`` でWindowsの場合は
 プラグインの代替用の場所
 -------------------------
 
-必要なパーミッションがあれば、プラグインをシステム全体のベースにインストールすることもできます。
-現在2つの場所がプラグインのためにチェックされます:
+必要なパーミッションがあれば、プラグインをシステム全体のベースに
+インストールすることもできます。
 
- 1. システムの場所 - bzrlib/plugins
- 2. 個人の場所 - $BZR_HOME/plugins.
-
-Linuxにおいて、これらの典型的な場所は
-``/usr/lib/python2.4/site-packages/bzrlib/plugins/`` と
-``$HOME/.bazaar/plugins/`` です。
-Windowsにおいて、システムの場所は
-``C:\\Program Files\\Bazaar\\plugins`` になり、
-個人の場所は ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\plugins`` です。
-
-環境変数 ``BZR_PLUGIN_PATH`` をプラグインが含まれるディレクトリに設定することで\個人のプラグインの場所を上書きできます。
+環境変数 ``BZR_PLUGIN_PATH`` をプラグインが含まれるディレクトリに
+設定することで個人のプラグインの場所を上書きできます。
+(詳細な解説は
+`ユーザーリファレンス <../user-reference/configuration-help.html#bzr-plugin-path>`_ 
+を参照してください。)
 
 
 インストールされたプラグインの一覧を表示する

@@ -16,12 +16,9 @@
 
 """Tests for interface conformance of 'WorkingTree.add'"""
 
-import os
-
 from bzrlib import (
     errors,
     inventory,
-    osutils,
     tests,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
@@ -153,7 +150,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         tree.add('')
-        self.assertEqual([tree.path2id('')], list(tree))
+        self.assertEqual([tree.path2id('')], list(tree.all_file_ids()))
         # the root should have been changed to be a new unique root.
         self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
         tree.unlock()

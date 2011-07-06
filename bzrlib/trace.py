@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,13 +59,13 @@ import logging
 import os
 import sys
 import time
-import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
 import locale
+import tempfile
 import traceback
 """)
 
@@ -81,8 +81,6 @@ from bzrlib import (
     debug,
     errors,
     osutils,
-    plugin,
-    symbol_versioning,
     ui,
     )
 """)
@@ -334,7 +332,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     :param to_file: A file-like object to which messages will be sent.
 
     :returns: A memento that should be passed to _pop_log_file to restore the
-    previously active logging.
+        previously active logging.
     """
     global _trace_file
     # make a new handler
@@ -487,6 +485,21 @@ def _dump_memory_usage(err_file):
             dump_file.close()
         elif fd is not None:
             os.close(fd)
+
+
+def _qualified_exception_name(eclass, unqualified_bzrlib_errors=False):
+    """Give name of error class including module for non-builtin exceptions
+
+    If `unqualified_bzrlib_errors` is True, errors specific to bzrlib will
+    also omit the module prefix.
+    """
+    class_name = eclass.__name__
+    module_name = eclass.__module__
+    if module_name in ("exceptions", "__main__") or (
+            unqualified_bzrlib_errors and module_name == "bzrlib.errors"):
+        return class_name
+    return "%s.%s" % (module_name, class_name)
+
 
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.

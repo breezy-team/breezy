@@ -187,6 +187,37 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
 
+    def test_push_overwrite_with_older_mainline_rev(self):
+        """Pushing an older mainline revision with overwrite.
+
+        This was <https://bugs.launchpad.net/bzr/+bug/386576>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+        source.branch.push(target)
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
+
+    def test_push_overwrite_of_non_tip_with_stop_revision(self):
+        """Combining the stop_revision and overwrite options works.
+
+        This was <https://bugs.launchpad.net/bzr/+bug/234229>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.branch.push(target)
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
+
     def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
         # See https://bugs.launchpad.net/bzr/+bug/465517
         t = self.get_transport('target')
@@ -222,22 +253,6 @@ class TestPush(per_branch.TestCaseWithBranch):
         # ancestry
         self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
 
-    def test_push_overwrite_of_non_tip_with_stop_revision(self):
-        """Combining the stop_revision and overwrite options works.
-
-        This was <https://bugs.launchpad.net/bzr/+bug/234229>.
-        """
-        source = self.make_branch_and_tree('source')
-        target = self.make_branch('target')
-
-        source.commit('1st commit')
-        source.branch.push(target)
-        source.commit('2nd commit', rev_id='rev-2')
-        source.commit('3rd commit')
-
-        source.branch.push(target, stop_revision='rev-2', overwrite=True)
-        self.assertEqual('rev-2', target.last_revision())
-
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
         stacking policy at the destination.
@@ -246,7 +261,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if self.bzrdir_format.fixed_components:
             raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
@@ -387,9 +402,9 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if not self.branch_format.supports_leaving_lock():
             raise tests.TestNotApplicable(
-                'Branch format 4 is not usable via HPSS.')
+                'Branch format is not usable via HPSS.')
         super(EmptyPushSmartEffortTests, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
@@ -446,4 +461,4 @@ class TestLossyPush(per_branch.TestCaseWithBranch):
     def test_lossy_push_raises_same_vcs(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        self.assertRaises(errors.LossyPushToSameVCS, source.lossy_push, target)
+        self.assertRaises(errors.LossyPushToSameVCS, source.push, target, lossy=True)

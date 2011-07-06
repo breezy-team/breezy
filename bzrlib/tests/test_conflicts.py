@@ -62,34 +62,12 @@ example_conflicts = conflicts.ConflictList(
 ])
 
 
-class TestConflicts(tests.TestCaseWithTransport):
+def vary_by_conflicts():
+    for conflict in example_conflicts:
+        yield (conflict.__class__.__name__, {"conflict": conflict})
 
-    def test_conflicts(self):
-        """Conflicts are detected properly"""
-        # Use BzrDirFormat6 so we can fake conflicts
-        tree = self.make_branch_and_tree('.', format=bzrdir.BzrDirFormat6())
-        self.build_tree_contents([('hello', 'hello world4'),
-                                  ('hello.THIS', 'hello world2'),
-                                  ('hello.BASE', 'hello world1'),
-                                  ('hello.OTHER', 'hello world3'),
-                                  ('hello.sploo.BASE', 'yellowworld'),
-                                  ('hello.sploo.OTHER', 'yellowworld2'),
-                                  ])
-        tree.lock_read()
-        self.assertLength(6, list(tree.list_files()))
-        tree.unlock()
-        tree_conflicts = tree.conflicts()
-        self.assertLength(2, tree_conflicts)
-        self.assertTrue('hello' in tree_conflicts[0].path)
-        self.assertTrue('hello.sploo' in tree_conflicts[1].path)
-        conflicts.restore('hello')
-        conflicts.restore('hello.sploo')
-        self.assertLength(0, tree.conflicts())
-        self.assertFileEqual('hello world2', 'hello')
-        self.assertFalse(os.path.lexists('hello.sploo'))
-        self.assertRaises(errors.NotConflicted, conflicts.restore, 'hello')
-        self.assertRaises(errors.NotConflicted,
-                          conflicts.restore, 'hello.sploo')
+
+class TestConflicts(tests.TestCaseWithTransport):
 
     def test_resolve_conflict_dir(self):
         tree = self.make_branch_and_tree('.')
@@ -147,38 +125,57 @@ class TestConflicts(tests.TestCaseWithTransport):
         self.assertEqual(conflicts.ConflictList([]), tree.conflicts())
 
 
-class TestConflictStanzas(tests.TestCase):
+class TestPerConflict(tests.TestCase):
+
+    scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
+
+    def test_stringification(self):
+        text = unicode(self.conflict)
+        self.assertContainsString(text, self.conflict.path)
+        self.assertContainsString(text.lower(), "conflict")
+        self.assertContainsString(repr(self.conflict),
+            self.conflict.__class__.__name__)
 
     def test_stanza_roundtrip(self):
-        # write and read our example stanza.
-        stanza_iter = example_conflicts.to_stanzas()
-        processed = conflicts.ConflictList.from_stanzas(stanza_iter)
-        for o, p in zip(processed, example_conflicts):
-            self.assertEqual(o, p)
+        p = self.conflict
+        o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
+        self.assertEqual(o, p)
 
-            self.assertIsInstance(o.path, unicode)
+        self.assertIsInstance(o.path, unicode)
 
-            if o.file_id is not None:
-                self.assertIsInstance(o.file_id, str)
+        if o.file_id is not None:
+            self.assertIsInstance(o.file_id, str)
 
-            conflict_path = getattr(o, 'conflict_path', None)
-            if conflict_path is not None:
-                self.assertIsInstance(conflict_path, unicode)
+        conflict_path = getattr(o, 'conflict_path', None)
+        if conflict_path is not None:
+            self.assertIsInstance(conflict_path, unicode)
 
-            conflict_file_id = getattr(o, 'conflict_file_id', None)
-            if conflict_file_id is not None:
-                self.assertIsInstance(conflict_file_id, str)
+        conflict_file_id = getattr(o, 'conflict_file_id', None)
+        if conflict_file_id is not None:
+            self.assertIsInstance(conflict_file_id, str)
 
     def test_stanzification(self):
-        for stanza in example_conflicts.to_stanzas():
-            if 'file_id' in stanza:
-                # In Stanza form, the file_id has to be unicode.
-                self.assertStartsWith(stanza['file_id'], u'\xeed')
-            self.assertStartsWith(stanza['path'], u'p\xe5th')
-            if 'conflict_path' in stanza:
-                self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
-            if 'conflict_file_id' in stanza:
-                self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+        stanza = self.conflict.as_stanza()
+        if 'file_id' in stanza:
+            # In Stanza form, the file_id has to be unicode.
+            self.assertStartsWith(stanza['file_id'], u'\xeed')
+        self.assertStartsWith(stanza['path'], u'p\xe5th')
+        if 'conflict_path' in stanza:
+            self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
+        if 'conflict_file_id' in stanza:
+            self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+
+
+class TestConflictList(tests.TestCase):
+
+    def test_stanzas_roundtrip(self):
+        stanzas_iter = example_conflicts.to_stanzas()
+        processed = conflicts.ConflictList.from_stanzas(stanzas_iter)
+        self.assertEqual(example_conflicts, processed)
+
+    def test_stringification(self):
+        for text, o in zip(example_conflicts.to_strings(), example_conflicts):
+            self.assertEqual(text, unicode(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
@@ -449,6 +446,14 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
+            # File renamed-modified/deleted
+            (dict(_base_actions='create_file',
+                  _path='new-file', _file_id='file-id'),
+             ('file_renamed_and_modified',
+              dict(actions='modify_and_rename_file',
+                   check='file_renamed_and_more_content')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_doesnt_exist')),),
             # File modified/deleted in dir
             (dict(_base_actions='create_file_in_dir',
                   _path='dir/file', _file_id='file-id'),
@@ -466,8 +471,15 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     def do_modify_file(self):
         return [('modify', ('file-id', 'trunk content\nmore content\n'))]
 
+    def do_modify_and_rename_file(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n')),
+                ('rename', ('file', 'new-file'))]
+
     def check_file_has_more_content(self):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+
+    def check_file_renamed_and_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/new-file')
 
     def do_delete_file(self):
         return [('unversion', 'file-id')]
