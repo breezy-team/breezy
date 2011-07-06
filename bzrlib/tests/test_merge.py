@@ -135,6 +135,21 @@ class TestMerge(TestCaseWithTransport):
             preview = tt.get_preview_tree()
             self.assertEqual(wt.get_root_id(), preview.get_root_id())
 
+    def test_merge_unrelated_retains_root(self):
+        wt = self.make_branch_and_tree('tree')
+        null_tree = wt.basis_tree()
+        self.build_tree(['tree/file'])
+        wt.add('file')
+        wt.commit('tree with root')
+        other_tree = self.make_branch_and_tree('other')
+        other_tree.commit('add root')
+        merger = _mod_merge.Merge3Merger(wt, wt, null_tree, other_tree,
+                                         this_branch=wt.branch,
+                                         do_merge=False)
+        with merger.make_preview_transform() as tt:
+            preview = tt.get_preview_tree()
+            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
         tree =self.make_branch_and_tree('.')
