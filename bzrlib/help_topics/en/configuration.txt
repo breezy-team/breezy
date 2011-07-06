@@ -324,7 +324,7 @@ for. The '?' and '*' wildcards are supported::
     create_signatures = always
     check_signatures  = always
 
-    [http://bazaar-vcs.org/bzr/*]
+    [http://example.com/bzr/*]
     check_signatures  = require
 
 The authentication configuration file, authentication.conf
@@ -505,6 +505,12 @@ Valid values:
 * ``format_deprecation``:
     whether the format deprecation warning is shown on repositories that are
     using deprecated formats.
+
+default_format
+~~~~~~~~~~~~~~
+
+A format name for the default format used when creating branches.  See ``bzr
+help formats`` for possible values.
 
 
 Unicode options

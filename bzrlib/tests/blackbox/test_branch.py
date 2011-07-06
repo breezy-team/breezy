@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -174,6 +174,29 @@ class TestBranch(TestCaseWithTransport):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+    def test_branch_files_from(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        out, err = self.run_bzr('branch source target --files-from source')
+        self.assertPathExists('target/file1')
+
+    def test_branch_files_from_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        source.bzrdir.sprout('second')
+        out, err = self.run_bzr('branch source target --files-from second'
+                                ' --hardlink')
+        source_stat = os.stat('source/file1')
+        second_stat = os.stat('second/file1')
+        target_stat = os.stat('target/file1')
+        self.assertNotEqual(source_stat, target_stat)
+        self.assertEqual(second_stat, target_stat)
+
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
         self.example_branch('source')
@@ -186,8 +209,8 @@ class TestBranch(TestCaseWithTransport):
     def test_branch_no_tree(self):
         self.example_branch('source')
         self.run_bzr('branch --no-tree source target')
-        self.failIfExists('target/hello')
-        self.failIfExists('target/goodbye')
+        self.assertPathDoesNotExist('target/hello')
+        self.assertPathDoesNotExist('target/goodbye')
 
     def test_branch_into_existing_dir(self):
         self.example_branch('a')
@@ -203,8 +226,8 @@ class TestBranch(TestCaseWithTransport):
         # force operation
         self.run_bzr('branch a b --use-existing-dir')
         # check conflicts
-        self.failUnlessExists('b/hello.moved')
-        self.failIfExists('b/godbye.moved')
+        self.assertPathExists('b/hello.moved')
+        self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
@@ -391,7 +414,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(38, self.hpss_calls)
+        self.assertLength(36, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -406,7 +429,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(10, self.hpss_calls)
+        self.assertLength(9, self.hpss_calls)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -426,7 +449,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,26 +30,28 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     errors,
     graph,
     inventory,
     inventory_delta,
-    pack,
     remote,
     repository,
     tests,
     transport,
     treebuilder,
-    urlutils,
     versionedfile,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.bzrdir import (
+    BzrDir,
+    BzrDirFormat,
+    RemoteBzrProber,
+    )
 from bzrlib.remote import (
     RemoteBranch,
     RemoteBranchFormat,
     RemoteBzrDir,
-    RemoteBzrDirFormat,
     RemoteRepository,
     RemoteRepositoryFormat,
     )
@@ -59,40 +61,35 @@ from bzrlib.smart import medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
-    condition_isinstance,
-    split_suite_by_condition,
-    multiply_tests,
     test_server,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
     RemoteSSHTransport,
     RemoteTCPTransport,
-)
+    )
 
-def load_tests(standard_tests, module, loader):
-    to_adapt, result = split_suite_by_condition(
-        standard_tests, condition_isinstance(BasicRemoteObjectTests))
-    smart_server_version_scenarios = [
-        ('HPSS-v2',
-         {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
-        ('HPSS-v3',
-         {'transport_server': test_server.SmartTCPServer_for_testing})]
-    return multiply_tests(to_adapt, smart_server_version_scenarios, result)
+
+load_tests = load_tests_apply_scenarios
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
+
+    scenarios = [
+        ('HPSS-v2',
+            {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
+        ('HPSS-v3',
+            {'transport_server': test_server.SmartTCPServer_for_testing})]
+
 
     def setUp(self):
         super(BasicRemoteObjectTests, self).setUp()
         self.transport = self.get_transport()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
-
-    def tearDown(self):
-        self.transport.disconnect()
-        tests.TestCaseWithTransport.tearDown(self)
+        self.addCleanup(self.transport.disconnect)
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport, remote.RemoteBzrDirFormat())
@@ -122,8 +119,8 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrDirFormat
-                        in BzrDirFormat._control_server_formats)
+        self.assertTrue(bzrdir.RemoteBzrProber
+                        in controldir.ControlDirFormat._server_probers)
         self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -686,7 +683,7 @@ class TestBzrDirOpenBranch(TestRemote):
         old.
         """
         self.assertRaises(errors.NotBranchError,
-            RemoteBzrDirFormat.probe_transport, OldServerTransport())
+            RemoteBzrProber.probe_transport, OldServerTransport())
 
 
 class TestBzrDirCreateBranch(TestRemote):
@@ -718,6 +715,34 @@ class TestBzrDirCreateBranch(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
         branch = a_bzrdir.create_branch()
+        # We should have got a remote branch
+        self.assertIsInstance(branch, remote.RemoteBranch)
+        # its format should have the settings from the response
+        format = branch._format
+        self.assertEqual(network_name, format.network_name())
+
+    def test_already_open_repo_and_reused_medium(self):
+        """Bug 726584: create_branch(..., repository=repo) should work
+        regardless of what the smart medium's base URL is.
+        """
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        transport = self.get_transport('.')
+        repo = self.make_repository('quack')
+        # Client's medium rooted a transport root (not at the bzrdir)
+        client = FakeClient(transport.base)
+        transport = transport.clone('quack')
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_format = reference_bzrdir_format.get_branch_format()
+        network_name = reference_format.network_name()
+        reference_repo_fmt = reference_bzrdir_format.repository_format
+        reference_repo_name = reference_repo_fmt.network_name()
+        client.add_expected_call(
+            'BzrDir.create_branch', ('extra/quack/', network_name),
+            'success', ('ok', network_name, '', 'no', 'no', 'yes',
+            reference_repo_name))
+        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        branch = a_bzrdir.create_branch(repository=repo)
         # We should have got a remote branch
         self.assertIsInstance(branch, remote.RemoteBranch)
         # its format should have the settings from the response
@@ -1868,7 +1893,7 @@ class TestBranchFormat(tests.TestCase):
 class TestRepositoryFormat(TestRemoteRepository):
 
     def test_fast_delta(self):
-        true_name = groupcompress_repo.RepositoryFormatCHK1().network_name()
+        true_name = groupcompress_repo.RepositoryFormat2a().network_name()
         true_format = RemoteRepositoryFormat()
         true_format._network_name = true_name
         self.assertEqual(True, true_format.fast_deltas)

@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,19 +24,16 @@ from bzrlib import (
     builtins,
     bzrdir,
     check,
-    debug,
     errors,
     memorytree,
     push,
-    repository,
     revision,
+    symbol_versioning,
     tests,
     transport,
     )
 from bzrlib.smart import (
     client,
-    server,
-    repository as _mod_smart_repo,
     )
 from bzrlib.tests import (
     per_branch,
@@ -61,7 +58,10 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
         # and it can be treated as an integer for compatibility
-        self.assertEqual(int(result), 0)
+        self.assertEqual(self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            result.__int__),
+            0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -113,6 +113,23 @@ class TestPush(per_branch.TestCaseWithBranch):
         # try to push, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
+
+    def test_push_new_tag_to_bound_branch(self):
+        master = self.make_branch('master')
+        bound = self.make_branch('bound')
+        try:
+            bound.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable(
+                'Format does not support bound branches')
+        other = bound.bzrdir.sprout('other').open_branch()
+        try:
+            other.tags.set_tag('new-tag', 'some-rev')
+        except errors.TagsNotSupported:
+            raise tests.TestNotApplicable('Format does not support tags')
+        other.push(bound)
+        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
 
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
@@ -169,6 +186,41 @@ class TestPush(per_branch.TestCaseWithBranch):
 
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
+
+    def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
+        # See https://bugs.launchpad.net/bzr/+bug/465517
+        t = self.get_transport('target')
+        t.ensure_base()
+        bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        try:
+            bzrdir.open_branch()
+        except errors.NotBranchError:
+            pass
+        else:
+            raise tests.TestNotApplicable('older formats can\'t have a repo'
+                                          ' without a branch')
+        try:
+            source = self.make_branch_builder('source',
+                                              format=self.bzrdir_format)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('cannot initialize this format')
+        source.start_series()
+        source.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        source.build_snapshot('B', ['A'], [])
+        source.build_snapshot('C', ['A'], [])
+        source.finish_series()
+        b = source.get_branch()
+        # Note: We can't read lock the source branch. Some formats take a write
+        # lock to 'set_push_location', which breaks
+        self.addCleanup(b.lock_write().unlock)
+        repo = bzrdir.create_repository()
+        # This means 'push the source branch into this dir'
+        bzrdir.push_branch(b)
+        self.addCleanup(repo.lock_read().unlock)
+        # We should have pushed 'C', but not 'B', since it isn't in the
+        # ancestry
+        self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
@@ -329,8 +381,9 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         # Skip some scenarios that don't apply to these tests.
-        if (self.transport_server is not None and
-            issubclass(self.transport_server, server.SmartTCPServer)):
+        if (self.transport_server is not None
+            and issubclass(self.transport_server,
+                           test_server.SmartTCPServer_for_testing)):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')

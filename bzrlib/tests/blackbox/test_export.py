@@ -48,10 +48,10 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('ignore something')
         tree.commit('1')
 
-        self.failUnless(tree.has_filename('.bzrignore'))
-        self.failUnless(tree.has_filename('.bzrrules'))
-        self.failUnless(tree.has_filename('.bzr-adir'))
-        self.failUnless(tree.has_filename('.bzr-adir/afile'))
+        self.assertTrue(tree.has_filename('.bzrignore'))
+        self.assertTrue(tree.has_filename('.bzrrules'))
+        self.assertTrue(tree.has_filename('.bzr-adir'))
+        self.assertTrue(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.tar.gz')
         ball = tarfile.open('test.tar.gz')
         # Make sure the tarball contains 'a', but does not contain
@@ -106,11 +106,11 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('ignore something')
         tree.commit('1')
 
-        self.failUnless(tree.has_filename('.bzrignore'))
-        self.failUnless(tree.has_filename('.bzrrules'))
-        self.failUnless(tree.has_filename('.bzr-adir'))
-        self.failUnless(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.zip')
+        self.assertTrue(tree.has_filename('.bzrignore'))
+        self.assertTrue(tree.has_filename('.bzrrules'))
+        self.assertTrue(tree.has_filename('.bzr-adir'))
+        self.assertTrue(tree.has_filename('.bzr-adir/afile'))
 
         zfile = zipfile.ZipFile('test.zip')
         # Make sure the zipfile contains 'a', but does not contain
@@ -175,10 +175,10 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('ignore something')
         tree.commit('1')
 
-        self.failUnless(tree.has_filename('.bzrignore'))
-        self.failUnless(tree.has_filename('.bzrrules'))
-        self.failUnless(tree.has_filename('.bzr-adir'))
-        self.failUnless(tree.has_filename('.bzr-adir/afile'))
+        self.assertTrue(tree.has_filename('.bzrignore'))
+        self.assertTrue(tree.has_filename('.bzrrules'))
+        self.assertTrue(tree.has_filename('.bzr-adir'))
+        self.assertTrue(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export direxport')
 
         files = sorted(os.listdir('direxport'))
@@ -221,7 +221,7 @@ class TestExport(TestCaseWithTransport):
         os.chdir('branch')
 
         self.run_bzr('export ../first.tar -r 1')
-        self.failUnless(os.path.isfile('../first.tar'))
+        self.assertTrue(os.path.isfile('../first.tar'))
         tf = tarfile.open('../first.tar')
         try:
             self.assertEqual(['first/hello'], sorted(tf.getnames()))
@@ -230,13 +230,13 @@ class TestExport(TestCaseWithTransport):
             tf.close()
 
         self.run_bzr('export ../first.tar.gz -r 1')
-        self.failUnless(os.path.isfile('../first.tar.gz'))
+        self.assertTrue(os.path.isfile('../first.tar.gz'))
         self.run_bzr('export ../first.tbz2 -r 1')
-        self.failUnless(os.path.isfile('../first.tbz2'))
+        self.assertTrue(os.path.isfile('../first.tbz2'))
         self.run_bzr('export ../first.tar.bz2 -r 1')
-        self.failUnless(os.path.isfile('../first.tar.bz2'))
+        self.assertTrue(os.path.isfile('../first.tar.bz2'))
         self.run_bzr('export ../first.tar.tbz2 -r 1')
-        self.failUnless(os.path.isfile('../first.tar.tbz2'))
+        self.assertTrue(os.path.isfile('../first.tar.tbz2'))
 
         tf = tarfile.open('../first.tar.tbz2', 'r:bz2')
         try:
@@ -257,7 +257,7 @@ class TestExport(TestCaseWithTransport):
         os.chdir('branch')
 
         self.run_bzr('export ../first.zip -r 1')
-        self.failUnlessExists('../first.zip')
+        self.assertPathExists('../first.zip')
         zf = zipfile.ZipFile('../first.zip')
         try:
             self.assertEqual(['first/hello'], sorted(zf.namelist()))

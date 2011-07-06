@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,20 +23,21 @@ from bzrlib import (
     osutils,
     tests,
     )
+from bzrlib.tests import (
+    script,
+    )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize tests for view-aware vs not."""
-    to_adapt, result = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance(TestAdd))
-    scenarios = [
-        ('pre-views', {'branch_tree_format': 'pack-0.92'}),
-        ('view-aware', {'branch_tree_format': 'development6-rich-root'}),
-        ]
-    return tests.multiply_tests(to_adapt, scenarios, result)
+load_tests = load_tests_apply_scenarios
 
 
 class TestAdd(tests.TestCaseWithTransport):
+
+    scenarios = [
+        ('pre-views', {'branch_tree_format': 'pack-0.92'}),
+        ('view-aware', {'branch_tree_format': '2a'}),
+        ]
 
     def make_branch_and_tree(self, dir):
         return super(TestAdd, self).make_branch_and_tree(
@@ -217,6 +218,17 @@ class TestAdd(tests.TestCaseWithTransport):
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]
         self.assertEquals(out, 'adding link\n')
+
+    def test_add_not_child(self):
+        # https://bugs.launchpad.net/bzr/+bug/98735
+        sr = script.ScriptRunner()
+        self.make_branch_and_tree('tree1')
+        self.make_branch_and_tree('tree2')
+        self.build_tree(['tree1/a', 'tree2/b'])
+        sr.run_script(self, '''
+        $ bzr add tree1/a tree2/b
+        2>bzr: ERROR: Path "...tree2/b" is not a child of path "...tree1"
+        ''')
 
     def test_add_multiple_files_in_unicode_cwd(self):
         """Adding multiple files in a non-ascii cwd, see lp:686611"""

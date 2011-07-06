@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,11 +26,15 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     help_topics,
+    lock,
     repository,
     osutils,
     remote,
+    symbol_versioning,
+    transport as _mod_transport,
     urlutils,
     win32utils,
     workingtree,
@@ -53,7 +57,6 @@ from bzrlib.tests import(
     )
 from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import (
-    get_transport,
     memory,
     pathfilter,
     )
@@ -67,39 +70,38 @@ class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        # default is BzrDirFormat6
-        self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
-        bzrdir.BzrDirFormat._set_default_format(SampleBzrDirFormat())
+        self.assertIsInstance(old_format, bzrdir.BzrDirMetaFormat1)
+        controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
-            self.failUnless(isinstance(result, SampleBzrDir))
+            self.assertIsInstance(result, SampleBzrDir)
         finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+            controldir.ControlDirFormat._set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
 class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
-        my_format_registry = bzrdir.BzrDirFormatRegistry()
+        my_format_registry = controldir.ControlDirFormatRegistry()
         my_format_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
         my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir',
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
-        my_format_registry.register_metadir('knit',
+        bzrdir.register_metadir(my_format_registry, 'knit',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6',
             experimental=True)
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'hidden format',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
@@ -174,7 +176,7 @@ class TestFormatRegistry(TestCase):
             bzrdir.format_registry.set_default_repository(old_default)
 
     def test_aliases(self):
-        a_registry = bzrdir.BzrDirFormatRegistry()
+        a_registry = controldir.ControlDirFormatRegistry()
         a_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
@@ -251,28 +253,28 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
         # this is not quite the same as
-        t = get_transport(self.get_url())
+        t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
         def check_format(format, url):
             format.initialize(url)
-            t = get_transport(url)
+            t = _mod_transport.get_transport(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(bzrdir.BzrDirFormat5(), "foo")
         check_format(bzrdir.BzrDirFormat6(), "bar")
 
     def test_find_format_nothing_there(self):
         self.assertRaises(NotBranchError,
                           bzrdir.BzrDirFormat.find_format,
-                          get_transport('.'))
+                          _mod_transport.get_transport('.'))
 
     def test_find_format_unknown_format(self):
-        t = get_transport(self.get_url())
+        t = self.get_transport()
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', '')
         self.assertRaises(UnknownFormatError,
                           bzrdir.BzrDirFormat.find_format,
-                          get_transport('.'))
+                          _mod_transport.get_transport('.'))
 
     def test_register_unregister_format(self):
         format = SampleBzrDirFormat()
@@ -286,7 +288,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # which bzrdir.open_containing will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open_containing, url)
         # but open_downlevel will work
-        t = get_transport(url)
+        t = _mod_transport.get_transport(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
         # unregister the format
         bzrdir.BzrDirFormat.unregister_format(format)
@@ -678,16 +680,18 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(relpath, 'baz')
 
     def test_open_containing_from_transport(self):
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
-                          get_transport(self.get_readonly_url('')))
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
-                          get_transport(self.get_readonly_url('g/p/q')))
+        self.assertRaises(NotBranchError,
+            bzrdir.BzrDir.open_containing_from_transport,
+            _mod_transport.get_transport(self.get_readonly_url('')))
+        self.assertRaises(NotBranchError,
+            bzrdir.BzrDir.open_containing_from_transport,
+            _mod_transport.get_transport(self.get_readonly_url('g/p/q')))
         control = bzrdir.BzrDir.create(self.get_url())
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
-            get_transport(self.get_readonly_url('')))
+            _mod_transport.get_transport(self.get_readonly_url('')))
         self.assertEqual('', relpath)
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
-            get_transport(self.get_readonly_url('g/p/q')))
+            _mod_transport.get_transport(self.get_readonly_url('g/p/q')))
         self.assertEqual('g/p/q', relpath)
 
     def test_open_containing_tree_or_branch(self):
@@ -737,23 +741,21 @@ class ChrootedTests(TestCaseWithTransport):
         # transport pointing at bzrdir should give a bzrdir with root transport
         # set to the given transport
         control = bzrdir.BzrDir.create(self.get_url())
-        transport = get_transport(self.get_url())
-        opened_bzrdir = bzrdir.BzrDir.open_from_transport(transport)
-        self.assertEqual(transport.base, opened_bzrdir.root_transport.base)
+        t = self.get_transport()
+        opened_bzrdir = bzrdir.BzrDir.open_from_transport(t)
+        self.assertEqual(t.base, opened_bzrdir.root_transport.base)
         self.assertIsInstance(opened_bzrdir, bzrdir.BzrDir)
 
     def test_open_from_transport_no_bzrdir(self):
-        transport = get_transport(self.get_url())
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
-                          transport)
+        t = self.get_transport()
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport, t)
 
     def test_open_from_transport_bzrdir_in_parent(self):
         control = bzrdir.BzrDir.create(self.get_url())
-        transport = get_transport(self.get_url())
-        transport.mkdir('subdir')
-        transport = transport.clone('subdir')
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
-                          transport)
+        t = self.get_transport()
+        t.mkdir('subdir')
+        t = t.clone('subdir')
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport, t)
 
     def test_sprout_recursive(self):
         tree = self.make_branch_and_tree('tree1',
@@ -768,7 +770,7 @@ class ChrootedTests(TestCaseWithTransport):
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
-        self.failUnlessExists('tree2/subtree/file')
+        self.assertPathExists('tree2/subtree/file')
         self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
@@ -789,13 +791,27 @@ class ChrootedTests(TestCaseWithTransport):
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
+        # The following line force the orhaning to reveal bug #634470
+        tree.branch.get_config().set_user_option(
+            'bzr.transform.orphan_policy', 'move')
         tree.bzrdir.destroy_workingtree()
+        # FIXME: subtree/.bzr is left here which allows the test to pass (or
+        # fail :-( ) -- vila 20100909
         repo = self.make_repository('repo', shared=True,
             format='dirstate-with-subtree')
         repo.set_make_working_trees(False)
-        tree.bzrdir.sprout('repo/tree2')
-        self.failUnlessExists('repo/tree2/subtree')
-        self.failIfExists('repo/tree2/subtree/file')
+        # FIXME: we just deleted the workingtree and now we want to use it ????
+        # At a minimum, we should use tree.branch below (but this fails too
+        # currently) or stop calling this test 'treeless'. Specifically, I've
+        # turn the line below into an assertRaises when 'subtree/.bzr' is
+        # orphaned and sprout tries to access the branch there (which is left
+        # by bzrdir.BzrDirMeta1.destroy_workingtree when it ignores the
+        # [DeletingParent('Not deleting', u'subtree', None)] conflict). See bug
+        # #634470.  -- vila 20100909
+        self.assertRaises(errors.NotBranchError,
+                          tree.bzrdir.sprout, 'repo/tree2')
+#        self.assertPathExists('repo/tree2/subtree')
+#        self.assertPathDoesNotExist('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir
@@ -805,9 +821,8 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_find_bzrdirs(self):
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = get_transport(self.get_url())
-        self.assertEqualBzrdirs([baz, foo, bar],
-                                bzrdir.BzrDir.find_bzrdirs(transport))
+        t = self.get_transport()
+        self.assertEqualBzrdirs([baz, foo, bar], bzrdir.BzrDir.find_bzrdirs(t))
 
     def make_fake_permission_denied_transport(self, transport, paths):
         """Create a transport that raises PermissionDenied for some paths."""
@@ -829,9 +844,9 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_find_bzrdirs_permission_denied(self):
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = get_transport(self.get_url())
+        t = self.get_transport()
         path_filter_server, path_filter_transport = \
-            self.make_fake_permission_denied_transport(transport, ['foo'])
+            self.make_fake_permission_denied_transport(t, ['foo'])
         # local transport
         self.assertBranchUrlsEndWith('/baz/',
             bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
@@ -846,10 +861,10 @@ class ChrootedTests(TestCaseWithTransport):
             return [s for s in transport.list_dir('') if s != 'baz']
 
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = get_transport(self.get_url())
-        self.assertEqualBzrdirs([foo, bar],
-                                bzrdir.BzrDir.find_bzrdirs(transport,
-                                    list_current=list_current))
+        t = self.get_transport()
+        self.assertEqualBzrdirs(
+            [foo, bar],
+            bzrdir.BzrDir.find_bzrdirs(t, list_current=list_current))
 
     def test_find_bzrdirs_evaluate(self):
         def evaluate(bzrdir):
@@ -861,10 +876,9 @@ class ChrootedTests(TestCaseWithTransport):
                 return False, bzrdir.root_transport.base
 
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = get_transport(self.get_url())
+        t = self.get_transport()
         self.assertEqual([baz.root_transport.base, foo.root_transport.base],
-                         list(bzrdir.BzrDir.find_bzrdirs(transport,
-                                                         evaluate=evaluate)))
+                         list(bzrdir.BzrDir.find_bzrdirs(t, evaluate=evaluate)))
 
     def assertEqualBzrdirs(self, first, second):
         first = list(first)
@@ -877,14 +891,14 @@ class ChrootedTests(TestCaseWithTransport):
         root = self.make_repository('', shared=True)
         foo, bar, baz = self.make_foo_bar_baz()
         qux = self.make_bzrdir('foo/qux')
-        transport = get_transport(self.get_url())
-        branches = bzrdir.BzrDir.find_branches(transport)
+        t = self.get_transport()
+        branches = bzrdir.BzrDir.find_branches(t)
         self.assertEqual(baz.root_transport.base, branches[0].base)
         self.assertEqual(foo.root_transport.base, branches[1].base)
         self.assertEqual(bar.root_transport.base, branches[2].base)
 
         # ensure this works without a top-level repo
-        branches = bzrdir.BzrDir.find_branches(transport.clone('foo'))
+        branches = bzrdir.BzrDir.find_branches(t.clone('foo'))
         self.assertEqual(foo.root_transport.base, branches[0].base)
         self.assertEqual(bar.root_transport.base, branches[1].base)
 
@@ -892,15 +906,15 @@ class ChrootedTests(TestCaseWithTransport):
 class TestMissingRepoBranchesSkipped(TestCaseWithMemoryTransport):
 
     def test_find_bzrdirs_missing_repo(self):
-        transport = get_transport(self.get_url())
+        t = self.get_transport()
         arepo = self.make_repository('arepo', shared=True)
         abranch_url = arepo.user_url + '/abranch'
         abranch = bzrdir.BzrDir.create(abranch_url).create_branch()
-        transport.delete_tree('arepo/.bzr')
+        t.delete_tree('arepo/.bzr')
         self.assertRaises(errors.NoRepositoryPresent,
             branch.Branch.open, abranch_url)
         self.make_branch('baz')
-        for actual_bzrdir in bzrdir.BzrDir.find_branches(transport):
+        for actual_bzrdir in bzrdir.BzrDir.find_branches(t):
             self.assertEndsWith(actual_bzrdir.user_url, '/baz/')
 
 
@@ -1058,7 +1072,9 @@ class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
     def _known_formats(self):
         return set([NotBzrDirFormat()])
 
-    @classmethod
+
+class NotBzrDirProber(controldir.Prober):
+
     def probe_transport(self, transport):
         """Our format is present if the transport ends in '.not/'."""
         if transport.has('.not'):
@@ -1078,16 +1094,16 @@ class TestNotBzrDir(TestCaseWithTransport):
         dir = format.initialize(self.get_url())
         self.assertIsInstance(dir, NotBzrDir)
         # now probe for it.
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(format)
+        controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         try:
-            found = bzrlib.bzrdir.BzrDirFormat.find_format(
-                get_transport(self.get_url()))
+            found = bzrlib.bzrdir.BzrDirFormat.find_format(self.get_transport())
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
+            controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
 
     def test_included_in_known_formats(self):
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(NotBzrDirFormat)
+        not_format = NotBzrDirFormat()
+        bzrlib.controldir.ControlDirFormat.register_format(not_format)
         try:
             formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
             for format in formats:
@@ -1095,7 +1111,7 @@ class TestNotBzrDir(TestCaseWithTransport):
                     return
             self.fail("No NotBzrDirFormat in %s" % formats)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(NotBzrDirFormat)
+            bzrlib.controldir.ControlDirFormat.unregister_format(not_format)
 
 
 class NonLocalTests(TestCaseWithTransport):
@@ -1122,7 +1138,7 @@ class NonLocalTests(TestCaseWithTransport):
             self.get_url('foo'),
             force_new_tree=True,
             format=format)
-        t = get_transport(self.get_url('.'))
+        t = self.get_transport()
         self.assertFalse(t.has('foo'))
 
     def test_clone(self):
@@ -1330,6 +1346,12 @@ class _TestBranch(bzrlib.branch.Branch):
     def set_parent(self, parent):
         self._parent = parent
 
+    def lock_read(self):
+        return lock.LogicalLockResult(self.unlock)
+
+    def unlock(self):
+        return
+
 
 class TestBzrDirSprout(TestCaseWithMemoryTransport):
 
@@ -1411,3 +1433,27 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         param_repr = param_reprs[0]
         self.assertStartsWith(param_repr, '<RepoInitHookParams for ')
 
+
+class TestGenerateBackupName(TestCaseWithMemoryTransport):
+    # FIXME: This may need to be unified with test_osutils.TestBackupNames or
+    # moved to per_bzrdir or per_transport for better coverage ?
+    # -- vila 20100909
+
+    def setUp(self):
+        super(TestGenerateBackupName, self).setUp()
+        self._transport = self.get_transport()
+        bzrdir.BzrDir.create(self.get_url(),
+            possible_transports=[self._transport])
+        self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)
+
+    def test_deprecated_generate_backup_name(self):
+        res = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 3, 0)),
+                self._bzrdir.generate_backup_name, 'whatever')
+
+    def test_new(self):
+        self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
+
+    def test_exiting(self):
+        self._transport.put_bytes("a.~1~", "some content")
+        self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))

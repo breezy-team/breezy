@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,9 +26,7 @@ from bzrlib.plugins.launchpad import account
 class LaunchpadAccountTests(TestCaseInTempDir):
 
     def setup_config(self, text):
-        my_config = config.GlobalConfig()
-        config_file = StringIO(text)
-        my_config._get_parser(config_file)
+        my_config = config.GlobalConfig.from_string(text)
         return my_config
 
     def test_get_lp_login_unconfigured(self):

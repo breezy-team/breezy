@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -547,6 +547,13 @@ class MutableTree(tree.Tree):
                         this_ie = None
                     else:
                         this_ie = inv[this_id]
+                        # Same as in _add_one below, if the inventory doesn't
+                        # think this is a directory, update the inventory
+                        if this_ie.kind != 'directory':
+                            this_ie = inventory.make_entry('directory',
+                                this_ie.name, this_ie.parent_id, this_id)
+                            del inv[this_id]
+                            inv.add(this_ie)
 
                 for subf in sorted(os.listdir(abspath)):
                     # here we could use TreeDirectory rather than

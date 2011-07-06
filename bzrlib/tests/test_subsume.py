@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib import bzrdir, errors, repository, workingtree, tests
+from bzrlib import errors, workingtree, tests
 
 
 class TestWorkingTree(tests.TestCaseWithTransport):
@@ -64,14 +64,14 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         # this test checks the subdir is removed, so it needs to know the
         # control directory; that changes rarely so just hardcode (and check)
         # it is correct.
-        self.failUnlessExists('tree/subtree/.bzr')
+        self.assertPathExists('tree/subtree/.bzr')
         base_tree.subsume(sub_tree)
         self.assertEqual(['tree-1', 'subtree-1'], base_tree.get_parent_ids())
         self.assertEqual(sub_root_id, base_tree.path2id('subtree'))
         self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
         # subsuming the tree removes the control directory, so you can't open
         # it.
-        self.failIfExists('tree/subtree/.bzr')
+        self.assertPathDoesNotExist('tree/subtree/.bzr')
         file2 = open('tree/subtree/file2', 'rb')
         try:
             file2_contents = file2.read()

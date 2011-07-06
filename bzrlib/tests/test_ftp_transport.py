@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,10 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import ftplib
 import getpass
-import sys
 
 from bzrlib import (
     config,
@@ -46,9 +44,9 @@ class TestCaseAFTP(tests.TestCaseWithTransport):
 
     def test_aftp_degrade(self):
         t = transport.get_transport('aftp://host/path')
-        self.failUnless(t.is_active)
+        self.assertTrue(t.is_active)
         parent = t.clone('..')
-        self.failUnless(parent.is_active)
+        self.assertTrue(parent.is_active)
 
         self.assertEqual('aftp://host/path', t.abspath(''))
 

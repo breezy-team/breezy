@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ from bzrlib import (
     check,
     chk_map,
     config,
+    controldir,
     debug,
     fetch as _mod_fetch,
     fifo_cache,
@@ -38,6 +39,7 @@ from bzrlib import (
     lockdir,
     lru_cache,
     osutils,
+    pyutils,
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
@@ -51,6 +53,7 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
+import sys
 from bzrlib import (
     errors,
     registry,
@@ -112,6 +115,8 @@ class CommitBuilder(object):
 
         if committer is None:
             self._committer = self._config.username()
+        elif not isinstance(committer, unicode):
+            self._committer = committer.decode() # throw if non-ascii
         else:
             self._committer = committer
 
@@ -171,6 +176,41 @@ class CommitBuilder(object):
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 
+    def _ensure_fallback_inventories(self):
+        """Ensure that appropriate inventories are available.
+
+        This only applies to repositories that are stacked, and is about
+        enusring the stacking invariants. Namely, that for any revision that is
+        present, we either have all of the file content, or we have the parent
+        inventory and the delta file content.
+        """
+        if not self.repository._fallback_repositories:
+            return
+        if not self.repository._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
+                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
+        # This is a stacked repo, we need to make sure we have the parent
+        # inventories for the parents.
+        parent_keys = [(p,) for p in self.parents]
+        parent_map = self.repository.inventories._index.get_parent_map(parent_keys)
+        missing_parent_keys = set([pk for pk in parent_keys
+                                       if pk not in parent_map])
+        fallback_repos = list(reversed(self.repository._fallback_repositories))
+        missing_keys = [('inventories', pk[0])
+                        for pk in missing_parent_keys]
+        resume_tokens = []
+        while missing_keys and fallback_repos:
+            fallback_repo = fallback_repos.pop()
+            source = fallback_repo._get_source(self.repository._format)
+            sink = self.repository._get_sink()
+            stream = source.get_stream_for_missing_keys(missing_keys)
+            missing_keys = sink.insert_stream_without_locking(stream,
+                self.repository._format)
+        if missing_keys:
+            raise errors.BzrError('Unable to fill in parent inventories for a'
+                                  ' stacked branch')
+
     def commit(self, message):
         """Make the actual commit.
 
@@ -188,6 +228,7 @@ class CommitBuilder(object):
         rev.parent_ids = self.parents
         self.repository.add_revision(self._new_revision_id, rev,
             self.new_inventory, self._config)
+        self._ensure_fallback_inventories()
         self.repository.commit_write_group()
         return self._new_revision_id
 
@@ -433,7 +474,7 @@ class CommitBuilder(object):
             else:
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
-                # appropriate. If its not being considered for committing then
+                # appropriate. If it's not being considered for committing then
                 # it and all its parents to the root must be unaltered so
                 # no-change against the basis.
                 if ie.revision == self._new_revision_id:
@@ -755,7 +796,7 @@ class CommitBuilder(object):
                     # after iter_changes examines and decides it has changed,
                     # we will unconditionally record a new version even if some
                     # other process reverts it while commit is running (with
-                    # the revert happening after iter_changes did it's
+                    # the revert happening after iter_changes did its
                     # examination).
                     if change[7][1]:
                         entry.executable = True
@@ -891,7 +932,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
 # Repositories
 
 
-class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
+class Repository(_RelockDebugMixin, controldir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -944,7 +985,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
         pointing to .bzr/repository.
     """
 
-    # What class to use for a CommitBuilder. Often its simpler to change this
+    # What class to use for a CommitBuilder. Often it's simpler to change this
     # in a Repository class subclass rather than to override
     # get_commit_builder.
     _commit_builder_class = CommitBuilder
@@ -1756,9 +1797,9 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        if self._fallback_repositories:
-            raise errors.BzrError("Cannot commit from a lightweight checkout "
-                "to a stacked branch. See "
+        if self._fallback_repositories and not self._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
@@ -2510,19 +2551,8 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
             ancestors will be traversed.
         """
         graph = self.get_graph()
-        next_id = revision_id
-        while True:
-            if next_id in (None, _mod_revision.NULL_REVISION):
-                return
-            try:
-                parents = graph.get_parent_map([next_id])[next_id]
-            except KeyError:
-                raise errors.RevisionNotPresent(next_id, self)
-            yield next_id
-            if len(parents) == 0:
-                return
-            else:
-                next_id = parents[0]
+        stop_revisions = (None, _mod_revision.NULL_REVISION)
+        return graph.iter_lefthand_ancestry(revision_id, stop_revisions)
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
@@ -2629,7 +2659,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
         types it should be a no-op that just returns.
 
         This stub method does not require a lock, but subclasses should use
-        @needs_write_lock as this is a long running call its reasonable to
+        @needs_write_lock as this is a long running call it's reasonable to
         implicitly lock for the user.
 
         :param hint: If not supplied, the whole repository is packed.
@@ -2826,40 +2856,6 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
         depend on the revision index being consistent.
         """
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
-
-
-# remove these delegates a while after bzr 0.15
-def __make_delegated(name, from_module):
-    def _deprecated_repository_forwarder():
-        symbol_versioning.warn('%s moved to %s in bzr 0.15'
-            % (name, from_module),
-            DeprecationWarning,
-            stacklevel=2)
-        m = __import__(from_module, globals(), locals(), [name])
-        try:
-            return getattr(m, name)
-        except AttributeError:
-            raise AttributeError('module %s has no name %s'
-                    % (m, name))
-    globals()[name] = _deprecated_repository_forwarder
-
-for _name in [
-        'AllInOneRepository',
-        'WeaveMetaDirRepository',
-        'PreSplitOutRepositoryFormat',
-        'RepositoryFormat4',
-        'RepositoryFormat5',
-        'RepositoryFormat6',
-        'RepositoryFormat7',
-        ]:
-    __make_delegated(_name, 'bzrlib.repofmt.weaverepo')
-
-for _name in [
-        'KnitRepository',
-        'RepositoryFormatKnit',
-        'RepositoryFormatKnit1',
-        ]:
-    __make_delegated(_name, 'bzrlib.repofmt.knitrepo')
 
 
 def install_revision(repository, rev, revision_tree):
@@ -3086,6 +3082,9 @@ class RepositoryFormat(object):
     supports_tree_reference = None
     # Is the format experimental ?
     experimental = False
+    # Does this repository format escape funky characters, or does it create files with
+    # similar names as the versioned files in its contents on disk ?
+    supports_funky_characters = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -3359,34 +3358,24 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
+format_registry.register_lazy(
+    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2a',
+    )
 
 # Development formats.
-# Obsolete but kept pending a CHK based subtree format.
+# Check their docstrings to see if/when they are obsolete.
 format_registry.register_lazy(
     ("Bazaar development format 2 with subtree support "
         "(needs bzr.dev from before 1.8)\n"),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
-
-# 1.14->1.16 go below here
 format_registry.register_lazy(
-    'Bazaar development format - group compression and chk inventory'
-        ' (needs bzr.dev from 1.14)\n',
+    'Bazaar development format 8\n',
     'bzrlib.repofmt.groupcompress_repo',
-    'RepositoryFormatCHK1',
-    )
-
-format_registry.register_lazy(
-    'Bazaar development format - chk repository with bencode revision '
-        'serialization (needs bzr.dev from 1.16)\n',
-    'bzrlib.repofmt.groupcompress_repo',
-    'RepositoryFormatCHK2',
-    )
-format_registry.register_lazy(
-    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
-    'bzrlib.repofmt.groupcompress_repo',
-    'RepositoryFormat2a',
+    'RepositoryFormat2aSubtree',
     )
 
 
@@ -3570,176 +3559,6 @@ class InterSameDataRepository(InterRepository):
         return InterRepository._same_model(source, target)
 
 
-class InterWeaveRepo(InterSameDataRepository):
-    """Optimised code paths between Weave based repositories.
-
-    This should be in bzrlib/repofmt/weaverepo.py but we have not yet
-    implemented lazy inter-object optimisation.
-    """
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        from bzrlib.repofmt import weaverepo
-        return weaverepo.RepositoryFormat7()
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with known Weave formats.
-
-        We don't test for the stores being of specific types because that
-        could lead to confusing results, and there is no need to be
-        overly general.
-        """
-        from bzrlib.repofmt.weaverepo import (
-                RepositoryFormat5,
-                RepositoryFormat6,
-                RepositoryFormat7,
-                )
-        try:
-            return (isinstance(source._format, (RepositoryFormat5,
-                                                RepositoryFormat6,
-                                                RepositoryFormat7)) and
-                    isinstance(target._format, (RepositoryFormat5,
-                                                RepositoryFormat6,
-                                                RepositoryFormat7)))
-        except AttributeError:
-            return False
-
-    @needs_write_lock
-    def copy_content(self, revision_id=None):
-        """See InterRepository.copy_content()."""
-        # weave specific optimised path:
-        try:
-            self.target.set_make_working_trees(self.source.make_working_trees())
-        except (errors.RepositoryUpgradeRequired, NotImplemented):
-            pass
-        # FIXME do not peek!
-        if self.source._transport.listable():
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                self.target.texts.insert_record_stream(
-                    self.source.texts.get_record_stream(
-                        self.source.texts.keys(), 'topological', False))
-                pb.update('Copying inventory', 0, 1)
-                self.target.inventories.insert_record_stream(
-                    self.source.inventories.get_record_stream(
-                        self.source.inventories.keys(), 'topological', False))
-                self.target.signatures.insert_record_stream(
-                    self.source.signatures.get_record_stream(
-                        self.source.signatures.keys(),
-                        'unordered', True))
-                self.target.revisions.insert_record_stream(
-                    self.source.revisions.get_record_stream(
-                        self.source.revisions.keys(),
-                        'topological', True))
-            finally:
-                pb.finished()
-        else:
-            self.target.fetch(self.source, revision_id=revision_id)
-
-    @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """See InterRepository.missing_revision_ids()."""
-        # we want all revisions to satisfy revision_id in source.
-        # but we don't want to stat every file here and there.
-        # we want then, all revisions other needs to satisfy revision_id
-        # checked, but not those that we have locally.
-        # so the first thing is to get a subset of the revisions to
-        # satisfy revision_id in source, and then eliminate those that
-        # we do already have.
-        # this is slow on high latency connection to self, but as this
-        # disk format scales terribly for push anyway due to rewriting
-        # inventory.weave, this is considered acceptable.
-        # - RBC 20060209
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
-        else:
-            source_ids = self.source._all_possible_ids()
-        source_ids_set = set(source_ids)
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target._all_possible_ids())
-        possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(
-            self.target._eliminate_revisions_not_present(possibly_present_revisions))
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_id is not None:
-            # we used get_ancestry to determine source_ids then we are assured all
-            # revisions referenced are present as they are installed in topological order.
-            # and the tip revision was validated by get_ancestry.
-            result_set = required_revisions
-        else:
-            # if we just grabbed the possibly available ids, then
-            # we only have an estimate of whats available and need to validate
-            # that against the revision records.
-            result_set = set(
-                self.source._eliminate_revisions_not_present(required_revisions))
-        return self.source.revision_ids_to_search_result(result_set)
-
-
-class InterKnitRepo(InterSameDataRepository):
-    """Optimised code paths between Knit based repositories."""
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        from bzrlib.repofmt import knitrepo
-        return knitrepo.RepositoryFormatKnit1()
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with known Knit formats.
-
-        We don't test for the stores being of specific types because that
-        could lead to confusing results, and there is no need to be
-        overly general.
-        """
-        from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
-        try:
-            are_knits = (isinstance(source._format, RepositoryFormatKnit) and
-                isinstance(target._format, RepositoryFormatKnit))
-        except AttributeError:
-            return False
-        return are_knits and InterRepository._same_model(source, target)
-
-    @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """See InterRepository.missing_revision_ids()."""
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
-        else:
-            source_ids = self.source.all_revision_ids()
-        source_ids_set = set(source_ids)
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target.all_revision_ids())
-        possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(
-            self.target._eliminate_revisions_not_present(possibly_present_revisions))
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_id is not None:
-            # we used get_ancestry to determine source_ids then we are assured all
-            # revisions referenced are present as they are installed in topological order.
-            # and the tip revision was validated by get_ancestry.
-            result_set = required_revisions
-        else:
-            # if we just grabbed the possibly available ids, then
-            # we only have an estimate of whats available and need to validate
-            # that against the revision records.
-            result_set = set(
-                self.source._eliminate_revisions_not_present(required_revisions))
-        return self.source.revision_ids_to_search_result(result_set)
-
-
 class InterDifferingSerializer(InterRepository):
 
     @classmethod
@@ -3847,15 +3666,13 @@ class InterDifferingSerializer(InterRepository):
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
 
-    def _fetch_batch(self, revision_ids, basis_id, cache, a_graph=None):
+    def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
 
         :param revision_ids: The revisions to copy
         :param basis_id: The revision_id of a tree that must be in cache, used
             as a basis for delta when no other base is available
         :param cache: A cache of RevisionTrees that we can use.
-        :param a_graph: A Graph object to determine the heads() of the
-            rich-root data stream.
         :return: The revision_id of the last converted tree. The RevisionTree
             for it will be in cache
         """
@@ -3929,7 +3746,7 @@ class InterDifferingSerializer(InterRepository):
         if root_keys_to_create:
             root_stream = _mod_fetch._new_root_data_stream(
                 root_keys_to_create, self._revision_id_to_root_id, parent_map,
-                self.source, graph=a_graph)
+                self.source)
             to_texts.insert_record_stream(root_stream)
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
@@ -3992,11 +3809,7 @@ class InterDifferingSerializer(InterRepository):
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
         hints = []
-        if self._converting_to_rich_root and len(revision_ids) > 100:
-            a_graph = _mod_fetch._get_rich_root_heads_graph(self.source,
-                                                            revision_ids)
-        else:
-            a_graph = None
+        a_graph = None
 
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
@@ -4004,8 +3817,7 @@ class InterDifferingSerializer(InterRepository):
                 pb.update('Transferring revisions', offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
-                basis_id = self._fetch_batch(batch, basis_id, cache,
-                                             a_graph=a_graph)
+                basis_id = self._fetch_batch(batch, basis_id, cache)
             except:
                 self.source._safe_to_return_from_cache = False
                 self.target.abort_write_group()
@@ -4077,7 +3889,7 @@ class InterDifferingSerializer(InterRepository):
             basis_id = first_rev.parent_ids[0]
             # only valid as a basis if the target has it
             self.target.get_revision(basis_id)
-            # Try to get a basis tree - if its a ghost it will hit the
+            # Try to get a basis tree - if it's a ghost it will hit the
             # NoSuchRevision case.
             basis_tree = self.source.revision_tree(basis_id)
         except (IndexError, errors.NoSuchRevision):
@@ -4088,8 +3900,6 @@ class InterDifferingSerializer(InterRepository):
 
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
-InterRepository.register_optimiser(InterWeaveRepo)
-InterRepository.register_optimiser(InterKnitRepo)
 
 
 class CopyConverter(object):
@@ -4283,15 +4093,46 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format,
-                    is_resume)
+                missing_keys = self.insert_stream_without_locking(stream,
+                                    src_format, is_resume)
+                if missing_keys:
+                    # suspend the write group and tell the caller what we is
+                    # missing. We know we can suspend or else we would not have
+                    # entered this code path. (All repositories that can handle
+                    # missing keys can handle suspending a write group).
+                    write_group_tokens = self.target_repo.suspend_write_group()
+                    return write_group_tokens, missing_keys
+                hint = self.target_repo.commit_write_group()
+                to_serializer = self.target_repo._format._serializer
+                src_serializer = src_format._serializer
+                if (to_serializer != src_serializer and
+                    self.target_repo._format.pack_compresses):
+                    self.target_repo.pack(hint=hint)
+                return [], set()
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format, is_resume):
+    def insert_stream_without_locking(self, stream, src_format,
+                                      is_resume=False):
+        """Insert a stream's content into the target repository.
+
+        This assumes that you already have a locked repository and an active
+        write group.
+
+        :param src_format: a bzr repository format.
+        :param is_resume: Passed down to get_missing_parent_inventories to
+            indicate if we should be checking for missing texts at the same
+            time.
+
+        :return: A set of keys that are missing.
+        """
+        if not self.target_repo.is_write_locked():
+            raise errors.ObjectNotLocked(self)
+        if not self.target_repo.is_in_write_group():
+            raise errors.BzrError('you must already be in a write group')
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         new_pack = None
@@ -4376,19 +4217,7 @@ class StreamSink(object):
             # cannot even attempt suspending, and missing would have failed
             # during stream insertion.
             missing_keys = set()
-        else:
-            if missing_keys:
-                # suspend the write group and tell the caller what we is
-                # missing. We know we can suspend or else we would not have
-                # entered this code path. (All repositories that can handle
-                # missing keys can handle suspending a write group).
-                write_group_tokens = self.target_repo.suspend_write_group()
-                return write_group_tokens, missing_keys
-        hint = self.target_repo.commit_write_group()
-        if (to_serializer != src_serializer and
-            self.target_repo._format.pack_compresses):
-            self.target_repo.pack(hint=hint)
-        return [], set()
+        return missing_keys
 
     def _extract_and_insert_inventory_deltas(self, substream, serializer):
         target_rich_root = self.target_repo._format.rich_root_data

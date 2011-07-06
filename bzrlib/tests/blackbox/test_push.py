@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,34 +34,14 @@ from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
     blackbox,
     http_server,
+    scenarios,
     test_foreign,
     test_server,
     )
 from bzrlib.transport import memory
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for the push command."""
-    result = loader.suiteClass()
-
-    # one for each king of change
-    changes_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestPushStrictWithChanges,
-                )))
-    changes_scenarios = [
-        ('uncommitted',
-         dict(_changes_type= '_uncommitted_changes')),
-        ('pending-merges',
-         dict(_changes_type= '_pending_merges')),
-        ('out-of-sync-trees',
-         dict(_changes_type= '_out_of_sync_trees')),
-        ]
-    tests.multiply_tests(changes_tests, changes_scenarios, result)
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 class TestPush(tests.TestCaseWithTransport):
@@ -146,6 +126,17 @@ class TestPush(tests.TestCaseWithTransport):
         b2 = branch.Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
+    def test_push_no_tree(self):
+        # bzr push --no-tree of a branch with working trees
+        b = self.make_branch_and_tree('push-from')
+        self.build_tree(['push-from/file'])
+        b.add('file')
+        b.commit('commit 1')
+        out, err = self.run_bzr('push --no-tree -d push-from push-to')
+        self.assertEqual('', out)
+        self.assertEqual('Created new branch.\n', err)
+        self.assertPathDoesNotExist('push-to/file')
+
     def test_push_new_branch_revision_count(self):
         # bzr push of a branch with revisions to a new location
         # should print the number of revisions equal to the length of the
@@ -208,10 +199,26 @@ class TestPush(tests.TestCaseWithTransport):
         t.commit(allow_pointless=True,
                 message='first commit')
         self.run_bzr('push -d from to-one')
-        self.failUnlessExists('to-one')
+        self.assertPathExists('to-one')
         self.run_bzr('push -d %s %s'
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
-        self.failUnlessExists('to-two')
+        self.assertPathExists('to-two')
+
+    def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
+        # See https://bugs.launchpad.net/bzr/+bug/465517
+        target_repo = self.make_repository('target')
+        source = self.make_branch_builder('source')
+        source.start_series()
+        source.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        source.build_snapshot('B', ['A'], [])
+        source.build_snapshot('C', ['A'], [])
+        source.finish_series()
+        self.run_bzr('push target -d source')
+        self.addCleanup(target_repo.lock_read().unlock)
+        # We should have pushed 'C', but not 'B', since it isn't in the
+        # ancestry
+        self.assertEqual([('A',), ('C',)], sorted(target_repo.revisions.keys()))
 
     def test_push_smart_non_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -240,7 +247,7 @@ class TestPush(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(14, self.hpss_calls)
+        self.assertLength(13, self.hpss_calls)
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
@@ -317,7 +324,7 @@ class TestPush(tests.TestCaseWithTransport):
                      working_dir='tree')
         new_tree = workingtree.WorkingTree.open('new/tree')
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
-        self.failUnlessExists('new/tree/a')
+        self.assertPathExists('new/tree/a')
 
     def test_push_use_existing(self):
         """'bzr push --use-existing-dir' can push into an existing dir.
@@ -338,7 +345,7 @@ class TestPush(tests.TestCaseWithTransport):
         new_tree = workingtree.WorkingTree.open('target')
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
         # The push should have created target/a
-        self.failUnlessExists('target/a')
+        self.assertPathExists('target/a')
 
     def test_push_use_existing_into_empty_bzrdir(self):
         """'bzr push --use-existing-dir' into a dir with an empty .bzr dir
@@ -718,9 +725,20 @@ class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
         self.assertPushSucceeds([])
 
 
+strict_push_change_scenarios = [
+    ('uncommitted',
+        dict(_changes_type= '_uncommitted_changes')),
+    ('pending-merges',
+        dict(_changes_type= '_pending_merges')),
+    ('out-of-sync-trees',
+        dict(_changes_type= '_out_of_sync_trees')),
+    ]
+
+
 class TestPushStrictWithChanges(tests.TestCaseWithTransport,
                                 TestPushStrictMixin):
 
+    scenarios = strict_push_change_scenarios 
     _changes_type = None # Set by load_tests
 
     def setUp(self):

@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
+import gzip
 import os
 from cStringIO import StringIO
 import urllib
@@ -29,6 +30,7 @@ lazy_import(globals(), """
 from bzrlib import (
     xml5,
     graph as _mod_graph,
+    ui,
     )
 """)
 from bzrlib import (
@@ -38,8 +40,8 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
-    revision as _mod_revision,
     trace,
+    tuned_gzip,
     urlutils,
     versionedfile,
     weave,
@@ -48,13 +50,14 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
+    InterRepository,
+    InterSameDataRepository,
     MetaDirVersionedFileRepository,
     MetaDirRepositoryFormat,
     Repository,
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
@@ -337,6 +340,8 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     has been removed.
     """
 
+    supports_funky_characters = False
+
     _matchingbzrdir = bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
@@ -386,6 +391,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat5()
+    supports_funky_characters = False
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -431,6 +438,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat6()
+    supports_funky_characters = False
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -587,7 +595,7 @@ class TextVersionedFiles(VersionedFiles):
             raise ValueError('bad idea to put / in %r' % (key,))
         text = ''.join(lines)
         if self._compressed:
-            text = bytes_to_gzip(text)
+            text = tuned_gzip.bytes_to_gzip(text)
         path = self._map(key)
         self._transport.put_bytes_non_atomic(path, text, create_parent_dir=True)
 
@@ -635,7 +643,7 @@ class TextVersionedFiles(VersionedFiles):
             else:
                 return None
         if compressed:
-            text = GzipFile(mode='rb', fileobj=StringIO(text)).read()
+            text = gzip.GzipFile(mode='rb', fileobj=StringIO(text)).read()
         return text
 
     def _map(self, key):
@@ -738,6 +746,113 @@ class SignatureTextStore(TextVersionedFiles):
         paths = list(relpaths)
         return set([self._mapper.unmap(path) for path in paths])
 
+
+class InterWeaveRepo(InterSameDataRepository):
+    """Optimised code paths between Weave based repositories.
+    """
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return RepositoryFormat7()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Weave formats.
+
+        We don't test for the stores being of specific types because that
+        could lead to confusing results, and there is no need to be
+        overly general.
+        """
+        try:
+            return (isinstance(source._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)) and
+                    isinstance(target._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)))
+        except AttributeError:
+            return False
+
+    @needs_write_lock
+    def copy_content(self, revision_id=None):
+        """See InterRepository.copy_content()."""
+        # weave specific optimised path:
+        try:
+            self.target.set_make_working_trees(self.source.make_working_trees())
+        except (errors.RepositoryUpgradeRequired, NotImplemented):
+            pass
+        # FIXME do not peek!
+        if self.source._transport.listable():
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                self.target.texts.insert_record_stream(
+                    self.source.texts.get_record_stream(
+                        self.source.texts.keys(), 'topological', False))
+                pb.update('Copying inventory', 0, 1)
+                self.target.inventories.insert_record_stream(
+                    self.source.inventories.get_record_stream(
+                        self.source.inventories.keys(), 'topological', False))
+                self.target.signatures.insert_record_stream(
+                    self.source.signatures.get_record_stream(
+                        self.source.signatures.keys(),
+                        'unordered', True))
+                self.target.revisions.insert_record_stream(
+                    self.source.revisions.get_record_stream(
+                        self.source.revisions.keys(),
+                        'topological', True))
+            finally:
+                pb.finished()
+        else:
+            self.target.fetch(self.source, revision_id=revision_id)
+
+    @needs_read_lock
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
+        """See InterRepository.missing_revision_ids()."""
+        # we want all revisions to satisfy revision_id in source.
+        # but we don't want to stat every file here and there.
+        # we want then, all revisions other needs to satisfy revision_id
+        # checked, but not those that we have locally.
+        # so the first thing is to get a subset of the revisions to
+        # satisfy revision_id in source, and then eliminate those that
+        # we do already have.
+        # this is slow on high latency connection to self, but as this
+        # disk format scales terribly for push anyway due to rewriting
+        # inventory.weave, this is considered acceptable.
+        # - RBC 20060209
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            if source_ids[0] is not None:
+                raise AssertionError()
+            source_ids.pop(0)
+        else:
+            source_ids = self.source._all_possible_ids()
+        source_ids_set = set(source_ids)
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but don't try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target._all_possible_ids())
+        possibly_present_revisions = target_ids.intersection(source_ids_set)
+        actually_present_revisions = set(
+            self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        required_revisions = source_ids_set.difference(actually_present_revisions)
+        if revision_id is not None:
+            # we used get_ancestry to determine source_ids then we are assured all
+            # revisions referenced are present as they are installed in topological order.
+            # and the tip revision was validated by get_ancestry.
+            result_set = required_revisions
+        else:
+            # if we just grabbed the possibly available ids, then
+            # we only have an estimate of whats available and need to validate
+            # that against the revision records.
+            result_set = set(
+                self.source._eliminate_revisions_not_present(required_revisions))
+        return self.source.revision_ids_to_search_result(result_set)
+
+
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
+
+
+InterRepository.register_optimiser(InterWeaveRepo)

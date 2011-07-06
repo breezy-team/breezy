@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -514,12 +514,13 @@ class Command(object):
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
         options = option.get_optparser(self.options()).format_option_help()
-        # XXX: According to the spec, ReST option lists actually don't support 
-        # options like --1.9 so that causes syntax errors (in Sphinx at least).
-        # As that pattern always appears in the commands that break, we trap
-        # on that and then format that block of 'format' options as a literal
-        # block.
-        if not plain and options.find('  --1.9  ') != -1:
+        # FIXME: According to the spec, ReST option lists actually don't
+        # support options like --1.14 so that causes syntax errors (in Sphinx
+        # at least).  As that pattern always appears in the commands that
+        # break, we trap on that and then format that block of 'format' options
+        # as a literal block. We use the most recent format still listed so we
+        # don't have to do that too often -- vila 20110514
+        if not plain and options.find('  --1.14  ') != -1:
             options = options.replace(' format:\n', ' format::\n\n', 1)
         if options.startswith('Options:'):
             result += ':' + options
@@ -687,7 +688,15 @@ class Command(object):
 
         self._setup_outf()
 
-        return self.run(**all_cmd_args)
+        try:
+            return self.run(**all_cmd_args)
+        finally:
+            # reset it, so that other commands run in the same process won't
+            # inherit state. Before we reset it, log any activity, so that it
+            # gets properly tracked.
+            ui.ui_factory.log_transport_activity(
+                display=('bytes' in debug.debug_flags))
+            trace.set_verbosity_level(0)
 
     def _setup_run(self):
         """Wrap the defined run method on self with a cleanup.
@@ -810,7 +819,13 @@ def parse_args(command, argv, alias_argv=None):
     else:
         args = argv
 
-    options, args = parser.parse_args(args)
+    # for python 2.5 and later, optparse raises this exception if a non-ascii
+    # option name is given.  See http://bugs.python.org/issue2931
+    try:
+        options, args = parser.parse_args(args)
+    except UnicodeEncodeError,e:
+        raise errors.BzrCommandError('Only ASCII permitted in option names')
+
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
@@ -1191,8 +1206,6 @@ def main(argv=None):
     argv = _specified_or_unicode_argv(argv)
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
-    bzrlib.ui.ui_factory.log_transport_activity(
-        display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
     return ret
 

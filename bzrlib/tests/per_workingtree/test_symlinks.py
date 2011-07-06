@@ -159,7 +159,7 @@ class TestOpenTree(TestCaseWithWorkingTree):
             'tree', ['subdir/subcontent'])
 
     def check_tree_files(self, to_open, expected_tree, expect_paths):
-        tree, relpaths = builtins.tree_files(to_open)
+        tree, relpaths = workingtree.WorkingTree.open_containing_paths(to_open)
         self.assertEndsWith(tree.basedir, expected_tree)
         self.assertEquals(expect_paths, relpaths)
 

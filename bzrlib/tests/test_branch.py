@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ from bzrlib import (
     bzrdir,
     config,
     errors,
+    symbol_versioning,
     tests,
     trace,
     transport,
@@ -86,18 +87,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         self.assertIsDirectory('.bzr/branch/lock/held', t)
 
     def test_set_push_location(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        # write correct newlines to locations.conf
-        # by default ConfigObj uses native line-endings for new files
-        # but uses already existing line-endings if file is not empty
-        f = open(fn, 'wb')
-        try:
-            f.write('# comment\n')
-        finally:
-            f.close()
+        conf = config.LocationConfig.from_string('# comment\n', '.', save=True)
 
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')
@@ -106,7 +96,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
                              "[%s]\n"
                              "push_location = foo\n"
                              "push_location:policy = norecurse\n" % local_path,
-                             fn)
+                             config.locations_config_filename())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
     # recursive section - that is, it appends the branch name.
@@ -123,7 +113,7 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Format 4 branches cannot be created."""
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
@@ -170,7 +160,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir.create_repository()
             format.initialize(dir)
             found_format = _mod_branch.BranchFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
     def test_find_format_factory(self):
@@ -270,23 +260,23 @@ class TestBranch67(object):
 
     def test_layout(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.failUnlessExists('a/.bzr/branch/last-revision')
-        self.failIfExists('a/.bzr/branch/revision-history')
-        self.failIfExists('a/.bzr/branch/references')
+        self.assertPathExists('a/.bzr/branch/last-revision')
+        self.assertPathDoesNotExist('a/.bzr/branch/revision-history')
+        self.assertPathDoesNotExist('a/.bzr/branch/references')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
         branch = self.make_branch('a', format=self.get_format_name())
-        branch.set_parent('http://bazaar-vcs.org')
-        self.failIfExists('a/.bzr/branch/parent')
-        self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
-        branch.set_push_location('sftp://bazaar-vcs.org')
+        branch.set_parent('http://example.com')
+        self.assertPathDoesNotExist('a/.bzr/branch/parent')
+        self.assertEqual('http://example.com', branch.get_parent())
+        branch.set_push_location('sftp://example.com')
         config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://bazaar-vcs.org',
+        self.assertEqual('sftp://example.com',
                          config.get_user_option('push_location'))
-        branch.set_bound_location('ftp://bazaar-vcs.org')
-        self.failIfExists('a/.bzr/branch/bound')
-        self.assertEqual('ftp://bazaar-vcs.org', branch.get_bound_location())
+        branch.set_bound_location('ftp://example.com')
+        self.assertPathDoesNotExist('a/.bzr/branch/bound')
+        self.assertEqual('ftp://example.com', branch.get_bound_location())
 
     def test_set_revision_history(self):
         builder = self.make_branch_builder('.', format=self.get_format_name())
@@ -319,10 +309,10 @@ class TestBranch67(object):
         subtree.commit('a subtree file')
         subsubtree.commit('a subsubtree file')
         tree.branch.create_checkout('target', lightweight=lightweight)
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/subtree')
-        self.failUnlessExists('target/subtree/file')
-        self.failUnlessExists('target/subtree/subsubtree/file')
+        self.assertPathExists('target')
+        self.assertPathExists('target/subtree')
+        self.assertPathExists('target/subtree/file')
+        self.assertPathExists('target/subtree/subsubtree/file')
         subbranch = _mod_branch.Branch.open('target/subtree/subsubtree')
         if lightweight:
             self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')
@@ -490,7 +480,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
 
     def test_create_open_reference(self):
         bzrdirformat = bzrdir.BzrDirMetaFormat1()
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repo')
         dir = bzrdirformat.initialize(self.get_url('repo'))
         dir.create_repository()
@@ -633,8 +623,10 @@ class TestPullResult(tests.TestCase):
         # this usage of results is not recommended for new code (because it
         # doesn't describe very well what happened), but for api stability
         # it's still supported
-        a = "%d revisions pulled" % r
-        self.assertEqual(a, "10 revisions pulled")
+        self.assertEqual(self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            r.__int__),
+            10)
 
     def test_report_changed(self):
         r = _mod_branch.PullResult()

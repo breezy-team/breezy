@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,13 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test "bzr init"""
+"""Test 'bzr init'"""
 
 import os
 import re
 
 from bzrlib import (
     branch as _mod_branch,
+    config as _mod_config,
     osutils,
     urlutils,
     )
@@ -107,7 +108,7 @@ Using shared repository: %s
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
         self.assertEqual('', out)
-        self.failUnless(err.startswith('bzr: ERROR: Already a branch:'))
+        self.assertTrue(err.startswith('bzr: ERROR: Already a branch:'))
 
     def test_init_branch_quiet(self):
         out, err = self.run_bzr('init -q')
@@ -161,7 +162,21 @@ Using shared repository: %s
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
                             'init ../new/tree', working_dir='tree')
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
-        self.failUnlessExists('new/tree/.bzr')
+        self.assertPathExists('new/tree/.bzr')
+
+    def test_init_default_format_option(self):
+        """bzr init should read default format from option default_format"""
+        conf = _mod_config.GlobalConfig.from_string('''
+[DEFAULT]
+default_format = 1.9
+''', save=True)
+        out, err = self.run_bzr_subprocess('init')
+        self.assertContainsRe(out, '1.9')
+
+    def test_init_no_tree(self):
+        """'bzr init --no-tree' creates a branch with no working tree."""
+        out, err = self.run_bzr('init --no-tree')
+        self.assertStartsWith(out, 'Created a standalone branch')
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):
@@ -211,8 +226,9 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # and uses whoami only in a lock file. Without whoami the login name
         # is used. This test is to ensure that init passes even when whoami
         # is not available.
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
+

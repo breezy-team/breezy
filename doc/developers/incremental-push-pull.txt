@@ -32,7 +32,7 @@ Push/pull overview
 1. New data is identified in the source repository.
 2. That data is read from the source repository.
 3. The same data is verified and written to the target repository in such a
-   manner that its not visible to readers until its ready for use.
+   manner that it's not visible to readers until it's ready for use.
 
 New data identification
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,7 +119,7 @@ With ghost and new-signature detection:
    ghost points from the target; plus a set difference search is needed on
    signatures.
 
- * Semantic level can probably be tuned, but as its also complex I suggest
+ * Semantic level can probably be tuned, but as it's also complex I suggest
    deferring analysis for optimal behaviour of this use case.
 
 
@@ -180,7 +180,7 @@ To validate a revision we need to validate the data it refers to. But to
 validate the contents of a revision we need the new texts in the inventory for
 the revision - to check a fileid:revisionid we need to know the expected sha1
 of the full text and thus also need to read the delta chain to construct the
-text as we accept it to determine if its valid. Providing separate validators
+text as we accept it to determine if it's valid. Providing separate validators
 for the chosen representation would address this.
 e.g: For an inventory entry FILEID:REVISIONID we store the validator of the
 full text :SHA1:. If we also stored the validator of the chosen disk

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     debug,
     errors,
     graph,
@@ -32,6 +33,7 @@ from bzrlib import (
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
+    urlutils,
 )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -213,7 +215,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if len(branch_info) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         branch_ref, branch_name = branch_info
-        format = bzrdir.network_format_registry.get(control_name)
+        format = controldir.network_format_registry.get(control_name)
         if repo_name:
             format.repository_format = repository.network_format_registry.get(
                 repo_name)
@@ -245,14 +247,17 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self, name=None):
+    def create_branch(self, name=None, repository=None):
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
-            name=name)
+            name=name, repository=repository)
         if not isinstance(real_branch, RemoteBranch):
-            result = RemoteBranch(self, self.find_repository(), real_branch,
-                                  name=name)
+            if not isinstance(repository, RemoteRepository):
+                raise AssertionError(
+                    'need a RemoteRepository to use with RemoteBranch, got %r'
+                    % (repository,))
+            result = RemoteBranch(self, repository, real_branch, name=name)
         else:
             result = real_branch
         # BzrDir.clone_on_transport() uses the result of create_branch but does
@@ -270,7 +275,8 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._real_bzrdir.destroy_branch(name=name)
         self._next_open_branch_result = None
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+        accelerator_tree=None, hardlink=False):
         raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self, name=None):
@@ -648,7 +654,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
 
 class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
-    bzrdir.ControlComponent):
+    controldir.ControlComponent):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
@@ -2091,7 +2097,7 @@ class RemoteBranchFormat(branch.BranchFormat):
                                   name=name)
         return result
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -2125,13 +2131,25 @@ class RemoteBranchFormat(branch.BranchFormat):
         # Turn the response into a RemoteRepository object.
         format = RemoteBranchFormat(network_name=response[1])
         repo_format = response_tuple_to_repo_format(response[3:])
-        if response[2] == '':
-            repo_bzrdir = a_bzrdir
+        repo_path = response[2]
+        if repository is not None:
+            remote_repo_url = urlutils.join(a_bzrdir.user_url, repo_path)
+            url_diff = urlutils.relative_url(repository.user_url,
+                    remote_repo_url)
+            if url_diff != '.':
+                raise AssertionError(
+                    'repository.user_url %r does not match URL from server '
+                    'response (%r + %r)'
+                    % (repository.user_url, a_bzrdir.user_url, repo_path))
+            remote_repo = repository
         else:
-            repo_bzrdir = RemoteBzrDir(
-                a_bzrdir.root_transport.clone(response[2]), a_bzrdir._format,
-                a_bzrdir._client)
-        remote_repo = RemoteRepository(repo_bzrdir, repo_format)
+            if repo_path == '':
+                repo_bzrdir = a_bzrdir
+            else:
+                repo_bzrdir = RemoteBzrDir(
+                    a_bzrdir.root_transport.clone(repo_path), a_bzrdir._format,
+                    a_bzrdir._client)
+            remote_repo = RemoteRepository(repo_bzrdir, repo_format)
         remote_branch = RemoteBranch(a_bzrdir, remote_repo,
             format=format, setup_stacking=False, name=name)
         # XXX: We know this is a new branch, so it must have revno 0, revid
@@ -2367,7 +2385,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_branch._get_tags_bytes()
 
+    @needs_read_lock
     def _get_tags_bytes(self):
+        if self._tags_bytes is None:
+            self._tags_bytes = self._get_tags_bytes_via_hpss()
+        return self._tags_bytes
+
+    def _get_tags_bytes_via_hpss(self):
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
             return self._vfs_get_tags_bytes()
@@ -2383,6 +2407,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch._set_tags_bytes(bytes)
 
     def _set_tags_bytes(self, bytes):
+        if self.is_locked():
+            self._tags_bytes = bytes
         medium = self._client._medium
         if medium._is_remote_before((1, 18)):
             self._vfs_set_tags_bytes(bytes)

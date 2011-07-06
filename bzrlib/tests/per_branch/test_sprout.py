@@ -125,7 +125,7 @@ class TestSprout(TestCaseWithBranch):
         wt2 = wt.bzrdir.sprout('target',
             revision_id='rev1a').open_workingtree()
         self.assertEqual('rev1a', wt2.last_revision())
-        self.failUnlessExists('target/a')
+        self.assertPathExists('target/a')
 
     def test_sprout_with_unicode_symlink(self):
         # this tests bug #272444
@@ -182,9 +182,9 @@ class TestSprout(TestCaseWithBranch):
                 source.last_revision(), possible_transports=[target_transport],
                 source_branch=source, stacked=True)
         except errors.UnstackableBranchFormat:
-            if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
-                raise tests.KnownFailure(
-                    "Format 4 doesn't auto stack successfully.")
+            if not self.branch_format.supports_stacking():
+                raise tests.TestNotApplicable(
+                    "Format doesn't auto stack successfully.")
             else:
                 raise
         result = dir.open_branch()

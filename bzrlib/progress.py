@@ -166,48 +166,6 @@ class ProgressTask(object):
             self.ui_factory.clear_term()
 
 
-# NOTE: This is also deprecated; you should provide a ProgressView instead.
-class _BaseProgressBar(object):
-
-    def __init__(self,
-                 to_file=None,
-                 show_pct=False,
-                 show_spinner=False,
-                 show_eta=False,
-                 show_bar=True,
-                 show_count=True,
-                 to_messages_file=None,
-                 _stack=None):
-        object.__init__(self)
-        if to_file is None:
-            to_file = sys.stderr
-        if to_messages_file is None:
-            to_messages_file = sys.stdout
-        self.to_file = to_file
-        self.to_messages_file = to_messages_file
-        self.last_msg = None
-        self.last_cnt = None
-        self.last_total = None
-        self.show_pct = show_pct
-        self.show_spinner = show_spinner
-        self.show_eta = show_eta
-        self.show_bar = show_bar
-        self.show_count = show_count
-        self._stack = _stack
-        # seed throttler
-        self.MIN_PAUSE = 0.1 # seconds
-        now = time.time()
-        # starting now
-        self.start_time = now
-        # next update should not throttle
-        self.last_update = now - self.MIN_PAUSE - 1
-
-    def finished(self):
-        """Return this bar to its progress stack."""
-        self.clear()
-        self._stack.return_pb(self)
-
-
 class DummyProgress(object):
     """Progress-bar standin that does nothing.
 

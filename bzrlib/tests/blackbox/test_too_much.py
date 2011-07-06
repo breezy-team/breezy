@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -88,7 +88,7 @@ class TestCommands(TestCaseWithTransport):
             self.run_bzr('commit -m f')
             os.unlink('symlink')
             self.run_bzr('revert')
-            self.failUnlessExists('symlink')
+            self.assertPathExists('symlink')
             os.unlink('symlink')
             os.symlink('a-different-path', 'symlink')
             self.run_bzr('revert')
@@ -133,9 +133,9 @@ class TestCommands(TestCaseWithTransport):
 
         os.chdir('../a')
         out = self.run_bzr('pull --verbose ../b')[0]
-        self.failIfEqual(out.find('Added Revisions:'), -1)
-        self.failIfEqual(out.find('message:\n  added b'), -1)
-        self.failIfEqual(out.find('added b'), -1)
+        self.assertNotEqual(out.find('Added Revisions:'), -1)
+        self.assertNotEqual(out.find('message:\n  added b'), -1)
+        self.assertNotEqual(out.find('added b'), -1)
 
         # Check that --overwrite --verbose prints out the removed entries
         self.run_bzr('commit -m foo --unchanged')
@@ -145,17 +145,17 @@ class TestCommands(TestCaseWithTransport):
         out = self.run_bzr('pull --overwrite --verbose ../a')[0]
 
         remove_loc = out.find('Removed Revisions:')
-        self.failIfEqual(remove_loc, -1)
+        self.assertNotEqual(remove_loc, -1)
         added_loc = out.find('Added Revisions:')
-        self.failIfEqual(added_loc, -1)
+        self.assertNotEqual(added_loc, -1)
 
         removed_message = out.find('message:\n  baz')
-        self.failIfEqual(removed_message, -1)
-        self.failUnless(remove_loc < removed_message < added_loc)
+        self.assertNotEqual(removed_message, -1)
+        self.assertTrue(remove_loc < removed_message < added_loc)
 
         added_message = out.find('message:\n  foo')
-        self.failIfEqual(added_message, -1)
-        self.failUnless(added_loc < added_message)
+        self.assertNotEqual(added_message, -1)
+        self.assertTrue(added_loc < added_message)
 
     def test_locations(self):
         """Using and remembering different locations"""
@@ -315,37 +315,28 @@ class TestCommands(TestCaseWithTransport):
         cmd_name = 'test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-        oldpath = os.environ.get('BZRPATH', None)
-        try:
-            if 'BZRPATH' in os.environ:
-                del os.environ['BZRPATH']
+        self.overrideEnv('BZRPATH', None)
 
-            f = file(cmd_name, 'wb')
-            if sys.platform == 'win32':
-                f.write('@echo off\n')
-            else:
-                f.write('#!/bin/sh\n')
-            # f.write('echo Hello from test-command')
-            f.close()
-            os.chmod(cmd_name, 0755)
+        f = file(cmd_name, 'wb')
+        if sys.platform == 'win32':
+            f.write('@echo off\n')
+        else:
+            f.write('#!/bin/sh\n')
+        # f.write('echo Hello from test-command')
+        f.close()
+        os.chmod(cmd_name, 0755)
 
-            # It should not find the command in the local
-            # directory by default, since it is not in my path
-            self.run_bzr(cmd_name, retcode=3)
+        # It should not find the command in the local
+        # directory by default, since it is not in my path
+        self.run_bzr(cmd_name, retcode=3)
 
-            # Now put it into my path
-            os.environ['BZRPATH'] = '.'
+        # Now put it into my path
+        self.overrideEnv('BZRPATH', '.')
+        self.run_bzr(cmd_name)
 
-            self.run_bzr(cmd_name)
-
-            # Make sure empty path elements are ignored
-            os.environ['BZRPATH'] = os.pathsep
-
-            self.run_bzr(cmd_name, retcode=3)
-
-        finally:
-            if oldpath:
-                os.environ['BZRPATH'] = oldpath
+        # Make sure empty path elements are ignored
+        self.overrideEnv('BZRPATH', os.pathsep)
+        self.run_bzr(cmd_name, retcode=3)
 
 
 def listdir_sorted(dir):

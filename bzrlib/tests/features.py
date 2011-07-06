@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
 
 import os
 import stat
+import sys
 
 from bzrlib import tests
-from bzrlib.symbol_versioning import deprecated_in
 
 
 class _NotRunningAsRoot(tests.Feature):
@@ -38,10 +38,13 @@ class _NotRunningAsRoot(tests.Feature):
 
 
 not_running_as_root = _NotRunningAsRoot()
+
 apport = tests.ModuleAvailableFeature('apport')
+meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
+sphinx = tests.ModuleAvailableFeature('sphinx')
 subunit = tests.ModuleAvailableFeature('subunit')
 
 
@@ -128,3 +131,18 @@ class ExecutableFeature(tests.Feature):
 
 bash_feature = ExecutableFeature('bash')
 sed_feature = ExecutableFeature('sed')
+diff_feature = ExecutableFeature('diff')
+
+
+class Win32Feature(tests.Feature):
+    """Feature testing whether we're running selftest on Windows
+    or Windows-like platform.
+    """
+
+    def _probe(self):
+        return sys.platform == 'win32'
+
+    def feature_name(self):
+        return "win32 platform"
+
+win32_feature = Win32Feature()

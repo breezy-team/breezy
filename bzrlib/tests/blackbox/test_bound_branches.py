@@ -371,7 +371,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         child_tree.merge_from_branch(other_branch)
 
-        self.failUnlessExists('child/c')
+        self.assertPathExists('child/c')
         self.assertEqual([new_rev_id], child_tree.get_parent_ids()[1:])
 
         # Make sure the local branch has the installed revision
@@ -443,7 +443,9 @@ class TestBind(script.TestCaseWithTransportAndScript):
     def test_bind_when_bound(self):
         self.run_script("""
 $ bzr init trunk
+...
 $ bzr init copy
+...
 $ cd copy
 $ bzr bind ../trunk
 $ bzr bind
@@ -453,6 +455,7 @@ $ bzr bind
     def test_bind_before_bound(self):
         self.run_script("""
 $ bzr init trunk
+...
 $ cd trunk
 $ bzr bind
 2>bzr: ERROR: No location supplied and no previous location known

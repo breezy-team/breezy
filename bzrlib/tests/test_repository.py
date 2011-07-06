@@ -31,8 +31,10 @@ from bzrlib.errors import (NoSuchFile,
                            UnsupportedFormatError,
                            )
 from bzrlib import (
+    btree_index,
     graph,
     tests,
+    transport,
     )
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex
@@ -40,9 +42,6 @@ from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    )
-from bzrlib.transport import (
-    get_transport,
     )
 from bzrlib import (
     bzrdir,
@@ -127,9 +126,9 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
-            t = get_transport(url)
+            t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(weaverepo.RepositoryFormat7(), "bar")
 
     def test_find_format_no_repository(self):
@@ -585,7 +584,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                                 ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
-        is_compatible = repository.InterWeaveRepo.is_compatible
+        is_compatible = weaverepo.InterWeaveRepo.is_compatible
         for source in incompatible_formats:
             # force incompatible left then right
             repo_a._format = source
@@ -597,7 +596,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
             for target in formats:
                 repo_b._format = target
                 self.assertTrue(is_compatible(repo_a, repo_b))
-        self.assertEqual(repository.InterWeaveRepo,
+        self.assertEqual(weaverepo.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
 
@@ -605,7 +604,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
-        t = get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
@@ -680,6 +679,21 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
 
 
 class Test2a(tests.TestCaseWithMemoryTransport):
+
+    def test_chk_bytes_uses_custom_btree_parser(self):
+        mt = self.make_branch_and_memory_tree('test', format='2a')
+        mt.lock_write()
+        self.addCleanup(mt.unlock)
+        mt.add([''], ['root-id'])
+        mt.commit('first')
+        index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
+        # It should also work if we re-open the repo
+        repo = mt.branch.repository.bzrdir.open_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        index = repo.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
 
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')
@@ -956,8 +970,7 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
 
     def setUp(self):
         super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
-        self.builder = self.make_branch_builder('source',
-            format='development6-rich-root')
+        self.builder = self.make_branch_builder('source')
         self.builder.start_series()
         self.builder.build_snapshot('initial', None,
             [('add', ('', 'tree-root', 'directory', None))])

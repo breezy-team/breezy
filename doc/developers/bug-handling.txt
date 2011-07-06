@@ -310,7 +310,7 @@ test
     needs changes to the test framework
 
 transport
-    virtual filesystem for http, sftp, etc
+    virtual filesystem for HTTP, SFTP, etc.
 
 trivial
     should be very easy to fix (10-20 minutes) and easily landed: typically 

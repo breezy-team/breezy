@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bzrlib.hooks
+from bzrlib import transport
 from bzrlib.tests import features
 
 # SFTPTransport offers better performances but relies on paramiko, if paramiko
@@ -34,7 +35,6 @@ else:
 
 from bzrlib.transport import (
     ConnectedTransport,
-    get_transport,
     register_transport,
     register_urlparse_netloc_protocol,
     unregister_transport,
@@ -111,7 +111,7 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         # standard test support code will work and permit the server url
         # correctly.
         url = self.get_url()
-        t = get_transport(url)
+        t = transport.get_transport(url)
         if t.base.endswith('work/'):
             t = t.clone('../..')
         self.permit_url(t.base)

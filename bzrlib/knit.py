@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ in the deltas to provide line annotation
 
 from cStringIO import StringIO
 from itertools import izip
+import gzip
 import operator
 import os
 import sys
@@ -1879,7 +1880,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: the header and the decompressor stream.
                  as (stream, header_record)
         """
-        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(raw_data))
+        df = gzip.GzipFile(mode='rb', fileobj=StringIO(raw_data))
         try:
             # Current serialise
             rec = self._check_header(key, df.readline())
@@ -1894,7 +1895,7 @@ class KnitVersionedFiles(VersionedFiles):
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(data))
+        df = gzip.GzipFile(mode='rb', fileobj=StringIO(data))
         try:
             record_contents = df.readlines()
         except Exception, e:

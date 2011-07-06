@@ -389,6 +389,11 @@ class SFTPTransport(ConnectedTransport):
                                          self._host, self._port)
         return connection, (user, password)
 
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
+
     def _get_sftp(self):
         """Ensures that a connection is established"""
         connection = self._get_connection()
@@ -715,6 +720,8 @@ class SFTPTransport(ConnectedTransport):
             if (e.args[0].startswith('Directory not empty: ')
                 or getattr(e, 'errno', None) == errno.ENOTEMPTY):
                 raise errors.DirectoryNotEmpty(path, str(e))
+            if e.args == ('Operation unsupported',):
+                raise errors.TransportNotPossible()
             mutter('Raising exception with args %s', e.args)
         if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)

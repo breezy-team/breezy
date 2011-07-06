@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -129,7 +129,7 @@ class TestamentTests(TestamentSetup):
             timestamp=1129025493,
             timezone=36000,
             rev_id='test@user-3',
-            committer='Erik B\xe5gfors <test@user>',
+            committer=u'Erik B\xe5gfors <test@user>',
             revprops={'uni':u'\xb5'}
             )
         t = self.from_revision(self.b.repository, 'test@user-3')

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,10 +25,8 @@ from bzrlib import (
     delta as _mod_delta,
     errors,
     gpg,
-    graph,
     info,
     inventory,
-    osutils,
     remote,
     repository,
     revision as _mod_revision,
@@ -37,7 +35,6 @@ from bzrlib import (
     upgrade,
     versionedfile,
     workingtree,
-    xml_serializer,
     )
 from bzrlib.repofmt import (
     pack_repo,
@@ -282,8 +279,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = transport.get_transport(self.get_url())
-        readonly_t = transport.get_transport(self.get_readonly_url())
+        t = self.get_transport()
+        readonly_t = self.get_readonly_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = self.repository_format.initialize(made_control)
         self.assertEqual(made_control, made_repo.bzrdir)
@@ -298,7 +295,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                               self.repository_format.__class__)
         # find it via Repository.open
         opened_repo = repository.Repository.open(readonly_t.base)
-        self.failUnless(isinstance(opened_repo, made_repo.__class__))
+        self.assertIsInstance(opened_repo, made_repo.__class__)
         self.assertEqual(made_repo._format.__class__,
                          opened_repo._format.__class__)
         # if it has a unique id string, can we probe for it ?
@@ -342,7 +339,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
@@ -356,7 +353,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         try:
             made_repo = made_control.create_repository(shared=True)
@@ -524,7 +521,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_format_description(self):
         repo = self.make_repository('.')
         text = repo._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_format_supports_external_lookups(self):
         repo = self.make_repository('.')
@@ -854,9 +851,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_sprout_from_hpss_preserves_format(self):
         """repo.sprout from a smart server preserves the repository format."""
-        if self.repository_format == weaverepo.RepositoryFormat7():
-            raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
         remote_repo = self.make_remote_repository('remote')
         local_bzrdir = self.make_bzrdir('local')
         try:

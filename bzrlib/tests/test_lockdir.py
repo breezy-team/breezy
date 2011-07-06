@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests for LockDir"""
 
-from cStringIO import StringIO
 import os
 from threading import Thread, Lock
 import time
@@ -34,12 +33,14 @@ from bzrlib.errors import (
     LockBreakMismatch,
     LockBroken,
     LockContention,
-    LockError,
     LockFailed,
     LockNotHeld,
     )
 from bzrlib.lockdir import LockDir
-from bzrlib.tests import (features, TestCaseWithTransport)
+from bzrlib.tests import (
+    features,
+    TestCaseWithTransport,
+    )
 from bzrlib.trace import note
 
 # These tests sometimes use threads to test the behaviour of lock files with
@@ -580,16 +581,12 @@ class TestLockDir(TestCaseWithTransport):
                 self.prompts.append(('boolean', prompt))
                 return True
         ui = LoggingUIFactory()
-        orig_factory = bzrlib.ui.ui_factory
-        bzrlib.ui.ui_factory = ui
-        try:
-            ld2.break_lock()
-            self.assertLength(1, ui.prompts)
-            self.assertEqual('boolean', ui.prompts[0][0])
-            self.assertStartsWith(ui.prompts[0][1], 'Break (corrupt LockDir')
-            self.assertRaises(LockBroken, ld.unlock)
-        finally:
-            bzrlib.ui.ui_factory = orig_factory
+        self.overrideAttr(bzrlib.ui, 'ui_factory', ui)
+        ld2.break_lock()
+        self.assertLength(1, ui.prompts)
+        self.assertEqual('boolean', ui.prompts[0][0])
+        self.assertStartsWith(ui.prompts[0][1], 'Break (corrupt LockDir')
+        self.assertRaises(LockBroken, ld.unlock)
 
     def test_break_lock_missing_info(self):
         """break_lock works even if the info file is missing (and tells the UI
@@ -631,18 +628,18 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
 
         lf1.create()
-        self.failUnless(t.has('test_lock'))
+        self.assertTrue(t.has('test_lock'))
 
         t.rmdir('test_lock')
-        self.failIf(t.has('test_lock'))
+        self.assertFalse(t.has('test_lock'))
 
         # This will create 'test_lock' if it needs to
         lf1.lock_write()
-        self.failUnless(t.has('test_lock'))
-        self.failUnless(t.has('test_lock/held/info'))
+        self.assertTrue(t.has('test_lock'))
+        self.assertTrue(t.has('test_lock/held/info'))
 
         lf1.unlock()
-        self.failIf(t.has('test_lock/held/info'))
+        self.assertFalse(t.has('test_lock/held/info'))
 
     def test__format_lock_info(self):
         ld1 = self.get_lock()

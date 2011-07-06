@@ -79,43 +79,6 @@ class TestMove(TestCaseWithWorkingTree):
             tree.move(['a1'], 'sub1', after=False))
         tree._validate()
 
-    def test_move_deprecated_wrong_call(self):
-        """tree.move has the deprecated parameter 'to_name'.
-        It has been replaced by 'to_dir' for consistency.
-        Test the new API using wrong parameter
-        """
-        self.build_tree(['a1', 'sub1/'])
-        tree = self.make_branch_and_tree('.')
-        tree.add(['a1', 'sub1'])
-        tree.commit('initial commit')
-        self.assertRaises(TypeError, tree.move, ['a1'],
-                          to_this_parameter_does_not_exist='sub1',
-                          after=False)
-        tree._validate()
-
-    def test_move_deprecated_call(self):
-        """tree.move has the deprecated parameter 'to_name'.
-        It has been replaced by 'to_dir' for consistency.
-        Test the new API using deprecated parameter
-        """
-        self.build_tree(['a1', 'sub1/'])
-        tree = self.make_branch_and_tree('.')
-        tree.add(['a1', 'sub1'])
-        tree.commit('initial commit')
-
-        try:
-            self.callDeprecated(['The parameter to_name was deprecated'
-                                 ' in version 0.13. Use to_dir instead'],
-                                tree.move, ['a1'], to_name='sub1',
-                                after=False)
-        except TypeError:
-            # WorkingTreeFormat4 and later don't have to maintain api
-            # compatibility since it was deprecated before they were introduced.
-            if not isinstance(self.workingtree_format,
-                DirStateWorkingTreeFormat):
-                raise
-        tree._validate()
-
     def test_move_target_not_dir(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
@@ -210,7 +173,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('b/c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
-        self.failIfExists('a')
+        self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/a')
         tree._validate()
 
@@ -227,7 +190,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
-        self.failIfExists('b/c')
+        self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'c')
         tree._validate()
 
@@ -246,7 +209,7 @@ class TestMove(TestCaseWithWorkingTree):
             self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                    ('c', 'c-id')], tree)
         else:
-            self.failUnlessExists('b/c')
+            self.assertPathExists('b/c')
             self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                    ('b/c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),

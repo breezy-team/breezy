@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,7 +26,6 @@ from bzrlib.globbing import (
     )
 from bzrlib.tests import (
     TestCase,
-    TestCaseInTempDir,
     )
 
 
@@ -38,11 +37,11 @@ class TestGlobster(TestCase):
                 glob = glob_prefix + glob
             globster = Globster([glob])
             for name in positive:
-                self.failUnless(globster.match(name), repr(
+                self.assertTrue(globster.match(name), repr(
                     u'name "%s" does not match glob "%s" (re=%s)' %
                     (name, glob, globster._regex_patterns[0][0].pattern)))
             for name in negative:
-                self.failIf(globster.match(name), repr(
+                self.assertFalse(globster.match(name), repr(
                     u'name "%s" does match glob "%s" (re=%s)' %
                     (name, glob, globster._regex_patterns[0][0].pattern)))
 
@@ -55,14 +54,16 @@ class TestGlobster(TestCase):
     def test_char_group_digit(self):
         self.assertMatchBasenameAndFullpath([
             # The definition of digit this uses includes arabic digits from
-            # non-latin scripts (arabic, indic, etc.) and subscript/superscript
-            # digits, but neither roman numerals nor vulgar fractions.
+            # non-latin scripts (arabic, indic, etc.) but neither roman
+            # numerals nor vulgar fractions. Some characters such as
+            # subscript/superscript digits may or may not match depending on
+            # the Python version used, see: <http://bugs.python.org/issue6561>
             (u'[[:digit:]]',
-             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21', u'\xb9'],
+             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21'],
              [u'T', u'q', u' ', u'\u8336', u'.']),
             (u'[^[:digit:]]',
              [u'T', u'q', u' ', u'\u8336', u'.'],
-             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21', u'\xb9']),
+             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21']),
             ])
 
     def test_char_group_space(self):

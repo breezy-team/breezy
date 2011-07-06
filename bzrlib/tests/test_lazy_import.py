@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,10 @@ from bzrlib import (
     lazy_import,
     osutils,
     )
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    )
 
 
 class InstrumentedReplacer(lazy_import.ScopeReplacer):
@@ -127,12 +130,8 @@ class TestScopeReplacer(TestCase):
         else:
             self.fail('test_obj1 was not supposed to exist yet')
 
-        orig_globals = set(globals().keys())
-
         InstrumentedReplacer(scope=globals(), name='test_obj1',
                              factory=factory)
-
-        new_globals = set(globals().keys())
 
         # We can't use isinstance() because that uses test_obj1.__class__
         # and that goes through __getattribute__ which would activate
@@ -168,12 +167,8 @@ class TestScopeReplacer(TestCase):
         else:
             self.fail('test_obj6 was not supposed to exist yet')
 
-        orig_globals = set(globals().keys())
-
         lazy_import.ScopeReplacer(scope=globals(), name='test_obj6',
                                   factory=factory)
-
-        new_globals = set(globals().keys())
 
         # We can't use isinstance() because that uses test_obj6.__class__
         # and that goes through __getattribute__ which would activate
@@ -270,7 +265,7 @@ class TestScopeReplacer(TestCase):
         InstrumentedReplacer(scope=globals(), name='test_class2',
                              factory=factory)
 
-        self.failIf(test_class2 is TestClass)
+        self.assertFalse(test_class2 is TestClass)
         obj = test_class2()
         self.assertIs(test_class2, TestClass)
         self.assertIsInstance(obj, TestClass)
@@ -303,7 +298,7 @@ class TestScopeReplacer(TestCase):
         InstrumentedReplacer(scope=globals(), name='test_func1',
                              factory=factory)
 
-        self.failIf(test_func1 is func)
+        self.assertFalse(test_func1 is func)
         val = test_func1(1, 2, c='3')
         self.assertIs(test_func1, func)
 
@@ -439,6 +434,36 @@ class TestScopeReplacer(TestCase):
                           ('__getattribute__', 'foo'),
                           ('foo', 4),
                          ], actions)
+
+    def test_replacing_from_own_scope_fails(self):
+        """If a ScopeReplacer tries to replace itself a nice error is given"""
+        actions = []
+        InstrumentedReplacer.use_actions(actions)
+        TestClass.use_actions(actions)
+
+        def factory(replacer, scope, name):
+            actions.append('factory')
+            # return the name in given scope, which is currently the replacer
+            return scope[name]
+
+        try:
+            test_obj7
+        except NameError:
+            # test_obj7 shouldn't exist yet
+            pass
+        else:
+            self.fail('test_obj7 was not supposed to exist yet')
+
+        InstrumentedReplacer(scope=globals(), name='test_obj7',
+                             factory=factory)
+
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj7, '__class__'))
+        e = self.assertRaises(errors.IllegalUseOfScopeReplacer, test_obj7)
+        self.assertIn("replace itself", e.msg)
+        self.assertEqual([('__call__', (), {}),
+                          '_replace',
+                          'factory'], actions)
 
 
 class ImportReplacerHelper(TestCaseInTempDir):

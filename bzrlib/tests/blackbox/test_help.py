@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 
 
 import bzrlib
+from bzrlib import config
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestHelp(TestCaseWithTransport):
@@ -104,6 +104,10 @@ class TestHelp(TestCaseWithTransport):
         self.assertEquals(dash_help, qmark_long)
         self.assertEquals(dash_help, qmark_cmds)
 
+    def test_help_width_zero(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.run_bzr('help commands')
+
     def test_hidden(self):
         help_commands = self.run_bzr('help commands')[0]
         help_hidden = self.run_bzr('help hidden-commands')[0]
@@ -161,12 +165,10 @@ class TestHelp(TestCaseWithTransport):
     def test_help_with_aliases(self):
         original = self.run_bzr('help cat')[0]
 
-        ensure_config_dir_exists()
-        CONFIG=("[ALIASES]\n"
-        "c=cat\n"
-        "cat=cat\n")
-
-        open(config_filename(),'wb').write(CONFIG)
+        conf = config.GlobalConfig.from_string('''[ALIASES]
+c=cat
+cat=cat
+''', save=True)
 
         expected = original + "'bzr cat' is an alias for 'bzr cat'.\n"
         self.assertEqual(expected, self.run_bzr('help cat')[0])
