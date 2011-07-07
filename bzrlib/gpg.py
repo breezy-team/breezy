@@ -175,8 +175,9 @@ class GPGStrategy(object):
             return False
 
     def _command_line(self):
+        
         return [self._config.gpg_signing_command(), '--clearsign', '-u',
-                                                    self._config.user_email()]
+                                                    self._config.signing_key()]
 
     def __init__(self, config):
         self._config = config

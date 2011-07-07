@@ -542,8 +542,8 @@ class Config(object):
     def signing_key(self):
         """GPG user-id to sign commits"""
         key = self._get_signing_key()
-        if key == "default":
-            return None
+        if key == "default" or key == None:
+            return self.user_email()
         else:
             return key
 
