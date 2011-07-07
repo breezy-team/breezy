@@ -52,6 +52,11 @@ Bug Fixes
   modifying and renaming a file in a branch that deleted it (or vice-versa).
   (Vincent Ladeuil, #688101)
 
+* Give a more helpful message when the bzr executable doesn't match the
+  library.  (This typically happens because of a misconfigured PYTHONPATH
+  or half-installed bzr.)  
+  (Martin Pool, #804553)
+
 * Properly load utf8-encoded config files. (Vincent Ladeuil, #799212)
 
 * ``GraphThunkIdsToKeys.merge_sort`` now properly returns
@@ -77,6 +82,9 @@ API Changes
 * New attributes ``WorkingTreeFormat.supports_versioned_directories`` and
   ``RepositoryFormat.supports_versioned_directories``.
   (Jelmer Vernooij, #765815)
+
+* The "revno" field type when using the python version-info format is now
+  a string (to handle dotted revnos) (Benoît Pierre, #796259)
 
 Internals
 *********
@@ -134,9 +142,11 @@ New Features
   exception caused while running bzr serve.
   (Jonathan Riddell, #274578)
 
-
 * New hook set_commit_message in bzrlib.msgeditor to set a commit message
   and revision properties.  (Jonathan Riddell, #274578)
+
+* Preserve existing ``root-id`` when merging an unrelated branch.
+  (Aaron Bentley, #806356)
 
 * Support ``-S`` as an alias for ``--short`` for the ``log`` and
   ``missing`` commands. (Martin von Gagern, #38655)
@@ -162,6 +172,9 @@ Bug Fixes
   turned on by setting the configuration variable ``locks.steal_dead`` to
   ``True``.
   (Martin Pool, #220464)
+
+* ``bzr version-info`` now works when the tree is on a dotted revno.
+  (Benoît Pierre, #796259)
 
 * Credentials in the log output produced by ``-Dhttp`` are masked so users
   can more freely post them in bug reports. (Vincent Ladeuil, #723074)

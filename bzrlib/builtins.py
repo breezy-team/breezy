@@ -232,9 +232,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
-    Additionally for directories, symlinks and files with an executable
-    bit, Bazaar indicates their type using a trailing character: '/', '@'
-    or '*' respectively.
+    Additionally for directories, symlinks and files with a changed
+    executable bit, Bazaar indicates their type using a trailing
+    character: '/', '@' or '*' respectively. These decorations can be
+    disabled using the '--no-classify' option.
 
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
@@ -271,6 +272,9 @@ class cmd_status(Command):
                             short_name='V'),
                      Option('no-pending', help='Don\'t show pending merges.',
                            ),
+                     Option('no-classify',
+                            help='Do not mark object type using indicator.',
+                           ),
                      ]
     aliases = ['st', 'stat']
 
@@ -279,7 +283,8 @@ class cmd_status(Command):
 
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False, no_pending=False, verbose=False):
+            versioned=False, no_pending=False, verbose=False,
+            no_classify=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -299,7 +304,8 @@ class cmd_status(Command):
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
                          to_file=self.outf, short=short, versioned=versioned,
-                         show_pending=(not no_pending), verbose=verbose)
+                         show_pending=(not no_pending), verbose=verbose,
+                         classify=not no_classify)
 
 
 class cmd_cat_revision(Command):
