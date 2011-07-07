@@ -137,11 +137,9 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_preview_unrelated_retains_root(self):
         wt = self.make_branch_and_tree('tree')
-        null_tree = wt.basis_tree()
-        wt.commit('add root to tree')
         other_tree = self.make_branch_and_tree('other')
         other_tree.commit('add root in other')
-        merger = _mod_merge.Merge3Merger(wt, wt, null_tree, other_tree,
+        merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
                                          this_branch=wt.branch,
                                          do_merge=False)
         with merger.make_preview_transform() as tt:
@@ -150,11 +148,11 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_unrelated_retains_root(self):
         wt = self.make_branch_and_tree('tree')
-        wt.commit('add root to tree')
         root_id_before_merge = wt.get_root_id()
         other_tree = self.make_branch_and_tree('other')
+        # Do a commit so there is something to merge
         other_tree.commit('add root to other')
-        self.debug()
+        self.assertNotEquals(root_id_before_merge, other_tree.get_root_id())
         wt.merge_from_branch(other_tree.branch, from_revision='null:',
                              to_revision=other_tree.last_revision())
         self.assertEqual(root_id_before_merge, wt.get_root_id())
