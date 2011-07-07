@@ -420,6 +420,13 @@ In future it is planned that ``when-required`` will sign newly
 committed revisions only when the branch requires them.  ``never`` will refuse
 to sign newly committed revisions, even if the branch requires signatures.
 
+signing_key
+~~~~~~~~~~~
+
+The GPG user-id to use when signing commits.  Can be an e-mail
+address, key fingerprint or full key ID.  When unset or when set to
+"default" Bazaar will use the user e-mail set with ``whoami``.
+
 recurse
 ~~~~~~~
 
