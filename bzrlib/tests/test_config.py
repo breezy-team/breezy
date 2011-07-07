@@ -1530,7 +1530,7 @@ other_url = /other-subdir
         self.get_branch_config('/b')
         self.assertEqual("DD4D5088", self.my_config.signing_key())
 
-    def test_gpg_signing_key2(self):
+    def test_gpg_signing_key_default(self):
         self.get_branch_config('/a')
         self.assertEqual("erik@bagfors.nu", self.my_config.signing_key())
 
