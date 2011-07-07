@@ -145,9 +145,6 @@ New Features
 * New hook set_commit_message in bzrlib.msgeditor to set a commit message
   and revision properties.  (Jonathan Riddell, #274578)
 
-* Preserve existing ``root-id`` when merging an unrelated branch.
-  (Aaron Bentley, #806356)
-
 * Support ``-S`` as an alias for ``--short`` for the ``log`` and
   ``missing`` commands. (Martin von Gagern, #38655)
 
@@ -198,6 +195,9 @@ Bug Fixes
   setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
   because ``build_mo`` became a required step that they didn't know about.
   (John Arbash Meinel, #787122)
+
+* Preserve existing ``root-id`` when merging an unrelated branch.
+  (Aaron Bentley, #806356)
 
 * Properly avoid re-adding a file after it changes case on CICP
   filesystems. (John Arbash Meinel, #798130)
