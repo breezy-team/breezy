@@ -418,7 +418,7 @@ to sign newly committed revisions, even if the branch requires signatures.
 signing_key
 ~~~~~~~~~~~
 
-The GPG user-id to use when signing commits.  Can be an e-mail
+The GPG user identity to use when signing commits.  Can be an e-mail
 address, key fingerprint or full key ID.  When unset or when set to
 "default" Bazaar will use the user e-mail set with ``whoami``.
 

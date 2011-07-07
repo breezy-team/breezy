@@ -53,8 +53,8 @@ To sign a single commit or a range of commits use the (hidden) command
 
 ``re-sign`` is also useful to change an existing signature.
 
-By default Bazaar will tell GnuPG to use a key with the same user ID
-as the one set with ``whoami``.  To override this set
+By default Bazaar will tell GnuPG to use a key with the same user
+identity as the one set with ``whoami``.  To override this set
 ``signature_key`` in bazaar.conf or locations.conf.
 
   ``signature_key=DD4D5088``
