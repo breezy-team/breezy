@@ -441,6 +441,8 @@ For example::
 
     gpg_signing_command = /usr/bin/gnpg
 
+The specified command must accept the options "--clearsign" and "-u <email>".
+
 bzr_remote_path
 ~~~~~~~~~~~~~~~
 
