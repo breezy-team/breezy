@@ -285,9 +285,24 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
         self.assertRaises(ValueError, transform.fixup_new_roots)
 
+    def test_retain_existing_root(self):
+        tt, root = self.get_transform()
+        with tt:
+            tt.new_directory('', ROOT_PARENT, 'new-root-id')
+            tt.fixup_new_roots()
+            self.assertNotEqual('new-root-id', tt.final_file_id(tt.root))
+
+    def test_retain_existing_root_added_file(self):
+        tt, root = self.get_transform()
+        new_trans_id = tt.new_directory('', ROOT_PARENT, 'new-root-id')
+        child = tt.new_directory('child', new_trans_id, 'child-id')
+        tt.fixup_new_roots()
+        self.assertEqual(tt.root, tt.final_parent(child))
+
     def test_add_unversioned_root(self):
         transform, root = self.get_transform()
         new_trans_id = transform.new_directory('', ROOT_PARENT, None)
+        transform.delete_contents(transform.root)
         transform.fixup_new_roots()
         self.assertNotIn(transform.root, transform._new_id)
 
