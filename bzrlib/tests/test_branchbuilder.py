@@ -247,6 +247,18 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                               (u'dir', 'dir-id', 'directory'),
                               (u'dir/a', 'a-id', 'file')], rev_tree)
 
+    def test_rename_out_of_unversioned_subdir(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', None,
+            [('add', ('dir', 'dir-id', 'directory', None)),
+             ('rename', ('a', 'dir/a'))])
+        builder.build_snapshot('C-id', None,
+            [('rename', ('dir/a', 'a')),
+             ('unversion', 'dir-id')])
+        rev_tree = builder.get_branch().repository.revision_tree('C-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'a', 'a-id', 'file')], rev_tree)
+
     def test_set_parent(self):
         builder = self.build_a_rev()
         builder.start_series()

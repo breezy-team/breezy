@@ -236,8 +236,6 @@ class BranchBuilder(object):
                     to_rename.append((from_relpath, to_relpath))
                 else:
                     raise ValueError('Unknown build action: "%s"' % (action,))
-            if to_unversion_ids:
-                tree.unversion(to_unversion_ids)
             for path, file_id in to_add_directories:
                 if path == '':
                     # Special case, because the path already exists
@@ -246,6 +244,8 @@ class BranchBuilder(object):
                     tree.mkdir(path, file_id)
             for from_relpath, to_relpath in to_rename:
                 tree.rename_one(from_relpath, to_relpath)
+            if to_unversion_ids:
+                tree.unversion(to_unversion_ids)
             tree.add(to_add_files, to_add_file_ids, to_add_kinds)
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
