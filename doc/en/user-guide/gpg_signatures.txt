@@ -84,6 +84,6 @@ list each key that is valid or authors for commits which failed::
 Work in Progress
 ----------------
 
-There is still a number of digital signature related features which are hoped
-to be added to Bazaar soon.  These include verificiation in logs, qbzr
+There is still a number of digital signature related features which
+are hoped to be added to Bazaar soon.  These include bzr explorer
 integration and setting branches to require signatures.
