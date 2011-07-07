@@ -8,17 +8,22 @@ Bazaar Release Notes
 bzr 2.4b5
 #########
 
-:2.4b5: NOT RELEASED YET
+:2.4b5: 2011-07-07
+
+This is the fifth (and last) beta of the 2.4 series leading to
+2.4.0 release in Auguest 2011. Beta releases are suitable for
+everyday use but may cause some incompatibilities with plugins.
+
+This release includes all bug fixed in previous series known at
+the time of this release.
 
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
+None.
 
 New Features
 ************
-
-.. New commands, options, etc that users may wish to try out.
 
 * New command ``verify-signatures`` to check if all commits or specified commits
   have digital signatures from trusted keys.  Requires python-gpgme to be
@@ -34,9 +39,6 @@ New Features
 
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * ``Branch.open`` is now about 3x faster (about 2ms instead of 6.5ms).
   (Andrew Bennetts).
@@ -65,19 +67,8 @@ Bug Fixes
 * ``TreeTransformBase.fixup_new_roots`` can now check that a tree root
   is present. (Jelmer Vernooij, #801257)
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
-
-Documentation
-*************
-
-.. Improved or updated documentation.
-
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * New attributes ``WorkingTreeFormat.supports_versioned_directories`` and
   ``RepositoryFormat.supports_versioned_directories``.
@@ -89,19 +80,12 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 * Start implementing localization, starting with command help text (but not
   the command options themselves). This will allow bootstrapping the bzr
   internationalization process. (Inada Naoki)
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Fix test failures when running as a homeless user (debian buildd). Tests
   leaking into ``${HOME}/.bzr.log`` should be detected properly now.
@@ -144,9 +128,6 @@ New Features
 
 * New hook set_commit_message in bzrlib.msgeditor to set a commit message
   and revision properties.  (Jonathan Riddell, #274578)
-
-* Preserve existing ``root-id`` when merging an unrelated branch.
-  (Aaron Bentley, #806356)
 
 * Support ``-S`` as an alias for ``--short`` for the ``log`` and
   ``missing`` commands. (Martin von Gagern, #38655)
@@ -198,6 +179,9 @@ Bug Fixes
   setup.py. The ``bdist_wininst`` and ``py2exe`` code paths were failing
   because ``build_mo`` became a required step that they didn't know about.
   (John Arbash Meinel, #787122)
+
+* Preserve existing ``root-id`` when merging an unrelated branch.
+  (Aaron Bentley, #806356)
 
 * Properly avoid re-adding a file after it changes case on CICP
   filesystems. (John Arbash Meinel, #798130)
