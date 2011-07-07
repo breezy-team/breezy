@@ -213,7 +213,7 @@ class BranchBuilder(object):
             to_add_file_ids = []
             to_add_kinds = []
             new_contents = {}
-            to_unversion_ids = []
+            to_unversion_ids = set()
             to_rename = []
             for action, info in actions:
                 if action == 'add':
@@ -230,7 +230,7 @@ class BranchBuilder(object):
                     file_id, content = info
                     new_contents[file_id] = content
                 elif action == 'unversion':
-                    to_unversion_ids.append(info)
+                    to_unversion_ids.add(info)
                 elif action == 'rename':
                     from_relpath, to_relpath = info
                     to_rename.append((from_relpath, to_relpath))
@@ -238,6 +238,10 @@ class BranchBuilder(object):
                     raise ValueError('Unknown build action: "%s"' % (action,))
             for path, file_id in to_add_directories:
                 if path == '':
+                    old_id = tree.path2id(path)
+                    if old_id is not None and old_id in to_unversion_ids:
+                        # We're overwriting this path, no need to unversion
+                        to_unversion_ids.discard(old_id)
                     # Special case, because the path already exists
                     tree.add([path], [file_id], ['directory'])
                 else:
