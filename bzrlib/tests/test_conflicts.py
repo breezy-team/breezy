@@ -1097,6 +1097,15 @@ $ cd ..
 $ bzr init experimental
 Created a standalone tree (format: 2a)
 $ cd experimental
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty
+$ bzr add
+adding not-empty
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../experimental/
+2>added not-empty
+2>Committed revision 1.
 # merge debian even without a common ancestor
 $ bzr merge ../debian -r0..2
 2>+N  dir/
@@ -1104,14 +1113,23 @@ $ bzr merge ../debian -r0..2
 2>All changes applied successfully.
 $ bzr commit -m 'merging debian into experimental'
 2>Committing to: .../experimental/
-2>deleted 
-2>modified dir
-2>Committed revision 1.
+2>added dir
+2>added dir/file
+2>Committed revision 2.
 # Create an ubuntu branch with yet another root-id
 $ cd ..
 $ bzr init ubuntu
 Created a standalone tree (format: 2a)
 $ cd ubuntu
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty-ubuntu
+$ bzr add
+adding not-empty-ubuntu
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../ubuntu/
+2>added not-empty-ubuntu
+2>Committed revision 1.
 # Also merge debian
 $ bzr merge ../debian -r0..2
 2>+N  dir/
@@ -1119,11 +1137,12 @@ $ bzr merge ../debian -r0..2
 2>All changes applied successfully.
 $ bzr commit -m 'merging debian'
 2>Committing to: .../ubuntu/
-2>deleted 
-2>modified dir
-2>Committed revision 1.
+2>added dir
+2>added dir/file
+2>Committed revision 2.
 # Now try to merge experimental
 $ bzr merge ../experimental
+2>+N  not-empty
 2>Path conflict: dir / dir
 2>1 conflicts encountered.
 """)
