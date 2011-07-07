@@ -376,3 +376,16 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.addCleanup(b.unlock)
         self.assertEqual(('ghost',),
             b.repository.get_graph().get_parent_map(['tip'])['tip'])
+
+    def test_unversion_root_add_new_root(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        builder.start_series()
+        builder.build_snapshot('rev-1', None,
+            [('add', ('', 'TREE_ROOT', 'directory', ''))])
+        builder.build_snapshot('rev-2', None,
+            [('unversion', 'TREE_ROOT'),
+             ('add', ('', 'my-root', 'directory', ''))])
+        builder.finish_series()
+        rev_tree = builder.get_branch().repository.revision_tree('rev-2')
+        self.assertTreeShape([(u'', 'my-root', 'directory')], rev_tree)
+
