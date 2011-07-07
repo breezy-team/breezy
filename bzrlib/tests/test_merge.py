@@ -153,8 +153,8 @@ class TestMerge(TestCaseWithTransport):
         # Do a commit so there is something to merge
         other_tree.commit('add root to other')
         self.assertNotEquals(root_id_before_merge, other_tree.get_root_id())
-        wt.merge_from_branch(other_tree.branch, from_revision='null:',
-                             to_revision=other_tree.last_revision())
+        wt.merge_from_branch(other_tree.branch,
+                             from_revision=_mod_revision.NULL_REVISION)
         self.assertEqual(root_id_before_merge, wt.get_root_id())
 
     def test_create_rename(self):
