@@ -3216,3 +3216,22 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.hpss_calls = []
         remote_branch.copy_content_into(local)
         self.assertFalse('Branch.revision_history' in self.hpss_calls)
+
+
+class TestUpdateBoundBranch(tests.TestCaseWithTransport):
+
+    def test_bug_786980(self):
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        wt = self.make_branch_and_tree('master')
+        checkout = wt.branch.create_checkout('checkout')
+        wt.commit('add stuff')
+        wt.commit('even more stuff')
+        bound_location = checkout.branch.get_bound_location()
+        # For unclear reasons some users have a bound_location without a final
+        # '/', simulate that by forcing such a value
+        self.assertEndsWith(bound_location, '/')
+        new_location = bound_location.rstrip('/')
+        checkout.branch.set_bound_location(new_location)
+        # bug 786980 was raising ReadOnlyError: A write attempt was made in a
+        # read only transaction during the update()
+        checkout.update()

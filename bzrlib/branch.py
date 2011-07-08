@@ -3466,7 +3466,16 @@ class GenericInterBranch(InterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        source_is_master = (self.source.user_url == bound_location)
+        source_is_master = False
+        if bound_location:
+            # bond_location comes from a config file, some care has to be taken
+            # to relate it to source.user_url
+            normalized = urlutils.normalize_url(bound_location)
+            try:
+                relpath = self.source.user_transport.relpath(normalized)
+                source_is_master = (relpath == '')
+            except (errors.PathNotChild, errors.InvalidURL):
+                source_is_master = False
         if not local and bound_location and not source_is_master:
             # not pulling from master, so we need to update master.
             master_branch = self.target.get_master_branch(possible_transports)
