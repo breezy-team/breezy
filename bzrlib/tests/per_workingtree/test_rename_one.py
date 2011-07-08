@@ -223,6 +223,51 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree.basis_tree())
 
+    def test_rename_one_after_dest_versioned(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add(['a'], ['a-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+        os.rename('a', 'b')
+        tree.add(['b'], ['b-id'])
+
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                               tree)
+        e = self.assertRaises(errors.BzrMoveFailedError,
+            tree.rename_one, 'a', 'b')
+        self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
+
+    def test_rename_one_after_with_after_dest_versioned(self):
+        ''' using after with an already versioned file should fail '''
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+        os.unlink('a')
+
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                               tree)
+        e = self.assertRaises(errors.BzrMoveFailedError,
+            tree.rename_one, 'a', 'b', after=True)
+        self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
+
+    def test_rename_one_after_with_after_dest_added(self):
+        ''' using after with a newly added file should work '''
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add(['a'], ['a-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+        os.rename('a', 'b')
+        tree.add(['b'], ['b-id'])
+
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                               tree)
+        tree.rename_one('a', 'b', after=True)
+        self.assertTreeLayout([('', root_id), ('b', 'a-id')], tree)
+
     def test_rename_one_after_source_removed(self):
         """Rename even if the source was already unversioned."""
         tree = self.make_branch_and_tree('.')

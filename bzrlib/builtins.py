@@ -49,6 +49,7 @@ from bzrlib import (
     ui,
     urlutils,
     views,
+    gpg,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
@@ -231,9 +232,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
-    Additionally for directories, symlinks and files with an executable
-    bit, Bazaar indicates their type using a trailing character: '/', '@'
-    or '*' respectively.
+    Additionally for directories, symlinks and files with a changed
+    executable bit, Bazaar indicates their type using a trailing
+    character: '/', '@' or '*' respectively. These decorations can be
+    disabled using the '--no-classify' option.
 
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
@@ -270,6 +272,9 @@ class cmd_status(Command):
                             short_name='V'),
                      Option('no-pending', help='Don\'t show pending merges.',
                            ),
+                     Option('no-classify',
+                            help='Do not mark object type using indicator.',
+                           ),
                      ]
     aliases = ['st', 'stat']
 
@@ -278,7 +283,8 @@ class cmd_status(Command):
 
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False, no_pending=False, verbose=False):
+            versioned=False, no_pending=False, verbose=False,
+            no_classify=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -298,7 +304,8 @@ class cmd_status(Command):
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
                          to_file=self.outf, short=short, versioned=versioned,
-                         show_pending=(not no_pending), verbose=verbose)
+                         show_pending=(not no_pending), verbose=verbose,
+                         classify=not no_classify)
 
 
 class cmd_cat_revision(Command):
@@ -796,8 +803,9 @@ class cmd_inventory(Command):
                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
-                             for file_id in file_ids if file_id in tree)
+            entries = sorted(
+                (tree.id2path(file_id), tree.inventory[file_id])
+                for file_id in file_ids if tree.has_id(file_id))
         else:
             entries = tree.inventory.entries()
 
@@ -1740,9 +1748,13 @@ class cmd_ancestry(Command):
             b = wt.branch
             last_revision = wt.last_revision()
 
-        revision_ids = b.repository.get_ancestry(last_revision)
-        revision_ids.pop(0)
-        for revision_id in revision_ids:
+        self.add_cleanup(b.repository.lock_read().unlock)
+        graph = b.repository.get_graph()
+        revisions = [revid for revid, parents in
+            graph.iter_ancestry([last_revision])]
+        for revision_id in reversed(revisions):
+            if _mod_revision.is_null(revision_id):
+                continue
             self.outf.write(revision_id + '\n')
 
 
@@ -2150,7 +2162,7 @@ class cmd_added(Command):
         basis_inv = basis.inventory
         inv = wt.inventory
         for file_id in inv:
-            if file_id in basis_inv:
+            if basis_inv.has_id(file_id):
                 continue
             if inv.is_root(file_id) and len(basis_inv) == 0:
                 continue
@@ -2389,7 +2401,9 @@ class cmd_log(Command):
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
-                   )
+                   ),
+            Option('signatures',
+                   help='Show digital signature validity'),
             ]
     encoding_type = 'replace'
 
@@ -2408,6 +2422,7 @@ class cmd_log(Command):
             include_merges=False,
             authors=None,
             exclude_common_ancestry=False,
+            signatures=False,
             ):
         from bzrlib.log import (
             Logger,
@@ -2467,6 +2482,13 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
+        if b.get_config().validate_signatures_in_log():
+            signatures = True
+
+        if signatures:
+            if not gpg.GPGStrategy.verify_signatures_available():
+                raise errors.GpgmeNotInstalled(None)
+
         # Decide on the type of delta & diff filtering to use
         # TODO: add an --all-files option to make this configurable & consistent
         if not verbose:
@@ -2518,6 +2540,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry,
+            signature=signatures
             )
         Logger(b, rqst).show(lf)
 
@@ -6215,7 +6238,9 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
-        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
+        ('cmd_verify_signatures', [],
+                                        'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

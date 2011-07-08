@@ -30,10 +30,8 @@ from bzrlib import (
     )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 
-from bzrlib.tests import TestCase
 
-
-class TestExceptionReporting(TestCase):
+class TestExceptionReporting(tests.TestCaseInTempDir):
 
     def test_exception_exitcode(self):
         # we must use a subprocess, because the normal in-memory mechanism
@@ -63,7 +61,7 @@ class TestExceptionReporting(TestCase):
         self.assertEquals(out, "")
 
 
-class TestOptParseBugHandling(TestCase):
+class TestOptParseBugHandling(tests.TestCase):
     "Test that we handle http://bugs.python.org/issue2931"
 
     def test_nonascii_optparse(self):

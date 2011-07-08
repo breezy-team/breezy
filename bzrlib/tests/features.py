@@ -357,6 +357,7 @@ class _NotRunningAsRoot(Feature):
 not_running_as_root = _NotRunningAsRoot()
 
 apport = ModuleAvailableFeature('apport')
+gpgme = ModuleAvailableFeature('gpgme')
 lzma = ModuleAvailableFeature('lzma')
 meliae = ModuleAvailableFeature('meliae')
 paramiko = ModuleAvailableFeature('paramiko')
@@ -364,6 +365,7 @@ pycurl = ModuleAvailableFeature('pycurl')
 pywintypes = ModuleAvailableFeature('pywintypes')
 sphinx = ModuleAvailableFeature('sphinx')
 subunit = ModuleAvailableFeature('subunit')
+testtools = tests.ModuleAvailableFeature('testtools')
 
 compiled_patiencediff_feature = ModuleAvailableFeature(
     'bzrlib._patiencediff_c')
@@ -512,3 +514,17 @@ class _AttribFeature(Feature):
 
 
 AttribFeature = _AttribFeature()
+
+
+class Win32Feature(tests.Feature):
+    """Feature testing whether we're running selftest on Windows
+    or Windows-like platform.
+    """
+
+    def _probe(self):
+        return sys.platform == 'win32'
+
+    def feature_name(self):
+        return "win32 platform"
+
+win32_feature = Win32Feature()

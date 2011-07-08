@@ -122,6 +122,43 @@ class TestMerge(TestCaseWithTransport):
         finally:
             wt1.unlock()
 
+    def test_merge_into_null_tree(self):
+        wt = self.make_branch_and_tree('tree')
+        null_tree = wt.basis_tree()
+        self.build_tree(['tree/file'])
+        wt.add('file')
+        wt.commit('tree with root')
+        merger = _mod_merge.Merge3Merger(null_tree, null_tree, null_tree, wt,
+                                         this_branch=wt.branch,
+                                         do_merge=False)
+        with merger.make_preview_transform() as tt:
+            self.assertEqual([], tt.find_conflicts())
+            preview = tt.get_preview_tree()
+            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+
+    def test_merge_unrelated_retains_root(self):
+        wt = self.make_branch_and_tree('tree')
+        root_id_before_merge = wt.get_root_id()
+        other_tree = self.make_branch_and_tree('other')
+        # Do a commit so there is something to merge
+        other_tree.commit('commit other')
+        self.assertNotEquals(root_id_before_merge, other_tree.get_root_id())
+        wt.merge_from_branch(other_tree.branch,
+                             from_revision=_mod_revision.NULL_REVISION)
+        self.assertEqual(root_id_before_merge, wt.get_root_id())
+
+    def test_merge_preview_unrelated_retains_root(self):
+        wt = self.make_branch_and_tree('tree')
+        other_tree = self.make_branch_and_tree('other')
+        # Do a commit so there is something to merge
+        other_tree.commit('commit other')
+        merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
+                                         this_branch=wt.branch,
+                                         do_merge=False)
+        with merger.make_preview_transform() as tt:
+            preview = tt.get_preview_tree()
+            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
         tree =self.make_branch_and_tree('.')
@@ -388,6 +425,26 @@ class TestMerge(TestCaseWithTransport):
                              '>>>>>>> MERGE-SOURCE\n',
                              'this/file')
 
+    def test_merge_reverse_revision_range(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit("added a")
+        first_rev = tree.branch.revision_history()[0]
+        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+                                          _mod_revision.NULL_REVISION,
+                                          first_rev)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.interesting_files = 'a'
+        conflict_count = merger.do_merge()
+        self.assertEqual(0, conflict_count)
+
+        self.assertPathDoesNotExist("a")
+        tree.revert()
+        self.assertPathExists("a")
+
     def test_make_merger(self):
         this_tree = self.make_branch_and_tree('this')
         this_tree.commit('rev1', rev_id='rev1')
@@ -456,6 +513,24 @@ class TestMerge(TestCaseWithTransport):
             self.assertEqual('2b\n1\n2a\n', tree_file.read())
         finally:
             tree_file.close()
+
+    def test_merge_require_tree_root(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit("added a")
+        old_root_id = tree.get_root_id()
+        first_rev = tree.branch.revision_history()[0]
+        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+                                          _mod_revision.NULL_REVISION,
+                                          first_rev)
+        merger.merge_type = _mod_merge.Merge3Merger
+        conflict_count = merger.do_merge()
+        self.assertEqual(0, conflict_count)
+        self.assertEquals(set([old_root_id]), tree.all_file_ids())
+        tree.set_parent_ids([])
 
     def test_merge_add_into_deleted_root(self):
         # Yes, people actually do this.  And report bugs if it breaks.

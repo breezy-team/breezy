@@ -55,6 +55,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     missing_parent_conflicts = False
 
+    supports_versioned_directories = True
+
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"

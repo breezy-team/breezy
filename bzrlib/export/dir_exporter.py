@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False,
 
     `dest` should either not exist or should be empty. If it does not exist it
     will be created holding the contents of this tree.
-    
+
     :param fileobj: Is not used in this exporter
 
     :note: If the export fails, the destination directory will be
@@ -66,7 +66,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False,
             try:
                 symlink_target = tree.get_symlink_target(ie.file_id)
                 os.symlink(symlink_target, fullpath)
-            except OSError,e:
+            except OSError, e:
                 raise errors.BzrError(
                     "Failed to create symlink %r -> %r, error: %s"
                     % (fullpath, symlink_target, e))
@@ -96,14 +96,11 @@ def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False,
         if force_mtime is not None:
             mtime = force_mtime
         else:
-            mtime = tree.get_file_mtime(tree.path2id(relpath), relpath)
+            if subdir is None:
+                file_id = tree.path2id(relpath)
+            else:
+                file_id = tree.path2id(osutils.pathjoin(subdir, relpath))
+            mtime = tree.get_file_mtime(file_id, relpath)
         os.utime(fullpath, (mtime, mtime))
 
         yield
-        
-def dir_exporter(tree, dest, root, subdir=None, filtered=False, 
-                 force_mtime=None, fileobj=None):
-
-    for _ in dir_exporter_generator(tree, dest, root, subdir, filtered,
-                                    force_mtime, fileobj):
-        pass

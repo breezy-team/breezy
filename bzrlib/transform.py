@@ -32,6 +32,7 @@ from bzrlib import (
     bencode,
     bzrdir,
     commit,
+    conflicts,
     delta,
     errors,
     inventory,
@@ -225,10 +226,16 @@ class TreeTransformBase(object):
         This means that the old root trans-id becomes obsolete, so it is
         recommended only to invoke this after the root trans-id has become
         irrelevant.
+
         """
         new_roots = [k for k, v in self._new_parent.iteritems() if v is
                      ROOT_PARENT]
         if len(new_roots) < 1:
+            if self.final_kind(self.root) is None:
+                self.cancel_deletion(self.root)
+            if self.final_file_id(self.root) is None:
+                self.version_file(self.tree_file_id(self.root),
+                                     self.root)
             return
         if len(new_roots) != 1:
             raise ValueError('A tree cannot have two roots!')
@@ -236,13 +243,11 @@ class TreeTransformBase(object):
             self._new_root = new_roots[0]
             return
         old_new_root = new_roots[0]
-        # TODO: What to do if a old_new_root is present, but self._new_root is
-        #       not listed as being removed? This code explicitly unversions
-        #       the old root and versions it with the new file_id. Though that
-        #       seems like an incomplete delta
-
         # unversion the new root's directory.
-        file_id = self.final_file_id(old_new_root)
+        if self.final_kind(self._new_root) is None:
+            file_id = self.final_file_id(old_new_root)
+        else:
+            file_id = self.final_file_id(self._new_root)
         if old_new_root in self._new_id:
             self.cancel_versioning(old_new_root)
         else:
@@ -252,7 +257,8 @@ class TreeTransformBase(object):
         if (self.tree_file_id(self._new_root) is not None and
             self._new_root not in self._removed_id):
             self.unversion_file(self._new_root)
-        self.version_file(file_id, self._new_root)
+        if file_id is not None:
+            self.version_file(file_id, self._new_root)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't
@@ -1826,8 +1832,10 @@ class TreeTransform(DiskTreeTransform):
         tree_paths.sort(reverse=True)
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            for num, data in enumerate(tree_paths):
-                path, trans_id = data
+            for num, (path, trans_id) in enumerate(tree_paths):
+                # do not attempt to move root into a subdirectory of itself.
+                if path == '':
+                    continue
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
@@ -2935,7 +2943,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-                        if file_id in basis_tree:
+                        if basis_tree.has_id(file_id):
                             if wt_sha1 != basis_tree.get_file_sha1(file_id):
                                 keep_content = True
                         elif target_kind is None and not target_versioned:
@@ -2971,8 +2979,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
                     new_sha1 = target_tree.get_file_sha1(file_id)
-                    if (file_id in basis_tree and new_sha1 ==
-                        basis_tree.get_file_sha1(file_id)):
+                    if (basis_tree.has_id(file_id) and
+                        new_sha1 == basis_tree.get_file_sha1(file_id)):
                         if file_id in merge_modified:
                             del merge_modified[file_id]
                     else:
@@ -3129,7 +3137,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'unversioned parent':
             file_id = tt.inactive_file_id(conflict[1])
             # special-case the other tree root (move its children instead)
-            if path_tree and file_id in path_tree:
+            if path_tree and path_tree.has_id(file_id):
                 if path_tree.path2id('') == file_id:
                     # This is the root entry, skip it
                     continue
@@ -3153,13 +3161,11 @@ def conflict_pass(tt, conflicts, path_tree=None):
 
 def cook_conflicts(raw_conflicts, tt):
     """Generate a list of cooked conflicts, sorted by file path"""
-    from bzrlib.conflicts import Conflict
     conflict_iter = iter_cook_conflicts(raw_conflicts, tt)
-    return sorted(conflict_iter, key=Conflict.sort_key)
+    return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
 
 
 def iter_cook_conflicts(raw_conflicts, tt):
-    from bzrlib.conflicts import Conflict
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
@@ -3167,16 +3173,17 @@ def iter_cook_conflicts(raw_conflicts, tt):
         modified_path = fp.get_path(conflict[2])
         modified_id = tt.final_file_id(conflict[2])
         if len(conflict) == 3:
-            yield Conflict.factory(c_type, action=action, path=modified_path,
-                                     file_id=modified_id)
+            yield conflicts.Conflict.factory(
+                c_type, action=action, path=modified_path, file_id=modified_id)
 
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
-            yield Conflict.factory(c_type, action=action, path=modified_path,
-                                   file_id=modified_id,
-                                   conflict_path=conflicting_path,
-                                   conflict_file_id=conflicting_id)
+            yield conflicts.Conflict.factory(
+                c_type, action=action, path=modified_path,
+                file_id=modified_id,
+                conflict_path=conflicting_path,
+                conflict_file_id=conflicting_id)
 
 
 class _FileMover(object):

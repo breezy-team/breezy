@@ -32,6 +32,7 @@ from bzrlib import (
     revision as _mod_revision,
     testament as _mod_testament,
     tsort,
+    gpg,
     )
 from bzrlib.bundle import serializer
 """)
@@ -522,21 +523,21 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         if revid and committers:
             result['committers'] = 0
         if revid and revid != _mod_revision.NULL_REVISION:
+            graph = self.get_graph()
             if committers:
                 all_committers = set()
-            revisions = self.get_ancestry(revid)
-            # pop the leading None
-            revisions.pop(0)
-            first_revision = None
+            revisions = [r for (r, p) in graph.iter_ancestry([revid])
+                        if r != _mod_revision.NULL_REVISION]
+            last_revision = None
             if not committers:
                 # ignore the revisions in the middle - just grab first and last
                 revisions = revisions[0], revisions[-1]
             for revision in self.get_revisions(revisions):
-                if not first_revision:
-                    first_revision = revision
+                if not last_revision:
+                    last_revision = revision
                 if committers:
                     all_committers.add(revision.committer)
-            last_revision = revision
+            first_revision = revision
             if committers:
                 result['committers'] = len(all_committers)
             result['firstrev'] = (first_revision.timestamp,
@@ -1002,6 +1003,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             raise AssertionError('_iter_for_revno returned too much history')
         return (True, partial_history[-1])
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -1055,6 +1057,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         raise NotImplementedError(self.revision_trees)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_ancestry(self, revision_id, topo_sorted=True):
         """Return a list of revision-ids integrated by a revision.
 
@@ -1064,6 +1068,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
         This is topologically sorted.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2, "get_ancestry is linear with history.")
         if _mod_revision.is_null(revision_id):
             return [None]
         if not self.has_revision(revision_id):
@@ -1199,6 +1205,24 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         testament = _mod_testament.Testament.from_revision(self, revision_id)
         plaintext = testament.as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+
+    @needs_read_lock
+    def verify_revision(self, revision_id, gpg_strategy):
+        """Verify the signature on a revision.
+        
+        :param revision_id: the revision to verify
+        :gpg_strategy: the GPGStrategy object to used
+        
+        :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
+        """
+        if not self.has_signature_for_revision_id(revision_id):
+            return gpg.SIGNATURE_NOT_SIGNED, None
+        signature = self.get_signature_text(revision_id)
+
+        testament = _mod_testament.Testament.from_revision(self, revision_id)
+        plaintext = testament.as_short_text()
+
+        return gpg_strategy.verify(signature, plaintext)
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
@@ -1404,6 +1428,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     revision_graph_can_have_wrong_parents = None
     # Does this format support rich root data?
     rich_root_data = None
+    # Does this format support explicitly versioned directories?
+    supports_versioned_directories = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1833,9 +1859,11 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
         it is encountered, history extension will stop.
     """
     start_revision = partial_history_cache[-1]
-    iterator = repo.iter_reverse_revision_history(start_revision)
+    graph = repo.get_graph()
+    iterator = graph.iter_lefthand_ancestry(start_revision,
+        (_mod_revision.NULL_REVISION,))
     try:
-        #skip the last revision in the list
+        # skip the last revision in the list
         iterator.next()
         while True:
             if (stop_index is not None and

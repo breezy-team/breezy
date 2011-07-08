@@ -174,7 +174,8 @@ class _ChangeReporter(object):
     """Report changes between two trees"""
 
     def __init__(self, output=None, suppress_root_add=True,
-                 output_file=None, unversioned_filter=None, view_info=None):
+                 output_file=None, unversioned_filter=None, view_info=None,
+                 classify=True):
         """Constructor
 
         :param output: a function with the signature of trace.note, i.e.
@@ -189,6 +190,7 @@ class _ChangeReporter(object):
         :param view_info: A tuple of view_name,view_files if only
             items inside a view are to be reported on, or None for
             no view filtering.
+        :param classify: Add special symbols to indicate file kind.
         """
         if output_file is not None:
             if output is not None:
@@ -213,6 +215,10 @@ class _ChangeReporter(object):
                               'unversioned': '?', # versioned in neither
                               }
         self.unversioned_filter = unversioned_filter
+        if classify:
+            self.kind_marker = osutils.kind_marker
+        else:
+            self.kind_marker = lambda kind: ''
         if view_info is None:
             self.view_name = None
             self.view_files = []
@@ -267,7 +273,7 @@ class _ChangeReporter(object):
             # if the file is not missing in the source, we show its kind
             # when we show two paths.
             if kind[0] is not None:
-                old_path += osutils.kind_marker(kind[0])
+                old_path += self.kind_marker(kind[0])
             old_path += " => "
         elif versioned == 'removed':
             # not present in target
@@ -282,10 +288,10 @@ class _ChangeReporter(object):
             rename = self.versioned_map[versioned]
         # we show the old kind on the new path when the content is deleted.
         if modified == 'deleted':
-            path += osutils.kind_marker(kind[0])
+            path += self.kind_marker(kind[0])
         # otherwise we always show the current kind when there is one
         elif kind[1] is not None:
-            path += osutils.kind_marker(kind[1])
+            path += self.kind_marker(kind[1])
         if exe_change:
             exe = '*'
         else:
@@ -340,7 +346,7 @@ def report_changes(change_iterator, reporter):
                         exe_change, kind)
 
 def report_delta(to_file, delta, short_status=False, show_ids=False, 
-         show_unchanged=False, indent='', filter=None):
+         show_unchanged=False, indent='', filter=None, classify=True):
     """Output this delta in status-like form to to_file.
 
     :param to_file: A file-like object where the output is displayed.
@@ -358,9 +364,13 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
     :param filter: A callable receiving a path and a file id and
         returning True if the path should be displayed.
+
+    :param classify: Add special symbols to indicate file kind.
     """
 
     def decorate_path(path, kind, meta_modified=None):
+        if not classify:
+            return path
         if kind == 'directory':
             path += '/'
         elif kind == 'symlink':

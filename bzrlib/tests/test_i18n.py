@@ -67,7 +67,7 @@ class TestGetText(tests.TestCase):
 
     def setUp(self):
         super(TestGetText, self).setUp()
-        self.overrideAttr(i18n, '_translation', ZzzTranslations())
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_oneline(self):
         self.assertEqual(u"zz{{spam ham eggs}}",
@@ -82,7 +82,7 @@ class TestGetTextPerParagraph(tests.TestCase):
 
     def setUp(self):
         super(TestGetTextPerParagraph, self).setUp()
-        self.overrideAttr(i18n, '_translation', ZzzTranslations())
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_oneline(self):
         self.assertEqual(u"zz{{spam ham eggs}}",

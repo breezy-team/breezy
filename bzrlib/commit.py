@@ -52,7 +52,6 @@
 from bzrlib import (
     debug,
     errors,
-    revision,
     trace,
     tree,
     ui,
@@ -724,7 +723,7 @@ class Commit(object):
         if self.specific_files or self.exclude:
             specific_files = self.specific_files or []
             for path, old_ie in self.basis_inv.iter_entries():
-                if old_ie.file_id in self.builder.new_inventory:
+                if self.builder.new_inventory.has_id(old_ie.file_id):
                     # already added - skip.
                     continue
                 if (is_inside_any(specific_files, path)

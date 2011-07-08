@@ -82,6 +82,9 @@ class ShelfCreator(object):
             # when a tree root was deleted / renamed.
             if kind[0] is None and names[1] == '':
                 continue
+            # Also don't shelve deletion of tree root.
+            if kind[1] is None and names[0] == '':
+                continue
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],
                                           versioned)

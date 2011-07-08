@@ -162,7 +162,7 @@ class MutableTree(tree.Tree):
         if sub_tree_id == self.get_root_id():
             raise errors.BadReferenceTarget(self, sub_tree,
                                      'Trees have the same root id.')
-        if sub_tree_id in self:
+        if self.has_id(sub_tree_id):
             raise errors.BadReferenceTarget(self, sub_tree,
                                             'Root id already present in tree')
         self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
@@ -554,6 +554,8 @@ class _SmartAddHelper(object):
         entry = self._invdelta.get(inv_path)
         if entry is not None:
             return entry[3]
+        # Find a 'best fit' match if the filesystem is case-insensitive
+        inv_path = self.tree._fix_case_of_inventory_path(inv_path)
         file_id = self.tree.path2id(inv_path)
         if file_id is not None:
             return self.tree.iter_entries_by_dir([file_id]).next()[1]
