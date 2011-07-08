@@ -135,14 +135,6 @@ def get_export_generator(tree, dest=None, format=None, root=None, subdir=None,
         filtered = False
 
     tree.lock_read()
-    if filtered:
-        from bzrlib.filter_tree import ContentFilterTree
-        warnings.warn(
-            "passing filtered=True to export is deprecated in bzr 2.4",
-            stacklevel=2)
-        tree = ContentFilterTree(tree, tree._content_filter_stack)
-
-    tree.lock_read()
     try:
         for _ in _exporters[format](
             tree, dest, root, subdir,
