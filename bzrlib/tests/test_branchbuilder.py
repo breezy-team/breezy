@@ -389,3 +389,50 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_tree = builder.get_branch().repository.revision_tree('rev-2')
         self.assertTreeShape([(u'', 'my-root', 'directory')], rev_tree)
 
+    def test_empty_flush(self):
+        """A flush with no actions before it is a no-op."""
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        builder.start_series()
+        builder.build_snapshot('rev-1', None,
+            [('add', ('', 'TREE_ROOT', 'directory', ''))])
+        builder.build_snapshot('rev-2', None, [('flush', None)])
+        builder.finish_series()
+        rev_tree = builder.get_branch().repository.revision_tree('rev-2')
+        self.assertTreeShape([(u'', 'TREE_ROOT', 'directory')], rev_tree)
+
+    def test_kind_change(self):
+        """It's possible to change the kind of an entry in a single snapshot
+        with a bit of help from the 'flush' action.
+        """
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        builder.start_series()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'a-root-id', 'directory', None)),
+             ('add', (u'a', 'a-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', None,
+            [('unversion', 'a-id'),
+             ('flush', None),
+             ('add', (u'a', 'a-id', 'directory', None))])
+        builder.finish_series()
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape(
+            [(u'', 'a-root-id', 'directory'), (u'a', 'a-id', 'directory')],
+            rev_tree)
+
+    def test_pivot_root(self):
+        """It's possible (albeit awkward) to move an existing dir to the root
+        in a single snapshot by using unversion then flush then add.
+        """
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        builder.start_series()
+        builder.build_snapshot('A-id', None,
+            [('add', (u'', 'orig-root', 'directory', None)),
+             ('add', (u'dir', 'dir-id', 'directory', None))])
+        builder.build_snapshot('B-id', None,
+            [('unversion', 'orig-root'),  # implicitly unversions all children
+             ('flush', None),
+             ('add', (u'', 'dir-id', 'directory', None))])
+        builder.finish_series()
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'dir-id', 'directory')], rev_tree)
+

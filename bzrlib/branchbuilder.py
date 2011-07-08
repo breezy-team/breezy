@@ -166,6 +166,11 @@ class BranchBuilder(object):
         committer=None, timezone=None, message_callback=None):
         """Build a commit, shaped in a specific way.
 
+        Most of the actions are self-explanatory.  'flush' is special action to
+        break a series of actions into discrete steps so that complex changes
+        (such as unversioning a file-id and re-adding it with a different kind)
+        can be expressed in a way that will clearly work.
+
         :param revision_id: The handle for the new commit, can be None
         :param parent_ids: A list of parent_ids to use for the commit.
             It can be None, which indicates to use the last commit.
@@ -174,7 +179,7 @@ class BranchBuilder(object):
             ('modify', ('file-id', 'new-content'))
             ('unversion', 'file-id')
             ('rename', ('orig-path', 'new-path'))
-            ('checkpoint', None)
+            ('flush', None)
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
         :param message_callback: A message callback to use for the commit, as
@@ -209,56 +214,56 @@ class BranchBuilder(object):
             # inventory entry. And the only public function to create a
             # directory is MemoryTree.mkdir() which creates the directory, but
             # also always adds it. So we have to use a multi-pass setup.
-            sa = _SnapshotActions()
+            pending = _PendingActions()
             for action, info in actions:
                 if action == 'add':
                     path, file_id, kind, content = info
                     if kind == 'directory':
-                        sa.to_add_directories.append((path, file_id))
+                        pending.to_add_directories.append((path, file_id))
                     else:
-                        sa.to_add_files.append(path)
-                        sa.to_add_file_ids.append(file_id)
-                        sa.to_add_kinds.append(kind)
+                        pending.to_add_files.append(path)
+                        pending.to_add_file_ids.append(file_id)
+                        pending.to_add_kinds.append(kind)
                         if content is not None:
-                            sa.new_contents[file_id] = content
+                            pending.new_contents[file_id] = content
                 elif action == 'modify':
                     file_id, content = info
-                    sa.new_contents[file_id] = content
+                    pending.new_contents[file_id] = content
                 elif action == 'unversion':
-                    sa.to_unversion_ids.add(info)
+                    pending.to_unversion_ids.add(info)
                 elif action == 'rename':
                     from_relpath, to_relpath = info
-                    sa.to_rename.append((from_relpath, to_relpath))
-                elif action == 'checkpoint':
-                    self._checkpoint_snapshot(tree, sa)
-                    sa = _SnapshotActions()
+                    pending.to_rename.append((from_relpath, to_relpath))
+                elif action == 'flush':
+                    self._flush_pending(tree, pending)
+                    pending = _PendingActions()
                 else:
                     raise ValueError('Unknown build action: "%s"' % (action,))
-            self._checkpoint_snapshot(tree, sa)
+            self._flush_pending(tree, pending)
             return self._do_commit(tree, message=message, rev_id=revision_id,
                 timestamp=timestamp, timezone=timezone, committer=committer,
                 message_callback=message_callback)
         finally:
             tree.unlock()
 
-    def _checkpoint_snapshot(self, tree, snapshot_actions):
-        sa = snapshot_actions
-        for path, file_id in sa.to_add_directories:
+    def _flush_pending(self, tree, pending):
+        """Flush the pending actions in 'pending', i.e. apply them to 'tree'."""
+        for path, file_id in pending.to_add_directories:
             if path == '':
                 old_id = tree.path2id(path)
-                if old_id is not None and old_id in sa.to_unversion_ids:
+                if old_id is not None and old_id in pending.to_unversion_ids:
                     # We're overwriting this path, no need to unversion
-                    sa.to_unversion_ids.discard(old_id)
+                    pending.to_unversion_ids.discard(old_id)
                 # Special case, because the path already exists
                 tree.add([path], [file_id], ['directory'])
             else:
                 tree.mkdir(path, file_id)
-        for from_relpath, to_relpath in sa.to_rename:
+        for from_relpath, to_relpath in pending.to_rename:
             tree.rename_one(from_relpath, to_relpath)
-        if sa.to_unversion_ids:
-            tree.unversion(sa.to_unversion_ids)
-        tree.add(sa.to_add_files, sa.to_add_file_ids, sa.to_add_kinds)
-        for file_id, content in sa.new_contents.iteritems():
+        if pending.to_unversion_ids:
+            tree.unversion(pending.to_unversion_ids)
+        tree.add(pending.to_add_files, pending.to_add_file_ids, pending.to_add_kinds)
+        for file_id, content in pending.new_contents.iteritems():
             tree.put_file_bytes_non_atomic(file_id, content)
 
     def get_branch(self):
@@ -266,7 +271,12 @@ class BranchBuilder(object):
         return self._branch
 
 
-class _SnapshotActions(object):
+class _PendingActions(object):
+    """Pending actions for build_snapshot to take.
+
+    This is just a simple class to hold a bunch of the intermediate state of
+    build_snapshot in single object.
+    """
 
     def __init__(self):
         self.to_add_directories = []
