@@ -61,9 +61,6 @@ def prepare_tarball_item(tree, root, final_path, entry, force_mtime=None):
         content = tree.get_file_text(entry.file_id)
         item.size = len(content)
         fileobj = StringIO.StringIO(content)
-        if filtered:
-            raise AssertionError("exporters should now be given a "
-                "ContentFilterTree instead of filtered=True")
     elif entry.kind == "directory":
         item.type = tarfile.DIRTYPE
         item.name += '/'
