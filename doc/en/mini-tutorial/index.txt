@@ -56,8 +56,12 @@ Starting a new project
 
 Let's suppose we want to store a new project under Bazaar.  First, we'll
 make a *repository directory* to hold all our work related to this
-project.  We can then have multiple branch directories under here, and
-they'll all store the committed history in the repository.
+project, where developers can create branches to test development of
+specific features or, more generally, modifications to the working file
+set.  
+
+After creating the repository, change to that directory, and create the
+project's main trunk branch.
 
 ::
 
@@ -67,8 +71,25 @@ they'll all store the committed history in the repository.
   cd trunk
 
 
+Adding files
+============
+
+Now that we have the trunk, we need to move to that directory and
+create some example files for the first version of that project.  Create
+a file ``test1.txt`` using a text editor (like emacs, nano, or notepad),
+and save it.  Then we'll "add" the file, which tells bzr we want it to
+track changes::
+
+  bzr add test1.txt
+
+and then commit, which saves a snapshot of all versioned files::
+
+  bzr commit -m "Added first line of text"
+
+
 Making changes to your files
 ============================
+
 
 Let's change a file and commit that change to your branch.
 
