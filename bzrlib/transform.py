@@ -243,13 +243,11 @@ class TreeTransformBase(object):
             self._new_root = new_roots[0]
             return
         old_new_root = new_roots[0]
-        # TODO: What to do if a old_new_root is present, but self._new_root is
-        #       not listed as being removed? This code explicitly unversions
-        #       the old root and versions it with the new file_id. Though that
-        #       seems like an incomplete delta
-
         # unversion the new root's directory.
-        file_id = self.final_file_id(old_new_root)
+        if self.final_kind(self._new_root) is None:
+            file_id = self.final_file_id(old_new_root)
+        else:
+            file_id = self.final_file_id(self._new_root)
         if old_new_root in self._new_id:
             self.cancel_versioning(old_new_root)
         else:
