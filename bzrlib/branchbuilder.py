@@ -174,6 +174,7 @@ class BranchBuilder(object):
             ('modify', ('file-id', 'new-content'))
             ('unversion', 'file-id')
             ('rename', ('orig-path', 'new-path'))
+            ('checkpoint', None)
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
         :param message_callback: A message callback to use for the commit, as
@@ -208,57 +209,71 @@ class BranchBuilder(object):
             # inventory entry. And the only public function to create a
             # directory is MemoryTree.mkdir() which creates the directory, but
             # also always adds it. So we have to use a multi-pass setup.
-            to_add_directories = []
-            to_add_files = []
-            to_add_file_ids = []
-            to_add_kinds = []
-            new_contents = {}
-            to_unversion_ids = set()
-            to_rename = []
+            sa = _SnapshotActions()
             for action, info in actions:
                 if action == 'add':
                     path, file_id, kind, content = info
                     if kind == 'directory':
-                        to_add_directories.append((path, file_id))
+                        sa.to_add_directories.append((path, file_id))
                     else:
-                        to_add_files.append(path)
-                        to_add_file_ids.append(file_id)
-                        to_add_kinds.append(kind)
+                        sa.to_add_files.append(path)
+                        sa.to_add_file_ids.append(file_id)
+                        sa.to_add_kinds.append(kind)
                         if content is not None:
-                            new_contents[file_id] = content
+                            sa.new_contents[file_id] = content
                 elif action == 'modify':
                     file_id, content = info
-                    new_contents[file_id] = content
+                    sa.new_contents[file_id] = content
                 elif action == 'unversion':
-                    to_unversion_ids.add(info)
+                    sa.to_unversion_ids.add(info)
                 elif action == 'rename':
                     from_relpath, to_relpath = info
-                    to_rename.append((from_relpath, to_relpath))
+                    sa.to_rename.append((from_relpath, to_relpath))
+                elif action == 'checkpoint':
+                    self._checkpoint_snapshot(tree, sa)
+                    sa = _SnapshotActions()
                 else:
                     raise ValueError('Unknown build action: "%s"' % (action,))
-            for path, file_id in to_add_directories:
-                if path == '':
-                    old_id = tree.path2id(path)
-                    if old_id is not None and old_id in to_unversion_ids:
-                        # We're overwriting this path, no need to unversion
-                        to_unversion_ids.discard(old_id)
-                    # Special case, because the path already exists
-                    tree.add([path], [file_id], ['directory'])
-                else:
-                    tree.mkdir(path, file_id)
-            for from_relpath, to_relpath in to_rename:
-                tree.rename_one(from_relpath, to_relpath)
-            if to_unversion_ids:
-                tree.unversion(to_unversion_ids)
-            tree.add(to_add_files, to_add_file_ids, to_add_kinds)
-            for file_id, content in new_contents.iteritems():
-                tree.put_file_bytes_non_atomic(file_id, content)
+            self._checkpoint_snapshot(tree, sa)
             return self._do_commit(tree, message=message, rev_id=revision_id,
                 timestamp=timestamp, timezone=timezone, committer=committer,
                 message_callback=message_callback)
         finally:
             tree.unlock()
 
+    def _checkpoint_snapshot(self, tree, snapshot_actions):
+        sa = snapshot_actions
+        for path, file_id in sa.to_add_directories:
+            if path == '':
+                old_id = tree.path2id(path)
+                if old_id is not None and old_id in sa.to_unversion_ids:
+                    # We're overwriting this path, no need to unversion
+                    sa.to_unversion_ids.discard(old_id)
+                # Special case, because the path already exists
+                tree.add([path], [file_id], ['directory'])
+            else:
+                tree.mkdir(path, file_id)
+        for from_relpath, to_relpath in sa.to_rename:
+            tree.rename_one(from_relpath, to_relpath)
+        if sa.to_unversion_ids:
+            tree.unversion(sa.to_unversion_ids)
+        tree.add(sa.to_add_files, sa.to_add_file_ids, sa.to_add_kinds)
+        for file_id, content in sa.new_contents.iteritems():
+            tree.put_file_bytes_non_atomic(file_id, content)
+
     def get_branch(self):
         """Return the branch created by the builder."""
         return self._branch
+
+
+class _SnapshotActions(object):
+
+    def __init__(self):
+        self.to_add_directories = []
+        self.to_add_files = []
+        self.to_add_file_ids = []
+        self.to_add_kinds = []
+        self.new_contents = {}
+        self.to_unversion_ids = set()
+        self.to_rename = []
+

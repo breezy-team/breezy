@@ -200,6 +200,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
              ('base', None, []),
              ('tip', None, [('unversion', 'my-root'),
                             ('unversion', ROOT_ID),
+                            ('checkpoint', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
@@ -228,9 +229,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
             # 'my-root' at root
              ('right', None, [('unversion', 'my-root'),
                               ('unversion', ROOT_ID),
+                              ('checkpoint', None),
                               ('add', ('', 'my-root', 'directory', ''))]),
              ('tip', ['base', 'right'], [('unversion', 'my-root'),
                             ('unversion', ROOT_ID),
+                            ('checkpoint', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
