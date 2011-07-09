@@ -59,6 +59,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Use assertPathDoesNotExist and assertPathExist instead of failIfExists and
+  failUnlessExists in the test suite. This requires bzr-2.4 to run the tests
+  but doesn't affect the plugin compatibility itself with previous verions
+  of bzr. (Vincent Ladeuil)
 
 
 bzr-upload 1.0.0

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -144,11 +144,11 @@ class UploadUtilsMixin(object):
             'For path %s, mode is %s not %s' %
             (full_path, oct(mode), oct(expected_mode)))
 
-    def failIfUpFileExists(self, path, base=upload_dir):
-        self.failIfExists(osutils.pathjoin(base, path))
+    def assertUpPathDoesNotExist(self, path, base=upload_dir):
+        self.assertPathDoesNotExist(osutils.pathjoin(base, path))
 
-    def failUnlessUpFileExists(self, path, base=upload_dir):
-        self.failUnlessExists(osutils.pathjoin(base, path))
+    def assertUpPathExists(self, path, base=upload_dir):
+        self.assertPathExists(osutils.pathjoin(base, path))
 
     def set_file_content(self, path, content, base=branch_dir):
         f = file(osutils.pathjoin(base, path), 'wb')
@@ -264,7 +264,7 @@ class TestUploadMixin(UploadUtilsMixin):
         fpath = '%s/%s' % (dir_name, file_name)
         self.add_file(fpath, 'baz')
 
-        self.failIfUpFileExists(fpath)
+        self.assertUpPathDoesNotExist(fpath)
 
         self.do_upload()
 
@@ -346,7 +346,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.add_file('hello', 'foo') # rev2
         self.modify_file('hello', 'bar') # rev3
 
-        self.failIfUpFileExists('hello')
+        self.assertUpPathDoesNotExist('hello')
 
         revspec = revisionspec.RevisionSpec.from_string('2')
         self.do_upload(revision=[revspec])
@@ -435,7 +435,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('link')
+        self.assertUpPathDoesNotExist('link')
 
     def test_rename_symlink(self):
         self.make_branch_and_working_tree()
@@ -446,8 +446,8 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists(old_name)
-        self.failIfUpFileExists(new_name)
+        self.assertUpPathDoesNotExist(old_name)
+        self.assertUpPathDoesNotExist(new_name)
 
     def get_upload_auto(self):
         return cmds.get_upload_auto(self.tree.branch)
@@ -502,7 +502,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         revid_path = 'dir/revid-path'
         cmds.set_upload_revid_location(self.tree.branch, revid_path)
-        self.failIfUpFileExists(revid_path)
+        self.assertUpPathDoesNotExist(revid_path)
 
         self.do_full_upload()
 
@@ -510,7 +510,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.failUnlessUpFileExists(revid_path)
+        self.assertUpPathExists(revid_path)
         self.assertUpFileEqual('baz', 'dir/goodbye')
         self.assertUpFileEqual('foo', 'dir/hello')
 
@@ -522,7 +522,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('foo')
+        self.assertUpPathDoesNotExist('foo')
 
     def test_ignore_regexp(self):
         self.make_branch_and_working_tree()
@@ -532,7 +532,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('foo')
+        self.assertUpPathDoesNotExist('foo')
 
     def test_ignore_directory(self):
         self.make_branch_and_working_tree()
@@ -542,7 +542,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('dir')
+        self.assertUpPathDoesNotExist('dir')
 
     def test_ignore_nested_directory(self):
         self.make_branch_and_working_tree()
@@ -554,8 +554,8 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('dir')
-        self.failIfUpFileExists('dir/foo/bar')
+        self.assertUpPathDoesNotExist('dir')
+        self.assertUpPathDoesNotExist('dir/foo/bar')
 
     def test_ignore_change_file_into_dir(self):
         self.make_branch_and_working_tree()
@@ -617,7 +617,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_full_upload()
 
         revid_path = cmds.get_upload_revid_location(self.tree.branch)
-        self.failUnlessUpFileExists(revid_path)
+        self.assertUpPathExists(revid_path)
 
     def test_invalid_revspec(self):
         self.make_branch_and_working_tree()
@@ -633,7 +633,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_full_upload()
         self.add_file('dir/goodbye', 'baz')
 
-        self.failIfUpFileExists('dir/goodbye')
+        self.assertUpPathDoesNotExist('dir/goodbye')
 
         self.do_full_upload()
 
@@ -657,7 +657,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('hello')
+        self.assertUpPathDoesNotExist('hello')
 
     def test_delete_dir_and_subdir(self):
         self.make_branch_and_working_tree()
@@ -673,9 +673,9 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('dir/subdir/a')
-        self.failIfUpFileExists('dir/subdir')
-        self.failIfUpFileExists('dir')
+        self.assertUpPathDoesNotExist('dir/subdir/a')
+        self.assertUpPathDoesNotExist('dir/subdir')
+        self.assertUpPathDoesNotExist('dir')
         self.assertUpFileEqual('foo', 'a')
 
     def test_delete_one_file_rename_to_deleted(self):
@@ -690,7 +690,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('b')
+        self.assertUpPathDoesNotExist('b')
         self.assertUpFileEqual('bar', 'a')
 
     def test_rename_outside_dir_delete_dir(self):
@@ -705,8 +705,8 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('dir/a')
-        self.failIfUpFileExists('dir')
+        self.assertUpPathDoesNotExist('dir/a')
+        self.assertUpPathDoesNotExist('dir')
         self.assertUpFileEqual('foo', 'a')
 
     def test_delete_symlink(self):
@@ -717,14 +717,14 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_upload()
 
-        self.failIfUpFileExists('link')
+        self.assertUpPathDoesNotExist('link')
 
     def test_upload_for_the_first_time_do_a_full_upload(self):
         self.make_branch_and_working_tree()
         self.add_file('hello', 'bar')
 
         revid_path = cmds.get_upload_revid_location(self.tree.branch)
-        self.failIfUpFileExists(revid_path)
+        self.assertUpPathDoesNotExist(revid_path)
 
         self.do_upload()
 

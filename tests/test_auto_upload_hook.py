@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,16 +51,16 @@ class AutoPushWithLocation(AutoPushHookTests):
         cmds.set_upload_auto_quiet(self.wt.branch, 'True')
 
     def test_auto_push_on_commit(self):
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')
         self.build_tree(['b'])
         self.wt.add(['b'])
         self.wt.commit("two")
-        self.failUnlessExists('target')
-        self.failUnlessExists(os.path.join('target', 'a'))
-        self.failUnlessExists(os.path.join('target', 'b'))
+        self.assertPathExists('target')
+        self.assertPathExists(os.path.join('target', 'a'))
+        self.assertPathExists(os.path.join('target', 'b'))
 
     def test_disable_auto_push(self):
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')
         self.build_tree(['b'])
         self.wt.add(['b'])
         self.wt.commit("two")
@@ -68,7 +68,7 @@ class AutoPushWithLocation(AutoPushHookTests):
         self.build_tree(['c'])
         self.wt.add(['c'])
         self.wt.commit("three")
-        self.failIfExists(os.path.join('target', 'c'))
+        self.assertPathDoesNotExist(os.path.join('target', 'c'))
 
 
 class AutoPushWithoutLocation(AutoPushHookTests):
@@ -79,8 +79,8 @@ class AutoPushWithoutLocation(AutoPushHookTests):
         cmds.set_upload_auto(self.wt.branch, True)
 
     def test_dont_push_if_no_location(self):
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')
         self.build_tree(['b'])
         self.wt.add(['b'])
         self.wt.commit("two")
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')
