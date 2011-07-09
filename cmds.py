@@ -325,9 +325,9 @@ class BzrUploader(object):
                     self.make_remote_dir_robustly(relpath)
                 elif ie.kind == 'symlink':
                     if not self.quiet:
-                        target = self.tree.path_content_summary(path)[3]
+                        target = self.tree.path_content_summary(relpath)[3]
                         self.outf.write('Not uploading symlink %s -> %s\n'
-                                        % (path, target))
+                                        % (relpath, target))
                 else:
                     raise NotImplementedError
             self.set_uploaded_revid(self.rev_id)
