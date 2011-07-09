@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Fix a typo to avoid crashing when encountering symlinks during
+  an full upload. (Jonathan Paugh)
+
 Documentation
 *************
 
