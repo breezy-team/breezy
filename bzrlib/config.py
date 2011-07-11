@@ -31,6 +31,7 @@ gpg_signing_command=name-of-program
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
+gpg_signing_key=amy@example.com
 
 in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -230,7 +231,7 @@ class Config(object):
     def _get_signing_policy(self):
         """Template method to override signature creation policy."""
 
-    def _get_signing_key(self):
+    def _get_gpg_signing_key(self):
         """Template method to override default gpg key."""
 
     option_ref_re = None
@@ -539,9 +540,9 @@ class Config(object):
             return True
         return False
 
-    def signing_key(self):
+    def gpg_signing_key(self):
         """GPG user-id to sign commits"""
-        key = self._get_signing_key()
+        key = self._get_gpg_signing_key()
         if key == "default" or key == None:
             return self.user_email()
         else:
@@ -837,9 +838,9 @@ class IniBasedConfig(Config):
         if policy:
             return self._string_to_signing_policy(policy)
 
-    def _get_signing_key(self):
-        """See Config._get_signing_key"""
-        return self._get_user_option('signing_key')
+    def _get_gpg_signing_key(self):
+        """See Config._get_gpg_signing_key"""
+        return self._get_user_option('gpg_signing_key')
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""
@@ -1381,9 +1382,9 @@ class BranchConfig(Config):
         """See Config._get_signing_policy."""
         return self._get_best_value('_get_signing_policy')
 
-    def _get_signing_key(self):
-        """See Config._get_signing_key."""
-        return self._get_best_value('_get_signing_key')
+    def _get_gpg_signing_key(self):
+        """See Config._get_gpg_signing_key."""
+        return self._get_best_value('_get_gpg_signing_key')
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
