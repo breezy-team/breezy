@@ -2505,7 +2505,11 @@ class TestCaseWithMemoryTransport(TestCase):
         real branch.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        bzrdir.BzrDir.create_standalone_workingtree(root)
+        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        # Hack for speed: remember the raw bytes of the dirstate file so that
+        # we don't need to re-open the wt to check it hasn't changed.
+        TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
+            wt.control_transport.get_bytes('dirstate'))
 
     def _check_safety_net(self):
         """Check that the safety .bzr directory have not been touched.
@@ -2514,10 +2518,10 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        self.permit_url(_mod_transport.get_transport(root).base)
-        wt = workingtree.WorkingTree.open(root)
-        last_rev = wt.last_revision()
-        if last_rev != 'null:':
+        t = _mod_transport.get_transport(root)
+        self.permit_url(t.base)
+        if (t.get_bytes('.bzr/checkout/dirstate') != 
+                TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE):
             # The current test have modified the /bzr directory, we need to
             # recreate a new one or all the followng tests will fail.
             # If you need to inspect its content uncomment the following line
