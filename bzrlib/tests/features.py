@@ -482,4 +482,28 @@ class Win32Feature(Feature):
     def feature_name(self):
         return "win32 platform"
 
+
 win32_feature = Win32Feature()
+
+
+for name in ['HTTPServerFeature', 
+    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
+    'OsFifoFeature', 'UnicodeFilenameFeature',
+    'ByteStringNamedFilesystem', 'UTF8Filesystem',
+    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
+    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
+    'posix_permissions_feature',
+    ]:
+    setattr(tests, name, _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 4, 0)),
+        'bzrlib.tests', name,
+        name, 'bzrlib.tests.features'))
+
+
+for (old_name, new_name) in [
+    ('UnicodeFilename', 'UnicodeFilenameFeature'),
+    ]:
+    setattr(tests, name, _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 4, 0)),
+        'bzrlib.tests', old_name,
+        new_name, 'bzrlib.tests.features'))

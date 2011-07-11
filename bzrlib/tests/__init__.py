@@ -94,6 +94,10 @@ from bzrlib.transport import (
     memory,
     pathfilter,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 from bzrlib.tests import (
     test_server,
     TestUtil,
@@ -4391,3 +4395,9 @@ try:
             return result
 except ImportError:
     pass
+
+
+@deprecated_function(deprecated_in((2, 4, 0)))
+def ModuleAvailableFeature(name):
+    from bzrlib.tests import features
+    return features.ModuleAvailableFeature(name)
