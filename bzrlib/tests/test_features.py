@@ -68,11 +68,13 @@ class TestUnavailableFeature(tests.TestCase):
         self.assertIs(feature, exception.args[0])
 
 
+# Although this was deprecated a long time ago, please keep it here because
+# it's really just a test fixture for test-feature deprecation.
 simple_thunk_feature = features._CompatabilityThunkFeature(
     symbol_versioning.deprecated_in((2, 1, 0)),
     'bzrlib.tests.test_features',
     'simple_thunk_feature',
-    'UnicodeFilename',
+    'UnicodeFilenameFeature',
     replacement_module='bzrlib.tests.features')
 
 
@@ -82,9 +84,9 @@ class Test_CompatibilityFeature(tests.TestCase):
         res = self.callDeprecated(
             ['bzrlib.tests.test_features.simple_thunk_feature '
              'was deprecated in version 2.1.0. '
-             'Use bzrlib.tests.features.UnicodeFilename instead.'],
+             'Use bzrlib.tests.features.UnicodeFilenameFeature instead.'],
             simple_thunk_feature.available)
-        self.assertEqual(features.UnicodeFilename.available(), res)
+        self.assertEqual(features.UnicodeFilenameFeature.available(), res)
 
 
 class TestModuleAvailableFeature(tests.TestCase):

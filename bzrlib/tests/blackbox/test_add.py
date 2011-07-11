@@ -233,7 +233,7 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def test_add_multiple_files_in_unicode_cwd(self):
         """Adding multiple files in a non-ascii cwd, see lp:686611"""
-        self.requireFeature(features.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self.make_branch_and_tree(u"\xA7")
         self.build_tree([u"\xA7/a", u"\xA7/b"])
         out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")

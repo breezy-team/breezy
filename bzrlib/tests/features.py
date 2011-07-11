@@ -202,26 +202,6 @@ class _HTTPSServerFeature(Feature):
 HTTPSServerFeature = _HTTPSServerFeature()
 
 
-class _UnicodeFilename(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            os.stat(u'\u03b1')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilename = _UnicodeFilename()
-
-
 class _ByteStringNamedFilesystem(Feature):
     """Is the filesystem based on bytes?"""
 
@@ -365,7 +345,7 @@ pycurl = ModuleAvailableFeature('pycurl')
 pywintypes = ModuleAvailableFeature('pywintypes')
 sphinx = ModuleAvailableFeature('sphinx')
 subunit = ModuleAvailableFeature('subunit')
-testtools = tests.ModuleAvailableFeature('testtools')
+testtools = ModuleAvailableFeature('testtools')
 
 compiled_patiencediff_feature = ModuleAvailableFeature(
     'bzrlib._patiencediff_c')
@@ -387,31 +367,6 @@ class _BackslashDirSeparatorFeature(Feature):
         return "Filesystem treats '\\' as a directory separator."
 
 backslashdir_feature = _BackslashDirSeparatorFeature()
-
-
-class _PosixPermissionsFeature(Feature):
-
-    def _probe(self):
-        def has_perms():
-            # create temporary file and check if specified perms are
-            # maintained.
-            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
-            fd, name = f
-            os.close(fd)
-            os.chmod(name, write_perms)
-
-            read_perms = os.stat(name).st_mode & 0777
-            os.unlink(name)
-            return (write_perms == read_perms)
-
-        return (os.name == 'posix') and has_perms()
-
-    def feature_name(self):
-        return 'POSIX permissions support'
-
-
-posix_permissions_feature = _PosixPermissionsFeature()
 
 
 class _ChownFeature(Feature):
@@ -516,7 +471,7 @@ class _AttribFeature(Feature):
 AttribFeature = _AttribFeature()
 
 
-class Win32Feature(tests.Feature):
+class Win32Feature(Feature):
     """Feature testing whether we're running selftest on Windows
     or Windows-like platform.
     """

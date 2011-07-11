@@ -549,7 +549,7 @@ class TestMove(TestCaseWithWorkingTree):
 
     def test_move_to_unversioned_non_ascii_dir(self):
         """Check error when moving to unversioned non-ascii directory"""
-        self.requireFeature(features.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", u"\xA7/"])
         tree.add(["a"])
@@ -560,7 +560,7 @@ class TestMove(TestCaseWithWorkingTree):
 
     def test_move_unversioned_non_ascii(self):
         """Check error when moving an unversioned non-ascii file"""
-        self.requireFeature(features.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7", "dir/"])
         tree.add("dir")

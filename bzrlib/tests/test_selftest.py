@@ -96,7 +96,7 @@ class MetaTestLog(tests.TestCase):
 class TestTreeShape(tests.TestCaseInTempDir):
 
     def test_unicode_paths(self):
-        self.requireFeature(features.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         filename = u'hell\u00d8'
         self.build_tree_contents([(filename, 'contents of hello')])
