@@ -56,6 +56,12 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
+  just compares the bytes in the dirstate file to its pristine state,
+  rather than opening the WorkingTree and calling ``last_revision()``.
+  This reduces the overall test suite time by about 10% on my laptop.
+  (Andrew Bennetts)
+
 
 bzr 2.4b5
 #########
