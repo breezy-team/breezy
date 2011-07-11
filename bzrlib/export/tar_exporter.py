@@ -141,10 +141,10 @@ def tgz_exporter_generator(tree, dest, root, subdir, filtered=False,
         root_mtime = None
 
     is_stdout = False
+    basename = None
     if fileobj is not None:
         stream = fileobj
     elif dest == '-':
-        basename = None
         stream = sys.stdout
         is_stdout = True
     else:
