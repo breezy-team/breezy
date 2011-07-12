@@ -179,10 +179,6 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
     def _file_size(self, entry, stat_value):
         return entry.text_size
 
-    def _get_ancestors(self, default_revision):
-        return set(self._repository.get_ancestry(self._revision_id,
-                                                 topo_sorted=False))
-
     def walkdirs(self, prefix=""):
         _directory = 'directory'
         inv = self.inventory

@@ -56,40 +56,28 @@ To sign a single commit or a range of commits use the (hidden) command
 Verifying Commits
 -----------------
 
-Unfortunately there is currently no command for verifying signatures.  This can
-be done manually using bzrlib and Python::
+Signatures can be verified with the ``bzr verify-signatures`` command.  By
+default this will check all commits in the branch and notify that all commits
+are signed by known trusted signatures.  If not all commits have trusted
+signatures it will give a summary of the number of commits which are invalid,
+having missing keys or are not signed.
 
-  >>> from bzrlib.branch import Branch
-  >>> b = Branch.open('/home/amy/src/daleks')
-  >>> b.last_revision()
-  'amy@example.com-20110527185938-hluafawphszb8dl1'
-  >>> print b.repository.get_signature_text(b.last_revision())
-  -----BEGIN PGP SIGNED MESSAGE-----
-  Hash: SHA1
+The ``verify-signatures`` command can be given a comma separated list of key
+patters to specify a list of acceptable keys.  It can also take a range of
+commits to verify in the current branch.  Finally using the verbose option will
+list each key that is valid or authors for commits which failed::
 
-  bazaar-ng testament short form 1
-  revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
-  sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
-  -----BEGIN PGP SIGNATURE-----
-  Version: GnuPG v1.4.11 (GNU/Linux)
-
-  iEYEARECAAYFAk32HFcACgkQpQbm1N1NUIiBXACg6ILsyvJp4+Twq190qk1I4v9K
-  PAAAoI8pg9s7uuqldqOwz6/uwH3ezdSX
-  =+NcB
-  -----END PGP SIGNATURE-----
-
-The signature can be saved to a file and verified with ``gpg --verify
-signature.txt``.
-
-The signed SHA1 checksum is made from the ``bzr testament --long`` command
-which includes information on the committer and a list of all files in that
-commit along with their checksums.  So if the signature is valid you can be
-sure you are looking at the same code as the person who made the signature.
+  $bzr verify-signatures -kamy -v -r 1..5
+  1 commit with valid signature
+    Amy Pond <amy@example.com> signed 4 commits
+  0 commits with unknown keys
+  1 commit not valid
+    1 commit by author The Doctor <doctor@example.com>
+  0 commits not signed
 
 Work in Progress
 ----------------
 
 There is still a number of digital signature related features which are hoped
-to be added to Bazaar soon.  These include easy verificiation, qbzr
-integration, signing with different keys and setting branches to require
-signatures.
+to be added to Bazaar soon.  These include verificiation in logs, qbzr
+integration and setting branches to require signatures.

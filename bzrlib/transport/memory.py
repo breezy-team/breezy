@@ -289,12 +289,6 @@ class _MemoryLock(object):
             raise LockError('File %r already locked' % (self.path,))
         self.transport._locks[self.path] = self
 
-    def __del__(self):
-        # Should this warn, or actually try to cleanup?
-        if self.transport:
-            warnings.warn("MemoryLock %r not explicitly unlocked" % (self.path,))
-            self.unlock()
-
     def unlock(self):
         del self.transport._locks[self.path]
         self.transport = None

@@ -127,6 +127,7 @@ class Tree(object):
     def has_id(self, file_id):
         raise NotImplementedError(self.has_id)
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def __contains__(self, file_id):
         return self.has_id(file_id)
 

@@ -1980,7 +1980,10 @@ class GraphThunkIdsToKeys(object):
         return set([h[0] for h in head_keys])
 
     def merge_sort(self, tip_revision):
-        return self._graph.merge_sort((tip_revision,))
+        nodes = self._graph.merge_sort((tip_revision,))
+        for node in nodes:
+            node.key = node.key[0]
+        return nodes
 
     def add_node(self, revision, parents):
         self._graph.add_node((revision,), [(p,) for p in parents])

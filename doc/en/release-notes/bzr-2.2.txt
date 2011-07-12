@@ -24,6 +24,9 @@ Bug Fixes
   doubly-stacked branch.
   (James Westby, Martin Pool, #715000)
 
+* Don't crash while merging and encountering obscure path conflicts
+  involving different root-ids. (Vincent Ladeuil, #805809)
+
 Improvements
 ************
 

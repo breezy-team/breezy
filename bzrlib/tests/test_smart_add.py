@@ -115,11 +115,11 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, c_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertFalse(c_id in self.base_tree)
+        self.assertFalse(self.base_tree.has_id(c_id))
 
         d_id = new_tree.path2id('subdir/d')
         self.assertNotEqual(None, d_id)
-        self.assertFalse(d_id in self.base_tree)
+        self.assertFalse(self.base_tree.has_id(d_id))
 
     def test_copy_existing_dir(self):
         self.make_base_tree()
@@ -140,7 +140,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, a_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertFalse(a_id in self.base_tree)
+        self.assertFalse(self.base_tree.has_id(a_id))
 
 
 class TestAddActions(tests.TestCase):

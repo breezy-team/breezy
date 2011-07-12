@@ -24,6 +24,10 @@ from bzrlib import (
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_tree import TestCaseWithTree
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
+
 
 class TestAnnotate(TestCaseWithTree):
 
@@ -94,7 +98,8 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         path = tree.id2path('sub-root')
-        self.assertEqual('sub-1', tree.get_reference_revision('sub-root', path))
+        self.assertEqual('sub-1',
+            tree.get_reference_revision('sub-root', path))
 
     def test_iter_references(self):
         tree = self.create_nested()
@@ -257,8 +262,14 @@ class TestHasId(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertTrue('file-id' in tree)
-        self.assertFalse('dir-id' in tree)
+        self.assertTrue(
+            self.applyDeprecated(
+                deprecated_in((2, 4, 0)),
+                tree.__contains__, 'file-id'))
+        self.assertFalse(
+            self.applyDeprecated(
+                deprecated_in((2, 4, 0)),
+                tree.__contains__, 'dir-id'))
 
 
 class TestExtras(TestCaseWithTree):

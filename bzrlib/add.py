@@ -86,7 +86,7 @@ class AddFromBaseAction(AddAction):
         Else, we look for an entry in the base tree with the same path.
         """
 
-        if (parent_ie.file_id in self.base_tree):
+        if self.base_tree.has_id(parent_ie.file_id):
             base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
             base_child_ie = base_parent_ie.children.get(
                 osutils.basename(path))

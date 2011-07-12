@@ -142,7 +142,10 @@ isolated_environ = {
     'BZREMAIL': None, # may still be present in the environment
     'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
     'BZR_PROGRESS_BAR': None,
-    'BZR_LOG': None,
+    # This should trap leaks to ~/.bzr.log. This occurs when tests use TestCase
+    # as a base class instead of TestCaseInTempDir. Tests inheriting from
+    # TestCase should not use disk resources, BZR_LOG is one.
+    'BZR_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
     'BZR_PLUGIN_PATH': None,
     'BZR_DISABLE_PLUGINS': None,
     'BZR_PLUGINS_AT': None,
@@ -928,7 +931,7 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-    
+
     kwargs['setUp'] = isolated_doctest_setUp
     kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
@@ -1704,7 +1707,7 @@ class TestCase(testtools.TestCase):
     def _finishLogFile(self):
         """Finished with the log file.
 
-        Close the file and delete it, unless setKeepLogfile was called.
+        Close the file and delete it.
         """
         if trace._trace_file:
             # flush the log file, to get all content
@@ -2325,20 +2328,21 @@ class CapturedCall(object):
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
-    Tests that need disk resources should derive from TestCaseWithTransport.
+    Tests that need disk resources should derive from TestCaseInTempDir
+    orTestCaseWithTransport.
 
     TestCaseWithMemoryTransport sets the TEST_ROOT variable for all bzr tests.
 
-    For TestCaseWithMemoryTransport the test_home_dir is set to the name of
+    For TestCaseWithMemoryTransport the ``test_home_dir`` is set to the name of
     a directory which does not exist. This serves to help ensure test isolation
-    is preserved. test_dir is set to the TEST_ROOT, as is cwd, because they
-    must exist. However, TestCaseWithMemoryTransport does not offer local
-    file defaults for the transport in tests, nor does it obey the command line
+    is preserved. ``test_dir`` is set to the TEST_ROOT, as is cwd, because they
+    must exist. However, TestCaseWithMemoryTransport does not offer local file
+    defaults for the transport in tests, nor does it obey the command line
     override, so tests that accidentally write to the common directory should
     be rare.
 
-    :cvar TEST_ROOT: Directory containing all temporary directories, plus
-    a .bzr directory that stops us ascending higher into the filesystem.
+    :cvar TEST_ROOT: Directory containing all temporary directories, plus a
+        ``.bzr`` directory that stops us ascending higher into the filesystem.
     """
 
     TEST_ROOT = None
@@ -2667,6 +2671,12 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     """
 
     OVERRIDE_PYTHON = 'python'
+
+    def setUp(self):
+        super(TestCaseInTempDir, self).setUp()
+        # Remove the protection set in isolated_environ, we have a proper
+        # access to disk resources now.
+        self.overrideEnv('BZR_LOG', None)
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)

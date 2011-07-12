@@ -507,12 +507,11 @@ class PathConflict(Conflict):
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
             transform.create_from_tree(
-                tt, tt.trans_id_tree_path(path_to_create),
-                self._revision_tree(tt._tree, revid), file_id)
+                tt, tid, self._revision_tree(tt._tree, revid), file_id)
             tt.version_file(file_id, tid)
-
+        else:
+            tid = tt.trans_id_file_id(file_id)
         # Adjust the path for the retained file id
-        tid = tt.trans_id_file_id(file_id)
         parent_tid = tt.get_tree_parent(tid)
         tt.adjust_path(osutils.basename(path), parent_tid, tid)
         tt.apply()

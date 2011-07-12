@@ -76,10 +76,12 @@ def _poentry(outf, path, lineno, s, comment=None):
            'msgid %s\n' % _normalize(s) +
            'msgstr ""\n')
 
-def _poentry_per_paragraph(outf, path, lineno, msgid):
+def _poentry_per_paragraph(outf, path, lineno, msgid, filter=lambda x: False):
     # TODO: How to split long help?
     paragraphs = msgid.split('\n\n')
     for p in paragraphs:
+        if filter(p):
+            continue
         _poentry(outf, path, lineno, p)
         lineno += p.count('\n') + 2
 
@@ -145,7 +147,7 @@ def _command_options(outf, path, cmd):
                      'help of %r option of %r command' % (name, cmd.name()))
 
 
-def _write_command_help(outf, cmd_name, cmd):
+def _write_command_help(outf, cmd):
     path = inspect.getfile(cmd.__class__)
     if path.endswith('.pyc'):
         path = path[:-1]
@@ -155,8 +157,15 @@ def _write_command_help(outf, cmd_name, cmd):
     lineno = offsets[cmd.__doc__]
     doc = inspect.getdoc(cmd)
 
-    _poentry_per_paragraph(outf, path, lineno, doc)
+    def filter(p):
+        # ':Usage:' has special meaning in help topics.
+        # This is usage example of command and should not be translated.
+        if p.splitlines()[0] == ':Usage:':
+            return True
+
+    _poentry_per_paragraph(outf, path, lineno, doc, filter)
     _command_options(outf, path, cmd)
+
 
 def _command_helps(outf):
     """Extract docstrings from path.
@@ -172,7 +181,7 @@ def _command_helps(outf):
         if command.hidden:
             continue
         note("Exporting messages from builtin command: %s", cmd_name)
-        _write_command_help(outf, cmd_name, command)
+        _write_command_help(outf, command)
 
     plugin_path = plugin.get_core_plugin_path()
     core_plugins = glob(plugin_path + '/*/__init__.py')
@@ -189,7 +198,7 @@ def _command_helps(outf):
             continue
         note("Exporting messages from plugin command: %s in %s",
              cmd_name, command.plugin_name())
-        _write_command_help(outf, cmd_name, command)
+        _write_command_help(outf, command)
 
 
 def _error_messages(outf):

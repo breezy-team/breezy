@@ -34,7 +34,7 @@ from bzrlib.trace import mutter, warning
 def report_changes(to_file, old, new, specific_files, 
                    show_short_reporter, show_long_callback, 
                    short=False, want_unchanged=False, 
-                   want_unversioned=False, show_ids=False):
+                   want_unversioned=False, show_ids=False, classify=True):
     """Display summary of changes.
 
     This compares two trees with regards to a list of files, and delegates 
@@ -59,6 +59,7 @@ def report_changes(to_file, old, new, specific_files,
         files.
     :param show_ids: If set, includes each file's id.
     :param want_unversioned: If False, only shows versioned files.
+    :param classify: Add special symbols to indicate file kind.
     """
 
     if short:
@@ -76,7 +77,8 @@ def report_changes(to_file, old, new, specific_files,
             delta.unversioned if not new.is_ignored(unversioned[0])]
         show_long_callback(to_file, delta, 
                            show_ids=show_ids,
-                           show_unchanged=want_unchanged)
+                           show_unchanged=want_unchanged,
+                           classify=classify)
 
 
 def show_tree_status(wt, show_unchanged=None,
@@ -88,6 +90,7 @@ def show_tree_status(wt, show_unchanged=None,
                      short=False,
                      verbose=False,
                      versioned=False,
+                     classify=True,
                      show_long_callback=_mod_delta.report_delta):
     """Display summary of changes.
 
@@ -117,6 +120,7 @@ def show_tree_status(wt, show_unchanged=None,
     :param verbose: If True, show all merged revisions, not just
         the merge tips
     :param versioned: If True, only shows versioned files.
+    :param classify: Add special symbols to indicate file kind.
     :param show_long_callback: A callback: message = show_long_callback(to_file, delta, 
         show_ids, show_unchanged, indent, filter), only used with the long output
     """
@@ -161,11 +165,12 @@ def show_tree_status(wt, show_unchanged=None,
 
             # Reporter used for short outputs
             reporter = _mod_delta._ChangeReporter(output_file=to_file,
-                unversioned_filter=new.is_ignored)
+                unversioned_filter=new.is_ignored, classify=classify)
             report_changes(to_file, old, new, specific_files, 
                            reporter, show_long_callback, 
                            short=short, want_unchanged=show_unchanged, 
-                           want_unversioned=want_unversioned, show_ids=show_ids)
+                           want_unversioned=want_unversioned, show_ids=show_ids,
+                           classify=classify)
 
             # show the ignored files among specific files (i.e. show the files
             # identified from input that we choose to ignore). 
