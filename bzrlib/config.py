@@ -31,6 +31,7 @@ gpg_signing_command=name-of-program
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
+gpg_signing_key=amy@example.com
 
 in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -535,6 +536,14 @@ class Config(object):
         elif policy == SIGN_ALWAYS:
             return True
         return False
+
+    def gpg_signing_key(self):
+        """GPG user-id to sign commits"""
+        key = self.get_user_option('gpg_signing_key')
+        if key == "default" or key == None:
+            return self.user_email()
+        else:
+            return key
 
     def get_alias(self, value):
         return self._get_alias(value)
