@@ -20,6 +20,11 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* bzr log -m now matches message, author, committer and bugs instead
+  of just matching the message.  --message keeps its original meaning,
+  while --match-message, --match-author, --match-committer and
+  --match-bugs match each of those fields.
+
 Improvements
 ************
 
