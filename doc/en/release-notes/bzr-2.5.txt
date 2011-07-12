@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Add a config option gpg_signature_key for setting which GPG key
+  should be used to sign commits. Also default to using the gpg user
+  identity which matches user_email() as set by whoami.
+
 Improvements
 ************
 
