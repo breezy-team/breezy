@@ -56,6 +56,13 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* `BranchBuilder.build_snapshot` now supports a "flush" action.  This
+  cleanly and reliably allows tests using `BranchBuilder` to construct
+  branches that e.g. rename files out of a directory and unversion that
+  directory in the same revision.  Previously some changes were impossible
+  due to the order that `build_snapshot` performs its actions.
+  (Andrew Bennetts)
+
 
 bzr 2.4b5
 #########
