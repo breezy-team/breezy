@@ -48,6 +48,10 @@ from bzrlib import (
     )
 
 from bzrlib.static_tuple import StaticTuple
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 class InventoryEntry(object):
@@ -100,8 +104,6 @@ class InventoryEntry(object):
     InventoryDirectory('2325', 'wibble', parent_id='123', revision=None)
     >>> i.path2id('src/wibble')
     '2325'
-    >>> '2325' in i
-    True
     >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
     InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None, revision=None)
     >>> i['2326']
@@ -170,7 +172,7 @@ class InventoryEntry(object):
         candidates = {}
         # identify candidate head revision ids.
         for inv in previous_inventories:
-            if self.file_id in inv:
+            if inv.has_id(self.file_id):
                 ie = inv[self.file_id]
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
@@ -629,15 +631,16 @@ class CommonInventory(object):
     inserted, other than through the Inventory API.
     """
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def __contains__(self, file_id):
         """True if this entry contains a file with given id.
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
         InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> '123' in inv
+        >>> inv.has_id('123')
         True
-        >>> '456' in inv
+        >>> inv.has_id('456')
         False
 
         Note that this method along with __iter__ are not encouraged for use as
@@ -756,7 +759,7 @@ class CommonInventory(object):
             if (not yield_parents and specific_file_ids is not None and
                 len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
-                if file_id in self:
+                if self.has_id(file_id):
                     yield self.id2path(file_id), self[file_id]
                 return
             from_dir = self.root
@@ -772,7 +775,7 @@ class CommonInventory(object):
             parents = set()
             byid = self
             def add_ancestors(file_id):
-                if file_id not in byid:
+                if not byid.has_id(file_id):
                     return
                 parent_id = byid[file_id].parent_id
                 if parent_id is None:
@@ -962,7 +965,7 @@ class Inventory(CommonInventory):
 
     >>> inv.path2id('hello.c')
     '123-123'
-    >>> '123-123' in inv
+    >>> inv.has_id('123-123')
     True
 
     There are iterators over the contents:
@@ -1231,10 +1234,10 @@ class Inventory(CommonInventory):
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
         InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> '123' in inv
+        >>> inv.has_id('123')
         True
         >>> del inv['123']
-        >>> '123' in inv
+        >>> inv.has_id('123')
         False
         """
         ie = self[file_id]

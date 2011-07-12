@@ -55,8 +55,9 @@ Starting a new project
 ======================
 
 Let's suppose we want to store a new project under Bazaar.  First, we'll
-make a directory to hold all our work related to this project.  We'll make
-a *repository directory*, which means that the 
+make a *repository directory* to hold all our work related to this
+project.  We can then have multiple branch directories under here, and
+they'll all store the committed history in the repository.
 
 ::
 

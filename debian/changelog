@@ -1,10 +1,14 @@
-bzr (2.4.0~beta4-5) UNRELEASED; urgency=low
+bzr (2.4.0~beta5-1) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * Fix typo in package description. Thanks Paul Stewart.
   * Mark python-bzrlib as breaking with older versions of bzr that
     predate python-bzrlib. LP: #803362
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 29 Jun 2011 11:24:46 +0200
+  [ Max Bowsher ]
+  * New upstream release.
+
+ -- Max Bowsher <_@maxb.eu>  Tue, 12 Jul 2011 22:28:37 +0100
 
 bzr (2.4.0~beta4-4) unstable; urgency=low
 

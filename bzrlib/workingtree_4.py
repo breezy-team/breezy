@@ -1462,6 +1462,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat):
 
     missing_parent_conflicts = True
 
+    supports_versioned_directories = True
+
     _lock_class = LockDir
     _lock_file_name = 'lock'
 
@@ -1713,9 +1715,6 @@ class DirStateRevisionTree(InventoryTree):
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]
 
-    def _get_ancestors(self, default_revision):
-        return set(self._repository.get_ancestry(self._revision_id,
-                                                 topo_sorted=False))
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:

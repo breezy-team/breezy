@@ -43,6 +43,7 @@ class _NotRunningAsRoot(tests.Feature):
 not_running_as_root = _NotRunningAsRoot()
 
 apport = tests.ModuleAvailableFeature('apport')
+gpgme = tests.ModuleAvailableFeature('gpgme')
 lzma = tests.ModuleAvailableFeature('lzma')
 meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
