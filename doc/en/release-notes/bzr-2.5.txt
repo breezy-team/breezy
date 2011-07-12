@@ -25,6 +25,10 @@ New Features
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
 
+* Add a config option gpg_signature_key for setting which GPG key
+  should be used to sign commits. Also default to using the gpg user
+  identity which matches user_email() as set by whoami.
+
 Improvements
 ************
 
