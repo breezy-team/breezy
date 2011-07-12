@@ -2317,8 +2317,11 @@ class cmd_log(Command):
 
     :Other filtering:
 
-      The --message option can be used for finding revisions that match a
-      regular expression in a commit message.
+      The --match option can be used for finding revisions that match a
+      regular expression in a commit message, committer, author or bug.
+      Specifying the option several times will match any of the supplied
+      expressions. --match-author, --match-bugs, --match-committer and
+      --match-message can be used to only match a specific field.
 
     :Tips & tricks:
 
@@ -2384,10 +2387,10 @@ class cmd_log(Command):
                    argname='N',
                    type=_parse_levels),
             Option('message',
-                   short_name='m',
                    help='Show revisions whose message matches this '
                         'regular expression.',
-                   type=str),
+                   type=str,
+                   hidden=True),
             Option('limit',
                    short_name='l',
                    help='Limit the output to the first N revisions.',
@@ -2404,6 +2407,27 @@ class cmd_log(Command):
                    ),
             Option('signatures',
                    help='Show digital signature validity'),
+            ListOption('match',
+                short_name='m',
+                help='Show revisions whose properties match this '
+                'expression.',
+                type=str),
+            ListOption('match-message',
+                   help='Show revisions whose message matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-committer',
+                   help='Show revisions whose committer matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-author',
+                   help='Show revisions whose authors match this '
+                   'expression.',
+                type=str),
+            ListOption('match-bugs',
+                   help='Show revisions whose bugs match this '
+                   'expression.',
+                type=str)
             ]
     encoding_type = 'replace'
 
@@ -2423,6 +2447,11 @@ class cmd_log(Command):
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
+            match=None,
+            match_message=None,
+            match_committer=None,
+            match_author=None,
+            match_bugs=None,
             ):
         from bzrlib.log import (
             Logger,
@@ -2531,6 +2560,18 @@ class cmd_log(Command):
         match_using_deltas = (len(file_ids) != 1 or filter_by_dir
             or delta_type or partial_history)
 
+        match_dict = {}
+        if match:
+            match_dict[''] = match
+        if match_message:
+            match_dict['message'] = match_message
+        if match_committer:
+            match_dict['committer'] = match_committer
+        if match_author:
+            match_dict['author'] = match_author
+        if match_bugs:
+            match_dict['bugs'] = match_bugs
+            
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -2539,7 +2580,7 @@ class cmd_log(Command):
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
-            exclude_common_ancestry=exclude_common_ancestry,
+            exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
             signature=signatures
             )
         Logger(b, rqst).show(lf)
