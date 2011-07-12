@@ -1029,4 +1029,3 @@ class TestLogMatch(TestLogWithLogCatcher):
         self.assertLogRevnos(["--match-author", "author"], ["2", "1"])
         self.assertLogRevnos(["--match-author", "author1", 
                               "--match-author", "author2"], ["2", "1"])
-        
