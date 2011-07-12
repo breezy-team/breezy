@@ -32,6 +32,12 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* The fix for bug #513709 caused us to open a new connection when
+  switching a lightweight checkout that was pointing at a bound branch.
+  This isn't necessary because we know the master URL without opening it,
+  avoiding an extra SSH connection, etc.
+  (John Arbash Meinel)
+
 Documentation
 *************
 
