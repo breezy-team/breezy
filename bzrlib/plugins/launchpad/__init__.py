@@ -27,12 +27,15 @@ from bzrlib import version_info
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    branch as _mod_branch,
     trace,
     )
 """)
 
-from bzrlib import bzrdir
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    lazy_regex,
+    )
 from bzrlib.commands import (
         Command,
         register_command,
@@ -354,6 +357,42 @@ def _register_directory():
                               'Launchpad-based directory service',)
 _register_directory()
 
+
+package_branch = lazy_regex.lazy_compile(
+    r'bazaar.launchpad.net.*/(?P<archive>ubuntu|debian)/(?P<series>[^/]+/)?'
+    r'(?P<project>[^/]+)(?P<branch>/[^/]+)?'
+    )
+def _check_is_up_to_date(the_branch):
+    m = package_branch.search(the_branch.base)
+    if m is None:
+        return
+    from bzrlib.plugins.launchpad import lp_api_lite
+    archive, series, project = m.group('archive', 'series', 'project')
+    if series is not None:
+        # series is optional, so the name adds the extra '/', we don't want to
+        # include that one.
+        series = series.strip('/')
+    latest_pub = lp_api_lite.LatestPublication(archive, series, project)
+    latest_ver = latest_pub.get_latest_version()
+    if latest_ver is None:
+        trace.note('Could not find a published version for:\n  %s'
+                   % (the_branch.base,))
+        return
+    tags = the_branch.tags.get_tag_dict()
+    if latest_ver in tags:
+        trace.note('Found most recent published version: %s\n  in %s'
+                   % (latest_ver, the_branch.base))
+    else:
+        trace.warning('Branch not up-to-date. The most recent published'
+                      ' version is %s,\nbut it is not in the branch'
+                      ' tags for:\n  %s' % (latest_ver, the_branch.base))
+
+def _register_hooks():
+    _mod_branch.Branch.hooks.install_named_hook('open',
+        _check_is_up_to_date, 'package-branch-up-to-date')
+
+
+_register_hooks()
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
