@@ -231,11 +231,6 @@ class TreeTransformBase(object):
         new_roots = [k for k, v in self._new_parent.iteritems() if v is
                      ROOT_PARENT]
         if len(new_roots) < 1:
-            if self.final_kind(self.root) is None:
-                self.cancel_deletion(self.root)
-            if self.final_file_id(self.root) is None:
-                self.version_file(self.tree_file_id(self.root),
-                                     self.root)
             return
         if len(new_roots) != 1:
             raise ValueError('A tree cannot have two roots!')
@@ -1753,6 +1748,8 @@ class TreeTransform(DiskTreeTransform):
                 mover.apply_deletions()
         finally:
             child_pb.finished()
+        if self.final_file_id(self.root) is None:
+            inventory_delta = [e for e in inventory_delta if e[0] != '']
         self._tree.apply_inventory_delta(inventory_delta)
         self._apply_observed_sha1s()
         self._done = True
