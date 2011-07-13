@@ -22,6 +22,16 @@ import socket
 from bzrlib import tests
 from bzrlib.plugins.launchpad import lp_api_lite
 
+class _JSONParserFeature(tests.Feature):
+
+    def _probe(self):
+        return lp_api_lite.json is not None
+
+    def feature_name(self):
+        return 'simplejson or json'
+
+JSONParserFeature = _JSONParserFeature()
+
 _example_response = r"""
 {
     "total_size": 2,
@@ -185,8 +195,7 @@ class TestLatestPublication(tests.TestCase):
         self.assertIs(None, latest_pub._parse_json_info(_example_response))
 
     def test__parse_json_example_response(self):
-        if lp_api_lite.json is None:
-            raise tests.UnavailableFeature('json or simplejson module')
+        self.requireFeature(JSONParserFeature)
         latest_pub = self.make_latest_publication()
         content = latest_pub._parse_json_info(_example_response)
         self.assertIsNot(None, content)
@@ -196,6 +205,11 @@ class TestLatestPublication(tests.TestCase):
         entry = entries[0]
         self.assertEqual('bzr', entry['source_package_name'])
         self.assertEqual("2.1.4-0ubuntu1", entry["source_package_version"])
+
+    def test__parse_json_not_json(self):
+        self.requireFeature(JSONParserFeature)
+        latest_pub = self.make_latest_publication()
+        self.assertIs(None, latest_pub._parse_json_info('Not_valid_json'))
 
     def test_get_latest_version_no_response(self):
         latest_pub = self.make_latest_publication()
@@ -207,16 +221,40 @@ class TestLatestPublication(tests.TestCase):
         latest_pub = self.make_latest_publication()
         self.assertEqual(None, latest_pub.get_latest_version())
 
+    def test_get_latest_version_invalid_json(self):
+        self.requireFeature(JSONParserFeature)
+        latest_pub = self.make_latest_publication()
+        latest_pub._get_lp_info = lambda: "not json"
+        self.assertEqual(None, latest_pub.get_latest_version())
+
     def test_get_latest_version_no_versions(self):
+        self.requireFeature(JSONParserFeature)
         latest_pub = self.make_latest_publication()
         latest_pub._get_lp_info = lambda: _no_versions_response
         self.assertEqual(None, latest_pub.get_latest_version())
 
+    def test_get_latest_version_missing_entries(self):
+        # Launchpad's no-entries response does have an empty entries value.
+        # However, lets test that we handle other failures without tracebacks
+        self.requireFeature(JSONParserFeature)
+        latest_pub = self.make_latest_publication()
+        latest_pub._get_lp_info = lambda: '{}'
+        self.assertEqual(None, latest_pub.get_latest_version())
+
+    def test_get_latest_version_invalid_entries(self):
+        # Make sure we sanely handle a json response we don't understand
+        self.requireFeature(JSONParserFeature)
+        latest_pub = self.make_latest_publication()
+        latest_pub._get_lp_info = lambda: '{"entries": {"a": 1}}'
+        self.assertEqual(None, latest_pub.get_latest_version())
+
     def test_get_latest_version_example(self):
+        self.requireFeature(JSONParserFeature)
         latest_pub = self.make_latest_publication()
         latest_pub._get_lp_info = lambda: _example_response
         self.assertEqual("2.1.4-0ubuntu1", latest_pub.get_latest_version())
 
     def DONT_test_get_latest_version_from_launchpad(self):
+        self.requireFeature(JSONParserFeature)
         latest_pub = self.make_latest_publication()
         self.assertIsNot(None, latest_pub.get_latest_version())
