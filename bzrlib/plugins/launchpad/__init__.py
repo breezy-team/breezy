@@ -371,8 +371,8 @@ def _check_is_up_to_date(the_branch):
     from bzrlib.plugins.launchpad import lp_api_lite
     archive, series, project = m.group('archive', 'series', 'project')
     if series is not None:
-        # series is optional, so the name adds the extra '/', we don't want to
-        # include that one.
+        # series is optional, so the regex includes the extra '/', we don't
+        # want to send that on (it causes Internal Server Errors.)
         series = series.strip('/')
     t = time.time()
     latest_pub = lp_api_lite.LatestPublication(archive, series, project)
