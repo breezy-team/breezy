@@ -20,14 +20,20 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* bzr log -m now matches message, author, committer and bugs instead
-  of just matching the message.  --message keeps its original meaning,
-  while --match-message, --match-author, --match-committer and
-  --match-bugs match each of those fields.
+* Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
+  checks to see if the most recent published source package version for
+  that project is present in the branch tags. This should help developers
+  trust whether the packaging branch is up-to-date and can be used for new
+  changes. (John Arbash Meinel, #609187)
 
 * Add a config option gpg_signature_key for setting which GPG key
   should be used to sign commits. Also default to using the gpg user
   identity which matches user_email() as set by whoami.
+
+* bzr log -m now matches message, author, committer and bugs instead
+  of just matching the message.  --message keeps its original meaning,
+  while --match-message, --match-author, --match-committer and
+  --match-bugs match each of those fields.
 
 Improvements
 ************
