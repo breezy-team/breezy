@@ -56,6 +56,9 @@ _example_response = r"""
     ]
 }"""
 
+_no_versions_response = '{"total_size": 0, "start": 0, "entries": []}'
+
+
 class TestLatestPublication(tests.TestCase):
 
     def make_latest_publication(self, archive='ubuntu', series='natty',
@@ -148,7 +151,7 @@ class TestLatestPublication(tests.TestCase):
         s.close()
         self.assertIs(None, latest_pub._get_lp_info())
 
-    def test__query_launchpad(self):
+    def DONT_test__query_launchpad(self):
         # TODO: This is a test that we are making a valid request against
         #       launchpad. This seems important, but it is slow, requires net
         #       access, and requires launchpad to be up and running. So for
@@ -168,3 +171,52 @@ class TestLatestPublication(tests.TestCase):
         self.assertEqual('bzr', entry['source_package_name'])
         version = entry['source_package_version']
         self.assertIsNot(None, version)
+
+    def test__get_lp_info_no_json(self):
+        # If we can't parse the json, we don't make the query.
+        self.overrideAttr(lp_api_lite, 'json', None)
+        latest_pub = self.make_latest_publication()
+        self.assertIs(None, latest_pub._get_lp_info())
+
+    def test__parse_json_info_no_module(self):
+        # If a json parsing module isn't available, we just return None here.
+        self.overrideAttr(lp_api_lite, 'json', None)
+        latest_pub = self.make_latest_publication()
+        self.assertIs(None, latest_pub._parse_json_info(_example_response))
+
+    def test__parse_json_example_response(self):
+        if lp_api_lite.json is None:
+            raise tests.UnavailableFeature('json or simplejson module')
+        latest_pub = self.make_latest_publication()
+        content = latest_pub._parse_json_info(_example_response)
+        self.assertIsNot(None, content)
+        self.assertEqual(2, content['total_size'])
+        entries = content['entries']
+        self.assertEqual(1, len(entries))
+        entry = entries[0]
+        self.assertEqual('bzr', entry['source_package_name'])
+        self.assertEqual("2.1.4-0ubuntu1", entry["source_package_version"])
+
+    def test_get_latest_version_no_response(self):
+        latest_pub = self.make_latest_publication()
+        latest_pub._get_lp_info = lambda: None
+        self.assertEqual(None, latest_pub.get_latest_version())
+
+    def test_get_latest_version_no_json(self):
+        self.overrideAttr(lp_api_lite, 'json', None)
+        latest_pub = self.make_latest_publication()
+        self.assertEqual(None, latest_pub.get_latest_version())
+
+    def test_get_latest_version_no_versions(self):
+        latest_pub = self.make_latest_publication()
+        latest_pub._get_lp_info = lambda: _no_versions_response
+        self.assertEqual(None, latest_pub.get_latest_version())
+
+    def test_get_latest_version_example(self):
+        latest_pub = self.make_latest_publication()
+        latest_pub._get_lp_info = lambda: _example_response
+        self.assertEqual("2.1.4-0ubuntu1", latest_pub.get_latest_version())
+
+    def DONT_test_get_latest_version_from_launchpad(self):
+        latest_pub = self.make_latest_publication()
+        self.assertIsNot(None, latest_pub.get_latest_version())

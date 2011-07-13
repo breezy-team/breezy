@@ -51,24 +51,42 @@ class LatestPublication(object):
         self._project = project
         self._setup_series_and_pocket(series)
 
-    def _archive_URL(self):
-        return '%s/%s/+archive/primary' % (self.LP_API_ROOT, self._archive)
-
-    def _publication_status(self):
-        if self._archive == 'debian':
-            # Launchpad only tracks debian packages as "Pending", it doesn't mark
-            # them Published
-            return 'Pending'
-        return 'Published'
-
     def _setup_series_and_pocket(self, series):
+        """Parse the 'series' info into a series and a pocket.
+
+        eg::
+            _setup_series_and_pocket('natty-proposed')
+            => _series == 'natty'
+               _pocket == 'Proposed'
+        """
         self._series = series
         self._pocket = None
         if self._series is not None and '-' in self._series:
             self._series, self._pocket = self._series.split('-', 1)
             self._pocket = self._pocket.title()
 
+    def _archive_URL(self):
+        """Return the Launchpad 'Archive' URL that we will query.
+        This is everything in the URL except the query parameters.
+        """
+        return '%s/%s/+archive/primary' % (self.LP_API_ROOT, self._archive)
+
+    def _publication_status(self):
+        """Handle the 'status' field.
+        It seems that Launchpad tracks all 'debian' packages as 'Pending', while
+        for 'ubuntu' we care about the 'Published' packages.
+        """
+        if self._archive == 'debian':
+            # Launchpad only tracks debian packages as "Pending", it doesn't mark
+            # them Published
+            return 'Pending'
+        return 'Published'
+
     def _query_params(self):
+        """Get the parameters defining our query.
+        This defines the actions we are making against the archive.
+        :return: A dict of query parameters.
+        """
         params = {'ws.op': 'getPublishedSources',
                   'exact_match': 'true',
                   # If we need to use "" shouldn't we quote the project somehow?
@@ -85,22 +103,44 @@ class LatestPublication(object):
         return params
 
     def _query_URL(self):
+        """Create the full URL that we need to query, including parameters."""
         params = self._query_params()
         # We sort to give deterministic results for testing
         encoded = urllib.urlencode(sorted(params.items()))
         return '%s?%s' % (self._archive_URL(), encoded)
 
     def _get_lp_info(self):
+        """Place an actual HTTP query against the Launchpad service."""
+        if json is None:
+            return None
         query_URL = self._query_URL()
         try:
             req = urllib2.Request(query_URL)
             response = urllib2.urlopen(req)
-            json_txt = response.read()
-        except (urllib2.URLError,), e:
+            json_info = response.read()
+        # XXX: We haven't tested the HTTPError
+        except (urllib2.URLError, urllib2.HTTPError), e:
             trace.mutter('failed to place query to %r' % (query_URL,))
             trace.log_exception_quietly()
             return None
-        return json_txt
+        return json_info
+
+    def _parse_json_info(self, json_info):
+        """Parse the json response from Launchpad into objects."""
+        if json is None:
+            return None
+        return json.loads(json_info)
+
+    def get_latest_version(self):
+        """Get the latest published version for the given package."""
+        json_info = self._get_lp_info()
+        if json_info is None:
+            return None
+        info = self._parse_json_info(json_info)
+        entries = info['entries']
+        if len(entries) == 0:
+            return None
+        return entries[0]['source_package_version']
 
 
 def get_latest_publication(archive, series, project):
@@ -115,7 +155,7 @@ def get_latest_publication(archive, series, project):
     """
     if json is None:
         return None
-    archive_url = '%s/%s/+archive/primary?' % (LP_API_ROOT, archive)
+    archive_url = '%s/%s/+archive/primary?' % (LatestPublication.LP_API_ROOT, archive)
     pocket = None
     # TODO: If series is None, we probably need to hard-code it. I don't have
     #       proof yet, but otherwise we just get the most-recent version in any
@@ -136,7 +176,7 @@ def get_latest_publication(archive, series, project):
               'exact_match': 'true',
               # If we need to use "" shouldn't we quote the project somehow?
               'source_name': '"%s"' % (project,),
-              'status': status,
+              'status': 'Published',
               # We only need the latest one, the results seem to be properly
               # most-recent-debian-version sorted
               'ws.size': '1',
