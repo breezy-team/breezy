@@ -41,6 +41,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
+  operations that use it, like merge, can now create trees without a root.
+  (Aaron Bentley)
+
 Documentation
 *************
 
