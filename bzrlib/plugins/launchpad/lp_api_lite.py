@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,8 +39,69 @@ import urllib2
 from bzrlib import trace
 
 
-LP_API_ROOT = 'https://api.launchpad.net/1.0'
 DEFAULT_SERIES = 'oneiric'
+
+class LatestPublication(object):
+    """Encapsulate how to find the latest publication for a given project."""
+
+    LP_API_ROOT = 'https://api.launchpad.net/1.0'
+
+    def __init__(self, archive, series, project):
+        self._archive = archive
+        self._project = project
+        self._setup_series_and_pocket(series)
+
+    def _archive_URL(self):
+        return '%s/%s/+archive/primary' % (self.LP_API_ROOT, self._archive)
+
+    def _publication_status(self):
+        if self._archive == 'debian':
+            # Launchpad only tracks debian packages as "Pending", it doesn't mark
+            # them Published
+            return 'Pending'
+        return 'Published'
+
+    def _setup_series_and_pocket(self, series):
+        self._series = series
+        self._pocket = None
+        if self._series is not None and '-' in self._series:
+            self._series, self._pocket = self._series.split('-', 1)
+            self._pocket = self._pocket.title()
+
+    def _query_params(self):
+        params = {'ws.op': 'getPublishedSources',
+                  'exact_match': 'true',
+                  # If we need to use "" shouldn't we quote the project somehow?
+                  'source_name': '"%s"' % (self._project,),
+                  'status': self._publication_status(),
+                  # We only need the latest one, the results seem to be properly
+                  # most-recent-debian-version sorted
+                  'ws.size': '1',
+        }
+        if self._series is not None:
+            params['distro_series'] = '/%s/%s' % (self._archive, self._series)
+        if self._pocket is not None:
+            params['pocket'] = self._pocket
+        return params
+
+    def _query_URL(self):
+        params = self._query_params()
+        # We sort to give deterministic results for testing
+        encoded = urllib.urlencode(sorted(params.items()))
+        return '%s?%s' % (self._archive_URL(), encoded)
+
+    def _get_lp_info(self):
+        query_URL = self._query_URL()
+        try:
+            req = urllib2.Request(query_URL)
+            response = urllib2.urlopen(req)
+            json_txt = response.read()
+        except (urllib2.URLError,), e:
+            trace.mutter('failed to place query to %r' % (query_URL,))
+            trace.log_exception_quietly()
+            return None
+        return json_txt
+
 
 def get_latest_publication(archive, series, project):
     """Get the most recent publication for a given project.
@@ -55,11 +116,6 @@ def get_latest_publication(archive, series, project):
     if json is None:
         return None
     archive_url = '%s/%s/+archive/primary?' % (LP_API_ROOT, archive)
-    status = 'Published'
-    if archive == 'debian':
-        # Launchpad only tracks debian packages as "Pending", it doesn't mark
-        # them Published
-        status = 'Pending'
     pocket = None
     # TODO: If series is None, we probably need to hard-code it. I don't have
     #       proof yet, but otherwise we just get the most-recent version in any

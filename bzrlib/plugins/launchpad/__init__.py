@@ -360,6 +360,7 @@ def load_tests(basic_tests, module, loader):
         'test_account',
         'test_register',
         'test_lp_api',
+        'test_lp_api_lite',
         'test_lp_directory',
         'test_lp_login',
         'test_lp_open',
