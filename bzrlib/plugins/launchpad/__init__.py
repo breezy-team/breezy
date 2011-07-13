@@ -21,8 +21,9 @@
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
+import time
+
 # Since we are a built-in plugin we share the bzrlib version
-from bzrlib import version_info
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -35,6 +36,7 @@ from bzrlib import (
     branch as _mod_branch,
     bzrdir,
     lazy_regex,
+    version_info,
     )
 from bzrlib.commands import (
         Command,
@@ -372,13 +374,20 @@ def _check_is_up_to_date(the_branch):
         # series is optional, so the name adds the extra '/', we don't want to
         # include that one.
         series = series.strip('/')
+    t = time.time()
     latest_pub = lp_api_lite.LatestPublication(archive, series, project)
     latest_ver = latest_pub.get_latest_version()
+    t_latest_ver = time.time() - t
+    trace.mutter('LatestPublication.get_latest_version took %.3fs'
+                 % (t_latest_ver,))
     if latest_ver is None:
         trace.note('Could not find a published version for:\n  %s'
-                   % (the_branch.base,))
+                   % (t, the_branch.base,))
         return
+    t = time.time()
     tags = the_branch.tags.get_tag_dict()
+    t_tag_dict = time.time() - t
+    trace.mutter('LatestPublication get_tag_dict took: %.3fs', t_tag_dict)
     if latest_ver in tags:
         trace.note('Found most recent published version: %s\n  in %s'
                    % (latest_ver, the_branch.base))
