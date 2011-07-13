@@ -80,7 +80,7 @@ class TestLatestPublication(tests.TestCase):
         self.assertEqual('ubuntu', latest_pub._archive)
         self.assertEqual('natty', latest_pub._series)
         self.assertEqual('bzr', latest_pub._project)
-        self.assertEqual(None, latest_pub._pocket)
+        self.assertEqual('Release', latest_pub._pocket)
 
     def test__archive_URL(self):
         latest_pub = self.make_latest_publication()
@@ -106,7 +106,7 @@ class TestLatestPublication(tests.TestCase):
         self.assertEqual('ubuntu', latest_pub._archive)
         self.assertEqual(None, latest_pub._series)
         self.assertEqual('bzr', latest_pub._project)
-        self.assertEqual(None, latest_pub._pocket)
+        self.assertEqual('Release', latest_pub._pocket)
 
     def test__query_params(self):
         latest_pub = self.make_latest_publication()
@@ -116,6 +116,7 @@ class TestLatestPublication(tests.TestCase):
                           'status': 'Published',
                           'ws.size': '1',
                           'distro_series': '/ubuntu/natty',
+                          'pocket': 'Release',
                          }, latest_pub._query_params())
 
     def test__query_params_no_series(self):
@@ -125,6 +126,7 @@ class TestLatestPublication(tests.TestCase):
                           'source_name': '"bzr"',
                           'status': 'Published',
                           'ws.size': '1',
+                          'pocket': 'Release',
                          }, latest_pub._query_params())
 
     def test__query_params_pocket(self):
@@ -144,7 +146,7 @@ class TestLatestPublication(tests.TestCase):
         self.assertEqual(
             'https://api.launchpad.net/1.0/ubuntu/+archive/primary'
             '?distro_series=%2Fubuntu%2Fnatty&exact_match=true'
-            '&source_name=%22bzr%22&status=Published'
+            '&pocket=Release&source_name=%22bzr%22&status=Published'
             '&ws.op=getPublishedSources&ws.size=1',
             latest_pub._query_URL())
 

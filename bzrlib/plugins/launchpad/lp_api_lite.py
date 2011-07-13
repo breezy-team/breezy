@@ -64,6 +64,8 @@ class LatestPublication(object):
         if self._series is not None and '-' in self._series:
             self._series, self._pocket = self._series.split('-', 1)
             self._pocket = self._pocket.title()
+        else:
+            self._pocket = 'Release'
 
     def _archive_URL(self):
         """Return the Launchpad 'Archive' URL that we will query.
