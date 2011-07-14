@@ -137,26 +137,15 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_unrelated_retains_root(self):
         wt = self.make_branch_and_tree('tree')
-        root_id_before_merge = wt.get_root_id()
         other_tree = self.make_branch_and_tree('other')
-        # Do a commit so there is something to merge
-        other_tree.commit('commit other')
-        self.assertNotEquals(root_id_before_merge, other_tree.get_root_id())
-        wt.merge_from_branch(other_tree.branch,
-                             from_revision=_mod_revision.NULL_REVISION)
-        self.assertEqual(root_id_before_merge, wt.get_root_id())
-
-    def test_merge_preview_unrelated_retains_root(self):
-        wt = self.make_branch_and_tree('tree')
-        other_tree = self.make_branch_and_tree('other')
-        # Do a commit so there is something to merge
-        other_tree.commit('commit other')
+        self.addCleanup(other_tree.lock_read().unlock)
         merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
                                          this_branch=wt.branch,
                                          do_merge=False)
-        with merger.make_preview_transform() as tt:
-            preview = tt.get_preview_tree()
-            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+        with transform.TransformPreview(wt) as merger.tt:
+            merger._compute_transform()
+            new_root_id = merger.tt.final_file_id(merger.tt.root)
+            self.assertEqual(wt.get_root_id(), new_root_id)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
