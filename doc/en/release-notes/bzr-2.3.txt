@@ -9,7 +9,12 @@ bzr 2.3.4
 #########
 
 :Codename: One and counting
-:2.3.4: NOT RELEASED YET
+:2.3.4: 2011-07-14
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
+
+This mainly fixes bug #786980 which blocked the SRU process for Ubuntu Natty.
 
 External Compatibility Breaks
 *****************************
@@ -48,7 +53,7 @@ Documentation
 
 * Updated the "Using stacked branches" section of the user guide to
   describe committing to stacked branches and expanded its discussion of
-  pushing a stcked branch.  (Andrew Bennetts)
+  pushing a stacked branch.  (Andrew Bennetts)
 
 API Changes
 ***********
