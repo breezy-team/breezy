@@ -3225,7 +3225,7 @@ class TestUpdateBoundBranch(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('master')
         checkout = wt.branch.create_checkout('checkout')
         wt.commit('add stuff')
-        wt.commit('even more stuff')
+        last_revid = wt.commit('even more stuff')
         bound_location = checkout.branch.get_bound_location()
         # For unclear reasons some users have a bound_location without a final
         # '/', simulate that by forcing such a value
@@ -3235,3 +3235,4 @@ class TestUpdateBoundBranch(tests.TestCaseWithTransport):
         # bug 786980 was raising ReadOnlyError: A write attempt was made in a
         # read only transaction during the update()
         checkout.update()
+        self.assertEquals(last_revid, checkout.last_revision())
