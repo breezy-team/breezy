@@ -1,4 +1,4 @@
-bzr (2.4.0~beta5-1) UNRELEASED; urgency=low
+bzr (2.4.0~beta5-1) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Fix typo in package description. Thanks Paul Stewart.
@@ -8,7 +8,7 @@ bzr (2.4.0~beta5-1) UNRELEASED; urgency=low
   [ Max Bowsher ]
   * New upstream release.
 
- -- Max Bowsher <_@maxb.eu>  Tue, 12 Jul 2011 22:28:37 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 14 Jul 2011 15:35:42 +0200
 
 bzr (2.4.0~beta4-4) unstable; urgency=low
 
