@@ -11,10 +11,13 @@ If a string is supplied which appears to be a valid fully qualified URL,
 then bzr will not try to escape any characters. For example, if you have a
 directory named '/tmp/%2False' these are all valid ways of accessing the
 content::
+
   cd /tmp
   bzr log /tmp/%2False
   bzr log %2False
   bzr log file:///tmp/%2EFalse
+  bzr log file://localhost/tmp/%2EFalse
+  bzr log file:%2EFalse
 
 These are not valid::
   bzr log file:///tmp/%2False (refers to a file called /tmp/False)
