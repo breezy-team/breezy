@@ -3218,21 +3218,47 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.assertFalse('Branch.revision_history' in self.hpss_calls)
 
 
-class TestUpdateBoundBranch(tests.TestCaseWithTransport):
+class TestUpdateBoundBranchWithModifiedBoundLocation(
+    tests.TestCaseWithTransport):
+    """Ensure correct handling of bound_location modifications.
 
-    def test_bug_786980(self):
+    This is tested against a smart server as http://pad.lv/786980 was about a
+    ReadOnlyError (write attempt during a read-only transaction) which can only
+    happen in this context.
+    """
+
+    def setUp(self):
+        super(TestUpdateBoundBranchWithModifiedBoundLocation, self).setUp()
         self.transport_server = test_server.SmartTCPServer_for_testing
-        wt = self.make_branch_and_tree('master')
-        checkout = wt.branch.create_checkout('checkout')
-        wt.commit('add stuff')
-        last_revid = wt.commit('even more stuff')
-        bound_location = checkout.branch.get_bound_location()
+
+    def make_master_and_checkout(self, master_name, checkout_name):
+        # Create the master branch and its associated checkout
+        self.master = self.make_branch_and_tree(master_name)
+        self.checkout = self.master.branch.create_checkout(checkout_name)
+        # Modify the master branch so there is something to update
+        self.master.commit('add stuff')
+        self.last_revid = self.master.commit('even more stuff')
+        self.bound_location = self.checkout.branch.get_bound_location()
+
+    def assertUpdateSucceeds(self, new_location):
+        self.checkout.branch.set_bound_location(new_location)
+        self.checkout.update()
+        self.assertEquals(self.last_revid, self.checkout.last_revision())
+
+
+    def test_without_final_slash(self):
+        self.make_master_and_checkout('master', 'checkout')
         # For unclear reasons some users have a bound_location without a final
         # '/', simulate that by forcing such a value
-        self.assertEndsWith(bound_location, '/')
-        new_location = bound_location.rstrip('/')
-        checkout.branch.set_bound_location(new_location)
-        # bug 786980 was raising ReadOnlyError: A write attempt was made in a
-        # read only transaction during the update()
-        checkout.update()
-        self.assertEquals(last_revid, checkout.last_revision())
+        self.assertEndsWith(self.bound_location, '/')
+        self.assertUpdateSucceeds(self.bound_location.rstrip('/'))
+
+    def test_plus_sign(self):
+        self.make_master_and_checkout('+master', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2B', '+', 1))
+
+    def test_tilda(self):
+        # Embed ~ in the middle of the path just to avoid any $HOME
+        # interpretation
+        self.make_master_and_checkout('mas~ter', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2E', '~', 1))
