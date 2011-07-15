@@ -3359,8 +3359,9 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
-        local.repository.fetch(remote_branch.repository,
-                fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
+        local.repository.fetch(
+            remote_branch.repository,
+            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
 
     def override_verb(self, verb_name, verb):
@@ -3381,10 +3382,12 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
             """A version of the Repository.get_stream_1.19 verb patched to
             reject 'everything' searches the way 2.3 and earlier do.
             """
-            def recreate_search(self, repository, search_bytes, discard_excess=False):
+            def recreate_search(self, repository, search_bytes,
+                                discard_excess=False):
                 verb_log.append(search_bytes.split('\n', 1)[0])
                 if search_bytes == 'everything':
-                    return (None, request.FailedSmartServerResponse(('BadSearch',)))
+                    return (None,
+                            request.FailedSmartServerResponse(('BadSearch',)))
                 return super(OldGetStreamVerb,
                         self).recreate_search(repository, search_bytes,
                             discard_excess=discard_excess)
@@ -3395,11 +3398,31 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
-        local.repository.fetch(remote_branch.repository,
-                fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
+        local.repository.fetch(
+            remote_branch.repository,
+            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         # make sure the overridden verb was used
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback
         # its hard to predict exactly how many.
         self.assertTrue(len(self.hpss_calls) > 1)
 
+
+class TestUpdateBoundBranch(tests.TestCaseWithTransport):
+
+    def test_bug_786980(self):
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        wt = self.make_branch_and_tree('master')
+        checkout = wt.branch.create_checkout('checkout')
+        wt.commit('add stuff')
+        last_revid = wt.commit('even more stuff')
+        bound_location = checkout.branch.get_bound_location()
+        # For unclear reasons some users have a bound_location without a final
+        # '/', simulate that by forcing such a value
+        self.assertEndsWith(bound_location, '/')
+        new_location = bound_location.rstrip('/')
+        checkout.branch.set_bound_location(new_location)
+        # bug 786980 was raising ReadOnlyError: A write attempt was made in a
+        # read only transaction during the update()
+        checkout.update()
+        self.assertEquals(last_revid, checkout.last_revision())
