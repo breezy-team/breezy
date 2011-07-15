@@ -56,6 +56,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Remove ``commands._builtin_commands``, ``commands.shlex_split_unicode``,
+  ``Command._maybe_expand_globs`` and ``Command.run_direct`` deprecated in
+  2.10 and 2.2.0 and one corresponding test. (Vincent Ladeuil)
+
 * Remove ``trace.info``, ``trace.error`` and ``trace.show_log_error``
   deprecated in 2.1.0. (Vincent Ladeuil)
 
