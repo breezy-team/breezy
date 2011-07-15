@@ -80,13 +80,6 @@ class AtomicFile(object):
             if stat.S_IMODE(st.st_mode) != new_mode:
                 os.chmod(self.tmpfilename, new_mode)
 
-    def _get_closed(self):
-        symbol_versioning.warn('AtomicFile.closed deprecated in bzr 0.10',
-                               DeprecationWarning, stacklevel=2)
-        return self._fd is None
-
-    closed = property(_get_closed)
-
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
                            self.realfilename)

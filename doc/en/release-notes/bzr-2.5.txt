@@ -56,6 +56,14 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
+  (Vincent Ladeuil)
+
+* Remove log.calculate_view_revisions, log._filter_revision_range,
+  log.get_view_revisions which have been deprecated in bzr 2.1.0. Also
+  remove log.show_one_log which were never properly deprecated but wasn't
+  used and is easy to inline if needed. (Vincent Ladeuil)
+
 Internals
 *********
 
