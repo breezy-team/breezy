@@ -3245,7 +3245,6 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
         self.checkout.update()
         self.assertEquals(self.last_revid, self.checkout.last_revision())
 
-
     def test_without_final_slash(self):
         self.make_master_and_checkout('master', 'checkout')
         # For unclear reasons some users have a bound_location without a final
