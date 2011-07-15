@@ -1,3 +1,10 @@
+bzr (2.4.0~beta5-2) UNRELEASED; urgency=low
+
+  * Support all i18n-related environment variables not being set.
+    Closes: #633892
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 15 Jul 2011 11:03:53 +0200
+
 bzr (2.4.0~beta5-1) unstable; urgency=low
 
   [ Jelmer Vernooij ]
