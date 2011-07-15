@@ -44,10 +44,6 @@ from bzrlib.workingtree import WorkingTree
 from bzrlib.registry import (
     Registry,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
 from bzrlib.trace import mutter, note, warning
 
 
