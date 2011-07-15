@@ -58,16 +58,4 @@ X-Bzr-Revision-Id: jelmer@samba.org-20110714221452-hd1yap5lgdbsjyx3
 +        self.overrideEnv('LANG', None)
 +        i18n.install()
 
-=== modified file 'doc/en/release-notes/bzr-2.4.txt'
---- old/doc/en/release-notes/bzr-2.4.txt	2011-07-11 08:53:59 +0000
-+++ new/doc/en/release-notes/bzr-2.4.txt	2011-07-14 22:14:52 +0000
-@@ -32,6 +32,8 @@
- .. Fixes for situations where bzr would previously crash or give incorrect
-    or undesirable results.
- 
-+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
-+
- Documentation
- *************
- 
 

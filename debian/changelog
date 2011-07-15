@@ -1,4 +1,4 @@
-bzr (2.4.0~beta5-2) UNRELEASED; urgency=low
+bzr (2.4.0~beta5-2) unstable; urgency=low
 
   * Support all i18n-related environment variables not being set.
     Closes: #633892
