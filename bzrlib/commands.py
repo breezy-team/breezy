@@ -50,11 +50,6 @@ from bzrlib.i18n import gettext
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 class CommandInfo(object):
