@@ -70,6 +70,11 @@ API Changes
   remove ``log.show_one_log`` which was never properly deprecated but wasn't
   used and is easy to inline if needed. (Vincent Ladeuil)
 
+* Remove ``Merger.ensure_revision_trees``, ``Merger.file_revisions``,
+  ``Merger.check_basis`` and ``Merger.compare_basis`` deprecated in 2.1.0 as
+  well as ``Merge3Merger.scalar_three_way`` deprecated in 2.2.0.
+  (Vincent Ladeuil)
+
 * Remove ``trace.info``, ``trace.error`` and ``trace.show_log_error``
   deprecated in 2.1.0. (Vincent Ladeuil)
 
