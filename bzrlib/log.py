@@ -89,10 +89,6 @@ from bzrlib.osutils import (
     get_terminal_encoding,
     terminal_width,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
 
 
 def find_touching_revisions(branch, file_id):
@@ -1847,12 +1843,6 @@ author_list_registry.register('first', author_list_first,
 
 author_list_registry.register('committer', author_list_committer,
                               'The committer')
-
-
-def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
-    # deprecated; for compatibility
-    lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
-    lf.show(revno, rev, delta)
 
 
 def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
