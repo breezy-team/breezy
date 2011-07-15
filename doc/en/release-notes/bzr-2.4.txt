@@ -32,6 +32,8 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
 Documentation
 *************
 
