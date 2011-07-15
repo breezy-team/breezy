@@ -292,7 +292,6 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
       the empty string to match any of the preceding properties. 
       
     """
-    
     # Take care of old style message_search parameter
     if message_search:
         if match:
@@ -302,7 +301,6 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
                 match['message'] = [message_search]
         else:
             match={ 'message': [message_search] }
-        
     return {
         'direction': direction,
         'specific_fileids': specific_fileids,
@@ -803,25 +801,6 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
             yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
-@deprecated_function(deprecated_in((2, 2, 0)))
-def calculate_view_revisions(branch, start_revision, end_revision, direction,
-        specific_fileid, generate_merge_revisions):
-    """Calculate the revisions to view.
-
-    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
-             a list of the same tuples.
-    """
-    start_rev_id, end_rev_id = _get_revision_limits(branch, start_revision,
-        end_revision)
-    view_revisions = list(_calc_view_revisions(branch, start_rev_id, end_rev_id,
-        direction, generate_merge_revisions or specific_fileid))
-    if specific_fileid:
-        view_revisions = _filter_revisions_touching_file_id(branch,
-            specific_fileid, view_revisions,
-            include_merges=generate_merge_revisions)
-    return _rebase_merge_depth(view_revisions)
-
-
 def _rebase_merge_depth(view_revisions):
     """Adjust depths upwards so the top level is 0."""
     # If either the first or last revision have a merge_depth of 0, we're done
@@ -887,7 +866,7 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     """
     if match is None:
         return log_rev_iterator
-    searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v]) 
+    searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v])
                 for (k,v) in match.iteritems()]
     return _filter_re(searchRE, log_rev_iterator)
 
@@ -905,9 +884,8 @@ def _match_filter(searchRE, rev):
                'author': (rev.get_apparent_authors()),
                'bugs': list(rev.iter_bugs())
                }
-    strings[''] = [item for inner_list in strings.itervalues() 
+    strings[''] = [item for inner_list in strings.itervalues()
                    for item in inner_list]
-    
     for (k,v) in searchRE:
         if k in strings and not _match_any_filter(strings[k], v):
             return False

@@ -1134,38 +1134,6 @@ class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
                           ('4b', '4', 0)],
                          revisions)
 
-    def test_file_id_for_range(self):
-        mainline_revs, rev_nos, b = self.make_branch_with_many_merges()
-        b.lock_read()
-        self.addCleanup(b.unlock)
-
-        def rev_from_rev_id(revid, branch):
-            revspec = revisionspec.RevisionSpec.from_string('revid:%s' % revid)
-            return revspec.in_history(branch)
-
-        def view_revs(start_rev, end_rev, file_id, direction):
-            revs = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 2, 0)),
-                log.calculate_view_revisions,
-                b,
-                start_rev, # start_revision
-                end_rev, # end_revision
-                direction, # direction
-                file_id, # specific_fileid
-                True, # generate_merge_revisions
-                )
-            return revs
-
-        rev_3a = rev_from_rev_id('3a', b)
-        rev_4b = rev_from_rev_id('4b', b)
-        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1),
-                          ('3a', '2.1.1', 2)],
-                          view_revs(rev_3a, rev_4b, 'f-id', 'reverse'))
-        # Note: 3c still appears before 3a here because of depth-based sorting
-        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1),
-                          ('3a', '2.1.1', 2)],
-                          view_revs(rev_3a, rev_4b, 'f-id', 'forward'))
-
 
 class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
 
