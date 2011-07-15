@@ -58,7 +58,9 @@ API Changes
 
 * Remove ``commands._builtin_commands``, ``commands.shlex_split_unicode``,
   ``Command._maybe_expand_globs`` and ``Command.run_direct`` deprecated in
-  2.10 and 2.2.0 and one corresponding test. (Vincent Ladeuil)
+  2.10 and 2.2.0. (Vincent Ladeuil)
+
+* Remove ``diff.get_trees_and_branches_to_diff`` deprecated in 2.2.0.
 
 * Remove ``trace.info``, ``trace.error`` and ``trace.show_log_error``
   deprecated in 2.1.0. (Vincent Ladeuil)
