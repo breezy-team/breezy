@@ -639,10 +639,10 @@ def get_source_format(tree):
     :param path: Path to the package
     :return: String with package format
     """
-    if not tree.has_filename("debian/source/format"):
+    filename = "debian/source/format"
+    if not tree.has_filename(filename):
         return FORMAT_1_0
-    text = tree.get_file_text(tree.path2id("debian/source/format"),
-        "debian/source/format")
+    text = tree.get_file_text(tree.path2id(filename), filename)
     return text.strip()
 
 
