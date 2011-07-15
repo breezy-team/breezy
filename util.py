@@ -641,7 +641,9 @@ def get_source_format(tree):
     """
     if not tree.has_filename("debian/source/format"):
         return FORMAT_1_0
-    return tree.get_file_text(tree.path2id("debian/source/format")).strip()
+    text = tree.get_file_text(tree.path2id("debian/source/format"),
+        "debian/source/format")
+    return text.strip()
 
 
 FORMAT_1_0 = "1.0"
