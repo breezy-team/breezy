@@ -1557,6 +1557,18 @@ class ConnectedTransport(Transport):
         raise NotImplementedError(self.disconnect)
 
 
+def location_to_url(location):
+    """Determine a fully qualified URL from a location string.
+
+    This will try to interpret location as both a URL and a directory path.
+    """
+    if not isinstance(location, basestring):
+        raise AssertionError("location not a byte or unicode string")
+    from bzrlib.directory_service import directories
+    location = directories.dereference(location)
+    return location
+
+
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1571,8 +1583,7 @@ def get_transport(base, possible_transports=None):
     if base is None:
         base = '.'
     last_err = None
-    from bzrlib.directory_service import directories
-    base = directories.dereference(base)
+    base = location_to_url(base)
 
     def convert_path_to_url(base, error_str):
         if urlutils.is_url(base):
