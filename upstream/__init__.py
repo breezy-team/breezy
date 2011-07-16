@@ -42,12 +42,25 @@ from bzrlib.plugins.builddeb.errors import (
     PackageVersionNotPresent,
     WatchFileMissing,
     )
-from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+from bzrlib.plugins.builddeb.repack_tarball import (
+    get_filetype,
+    repack_tarball,
+    )
 from bzrlib.plugins.builddeb.util import (
     component_from_orig_tarball,
     export,
     tarball_name,
     )
+
+
+def new_tarball_name(package, version, old_name):
+    """Determine new tarball name based on the package name and the old name.
+    """
+    old_format = get_filetype(old_name)
+    if old_format in ("gz", "bz2", "xz"):
+        return tarball_name(package, version, None, old_format)
+    # Unknown target format, repack to .tar.gz
+    return tarball_name(package, version, None, "gz")
 
 
 class UpstreamSource(object):
@@ -481,7 +494,7 @@ class TarfileSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir):
         if version != self.version:
             raise PackageVersionNotPresent(package, version, self)
-        dest_name = tarball_name(package, version)
+        dest_name = new_tarball_name(package, version, self.path)
         repack_tarball(self.path, dest_name, target_dir=target_dir)
         return [os.path.join(target_dir, dest_name)]
 
@@ -539,7 +552,6 @@ class LaunchpadReleaseFileSource(UpstreamSource):
             warning("More than one release file for release %s of package %s"
                     "found on Launchpad. Using the first.", version, package)
         hosted_file = release_files[0]
-        dest_name = tarball_name(package, version)
         tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
         try:
             inf = hosted_file.open()
@@ -556,6 +568,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
                     outf.close()
             finally:
                 inf.close()
+            dest_name = new_tarball_name(package, version, filename)
             repack_tarball(tmppath, dest_name, target_dir=target_dir)
             return os.path.join(target_dir, dest_name)
         finally:
