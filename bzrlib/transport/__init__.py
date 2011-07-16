@@ -118,10 +118,6 @@ class TransportListRegistry(registry.Registry):
     def register_transport(self, key, help=None):
         self.register(key, [], help)
 
-    def set_default_transport(self, key=None):
-        """Return either 'key' or the default key if key is None"""
-        self._default_key = key
-
 
 transport_list_registry = TransportListRegistry()
 
@@ -1693,7 +1689,6 @@ class Server(object):
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
-transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
             help="Access using SFTP (most SSH servers provide SFTP).",
