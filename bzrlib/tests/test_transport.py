@@ -1012,3 +1012,11 @@ class TestLocationToUrl(tests.TestCase):
         directories.register("bar:", SomeDirectory, "Dummy directory")
         self.addCleanup(directories.remove, "bar:")
         self.assertEquals("http://bar", location_to_url("bar:"))
+
+    def test_unicode_url(self):
+        self.assertRaises(errors.InvalidURL, location_to_url,
+            "http://fo/\xc3\xaf".decode("utf-8"))
+
+    def test_unicode_path(self):
+        self.assertEquals("file:///foo/bar%C3%AF",
+            location_to_url("/foo/bar\xc3\xaf".decode("utf-8")))
