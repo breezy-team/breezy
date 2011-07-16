@@ -177,7 +177,7 @@ class GetOrigSourceSource(UpstreamSource):
             fetched_tarball = os.path.join(source_dir, filename)
             if os.path.exists(fetched_tarball):
                 repack_tarball(fetched_tarball, filename,
-                               target_dir=target_dir, force_gz=False)
+                               target_dir=target_dir)
                 filenames.append(os.path.join(target_dir, filename))
         if filenames:
             return filenames
@@ -441,7 +441,7 @@ class UpstreamProvider(object):
             return None
         for path in paths:
             repack_tarball(path, os.path.basename(path),
-                    target_dir=target_dir, force_gz=False)
+                    target_dir=target_dir)
         return paths
 
 
@@ -482,8 +482,7 @@ class TarfileSource(UpstreamSource):
         if version != self.version:
             raise PackageVersionNotPresent(package, version, self)
         dest_name = tarball_name(package, version)
-        repack_tarball(self.path, dest_name, target_dir=target_dir,
-                force_gz=False)
+        repack_tarball(self.path, dest_name, target_dir=target_dir)
         return [os.path.join(target_dir, dest_name)]
 
     def get_latest_version(self, package, version):
@@ -557,8 +556,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
                     outf.close()
             finally:
                 inf.close()
-            repack_tarball(tmppath, dest_name, target_dir=target_dir,
-                force_gz=False)
+            repack_tarball(tmppath, dest_name, target_dir=target_dir)
             return os.path.join(target_dir, dest_name)
         finally:
             shutil.rmtree(tmpdir)

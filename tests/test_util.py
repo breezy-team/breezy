@@ -785,6 +785,12 @@ class SourceFormatTests(TestCaseWithTransport):
         tree.add(["debian", "debian/source", "debian/source/format"])
         self.assertEquals("3.0 (quilt)", get_source_format(tree))
 
+    def test_source_format_file_unversioned(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([("debian/",), ("debian/source/",),
+            ("debian/source/format", "3.0 (quilt)")])
+        self.assertEquals("3.0 (quilt)", get_source_format(tree))
+
 
 class GuessBuildTypeTests(TestCaseWithTransport):
     """Tests for guess_build_type."""

@@ -27,6 +27,7 @@ from bzrlib.errors import (NoSuchFile,
 from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
 from bzrlib.plugins.builddeb.repack_tarball import (
         repack_tarball,
+        get_filetype,
         get_repacker_class,
         )
 from bzrlib.plugins.builddeb.tests import TestCaseInTempDir
@@ -69,7 +70,9 @@ class TestRepackTarball(TestCaseInTempDir):
 
     def test_repack_tarball_non_extant(self):
         error = NoSuchFile
-        if (get_repacker_class(self.old_tarball) is None):
+        old_format = get_filetype(self.old_tarball)
+        new_format = get_filetype(self.new_tarball)
+        if (get_repacker_class(old_format, new_format) is None):
             # directory, can't really be detected remotely, so we have a
             # error that could mean two things
             error = UnsupportedRepackFormat
@@ -132,3 +135,6 @@ class TestRepackTarball(TestCaseInTempDir):
         self.assertPathDoesNotExist(self.new_tarball)
         self.assertPathDoesNotExist(os.path.join(target_dir, self.new_tarball))
         self.assertPathExists(target_dir)
+
+
+
