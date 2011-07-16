@@ -27,11 +27,13 @@ from bzrlib import (
     transport,
     urlutils,
     )
+from bzrlib.directory_service import directories
 from bzrlib.transport import (
     chroot,
     fakenfs,
     http,
     local,
+    location_to_url,
     memory,
     pathfilter,
     readonly,
@@ -993,3 +995,20 @@ class TestUnhtml(tests.TestCase):
         result = http.unhtml_roughly(fake_html)
         self.assertEquals(len(result), 1000)
         self.assertStartsWith(result, " something!")
+
+
+class SomeDirectory(object):
+
+    def look_up(self, name, url):
+        return "http://bar"
+
+
+class TestLocationToUrl(tests.TestCase):
+
+    def test_regular_url(self):
+        self.assertEquals("file://foo", location_to_url("file://foo"))
+
+    def test_directory(self):
+        directories.register("bar:", SomeDirectory, "Dummy directory")
+        self.addCleanup(directories.remove, "bar:")
+        self.assertEquals("http://bar", location_to_url("bar:"))
