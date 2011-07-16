@@ -66,8 +66,7 @@ def _get_tarballs(tree, tarball, package_name, version, use_v3=False):
             format = "lzma"
     dest_name = util.tarball_name(package_name, version, None, format=format)
     trace.note("Fetching tarball")
-    repack_tarball(tarball, dest_name, target_dir=orig_dir,
-            force_gz=not use_v3)
+    repack_tarball(tarball, dest_name, target_dir=orig_dir)
     provider = upstream.UpstreamProvider(package_name, version,
             orig_dir, [])
     orig_files = provider.provide(os.path.join(tree.basedir, ".."))

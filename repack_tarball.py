@@ -141,39 +141,37 @@ class ZipTgzRepacker(TgzRepacker):
 
 
 def get_filetype(filename):
-    types = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".tar.lzma", ".tbz2",
-             ".tar", ".zip"]
-    for filetype in types:
+    types = {
+        ".tar.gz": "gz",
+        ".tgz": "gz",
+        ".tar.bz2": "bz2",
+        ".tar.xz": "xz",
+        ".tar.lzma": "lzma",
+        ".tbz2": "bz2",
+        ".tar": "tar",
+        ".zip": "zip"
+        }
+    for filetype, name in types.iteritems():
         if filename.endswith(filetype):
-            return filetype
+            return name
 
 
-def get_repacker_class(source_filename, force_gz=True):
+def get_repacker_class(source_format, target_format):
     """Return the appropriate repacker based on the file extension."""
-    filetype = get_filetype(source_filename)
-    if (filetype == ".tar.gz" or filetype == ".tgz"):
+    if source_format == target_format:
         return CopyRepacker
-    if (filetype == ".tar.bz2" or filetype == ".tbz2"):
-        if force_gz:
-            return Tbz2TgzRepacker
-        return CopyRepacker
-    if filetype == ".tar.lzma":
-        if force_gz:
-            return TarLzma2TgzRepacker
-        return CopyRepacker
-    if filetype == ".tar.xz":
-        return TarLzma2TgzRepacker
-    if filetype == ".tar":
-        return TarTgzRepacker
-    if filetype == ".zip":
-        return ZipTgzRepacker
-    return None
+    known_formatters = {
+        ("bz2", "gz"): Tbz2TgzRepacker,
+        ("lzma", "gz"): TarLzma2TgzRepacker,
+        ("xz", "gz"): TarLzma2TgzRepacker,
+        ("tar", "gz"): TarTgzRepacker,
+        ("zip", "gz"): ZipTgzRepacker,
+        }
+    return known_formatters.get((source_format, target_format))
 
 
-def _error_if_exists(target_transport, new_name, source_name, force_gz=True):
+def _error_if_exists(target_transport, new_name, source_name):
     source_filetype = get_filetype(source_name)
-    if force_gz and source_filetype != ".tar.gz":
-        raise FileExists(new_name)
     source_f = open_file(source_name)
     try:
         source_sha = new_sha(source_f.read()).hexdigest()
@@ -201,8 +199,10 @@ def _repack_directory(target_transport, new_name, source_name):
         target_f.close()
 
 
-def _repack_other(target_transport, new_name, source_name, force_gz=True):
-    repacker_cls = get_repacker_class(source_name, force_gz=force_gz)
+def _repack_other(target_transport, new_name, source_name):
+    source_filetype = get_filetype(source_name)
+    target_filetype = get_filetype(new_name)
+    repacker_cls = get_repacker_class(source_filetype, target_filetype)
     if repacker_cls is None:
         raise UnsupportedRepackFormat(source_name)
     target_transport.ensure_base()
@@ -218,7 +218,7 @@ def _repack_other(target_transport, new_name, source_name, force_gz=True):
         target_f.close()
 
 
-def repack_tarball(source_name, new_name, target_dir=None, force_gz=True):
+def repack_tarball(source_name, new_name, target_dir=None):
     """Repack the file/dir named to a .tar.gz with the chosen name.
 
     This function takes a named file of either .tar.gz, .tar .tgz .tar.bz2 
@@ -239,7 +239,6 @@ def repack_tarball(source_name, new_name, target_dir=None, force_gz=True):
     :keyword target_dir: the directory to consider new_name relative to, and
                          will be created if non-existant.
     :type target_dir: string
-    :param force_gz: whether to repack other .tar files to .tar.gz.
     :return: None
     :throws NoSuchFile: if source_name doesn't exist.
     :throws FileExists: if the target filename (after considering target_dir)
@@ -257,11 +256,13 @@ def repack_tarball(source_name, new_name, target_dir=None, force_gz=True):
     extra, new_name = os.path.split(new_name)
     target_transport = get_transport(os.path.join(target_dir, extra))
     if target_transport.has(new_name):
-        _error_if_exists(target_transport, new_name, source_name,
-                force_gz=force_gz)
+        source_format = get_filetype(source_name)
+        target_format = get_filetype(new_name)
+        if source_format != target_format:
+            raise FileExists(new_name)
+        _error_if_exists(target_transport, new_name, source_name)
         return
     if os.path.isdir(source_name):
         _repack_directory(target_transport, new_name, source_name)
     else:
-        _repack_other(target_transport, new_name, source_name,
-                force_gz=force_gz)
+        _repack_other(target_transport, new_name, source_name)

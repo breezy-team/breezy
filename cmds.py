@@ -578,8 +578,7 @@ class cmd_merge_upstream(Command):
             dest_name = tarball_name(package, version, None, format=format)
             tarball_filename = os.path.join(orig_dir, dest_name)
             try:
-                repack_tarball(location, dest_name, target_dir=orig_dir,
-                        force_gz=not v3)
+                repack_tarball(location, dest_name, target_dir=orig_dir)
             except FileExists:
                 raise BzrCommandError("The target file %s already exists, and is either "
                                       "different to the new upstream tarball, or they "
