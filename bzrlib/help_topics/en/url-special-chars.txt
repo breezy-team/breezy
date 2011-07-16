@@ -7,17 +7,17 @@ will determine the appropriate URL representation.
 
 There are a few characters which have special meaning in URLs and need careful
 handling to avoid ambiguities. Characters can be escaped with a % and a hex
-value in URLs.  These escapes are not active in file paths.
+value in URLs.  These escapes are not active in file paths. Any non-ASCII
+characters in a file path will automatically be urlencoded when the path
+is converted to a URL.
 
-URLs represent non-ascii characters in an encoding defined by the server, but
+URLs represent non-ASCII characters in an encoding defined by the server, but
 usually UTF-8.  The % escapes should be of the UTF-8 bytes.  Bazaar tries to be
 generous in what it accepts as a URL and to print them in a way that
 will be readable.
 
-If a string is supplied which appears to be a valid fully qualified URL,
-then bzr will not try to escape any characters. For example, if you have a
-directory named '/tmp/%2False' these are all valid ways of accessing the
-content (2F is the ASCII code for forward slash)::
+For example, if you have a directory named '/tmp/%2False' these are all valid
+ways of accessing the content (0x2F, or 47, is the ASCII code for forward slash)::
 
   cd /tmp
   bzr log /tmp/%2False
@@ -27,6 +27,7 @@ content (2F is the ASCII code for forward slash)::
   bzr log file:%252False
 
 These are valid but do not refer to the same file::
+
   bzr log file:///tmp/%2False (refers to a file called /tmp/\/alse)
   bzr log %252False (refers to a file called /tmp/%252False)
 
