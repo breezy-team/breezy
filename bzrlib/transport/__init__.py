@@ -1560,7 +1560,8 @@ class ConnectedTransport(Transport):
 def location_to_url(location):
     """Determine a fully qualified URL from a location string.
 
-    This will try to interpret location as both a URL and a directory path.
+    This will try to interpret location as both a URL and a directory path. It
+    will also lookup the location in directories.
     """
     if not isinstance(location, basestring):
         raise AssertionError("location not a byte or unicode string")
@@ -1576,7 +1577,10 @@ def location_to_url(location):
                 extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
 
-    return location
+    if urlutils.is_url(location):
+        return location
+
+    return urlutils.local_path_to_url(location)
 
 
 def get_transport(base, possible_transports=None):
@@ -1592,7 +1596,6 @@ def get_transport(base, possible_transports=None):
     """
     if base is None:
         base = '.'
-    last_err = None
     base = location_to_url(base)
 
     transport = None
@@ -1605,6 +1608,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
+    last_err = None
     for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
@@ -1614,22 +1618,7 @@ def get_transport(base, possible_transports=None):
                         raise AssertionError()
                     possible_transports.append(transport)
                 return transport
-
-    # We tried all the different protocols, now try one last time
-    # as a local protocol
-    if urlutils.is_url(base):
-        # This looks like a URL, but we weren't able to
-        # instantiate it as such. raise an appropriate error
-        raise errors.UnsupportedProtocol(base, last_err)
-    # This doesn't look like a protocol, consider it a local path
-    base = urlutils.local_path_to_url(base)
-
-    # The default handler is the filesystem handler, stored as protocol None
-    factory_list = transport_list_registry.get(None)
-    transport, last_err = _try_transport_factories(base, factory_list)
-
-    return transport
-
+    raise errors.UnsupportedProtocol(base, last_err)
 
 def _try_transport_factories(base, factory_list):
     last_err = None

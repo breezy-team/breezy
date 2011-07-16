@@ -1020,3 +1020,6 @@ class TestLocationToUrl(tests.TestCase):
     def test_unicode_path(self):
         self.assertEquals("file:///foo/bar%C3%AF",
             location_to_url("/foo/bar\xc3\xaf".decode("utf-8")))
+
+    def test_path(self):
+        self.assertEquals("file:///foo/bar", location_to_url("/foo/bar"))
