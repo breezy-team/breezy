@@ -1620,6 +1620,7 @@ def get_transport(base, possible_transports=None):
                 return transport
     raise errors.UnsupportedProtocol(base, last_err)
 
+
 def _try_transport_factories(base, factory_list):
     last_err = None
     for factory in factory_list:
