@@ -916,7 +916,7 @@ class DistributionBranchTests(BuilddebTestCase):
         branch = tree.branch
         rh = branch.revision_history()
         self.assertEqual(len(rh), 1)
-        self.assertEqual(self.db1.revid_of_upstream_version(
+        self.assertEqual(self.db1.pristine_upstream_source.version_as_revision(
             "package", version.upstream_version), rh[0])
         rev = branch.repository.get_revision(rh[0])
         self.assertEqual(rev.message,
