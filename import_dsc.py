@@ -851,11 +851,12 @@ class DistributionBranch(object):
                     target_tree=target_tree)
         finally:
             self_tree.unlock()
-        ret = self.pristine_upstream_source.import_tarballs(
-            package, version, self.pristine_upstream_tree,
-            parent_ids=upstream_parents, tarballs=upstream_tarballs,
-            timestamp=timestamp, author=author)
-        for (component, tag, revid) in ret:
+        ret = []
+        for (tarball, component, md5) in upstream_tarballs:
+            (tag, revid) = self.pristine_upstream_source.import_component_tarball(
+                package, version, self.pristine_upstream_tree, upstream_parents, component,
+                md5, tarball, author=author, timestamp=timestamp)
+            ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
             self.branch.tags.set_tag(tag, revid)
         return ret
