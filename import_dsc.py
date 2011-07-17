@@ -818,12 +818,6 @@ class DistributionBranch(object):
                 % (version, upstream_part, str(upstream_parents)))
         assert self.pristine_upstream_tree is not None, \
             "Can't import upstream with no tree"
-        if len(upstream_parents) > 0:
-            parent_revid = upstream_parents[0]
-        else:
-            parent_revid = NULL_REVISION
-        self.pristine_upstream_tree.pull(self.pristine_upstream_tree.branch,
-            overwrite=True, stop_revision=parent_revid)
         other_branches = self.get_other_branches()
         upstream_trees = [o.pristine_upstream_branch.basis_tree()
             for o in other_branches]
@@ -845,6 +839,12 @@ class DistributionBranch(object):
         else:
             self_tree = self.get_branch_tip_revtree()
             self_tree.lock_read()
+        if len(upstream_parents) > 0:
+            parent_revid = upstream_parents[0]
+        else:
+            parent_revid = NULL_REVISION
+        self.pristine_upstream_tree.pull(self.pristine_upstream_tree.branch,
+            overwrite=True, stop_revision=parent_revid)
         try:
             import_dir(self.pristine_upstream_tree, upstream_part,
                     file_ids_from=[self_tree] + upstream_trees,
