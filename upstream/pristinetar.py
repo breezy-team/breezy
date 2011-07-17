@@ -158,6 +158,17 @@ class PristineTarSource(UpstreamSource):
 
     def import_tarballs(self, package, version, tree, parent_ids, tarballs,
             timestamp=None, author=None):
+        """Import the upstream tarballs.
+
+        :param package: Package name
+        :param version: Package version
+        :param path: Path with tree to import
+        :param parent_ids: Parent revisions
+        :param tarballs: List of (path, component, md5)
+        :param timestamp: Optional timestamp for new commits
+        :param author: Optional author for new commits
+        :return: List of tuples with (component, tag, revid)
+        """
         ret = []
         for (tarball, component, md5) in tarballs:
             (tag, revid) = self.import_component_tarball(
