@@ -469,7 +469,8 @@ _register_directory()
 
 
 package_branch = lazy_regex.lazy_compile(
-    r'bazaar.launchpad.net.*/(?P<archive>ubuntu|debian)/(?P<series>[^/]+/)?'
+    r'bazaar.launchpad.net.*/'
+    r'(?P<user>~[^/]+/)?(?P<archive>ubuntu|debian)/(?P<series>[^/]+/)?'
     r'(?P<project>[^/]+)(?P<branch>/[^/]+)?'
     )
 def _check_is_up_to_date(the_branch):
@@ -477,7 +478,8 @@ def _check_is_up_to_date(the_branch):
     if m is None:
         return
     from bzrlib.plugins.launchpad import lp_api_lite
-    archive, series, project = m.group('archive', 'series', 'project')
+    archive, series, project, user = m.group('archive', 'series',
+                                             'project', 'user')
     if series is not None:
         # series is optional, so the regex includes the extra '/', we don't
         # want to send that on (it causes Internal Server Errors.)

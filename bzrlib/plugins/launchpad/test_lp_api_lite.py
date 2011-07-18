@@ -20,6 +20,7 @@
 import socket
 
 from bzrlib import tests
+from bzrlib.plugins import launchpad
 from bzrlib.plugins.launchpad import lp_api_lite
 
 class _JSONParserFeature(tests.Feature):
@@ -260,3 +261,19 @@ class TestLatestPublication(tests.TestCase):
         self.requireFeature(JSONParserFeature)
         latest_pub = self.make_latest_publication()
         self.assertIsNot(None, latest_pub.get_latest_version())
+
+
+class TestIsUpToDate(tests.TestCase):
+
+    def assertPackageBranchRe(self, url, user, archive, series, project):
+        m = launchpad.package_branch.search(url)
+        if m is None:
+            self.fail('package_branch regex did not match url: %s' % (url,))
+        self.assertEqual(
+            (user, archive, series, project),
+            m.group('user', 'archive', 'series', 'project'))
+
+    def test_package_branch_regex(self):
+        self.assertPackageBranchRe(
+            'http://bazaar.launchpad.net/+branch/ubuntu/foo',
+            None, 'ubuntu', None, 'foo')

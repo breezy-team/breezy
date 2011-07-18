@@ -39,8 +39,6 @@ import urllib2
 from bzrlib import trace
 
 
-DEFAULT_SERIES = 'oneiric'
-
 class LatestPublication(object):
     """Encapsulate how to find the latest publication for a given project."""
 
@@ -120,7 +118,7 @@ class LatestPublication(object):
             req = urllib2.Request(query_URL)
             response = urllib2.urlopen(req)
             json_info = response.read()
-        # XXX: We haven't tested the HTTPError
+        # TODO: We haven't tested the HTTPError
         except (urllib2.URLError, urllib2.HTTPError), e:
             trace.mutter('failed to place query to %r' % (query_URL,))
             trace.log_exception_quietly()
