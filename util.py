@@ -156,7 +156,7 @@ def find_changelog(t, merge, max_blocks=1):
             else:
                 raise MissingChangelogError('"debian/changelog"')
         elif merge and t.has_filename('changelog'):
-            # If it is a "larstiq" pacakge and debian is a symlink to
+            # If it is a "larstiq" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
             debian_file_id = t.path2id('debian')
