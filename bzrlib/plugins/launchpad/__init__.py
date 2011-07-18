@@ -467,23 +467,43 @@ def _register_directory():
 
 _register_directory()
 
-
-package_branch = lazy_regex.lazy_compile(
+# This is kept in __init__ so that we don't load lp_api_lite unless the branch
+# actually matches. That way we can avoid importing extra dependencies like
+# json.
+_package_branch = lazy_regex.lazy_compile(
     r'bazaar.launchpad.net.*?/'
     r'(?P<user>~[^/]+/)?(?P<archive>ubuntu|debian)/(?P<series>[^/]+/)?'
     r'(?P<project>[^/]+)(?P<branch>/[^/]+)?'
     )
-def _check_is_up_to_date(the_branch):
-    m = package_branch.search(the_branch.base)
+
+def _get_package_branch_info(url):
+    """Determine the packaging information for this URL.
+
+    :return: If this isn't a packaging branch, return None. If it is, return
+        (archive, series, project)
+    """
+    m = _package_branch.search(url)
     if m is None:
         return
-    from bzrlib.plugins.launchpad import lp_api_lite
     archive, series, project, user = m.group('archive', 'series',
                                              'project', 'user')
     if series is not None:
         # series is optional, so the regex includes the extra '/', we don't
         # want to send that on (it causes Internal Server Errors.)
         series = series.strip('/')
+    if user is not None:
+        user = user.strip('~/')
+        if user != 'ubuntu-branches':
+            return None
+    return archive, series, project
+
+
+def _check_is_up_to_date(the_branch):
+    info = _get_package_branch_info(the_branch.base)
+    if info is None:
+        return
+    archive, series, project = info
+    from bzrlib.plugins.launchpad import lp_api_lite
     t = time.time()
     latest_pub = lp_api_lite.LatestPublication(archive, series, project)
     latest_ver = latest_pub.get_latest_version()

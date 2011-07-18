@@ -36,7 +36,9 @@ except ImportError:
 import urllib
 import urllib2
 
-from bzrlib import trace
+from bzrlib import (
+    trace,
+    )
 
 
 class LatestPublication(object):
@@ -166,3 +168,5 @@ def get_latest_publication(archive, series, project):
     """
     lp = LatestPublication(archive, series, project)
     return lp.get_latest_version()
+
+

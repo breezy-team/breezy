@@ -266,22 +266,29 @@ class TestLatestPublication(tests.TestCase):
 class TestIsUpToDate(tests.TestCase):
 
     def assertPackageBranchRe(self, url, user, archive, series, project):
-        m = launchpad.package_branch.search(url)
+        m = launchpad._package_branch.search(url)
         if m is None:
             self.fail('package_branch regex did not match url: %s' % (url,))
         self.assertEqual(
             (user, archive, series, project),
             m.group('user', 'archive', 'series', 'project'))
 
+    def assertNotPackageBranch(self, url):
+        self.assertIs(None, launchpad._get_package_branch_info(url))
+
+    def assertBranchInfo(self, url, archive, series, project):
+        self.assertEqual((archive, series, project),
+            launchpad._get_package_branch_info(url))
+
     def test_package_branch_regex(self):
         self.assertPackageBranchRe(
             'http://bazaar.launchpad.net/+branch/ubuntu/foo',
             None, 'ubuntu', None, 'foo')
         self.assertPackageBranchRe(
-            'http://bazaar.launchpad.net/+branch/ubuntu/natty/foo',
+            'bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/natty/foo',
             None, 'ubuntu', 'natty/', 'foo')
         self.assertPackageBranchRe(
-            'http://bazaar.launchpad.net/+branch/debian/foo',
+            'sftp://bazaar.launchpad.net/+branch/debian/foo',
             None, 'debian', None, 'foo')
         self.assertPackageBranchRe(
             'http://bazaar.launchpad.net/+branch/debian/sid/foo',
@@ -290,3 +297,31 @@ class TestIsUpToDate(tests.TestCase):
             'http://bazaar.launchpad.net/+branch'
             '/~ubuntu-branches/ubuntu/natty/foo/natty',
             '~ubuntu-branches/', 'ubuntu', 'natty/', 'foo')
+        self.assertPackageBranchRe(
+            'http://bazaar.launchpad.net/+branch'
+            '/~user/ubuntu/natty/foo/test',
+            '~user/', 'ubuntu', 'natty/', 'foo')
+
+    def test_package_branch_doesnt_match(self):
+        self.assertNotPackageBranch('http://example.com/ubuntu/foo')
+        self.assertNotPackageBranch(
+            'http://bazaar.launchpad.net/+branch/bzr')
+        self.assertNotPackageBranch(
+            'http://bazaar.launchpad.net/+branch/~bzr-pqm/bzr/bzr.dev')
+        # Not a packaging branch because ~user isn't ~ubuntu-branches
+        self.assertNotPackageBranch(
+            'http://bazaar.launchpad.net/+branch'
+            '/~user/ubuntu/natty/foo/natty')
+
+    def test__get_package_branch_info(self):
+        self.assertBranchInfo(
+            'bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/natty/foo',
+            'ubuntu', 'natty', 'foo')
+        self.assertBranchInfo(
+            'bzr+ssh://bazaar.launchpad.net/+branch'
+            '/~ubuntu-branches/ubuntu/natty/foo/natty',
+            'ubuntu', 'natty', 'foo')
+        self.assertBranchInfo(
+            'http://bazaar.launchpad.net/+branch'
+            '/~ubuntu-branches/debian/sid/foo/sid',
+            'debian', 'sid', 'foo')
