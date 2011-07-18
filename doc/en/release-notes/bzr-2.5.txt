@@ -46,6 +46,8 @@ Bug Fixes
   that subfolder.
   (Bastian Bowe, #809901)
 
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
