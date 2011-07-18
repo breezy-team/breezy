@@ -277,3 +277,16 @@ class TestIsUpToDate(tests.TestCase):
         self.assertPackageBranchRe(
             'http://bazaar.launchpad.net/+branch/ubuntu/foo',
             None, 'ubuntu', None, 'foo')
+        self.assertPackageBranchRe(
+            'http://bazaar.launchpad.net/+branch/ubuntu/natty/foo',
+            None, 'ubuntu', 'natty/', 'foo')
+        self.assertPackageBranchRe(
+            'http://bazaar.launchpad.net/+branch/debian/foo',
+            None, 'debian', None, 'foo')
+        self.assertPackageBranchRe(
+            'http://bazaar.launchpad.net/+branch/debian/sid/foo',
+            None, 'debian', 'sid/', 'foo')
+        self.assertPackageBranchRe(
+            'http://bazaar.launchpad.net/+branch'
+            '/~ubuntu-branches/ubuntu/natty/foo/natty',
+            '~ubuntu-branches/', 'ubuntu', 'natty/', 'foo')

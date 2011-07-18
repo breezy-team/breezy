@@ -469,7 +469,7 @@ _register_directory()
 
 
 package_branch = lazy_regex.lazy_compile(
-    r'bazaar.launchpad.net.*/'
+    r'bazaar.launchpad.net.*?/'
     r'(?P<user>~[^/]+/)?(?P<archive>ubuntu|debian)/(?P<series>[^/]+/)?'
     r'(?P<project>[^/]+)(?P<branch>/[^/]+)?'
     )
