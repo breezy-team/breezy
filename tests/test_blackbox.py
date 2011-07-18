@@ -23,6 +23,14 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class TestRebaseSimple(ExternalBase):
 
+    if not getattr(ExternalBase, "assertPathDoesNotExist", None):
+        # Compatibility with bzr < 2.4
+        def assertPathDoesNotExist(self, path):
+            self.failIfExists(path)
+
+        def assertPathExists(self, path):
+            self.failUnlessExists(path)
+
     def make_file(self, name, contents):
         f = open(name, 'wb')
         try:
@@ -129,7 +137,7 @@ class TestRebaseSimple(ExternalBase):
         # our rev 2 is now rev3 and 3 is now rev4:
         self.assertEquals('4\n', self.run_bzr('revno')[0])
         # content added from our old revisions 4 should be gone.
-        self.failIfExists('hoooi')
+        self.assertPathDoesNotExist('hoooi')
 
     def test_range_open_end(self):
         # commit mainline rev 2
@@ -152,12 +160,12 @@ class TestRebaseSimple(ExternalBase):
         self.assertEquals('', self.run_bzr('rebase -r4.. ../main')[0])
         # should only get rev 3 (our old 2 and 3 are gone)
         self.assertEquals('3\n', self.run_bzr('revno')[0])
-        self.failIfExists('hoi')
-        self.failIfExists('hooi')
+        self.assertPathDoesNotExist('hoi')
+        self.assertPathDoesNotExist('hooi')
         branch = Branch.open(".")
         self.assertEquals("these",
             branch.repository.get_revision(branch.last_revision()).message)
-        self.failUnlessExists('hoooi')
+        self.assertPathExists('hoooi')
 
     def test_conflicting(self):
         # commit mainline rev 2
