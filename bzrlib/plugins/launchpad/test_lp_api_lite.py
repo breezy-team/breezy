@@ -325,3 +325,26 @@ class TestIsUpToDate(tests.TestCase):
             'http://bazaar.launchpad.net/+branch'
             '/~ubuntu-branches/debian/sid/foo/sid',
             'debian', 'sid', 'foo')
+
+
+class TestGetMostRecentTag(tests.TestCaseWithMemoryTransport):
+
+    def make_simple_builder(self):
+        builder = self.make_branch_builder('tip')
+        builder.build_snapshot('A', [], [
+            ('add', ('', 'root-id', 'directory', None))])
+        b = builder.get_branch()
+        b.tags.set_tag('tip-1.0', 'A')
+        return builder, b, b.tags.get_tag_dict()
+
+    def test_get_most_recent_tag_tip(self):
+        builder, b, tag_dict = self.make_simple_builder()
+        self.assertEqual('tip-1.0',
+                         lp_api_lite.get_most_recent_tag(tag_dict, b))
+
+    def test_get_most_recent_tag_older(self):
+        builder, b, tag_dict = self.make_simple_builder()
+        builder.build_snapshot('B', ['A'], [])
+        self.assertEqual('B', b.last_revision())
+        self.assertEqual('tip-1.0',
+                         lp_api_lite.get_most_recent_tag(tag_dict, b))

@@ -37,6 +37,7 @@ import urllib
 import urllib2
 
 from bzrlib import (
+    revision,
     trace,
     )
 
@@ -170,3 +171,19 @@ def get_latest_publication(archive, series, project):
     return lp.get_latest_version()
 
 
+def get_most_recent_tag(tag_dict, the_branch):
+    """Get the most recent revision that has been tagged."""
+    # Note: this assumes that a given rev won't get tagged multiple times. But
+    #       it should be valid for the package importer branches that we care
+    #       about
+    reverse_dict = dict((rev, tag) for tag, rev in tag_dict.iteritems())
+    the_branch.lock_read()
+    try:
+        last_rev = the_branch.last_revision()
+        graph = the_branch.repository.get_graph()
+        stop_revisions = (None, revision.NULL_REVISION)
+        for rev_id in graph.iter_lefthand_ancestry(last_rev, stop_revisions):
+            if rev_id in reverse_dict:
+                return reverse_dict[rev_id]
+    finally:
+        the_branch.unlock()

@@ -526,10 +526,15 @@ def _check_is_up_to_date(the_branch):
         place = archive.title()
         if series is not None:
             place = '%s/%s' % (place, series.title())
+        best_tag = lp_api_lite.get_most_recent_tag(tags, the_branch)
+        if best_tag is None:
+            best_message = ''
+        else:
+            best_message = '\nThe most recent tag found is %s' % (best_tag,)
         trace.warning(
             'Packaging branch is not up-to-date. The most recent published\n'
-            'version in %s is %s, but it is not in the branch tags for:\n  %s'
-            % (place, latest_ver, the_branch.base))
+            'version in %s is %s, but it is not in the branch tags for:\n  %s%s'
+            % (place, latest_ver, the_branch.base, best_message))
 
 def _register_hooks():
     _mod_branch.Branch.hooks.install_named_hook('open',
