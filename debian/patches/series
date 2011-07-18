@@ -2,4 +2,5 @@
 02_external_configobj
 03_external_elementtree
 04_fix_i18n
+05_type_equality_clear
 08_selftest_py2.6

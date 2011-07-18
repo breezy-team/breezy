@@ -1,3 +1,9 @@
+bzr (2.4.0~beta5-3) unstable; urgency=low
+
+  * Fix compatibility with Python 2.7.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 19 Jul 2011 00:14:35 +0200
+
 bzr (2.4.0~beta5-2) unstable; urgency=low
 
   * Support all i18n-related environment variables not being set.
