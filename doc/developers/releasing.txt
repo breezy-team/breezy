@@ -2,19 +2,20 @@ Releasing Bazaar
 ################
 
 This document describes the processes for making and announcing a Bazaar
-release, and managing the release process.  This is just one phase of
-the `overall development cycle
-<http://doc.bazaar.canonical.com/developers/cycle.html>`_, (go re-read
-this document to ensure it hasn't been updated) but it's the most
-complex part.  This document gives a checklist you can follow from start
-to end in one go.
+release, and managing the release process.  This is just one phase of the
+`overall development cycle
+<http://doc.bazaar.canonical.com/developers/cycle.html>`_, (go re-read this
+document to ensure it hasn't been updated since you last read it) but it's
+the most complex part.
+
+If you're doing your first release you can follow this document and read
+each step explanation. It's also a good practive to read it for any release
+to ensure you don't miss a step and to update it as the release process
+evolves.
 
 If you're helping the Release Manager (RM) for one reason or another, you
 may notice that he didn't follow that document scrupulously. He may have
 good reasons to do that but he may also have missed some parts.
-
-Follow the document yourself and don't hesitate to create the missing
-milestones for example (we tend to forget these ones a lot).
 
 .. contents::
 
@@ -22,59 +23,120 @@ milestones for example (we tend to forget these ones a lot).
 Preconditions
 =============
 
+#. PQM access rights (or you won't be able to land any change)
+
 #. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
 
      bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
 
+#. Alternatively, you can download and install ``lp:hydrazine`` (the main
+   difference is that hydrazine requires the branch to land to be hosted on
+   launchpad).
+
+What do we release
+==================
+
+In this document, we're talking about source releases only, packages and
+installers are built from this but we won't talk about them here.
+
+Every release is part of a series, ``bzr-2.4.1`` is part of series ``2.4``.
+
+We do two different kind of releases: the betas releases and the stable
+releases for a given series.
+
+For a given series, releases will be done to deliver new versions of bzr to
+different kinds of users:
+
+#. beta releases: named ``x.ybn`` where ``x.y`` is the series and ``n``
+   starts at 1 and is incremented. These releases are targetted to beta
+   testers who don't want to run from source but are interested in features
+   or improvements.
+
+#. stable releases: name ``x.y.z`` where ``x.y.`` is the series and ``z``
+   starts at 1 and is incremented. These releases are targetted at people
+   that want bugfixes only and no new features.
+
+
+Differences in the release processs between beta and stable release will be
+mentioned when needed.
 
 When do we relase ?
 ===================
 
-As of October 2010, we mantain four series.  Concurrently releasing them
-all at the same time makes it harder to shorten the delay between the
-source availability and the package building longer than necessary (we
-delay the official announcement until most of our users can install the new
-release).
+As of July 2010, we mantain four series (and one that is about to be EOLed).
+Concurrently releasing them all at the same time makes it harder to shorten
+the delay between the source availability and the package building longer
+than necessary (we delay the official announcement until most of our users
+can install the new release).
 
 In order to continue to do time-based releases, we need to plan the
 releases by series to minimize the collisions. In the end, it's the Release
 Manager call to decide whether he prefers to do all releases at once
 though, so the rules presented here are a conservative approach.
 
-We want to respect the following rules::
+We want to respect the following rules:
 
- #. as much as possible releases should not disturb development, and
-    ongoing development should not disturb releases,
+#. as much as possible releases should not disturb development, and
+   ongoing development should not disturb releases,
 
- #. the most recent development series should release once a month during
-    the beta period (see `Development cycles <cycle.html>`_ for more
-    details),
+#. the most recent development series should release once a month during
+   the beta period (see `Development cycles <cycle.html>`_ for more
+   details),
 
- #. the most recent stable series should release every other month (based
-    on the amount of bug fixes, this can be shorter or longer depending on
-    the bugs importance),
+#. the most recent stable series should release every other month (based
+   on the amount of bug fixes, this can be shorter or longer depending on
+   the bugs importance),
 
- #. previous series should relesase on a regular basis without interfering
-    with the most recent series with a decreasing order of priority (again
-    this should be based on bugs importance and user feedback),
+#. previous series should relesase on a regular basis without interfering
+   with the most recent series with a decreasing order of priority (again
+   this should be based on bugs importance and user feedback),
 
- #. the death of a series should be planned ahead of time. 6 months should
-    give enough time to our users to migrate to a more recent series. This
-    doesn't mean we will make a release at the end of the series, just that
-    before the end date we _could_ possibly put out another release if
-    there was a sufficiently important fix.  Beyond that date, we won't
-    even land changes on that branch (unless something causes a miraculous
-    resurrection.)
+#. the death of a series should be planned ahead of time. 6 months should
+   give enough time to our users to migrate to a more recent series. This
+   doesn't mean we will make a release at the end of the series, just that
+   before the end date we *could* possibly put out another release if
+   there was a sufficiently important fix.  Beyond that date, we won't
+   even land changes on that branch (unless something causes a miraculous
+   resurrection.)
 
- #. there should not be more than 2 releases in the same week (but the
-    Release Manager is free to ignore this (get in touch with packagers
-    though),
+#. there should not be more than 2 releases in the same week (but the
+   Release Manager is free to ignore this (get in touch with packagers
+   though),
 
- #. the series are aligned with Ubuntu releases for convenience since we
-    create a new series every 6 months. This means that we support the
-    stable series for 18 months. Note that we also propose the most recent
-    stable series via the ppa, so whether we keep supporting LTS directly
-    or via the ppa is still an open question.
+#. the series are aligned with Ubuntu releases for convenience since we
+   create a new series every 6 months. This means that we support the
+   stable series for 18 months. Note that we also propose the most recent
+   stable series via the ppa, so whether we keep supporting LTS directly
+   or via the ppa is still an open question.
+
+At the start of a series cycle
+==============================
+
+To start a new series cycle:
+
+#. Create a new series ``x.y`` at <https://launchpad.net/bzr/+addseries>.
+
+#. Add milestones at <https://launchpad.net/bzr/x.y/+addmilestone> to that
+   series for the beta releases and the stable series mentionning their
+   expected dates. Only the milestone asssociated to the next release in
+   this series should be left active to avoid clutter when targetting bugs.
+
+#. If you made a new series, you will need to create a new pqm-controlled
+   branch for this release series. This branch will be used only from the
+   first non-beta release onwards. It needs to be created by a Canonical
+   sysadmin (ask the core devs for instructions or to do it for you).
+
+#. Start a new release-notes file::
+
+       cd doc/en/release-notes
+       cp series-template.txt bzr-x.y.txt  # e.g. bzr-2.3.txt
+       bzr add bzr-x.y.txt
+
+#. Start a new whats-new file::
+
+       cd doc/en/whats-new
+       cp template.txt bzr-x.y.txt  # e.g. bzr-2.6.txt
+       bzr add bzr-x.y.txt
 
 
 At the start of a release cycle
@@ -82,45 +144,32 @@ At the start of a release cycle
 
 To start a new release cycle:
 
-#. If this is the first release for a given *x.y* then create a new
-   series at <https://launchpad.net/bzr/+addseries>. There is one series
-   for every *x.y* release.
-
-#. If you made a new series, create a new pqm-controlled branch for this
-   release series, by asking a Canonical sysadmin.  This branch means that
-   from the first release beta or candidate onwards, general development
-   continues on the trunk, and only specifically-targeted fixes go into
-   the release branch.
-
-#. If you made a new series, add milestones at
-   <https://launchpad.net/bzr/x.y/+addmilestone> to that series for
-   the beta release, release candidate and the final release, and their
-   expected dates.
-
-#. Create a new milestone <https://launchpad.net/bzr/x.y/+addmilestone>
-   and add information about this release.  We will not use it yet, but it
-   will be available for targeting or nominating bugs.
-
 #. Send mail to the list with the key dates, who will be the release
    manager, and the main themes or targeted bugs.  Ask people to nominate
    objectives, or point out any high-risk things that are best done early,
    or that interact with other changes. This is called the metronome mail
    and is described in `Development cycles <cycle.html>`_.
 
-#. Make a local branch for preparing this release.  (Only for the first
-   release in a series, otherwise you should already have a branch.) ::
+#. Make a local branch to prepare the release::
 
-     bzr branch trunk prepare-1.14
+        bzr branch lp:bzr/x.y x.y-dev
+
+   If you're doing your first beta release, branch from trunk::
+
+       bzr branch lp:bzr x.y-dev
+
+   Note that you will generally reuse the same branch for all releases in a
+   given series.
 
 #. Configure pqm-submit for this branch, with a section like this (where
-   x.y is the version to release). **Or use hydrazine for easy use**
-   ``~/.bazaar/locations.conf``::
+   ``x.y`` is the series for your release). **Or use hydrazine for easier
+   setup** ``~/.bazaar/locations.conf``::
 
-	[/home/mbp/bzr/prepare-x.y]
+	[/home/mbp/bzr/x.y-dev]
 	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
 	submit_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
 	parent_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
-	public_branch = http://bazaar.example.com/prepare-x.y
+	public_branch = http://bazaar.example.com/x.y-dev
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
@@ -132,17 +181,16 @@ To start a new release cycle:
    
        version_info = (x, y, z, 'dev', 0)
    
-#. If you made a new series, then start a new release-notes file::
-
-       cd doc/en/release-notes
-       cp series-template.txt bzr-x.y.txt  # e.g. bzr-2.3.txt
-       bzr add bzr-x.y.txt
-
 #. Add a new section at the top of the current release notes (in
    ``doc/en/release-notes``) about the new release, including its version
    number and the headings from ``release-template.txt``.
 
 #. Update the "What's New" documents in ``doc/en/whats-new``.
+
+#. Make sure a milestone exists for your release and that is it active,
+   <https://launchpad.net/bzr/x.y> will list the existing milestones,
+   <https://launchpad.net/bzr/x.y/x.y.z/+edit> will allow you to toggle the
+   active flag.
 
 #. Commit this and send it to PQM.
 
@@ -161,7 +209,7 @@ Update the source code
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
    Make sure the corresponding milestone exists.
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
-   the output of ``bzr --version``.
+   the output of ``./bzr --version``.
 
    For beta releases use::
 
@@ -170,10 +218,6 @@ Update the source code
    For instance 2.1b1::
 
        version_info = (2, 1, 0, 'beta', 1)
-
-   For release candidates use::
-
-       version_info = (2, 0, 1, 'candidate', SERIAL)
 
    For stable releases use::
 
@@ -187,7 +231,7 @@ Update the source code
 
    See *2.1.1* or similar for an example of what this looks like.
 
-#. Add a summary of the release into the "What's New" document.
+#. Add or check the summary of the release into the "What's New" document.
 
 #. To check that all bugs mentioned in the release notes are actually
    marked as closed in Launchpad, you can run
@@ -195,10 +239,12 @@ Update the source code
 
      ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
 
-   As of 2011-05-26, only a few false positives remain in the older
-   series. Don't let this slow you down too much. This script accepts
-   options you may find useful, use ``./tools/check-newsbugs.py`` to display
-   its usage.
+   As of 2011-07-18, all bugs mentioned in the ouput of the script requires
+   some sort of intervention (either chaning the status if it's not 'Fix
+   Released' or setting a different milestone if the bug hasn't been
+   fixed). A few false positives may remain in the older series, don't let
+   this slow you down too much. This script accepts options you may find
+   useful, use ``./tools/check-newsbugs.py`` to display its usage.
 
 #. Commit these changes to the release branch, using a command like::
 
@@ -276,10 +322,10 @@ Update the source code
 
      bzr tag bzr-2.3.1
 
-#. Push those changes to a bzr repository that is public and accessible on
-   the Internet. PQM will pull from this repository when it attempts to merge
-   your changes. Then submit those changes to PQM for merge into the
-   appropriate release branch::
+#. Push those changes to a bzr branch that is public and accessible on the
+   Internet. PQM will pull from this branch when it attempts to merge your
+   changes. Then submit those changes to PQM for merge into the appropriate
+   release branch::
 
      bzr push
      bzr pqm-submit -m "(vila) Release 2.3.1 (Vincent Ladeuil)"
@@ -331,6 +377,45 @@ Publishing the source tarball
    <https://bugs.launchpad.net/launchpad/+bug/586445>
 
 
+Kick off the next cycle
+-----------------------
+
+From that point, there is no possible return, the tarball has been uploaded
+so you can relax a bit.
+
+You're still holding a "social" lock on the launchpad branch though. Until
+your start the next cycle, nobody should land anything on this branch. If
+they do, they either targeted the wrong branch or didn't update the news
+file correctly, so the sooner the branch is opened again, the better.
+
+This matter more for ``lp:bzr`` than for ``lp:bzr/x.y``, ``lp:bzr`` should
+always be open for landing, so you should do `At the start of a release
+cycle`_ as soon as possible (i.e. update the verion number in ``bzr`` and
+``bzrlib/__init__``, update/create the news files and create/update the
+milestone for the next relase).
+
+You may also need to do `At the start of a series cycle`_ if you're starting
+a new series.
+
+A word of caution: the instructions above works well for all releases but
+there is one special case that requires a bit more care: when you release
+the *last* beta for a given ``x.y`` series (from trunk aka lp:bzr), you need
+to setup *two* branches for the next cycle:
+
+#. ``lp:bzr`` needs to be opened for the *next* series ``x.(y+1)``
+
+#. ``lp:bzr/x.y`` needs to be opened for the next release ``x.y.0``. Since
+   this is first real use of ``lp:bzr/x.y``, this is also the deadline for the
+   PQM branch to be created.
+
+Both are important as ``lp:bzr`` should remain open so any change can be
+landed, ``lp:bzr/x.y`` should be ready to receive bug fixes.
+
+``lp:bzr`` is generally more important as the bug fixes on ``lp:bzr/x.y``
+won't be released sooner than a month from now whereas people may already
+been waiting to land on ``lp:bzr``.
+
+   
 Announcing the source freeze
 ----------------------------
 
@@ -340,13 +425,6 @@ Announcing the source freeze
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue
    for platform maintainers and plugin authors to update their code.  This
    is done before the general public announcement of the release.
-
-
-Kick off the next cycle
------------------------
-
-#. To let developers work on the next release, do
-   `At the start of a release cycle` now.
 
 #. Pause for a few days.
 
@@ -488,15 +566,14 @@ at any time.
 Releases until the final one
 ----------------------------
 
-Congratulations - you have made your first release.  Have a beer
-or fruit juice - it's on the house! If it was a beta, or
-candidate, you're not finished yet. Another beta or candidate or
-hopefully a final release is still to come.
+Congratulations - you have made your first release.  Have a beer or fruit
+juice - it's on the house! If it was a beta, you're not finished
+yet. Another beta or hopefully a stable release is still to come.
 
-The process is the same as for the first release. Goto `Doing a
-particular release`_ and follow the instructions again. Some details change
-between beta, candidate and final releases, but they should be
-documented. If the instructions aren't clear enough, please fix them.
+The process is the same as for the first release. Goto `Doing a particular
+release`_ and follow the instructions again. Some details change between
+beta and stable releases, but they should be documented. If the instructions
+aren't clear enough, please fix them.
 
 
 Getting the release into Ubuntu
