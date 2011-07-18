@@ -40,19 +40,24 @@ The plugin also provides the following commands:
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
+import time
+
 # Since we are a built-in plugin we share the bzrlib version
-from bzrlib import version_info
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    branch as _mod_branch,
     ui,
     trace,
     )
 """)
 
-from bzrlib import bzrdir
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    lazy_regex,
+    version_info,
+    )
 from bzrlib.commands import (
     Command,
     register_command,
@@ -462,12 +467,88 @@ def _register_directory():
 
 _register_directory()
 
+# This is kept in __init__ so that we don't load lp_api_lite unless the branch
+# actually matches. That way we can avoid importing extra dependencies like
+# json.
+_package_branch = lazy_regex.lazy_compile(
+    r'bazaar.launchpad.net.*?/'
+    r'(?P<user>~[^/]+/)?(?P<archive>ubuntu|debian)/(?P<series>[^/]+/)?'
+    r'(?P<project>[^/]+)(?P<branch>/[^/]+)?'
+    )
+
+def _get_package_branch_info(url):
+    """Determine the packaging information for this URL.
+
+    :return: If this isn't a packaging branch, return None. If it is, return
+        (archive, series, project)
+    """
+    m = _package_branch.search(url)
+    if m is None:
+        return
+    archive, series, project, user = m.group('archive', 'series',
+                                             'project', 'user')
+    if series is not None:
+        # series is optional, so the regex includes the extra '/', we don't
+        # want to send that on (it causes Internal Server Errors.)
+        series = series.strip('/')
+    if user is not None:
+        user = user.strip('~/')
+        if user != 'ubuntu-branches':
+            return None
+    return archive, series, project
+
+
+def _check_is_up_to_date(the_branch):
+    info = _get_package_branch_info(the_branch.base)
+    if info is None:
+        return
+    archive, series, project = info
+    from bzrlib.plugins.launchpad import lp_api_lite
+    t = time.time()
+    latest_pub = lp_api_lite.LatestPublication(archive, series, project)
+    latest_ver = latest_pub.get_latest_version()
+    t_latest_ver = time.time() - t
+    trace.mutter('LatestPublication.get_latest_version took %.3fs'
+                 % (t_latest_ver,))
+    if latest_ver is None:
+        trace.note('Could not find a published version for packaging branch:\n'
+                   '  %s' % (the_branch.base,))
+        return
+    t = time.time()
+    tags = the_branch.tags.get_tag_dict()
+    t_tag_dict = time.time() - t
+    trace.mutter('LatestPublication get_tag_dict took: %.3fs' % (t_tag_dict,))
+    if latest_ver in tags:
+        trace.note('Found most recent published version: %s'
+                   ' in packaging branch:\n  %s'
+                   % (latest_ver, the_branch.base))
+    else:
+        place = archive.title()
+        if series is not None:
+            place = '%s/%s' % (place, series.title())
+        best_tag = lp_api_lite.get_most_recent_tag(tags, the_branch)
+        if best_tag is None:
+            best_message = ''
+        else:
+            best_message = '\nThe most recent tag found is %s' % (best_tag,)
+        trace.warning(
+            'Packaging branch is not up-to-date. The most recent published\n'
+            'version in %s is %s, but it is not in the branch tags for:\n  %s%s'
+            % (place, latest_ver, the_branch.base, best_message))
+
+def _register_hooks():
+    _mod_branch.Branch.hooks.install_named_hook('open',
+        _check_is_up_to_date, 'package-branch-up-to-date')
+
+
+_register_hooks()
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
         'test_account',
         'test_register',
         'test_lp_api',
+        'test_lp_api_lite',
         'test_lp_directory',
         'test_lp_login',
         'test_lp_open',
