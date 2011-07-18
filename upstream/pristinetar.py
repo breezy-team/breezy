@@ -156,9 +156,29 @@ class PristineTarSource(UpstreamSource):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
 
-    def import_component_tarball(self, package, version, tree, component=None,
-            md5=None, tarball=None, author=None, timestamp=None,
-            parent_ids=None):
+    def import_tarballs(self, package, version, tree, parent_ids, tarballs,
+            timestamp=None, author=None):
+        """Import the upstream tarballs.
+
+        :param package: Package name
+        :param version: Package version
+        :param path: Path with tree to import
+        :param parent_ids: Parent revisions
+        :param tarballs: List of (path, component, md5)
+        :param timestamp: Optional timestamp for new commits
+        :param author: Optional author for new commits
+        :return: List of tuples with (component, tag, revid)
+        """
+        ret = []
+        for (tarball, component, md5) in tarballs:
+            (tag, revid) = self.import_component_tarball(
+                package, version, tree, parent_ids, component,
+                md5, tarball, author=author, timestamp=timestamp)
+            ret.append((component, tag, revid))
+        return ret
+
+    def import_component_tarball(self, package, version, tree, parent_ids,
+            component=None, md5=None, tarball=None, author=None, timestamp=None):
         """Import a tarball.
 
         :param package: Package name

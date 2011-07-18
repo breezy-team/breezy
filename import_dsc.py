@@ -818,46 +818,48 @@ class DistributionBranch(object):
                 % (version, upstream_part, str(upstream_parents)))
         assert self.pristine_upstream_tree is not None, \
             "Can't import upstream with no tree"
-        if len(upstream_parents) > 0:
-            parent_revid = upstream_parents[0]
-        else:
-            parent_revid = NULL_REVISION
-        self.pristine_upstream_tree.pull(self.pristine_upstream_tree.branch,
-            overwrite=True, stop_revision=parent_revid)
         other_branches = self.get_other_branches()
-        upstream_trees = [o.pristine_upstream_branch.basis_tree()
-            for o in other_branches]
-        target_tree = None
-        if upstream_branch is not None:
-            if upstream_revision is None:
-                upstream_revision = upstream_branch.last_revision()
-            self.pristine_upstream_branch.fetch(upstream_branch,
-                    last_revision=upstream_revision)
-            upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
-            upstream_parents.append(upstream_revision)
-            target_tree = self.pristine_upstream_branch.repository.revision_tree(
-                        upstream_revision)
-        if file_ids_from is not None:
-            upstream_trees = file_ids_from + upstream_trees
-        if self.tree:
-            self_tree = self.tree
-            self_tree.lock_write() # might also be upstream tree for dh_make
-        else:
-            self_tree = self.get_branch_tip_revtree()
-            self_tree.lock_read()
-        try:
-            import_dir(self.pristine_upstream_tree, upstream_part,
-                    file_ids_from=[self_tree] + upstream_trees,
-                    target_tree=target_tree)
-        finally:
-            self_tree.unlock()
-        revprops = {}
         ret = []
         for (tarball, component, md5) in upstream_tarballs:
+            upstream_trees = [o.pristine_upstream_branch.basis_tree()
+                for o in other_branches]
+            target_tree = None
+            if upstream_branch is not None:
+                if upstream_revision is None:
+                    upstream_revision = upstream_branch.last_revision()
+                self.pristine_upstream_branch.fetch(upstream_branch,
+                        last_revision=upstream_revision)
+                upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
+                upstream_parents.append(upstream_revision)
+                target_tree = self.pristine_upstream_branch.repository.revision_tree(
+                            upstream_revision)
+            if file_ids_from is not None:
+                upstream_trees = file_ids_from + upstream_trees
+            if self.tree:
+                self_tree = self.tree
+                self_tree.lock_write() # might also be upstream tree for dh_make
+            else:
+                self_tree = self.branch.basis_tree()
+                self_tree.lock_read()
+            if len(upstream_parents) > 0:
+                parent_revid = upstream_parents[0]
+            else:
+                parent_revid = NULL_REVISION
+            self.pristine_upstream_tree.pull(self.pristine_upstream_tree.branch,
+                overwrite=True, stop_revision=parent_revid)
+            if component is None:
+                path = upstream_part
+            else:
+                path = os.path.join(upstream_part, component)
+            try:
+                import_dir(self.pristine_upstream_tree, path,
+                        file_ids_from=[self_tree] + upstream_trees,
+                        target_tree=target_tree)
+            finally:
+                self_tree.unlock()
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
-                package, version, self.pristine_upstream_tree, component,
-                md5, tarball, author=author, timestamp=timestamp,
-                parent_ids=upstream_parents)
+                package, version, self.pristine_upstream_tree, upstream_parents, component,
+                md5, tarball, author=author, timestamp=timestamp)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
             self.branch.tags.set_tag(tag, revid)
@@ -887,12 +889,8 @@ class DistributionBranch(object):
         finally:
             shutil.rmtree(tarball_dir)
 
-    def get_branch_tip_revtree(self):
-        return self.branch.repository.revision_tree(
-                self.branch.last_revision())
-
     def _mark_native_config(self, native):
-        poss_native_tree = self.get_branch_tip_revtree()
+        poss_native_tree = self.branch.basis_tree()
         current_native = self._is_tree_native(poss_native_tree)
         current_config = self._default_config_for_tree(poss_native_tree)
         dirname = os.path.join(self.tree.basedir, '.bzr-builddeb')
@@ -1292,7 +1290,7 @@ class DistributionBranch(object):
         if self.tree:
             root_id = self.tree.path2id('')
         else:
-            tip = self.get_branch_tip_revtree()
+            tip = self.branch.basis_tree()
             tip.lock_read()
             try:
                 root_id = tip.path2id('')

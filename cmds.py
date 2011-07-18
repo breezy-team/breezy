@@ -963,7 +963,7 @@ class cmd_import_upstream(Command):
             db.extract_upstream_tree(parents[0], tempdir)
         else:
             db._create_empty_upstream_tree(tempdir)
-        tree = db.get_branch_tip_revtree()
+        tree = db.branch.basis_tree()
         tree.lock_read()
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
