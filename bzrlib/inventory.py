@@ -1490,8 +1490,8 @@ class CHKInventory(CommonInventory):
             if entry.kind == 'directory':
                 directories_to_expand.add(entry.file_id)
             interesting.add(entry.parent_id)
-            children_of_parent_id.setdefault(entry.parent_id, []
-                                             ).append(entry.file_id)
+            children_of_parent_id.setdefault(entry.parent_id, set()
+                                             ).add(entry.file_id)
 
         # Now, interesting has all of the direct parents, but not the
         # parents of those parents. It also may have some duplicates with
@@ -1505,8 +1505,8 @@ class CHKInventory(CommonInventory):
             next_parents = set()
             for entry in self._getitems(remaining_parents):
                 next_parents.add(entry.parent_id)
-                children_of_parent_id.setdefault(entry.parent_id, []
-                                                 ).append(entry.file_id)
+                children_of_parent_id.setdefault(entry.parent_id, set()
+                                                 ).add(entry.file_id)
             # Remove any search tips we've already processed
             remaining_parents = next_parents.difference(interesting)
             interesting.update(remaining_parents)
@@ -1525,8 +1525,8 @@ class CHKInventory(CommonInventory):
             for entry in self._getitems(next_file_ids):
                 if entry.kind == 'directory':
                     directories_to_expand.add(entry.file_id)
-                children_of_parent_id.setdefault(entry.parent_id, []
-                                                 ).append(entry.file_id)
+                children_of_parent_id.setdefault(entry.parent_id, set()
+                                                 ).add(entry.file_id)
         return interesting, children_of_parent_id
 
     def filter(self, specific_fileids):
