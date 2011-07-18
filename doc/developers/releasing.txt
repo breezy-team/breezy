@@ -456,13 +456,13 @@ Now that the release is publicly available, tell people about it.
 
 #. Make an announcement mail.
 
-   For release candidates or beta releases, this is sent to the ``bazaar``
-   list only to inform plugin authors and package or installer managers.
+   For beta releases, this is sent to the ``bazaar`` list only to inform
+   plugin authors and package or installer managers.
 
    Once the installers are available, the mail can be sent to the
    ``bazaar-announce`` list too.
 
-   For final releases, it should also be cc'd to ``info-gnu@gnu.org``,
+   For stable releases, it should also be cc'd to ``info-gnu@gnu.org``,
    ``python-announce-list@python.org``, ``bug-directory@gnu.org``.
 
    In all cases, it is good to set ``Reply-To: bazaar@lists.canonical.com``,
@@ -491,17 +491,13 @@ Now that the release is publicly available, tell people about it.
 
 #. Make an announcement through <https://launchpad.net/bzr/+announce>
 
-#. Update the IRC channel topic. Use the ``/topic`` command to do this,
-   ensuring the new topic text keeps the project name, web site link, etc.
-
 #. Announce on http://freshmeat.net/projects/bzr/
 
-   This should be done for beta releases, release candidates and final
-   releases. If you do not have a Freshmeat account yet, ask one of the
-   existing admins.
+   This should be done for beta releases and stable releases. If you do not
+   have a Freshmeat account yet, ask one of the existing admins.
 
    The purpose here is to point users to the latest stable release while still
-   publishing announcements for development releases.
+   publishing announcements for beta releases.
 
    There are several kinds of modifications that could be done there via the
    ``Administration`` box in the lower right area of the page:
@@ -510,24 +506,23 @@ Now that the release is publicly available, tell people about it.
      ``Links`` box are edited. This should rarely change except for the URLs
      related to the latest stable release.
 
-   * New announcement: When doing a release (beta, candidates, final), put the
-     summary of the release (you can't embed URLs there, the moderation staff
-     remove them). Users can still access the releases notes via the ``Release
-     Notes`` URL in the ``Links`` box in the upper right area of the
-     page. When doing the first stable release in a series, delete the
-     ``Unstable installers`` <https://launchpad.net/bzr/x.y/x.ybn> and
-     ``Unstable source tarball``
+   * New announcement: When doing a release, put the summary of the release
+     (you can't embed URLs there, the moderation staff remove them). Users
+     can still access the releases notes via the ``Release Notes`` URL in
+     the ``Links`` box in the upper right area of the page. When doing the
+     first stable release in a series, delete the ``Unstable installers``
+     <https://launchpad.net/bzr/x.y/x.ybn> and ``Unstable source tarball``
      <http://launchpad.net/bzr/x.y/x.ybn/+download/bzr-x.ybn.tar.gz>
-     links. Conversely, when creating the first beta in a development series,
-     create these links again. Check all links when doing other kinds of
-     release.
+     links. Conversely, when creating the first beta in a development
+     series, create these links again. Check all links when doing other
+     kinds of release.
 
    * Set direct download: When releasing a new stable release, this should
      point to the corresponding launchpad page:
      <https://launchpad.net/bzr/x.y/x.y.z/>
 
 #. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should
-   be done for final releases but not for beta releases or Release Candidates.
+   be done for the stable releases but not for beta releases.
 
 #. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
    done by running ::
@@ -535,7 +530,7 @@ Now that the release is publicly available, tell people about it.
        python setup.py register
 
    Remember to check the results afterwards -- this should be done for
-   final releases but not for beta releases or Release Candidates.
+   stable releases but not for beta releases.
 
    To be able to register the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of
@@ -545,10 +540,9 @@ Now that the release is publicly available, tell people about it.
 Merging the released code back to trunk
 ---------------------------------------
 
-Merge the release branch back into the trunk.  The
-``doc/en/release-notes`` changes should be merged into the right place
-because each release series has its own release-notes file, but
-double-check.
+Merge the release branch back into the trunk.  The ``doc/en/release-notes``
+changes should be merged into the right place because each release series
+has its own release-notes file, but double-check.
 
 If it's not already done, advance the version number in ``bzr`` and
 ``bzrlib/__init__.py``.  Submit this back into pqm for bzr.dev.
@@ -557,11 +551,9 @@ As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug
 targeting or nominating. Depending on the change, you may even have to
 create a new series (if your change the major or minor release number), in
-that case go to `At the start of a release cycle` and follow the instructions from there.
+that case go to `At the start of a series cycle`_ and follow the
+instructions from there.
 
-You should also merge (not pull) the release branch into
-``lp:~bzr/bzr/current``, so that branch contains the current released code
-at any time.
 
 Releases until the final one
 ----------------------------
