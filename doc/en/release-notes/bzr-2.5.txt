@@ -41,6 +41,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* A call to CHKInventory's filter-method will not result in a
+  DuplicateFileId error, if you move a subfolder and change a file in
+  that subfolder.
+  (Bastian Bowe, #809901)
+
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
