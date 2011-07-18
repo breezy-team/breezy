@@ -36,7 +36,7 @@ Bug Fixes
   switching a lightweight checkout that was pointing at a bound branch.
   This isn't necessary because we know the master URL without opening it,
   avoiding an extra SSH connection, etc.
-  (John Arbash Meinel)
+  (John Arbash Meinel, #812285)
 
 Documentation
 *************
