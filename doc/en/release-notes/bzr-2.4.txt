@@ -32,7 +32,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+* The fix for bug #513709 caused us to open a new connection when
+  switching a lightweight checkout that was pointing at a bound branch.
+  This isn't necessary because we know the master URL without opening it,
+  avoiding an extra SSH connection, etc.
+  (John Arbash Meinel, #812285)
 
 Documentation
 *************
