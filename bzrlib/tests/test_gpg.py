@@ -27,6 +27,9 @@ from bzrlib.tests import features
 
 class FakeConfig(object):
 
+    def gpg_signing_key(self):
+        return "amy@example.com"
+
     def gpg_signing_command(self):
         return "false"
 
@@ -38,7 +41,7 @@ class TestCommandLine(TestCase):
 
     def test_signing_command_line(self):
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual(['false',  '--clearsign'],
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
                          my_gpg._command_line())
 
     def test_checks_return_code(self):

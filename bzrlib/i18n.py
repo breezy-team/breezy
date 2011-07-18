@@ -74,10 +74,14 @@ def install(lang=None):
     global _translations
     if lang is None:
         lang = _get_current_locale()
+    if lang is not None:
+        languages = lang.split(':')
+    else:
+        languages = None
     _translations = _gettext.translation(
             'bzr',
             localedir=_get_locale_dir(),
-            languages=lang.split(':'),
+            languages=languages,
             fallback=True)
 
 

@@ -258,7 +258,7 @@ A section variable resides within a section. A section variable contains a
 variable name, an equals sign and a value.  For example::
 
     email            = John Doe <jdoe@isp.com>
-    check_signatures = require
+    gpg_signing_key  = Amy Pond <amy@example.com>
 
 A variable can reference other variables **in the same configuration file** by
 enclosing them in curly brackets::
@@ -311,7 +311,6 @@ A typical ``bazaar.conf`` section often looks like the following::
     [DEFAULT]
     email             = John Doe <jdoe@isp.com>
     editor            = /usr/bin/vim
-    check_signatures  = check-available
     create_signatures = when-required
 
 
@@ -329,10 +328,6 @@ for. The '?' and '*' wildcards are supported::
 
     [http://hypothetical.site.com/branches/devel-branch]
     create_signatures = always
-    check_signatures  = always
-
-    [http://example.com/bzr/*]
-    check_signatures  = require
 
 The authentication configuration file, authentication.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -420,6 +415,13 @@ In future it is planned that ``when-required`` will sign newly
 committed revisions only when the branch requires them.  ``never`` will refuse
 to sign newly committed revisions, even if the branch requires signatures.
 
+gpg_signing_key
+~~~~~~~~~~~
+
+The GnuPG user identity to use when signing commits.  Can be an e-mail
+address, key fingerprint or full key ID.  When unset or when set to
+"default" Bazaar will use the user e-mail set with ``whoami``.
+
 recurse
 ~~~~~~~
 
@@ -440,6 +442,8 @@ gpg_signing_command
 For example::
 
     gpg_signing_command = /usr/bin/gnpg
+
+The specified command must accept the options "--clearsign" and "-u <email>".
 
 bzr_remote_path
 ~~~~~~~~~~~~~~~

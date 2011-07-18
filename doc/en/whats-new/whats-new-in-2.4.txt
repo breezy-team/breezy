@@ -1,6 +1,6 @@
-*************************
-What's New in Bazaar 2.4?
-*************************
+***********************************
+What's New in Bazaar 2.4 (Oronsay)?
+***********************************
 
 Bazaar 2.4 is still under development, and will be released in August 2011.
 This document accumulates a high level summary of what's changed.  See the
