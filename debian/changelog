@@ -1,4 +1,4 @@
-bzr-builddeb (2.7.6) UNRELEASED; urgency=low
+bzr-builddeb (2.7.6) unstable; urgency=low
 
   * Bump standards version to 3.9.2 (no changes).
   * Fix AttributeError in incremental imports using 'bzr import-dsc'.
