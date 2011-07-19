@@ -73,7 +73,8 @@ API Changes
 * Remove ``trace.info``, ``trace.error`` and ``trace.show_log_error``
   deprecated in 2.1.0. (Vincent Ladeuil)
 
-* Remove ``TransportListRegistry.set_default_transport``. (Jelmer Vernooij)
+* Remove ``TransportListRegistry.set_default_transport``, as the concept of
+  a default transport is currently unused. (Jelmer Vernooij)
 
 Internals
 *********

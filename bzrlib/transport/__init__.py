@@ -1558,6 +1558,10 @@ def location_to_url(location):
 
     This will try to interpret location as both a URL and a directory path. It
     will also lookup the location in directories.
+
+    :param location: Unicode or byte string object with a location
+    :raise InvalidURL: If the location is already a URL, but not valid.
+    :return: Byte string with resulting URL
     """
     if not isinstance(location, basestring):
         raise AssertionError("location not a byte or unicode string")
