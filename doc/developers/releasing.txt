@@ -436,7 +436,7 @@ Publishing the release
 There is normally a delay of a few days after the source freeze to allow
 for binaries to be built on various platforms.  Once they have been built,
 we have a releasable product.  The next step is to make it generally
-available to the world.1
+available to the world.
 
 #. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
 
@@ -524,7 +524,7 @@ Now that the release is publicly available, tell people about it.
      <https://launchpad.net/bzr/x.y/x.y.z/>
 
 #. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should
-   be done for the stable releases but not for beta releases.
+   be done for the stable and beta releases.
 
 #. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
    done by running ::
@@ -586,7 +586,7 @@ bzr 2.2.0, so should get every 2.2.x update.)  This means going through
 the `SRU (Stable Release Updates)
 <https://wiki.ubuntu.com/StableReleaseUpdates>`__ process.   
 
-As of September 2010, bzr has applied to the technical board to be added
+As of July 2011, bzr has applied to the technical board to be added
 to the `MicroReleaseExceptions
 <https://wiki.ubuntu.com/StableReleaseUpdates/MicroReleaseExceptions>`__
 category so that whole bugfix releases can more easily be approved.
@@ -606,9 +606,9 @@ evolves from one release to the other):
    button and select the right Ubuntu release. As of September 2010, this
    means:
 
+  * ``natty`` for the 2.3 series,
   * ``maverick`` for the 2.2 series,
   * ``lucid`` for the 2.1 series,
-  * ``karmic`` for the 2.0 series.
 
  * Subscribe the ``~ubuntu-sru`` team to the bug.
 
