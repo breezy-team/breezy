@@ -815,7 +815,16 @@ class TarfileSourceTests(TestCaseWithTransport):
         tar = tarfile.open("foo-1.0.tar.bz2", "w:bz2")
         tar.close()
         # verify this is a bzip2 file
-        bz2.BZ2File("foo-1.0.tar.bz2").close()
+        os.mkdir("foo-1.0")
+        zf = bz2.BZ2File("foo-1.0.tar.bz2", 'w')
+        try:
+            tar = tarfile.open("foo-1.0.tar", "w", zf)
+            try:
+                tar.add("foo-1.0")
+            finally:
+                tar.close()
+        finally:
+            zf.close()
         source = TarfileSource("foo-1.0.tar.bz2", "1.0")
         os.mkdir("bar")
         self.assertEquals(["bar/foo_1.0.orig.tar.bz2"],
