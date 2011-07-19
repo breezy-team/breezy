@@ -360,14 +360,18 @@ class cmd_builddeb(Command):
 
             if package_merge:
                 try:
-                    prev_version = find_previous_upload(tree, not contains_upstream_source)
+                    prev_version = find_previous_upload(tree,
+                        not contains_upstream_source)
                 except NoPreviousUpload:
                     prev_version = None
-                build_options.append("-v%s" % str(prev_version))
-                if (prev_version.upstream_version
-                        != changelog.version.upstream_version
-                        or prev_version.epoch != changelog.version.epoch):
-                    build_options.append("-sa")
+                if prev_version is None:
+                    build_options.extend(["-sa", "-v0"])
+                else:
+                    build_options.append("-v%s" % str(prev_version))
+                    if (prev_version.upstream_version != 
+                            changelog.version.upstream_version or
+                        prev_version.epoch != changelog.version.epoch):
+                        build_options.append("-sa")
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
             result_dir, build_dir, orig_dir = self._get_dirs(config,

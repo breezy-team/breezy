@@ -3,8 +3,9 @@ bzr-builddeb (2.7.6) UNRELEASED; urgency=low
   * Bump standards version to 3.9.2 (no changes).
   * Fix AttributeError in incremental imports using 'bzr import-dsc'.
     LP: #812950
+  * Support --package-merge for the first package version. LP: #812704
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 19 Jul 2011 17:05:38 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 19 Jul 2011 17:35:39 +0200
 
 bzr-builddeb (2.7.5) unstable; urgency=low
 

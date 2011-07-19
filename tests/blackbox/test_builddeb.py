@@ -151,6 +151,11 @@ class TestBuilddeb(BuilddebTestCase):
     self.run_bzr('bd --dont-purge --native --builder "touch built"')
     self.assertInBuildDir('built')
 
+  def test_package_merge_first(self):
+    tree = self.make_unpacked_source()
+    self.make_upstream_tarball()
+    self.run_bzr('bd --package-merge --builder true')
+
   def test_hooks(self):
     tree = self.make_unpacked_source()
     self.make_upstream_tarball()
