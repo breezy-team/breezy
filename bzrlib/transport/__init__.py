@@ -118,10 +118,6 @@ class TransportListRegistry(registry.Registry):
     def register_transport(self, key, help=None):
         self.register(key, [], help)
 
-    def set_default_transport(self, key=None):
-        """Return either 'key' or the default key if key is None"""
-        self._default_key = key
-
 
 transport_list_registry = TransportListRegistry()
 
@@ -1557,6 +1553,36 @@ class ConnectedTransport(Transport):
         raise NotImplementedError(self.disconnect)
 
 
+def location_to_url(location):
+    """Determine a fully qualified URL from a location string.
+
+    This will try to interpret location as both a URL and a directory path. It
+    will also lookup the location in directories.
+
+    :param location: Unicode or byte string object with a location
+    :raise InvalidURL: If the location is already a URL, but not valid.
+    :return: Byte string with resulting URL
+    """
+    if not isinstance(location, basestring):
+        raise AssertionError("location not a byte or unicode string")
+    from bzrlib.directory_service import directories
+    location = directories.dereference(location)
+
+    # Catch any URLs which are passing Unicode rather than ASCII
+    try:
+        location = location.encode('ascii')
+    except UnicodeError:
+        if urlutils.is_url(location):
+            raise errors.InvalidURL(path=location,
+                extra='URLs must be properly escaped')
+        location = urlutils.local_path_to_url(location)
+
+    if urlutils.is_url(location):
+        return location
+
+    return urlutils.local_path_to_url(location)
+
+
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1570,28 +1596,7 @@ def get_transport(base, possible_transports=None):
     """
     if base is None:
         base = '.'
-    last_err = None
-    from bzrlib.directory_service import directories
-    base = directories.dereference(base)
-
-    def convert_path_to_url(base, error_str):
-        if urlutils.is_url(base):
-            # This looks like a URL, but we weren't able to
-            # instantiate it as such raise an appropriate error
-            # FIXME: we have a 'error_str' unused and we use last_err below
-            raise errors.UnsupportedProtocol(base, last_err)
-        # This doesn't look like a protocol, consider it a local path
-        new_base = urlutils.local_path_to_url(base)
-        # mutter('converting os path %r => url %s', base, new_base)
-        return new_base
-
-    # Catch any URLs which are passing Unicode rather than ASCII
-    try:
-        base = base.encode('ascii')
-    except UnicodeError:
-        # Only local paths can be Unicode
-        base = convert_path_to_url(base,
-            'URLs must be properly escaped (protocol: %s)')
+    base = location_to_url(base)
 
     transport = None
     if possible_transports is not None:
@@ -1603,6 +1608,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
+    last_err = None
     for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
@@ -1612,16 +1618,7 @@ def get_transport(base, possible_transports=None):
                         raise AssertionError()
                     possible_transports.append(transport)
                 return transport
-
-    # We tried all the different protocols, now try one last time
-    # as a local protocol
-    base = convert_path_to_url(base, 'Unsupported protocol: %s')
-
-    # The default handler is the filesystem handler, stored as protocol None
-    factory_list = transport_list_registry.get(None)
-    transport, last_err = _try_transport_factories(base, factory_list)
-
-    return transport
+    raise errors.UnsupportedProtocol(base, last_err)
 
 
 def _try_transport_factories(base, factory_list):
@@ -1696,7 +1693,6 @@ class Server(object):
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
-transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
             help="Access using SFTP (most SSH servers provide SFTP).",

@@ -621,7 +621,7 @@ class UnsupportedProtocol(PathError):
 
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
 
-    def __init__(self, url, extra):
+    def __init__(self, url, extra=""):
         PathError.__init__(self, url, extra=extra)
 
 
