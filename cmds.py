@@ -365,7 +365,7 @@ class cmd_builddeb(Command):
                 except NoPreviousUpload:
                     prev_version = None
                 if prev_version is None:
-                    build_options.append("-sa")
+                    build_options.extend(["-sa", "-v0"])
                 else:
                     build_options.append("-v%s" % str(prev_version))
                     if (prev_version.upstream_version != 
