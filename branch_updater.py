@@ -19,7 +19,7 @@
 from operator import itemgetter
 
 from bzrlib import bzrdir, errors, osutils, transport
-from bzrlib.trace import error, note
+from bzrlib.trace import show_error, note
 
 from bzrlib.plugins.fastimport.helpers import (
     best_format_for_objects_in_a_repository,
@@ -119,7 +119,7 @@ class BranchUpdater(object):
                     branch_tips.append((br,tip))
                     continue
                 except errors.BzrError, ex:
-                    error("ERROR: failed to create branch %s: %s",
+                    show_error("ERROR: failed to create branch %s: %s",
                         location, ex)
             lost_head = self.cache_mgr.lookup_committish(tip)
             lost_info = (name, lost_head)
