@@ -324,16 +324,7 @@ class RemoteGitRepository(GitRepository):
     def user_url(self):
         return self.control_url
 
-    @property
-    def inventories(self):
-        raise GitSmartRemoteNotSupported()
-
-    @property
-    def revisions(self):
-        raise GitSmartRemoteNotSupported()
-
-    @property
-    def texts(self):
+    def get_parent_map(self, revids):
         raise GitSmartRemoteNotSupported()
 
     def get_refs(self):
