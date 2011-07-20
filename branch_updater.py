@@ -152,8 +152,12 @@ class BranchUpdater(object):
         """
         from fastimport.helpers import single_plural
         last_rev_id = self.cache_mgr.lookup_committish(last_mark)
-        revs = list(self.repo.iter_reverse_revision_history(last_rev_id))
-        revno = len(revs)
+        self.repo.lock_read()
+        try:
+            graph = self.repo.get_graph()
+            revno = graph.find_distance_to_null(last_rev_id, [])
+        finally:
+            self.repo.unlock()
         existing_revno, existing_last_rev_id = br.last_revision_info()
         changed = False
         if revno != existing_revno or last_rev_id != existing_last_rev_id:
