@@ -212,4 +212,12 @@ class TestMergeUpstream(BuilddebTestCase):
             "--package", "bar", os.path.abspath(rel1.tarball)],
             working_dir=tree.basedir)
 
+    def test_new_package_from_empty_branch(self):
+        upstream = self.make_upstream()
+        tree = self.make_branch_and_tree("package")
+        rel1 = self.release_upstream(upstream)
+        self.run_bzr(['merge-upstream', '--version', str(rel1.version),
+            "--package", "bar", os.path.abspath(rel1.tarball)],
+            working_dir=tree.basedir)
+
 # vim: ts=4 sts=4 sw=4

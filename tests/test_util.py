@@ -829,9 +829,16 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         self.assertEquals(BUILD_TYPE_NATIVE,
             guess_build_type(tree, Version("1.0"), True))
 
+    def test_empty(self):
+        # Empty tree and a non-native package -> NORMAL
+        tree = self.make_branch_and_tree('.')
+        self.assertEquals(BUILD_TYPE_NORMAL,
+            guess_build_type(tree, Version("1.0-1"), None))
+
     def test_no_upstream_source(self):
         # No upstream source code and a non-native package -> MERGE
         tree = self.make_branch_and_tree('.')
+        tree.mkdir("debian")
         self.assertEquals(BUILD_TYPE_MERGE,
             guess_build_type(tree, Version("1.0-1"), False))
 

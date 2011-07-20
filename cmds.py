@@ -650,13 +650,14 @@ class cmd_merge_upstream(Command):
              changelog, larstiq) = self._get_changelog_info(tree, last_version,
                  package, distribution)
             contains_upstream_source = tree_contains_upstream_source(tree)
-            build_type = config.build_type
-            if build_type is None:
+            if changelog is None:
                 changelog_version = None
             else:
                 changelog_version = changelog.version
-            build_type = guess_build_type(tree, changelog_version,
-                contains_upstream_source)
+            build_type = config.build_type
+            if build_type is None:
+                build_type = guess_build_type(tree, changelog_version,
+                    contains_upstream_source)
             need_upstream_tarball = (build_type != BUILD_TYPE_MERGE)
             if build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError("Merge upstream in native mode is not "
