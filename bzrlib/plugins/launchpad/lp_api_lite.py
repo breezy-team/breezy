@@ -33,6 +33,7 @@ except ImportError:
     except ImportError:
         json = None
 
+import time
 import urllib
 import urllib2
 
@@ -156,6 +157,21 @@ class LatestPublication(object):
             trace.log_exception_quietly()
             return None
 
+    def place(self):
+        """Text-form for what location this represents.
+
+        Example::
+            ubuntu, natty => Ubuntu Natty
+            ubuntu, natty-proposed => Ubuntu Natty Proposed
+        :return: A string representing the location we are checking.
+        """
+        place = self._archive
+        if self._series is not None:
+            place = '%s %s' % (place, self._series)
+        if self._pocket is not None and self._pocket != 'Release':
+            place = '%s %s' % (place, self._pocket)
+        return place.title()
+
 
 def get_latest_publication(archive, series, project):
     """Get the most recent publication for a given project.
@@ -187,3 +203,59 @@ def get_most_recent_tag(tag_dict, the_branch):
                 return reverse_dict[rev_id]
     finally:
         the_branch.unlock()
+
+
+def report_freshness(the_branch, verbosity, latest_pub):
+    """Report to the user how up-to-date the packaging branch is.
+
+    :param the_branch: A Branch object
+    :param verbosity: Can be one of:
+        off: Do not print anything, and skip all checks.
+        all: Print all information that we have in a verbose manner, this
+             includes misses, etc.
+        short: Print information, but only one-line summaries
+        minimal: Only print a one-line summary when the package branch is
+                 out-of-date
+    :param latest_pub: A LatestPublication instance
+    """
+    if verbosity == 'off':
+        return
+    if verbosity is None:
+        verbosity = 'all'
+    t = time.time()
+    latest_ver = latest_pub.get_latest_version()
+    t_latest_ver = time.time() - t
+    trace.mutter('LatestPublication.get_latest_version took: %.3fs'
+                 % (t_latest_ver,))
+    place = latest_pub.place()
+    if latest_ver is None:
+        if verbosity == 'all':
+            trace.note('Most recent %s version: MISSING' % (place,))
+        elif verbosity == 'short':
+            trace.note('%s is MISSING a version' % (place,))
+        return
+    t = time.time()
+    tags = the_branch.tags.get_tag_dict()
+    t_tag_dict = time.time() - t
+    trace.mutter('LatestPublication.get_tag_dict took: %.3fs' % (t_tag_dict,))
+    if latest_ver in tags:
+        if verbosity == 'minimal':
+            return
+        elif verbosity == 'short':
+            trace.note('%s is CURRENT in %s' % (latest_ver, place))
+        else:
+            trace.note('Most recent %s version: %s\n'
+                       'Packaging branch status: CURRENT'
+                       % (place, latest_ver))
+    else:
+        best_tag = get_most_recent_tag(tags, the_branch)
+        if verbosity in ('minimal', 'short'):
+            if best_tag is None:
+                best_tag = 'Branch'
+            trace.warning('%s is OUT-OF-DATE, %s has %s'
+                          % (best_tag, place, latest_ver))
+        else:
+            trace.warning('Most recent %s version: %s\n'
+                          'Packaging branch version: %s\n'
+                          'Packaging branch status: OUT-OF-DATE'
+                          % (place, latest_ver, best_tag))

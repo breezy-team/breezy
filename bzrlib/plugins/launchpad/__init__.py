@@ -40,10 +40,6 @@ The plugin also provides the following commands:
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
-import time
-
-# Since we are a built-in plugin we share the bzrlib version
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -56,6 +52,7 @@ from bzrlib import (
     branch as _mod_branch,
     bzrdir,
     lazy_regex,
+    # Since we are a built-in plugin we share the bzrlib version
     version_info,
     )
 from bzrlib.commands import (
@@ -502,39 +499,19 @@ def _check_is_up_to_date(the_branch):
     info = _get_package_branch_info(the_branch.base)
     if info is None:
         return
+    c = the_branch.get_config()
+    verbosity = c.get_user_option('bzr.plugins.launchpad.packaging_verbosity')
+    if verbosity is not None:
+        verbosity = verbosity.lower()
+    if verbosity == 'off':
+        trace.mutter('not checking %s because verbosity is turned off'
+                     % (the_branch.base,))
+        return
     archive, series, project = info
     from bzrlib.plugins.launchpad import lp_api_lite
-    t = time.time()
     latest_pub = lp_api_lite.LatestPublication(archive, series, project)
-    latest_ver = latest_pub.get_latest_version()
-    t_latest_ver = time.time() - t
-    trace.mutter('LatestPublication.get_latest_version took %.3fs'
-                 % (t_latest_ver,))
-    if latest_ver is None:
-        trace.note('Could not find a published version for packaging branch:\n'
-                   '  %s' % (the_branch.base,))
-        return
-    t = time.time()
-    tags = the_branch.tags.get_tag_dict()
-    t_tag_dict = time.time() - t
-    trace.mutter('LatestPublication get_tag_dict took: %.3fs' % (t_tag_dict,))
-    if latest_ver in tags:
-        trace.note('Found most recent published version: %s'
-                   ' in packaging branch:\n  %s'
-                   % (latest_ver, the_branch.base))
-    else:
-        place = archive.title()
-        if series is not None:
-            place = '%s/%s' % (place, series.title())
-        best_tag = lp_api_lite.get_most_recent_tag(tags, the_branch)
-        if best_tag is None:
-            best_message = ''
-        else:
-            best_message = '\nThe most recent tag found is %s' % (best_tag,)
-        trace.warning(
-            'Packaging branch is not up-to-date. The most recent published\n'
-            'version in %s is %s, but it is not in the branch tags for:\n  %s%s'
-            % (place, latest_ver, the_branch.base, best_message))
+    lp_api_lite.report_freshness(the_branch, verbosity, latest_pub)
+
 
 def _register_hooks():
     _mod_branch.Branch.hooks.install_named_hook('open',
