@@ -362,7 +362,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 % (kind, path))
             return
         # Record it
-        if file_id in inv:
+        if inv.has_id(file_id):
             old_ie = inv[file_id]
             if old_ie.kind == 'directory':
                 self.record_delete(path, old_ie)
@@ -404,7 +404,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # It's possible that a file or symlink with that file-id
         # already exists. If it does, we need to delete it.
-        if dir_file_id in inv:
+        if inv.has_id(dir_file_id):
             self.record_delete(dirname, ie)
         self.record_new(dirname, ie)
         return basename, ie.file_id

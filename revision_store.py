@@ -271,7 +271,7 @@ class AbstractRevisionStore(object):
             parent_candidate_entries.keys())
         heads = []
         for inv in self._rev_parent_invs:
-            if ie.file_id in inv:
+            if inv.has_id(ie.file_id):
                 old_rev = inv[ie.file_id].revision
                 if old_rev in head_set:
                     rev_id = inv[ie.file_id].revision
