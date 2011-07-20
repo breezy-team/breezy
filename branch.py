@@ -284,6 +284,7 @@ class GitBranch(ForeignBranch):
         return self.bzrdir.control_transport
 
     def __init__(self, bzrdir, repository, ref, lockfiles, tagsdict=None):
+        self.base = bzrdir.root_transport.base
         self.repository = repository
         self._format = GitBranchFormat()
         self.control_files = lockfiles
@@ -296,7 +297,6 @@ class GitBranch(ForeignBranch):
         self.ref = ref
         self.name = ref_to_branch_name(ref)
         self._head = None
-        self.base = bzrdir.root_transport.base
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
