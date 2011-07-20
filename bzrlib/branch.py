@@ -1293,11 +1293,11 @@ class Branch(controldir.ControlComponent):
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
-            master_branch = self.get_master_branch()
-            if master_branch is None:
+            master_url = self.get_bound_location()
+            if master_url is None:
                 result.set_parent(self.bzrdir.root_transport.base)
             else:
-                result.set_parent(master_branch.bzrdir.root_transport.base)
+                result.set_parent(master_url)
         finally:
             result.unlock()
         return result
@@ -3344,7 +3344,16 @@ class GenericInterBranch(InterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        source_is_master = (self.source.user_url == bound_location)
+        source_is_master = False
+        if bound_location:
+            # bound_location comes from a config file, some care has to be
+            # taken to relate it to source.user_url
+            normalized = urlutils.normalize_url(bound_location)
+            try:
+                relpath = self.source.user_transport.relpath(normalized)
+                source_is_master = (relpath == '')
+            except (errors.PathNotChild, errors.InvalidURL):
+                source_is_master = False
         if not local and bound_location and not source_is_master:
             # not pulling from master, so we need to update master.
             master_branch = self.target.get_master_branch(possible_transports)

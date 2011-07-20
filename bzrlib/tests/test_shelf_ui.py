@@ -302,16 +302,19 @@ class TestShelver(ShelfTestCase):
         finally:
             tree.unlock()
 
-    def test_shelve_old_root_deleted(self):
+    def test_shelve_old_root_preserved(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree1.commit('add root')
+        tree1_root_id = tree1.get_root_id()
         tree2 = self.make_branch_and_tree('tree2')
         rev2 = tree2.commit('add root')
+        self.assertNotEquals(tree1_root_id, tree2.get_root_id())
         tree1.merge_from_branch(tree2.branch,
                                 from_revision=revision.NULL_REVISION)
-        tree1.commit('Replaced root entry')
+        tree1.commit('merging in tree2')
+        self.assertEquals(tree1_root_id, tree1.get_root_id())
         # This is essentially assertNotRaises(InconsistentDelta)
-        # With testtools 0.99, it can be rewritten as:
+        # With testtools 0.9.9, it can be rewritten as:
         # with ExpectedException(AssertionError,
         #                        'InconsistentDelta not raised'):
         #     with ExpectedException(errors.InconsistentDelta, ''):

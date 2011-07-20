@@ -29,6 +29,9 @@ check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
 log_format=name-of-format
+validate_signatures_in_log=true|false(default)
+acceptable_keys=pattern1,pattern2
+gpg_signing_key=amy@example.com
 
 in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -39,19 +42,26 @@ recurse=False|True(default)
 email= as above
 check_signatures= as above
 create_signatures= as above.
+validate_signatures_in_log=as above
+acceptable_keys=as above
 
 explanation of options
 ----------------------
 editor - this option sets the pop up editor to use during commits.
 email - this option sets the user id bzr will use when committing.
-check_signatures - this option controls whether bzr will require good gpg
+check_signatures - this option will control whether bzr will require good gpg
                    signatures, ignore them, or check them if they are
-                   present.
+                   present.  Currently it is unused except that check_signatures
+                   turns on create_signatures.
 create_signatures - this option controls whether bzr will always create
-                    gpg signatures, never create them, or create them if the
-                    branch is configured to require them.
+                    gpg signatures or not on commits.  There is an unused
+                    option which in future is expected to work if               
+                    branch settings require signatures.
 log_format - this option sets the default log format.  Possible values are
              long, short, line, or a plugin can register new formats.
+validate_signatures_in_log - show GPG signature validity in log output
+acceptable_keys - comma separated list of key patterns acceptable for
+                  verify-signatures command
 
 In bazaar.conf you can also define aliases in the ALIASES sections, example
 
@@ -79,6 +89,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    lazy_regex,
     lockdir,
     mail_client,
     mergetools,
@@ -427,6 +438,29 @@ class Config(object):
         """See log_format()."""
         return None
 
+    def validate_signatures_in_log(self):
+        """Show GPG signature validity in log"""
+        result = self._validate_signatures_in_log()
+        if result == "true":
+            result = True
+        else:
+            result = False
+        return result
+
+    def _validate_signatures_in_log(self):
+        """See validate_signatures_in_log()."""
+        return None
+
+    def acceptable_keys(self):
+        """Comma separated list of key patterns acceptable to 
+        verify-signatures command"""
+        result = self._acceptable_keys()
+        return result
+
+    def _acceptable_keys(self):
+        """See acceptable_keys()."""
+        return None
+
     def post_commit(self):
         """An ordered list of python functions to call.
 
@@ -502,6 +536,14 @@ class Config(object):
         elif policy == SIGN_ALWAYS:
             return True
         return False
+
+    def gpg_signing_key(self):
+        """GPG user-id to sign commits"""
+        key = self.get_user_option('gpg_signing_key')
+        if key == "default" or key == None:
+            return self.user_email()
+        else:
+            return key
 
     def get_alias(self, value):
         return self._get_alias(value)
@@ -829,6 +871,14 @@ class IniBasedConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_user_option('log_format')
+
+    def _validate_signatures_in_log(self):
+        """See Config.validate_signatures_in_log."""
+        return self._get_user_option('validate_signatures_in_log')
+
+    def _acceptable_keys(self):
+        """See Config.acceptable_keys."""
+        return self._get_user_option('acceptable_keys')
 
     def _post_commit(self):
         """See Config.post_commit."""
@@ -1409,6 +1459,14 @@ class BranchConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_best_value('_log_format')
+
+    def _validate_signatures_in_log(self):
+        """See Config.validate_signatures_in_log."""
+        return self._get_best_value('_validate_signatures_in_log')
+
+    def _acceptable_keys(self):
+        """See Config.acceptable_keys."""
+        return self._get_best_value('_acceptable_keys')
 
 
 def ensure_config_dir_exists(path=None):
@@ -2895,9 +2953,10 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfigOption(name)
 
     def _show_matching_options(self, name, directory, scope):
-        name = re.compile(name)
+        name = lazy_regex.lazy_compile(name)
         # We want any error in the regexp to be raised *now* so we need to
-        # avoid the delay introduced by the lazy regexp.
+        # avoid the delay introduced by the lazy regexp.  But, we still do
+        # want the nicer errors raised by lazy_regex.
         name._compile_and_collapse()
         cur_conf_id = None
         cur_section = None

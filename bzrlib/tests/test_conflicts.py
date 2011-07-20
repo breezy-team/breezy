@@ -1063,6 +1063,91 @@ $ bzr merge ../trunk
 """)
 
 
+class TestNoFinalPath(script.TestCaseWithTransportAndScript):
+
+    def test_bug_805809(self):
+        self.run_script("""
+$ bzr init trunk
+Created a standalone tree (format: 2a)
+$ cd trunk
+$ echo trunk >file
+$ bzr add
+adding file
+$ bzr commit -m 'create file on trunk'
+2>Committing to: .../trunk/
+2>added file
+2>Committed revision 1.
+# Create a debian branch based on trunk
+$ cd ..
+$ bzr branch trunk -r 1 debian
+2>Branched 1 revision(s).
+$ cd debian
+$ mkdir dir
+$ bzr add
+adding dir
+$ bzr mv file dir
+file => dir/file
+$ bzr commit -m 'rename file to dir/file for debian'
+2>Committing to: .../debian/
+2>added dir
+2>renamed file => dir/file
+2>Committed revision 2.
+# Create an experimental branch with a new root-id
+$ cd ..
+$ bzr init experimental
+Created a standalone tree (format: 2a)
+$ cd experimental
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty
+$ bzr add
+adding not-empty
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../experimental/
+2>added not-empty
+2>Committed revision 1.
+# merge debian even without a common ancestor
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian into experimental'
+2>Committing to: .../experimental/
+2>added dir
+2>added dir/file
+2>Committed revision 2.
+# Create an ubuntu branch with yet another root-id
+$ cd ..
+$ bzr init ubuntu
+Created a standalone tree (format: 2a)
+$ cd ubuntu
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty-ubuntu
+$ bzr add
+adding not-empty-ubuntu
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../ubuntu/
+2>added not-empty-ubuntu
+2>Committed revision 1.
+# Also merge debian
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian'
+2>Committing to: .../ubuntu/
+2>added dir
+2>added dir/file
+2>Committed revision 2.
+# Now try to merge experimental
+$ bzr merge ../experimental
+2>+N  not-empty
+2>Path conflict: dir / dir
+2>1 conflicts encountered.
+""")
+
+
 class TestResolveActionOption(tests.TestCase):
 
     def setUp(self):

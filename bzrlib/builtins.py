@@ -49,6 +49,7 @@ from bzrlib import (
     ui,
     urlutils,
     views,
+    gpg,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
@@ -231,9 +232,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
-    Additionally for directories, symlinks and files with an executable
-    bit, Bazaar indicates their type using a trailing character: '/', '@'
-    or '*' respectively.
+    Additionally for directories, symlinks and files with a changed
+    executable bit, Bazaar indicates their type using a trailing
+    character: '/', '@' or '*' respectively. These decorations can be
+    disabled using the '--no-classify' option.
 
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
@@ -270,6 +272,9 @@ class cmd_status(Command):
                             short_name='V'),
                      Option('no-pending', help='Don\'t show pending merges.',
                            ),
+                     Option('no-classify',
+                            help='Do not mark object type using indicator.',
+                           ),
                      ]
     aliases = ['st', 'stat']
 
@@ -278,7 +283,8 @@ class cmd_status(Command):
 
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False, no_pending=False, verbose=False):
+            versioned=False, no_pending=False, verbose=False,
+            no_classify=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -298,7 +304,8 @@ class cmd_status(Command):
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
                          to_file=self.outf, short=short, versioned=versioned,
-                         show_pending=(not no_pending), verbose=verbose)
+                         show_pending=(not no_pending), verbose=verbose,
+                         classify=not no_classify)
 
 
 class cmd_cat_revision(Command):
@@ -2310,8 +2317,11 @@ class cmd_log(Command):
 
     :Other filtering:
 
-      The --message option can be used for finding revisions that match a
-      regular expression in a commit message.
+      The --match option can be used for finding revisions that match a
+      regular expression in a commit message, committer, author or bug.
+      Specifying the option several times will match any of the supplied
+      expressions. --match-author, --match-bugs, --match-committer and
+      --match-message can be used to only match a specific field.
 
     :Tips & tricks:
 
@@ -2377,10 +2387,10 @@ class cmd_log(Command):
                    argname='N',
                    type=_parse_levels),
             Option('message',
-                   short_name='m',
                    help='Show revisions whose message matches this '
                         'regular expression.',
-                   type=str),
+                   type=str,
+                   hidden=True),
             Option('limit',
                    short_name='l',
                    help='Limit the output to the first N revisions.',
@@ -2394,7 +2404,30 @@ class cmd_log(Command):
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
-                   )
+                   ),
+            Option('signatures',
+                   help='Show digital signature validity'),
+            ListOption('match',
+                short_name='m',
+                help='Show revisions whose properties match this '
+                'expression.',
+                type=str),
+            ListOption('match-message',
+                   help='Show revisions whose message matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-committer',
+                   help='Show revisions whose committer matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-author',
+                   help='Show revisions whose authors match this '
+                   'expression.',
+                type=str),
+            ListOption('match-bugs',
+                   help='Show revisions whose bugs match this '
+                   'expression.',
+                type=str)
             ]
     encoding_type = 'replace'
 
@@ -2413,6 +2446,12 @@ class cmd_log(Command):
             include_merges=False,
             authors=None,
             exclude_common_ancestry=False,
+            signatures=False,
+            match=None,
+            match_message=None,
+            match_committer=None,
+            match_author=None,
+            match_bugs=None,
             ):
         from bzrlib.log import (
             Logger,
@@ -2472,6 +2511,13 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
+        if b.get_config().validate_signatures_in_log():
+            signatures = True
+
+        if signatures:
+            if not gpg.GPGStrategy.verify_signatures_available():
+                raise errors.GpgmeNotInstalled(None)
+
         # Decide on the type of delta & diff filtering to use
         # TODO: add an --all-files option to make this configurable & consistent
         if not verbose:
@@ -2514,6 +2560,18 @@ class cmd_log(Command):
         match_using_deltas = (len(file_ids) != 1 or filter_by_dir
             or delta_type or partial_history)
 
+        match_dict = {}
+        if match:
+            match_dict[''] = match
+        if match_message:
+            match_dict['message'] = match_message
+        if match_committer:
+            match_dict['committer'] = match_committer
+        if match_author:
+            match_dict['author'] = match_author
+        if match_bugs:
+            match_dict['bugs'] = match_bugs
+            
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -2522,7 +2580,8 @@ class cmd_log(Command):
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
-            exclude_common_ancestry=exclude_common_ancestry,
+            exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
+            signature=signatures
             )
         Logger(b, rqst).show(lf)
 
@@ -6220,7 +6279,9 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
-        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
+        ('cmd_verify_signatures', [],
+                                        'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

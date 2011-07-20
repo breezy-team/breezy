@@ -1470,9 +1470,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
 class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
-        """Call get_trees_and_branches_to_diff_locked.  Overridden by
-        TestGetTreesAndBranchesToDiff.
-        """
+        """Call get_trees_and_branches_to_diff_locked."""
         return diff.get_trees_and_branches_to_diff_locked(
             path_list, revision_specs, old_url, new_url, self.addCleanup)
 
@@ -1515,14 +1513,3 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
         self.assertEqual(tree.branch.base, new_branch.base)
         self.assertIs(None, specific_files)
         self.assertEqual(tree.basedir, extra_trees[0].basedir)
-
-
-class TestGetTreesAndBranchesToDiff(TestGetTreesAndBranchesToDiffLocked):
-    """Apply the tests for get_trees_and_branches_to_diff_locked to the
-    deprecated get_trees_and_branches_to_diff function.
-    """
-
-    def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
-        return self.applyDeprecated(
-            deprecated_in((2, 2, 0)), diff.get_trees_and_branches_to_diff,
-            path_list, revision_specs, old_url, new_url)

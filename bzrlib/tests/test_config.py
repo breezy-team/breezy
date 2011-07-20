@@ -160,7 +160,10 @@ email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
 change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
+gpg_signing_key=DD4D5088
 log_format=short
+validate_signatures_in_log=true
+acceptable_keys=amy
 user_global_option=something
 bzr.mergetool.sometool=sometool {base} {this} {other} -o {result}
 bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
@@ -212,6 +215,7 @@ check_signatures=require
 [/a/]
 check_signatures=check-available
 gpg_signing_command=false
+gpg_signing_key=default
 user_local_option=local
 # test trailing / matching
 [/a/*]
@@ -512,6 +516,14 @@ class TestConfig(tests.TestCase):
     def test_log_format_default(self):
         my_config = config.Config()
         self.assertEqual('long', my_config.log_format())
+
+    def test_acceptable_keys_default(self):
+        my_config = config.Config()
+        self.assertEqual(None, my_config.acceptable_keys())
+
+    def test_validate_signatures_in_log_default(self):
+        my_config = config.Config()
+        self.assertEqual(False, my_config.validate_signatures_in_log())
 
     def test_get_change_editor(self):
         my_config = InstrumentedConfig()
@@ -1215,6 +1227,10 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("gnome-gpg", my_config.gpg_signing_command())
         self.assertEqual(False, my_config.signature_needed())
 
+    def test_gpg_signing_key(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("DD4D5088", my_config.gpg_signing_key())
+
     def _get_empty_config(self):
         my_config = config.GlobalConfig()
         return my_config
@@ -1239,6 +1255,14 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_configured_logformat(self):
         my_config = self._get_sample_config()
         self.assertEqual("short", my_config.log_format())
+
+    def test_configured_acceptable_keys(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("amy", my_config.acceptable_keys())
+
+    def test_configured_validate_signatures_in_log(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(True, my_config.validate_signatures_in_log())
 
     def test_get_alias(self):
         my_config = self._get_sample_config()
@@ -1501,6 +1525,14 @@ other_url = /other-subdir
     def test_gpg_signing_command_missing(self):
         self.get_branch_config('/a')
         self.assertEqual("false", self.my_config.gpg_signing_command())
+
+    def test_gpg_signing_key(self):
+        self.get_branch_config('/b')
+        self.assertEqual("DD4D5088", self.my_config.gpg_signing_key())
+
+    def test_gpg_signing_key_default(self):
+        self.get_branch_config('/a')
+        self.assertEqual("erik@bagfors.nu", self.my_config.gpg_signing_key())
 
     def test_get_user_option_global(self):
         self.get_branch_config('/a')
