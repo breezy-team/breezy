@@ -625,7 +625,7 @@ def tree_contains_upstream_source(tree):
     :return: Boolean indicating whether or not the tree contains the upstream
         source. None if the tree is empty
     """
-    present_files = set(tree.list_files(recursive=False))
+    present_files = set([f[0] for f in tree.list_files(recursive=False)])
     if len(present_files) == 0:
         return None
     packaging_files = frozenset(["debian", ".bzr-builddeb", ".bzrignore"])
