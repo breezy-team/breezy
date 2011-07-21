@@ -1,15 +1,20 @@
 Special character handling in URLs
 ==================================
 
-Internally bzr treats paths to branches as URLs. For convenience, it
-generally allows users to specify locations as regular paths, and then
-will determine the appropriate URL representation.
+Bazaar allows locations to be specified in multiple ways, either:
+
+ * Fully qualified URLs
+
+ * File system paths, relative or absolute
+
+Internally bzr treats all locations as URLs. For any file system paths
+that are specified it will automatically determine the appropriate URL
+representation, and escape special characters where necessary.
 
 There are a few characters which have special meaning in URLs and need careful
 handling to avoid ambiguities. Characters can be escaped with a % and a hex
-value in URLs.  These escapes are not active in file paths. Any non-ASCII
-characters in a file path will automatically be urlencoded when the path
-is converted to a URL.
+value in URLs. Any non-ASCII characters in a file path will automatically be
+urlencoded when the path is converted to a URL.
 
 URLs represent non-ASCII characters in an encoding defined by the server, but
 usually UTF-8.  The % escapes should be of the UTF-8 bytes.  Bazaar tries to be
