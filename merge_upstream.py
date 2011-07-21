@@ -101,9 +101,13 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
             str(package_version(upstream_version, distribution_name, epoch)),
             "-D", "UNRELEASED", "--release-heuristic", "changelog",
             "--package", package, entry_description]
-    if not tree.has_filename("debian/changelog"):
+    create = (not tree.has_filename("debian/changelog"))
+    if create:
         argv.append("--create")
-    proc = subprocess.Popen(argv, cwd=tree.basedir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(argv, cwd=tree.basedir, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
     (stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
         raise DchError("Adding changelog entry failed: %s" % stderr)
+    if create:
+        tree.add(["debian/changelog"])
