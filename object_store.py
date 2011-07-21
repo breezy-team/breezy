@@ -716,7 +716,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 self.repository.start_write_group()
                 try:
-                    import_git_objects(self.repository, self.mapping, 
+                    import_git_objects(self.repository, self.mapping,
                         p.iterobjects(get_raw=self.get_raw),
                         self.object_store)
                 except:

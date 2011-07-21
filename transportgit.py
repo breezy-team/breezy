@@ -499,13 +499,15 @@ class TransportObjectStore(PackBasedObjectStore):
 
         pack_sha = idx.objects_sha1()
 
-        datafile = self.pack_transport.open_write_stream("pack-%s.pack" % pack_sha)
+        datafile = self.pack_transport.open_write_stream(
+                "pack-%s.pack" % pack_sha)
         try:
-            entries, data_sum = write_pack_data(datafile, ((o, None) for o in p.iterobjects()), len(p))
+            entries, data_sum = write_pack_data(datafile, p.pack_tuples())
         finally:
             datafile.close()
         entries.sort()
-        idxfile = self.pack_transport.open_write_stream("pack-%s.idx" % pack_sha)
+        idxfile = self.pack_transport.open_write_stream(
+            "pack-%s.idx" % pack_sha)
         try:
             write_pack_index_v2(idxfile, data.sorted_entries(), data_sum)
         finally:
