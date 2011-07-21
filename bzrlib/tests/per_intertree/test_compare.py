@@ -26,8 +26,11 @@ from bzrlib import (
     workingtree_4,
     )
 from bzrlib.osutils import file_kind, has_symlinks
-from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_intertree import TestCaseWithTwoTrees
+from bzrlib.tests import (
+    TestNotApplicable,
+    features,
+    )
 
 # TODO: test the include_root option.
 # TODO: test that renaming a directory x->y does not emit a rename for the
@@ -963,7 +966,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # To add confusion, the totally generic code path works - but it
         # doesn't update persistent metadata. So this test permits InterTrees
         # to either work, or fail with BadFileKindError.
-        self.requireFeature(tests.OsFifoFeature)
+        self.requireFeature(features.OsFifoFeature)
         tree1 = self.make_branch_and_tree('1')
         self.build_tree(['1/a'])
         tree1.set_root_id('root-id')
@@ -1368,7 +1371,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         return self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
     def test_versioned_symlinks(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1, tree2 = self.make_trees_with_symlinks()
         self.not_applicable_if_cannot_represent_unversioned(tree2)
         root_id = tree1.path2id('')
@@ -1391,7 +1394,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.check_has_changes(True, tree1, tree2)
 
     def test_versioned_symlinks_specific_files(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         expected = [

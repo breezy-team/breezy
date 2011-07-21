@@ -25,6 +25,9 @@ from bzrlib import (
     revision as _mod_revision,
     tests,
     )
+from bzrlib.tests import (
+    features,
+    )
 from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
@@ -151,8 +154,8 @@ class TestSprout(TestCaseWithBranch):
         # Since the trigger function seems to be set_parent_trees, there exists
         # also a similar test, with name test_unicode_symlink, in class
         # TestSetParents at file per_workingtree/test_parents.py
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 

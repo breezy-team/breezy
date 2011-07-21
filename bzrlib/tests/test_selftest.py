@@ -93,19 +93,10 @@ class MetaTestLog(tests.TestCase):
             DocTestMatches(u"...a test message\n", doctest.ELLIPSIS))
 
 
-class TestUnicodeFilename(tests.TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilename._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        tests.UnicodeFilename._probe()
-
-
 class TestTreeShape(tests.TestCaseInTempDir):
 
     def test_unicode_paths(self):
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         filename = u'hell\u00d8'
         self.build_tree_contents([(filename, 'contents of hello')])
@@ -721,7 +712,7 @@ class TestChrootedTest(tests.ChrootedTestCase):
 class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         terminal = testtools.testresult.doubles.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
@@ -782,7 +773,7 @@ class TestTestResult(tests.TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             result_stream,
@@ -897,7 +888,7 @@ class TestTestResult(tests.TestCase):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
         test = SampleTestCase('_test_pass')
-        feature = tests.Feature()
+        feature = features.Feature()
         result.startTest(test)
         result.addNotSupported(test, feature)
         # it should invoke 'report_unsupported'.
@@ -922,7 +913,7 @@ class TestTestResult(tests.TestCase):
             verbosity=2,
             )
         test = self.get_passing_test()
-        feature = tests.Feature()
+        feature = features.Feature()
         result.startTest(test)
         prefix = len(result_stream.getvalue())
         result.report_unsupported(test, feature)
@@ -941,7 +932,7 @@ class TestTestResult(tests.TestCase):
             def addNotSupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
-        feature = tests.Feature()
+        feature = features.Feature()
         class Test(tests.TestCase):
             def test_function(self):
                 raise tests.UnavailableFeature(feature)
@@ -1004,15 +995,6 @@ class TestTestResult(tests.TestCase):
         suite.run(result)
         self.assertEquals(1, result.calls)
         self.assertEquals(2, result.count)
-
-
-class TestUnicodeFilenameFeature(tests.TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilenameFeature._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        tests.UnicodeFilenameFeature._probe()
 
 
 class TestRunner(tests.TestCase):
@@ -1191,9 +1173,9 @@ class TestRunner(tests.TestCase):
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
-        class Feature1(tests.Feature):
+        class Feature1(features.Feature):
             def _probe(self): return False
-        class Feature2(tests.Feature):
+        class Feature2(features.Feature):
             def _probe(self): return False
         # create sample tests
         test1 = SampleTestCase('_test_pass')
@@ -1476,7 +1458,7 @@ class TestTestCase(tests.TestCase):
 
         Each self.time() call is individually and separately profiled.
         """
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         # overrides the class member with an instance member so no cleanup
         # needed.
         self._gather_lsprof_in_benchmarks = True
@@ -1512,14 +1494,14 @@ class TestTestCase(tests.TestCase):
 
     def test_requireFeature_available(self):
         """self.requireFeature(available) is a no-op."""
-        class Available(tests.Feature):
+        class Available(features.Feature):
             def _probe(self):return True
         feature = Available()
         self.requireFeature(feature)
 
     def test_requireFeature_unavailable(self):
         """self.requireFeature(unavailable) raises UnavailableFeature."""
-        class Unavailable(tests.Feature):
+        class Unavailable(features.Feature):
             def _probe(self):return False
         feature = Unavailable()
         self.assertRaises(tests.UnavailableFeature,
@@ -1685,7 +1667,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual('original', obj.test_attr)
 
 
-class _MissingFeature(tests.Feature):
+class _MissingFeature(features.Feature):
     def _probe(self):
         return False
 missing_feature = _MissingFeature()
@@ -2037,7 +2019,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertLength(2, output.readlines())
 
     def test_lsprof_tests(self):
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         results = []
         class Test(object):
             def __call__(test, result):
@@ -2605,80 +2587,6 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
                                             retcode=3)
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
-
-
-class TestFeature(tests.TestCase):
-
-    def test_caching(self):
-        """Feature._probe is called by the feature at most once."""
-        class InstrumentedFeature(tests.Feature):
-            def __init__(self):
-                super(InstrumentedFeature, self).__init__()
-                self.calls = []
-            def _probe(self):
-                self.calls.append('_probe')
-                return False
-        feature = InstrumentedFeature()
-        feature.available()
-        self.assertEqual(['_probe'], feature.calls)
-        feature.available()
-        self.assertEqual(['_probe'], feature.calls)
-
-    def test_named_str(self):
-        """Feature.__str__ should thunk to feature_name()."""
-        class NamedFeature(tests.Feature):
-            def feature_name(self):
-                return 'symlinks'
-        feature = NamedFeature()
-        self.assertEqual('symlinks', str(feature))
-
-    def test_default_str(self):
-        """Feature.__str__ should default to __class__.__name__."""
-        class NamedFeature(tests.Feature):
-            pass
-        feature = NamedFeature()
-        self.assertEqual('NamedFeature', str(feature))
-
-
-class TestUnavailableFeature(tests.TestCase):
-
-    def test_access_feature(self):
-        feature = tests.Feature()
-        exception = tests.UnavailableFeature(feature)
-        self.assertIs(feature, exception.args[0])
-
-
-simple_thunk_feature = tests._CompatabilityThunkFeature(
-    deprecated_in((2, 1, 0)),
-    'bzrlib.tests.test_selftest',
-    'simple_thunk_feature','UnicodeFilename',
-    replacement_module='bzrlib.tests'
-    )
-
-class Test_CompatibilityFeature(tests.TestCase):
-
-    def test_does_thunk(self):
-        res = self.callDeprecated(
-            ['bzrlib.tests.test_selftest.simple_thunk_feature was deprecated'
-             ' in version 2.1.0. Use bzrlib.tests.UnicodeFilename instead.'],
-            simple_thunk_feature.available)
-        self.assertEqual(tests.UnicodeFilename.available(), res)
-
-
-class TestModuleAvailableFeature(tests.TestCase):
-
-    def test_available_module(self):
-        feature = tests.ModuleAvailableFeature('bzrlib.tests')
-        self.assertEqual('bzrlib.tests', feature.module_name)
-        self.assertEqual('bzrlib.tests', str(feature))
-        self.assertTrue(feature.available())
-        self.assertIs(tests, feature.module)
-
-    def test_unavailable_module(self):
-        feature = tests.ModuleAvailableFeature('bzrlib.no_such_module_exists')
-        self.assertEqual('bzrlib.no_such_module_exists', str(feature))
-        self.assertFalse(feature.available())
-        self.assertIs(None, feature.module)
 
 
 class TestSelftestFiltering(tests.TestCase):

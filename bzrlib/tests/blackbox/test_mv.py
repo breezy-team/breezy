@@ -25,10 +25,12 @@ from bzrlib import (
     )
 
 from bzrlib.tests import (
+    TestCaseWithTransport,
+    )
+from bzrlib.tests.features import (
     CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
-    TestCaseWithTransport,
-    UnicodeFilename,
+    UnicodeFilenameFeature,
     )
 
 
@@ -508,7 +510,7 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_unversioned_non_ascii(self):
         """Clear error on mv of an unversioned non-ascii file, see lp:707954"""
-        self.requireFeature(UnicodeFilename)
+        self.requireFeature(UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
         out, err = self.run_bzr_error(["Could not rename", "not versioned"],

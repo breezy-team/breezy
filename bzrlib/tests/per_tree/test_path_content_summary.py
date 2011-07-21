@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test that all Tree's implement path_content_summary."""
+"""Test that all Trees implement path_content_summary."""
 
 import os
 
@@ -24,7 +24,13 @@ from bzrlib import (
     transform,
     )
 
-from bzrlib.tests import per_tree
+from bzrlib.tests import (
+    features,
+    per_tree,
+    )
+from bzrlib.tests.features import (
+    SymlinkFeature,
+    )
 
 
 class TestPathContentSummary(per_tree.TestCaseWithTree):
@@ -48,7 +54,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
             self.fail("invalid size in summary: %r" % (returned_size,))
 
     def test_symlink_content_summary(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink('target', 'tree/path')
         tree.add(['path'])
@@ -56,8 +62,8 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual(('symlink', None, None, 'target'), summary)
 
     def test_unicode_symlink_content_summary(self):
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink('target', u'tree/\u03b2-path'.encode(osutils._fs_enc))
         tree.add([u'\u03b2-path'])
@@ -65,8 +71,8 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual(('symlink', None, None, 'target'), summary)
 
     def test_unicode_symlink_target_summary(self):
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink(u'tree/\u03b2-path'.encode(osutils._fs_enc), 'tree/link')
         tree.add(['link'])
