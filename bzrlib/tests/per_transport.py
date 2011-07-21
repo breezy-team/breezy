@@ -1771,16 +1771,16 @@ class TransportTests(TestTransportImplementation):
         """Segment parameters should be stripped and stored in
         transport.segment_parameters."""
         transport = self.get_transport("foo")
-        self.assertEquals({}, transport.segment_parameters)
+        self.assertEquals({}, transport.get_segment_parameters())
 
     def test_segment_parameters(self):
         """Segment parameters should be stripped and stored in
-        transport.segment_parameters."""
+        transport.get_segment_parameters()."""
         base_url = self._server.get_url()
         parameters = {"key1": "val1", "key2": "val2"}
         url = urlutils.join_segment_parameters(base_url, parameters)
         transport = _mod_transport.get_transport(url)
-        self.assertEquals(parameters, transport.segment_parameters)
+        self.assertEquals(parameters, transport.get_segment_parameters())
 
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks

@@ -275,8 +275,6 @@ class Transport(object):
     as an argument (ie always iterate, never index)
 
     :ivar base: Base URL for the transport; should always end in a slash.
-    :ivar segment_parameters: Segment parameters for the last element in the
-        path
     """
 
     # implementations can override this if it is more efficient
@@ -293,7 +291,7 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-        self.segment_parameters = urlutils.split_segment_parameters(base.rstrip("/"))[1]
+        self._segment_parameters = urlutils.split_segment_parameters(base.rstrip("/"))[1]
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -389,6 +387,11 @@ class Transport(object):
             then InProcessTransport is raised.
         """
         raise NotImplementedError(self.external_url)
+
+    def get_segment_parameters(self):
+        """Return the segment parameters for the top segment of the URL.
+        """
+        return self._segment_parameters
 
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like
