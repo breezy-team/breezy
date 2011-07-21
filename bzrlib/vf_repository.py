@@ -2502,6 +2502,7 @@ class InterVersionedFileRepository(InterRepository):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
+        import pdb; pdb.set_trace()
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
         if if_present_ids:
@@ -2514,12 +2515,21 @@ class InterVersionedFileRepository(InterRepository):
         searcher = source_graph._make_breadth_first_searcher(all_wanted_revs)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         searcher_exhausted = False
+        search_step = rev_count = 0
+        gpm = searcher._parents_provider.get_parent_map
+        def get_parent_map_logging(revisions):
+            res = gpm(revisions)
+            mutter('step %d, requested %d returned %d'
+                   % (search_step, len(revisions), len(res)))
+            return res
+        searcher._parents_provider.get_parent_map = get_parent_map_logging
         while True:
             next_revs = set()
             ghosts = set()
             # Iterate the searcher until we have enough next_revs
             while len(next_revs) < self._walk_to_common_revisions_batch_size:
                 try:
+                    search_step += 1
                     next_revs_part, ghosts_part = searcher.next_with_ghosts()
                     next_revs.update(next_revs_part)
                     ghosts.update(ghosts_part)
@@ -2550,6 +2560,7 @@ class InterVersionedFileRepository(InterRepository):
                 searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
+        import pdb; pdb.set_trace()
         return searcher.get_result()
 
     @needs_read_lock
