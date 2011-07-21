@@ -8,7 +8,6 @@
 
 import sys
 if sys.frozen == "windows_exe":
-
     class Blackhole(object):
         softspace = 0
         def write(self, text):
@@ -18,6 +17,12 @@ if sys.frozen == "windows_exe":
     sys.stdout = Blackhole()
     sys.stderr = Blackhole()
     del Blackhole
+
+# add more directories to sys.path to allow "installing" third-party libs
+# required by some plugins (see bug #743256)
+import os
+sys.path.append(os.path.join(os.path.dirname(sys.executable), 'site-packages'))
+del os
 del sys
 
 # Disable linecache.getline() which is called by

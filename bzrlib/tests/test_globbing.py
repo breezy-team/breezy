@@ -37,11 +37,11 @@ class TestGlobster(TestCase):
                 glob = glob_prefix + glob
             globster = Globster([glob])
             for name in positive:
-                self.failUnless(globster.match(name), repr(
+                self.assertTrue(globster.match(name), repr(
                     u'name "%s" does not match glob "%s" (re=%s)' %
                     (name, glob, globster._regex_patterns[0][0].pattern)))
             for name in negative:
-                self.failIf(globster.match(name), repr(
+                self.assertFalse(globster.match(name), repr(
                     u'name "%s" does match glob "%s" (re=%s)' %
                     (name, glob, globster._regex_patterns[0][0].pattern)))
 

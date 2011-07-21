@@ -337,7 +337,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         child_tree.merge_from_branch(other_branch)
 
-        self.failUnlessExists('child/c')
+        self.assertPathExists('child/c')
         self.assertEqual([new_rev_id], child_tree.get_parent_ids()[1:])
 
         # Make sure the local branch has the installed revision

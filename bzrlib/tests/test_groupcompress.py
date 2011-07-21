@@ -20,6 +20,7 @@ import zlib
 
 from bzrlib import (
     btree_index,
+    config,
     groupcompress,
     errors,
     index as _mod_index,
@@ -552,6 +553,23 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                     'as-requested', False)]
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
 
+    def test_get_record_stream_max_bytes_to_index_default(self):
+        vf = self.make_test_vf(True, dir='source')
+        vf.add_lines(('a',), (), ['lines\n'])
+        vf.writer.end()
+        record = vf.get_record_stream([('a',)], 'unordered', True).next()
+        self.assertEqual(vf._DEFAULT_COMPRESSOR_SETTINGS,
+                         record._manager._get_compressor_settings())
+
+    def test_get_record_stream_accesses_compressor_settings(self):
+        vf = self.make_test_vf(True, dir='source')
+        vf.add_lines(('a',), (), ['lines\n'])
+        vf.writer.end()
+        vf._max_bytes_to_index = 1234
+        record = vf.get_record_stream([('a',)], 'unordered', True).next()
+        self.assertEqual(dict(max_bytes_to_index=1234),
+                         record._manager._get_compressor_settings())
+
     def test_insert_record_stream_reuses_blocks(self):
         vf = self.make_test_vf(True, dir='source')
         def grouped_stream(revision_ids, first_parents=()):
@@ -769,6 +787,48 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf.clear_cache()
         self.assertEqual(0, len(vf._group_cache))
 
+
+class TestGroupCompressConfig(tests.TestCaseWithTransport):
+
+    def make_test_vf(self):
+        t = self.get_transport('.')
+        t.ensure_base()
+        factory = groupcompress.make_pack_factory(graph=True,
+            delta=False, keylength=1, inconsistency_fatal=True)
+        vf = factory(t)
+        self.addCleanup(groupcompress.cleanup_pack_group, vf)
+        return vf
+
+    def test_max_bytes_to_index_default(self):
+        vf = self.make_test_vf()
+        gc = vf._make_group_compressor()
+        self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                         vf._max_bytes_to_index)
+        if isinstance(gc, groupcompress.PyrexGroupCompressor):
+            self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                             gc._delta_index._max_bytes_to_index)
+
+    def test_max_bytes_to_index_in_config(self):
+        c = config.GlobalConfig()
+        c.set_user_option('bzr.groupcompress.max_bytes_to_index', '10000')
+        vf = self.make_test_vf()
+        gc = vf._make_group_compressor()
+        self.assertEqual(10000, vf._max_bytes_to_index)
+        if isinstance(gc, groupcompress.PyrexGroupCompressor):
+            self.assertEqual(10000, gc._delta_index._max_bytes_to_index)
+
+    def test_max_bytes_to_index_bad_config(self):
+        c = config.GlobalConfig()
+        c.set_user_option('bzr.groupcompress.max_bytes_to_index', 'boogah')
+        vf = self.make_test_vf()
+        # TODO: This is triggering a warning, we might want to trap and make
+        #       sure it is readable.
+        gc = vf._make_group_compressor()
+        self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                         vf._max_bytes_to_index)
+        if isinstance(gc, groupcompress.PyrexGroupCompressor):
+            self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                             gc._delta_index._max_bytes_to_index)
 
 
 class StubGCVF(object):
@@ -1045,6 +1105,54 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             self.assertEqual(('key4',), record.key)
             self.assertEqual(self._texts[record.key],
                              record.get_bytes_as('fulltext'))
+
+    def test_manager_default_compressor_settings(self):
+        locations, old_block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(old_block)
+        gcvf = groupcompress.GroupCompressVersionedFiles
+        # It doesn't greedily evaluate _max_bytes_to_index
+        self.assertIs(None, manager._compressor_settings)
+        self.assertEqual(gcvf._DEFAULT_COMPRESSOR_SETTINGS,
+                         manager._get_compressor_settings())
+
+    def test_manager_custom_compressor_settings(self):
+        locations, old_block = self.make_block(self._texts)
+        called = []
+        def compressor_settings():
+            called.append('called')
+            return (10,)
+        manager = groupcompress._LazyGroupContentManager(old_block,
+            get_compressor_settings=compressor_settings)
+        gcvf = groupcompress.GroupCompressVersionedFiles
+        # It doesn't greedily evaluate compressor_settings
+        self.assertIs(None, manager._compressor_settings)
+        self.assertEqual((10,), manager._get_compressor_settings())
+        self.assertEqual((10,), manager._get_compressor_settings())
+        self.assertEqual((10,), manager._compressor_settings)
+        # Only called 1 time
+        self.assertEqual(['called'], called)
+
+    def test__rebuild_handles_compressor_settings(self):
+        if not isinstance(groupcompress.GroupCompressor,
+                          groupcompress.PyrexGroupCompressor):
+            raise tests.TestNotApplicable('pure-python compressor'
+                ' does not handle compressor_settings')
+        locations, old_block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(old_block,
+            get_compressor_settings=lambda: dict(max_bytes_to_index=32))
+        gc = manager._make_group_compressor()
+        self.assertEqual(32, gc._delta_index._max_bytes_to_index)
+        self.add_key_to_manager(('key3',), locations, old_block, manager)
+        self.add_key_to_manager(('key4',), locations, old_block, manager)
+        action, last_byte, total_bytes = manager._check_rebuild_action()
+        self.assertEqual('rebuild', action)
+        manager._rebuild_block()
+        new_block = manager._block
+        self.assertIsNot(old_block, new_block)
+        # Because of the new max_bytes_to_index, we do a poor job of
+        # rebuilding. This is a side-effect of the change, but at least it does
+        # show the setting had an effect.
+        self.assertTrue(old_block._content_length < new_block._content_length)
 
     def test_check_is_well_utilized_all_keys(self):
         block, manager = self.make_block_and_full_manager(self._texts)

@@ -96,7 +96,7 @@ To run the tests::
     $ ./bzr selftest
 
 Normally the tests will skip if some library dependencies are not present.
-On Ubuntu, you can install them with this command (you must have some
+On Ubuntu, you can install them with this command (you must have source
 repositories enabled in Software Sources)::
 
     $ sudo apt-get build-dep bzr

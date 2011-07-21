@@ -34,7 +34,7 @@ from bzrlib.trace import mutter, warning
 def report_changes(to_file, old, new, specific_files, 
                    show_short_reporter, show_long_callback, 
                    short=False, want_unchanged=False, 
-                   want_unversioned=False, show_ids=False):
+                   want_unversioned=False, show_ids=False, classify=True):
     """Display summary of changes.
 
     This compares two trees with regards to a list of files, and delegates 
@@ -59,6 +59,7 @@ def report_changes(to_file, old, new, specific_files,
         files.
     :param show_ids: If set, includes each file's id.
     :param want_unversioned: If False, only shows versioned files.
+    :param classify: Add special symbols to indicate file kind.
     """
 
     if short:
@@ -76,7 +77,8 @@ def report_changes(to_file, old, new, specific_files,
             delta.unversioned if not new.is_ignored(unversioned[0])]
         show_long_callback(to_file, delta, 
                            show_ids=show_ids,
-                           show_unchanged=want_unchanged)
+                           show_unchanged=want_unchanged,
+                           classify=classify)
 
 
 def show_tree_status(wt, show_unchanged=None,
@@ -88,6 +90,7 @@ def show_tree_status(wt, show_unchanged=None,
                      short=False,
                      verbose=False,
                      versioned=False,
+                     classify=True,
                      show_long_callback=_mod_delta.report_delta):
     """Display summary of changes.
 
@@ -117,6 +120,7 @@ def show_tree_status(wt, show_unchanged=None,
     :param verbose: If True, show all merged revisions, not just
         the merge tips
     :param versioned: If True, only shows versioned files.
+    :param classify: Add special symbols to indicate file kind.
     :param show_long_callback: A callback: message = show_long_callback(to_file, delta, 
         show_ids, show_unchanged, indent, filter), only used with the long output
     """
@@ -161,11 +165,12 @@ def show_tree_status(wt, show_unchanged=None,
 
             # Reporter used for short outputs
             reporter = _mod_delta._ChangeReporter(output_file=to_file,
-                unversioned_filter=new.is_ignored)
+                unversioned_filter=new.is_ignored, classify=classify)
             report_changes(to_file, old, new, specific_files, 
                            reporter, show_long_callback, 
                            short=short, want_unchanged=show_unchanged, 
-                           want_unversioned=want_unversioned, show_ids=show_ids)
+                           want_unversioned=want_unversioned, show_ids=show_ids,
+                           classify=classify)
 
             # show the ignored files among specific files (i.e. show the files
             # identified from input that we choose to ignore). 
@@ -194,7 +199,7 @@ def show_tree_status(wt, show_unchanged=None,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("%s %s\n" % (prefix, conflict))
+                to_file.write("%s %s\n" % (prefix, unicode(conflict)))
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status
@@ -379,23 +384,23 @@ class StatusHooks(_mod_hooks.Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        _mod_hooks.Hooks.__init__(self)
-        self.create_hook(_mod_hooks.HookPoint('post_status',
+        _mod_hooks.Hooks.__init__(self, "bzrlib.status", "hooks")
+        self.add_hook('post_status',
             "Called with argument StatusHookParams after Bazaar has "
             "displayed the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
-        self.create_hook(_mod_hooks.HookPoint('pre_status',
+            (2, 3))
+        self.add_hook('pre_status',
             "Called with argument StatusHookParams before Bazaar "
             "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
+            (2, 3))
 
 
 class StatusHookParams(object):

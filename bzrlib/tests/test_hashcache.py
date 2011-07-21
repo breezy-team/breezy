@@ -27,8 +27,7 @@ from bzrlib.tests import (
     )
 
 
-def sha1(t):
-    return osutils.sha(t).hexdigest()
+sha1 = osutils.sha_string
 
 
 def pause():

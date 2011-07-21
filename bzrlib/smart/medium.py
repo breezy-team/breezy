@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,6 @@ import weakref
 from bzrlib import (
     debug,
     errors,
-    symbol_versioning,
     trace,
     ui,
     urlutils,

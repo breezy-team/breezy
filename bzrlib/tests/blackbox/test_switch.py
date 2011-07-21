@@ -20,9 +20,16 @@
 
 import os
 
-from bzrlib import osutils
+from bzrlib import (
+        osutils,
+        urlutils,
+        branch,
+        )
 from bzrlib.workingtree import WorkingTree
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+        TestCaseWithTransport,
+        script,
+        )
 from bzrlib.directory_service import directories
 
 
@@ -129,7 +136,7 @@ class TestSwitch(TestCaseWithTransport):
         """Using switch on a heavy checkout should find master sibling
 
         The behaviour of lighweight and heavy checkouts should be
-        consistentwhen using the convenient "switch to sibling" feature
+        consistent when using the convenient "switch to sibling" feature
         Both should switch to a sibling of the branch
         they are bound to, and not a sibling of themself"""
 
@@ -149,17 +156,17 @@ class TestSwitch(TestCaseWithTransport):
         tree = self._create_sample_tree()
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', 'branch-1', '-r1'], working_dir='checkout')
-        self.failUnlessExists('checkout/file-1')
-        self.failIfExists('checkout/file-2')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
 
     def test_switch_only_revision(self):
         tree = self._create_sample_tree()
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
-        self.failUnlessExists('checkout/file-1')
-        self.failUnlessExists('checkout/file-2')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
         self.run_bzr(['switch', '-r1'], working_dir='checkout')
-        self.failUnlessExists('checkout/file-1')
-        self.failIfExists('checkout/file-2')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
         # Check that we don't accept a range
         self.run_bzr_error(
             ['bzr switch --revision takes exactly one revision identifier'],
@@ -270,3 +277,78 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr('checkout --lightweight a checkout')
         self.run_bzr('switch --directory checkout b')
         self.assertFileEqual('initial\nmore\n', 'checkout/a')
+
+
+class TestSwitchParentLocationBase(TestCaseWithTransport):
+
+    def setUp(self):
+        """Set up a repository and branch ready for testing."""
+        super(TestSwitchParentLocationBase, self).setUp()
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+                $ bzr init-repo --no-trees repo
+                Shared repository...
+                Location:
+                  shared repository: repo
+                $ bzr init repo/trunk
+                Created a repository branch...
+                Using shared repository: ...
+                ''')
+
+    def assertParent(self, expected_parent, branch):
+        """Verify that the parent is not None and is set correctly."""
+        actual_parent = branch.get_parent()
+        self.assertIsSameRealPath(urlutils.local_path_to_url(expected_parent),
+                                  branch.get_parent())
+
+
+class TestSwitchParentLocation(TestSwitchParentLocationBase):
+
+    def _checkout_and_switch(self, option=''):
+        self.script_runner.run_script(self, '''
+                $ bzr checkout %(option)s repo/trunk checkout
+                $ cd checkout
+                $ bzr switch --create-branch switched
+                2>Tree is up to date at revision 0.
+                2>Switched to branch:...switched...
+                $ cd ..
+                ''' % locals())
+        bound_branch = branch.Branch.open_containing('checkout')[0]
+        master_branch = branch.Branch.open_containing('repo/switched')[0]
+        return (bound_branch, master_branch)
+
+    def test_switch_parent_lightweight(self):
+        """Lightweight checkout using bzr switch."""
+        bb, mb = self._checkout_and_switch(option='--lightweight')
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
+
+    def test_switch_parent_heavyweight(self):
+        """Heavyweight checkout using bzr switch."""
+        bb, mb = self._checkout_and_switch()
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
+
+
+class TestSwitchDoesntOpenMasterBranch(TestCaseWithTransport):
+    # See https://bugs.launchpad.net/bzr/+bug/812285
+    # "bzr switch --create-branch" can point the new branch's parent to the
+    # master branch, but it doesn't have to open it to do so.
+
+    def test_switch_create_doesnt_open_master_branch(self):
+        master = self.make_branch_and_tree('master')
+        master.commit('one')
+        # Note: not a lightweight checkout
+        checkout = master.branch.create_checkout('checkout')
+        opened = []
+        def open_hook(branch):
+            # Just append the final directory of the branch
+            name = branch.base.rstrip('/').rsplit('/', 1)[1]
+            opened.append(name)
+        branch.Branch.hooks.install_named_hook('open', open_hook,
+                                               'open_hook_logger')
+        self.run_bzr('switch --create-branch -d checkout feature')
+        # We only open the master branch 1 time.
+        # This test should be cleaner to write, but see bug:
+        #  https://bugs.launchpad.net/bzr/+bug/812295
+        self.assertEqual(1, opened.count('master'))

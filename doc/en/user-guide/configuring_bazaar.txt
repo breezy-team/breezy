@@ -37,6 +37,24 @@ The ``no_proxy`` variable can be set to a comma-separated list of hosts
 which shouldn't be reached by the proxy.  (See
 <http://docs.python.org/library/urllib.html> for more details.)
 
+Various ways to configure
+-------------------------
+
+As shown in the example above, there are various ways to
+configure Bazaar, they all share some common properties though.
+An option has:
+
+- a name which is generally a valid python identifier,
+
+- a value which is a string. In some cases, Bazaar will be able
+  to recognize special values like 'True', 'False' to infer a
+  boolean type, but basically, as a user, you will always specify
+  a value as a string.
+
+Options are grouped in various contexts so the option name
+uniquely identifies it in this context. When needed, options can
+be made persistent by recording them in a configuration file.
+
 
 Configuration files
 -------------------

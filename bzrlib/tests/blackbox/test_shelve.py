@@ -72,7 +72,7 @@ class TestShelveList(TestCaseWithTransport):
         self.build_tree(['file'])
         tree.add('file')
         self.run_bzr('shelve --all --destroy')
-        self.failIfExists('file')
+        self.assertPathDoesNotExist('file')
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
 
     def test_unshelve_keep(self):

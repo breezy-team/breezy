@@ -220,12 +220,12 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
 def _get_object_and_label(control_dir):
     """Return the primary object and type label for a control directory.
 
-    :return: object, label where
-      object is a Branch, Repository or WorkingTree and
-      label is one of:
-        branch            - a branch
-        repository        - a repository
-        tree              - a lightweight checkout
+    :return: object, label where:
+      * object is a Branch, Repository or WorkingTree and
+      * label is one of:
+        * branch            - a branch
+        * repository        - a repository
+        * tree              - a lightweight checkout
     """
     try:
         try:

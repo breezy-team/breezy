@@ -9,7 +9,7 @@ patterns and the contents of each section are the preferences for files
 matching that pattern(s). For example::
 
     [name *.bat]
-    eol = dos
+    eol = native
 
     [name *.html *.xml]
     keywords = xml_escape

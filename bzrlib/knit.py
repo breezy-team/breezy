@@ -56,30 +56,29 @@ from cStringIO import StringIO
 from itertools import izip
 import operator
 import os
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import gzip
 
 from bzrlib import (
-    annotate,
     debug,
     diff,
     graph as _mod_graph,
     index as _mod_index,
-    lru_cache,
     pack,
     patiencediff,
-    progress,
     static_tuple,
     trace,
     tsort,
     tuned_gzip,
     ui,
     )
+
+from bzrlib.repofmt import pack_repo
 """)
 from bzrlib import (
+    annotate,
     errors,
     osutils,
     )
@@ -98,12 +97,13 @@ from bzrlib.osutils import (
     split_lines,
     )
 from bzrlib.versionedfile import (
+    _KeyRefs,
     AbsentContentFactory,
     adapter_registry,
     ConstantMapper,
     ContentFactory,
     sort_groupcompress,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 
@@ -408,7 +408,7 @@ def knit_network_to_record(storage_kind, bytes, line_end):
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied.
 
-    This is always stored in memory as a list of lines with \n at the end,
+    This is always stored in memory as a list of lines with \\n at the end,
     plus a flag saying if the final ending is really there or not, because that
     corresponds to the on-disk knit representation.
     """
@@ -801,7 +801,7 @@ def make_pack_factory(graph, delta, keylength):
         writer.begin()
         index = _KnitGraphIndex(graph_index, lambda:True, parents=parents,
             deltas=delta, add_callback=graph_index.add_nodes)
-        access = _DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = KnitVersionedFiles(index, access,
             max_delta_chain=max_delta_chain)
@@ -845,7 +845,7 @@ def _get_total_build_size(self, keys, positions):
                 in all_build_index_memos.itervalues()])
 
 
-class KnitVersionedFiles(VersionedFiles):
+class KnitVersionedFiles(VersionedFilesWithFallbacks):
     """Storage for many versioned files using knit compression.
 
     Backend storage is managed by indices and data objects.
@@ -886,6 +886,12 @@ class KnitVersionedFiles(VersionedFiles):
             self.__class__.__name__,
             self._index,
             self._access)
+
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        return KnitVersionedFiles(self._index, self._access,
+            self._max_delta_chain, self._factory.annotated,
+            self._reload_func)
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
@@ -1149,14 +1155,15 @@ class KnitVersionedFiles(VersionedFiles):
 
         A dict of key to (record_details, index_memo, next, parents) is
         returned.
-        method is the way referenced data should be applied.
-        index_memo is the handle to pass to the data access to actually get the
-            data
-        next is the build-parent of the version, or None for fulltexts.
-        parents is the version_ids of the parents of this version
 
-        :param allow_missing: If True do not raise an error on a missing component,
-            just ignore it.
+        * method is the way referenced data should be applied.
+        * index_memo is the handle to pass to the data access to actually get
+          the data
+        * next is the build-parent of the version, or None for fulltexts.
+        * parents is the version_ids of the parents of this version
+
+        :param allow_missing: If True do not raise an error on a missing
+            component, just ignore it.
         """
         component_data = {}
         pending_components = keys
@@ -1187,19 +1194,6 @@ class KnitVersionedFiles(VersionedFiles):
             return cached_version
         generator = _VFContentMapGenerator(self, [key])
         return generator._get_content(key)
-
-    def get_known_graph_ancestry(self, keys):
-        """Get a KnownGraph instance with the ancestry of keys."""
-        parent_map, missing_keys = self._index.find_ancestry(keys)
-        for fallback in self._transitive_fallbacks():
-            if not missing_keys:
-                break
-            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
-                                                missing_keys)
-            parent_map.update(f_parent_map)
-            missing_keys = f_missing_keys
-        kg = _mod_graph.KnownGraph(parent_map)
-        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.
@@ -1237,15 +1231,13 @@ class KnitVersionedFiles(VersionedFiles):
         """Produce a dictionary of knit records.
 
         :return: {key:(record, record_details, digest, next)}
-            record
-                data returned from read_records (a KnitContentobject)
-            record_details
-                opaque information to pass to parse_record
-            digest
-                SHA1 digest of the full text after all steps are done
-            next
-                build-parent of the version, i.e. the leftmost ancestor.
+
+            * record: data returned from read_records (a KnitContentobject)
+            * record_details: opaque information to pass to parse_record
+            * digest: SHA1 digest of the full text after all steps are done
+            * next: build-parent of the version, i.e. the leftmost ancestor.
                 Will be None if the record is not a delta.
+
         :param keys: The keys to build a map for
         :param allow_missing: If some records are missing, rather than
             error, just return the data that could be generated.
@@ -1918,6 +1910,7 @@ class KnitVersionedFiles(VersionedFiles):
         The result will be returned in whatever is the fastest to read.
         Not by the order requested. Also, multiple requests for the same
         record will only yield 1 response.
+
         :param records: A list of (key, access_memo) entries
         :return: Yields (key, contents, digest) in the order
                  read, not the order requested
@@ -1981,11 +1974,11 @@ class KnitVersionedFiles(VersionedFiles):
         :param key: The key of the record. Currently keys are always serialised
             using just the trailing component.
         :param dense_lines: The bytes of lines but in a denser form. For
-            instance, if lines is a list of 1000 bytestrings each ending in \n,
-            dense_lines may be a list with one line in it, containing all the
-            1000's lines and their \n's. Using dense_lines if it is already
-            known is a win because the string join to create bytes in this
-            function spends less time resizing the final string.
+            instance, if lines is a list of 1000 bytestrings each ending in
+            \\n, dense_lines may be a list with one line in it, containing all
+            the 1000's lines and their \\n's. Using dense_lines if it is
+            already known is a win because the string join to create bytes in
+            this function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
         chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]
@@ -2780,64 +2773,6 @@ class _KndxIndex(object):
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
         return key[:-1], key[-1]
-
-
-class _KeyRefs(object):
-
-    def __init__(self, track_new_keys=False):
-        # dict mapping 'key' to 'set of keys referring to that key'
-        self.refs = {}
-        if track_new_keys:
-            # set remembering all new keys
-            self.new_keys = set()
-        else:
-            self.new_keys = None
-
-    def clear(self):
-        if self.refs:
-            self.refs.clear()
-        if self.new_keys:
-            self.new_keys.clear()
-
-    def add_references(self, key, refs):
-        # Record the new references
-        for referenced in refs:
-            try:
-                needed_by = self.refs[referenced]
-            except KeyError:
-                needed_by = self.refs[referenced] = set()
-            needed_by.add(key)
-        # Discard references satisfied by the new key
-        self.add_key(key)
-
-    def get_new_keys(self):
-        return self.new_keys
-    
-    def get_unsatisfied_refs(self):
-        return self.refs.iterkeys()
-
-    def _satisfy_refs_for_key(self, key):
-        try:
-            del self.refs[key]
-        except KeyError:
-            # No keys depended on this key.  That's ok.
-            pass
-
-    def add_key(self, key):
-        # satisfy refs for key, and remember that we've seen this key.
-        self._satisfy_refs_for_key(key)
-        if self.new_keys is not None:
-            self.new_keys.add(key)
-
-    def satisfy_refs_for_keys(self, keys):
-        for key in keys:
-            self._satisfy_refs_for_key(key)
-
-    def get_referrers(self):
-        result = set()
-        for referrers in self.refs.itervalues():
-            result.update(referrers)
-        return result
 
 
 class _KnitGraphIndex(object):

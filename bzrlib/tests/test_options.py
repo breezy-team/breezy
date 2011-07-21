@@ -22,6 +22,7 @@ from bzrlib import (
     controldir,
     errors,
     option,
+    registry,
     )
 from bzrlib.builtins import cmd_commit
 from bzrlib.commands import parse_args
@@ -411,6 +412,17 @@ class TestOptionDefinitions(TestCase):
         # Confirm that my_opt has my help and the original is unchanged
         self.assertEqual('suggest lottery numbers', my_opt.help)
         self.assertEqual(orig_help, the_opt.help)
+
+    def test_short_value_switches(self):
+        reg = registry.Registry()
+        reg.register('short', 'ShortChoice')
+        reg.register('long', 'LongChoice')
+        ropt = option.RegistryOption('choice', '', reg, value_switches=True,
+            short_value_switches={'short': 's'})
+        opts, args = parse([ropt], ['--short'])
+        self.assertEqual('ShortChoice', opts.choice)
+        opts, args = parse([ropt], ['-s'])
+        self.assertEqual('ShortChoice', opts.choice)
 
 
 class TestVerboseQuietLinkage(TestCase):

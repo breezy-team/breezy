@@ -27,8 +27,9 @@ import urllib
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
+
 from bzrlib import (
-    bzrdir_weave,
     xml5,
     graph as _mod_graph,
     ui,
@@ -50,12 +51,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
-    CommitBuilder,
     InterRepository,
-    InterSameDataRepository,
-    MetaDirVersionedFileRepository,
-    MetaDirRepositoryFormat,
-    Repository,
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
@@ -64,11 +60,19 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
     )
+from bzrlib.vf_repository import (
+    InterSameDataRepository,
+    VersionedFileCommitBuilder,
+    VersionedFileRepository,
+    VersionedFileRepositoryFormat,
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
+    )
 
 from bzrlib.plugins.weave_fmt import bzrdir as weave_bzrdir
 
 
-class AllInOneRepository(Repository):
+class AllInOneRepository(VersionedFileRepository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
     @property
@@ -146,10 +150,10 @@ class AllInOneRepository(Repository):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id)
+        result = VersionedFileCommitBuilder(self, parents, config, timestamp,
+            timezone, committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
@@ -188,11 +192,6 @@ class AllInOneRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
-
-    def revision_graph_can_have_wrong_parents(self):
-        # XXX: This is an old format that we don't support full checking on, so
-        # just claim that checking for this inconsistency is not required.
-        return False
 
 
 class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
@@ -240,10 +239,10 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id)
+        result = VersionedFileCommitBuilder(self, parents, config, timestamp,
+            timezone, committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
@@ -264,11 +263,8 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         return self.inventories.add_lines((revision_id,), final_parents, lines,
             check_content=check_content)[0]
 
-    def revision_graph_can_have_wrong_parents(self):
-        return False
 
-
-class PreSplitOutRepositoryFormat(RepositoryFormat):
+class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
     """Base class for the pre split out repository formats."""
 
     rich_root_data = False
@@ -280,7 +276,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     _fetch_reconcile = True
     fast_deltas = False
     supports_leaving_lock = False
-    supports_full_versioned_files = True
+    # XXX: This is an old format that we don't support full checking on, so
+    # just claim that checking for this inconsistency is not required.
+    revision_graph_can_have_wrong_parents = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -434,11 +432,6 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         return versionedfile.ThunkedVersionedFiles(base_transport,
             weave.WeaveFile, mapper, repo.is_locked)
 
-    def _get_extra_interrepo_test_combinations(self):
-        from bzrlib.repofmt import knitrepo
-        return [(InterRepository, RepositoryFormat5(),
-            knitrepo.RepositoryFormatKnit3())]
-
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """Bzr control format 6.
@@ -486,7 +479,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
 
-class RepositoryFormat7(MetaDirRepositoryFormat):
+class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     """Bzr repository 7.
 
     This repository format has:
@@ -502,7 +495,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_ghosts = False
     supports_chks = False
     supports_funky_characters = False
-    supports_full_versioned_files = True
+    revision_graph_can_have_wrong_parents = False
 
     _fetch_order = 'topological'
     _fetch_reconcile = True
@@ -639,7 +632,7 @@ class TextVersionedFiles(VersionedFiles):
                     record, record.get_bytes_as(record.storage_kind)))
                 try:
                     self.add_lines(record.key, None, lines)
-                except RevisionAlreadyPresent:
+                except errors.RevisionAlreadyPresent:
                     pass
 
     def _load_text(self, key):
@@ -826,7 +819,8 @@ class InterWeaveRepo(InterSameDataRepository):
     @needs_read_lock
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """See InterRepository.search_missing_revision_ids()."""
         # we want all revisions to satisfy revision_id in source.
         # but we don't want to stat every file here and there.
@@ -872,6 +866,9 @@ class InterWeaveRepo(InterSameDataRepository):
             # that against the revision records.
             result_set = set(
                 self.source._eliminate_revisions_not_present(required_revisions))
+        if limit is not None:
+            topo_ordered = self.get_graph().iter_topo_order(result_set)
+            result_set = set(itertools.islice(topo_ordered, limit))
         return self.source.revision_ids_to_search_result(result_set)
 
 

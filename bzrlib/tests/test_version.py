@@ -46,4 +46,4 @@ class TestBzrlibVersioning(TestCase):
         out = sio.getvalue()
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
         self.assertIsNot(m, None)
-        self.failUnlessExists(m.group(1))
+        self.assertPathExists(m.group(1))

@@ -122,14 +122,14 @@ class ChunkWriter(object):
         bytes that did not fit in the chunk.
 
         :return: (compressed_bytes, unused_bytes, num_nulls_needed)
-            compressed_bytes    a list of bytes that were output from the
-                                compressor. If the compressed length was not
-                                exactly chunk_size, the final string will be a
-                                string of all null bytes to pad this to
-                                chunk_size
-            unused_bytes        None, or the last bytes that were added, which
-                                we could not fit.
-            num_nulls_needed    How many nulls are padded at the end
+
+            * compressed_bytes: a list of bytes that were output from the
+              compressor. If the compressed length was not exactly chunk_size,
+              the final string will be a string of all null bytes to pad this
+              to chunk_size
+            * unused_bytes: None, or the last bytes that were added, which we
+              could not fit.
+            * num_nulls_needed: How many nulls are padded at the end
         """
         self.bytes_in = None # Free the data cached so far, we don't need it
         out = self.compressor.flush(Z_FINISH)
@@ -164,10 +164,11 @@ class ChunkWriter(object):
         :param extra_bytes: Optional, if supplied we will add it with
             Z_SYNC_FLUSH
         :return: (bytes_out, bytes_out_len, alt_compressed)
-            bytes_out   is the compressed bytes returned from the compressor
-            bytes_out_len the length of the compressed output
-            compressor  An object with everything packed in so far, and
-                        Z_SYNC_FLUSH called.
+
+            * bytes_out: is the compressed bytes returned from the compressor
+            * bytes_out_len: the length of the compressed output
+            * compressor: An object with everything packed in so far, and
+              Z_SYNC_FLUSH called.
         """
         compressor = zlib.compressobj()
         bytes_out = []

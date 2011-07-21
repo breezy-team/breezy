@@ -18,6 +18,7 @@
 
 import os
 import stat
+import sys
 
 from bzrlib import (
     osutils,
@@ -42,6 +43,7 @@ class _NotRunningAsRoot(tests.Feature):
 not_running_as_root = _NotRunningAsRoot()
 
 apport = tests.ModuleAvailableFeature('apport')
+gpgme = tests.ModuleAvailableFeature('gpgme')
 lzma = tests.ModuleAvailableFeature('lzma')
 meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
@@ -49,6 +51,7 @@ pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
 sphinx = tests.ModuleAvailableFeature('sphinx')
 subunit = tests.ModuleAvailableFeature('subunit')
+testtools = tests.ModuleAvailableFeature('testtools')
 
 
 class _BackslashDirSeparatorFeature(tests.Feature):
@@ -127,3 +130,17 @@ class ExecutableFeature(tests.Feature):
 bash_feature = ExecutableFeature('bash')
 sed_feature = ExecutableFeature('sed')
 diff_feature = ExecutableFeature('diff')
+
+
+class Win32Feature(tests.Feature):
+    """Feature testing whether we're running selftest on Windows
+    or Windows-like platform.
+    """
+
+    def _probe(self):
+        return sys.platform == 'win32'
+
+    def feature_name(self):
+        return "win32 platform"
+
+win32_feature = Win32Feature()

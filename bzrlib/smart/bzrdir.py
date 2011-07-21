@@ -86,7 +86,7 @@ class SmartServerRequestOpenBzrDir_2_1(SmartServerRequest):
 class SmartServerRequestBzrDir(SmartServerRequest):
 
     def do(self, path, *args):
-        """Open a BzrDir at path, and return self.do_bzrdir_request(*args)."""
+        """Open a BzrDir at path, and return `self.do_bzrdir_request(*args)`."""
         try:
             self._bzrdir = BzrDir.open_from_transport(
                 self.transport_from_client_path(path))

@@ -16,11 +16,7 @@
 
 """Tests for Branch.get_revision_id_to_revno_map()"""
 
-from bzrlib import (
-    errors,
-    revision,
-    )
-
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
@@ -93,7 +89,8 @@ class TestCaching(TestCaseWithBranch):
             self.assertEqual({'rev-1':(1,), 'rev-2':(2,), 'rev-3':(3,),
                               'rev-1.1.1':(1,1,1)
                              }, branch.get_revision_id_to_revno_map())
-            branch.set_revision_history(['rev-1', 'rev-2'])
+            self.applyDeprecated(deprecated_in((2, 4, 0)),
+                branch.set_revision_history, ['rev-1', 'rev-2'])
             self.assertEqual({'rev-1':(1,), 'rev-2':(2,)},
                              branch.get_revision_id_to_revno_map())
             self.assertEqual({'rev-1':(1,), 'rev-2':(2,)},

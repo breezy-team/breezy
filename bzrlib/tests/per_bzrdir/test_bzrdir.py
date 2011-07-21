@@ -520,10 +520,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         # must not overwrite existing directories
         self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
             transport=transport)
-        self.failUnless(transport.has('.bzr'))
+        self.assertTrue(transport.has('.bzr'))
         bd.retire_bzrdir()
-        self.failIf(transport.has('.bzr'))
-        self.failUnless(transport.has('.bzr.retired.1'))
+        self.assertFalse(transport.has('.bzr'))
+        self.assertTrue(transport.has('.bzr.retired.1'))
 
     def test_retire_bzrdir_limited(self):
         bd = self.make_bzrdir('.')
@@ -531,7 +531,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # must not overwrite existing directories
         self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
             transport=transport)
-        self.failUnless(transport.has('.bzr'))
+        self.assertTrue(transport.has('.bzr'))
         self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
             bd.retire_bzrdir, limit=0)
 

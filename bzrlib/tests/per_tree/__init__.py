@@ -374,6 +374,7 @@ def create_tree_scenario(transport_server, transport_readonly_server,
 def load_tests(standard_tests, module, loader):
     per_tree_mod_names = [
         'annotate_iter',
+        'export',
         'get_file_mtime',
         'get_file_with_stat',
         'get_root_id',

@@ -599,7 +599,7 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
-            from bzrlib.workingtree import WorkingTreeFormat3
+            from bzrlib.workingtree_3 import WorkingTreeFormat3
             self.step('Upgrading working tree')
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
@@ -863,7 +863,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.open_branch."""
         from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
-        self._check_supported(format, unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, name, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,

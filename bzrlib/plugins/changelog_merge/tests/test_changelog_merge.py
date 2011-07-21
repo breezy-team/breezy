@@ -15,8 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
+    merge,
     tests,
     )
+from bzrlib.tests import test_merge_core
 from bzrlib.plugins.changelog_merge import changelog_merge
 
 
@@ -137,4 +139,81 @@ class TestMergeCoreLogic(tests.TestCase):
             'Base entry B2',
             ],
             list(result_entries))
+
+    def test_too_hard(self):
+        """A conflict this plugin cannot resolve raises EntryConflict.
+        """
+        # An entry edited in other but deleted in this is a conflict we can't
+        # resolve.  (Ideally perhaps we'd generate a nice conflict file, but
+        # for now we just give up.)
+        self.assertRaises(changelog_merge.EntryConflict,
+            changelog_merge.merge_entries,
+            sample2_base_entries, [], sample2_other_entries)
+
+    def test_default_guess_edits(self):
+        """default_guess_edits matches a new entry only once.
+        
+        (Even when that entry is the best match for multiple old entries.)
+        """
+        new_in_other = [('AAAAA',), ('BBBBB',)]
+        deleted_in_other = [('DDDDD',), ('BBBBBx',), ('BBBBBxx',)]
+        # BBBBB is the best match for both BBBBBx and BBBBBxx
+        result = changelog_merge.default_guess_edits(
+            new_in_other, deleted_in_other)
+        self.assertEqual(
+            ([('AAAAA',)], # new
+             [('DDDDD',), ('BBBBBxx',)], # deleted
+             [(('BBBBBx',), ('BBBBB',))]), # edits
+            result)
+
+
+class TestChangeLogMerger(tests.TestCaseWithTransport):
+    """Tests for ChangeLogMerger class.
+    
+    Most tests should be unit tests for merge_entries (and its helpers).
+    This class is just to cover the handful of lines of code in ChangeLogMerger
+    itself.
+    """
+
+    def make_builder(self):
+        builder = test_merge_core.MergeBuilder(self.test_base_dir)
+        self.addCleanup(builder.cleanup)
+        return builder
+
+    def make_changelog_merger(self, base_text, this_text, other_text):
+        builder = self.make_builder()
+        builder.add_file('clog-id', builder.tree_root, 'ChangeLog',
+            base_text, True)
+        builder.change_contents('clog-id', other=other_text, this=this_text)
+        merger = builder.make_merger(merge.Merge3Merger, ['clog-id'])
+        merger.this_branch.get_config().set_user_option(
+            'changelog_merge_files', 'ChangeLog')
+        merge_hook_params = merge.MergeHookParams(merger, 'clog-id', None,
+            'file', 'file', 'conflict')
+        changelog_merger = changelog_merge.ChangeLogMerger(merger)
+        return changelog_merger, merge_hook_params
+
+    def test_merge_text_returns_not_applicable(self):
+        """A conflict this plugin cannot resolve returns (not_applicable, None).
+        """
+        # Build same example as TestMergeCoreLogic.test_too_hard: edit an entry
+        # in other but delete it in this.
+        def entries_as_str(entries):
+            return ''.join(entry + '\n' for entry in entries)
+        changelog_merger, merge_hook_params = self.make_changelog_merger(
+            entries_as_str(sample2_base_entries),
+            '',
+            entries_as_str(sample2_other_entries))
+        self.assertEqual(
+            ('not_applicable', None),
+            changelog_merger.merge_contents(merge_hook_params))
+
+    def test_merge_text_returns_success(self):
+        """A successful merge returns ('success', lines)."""
+        changelog_merger, merge_hook_params = self.make_changelog_merger(
+            '', 'this text\n', 'other text\n')
+        status, lines = changelog_merger.merge_contents(merge_hook_params)
+        self.assertEqual(
+            ('success', ['other text\n', 'this text\n']),
+            (status, list(lines)))
 

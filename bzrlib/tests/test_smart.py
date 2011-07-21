@@ -99,7 +99,7 @@ class TestCaseWithSmartMedium(tests.TestCaseWithMemoryTransport):
         # the default or a parameterized class, but rather use the
         # TestCaseWithTransport infrastructure to set up a smart server and
         # transport.
-        self.transport_server = self.make_transport_server
+        self.overrideAttr(self, "transport_server", self.make_transport_server)
 
     def make_transport_server(self):
         return test_server.SmartTCPServer_for_testing('-' + self.id())
@@ -932,7 +932,7 @@ class TestSetLastRevisionVerbMixin(object):
         # its repository.
         self.make_tree_with_two_commits()
         rev_id_utf8 = u'\xc8'.encode('utf-8')
-        self.tree.branch.set_revision_history([])
+        self.tree.branch.set_last_revision_info(0, 'null:')
         self.assertEqual(
             (0, 'null:'), self.tree.branch.last_revision_info())
         # We can update the branch to a revision that is present in the

@@ -110,19 +110,10 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
-    # httplib in python 2.4 and 2.5 defines a SSLFile wrapper whose readline
-    # method lacks the size parameter. python2.6 provides a proper ssl socket
-    # and added it. python2.7 uses it, forcing us to provide it.
-    if sys.version_info < (2, 6):
-        def readline(self):
-            s = self.filesock.readline()
-            self.report_activity(len(s), 'read')
-            return s
-    else:
-        def readline(self, size=-1):
-            s = self.filesock.readline(size)
-            self.report_activity(len(s), 'read')
-            return s
+    def readline(self, size=-1):
+        s = self.filesock.readline(size)
+        self.report_activity(len(s), 'read')
+        return s
 
     def __getattr__(self, name):
         return getattr(self.filesock, name)
@@ -657,7 +648,13 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                                      headers)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
-                hdrs = ['%s: %s' % (k, v) for k,v in headers.items()]
+                hdrs = []
+                for k,v in headers.iteritems():
+                    # People are often told to paste -Dhttp output to help
+                    # debug. Don't compromise credentials.
+                    if k in ('Authorization', 'Proxy-Authorization'):
+                        v = '<masked>'
+                    hdrs.append('%s: %s' % (k, v))
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
                 print 'Request sent: [%r] from (%s)' \
@@ -1269,11 +1266,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_password_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(user)s@%(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' password'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' password'
         return prompt
 
     def _build_username_prompt(self, auth):
@@ -1287,11 +1284,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_username_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' username'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' username'
         return prompt
 
     def http_request(self, request):
@@ -1402,7 +1399,7 @@ def get_digest_algorithm_impls(algorithm):
     if algorithm == 'MD5':
         H = lambda x: osutils.md5(x).hexdigest()
     elif algorithm == 'SHA':
-        H = lambda x: osutils.sha(x).hexdigest()
+        H = osutils.sha_string
     if H is not None:
         KD = lambda secret, data: H("%s:%s" % (secret, data))
     return H, KD
@@ -1411,7 +1408,7 @@ def get_digest_algorithm_impls(algorithm):
 def get_new_cnonce(nonce, nonce_count):
     raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
                            urllib2.randombytes(8))
-    return osutils.sha(raw).hexdigest()[:16]
+    return osutils.sha_string(raw)[:16]
 
 
 class DigestAuthHandler(AbstractAuthHandler):
@@ -1561,12 +1558,12 @@ class ProxyAuthHandler(AbstractAuthHandler):
 
     def build_password_prompt(self, auth):
         prompt = self._build_password_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def build_username_prompt(self, auth):
         prompt = self._build_username_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def http_error_407(self, req, fp, code, msg, headers):

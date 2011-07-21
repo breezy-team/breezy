@@ -15,12 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import doctest
+import os
 from StringIO import StringIO
 import sys
-
-
-import os
-
 
 from bzrlib import (
     config,
@@ -80,3 +78,35 @@ class TestApportReporting(tests.TestCaseInTempDir):
         self.assertContainsRe(
             report,
             'Failed to load plugin foo')
+
+
+class TestNonApportReporting(tests.TestCase):
+    """Reporting of crash-type bugs without apport.
+    
+    This should work in all environments.
+    """
+
+    def setup_fake_plugins(self):
+        def fake_plugins():
+            fake = plugin.PlugIn('fake_plugin', plugin)
+            fake.version_info = lambda: (1, 2, 3)
+            return {"fake_plugin": fake}
+        self.overrideAttr(plugin, 'plugins', fake_plugins)
+
+    def test_report_bug_legacy(self):
+        self.setup_fake_plugins()
+        err_file = StringIO()
+        try:
+            raise AssertionError("my error")
+        except AssertionError, e:
+            pass
+        crash.report_bug_legacy(sys.exc_info(), err_file)
+        report = err_file.getvalue()
+        for needle in [
+            "bzr: ERROR: exceptions.AssertionError: my error",
+            r"Traceback \(most recent call last\):",
+            r"plugins: fake_plugin\[1\.2\.3\]",
+            ]:
+            self.assertContainsRe(
+                    report,
+                    needle)

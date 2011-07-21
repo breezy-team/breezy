@@ -25,11 +25,12 @@ from bzrlib.trace import mutter
 
 from bzrlib.branch import (
     BranchFormat,
-    BzrBranch,
+    FullHistoryBzrBranch,
     )
 
 
-class PreSplitOutBzrBranch(BzrBranch):
+class BzrBranch4(FullHistoryBzrBranch):
+    """Branch format 4."""
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -40,6 +41,24 @@ class PreSplitOutBzrBranch(BzrBranch):
         format.repository_format = RepositoryFormat7()
         return format
 
+    def unbind(self):
+        raise errors.UpgradeRequired(self.user_url)
+
+    def bind(self, other):
+        raise errors.UpgradeRequired(self.user_url)
+
+    def set_bound_location(self, location):
+        raise NotImplementedError(self.set_bound_location)
+
+    def get_bound_location(self):
+        return None
+
+    def update(self):
+        return None
+
+    def get_master_branch(self, possible_transports=None):
+        return None
+
 
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
@@ -47,6 +66,8 @@ class BzrBranchFormat4(BranchFormat):
     This format has:
      - a revision-history file.
      - a branch-lock lock file [ to be shared with the bzrdir ]
+
+    It does not support binding.
     """
 
     def initialize(self, a_bzrdir, name=None, repository=None):
@@ -115,7 +136,7 @@ class BzrBranchFormat4(BranchFormat):
             raise NotImplementedError
         if found_repository is None:
             found_repository = a_bzrdir.open_repository()
-        return PreSplitOutBzrBranch(_format=self,
+        return BzrBranch4(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,

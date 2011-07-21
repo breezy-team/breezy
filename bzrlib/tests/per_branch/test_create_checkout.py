@@ -46,8 +46,8 @@ class TestCreateCheckout(per_branch.TestCaseWithBranch):
 
         tree2 = tree1.branch.create_checkout('checkout', revision_id='rev-1')
         self.assertEqual('rev-1', tree2.last_revision())
-        self.failUnlessExists('checkout/a')
-        self.failIfExists('checkout/b')
+        self.assertPathExists('checkout/a')
+        self.assertPathDoesNotExist('checkout/b')
 
     def test_create_lightweight_checkout(self):
         """We should be able to make a lightweight checkout."""

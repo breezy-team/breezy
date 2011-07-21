@@ -16,14 +16,13 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-from errno import EEXIST
+from cStringIO import StringIO
 import os
 
 from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
     )
 from bzrlib.inventory import (
@@ -32,7 +31,7 @@ from bzrlib.inventory import (
     InventoryDirectory,
     InventoryLink,
     )
-from bzrlib.revision import Revision
+from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -386,32 +385,41 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         return delta
 
     def fake_up_revision(self, tree, revid, shape):
+
+        class ShapeTree(InventoryRevisionTree):
+
+            def __init__(self, shape):
+                self._repository = tree.branch.repository
+                self._inventory = shape
+
+            def get_file_text(self, file_id, path=None):
+                ie = self.inventory[file_id]
+                if ie.kind != "file":
+                    return ""
+                return 'a' * ie.text_size
+
+            def get_file(self, file_id, path=None):
+                return StringIO(self.get_file_text(file_id))
+
         tree.lock_write()
         try:
-            tree.branch.repository.start_write_group()
-            try:
-                if shape.root.revision is None:
-                    shape.root.revision = revid
-                # Create the text records for this inventory.
-                for path, ie in shape.iter_entries():
-                    if ie.text_size:
-                        lines = ['a' * ie.text_size]
-                    else:
-                        lines = []
-                    tree.branch.repository.texts.add_lines(
-                        (ie.file_id, ie.revision), [], lines)
-                sha1 = tree.branch.repository.add_inventory(revid, shape, [])
-                rev = Revision(timestamp=0,
-                               timezone=None,
-                               committer="Foo Bar <foo@example.com>",
-                               message="Message",
-                               inventory_sha1=sha1,
-                               revision_id=revid)
-                tree.branch.repository.add_revision(revid, rev)
-                tree.branch.repository.commit_write_group()
-            except:
-                tree.branch.repository.abort_write_group()
-                raise
+            if shape.root.revision is None:
+                shape.root.revision = revid
+            builder = tree.branch.get_commit_builder(
+                    parents=[],
+                    timestamp=0,
+                    timezone=None,
+                    committer="Foo Bar <foo@example.com>",
+                    revision_id=revid)
+            shape_tree = ShapeTree(shape)
+            base_tree = tree.branch.repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
+            changes = shape_tree.iter_changes(
+                base_tree)
+            list(builder.record_iter_changes(shape_tree,
+                base_tree.get_revision_id(), changes))
+            builder.finish_inventory()
+            builder.commit("Message")
         finally:
             tree.unlock()
 

@@ -30,8 +30,8 @@ class TestTreeShape(tests.TestCaseWithTransport):
             ('.bzr/',),
             ('.bzr/README', 'hello'),
             ])
-        self.failUnlessExists('foo')
-        self.failUnlessExists('.bzr/README')
+        self.assertPathExists('foo')
+        self.assertPathExists('.bzr/README')
         self.assertFileEqual('hello', '.bzr/README')
 
     def test_build_tree_symlink(self):

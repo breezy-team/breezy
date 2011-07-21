@@ -34,7 +34,8 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def _references_unsupported(self, tree):
         if not tree.supports_tree_reference():
-            raise tests.TestSkipped('Tree format does not support references')
+            raise tests.TestNotApplicable(
+                'Tree format does not support references')
         else:
             self.fail('%r does not support references but should'
                 % (tree, ))
@@ -53,8 +54,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree.lock_write()
         try:
             self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
-            self.assertEqual(tree.inventory['sub-tree-root-id'].kind,
-                             'tree-reference')
+            self.assertEqual(tree.kind('sub-tree-root-id'), 'tree-reference')
             tree.commit('commit reference')
             basis = tree.basis_tree()
             basis.lock_read()

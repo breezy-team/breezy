@@ -24,9 +24,11 @@ rather starts again from the run_bzr function.
 """
 
 
-from bzrlib import tests
+from bzrlib import (
+    config,
+    tests,
+    )
 
-from bzrlib.config import extract_email_address
 from bzrlib.urlutils import joinpath
 
 
@@ -160,7 +162,6 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.add('file')
         tree.commit('add file', committer="test@host", rev_id="rev1")
         self.build_tree_contents([(file_relpath, 'foo\nbar\ngam\n')])
-        tree.branch.get_config().set_user_option('email', 'current@host2')
         return tree
 
     def test_annotate_cmd_revspec_branch(self):
@@ -176,6 +177,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_edited_file(self):
         tree = self._setup_edited_file()
+        tree.branch.get_config().set_user_option('email', 'current@host2')
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
             '1   test@ho | foo\n'
@@ -183,8 +185,24 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
             '1   test@ho | gam\n',
             out)
 
+    def test_annotate_edited_file_no_default(self):
+        # Ensure that when no username is available annotate still works.
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
+        # Also, make sure that it's not inferred from mailname.
+        self.overrideAttr(config, '_auto_user_id',
+            lambda: (None, None))
+        tree = self._setup_edited_file()
+        out, err = self.run_bzr('annotate file')
+        self.assertEqual(
+            '1   test@ho | foo\n'
+            '2?  local u | bar\n'
+            '1   test@ho | gam\n',
+            out)
+
     def test_annotate_edited_file_show_ids(self):
         tree = self._setup_edited_file()
+        tree.branch.get_config().set_user_option('email', 'current@host2')
         out, err = self.run_bzr('annotate file --show-ids')
         self.assertEqual(
             '    rev1 | foo\n'
@@ -214,7 +232,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotated_edited_merged_file_revnos(self):
         wt = self._create_merged_file()
         out, err = self.run_bzr(['annotate', 'file'])
-        email = extract_email_address(wt.branch.get_config().username())
+        email = config.extract_email_address(wt.branch.get_config().username())
         self.assertEqual(
             '3?    %-7s | local\n'
             '1     test@ho | foo\n'

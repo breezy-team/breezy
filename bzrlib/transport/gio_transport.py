@@ -176,7 +176,7 @@ class GioTransport(ConnectedTransport):
         user = None
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):
-            prompt = scheme.upper() + ' %(host)s DOMAIN\username'
+            prompt = u'%s' % (scheme.upper(),) + u' %(host)s DOMAIN\\username'
             user_and_domain = auth.get_user(scheme, host,
                     port=port, ask=True, prompt=prompt)
             (domain, user) = user_and_domain.split('\\', 1)
@@ -191,7 +191,7 @@ class GioTransport(ConnectedTransport):
             #a DOMAIN and a username prompt should be the
             #same so I will missuse the ui_factory get_username
             #a little bit here.
-            prompt = scheme.upper() + ' %(host)s DOMAIN'
+            prompt = u'%s' % (scheme.upper(),) + u' %(host)s DOMAIN'
             domain = ui.ui_factory.get_username(prompt=prompt)
             op.set_domain(domain)
 

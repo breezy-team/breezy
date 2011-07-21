@@ -31,7 +31,7 @@ class BzrLibraryState(object):
     This is the core state needed to make use of bzr. The current instance is
     currently always exposed as bzrlib.global_state, but we desired to move
     to a point where no global state is needed at all.
-    
+
     :ivar saved_state: The bzrlib.global_state at the time __enter__ was
         called.
     :ivar cleanups: An ObjectWithCleanups which can be used for cleanups that
@@ -61,8 +61,16 @@ class BzrLibraryState(object):
         """
         self._ui = ui
         self._trace = trace
+        self.started = False
 
     def __enter__(self):
+        if not self.started:
+            self._start()
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def _start(self):
+        """Do all initialization.
+        """        
         # NB: This function tweaks so much global state it's hard to test it in
         # isolation within the same interpreter.  It's not reached on normal
         # in-process run_bzr calls.  If it's broken, we expect that
@@ -86,7 +94,7 @@ class BzrLibraryState(object):
 
         self.saved_state = bzrlib.global_state
         bzrlib.global_state = self
-        return self # This is bound to the 'as' clause in a with statement.
+        self.started = True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanups.cleanup_now()

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,30 +59,23 @@ import logging
 import os
 import sys
 import time
-import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
 import locale
+import tempfile
 import traceback
 """)
 
 import bzrlib
-
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
 
 lazy_import(globals(), """
 from bzrlib import (
     debug,
     errors,
     osutils,
-    plugin,
-    symbol_versioning,
     ui,
     )
 """)
@@ -130,24 +123,6 @@ def note(*args, **kwargs):
 def warning(*args, **kwargs):
     ui.ui_factory.clear_term()
     _bzr_logger.warning(*args, **kwargs)
-
-
-@deprecated_function(deprecated_in((2, 1, 0)))
-def info(*args, **kwargs):
-    """Deprecated: use trace.note instead."""
-    note(*args, **kwargs)
-
-
-@deprecated_function(deprecated_in((2, 1, 0)))
-def log_error(*args, **kwargs):
-    """Deprecated: use bzrlib.trace.show_error instead"""
-    _bzr_logger.error(*args, **kwargs)
-
-
-@deprecated_function(deprecated_in((2, 1, 0)))
-def error(*args, **kwargs):
-    """Deprecated: use bzrlib.trace.show_error instead"""
-    _bzr_logger.error(*args, **kwargs)
 
 
 def show_error(*args, **kwargs):
@@ -334,7 +309,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     :param to_file: A file-like object to which messages will be sent.
 
     :returns: A memento that should be passed to _pop_log_file to restore the
-    previously active logging.
+        previously active logging.
     """
     global _trace_file
     # make a new handler

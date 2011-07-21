@@ -33,7 +33,7 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
+        self.assertTrue(tree_b.branch.repository.has_revision('A'))
         self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_overwrites(self):
@@ -41,8 +41,8 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree_b.commit('foo', rev_id='B')
         self.assertEqual(['B'], tree_b.branch.revision_history())
         tree_b.pull(tree_a.branch, overwrite=True)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.failUnless(tree_b.branch.repository.has_revision('B'))
+        self.assertTrue(tree_b.branch.repository.has_revision('A'))
+        self.assertTrue(tree_b.branch.repository.has_revision('B'))
         self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_merges_tree_content(self):
@@ -99,4 +99,4 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         work.pull(trunk)
         self.assertLength(0, work.conflicts())
         # The directory removal should succeed
-        self.failIfExists('work/dir')
+        self.assertPathDoesNotExist('work/dir')

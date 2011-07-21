@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,8 +46,8 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        DEPRECATED_PARAMETER,
-        )
+    DEPRECATED_PARAMETER,
+    )
 from bzrlib.trace import (
     mutter,
     )
@@ -117,10 +117,6 @@ class TransportListRegistry(registry.Registry):
 
     def register_transport(self, key, help=None):
         self.register(key, [], help)
-
-    def set_default_transport(self, key=None):
-        """Return either 'key' or the default key if key is None"""
-        self._default_key = key
 
 
 transport_list_registry = TransportListRegistry()
@@ -678,7 +674,9 @@ class Transport(object):
 
         This uses _coalesce_offsets to issue larger reads and fewer seeks.
 
-        :param fp: A file-like object that supports seek() and read(size)
+        :param fp: A file-like object that supports seek() and read(size).
+            Note that implementations are allowed to call .close() on this file
+            handle, so don't trust that you can use it for other work.
         :param offsets: A list of offsets to be read from the given file.
         :return: yield (pos, data) tuples for each request
         """
@@ -695,37 +693,32 @@ class Transport(object):
 
         # Cache the results, but only until they have been fulfilled
         data_map = {}
-        for c_offset in coalesced:
-            # TODO: jam 20060724 it might be faster to not issue seek if
-            #       we are already at the right location. This should be
-            #       benchmarked.
-            fp.seek(c_offset.start)
-            data = fp.read(c_offset.length)
-            if len(data) < c_offset.length:
-                raise errors.ShortReadvError(relpath, c_offset.start,
-                            c_offset.length, actual=len(data))
-            for suboffset, subsize in c_offset.ranges:
-                key = (c_offset.start+suboffset, subsize)
-                data_map[key] = data[suboffset:suboffset+subsize]
+        try:
+            for c_offset in coalesced:
+                # TODO: jam 20060724 it might be faster to not issue seek if
+                #       we are already at the right location. This should be
+                #       benchmarked.
+                fp.seek(c_offset.start)
+                data = fp.read(c_offset.length)
+                if len(data) < c_offset.length:
+                    raise errors.ShortReadvError(relpath, c_offset.start,
+                                c_offset.length, actual=len(data))
+                for suboffset, subsize in c_offset.ranges:
+                    key = (c_offset.start+suboffset, subsize)
+                    data_map[key] = data[suboffset:suboffset+subsize]
 
-            # Now that we've read some data, see if we can yield anything back
-            while cur_offset_and_size in data_map:
-                this_data = data_map.pop(cur_offset_and_size)
-                this_offset = cur_offset_and_size[0]
-                try:
-                    cur_offset_and_size = offset_stack.next()
-                except StopIteration:
-                    # Close the file handle as there will be no more data
-                    # The handle would normally be cleaned up as this code goes
-                    # out of scope, but as we are a generator, not all code
-                    # will re-enter once we have consumed all the expected
-                    # data. For example:
-                    #   zip(range(len(requests)), readv(foo, requests))
-                    # Will stop because the range is done, and not run the
-                    # cleanup code for the readv().
-                    fp.close()
-                    cur_offset_and_size = None
-                yield this_offset, this_data
+                # Now that we've read some data, see if we can yield anything back
+                while cur_offset_and_size in data_map:
+                    this_data = data_map.pop(cur_offset_and_size)
+                    this_offset = cur_offset_and_size[0]
+                    try:
+                        cur_offset_and_size = offset_stack.next()
+                    except StopIteration:
+                        fp.close()
+                        cur_offset_and_size = None
+                    yield this_offset, this_data
+        finally:
+            fp.close()
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.
@@ -1566,6 +1559,36 @@ class ConnectedTransport(Transport):
         raise NotImplementedError(self.disconnect)
 
 
+def location_to_url(location):
+    """Determine a fully qualified URL from a location string.
+
+    This will try to interpret location as both a URL and a directory path. It
+    will also lookup the location in directories.
+
+    :param location: Unicode or byte string object with a location
+    :raise InvalidURL: If the location is already a URL, but not valid.
+    :return: Byte string with resulting URL
+    """
+    if not isinstance(location, basestring):
+        raise AssertionError("location not a byte or unicode string")
+    from bzrlib.directory_service import directories
+    location = directories.dereference(location)
+
+    # Catch any URLs which are passing Unicode rather than ASCII
+    try:
+        location = location.encode('ascii')
+    except UnicodeError:
+        if urlutils.is_url(location):
+            raise errors.InvalidURL(path=location,
+                extra='URLs must be properly escaped')
+        location = urlutils.local_path_to_url(location)
+
+    if urlutils.is_url(location):
+        return location
+
+    return urlutils.local_path_to_url(location)
+
+
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1579,28 +1602,7 @@ def get_transport(base, possible_transports=None):
     """
     if base is None:
         base = '.'
-    last_err = None
-    from bzrlib.directory_service import directories
-    base = directories.dereference(base)
-
-    def convert_path_to_url(base, error_str):
-        if urlutils.is_url(base):
-            # This looks like a URL, but we weren't able to
-            # instantiate it as such raise an appropriate error
-            # FIXME: we have a 'error_str' unused and we use last_err below
-            raise errors.UnsupportedProtocol(base, last_err)
-        # This doesn't look like a protocol, consider it a local path
-        new_base = urlutils.local_path_to_url(base)
-        # mutter('converting os path %r => url %s', base, new_base)
-        return new_base
-
-    # Catch any URLs which are passing Unicode rather than ASCII
-    try:
-        base = base.encode('ascii')
-    except UnicodeError:
-        # Only local paths can be Unicode
-        base = convert_path_to_url(base,
-            'URLs must be properly escaped (protocol: %s)')
+    base = location_to_url(base)
 
     transport = None
     if possible_transports is not None:
@@ -1612,6 +1614,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
+    last_err = None
     for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
@@ -1621,16 +1624,7 @@ def get_transport(base, possible_transports=None):
                         raise AssertionError()
                     possible_transports.append(transport)
                 return transport
-
-    # We tried all the different protocols, now try one last time
-    # as a local protocol
-    base = convert_path_to_url(base, 'Unsupported protocol: %s')
-
-    # The default handler is the filesystem handler, stored as protocol None
-    factory_list = transport_list_registry.get(None)
-    transport, last_err = _try_transport_factories(base, factory_list)
-
-    return transport
+    raise errors.UnsupportedProtocol(base, last_err)
 
 
 def _try_transport_factories(base, factory_list):
@@ -1705,7 +1699,6 @@ class Server(object):
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
-transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
             help="Access using SFTP (most SSH servers provide SFTP).",

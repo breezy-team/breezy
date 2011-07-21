@@ -38,7 +38,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             info.add('revision-id', revision_id)
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
-            revno = str(self._branch.revision_id_to_revno(revision_id))
+            revno = self._get_revno_str(revision_id)
             for hook in RioVersionInfoBuilder.hooks['revision']:
                 hook(rev, info)
         else:
@@ -89,7 +89,7 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
         self.add_hook('revision',
             "Invoked when adding information about a revision to the"
             " RIO stanza that is printed. revision is called with a"
-            " revision object and a RIO stanza.", (1, 15), None)
+            " revision object and a RIO stanza.", (1, 15))
 
 
 RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()

@@ -344,6 +344,18 @@ if len(sys.argv) == 2:
         self.assertRaises(errors.BadCommitMessageEncoding,
                           msgeditor.edit_commit_message, '')
 
+    def test_set_commit_message_no_hooks(self):
+        commit_obj = commit.Commit()
+        self.assertIs(None,
+            msgeditor.set_commit_message(commit_obj))
+
+    def test_set_commit_message_hook(self):
+        msgeditor.hooks.install_named_hook("set_commit_message",
+                lambda commit_obj, existing_message: "save me some typing\n", None)
+        commit_obj = commit.Commit()
+        self.assertEquals("save me some typing\n",
+            msgeditor.set_commit_message(commit_obj))
+
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()
         self.assertIs(None,
@@ -368,11 +380,5 @@ class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
         ERROR_BAD_EXE_FORMAT = 193
         file("textfile.txt", "w").close()
         e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")
-        # Python2.4 used the 'winerror' as the errno, which confuses a lot of
-        # our error trapping code. Make sure that we understand the mapping
-        # correctly.
-        if sys.version_info >= (2, 5):
-            self.assertEqual(e.errno, errno.ENOEXEC)
-            self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)
-        else:
-            self.assertEqual(e.errno, ERROR_BAD_EXE_FORMAT)
+        self.assertEqual(e.errno, errno.ENOEXEC)
+        self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)

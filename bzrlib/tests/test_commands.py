@@ -91,6 +91,18 @@ class TestCommands(tests.TestCase):
         self.assertContainsRe(c.get_help_text(), '--foo')
 
 
+class TestInvokedAs(tests.TestCase):
+
+    def test_invoked_as(self):
+        """The command object knows the actual name used to invoke it."""
+        commands.install_bzr_command_hooks()
+        commands._register_builtin_commands()
+        # get one from the real get_cmd_object.
+        c = commands.get_cmd_object('ci')
+        self.assertIsInstance(c, builtins.cmd_commit)
+        self.assertEquals(c.invoked_as, 'ci')
+
+
 class TestGetAlias(tests.TestCase):
 
     def _get_config(self, config_text):
@@ -342,11 +354,3 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
-
-
-class TestDeprecations(tests.TestCase):
-
-    def test_shlex_split_unicode_deprecation(self):
-        res = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 2, 0)),
-                commands.shlex_split_unicode, 'whatever')

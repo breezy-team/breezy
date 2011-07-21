@@ -29,7 +29,7 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack1
+from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack1
 
 
 class OldBzrDir(bzrdir.BzrDirMeta1):

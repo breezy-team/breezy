@@ -24,7 +24,6 @@ Specific tests for individual variations are in other places such as:
 
 import bzrlib
 from bzrlib import (
-    errors,
     revisiontree,
     tests,
     )
@@ -39,9 +38,7 @@ from bzrlib.tests.per_tree import (
     TestCaseWithTree,
     )
 from bzrlib.tree import InterTree
-from bzrlib.workingtree import (
-    WorkingTreeFormat3,
-    )
+from bzrlib.workingtree_3 import WorkingTreeFormat3
 from bzrlib.workingtree_4 import WorkingTreeFormat4
 
 

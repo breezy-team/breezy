@@ -37,7 +37,6 @@ from bzrlib.errors import (
 
 from bzrlib.repository import (
     format_registry,
-    InterDifferingSerializer,
     InterRepository,
     )
 from bzrlib.tests import (
@@ -46,6 +45,9 @@ from bzrlib.tests import (
     multiply_tests,
     )
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
+from bzrlib.vf_repository import (
+    InterDifferingSerializer,
+    )
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -74,7 +76,7 @@ def default_test_list():
     from bzrlib.repofmt import (
         groupcompress_repo,
         knitrepo,
-        pack_repo,
+        knitpack_repo,
         )
     result = []
     def add_combo(interrepo_cls, from_format, to_format, extra_setup=None,
@@ -120,33 +122,33 @@ def default_test_list():
               knitrepo.RepositoryFormatKnit3())
     add_combo(knitrepo.InterKnitRepo,
               knitrepo.RepositoryFormatKnit1(),
-              pack_repo.RepositoryFormatKnitPack1())
+              knitpack_repo.RepositoryFormatKnitPack1())
     add_combo(knitrepo.InterKnitRepo,
-              pack_repo.RepositoryFormatKnitPack1(),
+              knitpack_repo.RepositoryFormatKnitPack1(),
               knitrepo.RepositoryFormatKnit1())
     add_combo(knitrepo.InterKnitRepo,
               knitrepo.RepositoryFormatKnit3(),
-              pack_repo.RepositoryFormatKnitPack3())
+              knitpack_repo.RepositoryFormatKnitPack3())
     add_combo(knitrepo.InterKnitRepo,
-              pack_repo.RepositoryFormatKnitPack3(),
+              knitpack_repo.RepositoryFormatKnitPack3(),
               knitrepo.RepositoryFormatKnit3())
     add_combo(knitrepo.InterKnitRepo,
-              pack_repo.RepositoryFormatKnitPack3(),
-              pack_repo.RepositoryFormatKnitPack4())
+              knitpack_repo.RepositoryFormatKnitPack3(),
+              knitpack_repo.RepositoryFormatKnitPack4())
     add_combo(InterDifferingSerializer,
-              pack_repo.RepositoryFormatKnitPack1(),
-              pack_repo.RepositoryFormatKnitPack6RichRoot())
+              knitpack_repo.RepositoryFormatKnitPack1(),
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot())
     add_combo(InterDifferingSerializer,
-              pack_repo.RepositoryFormatKnitPack1(),
-              pack_repo.RepositoryFormatKnitPack6RichRoot(),
+              knitpack_repo.RepositoryFormatKnitPack1(),
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
               force_known_graph,
               label='InterDifferingSerializer+get_known_graph_ancestry')
     add_combo(InterDifferingSerializer,
-              pack_repo.RepositoryFormatKnitPack6RichRoot(),
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
               groupcompress_repo.RepositoryFormat2a())
     add_combo(InterDifferingSerializer,
               groupcompress_repo.RepositoryFormat2a(),
-              pack_repo.RepositoryFormatKnitPack6RichRoot())
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot())
     return result
 
 

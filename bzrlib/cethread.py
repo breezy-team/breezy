@@ -103,6 +103,7 @@ class CatchingExceptionThread(threading.Thread):
         """Declare which exceptions will be ignored.
 
         :param ignored: Can be either:
+        
            - None: all exceptions will be raised,
            - an exception class: the instances of this class will be ignored,
            - a tuple of exception classes: the instances of any class of the

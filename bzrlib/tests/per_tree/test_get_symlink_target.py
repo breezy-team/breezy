@@ -19,7 +19,6 @@
 import os
 
 from bzrlib import (
-    errors,
     osutils,
     tests,
     )
@@ -46,6 +45,7 @@ class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
         self.assertEqual('foo', tree.get_symlink_target('link-id'))
         self.assertEqual('../bar', tree.get_symlink_target('rel-link-id'))
         self.assertEqual('/baz/bing', tree.get_symlink_target('abs-link-id'))
+        self.assertEqual('foo', tree.get_symlink_target('link-id', 'link'))
 
     def test_get_unicode_symlink_target(self):
         self.requireFeature(tests.SymlinkFeature)

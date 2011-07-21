@@ -28,12 +28,13 @@ from bzrlib import (
     revision as _mod_revision,
     )
 from bzrlib.decorators import needs_read_lock
+from bzrlib.inventory import Inventory
 from bzrlib.osutils import sha_file
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.transport.memory import MemoryTransport
 
 
-class MemoryTree(mutabletree.MutableTree):
+class MemoryTree(mutabletree.MutableInventoryTree):
     """A MemoryTree is a specialisation of MutableTree.
 
     It maintains nearly no state outside of read_lock and write_lock
@@ -219,11 +220,12 @@ class MemoryTree(mutabletree.MutableTree):
             self._parent_ids = []
         else:
             self._parent_ids = [self._branch_revision_id]
-        self._inventory = self._basis_tree._inventory._get_mutable_inventory()
+        self._inventory = Inventory(None, self._basis_tree.get_revision_id())
         self._file_transport = MemoryTransport()
         # TODO copy the revision trees content, or do it lazy, or something.
-        inventory_entries = self._inventory.iter_entries()
+        inventory_entries = self._basis_tree.iter_entries_by_dir()
         for path, entry in inventory_entries:
+            self._inventory.add(entry.copy())
             if path == '':
                 continue
             if entry.kind == 'directory':

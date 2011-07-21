@@ -32,7 +32,8 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
     urlutils,
-)
+    vf_repository,
+    )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.errors import (
@@ -43,7 +44,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
-from bzrlib.repository import RepositoryWriteLockResult
+from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
 
 
@@ -700,7 +701,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return RemoteBzrDirConfig(self)
 
 
-class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
+class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     """Format for repositories accessed over a _SmartClient.
 
     Instances of this repository are represented by RemoteRepository
@@ -729,6 +730,7 @@ class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
         self._custom_format = None
         self._network_name = None
         self._creating_bzrdir = None
+        self._revision_graph_can_have_wrong_parents = None
         self._supports_chks = None
         self._supports_external_lookups = None
         self._supports_tree_reference = None
@@ -781,6 +783,14 @@ class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
             self._supports_tree_reference = \
                 self._custom_format.supports_tree_reference
         return self._supports_tree_reference
+
+    @property
+    def revision_graph_can_have_wrong_parents(self):
+        if self._revision_graph_can_have_wrong_parents is None:
+            self._ensure_real()
+            self._revision_graph_can_have_wrong_parents = \
+                self._custom_format.revision_graph_can_have_wrong_parents
+        return self._revision_graph_can_have_wrong_parents
 
     def _vfs_initialize(self, a_bzrdir, shared):
         """Helper for common code in initialize."""
@@ -1070,9 +1080,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def find_text_key_references(self):
         """Find the text key references within the repository.
 
-        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
         :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
             to whether they were referred to by the inventory of the
             revision_id that they contain. The inventory texts from all present
@@ -1124,6 +1131,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
+
+    @needs_read_lock
+    def get_file_graph(self):
+        return graph.Graph(self.texts)
 
     @needs_read_lock
     def has_revision(self, revision_id):
@@ -1472,14 +1483,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         # FIXME: It ought to be possible to call this without immediately
         # triggering _ensure_real.  For now it's the easiest thing to do.
         self._ensure_real()
         real_repo = self._real_repository
         builder = real_repo.get_commit_builder(branch, parents,
                 config, timestamp=timestamp, timezone=timezone,
-                committer=committer, revprops=revprops, revision_id=revision_id)
+                committer=committer, revprops=revprops,
+                revision_id=revision_id, lossy=lossy)
         return builder
 
     def add_fallback_repository(self, repository):
@@ -1593,7 +1605,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     @needs_read_lock
     def search_missing_revision_ids(self, other,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
@@ -1613,7 +1626,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         inter_repo = _mod_repository.InterRepository.get(other, self)
         return inter_repo.search_missing_revision_ids(
             find_ghosts=find_ghosts, revision_ids=revision_ids,
-            if_present_ids=if_present_ids)
+            if_present_ids=if_present_ids, limit=limit)
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
             fetch_spec=None):
@@ -1647,6 +1660,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._real_repository.create_bundle(target, base, fileobj, format)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
         return self._real_repository.get_ancestry(revision_id, topo_sorted)
@@ -1960,6 +1975,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def supports_rich_root(self):
         return self._format.rich_root_data
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def iter_reverse_revision_history(self, revision_id):
         self._ensure_real()
         return self._real_repository.iter_reverse_revision_history(revision_id)
@@ -1986,11 +2002,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return self._real_repository.item_keys_introduced_by(revision_ids,
             _files_pb=_files_pb)
 
-    def revision_graph_can_have_wrong_parents(self):
-        # The answer depends on the remote repo format.
-        self._ensure_real()
-        return self._real_repository.revision_graph_can_have_wrong_parents()
-
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         self._ensure_real()
         return self._real_repository._find_inconsistent_revision_parents(
@@ -2004,9 +2015,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         providers = [self._unstacked_provider]
         if other is not None:
             providers.insert(0, other)
-        providers.extend(r._make_parents_provider() for r in
-                         self._fallback_repositories)
-        return graph.StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(_LazyListJoin(
+            providers, self._fallback_repositories))
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
@@ -2036,7 +2046,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             raise errors.UnexpectedSmartServerResponse(response)
 
 
-class RemoteStreamSink(_mod_repository.StreamSink):
+class RemoteStreamSink(vf_repository.StreamSink):
 
     def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
@@ -2154,7 +2164,7 @@ class RemoteStreamSink(_mod_repository.StreamSink):
                 yield substream_kind, substream
 
 
-class RemoteStreamSource(_mod_repository.StreamSource):
+class RemoteStreamSource(vf_repository.StreamSource):
     """Stream data from a remote server."""
 
     def get_stream(self, search):
@@ -2845,7 +2855,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             missing_parent = parent_map[missing_parent]
         raise errors.RevisionNotPresent(missing_parent, self.repository)
 
-    def _last_revision_info(self):
+    def _read_last_revision_info(self):
         response = self._call('Branch.last_revision_info', self._remote_path())
         if response[0] != 'ok':
             raise SmartProtocolError('unexpected response code %s' % (response,))
@@ -2914,8 +2924,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     @needs_write_lock
     def set_revision_history(self, rev_history):
+        """See Branch.set_revision_history."""
+        self._set_revision_history(rev_history)
+
+    @needs_write_lock
+    def _set_revision_history(self, rev_history):
         # Send just the tip revision of the history; the server will generate
         # the full history from that.  If the revision doesn't exist in this
         # branch, NoSuchRevision will be raised.
@@ -2979,10 +2995,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             _override_hook_target=self, **kwargs)
 
     @needs_read_lock
-    def push(self, target, overwrite=False, stop_revision=None):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False):
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision,
+            target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
             _override_hook_source_branch=self)
 
     def is_locked(self):
@@ -2998,7 +3014,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # XXX: These should be returned by the set_last_revision_info verb
         old_revno, old_revid = self.last_revision_info()
         self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        revision_id = _mod_revision.ensure_null(revision_id)
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         try:
             response = self._call('Branch.set_last_revision_info',
                 self._remote_path(), self._lock_token, self._repo_lock_token,
@@ -3033,7 +3050,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1, 6))
         self._clear_cached_state_of_remote_branch_only()
-        self.set_revision_history(self._lefthand_history(revision_id,
+        self._set_revision_history(self._lefthand_history(revision_id,
             last_rev=last_rev,other_branch=other_branch))
 
     def set_push_location(self, location):
@@ -3086,22 +3103,32 @@ class RemoteConfig(object):
         """
         try:
             configobj = self._get_configobj()
+            section_obj = None
             if section is None:
                 section_obj = configobj
             else:
                 try:
                     section_obj = configobj[section]
                 except KeyError:
-                    return default
-            return section_obj.get(name, default)
+                    pass
+            if section_obj is None:
+                value = default
+            else:
+                value = section_obj.get(name, default)
         except errors.UnknownSmartMethod:
-            return self._vfs_get_option(name, section, default)
+            value = self._vfs_get_option(name, section, default)
+        for hook in config.OldConfigHooks['get']:
+            hook(self, name, value)
+        return value
 
     def _response_to_configobj(self, response):
         if len(response[0]) and response[0][0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
-        return config.ConfigObj(lines, encoding='utf-8')
+        conf = config.ConfigObj(lines, encoding='utf-8')
+        for hook in config.OldConfigHooks['load']:
+            hook(self)
+        return conf
 
 
 class RemoteBranchConfig(RemoteConfig):
