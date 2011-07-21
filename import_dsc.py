@@ -1513,9 +1513,12 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                 "0000", "-exec", "chmod", "644", "{}", ";"])
         for part in self.dsc['files']:
             if part['name'].startswith("%s_%s.orig" % (name, str(version.upstream_version))):
-                self.upstream_tarballs.append((os.path.abspath(
-                        os.path.join(osutils.dirname(self.dsc_path),
-                            part['name'])), part['md5sum']))
+                self.upstream_tarballs.append((
+                    os.path.abspath(os.path.join(osutils.dirname(self.dsc_path),
+                                    part['name'])),
+                    component_from_orig_tarball(part['name'], name,
+                        str(version.upstream_version)),
+                    part['md5sum']))
             elif (part['name'].endswith(".debian.tar.gz")
                     or part['name'].endswith(".debian.tar.bz2")
                     or part['name'].endswith(".debian.tar.lzma")):
