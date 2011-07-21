@@ -1744,7 +1744,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
-        if len(parents_map) < 10000:
+        if True or len(parents_map) < 10000:
             # start_set is all the keys in the cache
             start_set = set(parents_map)
             # result set is all the references to keys in the cache
@@ -1774,10 +1774,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                          len(keys.intersection(stop_keys)))
             recipe = ('manual', start_set, stop_keys, key_count)
         else:
-            import pdb; pdb.set_trace()
-            # We've searched too many revisions for it to be efficient to
-            # recreate our search on the server. So just create a 'minimal'
-            # search pattern
+            # TODO: If we use this heavily, then we should just cache the
+            #       reverse map. It certainly only changes based on newly
+            #       requested entries.
             parent_to_children_map = {}
             for child, parents in parents_map.iteritems():
                 for p in parents:
@@ -1789,10 +1788,19 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                     else:
                         parent_to_children_map[p] = parent_to_children_map[p] + (child,)
             stop_keys = set(keys)
+            stop_keys.difference_update(self._unstacked_provider.missing_keys)
             # Just look at immediate children
             child_keys = set()
             for k in keys:
                 child_keys.update(parent_to_children_map[k])
+            # Without this line, we get the revision count wrong for 'bzr'. I'm
+            # guessing a shortcut caused some revs to be found early, and then
+            # not walked now. So without c for c in parents_map[k] we get *way*
+            # too many keys, because the graph flood-fills. Without 'if c not
+            # in child_keys' we stop before we start and get the wrong answer
+            # that way.
+            map(stop_keys.update, [[c for c in parents_map[k] if c not in child_keys]
+                                   for k in child_keys])
             mutter('Faking search set _get_parent_map_rpc,'
                          ' %d cache size, %d start keys'
                          ' %d included_keys %d stop_keys',

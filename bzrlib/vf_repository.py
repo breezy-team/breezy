@@ -16,6 +16,7 @@
 
 """Repository formats built around versioned files."""
 
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -70,7 +71,7 @@ from bzrlib.repository import (
     )
 
 from bzrlib.trace import (
-    mutter,
+    mutter, note
     )
 
 
@@ -2503,6 +2504,7 @@ class InterVersionedFileRepository(InterRepository):
         :return: A set of revision ids.
         """
         import pdb; pdb.set_trace()
+        t = time.time()
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
         if if_present_ids:
@@ -2515,7 +2517,7 @@ class InterVersionedFileRepository(InterRepository):
         searcher = source_graph._make_breadth_first_searcher(all_wanted_revs)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         searcher_exhausted = False
-        search_step = rev_count = 0
+        search_step = 0
         gpm = searcher._parents_provider.get_parent_map
         def get_parent_map_logging(revisions):
             res = gpm(revisions)
@@ -2560,6 +2562,8 @@ class InterVersionedFileRepository(InterRepository):
                 searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
+        note('Walking took %.3fs, with %d steps'
+             % (time.time() - t, search_step))
         import pdb; pdb.set_trace()
         return searcher.get_result()
 
