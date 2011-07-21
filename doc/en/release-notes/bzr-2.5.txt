@@ -89,6 +89,12 @@ API Changes
 * Remove ``TransportListRegistry.set_default_transport``, as the concept of
   a default transport is currently unused. (Jelmer Vernooij)
 
+* There is a new class `ContentFilterTree` that provides a facade for 
+  content filtering.  The `filtered` parameter to `export` is deprecated 
+  in favor of passing a filtered tree, and the specific exporter plugins
+  no longer support it.
+  (Martin Pool)
+
 Internals
 *********
 
