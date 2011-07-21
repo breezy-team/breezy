@@ -281,6 +281,23 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             shamap[ie.file_id] = obj.id
 
 
+class PackTupleIterable(object):
+
+    def __init__(self, store):
+        self.store = store
+        self.objects = {}
+
+    def add(self, sha, path):
+        self.objects[sha] = path
+
+    def __len__(self):
+        return len(self.objects)
+
+    def __iter__(self):
+        return ((self.store[object_id], path) for (object_id, path) in
+                self.objects.iteritems())
+
+
 class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
@@ -679,7 +696,7 @@ class BazaarObjectStore(BaseObjectStore):
         graph = self.repository.get_graph()
         todo = _find_missing_bzr_revids(graph, pending, processed)
         trace.mutter('sending revisions %r', todo)
-        ret = []
+        ret = PackTupleIterable(self)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, revid in enumerate(todo):
@@ -691,7 +708,7 @@ class BazaarObjectStore(BaseObjectStore):
                 tree = self.tree_cache.revision_tree(revid)
                 for path, obj, ie in self._revision_to_objects(rev, tree,
                     roundtrip=not lossy):
-                    ret.append((obj, path))
+                    ret.add(obj.id, path)
         finally:
             pb.finished()
         return ret
