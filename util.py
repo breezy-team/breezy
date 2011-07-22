@@ -156,7 +156,7 @@ def find_changelog(t, merge, max_blocks=1):
             else:
                 raise MissingChangelogError('"debian/changelog"')
         elif merge and t.has_filename('changelog'):
-            # If it is a "larstiq" pacakge and debian is a symlink to
+            # If it is a "larstiq" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
             debian_file_id = t.path2id('debian')
@@ -623,12 +623,11 @@ def tree_contains_upstream_source(tree):
 
     :param tree: A RevisionTree.
     :return: Boolean indicating whether or not the tree contains the upstream
-        source
+        source. None if the tree is empty
     """
-    root = tree.inventory.root
-    if root is None:
-        return False # Empty tree
-    present_files = set(root.children.keys())
+    present_files = set([f[0] for f in tree.list_files(recursive=False)])
+    if len(present_files) == 0:
+        return None
     packaging_files = frozenset(["debian", ".bzr-builddeb", ".bzrignore"])
     return (len(present_files - packaging_files) > 0)
 
@@ -639,9 +638,11 @@ def get_source_format(tree):
     :param path: Path to the package
     :return: String with package format
     """
-    if not tree.has_filename("debian/source/format"):
+    filename = "debian/source/format"
+    if not tree.has_filename(filename):
         return FORMAT_1_0
-    return tree.get_file_text(tree.path2id("debian/source/format")).strip()
+    text = tree.get_file_text(tree.path2id(filename), filename)
+    return text.strip()
 
 
 FORMAT_1_0 = "1.0"
@@ -680,7 +681,7 @@ def guess_build_type(tree, version, contains_upstream_source):
 
     if version_native or format_native:
         return BUILD_TYPE_NATIVE
-    if not contains_upstream_source:
+    if contains_upstream_source == False:
         # Default to merge mode if there's only a debian/ directory
         return BUILD_TYPE_MERGE
     else:

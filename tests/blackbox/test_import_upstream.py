@@ -36,7 +36,8 @@ class TestImportUpstream(TestBaseImportDsc):
         self.requireFeature(PristineTarFeature)
 
     def assertHasImportArtifacts(self, tree, upstream_version=None):
-        upstream_version = self.get_test_upstream_version(upstream_version)
+        if upstream_version is None:
+            upstream_version = self.upstream_version
         upstream_tag = self.upstream_tag(upstream_version)
         tags = tree.branch.tags
         # If it imported, we have a tag

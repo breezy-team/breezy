@@ -19,14 +19,18 @@
 #
 
 try:
-    from debian.changelog import Version
+    from debian.changelog import Changelog, Version
 except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version
+    from debian_bundle.changelog import Changelog, Version
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 
 from bzrlib.plugins.builddeb.merge_upstream import (
+    changelog_add_new_version,
     upstream_merge_changelog_line,
     package_version,
     )
@@ -71,3 +75,19 @@ class UpstreamMergeChangelogLineTests(TestCase):
     def test_plus(self):
         self.assertEquals("New upstream release.",
             upstream_merge_changelog_line("1.0+dfsg1"))
+
+
+class ChangelogAddNewVersionTests(TestCaseWithTransport):
+
+    def test_add_new(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.mkdir("debian")
+        changelog_add_new_version(tree, "1.0", "sid", None, "somepkg")
+        # changelog_add_new_version will version the changelog if it was created
+        cl = Changelog(open('debian/changelog'))
+        self.assertEquals(cl._blocks[0].package, "somepkg")
+        self.assertEquals(cl._blocks[0].distributions, "UNRELEASED")
+        self.assertEquals(cl._blocks[0].version, "1.0-1")
+        self.assertEquals([], list(tree.filter_unversioned_files(["debian/changelog"])))

@@ -118,8 +118,7 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         bz2_tarball_name = 'package-0.2.tar.bz2'
         create_basedir('package-0.2/', files=['README'])
         make_new_upstream_tarball_bz2(bz2_tarball_name)
-        repack_tarball(bz2_tarball_name, bz2_tarball_name, target_dir=".",
-                force_gz=False)
+        repack_tarball(bz2_tarball_name, bz2_tarball_name, target_dir=".")
         self.assertPathExists(bz2_tarball_name)
 
     def test_exists_different_bz2(self):

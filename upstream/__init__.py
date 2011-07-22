@@ -42,12 +42,25 @@ from bzrlib.plugins.builddeb.errors import (
     PackageVersionNotPresent,
     WatchFileMissing,
     )
-from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+from bzrlib.plugins.builddeb.repack_tarball import (
+    get_filetype,
+    repack_tarball,
+    )
 from bzrlib.plugins.builddeb.util import (
     component_from_orig_tarball,
     export,
     tarball_name,
     )
+
+
+def new_tarball_name(package, version, old_name):
+    """Determine new tarball name based on the package name and the old name.
+    """
+    old_format = get_filetype(old_name)
+    if old_format in ("gz", "bz2", "xz"):
+        return tarball_name(package, version, None, old_format)
+    # Unknown target format, repack to .tar.gz
+    return tarball_name(package, version, None, "gz")
 
 
 class UpstreamSource(object):
@@ -99,7 +112,7 @@ class UpstreamSource(object):
 class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
-    def fetch_tarballs(self, package, upstream_version, target_dir, 
+    def fetch_tarballs(self, package, upstream_version, target_dir,
             _apt_pkg=None):
         if _apt_pkg is None:
             import apt_pkg
@@ -177,7 +190,7 @@ class GetOrigSourceSource(UpstreamSource):
             fetched_tarball = os.path.join(source_dir, filename)
             if os.path.exists(fetched_tarball):
                 repack_tarball(fetched_tarball, filename,
-                               target_dir=target_dir, force_gz=False)
+                               target_dir=target_dir)
                 filenames.append(os.path.join(target_dir, filename))
         if filenames:
             return filenames
@@ -278,15 +291,14 @@ class UScanSource(UpstreamSource):
                 "--upstream-version=%s" % version,
                 "--force-download", "--rename", "--package=%s" % package,
                 "--check-dirname-level=0",
-                "--download", "--repack", "--destdir=%s" % target_dir,
+                "--download", "--destdir=%s" % target_dir,
                 "--download-version=%s" % version])
         finally:
             os.unlink(tempfilename)
         if r != 0:
             note("uscan could not find the needed tarball.")
             raise PackageVersionNotPresent(package, version, self)
-        # FIXME: What about the other component tarballs?
-        return [self._tarball_path(package, version, None, target_dir)]
+        return gather_orig_files(package, version, target_dir)
 
 
 class SelfSplitSource(UpstreamSource):
@@ -348,6 +360,20 @@ class StackedUpstreamSource(UpstreamSource):
             except NotImplementedError:
                 pass
         return None
+
+
+def gather_orig_files(package, version, path):
+    prefix = "%s_%s.orig" % (package, version)
+    ret = []
+    path = os.path.abspath(path)
+    if not os.path.isdir(path):
+        return None
+    for filename in os.listdir(path):
+        if filename.startswith(prefix):
+            ret.append(os.path.join(path, filename))
+    if ret:
+        return ret
+    return None
 
 
 class UpstreamProvider(object):
@@ -416,24 +442,11 @@ class UpstreamProvider(object):
         return [(p, component_from_orig_tarball(p, self.package, self.version))
                 for p in paths]
 
-    def _gather_orig_files(self, path):
-        prefix = "%s_%s.orig" % (self.package, self.version)
-        ret = []
-        path = os.path.abspath(path)
-        if not os.path.isdir(path):
-            return None
-        for filename in os.listdir(path):
-            if filename.startswith(prefix):
-                ret.append(os.path.join(path, filename))
-        if ret:
-            return ret
-        return None
-
     def already_exists_in_target(self, target_dir):
-        return self._gather_orig_files(target_dir)
+        return gather_orig_files(self.package, self.version, target_dir)
 
     def already_exists_in_store(self):
-        return self._gather_orig_files(self.store_dir)
+        return gather_orig_files(self.package, self.version, self.store_dir)
 
     def provide_from_store_dir(self, target_dir):
         paths = self.already_exists_in_store()
@@ -441,7 +454,7 @@ class UpstreamProvider(object):
             return None
         for path in paths:
             repack_tarball(path, os.path.basename(path),
-                    target_dir=target_dir, force_gz=False)
+                    target_dir=target_dir)
         return paths
 
 
@@ -481,8 +494,8 @@ class TarfileSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir):
         if version != self.version:
             raise PackageVersionNotPresent(package, version, self)
-        dest_name = tarball_name(package, version)
-        repack_tarball(self.path, dest_name, target_dir=target_dir, force_gz=True)
+        dest_name = new_tarball_name(package, version, self.path)
+        repack_tarball(self.path, dest_name, target_dir=target_dir)
         return [os.path.join(target_dir, dest_name)]
 
     def get_latest_version(self, package, version):
@@ -539,7 +552,6 @@ class LaunchpadReleaseFileSource(UpstreamSource):
             warning("More than one release file for release %s of package %s"
                     "found on Launchpad. Using the first.", version, package)
         hosted_file = release_files[0]
-        dest_name = tarball_name(package, version)
         tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
         try:
             inf = hosted_file.open()
@@ -556,8 +568,8 @@ class LaunchpadReleaseFileSource(UpstreamSource):
                     outf.close()
             finally:
                 inf.close()
-            repack_tarball(tmppath, dest_name, target_dir=target_dir,
-                force_gz=True)
+            dest_name = new_tarball_name(package, version, filename)
+            repack_tarball(tmppath, dest_name, target_dir=target_dir)
             return os.path.join(target_dir, dest_name)
         finally:
             shutil.rmtree(tmpdir)

@@ -1,4 +1,20 @@
-bzr-builddeb (2.7.5) UNRELEASED; urgency=low
+bzr-builddeb (2.7.7) UNRELEASED; urgency=low
+
+  * Build type now defaults to normal mode when used in an empty tree.
+    LP: #776528
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 20 Jul 2011 21:27:48 +0200
+
+bzr-builddeb (2.7.6) unstable; urgency=low
+
+  * Bump standards version to 3.9.2 (no changes).
+  * Fix AttributeError in incremental imports using 'bzr import-dsc'.
+    LP: #812950
+  * Support --package-merge for the first package version. LP: #812704
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 19 Jul 2011 17:35:39 +0200
+
+bzr-builddeb (2.7.5) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * New 'bzr dep3-patch' subcommand that can generate DEP-3 compliant
@@ -23,8 +39,10 @@ bzr-builddeb (2.7.5) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Add support for xz and lzma tarballs. LP: #553668
+  * When importing upstream component tarballs, don't repack bz2/lzma
+    tarballs to gz if the package is in v3 source format. LP: #810531
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 13 Jun 2011 23:10:20 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 15 Jul 2011 12:15:22 +0200
 
 bzr-builddeb (2.7.4) unstable; urgency=low
 

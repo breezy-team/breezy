@@ -35,7 +35,6 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import (
     Feature,
-    KnownFailure,
     TestCase,
     )
 from bzrlib.plugins.builddeb.config import (
@@ -58,6 +57,7 @@ from bzrlib.plugins.builddeb.upstream import (
     UpstreamSource,
     UScanSource,
     extract_tarball_version,
+    new_tarball_name,
     )
 from bzrlib.plugins.builddeb.util import (
     component_from_orig_tarball,
@@ -795,7 +795,7 @@ class TarfileSourceTests(TestCaseWithTransport):
             source.fetch_tarballs("foo", "1.0", "bar"))
         self.assertPathExists("bar/foo_1.0.orig.tar.gz")
 
-    def test_fetch_tarballs_repack(self):
+    def test_fetch_zip_tarballs_repack(self):
         zf = zipfile.ZipFile("bla-2.0.zip", "w")
         zf.writestr('avoid', 'empty zip to make the repacker happy\n')
         zf.close()
@@ -815,13 +815,22 @@ class TarfileSourceTests(TestCaseWithTransport):
         tar = tarfile.open("foo-1.0.tar.bz2", "w:bz2")
         tar.close()
         # verify this is a bzip2 file
-        bz2.BZ2File("foo-1.0.tar.bz2").close()
+        os.mkdir("foo-1.0")
+        zf = bz2.BZ2File("foo-1.0.tar.bz2", 'w')
+        try:
+            tar = tarfile.open("foo-1.0.tar", "w", zf)
+            try:
+                tar.add("foo-1.0")
+            finally:
+                tar.close()
+        finally:
+            zf.close()
         source = TarfileSource("foo-1.0.tar.bz2", "1.0")
         os.mkdir("bar")
-        self.assertEquals(["bar/foo_1.0.orig.tar.gz"],
+        self.assertEquals(["bar/foo_1.0.orig.tar.bz2"],
             source.fetch_tarballs("foo", "1.0", "bar"))
-        self.assertPathExists("bar/foo_1.0.orig.tar.gz")
-        gzip.open("bar/foo_1.0.orig.tar.gz").close()
+        self.assertPathExists("bar/foo_1.0.orig.tar.bz2")
+        tarfile.open("bar/foo_1.0.orig.tar.bz2", "r:bz2").close()
 
     def test_fetch_tarball_lzma(self):
         self.requireFeature(LzmaFeature)
@@ -894,3 +903,18 @@ class ExtractTarballVersionTests(TestCase):
     def test_traditional_style(self):
         self.assertEquals("1.2b2",
             extract_tarball_version("/tmp/foo-1.2b2.zip", "foo"))
+
+
+class NewTarballNameTests(TestCase):
+
+    def test_bz2(self):
+        self.assertEquals("foo_1.0.orig.tar.bz2",
+            new_tarball_name("foo", "1.0", "bla.tar.bz2"))
+
+    def test_gz(self):
+        self.assertEquals("foo_1.0.orig.tar.gz",
+            new_tarball_name("foo", "1.0", "bla.tar.gz"))
+
+    def test_zip(self):
+        self.assertEquals("foo_1.0.orig.tar.gz",
+            new_tarball_name("foo", "1.0", "bla.zip"))

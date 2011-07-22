@@ -785,6 +785,12 @@ class SourceFormatTests(TestCaseWithTransport):
         tree.add(["debian", "debian/source", "debian/source/format"])
         self.assertEquals("3.0 (quilt)", get_source_format(tree))
 
+    def test_source_format_file_unversioned(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([("debian/",), ("debian/source/",),
+            ("debian/source/format", "3.0 (quilt)")])
+        self.assertEquals("3.0 (quilt)", get_source_format(tree))
+
 
 class GuessBuildTypeTests(TestCaseWithTransport):
     """Tests for guess_build_type."""
@@ -823,9 +829,16 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         self.assertEquals(BUILD_TYPE_NATIVE,
             guess_build_type(tree, Version("1.0"), True))
 
+    def test_empty(self):
+        # Empty tree and a non-native package -> NORMAL
+        tree = self.make_branch_and_tree('.')
+        self.assertEquals(BUILD_TYPE_NORMAL,
+            guess_build_type(tree, Version("1.0-1"), None))
+
     def test_no_upstream_source(self):
         # No upstream source code and a non-native package -> MERGE
         tree = self.make_branch_and_tree('.')
+        tree.mkdir("debian")
         self.assertEquals(BUILD_TYPE_MERGE,
             guess_build_type(tree, Version("1.0-1"), False))
 

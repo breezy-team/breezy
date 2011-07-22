@@ -277,25 +277,25 @@ class DistributionBranch(object):
         return str(version)
 
     def _has_version(self, branch, tag_name, md5=None):
-        if branch.tags.has_tag(tag_name):
-            revid = branch.tags.lookup_tag(tag_name)
-            branch.lock_read()
-            try:
-                graph = branch.repository.get_graph()
-                if not graph.is_ancestor(revid, branch.last_revision()):
-                    return False
-            finally:
-                branch.unlock()
-            if md5 is None:
-                return True
-            rev = branch.repository.get_revision(revid)
-            try:
-                return rev.properties['deb-md5'] == md5
-            except KeyError:
-                warning("tag %s present in branch, but there is no "
-                    "associated 'deb-md5' property" % tag_name)
-                pass
-        return False
+        if not branch.tags.has_tag(tag_name):
+            return False
+        revid = branch.tags.lookup_tag(tag_name)
+        branch.lock_read()
+        try:
+            graph = branch.repository.get_graph()
+            if not graph.is_ancestor(revid, branch.last_revision()):
+                return False
+        finally:
+            branch.unlock()
+        if md5 is None:
+            return True
+        rev = branch.repository.get_revision(revid)
+        try:
+            return rev.properties['deb-md5'] == md5
+        except KeyError:
+            warning("tag %s present in branch, but there is no "
+                "associated 'deb-md5' property" % tag_name)
+            return False
 
     def has_version(self, version, md5=None):
         """Whether this branch contains the package version specified.
@@ -409,18 +409,6 @@ class DistributionBranch(object):
             return self.branch.tags.lookup_tag(ubuntu_tag_name)
         return self.branch.tags.lookup_tag(tag_name)
 
-    def revid_of_upstream_version(self, package, version, tarballs=None):
-        """Returns the revision id corresponding to the upstream version.
-
-        :param version: the Version object to extract the upstream version
-            from to retrieve the revid of. The upstream version must be
-            present in the upstream branch.
-        :return: the revision id corresponding to the upstream portion
-            of the version
-        """
-        return self.pristine_upstream_source.version_as_revision(package, version,
-            tarballs)
-
     def tag_version(self, version, revid=None):
         """Tags the branch's last revision with the given version.
 
@@ -506,6 +494,21 @@ class DistributionBranch(object):
         except KeyError:
             return False
 
+    def can_pull_from_branch(self, branch, version, md5):
+        if not branch.has_version(version, md5=md5):
+            return False
+
+        # Check that they haven't diverged
+        branch.branch.lock_read()
+        try:
+            graph = branch.branch.repository.get_graph(
+                    self.branch.repository)
+            return graph.is_ancestor(self.branch.last_revision(),
+                    branch.revid_of_version(version))
+        finally:
+            branch.branch.unlock()
+
+
     def branch_to_pull_version_from(self, version, md5):
         """Checks whether this upload is a pull from a lesser branch.
 
@@ -531,29 +534,11 @@ class DistributionBranch(object):
         self.branch.lock_read()
         try:
             for branch in reversed(self.get_lesser_branches()):
-                if branch.has_version(version, md5=md5):
-                    # Check that they haven't diverged
-                    branch.branch.lock_read()
-                    try:
-                        graph = branch.branch.repository.get_graph(
-                                self.branch.repository)
-                        if graph.is_ancestor(self.branch.last_revision(),
-                                branch.revid_of_version(version)):
-                            return branch
-                    finally:
-                        branch.branch.unlock()
+                if self.can_pull_from_branch(branch, version, md5):
+                    return branch
             for branch in self.get_greater_branches():
-                if branch.has_version(version, md5=md5):
-                    # Check that they haven't diverged
-                    branch.branch.lock_read()
-                    try:
-                        graph = branch.branch.repository.get_graph(
-                                self.branch.repository)
-                        if graph.is_ancestor(self.branch.last_revision(),
-                                branch.revid_of_version(version)):
-                            return branch
-                    finally:
-                        branch.branch.unlock()
+                if self.can_pull_from_branch(branch, version, md5):
+                    return branch
             return None
         finally:
             self.branch.unlock()
@@ -581,7 +566,7 @@ class DistributionBranch(object):
                 graph = other_up_branch.repository.get_graph(
                         up_branch.repository)
                 return graph.is_ancestor(up_branch.last_revision(),
-                        branch.revid_of_upstream_version(package, version))
+                        branch.pristine_upstream_source.version_as_revision(package, version))
             finally:
                 other_up_branch.unlock()
         finally:
@@ -695,7 +680,7 @@ class DistributionBranch(object):
         :param version: the upstream version string
         """
         assert isinstance(version, str)
-        pull_revision = pull_branch.revid_of_upstream_version(package, version)
+        pull_revision = pull_branch.pristine_upstream_source.version_as_revision(package, version)
         mutter("Pulling upstream part of %s from revision %s" % \
                 (version, pull_revision))
         assert self.pristine_upstream_tree is not None, \
@@ -753,7 +738,7 @@ class DistributionBranch(object):
                     "present in the upstream branch")
 
     def get_parents_with_upstream(self, package, version, versions,
-            force_upstream_parent=False):
+            tarballs, force_upstream_parent=False):
         """Get the list of parents including any upstream parents.
 
         Further to get_parents this method includes any upstream parents
@@ -765,7 +750,7 @@ class DistributionBranch(object):
         If force_upstream_parent is True then the upstream parent will
         be included, even if another parent is already using that
         upstream. This is for use in cases where the .orig.tar.gz
-        is different in two ditributions.
+        is different in two distributions.
 
         :param version: the Version that we are currently importing.
         :param versions: the list of Versions that are ancestors of
@@ -789,8 +774,8 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            parent_revid = self.revid_of_upstream_version(package,
-                version.upstream_version)
+            parent_revid = self.pristine_upstream_source.version_as_revision(package,
+                version.upstream_version, tarballs)
             if len(parents) > 0:
                 real_parents.insert(1, parent_revid)
             else:
@@ -833,46 +818,48 @@ class DistributionBranch(object):
                 % (version, upstream_part, str(upstream_parents)))
         assert self.pristine_upstream_tree is not None, \
             "Can't import upstream with no tree"
-        if len(upstream_parents) > 0:
-            parent_revid = upstream_parents[0]
-        else:
-            parent_revid = NULL_REVISION
-        self.pristine_upstream_tree.pull(self.pristine_upstream_tree.branch,
-            overwrite=True, stop_revision=parent_revid)
         other_branches = self.get_other_branches()
-        upstream_trees = [o.pristine_upstream_branch.basis_tree()
-            for o in other_branches]
-        target_tree = None
-        if upstream_branch is not None:
-            if upstream_revision is None:
-                upstream_revision = upstream_branch.last_revision()
-            self.pristine_upstream_branch.fetch(upstream_branch,
-                    last_revision=upstream_revision)
-            upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
-            upstream_parents.append(upstream_revision)
-            target_tree = self.pristine_upstream_branch.repository.revision_tree(
-                        upstream_revision)
-        if file_ids_from is not None:
-            upstream_trees = file_ids_from + upstream_trees
-        if self.tree:
-            self_tree = self.tree
-            self_tree.lock_write() # might also be upstream tree for dh_make
-        else:
-            self_tree = self.get_branch_tip_revtree()
-            self_tree.lock_read()
-        try:
-            import_dir(self.pristine_upstream_tree, upstream_part,
-                    file_ids_from=[self_tree] + upstream_trees,
-                    target_tree=target_tree)
-        finally:
-            self_tree.unlock()
-        revprops = {}
         ret = []
         for (tarball, component, md5) in upstream_tarballs:
+            upstream_trees = [o.pristine_upstream_branch.basis_tree()
+                for o in other_branches]
+            target_tree = None
+            if upstream_branch is not None:
+                if upstream_revision is None:
+                    upstream_revision = upstream_branch.last_revision()
+                self.pristine_upstream_branch.fetch(upstream_branch,
+                        last_revision=upstream_revision)
+                upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
+                upstream_parents.append(upstream_revision)
+                target_tree = self.pristine_upstream_branch.repository.revision_tree(
+                            upstream_revision)
+            if file_ids_from is not None:
+                upstream_trees = file_ids_from + upstream_trees
+            if self.tree:
+                self_tree = self.tree
+                self_tree.lock_write() # might also be upstream tree for dh_make
+            else:
+                self_tree = self.branch.basis_tree()
+                self_tree.lock_read()
+            if len(upstream_parents) > 0:
+                parent_revid = upstream_parents[0]
+            else:
+                parent_revid = NULL_REVISION
+            self.pristine_upstream_tree.pull(self.pristine_upstream_tree.branch,
+                overwrite=True, stop_revision=parent_revid)
+            if component is None:
+                path = upstream_part
+            else:
+                path = os.path.join(upstream_part, component)
+            try:
+                import_dir(self.pristine_upstream_tree, path,
+                        file_ids_from=[self_tree] + upstream_trees,
+                        target_tree=target_tree)
+            finally:
+                self_tree.unlock()
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
-                package, version, self.pristine_upstream_tree, component,
-                md5, tarball, author=author, timestamp=timestamp,
-                parent_ids=upstream_parents)
+                package, version, self.pristine_upstream_tree, upstream_parents, component,
+                md5, tarball, author=author, timestamp=timestamp)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
             self.branch.tags.set_tag(tag, revid)
@@ -902,12 +889,8 @@ class DistributionBranch(object):
         finally:
             shutil.rmtree(tarball_dir)
 
-    def get_branch_tip_revtree(self):
-        return self.branch.repository.revision_tree(
-                self.branch.last_revision())
-
     def _mark_native_config(self, native):
-        poss_native_tree = self.get_branch_tip_revtree()
+        poss_native_tree = self.branch.basis_tree()
         current_native = self._is_tree_native(poss_native_tree)
         current_config = self._default_config_for_tree(poss_native_tree)
         dirname = os.path.join(self.tree.basedir, '.bzr-builddeb')
@@ -1069,7 +1052,7 @@ class DistributionBranch(object):
                 pull_branch = pull_parents[1][0]
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
-                pull_revid = pull_branch.revid_of_upstream_version(
+                pull_revid = pull_branch.pristine_upstream_source.version_as_revision(
                     package, pull_version.upstream_version)
                 mutter("Initialising upstream from %s, version %s",
                     str(pull_branch), str(pull_version))
@@ -1142,7 +1125,7 @@ class DistributionBranch(object):
             else:
                 mutter("We already have the needed upstream part")
             parents = self.get_parents_with_upstream(package, version, versions,
-                    force_upstream_parent=imported_upstream)
+                    upstream_tarballs, force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
             self.import_debian(debian_part, version, parents, md5,
                     timestamp=timestamp, file_ids_from=file_ids_from)
@@ -1307,7 +1290,7 @@ class DistributionBranch(object):
         if self.tree:
             root_id = self.tree.path2id('')
         else:
-            tip = self.get_branch_tip_revtree()
+            tip = self.branch.basis_tree()
             tip.lock_read()
             try:
                 root_id = tip.path2id('')
@@ -1530,9 +1513,12 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                 "0000", "-exec", "chmod", "644", "{}", ";"])
         for part in self.dsc['files']:
             if part['name'].startswith("%s_%s.orig" % (name, str(version.upstream_version))):
-                self.upstream_tarballs.append((os.path.abspath(
-                        os.path.join(osutils.dirname(self.dsc_path),
-                            part['name'])), part['md5sum']))
+                self.upstream_tarballs.append((
+                    os.path.abspath(os.path.join(osutils.dirname(self.dsc_path),
+                                    part['name'])),
+                    component_from_orig_tarball(part['name'], name,
+                        str(version.upstream_version)),
+                    part['md5sum']))
             elif (part['name'].endswith(".debian.tar.gz")
                     or part['name'].endswith(".debian.tar.bz2")
                     or part['name'].endswith(".debian.tar.lzma")):

@@ -360,14 +360,18 @@ class cmd_builddeb(Command):
 
             if package_merge:
                 try:
-                    prev_version = find_previous_upload(tree, not contains_upstream_source)
+                    prev_version = find_previous_upload(tree,
+                        not contains_upstream_source)
                 except NoPreviousUpload:
                     prev_version = None
-                build_options.append("-v%s" % str(prev_version))
-                if (prev_version.upstream_version
-                        != changelog.version.upstream_version
-                        or prev_version.epoch != changelog.version.epoch):
-                    build_options.append("-sa")
+                if prev_version is None:
+                    build_options.extend(["-sa", "-v0"])
+                else:
+                    build_options.append("-v%s" % str(prev_version))
+                    if (prev_version.upstream_version != 
+                            changelog.version.upstream_version or
+                        prev_version.epoch != changelog.version.epoch):
+                        build_options.append("-sa")
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
             result_dir, build_dir, orig_dir = self._get_dirs(config,
@@ -578,8 +582,7 @@ class cmd_merge_upstream(Command):
             dest_name = tarball_name(package, version, None, format=format)
             tarball_filename = os.path.join(orig_dir, dest_name)
             try:
-                repack_tarball(location, dest_name, target_dir=orig_dir,
-                        force_gz=not v3)
+                repack_tarball(location, dest_name, target_dir=orig_dir)
             except FileExists:
                 raise BzrCommandError("The target file %s already exists, and is either "
                                       "different to the new upstream tarball, or they "
@@ -647,13 +650,14 @@ class cmd_merge_upstream(Command):
              changelog, larstiq) = self._get_changelog_info(tree, last_version,
                  package, distribution)
             contains_upstream_source = tree_contains_upstream_source(tree)
-            build_type = config.build_type
-            if build_type is None:
+            if changelog is None:
                 changelog_version = None
             else:
                 changelog_version = changelog.version
-            build_type = guess_build_type(tree, changelog_version,
-                contains_upstream_source)
+            build_type = config.build_type
+            if build_type is None:
+                build_type = guess_build_type(tree, changelog_version,
+                    contains_upstream_source)
             need_upstream_tarball = (build_type != BUILD_TYPE_MERGE)
             if build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError("Merge upstream in native mode is not "
@@ -873,15 +877,15 @@ class cmd_import_dsc(Command):
                         '..'))
             try:
                 if last_version is not None:
-                    if not db.pristine_tar_source.has_version(
+                    if not db.pristine_upstream_source.has_version(
                             changelog.package, last_version.upstream_version):
                         raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: %s."
                             " Consider importing it via import-dsc or "
                             "import-upstream." % (last_version,
-                                    db.pristine_tar_source.tag_name(
+                                    db.pristine_upstream_source.tag_name(
                                         last_version.upstream_version)))
-                    upstream_tip = db.pristine_tar_source.version_as_revision(
+                    upstream_tip = db.pristine_upstream_source.version_as_revision(
                         changelog.package, last_version.upstream_version)
                     db.extract_upstream_tree(upstream_tip, tempdir)
                 else:
@@ -964,7 +968,7 @@ class cmd_import_upstream(Command):
             db.extract_upstream_tree(parents[0], tempdir)
         else:
             db._create_empty_upstream_tree(tempdir)
-        tree = db.get_branch_tip_revtree()
+        tree = db.branch.basis_tree()
         tree.lock_read()
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
