@@ -19,13 +19,16 @@
 
 """Tests for the merge_changelog code."""
 
-import warnings
+import logging
 
 try:
     from debian import changelog
 except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle import changelog
+
+from testtools.content_type import ContentType
+from testtools.content import Content
 
 from bzrlib import (
     memorytree,
@@ -70,6 +73,39 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 """.splitlines(True)
 
 
+# Merge of 2b and 2c using 2 as the base (b adds a line, c adds a line and
+# deletes a line).
+v_111_2bc = """\
+psuedo-prog (1.1.1-2) unstable; urgency=low
+
+  * New upstream release.
+  * Yet another content for 1.1.1-2
+  * But more is better
+
+ -- Joe Foo <joe@example.com>  Thu, 28 Jan 2010 10:45:44 +0000
+
+""".splitlines(True)
+
+
+# Merge of 2b and 2c using an empty base. (As calculated by
+# dpkg-mergechangelogs, including the non-standard <<<<<< markers: should be 7
+# chars, not 6.)
+v_111_2bc_empty_base = """\
+psuedo-prog (1.1.1-2) unstable; urgency=low
+
+  * New upstream release.
+<<<<<<
+  * Awesome bug fixes.
+======
+  * Yet another content for 1.1.1-2
+>>>>>>
+  * But more is better
+
+ -- Joe Foo <joe@example.com>  Thu, 28 Jan 2010 10:45:44 +0000
+
+""".splitlines(True)
+
+
 v_112_1 = """\
 psuedo-prog (1.1.2-1) unstable; urgency=low
 
@@ -92,7 +128,36 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
 """.splitlines(True)
 
 
+# Backports from current testtools so that we remain compatible with testtools
+# 0.9.2 (the version in lucid).
+UTF8_TEXT = ContentType('text', 'plain', {'charset': 'utf8'})
+def text_content(text):
+    """Create a `Content` object from some text.
+
+    This is useful for adding details which are short strings.
+    """
+    return Content(UTF8_TEXT, lambda: [text.encode('utf8')])
+
+
 class TestMergeChangelog(tests.TestCase):
+
+    def setUp(self):
+        super(tests.TestCase, self).setUp()
+        # Intercept warnings from merge_changelog's logger: this is where 
+        self.logged_warnings = self.make_utf8_encoded_stringio()
+        self.addCleanup(self.addMergeChangelogWarningsDetail)
+        handler = logging.StreamHandler(self.logged_warnings)
+        handler.setLevel(logging.WARNING)
+        logger = logging.getLogger('bzr.plugins.builddeb.merge_changelog')
+        logger.addHandler(handler)
+        self.addCleanup(logger.removeHandler, handler)
+        self.overrideAttr(logger, 'propagate', False)
+
+    def addMergeChangelogWarningsDetail(self):
+        warnings_log = self.logged_warnings.getvalue()
+        if warnings_log:
+            self.addDetail(
+                'merge_changelog warnings', text_content(warnings_log))
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
                              base_lines=[], conflicted=False):
@@ -132,10 +197,10 @@ class TestMergeChangelog(tests.TestCase):
             base_lines=[])
 
     def test_unsorted(self):
-        # Passing in an improperly sorted text should result in a properly
-        # sorted one
+        # The order of entries being merged is unchanged, even if they are not
+        # properly sorted.  (This is a merge tool, not a reformatting tool.)
         self.assertMergeChangelog(v_111_2 + v_001_1,
-                                  this_lines = v_001_1 + v_111_2,
+                                  this_lines = v_111_2 + v_001_1,
                                   other_lines = [],
                                   base_lines = [])
 
@@ -151,20 +216,11 @@ class TestMergeChangelog(tests.TestCase):
 
     def test_3way_conflicted(self):
         self.assertMergeChangelog(
-            expected_lines=['<<<<<<< TREE\n']
-                           + v_111_2b
-                           + ['=======\n']
-                           + v_111_2c
-                           + ['>>>>>>> MERGE-SOURCE\n'],
+            expected_lines=v_111_2bc,
             this_lines=v_111_2b, other_lines=v_111_2c,
-            base_lines=v_111_2,
-            conflicted=True)
+            base_lines=v_111_2)
         self.assertMergeChangelog(
-            expected_lines=['<<<<<<< TREE\n']
-                           + v_111_2b
-                           + ['=======\n']
-                           + v_111_2c
-                           + ['>>>>>>> MERGE-SOURCE\n'],
+            expected_lines=v_111_2bc_empty_base,
             this_lines=v_111_2b, other_lines=v_111_2c,
             base_lines=[],
             conflicted=True)
@@ -179,30 +235,32 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
  -- Thu, 28 Jan 2010 10:45:44 +0000
 
 """.splitlines(True)
-        # Missing the author and we don't have allow_missing_author set
-        cl = changelog.Changelog()
-        self.assertRaises(changelog.ChangelogParseError,
-                          cl.parse_changelog, ''.join(invalid_changelog), strict=True)
-        # If strict parsing fails, don't try to do special merging
-        self.assertEqual(('not_applicable', None),
-            merge_changelog.merge_changelog(invalid_changelog, v_111_2,
-                                            v_111_2))
-        self.assertEqual(('not_applicable', None),
-            merge_changelog.merge_changelog(v_111_2, invalid_changelog,
-                                            v_111_2))
+        # invalid_changelog is missing the author, but dpkg-mergechangelogs
+        # copes gracefully with invalid input.
+        status, lines = merge_changelog.merge_changelog(
+            invalid_changelog, v_111_2, v_111_2)
+        self.assertEqual('success', status)
+        # XXX: ideally we'd expect ''.join(lines) ==
+        # ''.join(invalid_changelog), but dpkg-mergechangelogs appears to lose
+        # the final line in these examples.
+        #  - Andrew Bennetts, 22 July 2011.
+        #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
+        status, lines = merge_changelog.merge_changelog(
+            invalid_changelog, v_111_2, v_111_2)
+        self.assertEqual('success', status)
+        #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
         # We are non-strict about parsing BASE, because its contents are not
         # included in the output.
         # This triggers a warning, but we don't want to clutter the test run
-        cur_filters = warnings.filters[:]
-        warnings.simplefilter('ignore', UserWarning)
-        try:
-            self.assertMergeChangelog(v_112_1 + v_111_2,
-                                      this_lines=v_111_2,
-                                      other_lines=v_112_1,
-                                      base_lines=invalid_changelog,
-                                      )
-        finally:
-            warnings.filters = cur_filters[:]
+        self.assertMergeChangelog(v_112_1 + 
+                                  ['<<<<<<\n'] +
+                                  v_111_2 +
+                                  ['======\n>>>>>>\n'],
+                                  this_lines=v_111_2,
+                                  other_lines=v_112_1,
+                                  base_lines=invalid_changelog,
+                                  conflicted=True
+                                  )
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):

@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 import os.path
 import shutil
 import subprocess
@@ -24,6 +25,12 @@ import tempfile
 from bzrlib import (
     merge,
     )
+
+
+# A logger in the 'bzr' hierarchy.  By default messages will be propagated to
+# the standard bzr logger, but tests can easily intercept just this logger if
+# they wish.
+_logger = logging.getLogger('bzr.plugins.builddeb.merge_changelog')
 
 
 class ChangeLogFileMerge(merge.ConfigurableFileMerger):
@@ -53,9 +60,16 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
         writelines(this_filename, this_lines)
         writelines(other_filename, other_lines)
         proc = subprocess.Popen(['dpkg-mergechangelogs', base_filename,
-            this_filename, other_filename], stdout=subprocess.PIPE)
+            this_filename, other_filename], stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
         retcode = proc.returncode
+        if stderr:
+            # Relay the warning from dpkg-mergechangelogs to the user.  We
+            # don't decorate the messages at all, as dpkg-mergechangelogs
+            # warnings are already prefixed with "dpkg-mergechangelogs:
+            # warning:" which makes the origin of the messages quite clear.
+            _logger.warning('%s', stderr)
         if retcode == 1:
             return 'conflicted', stdout
         else:
