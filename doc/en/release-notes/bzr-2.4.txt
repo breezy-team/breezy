@@ -20,6 +20,9 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Relative local paths can now be specified in URL syntax by using the "file:" prefix.
+  (Jelmer Vernooij)
+
 Improvements
 ************
 
