@@ -25,7 +25,7 @@ New Features
   that project is present in the branch tags. This should help developers
   trust whether the packaging branch is up-to-date and can be used for new
   changes. The level of verbosity is controlled by the config item
-  ``bzr.plugins.launchpad.packaging_verbosity``. It can be set to one of
+  ``launchpad.packaging_verbosity``. It can be set to one of
 
   off
     disable all checks
