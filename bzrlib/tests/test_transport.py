@@ -1027,3 +1027,6 @@ class TestLocationToUrl(tests.TestCase):
     def test_relative_file_url(self):
         self.assertEquals(urlutils.local_path_to_url(".") + "/bar",
             location_to_url("file:bar"))
+
+    def test_absolute_file_url(self):
+        self.assertEquals("file:///bar", location_to_url("file:/bar"))
