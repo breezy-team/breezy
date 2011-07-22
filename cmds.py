@@ -1138,7 +1138,7 @@ class cmd_merge_package(Command):
     This will first check whether the upstream branches have diverged.
 
     If that's the case an attempt will be made to fix the upstream ancestry
-    so that the user only needs to deal wth packaging branch merge issues.
+    so that the user only needs to deal with packaging branch merge issues.
 
     In the opposite case a normal merge will be performed.
     """
