@@ -232,34 +232,35 @@ def _get_newest_versions(the_branch, latest_pub):
         return latest_ver, best_tag
 
 
-def _report_freshness(latest_ver, branch_latest_ver, place, verbosity):
+def _report_freshness(latest_ver, branch_latest_ver, place, verbosity,
+                      report_func):
     """Report if the branch is up-to-date."""
     if latest_ver is None:
         if verbosity == 'all':
-            trace.note('Most recent %s version: MISSING' % (place,))
+            report_func('Most recent %s version: MISSING' % (place,))
         elif verbosity == 'short':
-            trace.note('%s is MISSING a version' % (place,))
+            report_func('%s is MISSING a version' % (place,))
         return
     elif latest_ver == branch_latest_ver:
         if verbosity == 'minimal':
             return
         elif verbosity == 'short':
-            trace.note('%s is CURRENT in %s' % (latest_ver, place))
+            report_func('%s is CURRENT in %s' % (latest_ver, place))
         else:
-            trace.note('Most recent %s version: %s\n'
+            report_func('Most recent %s version: %s\n'
                        'Packaging branch status: CURRENT'
                        % (place, latest_ver))
     else:
         if verbosity in ('minimal', 'short'):
             if branch_latest_ver is None:
                 branch_latest_ver = 'Branch'
-            trace.warning('%s is OUT-OF-DATE, %s has %s'
-                          % (branch_latest_ver, place, latest_ver))
+            report_func('%s is OUT-OF-DATE, %s has %s'
+                        % (branch_latest_ver, place, latest_ver))
         else:
-            trace.warning('Most recent %s version: %s\n'
-                          'Packaging branch version: %s\n'
-                          'Packaging branch status: OUT-OF-DATE'
-                          % (place, latest_ver, branch_latest_ver))
+            report_func('Most recent %s version: %s\n'
+                        'Packaging branch version: %s\n'
+                        'Packaging branch status: OUT-OF-DATE'
+                        % (place, latest_ver, branch_latest_ver))
 
 
 def report_freshness(the_branch, verbosity, latest_pub):
@@ -281,4 +282,5 @@ def report_freshness(the_branch, verbosity, latest_pub):
         verbosity = 'all'
     latest_ver, branch_ver = _get_newest_versions(the_branch, latest_pub)
     place = latest_pub.place()
-    _report_freshness(latest_ver, branch_ver, place, verbosity)
+    _report_freshness(latest_ver, branch_ver, place, verbosity,
+                      trace.note)
