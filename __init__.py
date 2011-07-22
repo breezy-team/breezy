@@ -324,6 +324,40 @@ from bzrlib.diff import format_registry as diff_format_registry
 diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
     'GitDiffTree', 'Git am-style diff format')
 
+
+def update_git_cache(repository, revid):
+    """Update the git cache after a local commit."""
+    if getattr(repository, "_git", None) is not None:
+        return # No need to update cache for git repositories
+
+    from bzrlib.plugins.git.object_store import BazaarObjectStore
+    if not repository.control_transport.has("git"):
+        return # No existing cache, don't bother updating
+    store = BazaarObjectStore(repository)
+    store.lock_write()
+    try:
+        store._update_sha_map_revision(revid)
+    finally:
+        store.unlock()
+
+
+def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,
+        new_revno, new_revid):
+    if local_branch is not None:
+        update_git_cache(local_branch.repository, new_revid)
+    update_git_cache(master_branch.repository, new_revid)
+
+
+try:
+    from bzrlib.hooks import install_lazy_named_hook
+except ImportError: # Compatibility with bzr < 2.4
+    pass
+else:
+    install_lazy_named_hook("bzrlib.branch",
+        "Branch.hooks", "post_commit", post_commit_update_cache,
+        "git cache")
+
+
 def test_suite():
     from bzrlib.plugins.git import tests
     return tests.test_suite()

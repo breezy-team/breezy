@@ -310,7 +310,7 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             self.mapping = mapping
         self._cache = cache_from_repository(repository)
-        self._content_cache_types = ("tree")
+        self._content_cache_types = ("tree",)
         self.start_write_group = self._cache.idmap.start_write_group
         self.abort_write_group = self._cache.idmap.abort_write_group
         self.commit_write_group = self._cache.idmap.commit_write_group
