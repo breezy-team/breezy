@@ -9,7 +9,7 @@ document to ensure it hasn't been updated since you last read it) but it's
 the most complex part.
 
 If you're doing your first release you can follow this document and read
-each step explanation. It's also a good practive to read it for any release
+each step explanation. It's also a good practice to read it for any release
 to ensure you don't miss a step and to update it as the release process
 evolves.
 
@@ -48,12 +48,12 @@ For a given series, releases will be done to deliver new versions of bzr to
 different kinds of users:
 
 #. beta releases: named ``x.ybn`` where ``x.y`` is the series and ``n``
-   starts at 1 and is incremented. These releases are targetted to beta
+   starts at 1 and is incremented. These releases are targeted to beta
    testers who don't want to run from source but are interested in features
    or improvements.
 
 #. stable releases: name ``x.y.z`` where ``x.y.`` is the series and ``z``
-   starts at 1 and is incremented. These releases are targetted at people
+   starts at 1 and is incremented. These releases are targeted at people
    that want bugfixes only and no new features.
 
 
@@ -87,7 +87,7 @@ We want to respect the following rules:
    on the amount of bug fixes, this can be shorter or longer depending on
    the bugs importance),
 
-#. previous series should relesase on a regular basis without interfering
+#. previous series should release on a regular basis without interfering
    with the most recent series with a decreasing order of priority (again
    this should be based on bugs importance and user feedback),
 
@@ -117,9 +117,9 @@ To start a new series cycle:
 #. Create a new series ``x.y`` at <https://launchpad.net/bzr/+addseries>.
 
 #. Add milestones at <https://launchpad.net/bzr/x.y/+addmilestone> to that
-   series for the beta releases and the stable series mentionning their
-   expected dates. Only the milestone asssociated to the next release in
-   this series should be left active to avoid clutter when targetting bugs.
+   series for the beta releases and the stable series mentioning their
+   expected dates. Only the milestone associated to the next release in
+   this series should be left active to avoid clutter when targeting bugs.
 
 #. If you made a new series, you will need to create a new pqm-controlled
    branch for this release series. This branch will be used only from the
@@ -240,7 +240,7 @@ Update the source code
      ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
 
    As of 2011-07-18, all bugs mentioned in the ouput of the script requires
-   some sort of intervention (either chaning the status if it's not 'Fix
+   some sort of intervention (either changing the status if it's not 'Fix
    Released' or setting a different milestone if the bug hasn't been
    fixed). A few false positives may remain in the older series, don't let
    this slow you down too much. This script accepts options you may find
