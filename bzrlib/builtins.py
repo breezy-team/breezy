@@ -3328,7 +3328,7 @@ class cmd_commit(Command):
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
             if my_message == "":
-                raise errors.BzrCommandError("empty commit message specified")
+                raise errors.BzrCommandError("empty commit message specified. Type \"-m\" 'message' to enter a commit message or \"-m\" '' to leave a blank message")
             return my_message
 
         # The API permits a commit with a filter of [] to mean 'select nothing'
