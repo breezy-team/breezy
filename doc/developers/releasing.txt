@@ -621,6 +621,7 @@ evolves from one release to the other):
    button and select the right Ubuntu release. As of September 2010, this
    means:
 
+  * ``oneiric`` for the 2.4 series,
   * ``natty`` for the 2.3 series,
   * ``maverick`` for the 2.2 series,
   * ``lucid`` for the 2.1 series,
