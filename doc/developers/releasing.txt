@@ -596,10 +596,15 @@ bzr 2.2.0, so should get every 2.2.x update.)  This means going through
 the `SRU (Stable Release Updates)
 <https://wiki.ubuntu.com/StableReleaseUpdates>`__ process.   
 
-As of July 2011, bzr has applied to the technical board to be added
-to the `MicroReleaseExceptions
+Since September 2010, bzr has receive approval by the technical
+board for the `MicroReleaseExceptions
 <https://wiki.ubuntu.com/StableReleaseUpdates/MicroReleaseExceptions>`__
-category so that whole bugfix releases can more easily be approved.
+category so that whole bugfix releases can more easily be
+approved.
+
+Progress on these reelease is tracked on the `SRU wiki
+<http://wiki.bazaar.canonical.com/UbuntuStableReleaseUpdates>`_
+page.
 
 **After making a bzr stable-release release, nominate the most serious bug
 for the appropriate Ubuntu release and subscribe the `ubuntu-sru` team.**
