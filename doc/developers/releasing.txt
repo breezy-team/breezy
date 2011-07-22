@@ -57,13 +57,13 @@ different kinds of users:
    that want bugfixes only and no new features.
 
 
-Differences in the release processs between beta and stable release will be
+Differences in the release process between beta and stable release will be
 mentioned when needed.
 
 When do we relase ?
 ===================
 
-As of July 2010, we mantain four series (and one that is about to be EOLed).
+As of July 2010, we maintain four series (and one that is about to be EOLed).
 Concurrently releasing them all at the same time makes it harder to shorten
 the delay between the source availability and the package building longer
 than necessary (we delay the official announcement until most of our users
@@ -239,7 +239,7 @@ Update the source code
 
      ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
 
-   As of 2011-07-18, all bugs mentioned in the ouput of the script requires
+   As of 2011-07-18, all bugs mentioned in the output of the script requires
    some sort of intervention (either changing the status if it's not 'Fix
    Released' or setting a different milestone if the bug hasn't been
    fixed). A few false positives may remain in the older series, don't let
@@ -390,7 +390,7 @@ file correctly, so the sooner the branch is opened again, the better.
 
 This matters more for ``lp:bzr`` than for ``lp:bzr/x.y``, ``lp:bzr`` should
 always be open for landing, so you should do `At the start of a release
-cycle`_ as soon as possible (i.e. update the verion number in ``bzr`` and
+cycle`_ as soon as possible (i.e. update the version number in ``bzr`` and
 ``bzrlib/__init__``, create/update the news files and create/update the
 milestone for the next relase).
 
@@ -531,7 +531,7 @@ Now that the release is publicly available, tell people about it.
 
        python setup.py register
 
-   Remember to check the results afterwards -- this should be done for
+   Remember to check the results afterward -- this should be done for
    stable releases but not for beta releases.
 
    To be able to register the release you must create an account on
