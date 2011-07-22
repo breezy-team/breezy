@@ -602,7 +602,7 @@ board for the `MicroReleaseExceptions
 category so that whole bugfix releases can more easily be
 approved.
 
-Progress on these reelease is tracked on the `SRU wiki
+Progress on these realeases is tracked on the `SRU wiki
 <http://wiki.bazaar.canonical.com/UbuntuStableReleaseUpdates>`_
 page.
 
