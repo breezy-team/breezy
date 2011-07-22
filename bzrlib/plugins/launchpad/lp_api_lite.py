@@ -205,39 +205,36 @@ def get_most_recent_tag(tag_dict, the_branch):
         the_branch.unlock()
 
 
-def report_freshness(the_branch, verbosity, latest_pub):
-    """Report to the user how up-to-date the packaging branch is.
+def _check_freshness(the_branch, latest_pub):
+    """Get information about how 'fresh' this packaging branch is.
 
-    :param the_branch: A Branch object
-    :param verbosity: Can be one of:
-        off: Do not print anything, and skip all checks.
-        all: Print all information that we have in a verbose manner, this
-             includes misses, etc.
-        short: Print information, but only one-line summaries
-        minimal: Only print a one-line summary when the package branch is
-                 out-of-date
-    :param latest_pub: A LatestPublication instance
+    :param the_branch: The Branch to check
+    :param latest_pub: The LatestPublication used to check most recent
+        published version.
+    :return: (tags, latest_ver)
     """
-    if verbosity == 'off':
-        return
-    if verbosity is None:
-        verbosity = 'all'
     t = time.time()
     latest_ver = latest_pub.get_latest_version()
     t_latest_ver = time.time() - t
     trace.mutter('LatestPublication.get_latest_version took: %.3fs'
                  % (t_latest_ver,))
-    place = latest_pub.place()
+    if latest_ver is None:
+        return None, {}
+    t = time.time()
+    tags = the_branch.tags.get_tag_dict()
+    t_tag_dict = time.time() - t
+    trace.mutter('LatestPublication.get_tag_dict took: %.3fs' % (t_tag_dict,))
+    return latest_ver, tags
+
+
+def _report_freshness(the_branch, tags, latest_ver, place, verbosity):
+    """Report if the branch is up-to-date."""
     if latest_ver is None:
         if verbosity == 'all':
             trace.note('Most recent %s version: MISSING' % (place,))
         elif verbosity == 'short':
             trace.note('%s is MISSING a version' % (place,))
         return
-    t = time.time()
-    tags = the_branch.tags.get_tag_dict()
-    t_tag_dict = time.time() - t
-    trace.mutter('LatestPublication.get_tag_dict took: %.3fs' % (t_tag_dict,))
     if latest_ver in tags:
         if verbosity == 'minimal':
             return
@@ -259,3 +256,25 @@ def report_freshness(the_branch, verbosity, latest_pub):
                           'Packaging branch version: %s\n'
                           'Packaging branch status: OUT-OF-DATE'
                           % (place, latest_ver, best_tag))
+
+
+def report_freshness(the_branch, verbosity, latest_pub):
+    """Report to the user how up-to-date the packaging branch is.
+
+    :param the_branch: A Branch object
+    :param verbosity: Can be one of:
+        off: Do not print anything, and skip all checks.
+        all: Print all information that we have in a verbose manner, this
+             includes misses, etc.
+        short: Print information, but only one-line summaries
+        minimal: Only print a one-line summary when the package branch is
+                 out-of-date
+    :param latest_pub: A LatestPublication instance
+    """
+    if verbosity == 'off':
+        return
+    if verbosity is None:
+        verbosity = 'all'
+    latest_ver, tags = _check_freshness(the_branch, latest_pub)
+    place = latest_pub.place()
+    _report_freshness(the_branch, tags, latest_ver, place, verbosity)

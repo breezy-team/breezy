@@ -382,24 +382,22 @@ class StubLatestPublication(object):
 
 class TestReportFreshness(tests.TestCaseWithMemoryTransport):
 
-    def make_trivial_branch(self):
+    def setUp(self):
+        super(TestReportFreshness, self).setUp()
         builder = self.make_branch_builder('tip')
         builder.build_snapshot('A', [], [
             ('add', ('', 'root-id', 'directory', None))])
-        b = builder.get_branch()
-        return b
+        self.branch = builder.get_branch()
 
-    def assertFreshnessReports(self, the_branch, verbosity, latest_version,
-                               content):
+    def assertFreshnessReports(self, verbosity, latest_version, content):
         """Assert that lp_api_lite.report_freshness reports the given content.
 
-        :param the_branch: The branch we are inspecting
         :param verbosity: The reporting level
         :param latest_version: The version reported by StubLatestPublication
         :param content: The expected content. This should be in DocTest form.
         """
         orig_log_len = len(self.get_log())
-        lp_api_lite.report_freshness(the_branch, verbosity,
+        lp_api_lite.report_freshness(self.branch, verbosity,
             StubLatestPublication(latest_version))
         new_content = self.get_log()[orig_log_len:]
         # Strip out lines that have LatestPublication.get_* because those are
@@ -416,101 +414,87 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
                 doctest.ELLIPSIS | doctest.REPORT_UDIFF))
 
     def test_verbosity_off_skips_check(self):
-        b = self.make_trivial_branch()
         # We force _get_package_branch_info so that we know it would otherwise
         # try to connect to launcphad
         self.overrideAttr(launchpad, '_get_package_branch_info',
             lambda x: ('ubuntu', 'natty', 'bzr'))
         self.overrideAttr(lp_api_lite, 'LatestPublication',
             lambda *args: self.fail('Tried to query launchpad'))
-        c = b.get_config()
-        c.set_user_option('bzr.plugins.launchpad.packaging_verbosity', 'off')
+        c = self.branch.get_config()
+        c.set_user_option('launchpad.packaging_verbosity', 'off')
         orig_log_len = len(self.get_log())
-        launchpad._check_is_up_to_date(b)
+        launchpad._check_is_up_to_date(self.branch)
         new_content = self.get_log()[orig_log_len:]
         self.assertContainsRe(new_content,
             'not checking memory.*/tip/ because verbosity is turned off')
 
     def test_verbosity_off(self):
-        b = self.make_trivial_branch()
         latest_pub = StubLatestPublication('1.0-1ubuntu2')
-        lp_api_lite.report_freshness(b, 'off', latest_pub)
+        lp_api_lite.report_freshness(self.branch, 'off', latest_pub)
         self.assertFalse(latest_pub.called)
 
     def test_verbosity_minimal_no_tags(self):
-        b = self.make_trivial_branch()
-        self.assertFreshnessReports(b, 'minimal', '1.0-1ubuntu2',
+        self.assertFreshnessReports('minimal', '1.0-1ubuntu2',
             ' WARNING  Branch is OUT-OF-DATE, Ubuntu Natty has 1.0-1ubuntu2\n')
 
     def test_verbosity_minimal_out_of_date(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu1', 'A')
-        self.assertFreshnessReports(b, 'minimal', '1.0-1ubuntu2',
+        self.branch.tags.set_tag('1.0-1ubuntu1', 'A')
+        self.assertFreshnessReports('minimal', '1.0-1ubuntu2',
             ' WARNING  1.0-1ubuntu1 is OUT-OF-DATE,'
              ' Ubuntu Natty has 1.0-1ubuntu2\n')
 
     def test_verbosity_minimal_up_to_date(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu2', 'A')
-        self.assertFreshnessReports(b, 'minimal', '1.0-1ubuntu2',
+        self.branch.tags.set_tag('1.0-1ubuntu2', 'A')
+        self.assertFreshnessReports('minimal', '1.0-1ubuntu2',
              '')
 
     def test_verbosity_minimal_missing(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu2', 'A')
-        self.assertFreshnessReports(b, 'minimal', None,
+        self.branch.tags.set_tag('1.0-1ubuntu2', 'A')
+        self.assertFreshnessReports('minimal', None,
              '')
 
     def test_verbosity_short_out_of_date(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu1', 'A')
-        self.assertFreshnessReports(b, 'short', '1.0-1ubuntu2',
+        self.branch.tags.set_tag('1.0-1ubuntu1', 'A')
+        self.assertFreshnessReports('short', '1.0-1ubuntu2',
             ' WARNING  1.0-1ubuntu1 is OUT-OF-DATE,'
              ' Ubuntu Natty has 1.0-1ubuntu2\n')
 
     def test_verbosity_short_up_to_date(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu2', 'A')
-        self.assertFreshnessReports(b, 'short', '1.0-1ubuntu2',
+        self.branch.tags.set_tag('1.0-1ubuntu2', 'A')
+        self.assertFreshnessReports('short', '1.0-1ubuntu2',
              '    INFO  1.0-1ubuntu2 is CURRENT in Ubuntu Natty')
 
     def test_verbosity_short_missing(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu2', 'A')
-        self.assertFreshnessReports(b, 'short', None,
+        self.branch.tags.set_tag('1.0-1ubuntu2', 'A')
+        self.assertFreshnessReports('short', None,
              '    INFO  Ubuntu Natty is MISSING a version')
 
     def test_verbosity_all_no_tags(self):
-        b = self.make_trivial_branch()
-        self.assertFreshnessReports(b, 'all', '1.0-1ubuntu2',
+        self.assertFreshnessReports('all', '1.0-1ubuntu2',
              ' WARNING  Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
              'Packaging branch version: None\n'
              'Packaging branch status: OUT-OF-DATE\n')
 
     def test_verbosity_all_out_of_date(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu1', 'A')
-        self.assertFreshnessReports(b, 'all', '1.0-1ubuntu2',
+        self.branch.tags.set_tag('1.0-1ubuntu1', 'A')
+        self.assertFreshnessReports('all', '1.0-1ubuntu2',
              ' WARNING  Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
              'Packaging branch version: 1.0-1ubuntu1\n'
              'Packaging branch status: OUT-OF-DATE\n')
 
     def test_verbosity_all_up_to_date(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu2', 'A')
-        self.assertFreshnessReports(b, 'all', '1.0-1ubuntu2',
+        self.branch.tags.set_tag('1.0-1ubuntu2', 'A')
+        self.assertFreshnessReports('all', '1.0-1ubuntu2',
              '    INFO  Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
              'Packaging branch status: CURRENT\n')
 
     def test_verbosity_all_missing(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu2', 'A')
-        self.assertFreshnessReports(b, 'all', None,
+        self.branch.tags.set_tag('1.0-1ubuntu2', 'A')
+        self.assertFreshnessReports('all', None,
              '    INFO  Most recent Ubuntu Natty version: MISSING\n')
 
     def test_verbosity_None_is_all(self):
-        b = self.make_trivial_branch()
-        b.tags.set_tag('1.0-1ubuntu2', 'A')
-        self.assertFreshnessReports(b, None, '1.0-1ubuntu2',
+        self.branch.tags.set_tag('1.0-1ubuntu2', 'A')
+        self.assertFreshnessReports(None, '1.0-1ubuntu2',
              '    INFO  Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
              'Packaging branch status: CURRENT\n')

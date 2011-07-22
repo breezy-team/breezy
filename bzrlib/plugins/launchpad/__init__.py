@@ -500,7 +500,7 @@ def _check_is_up_to_date(the_branch):
     if info is None:
         return
     c = the_branch.get_config()
-    verbosity = c.get_user_option('bzr.plugins.launchpad.packaging_verbosity')
+    verbosity = c.get_user_option('launchpad.packaging_verbosity')
     if verbosity is not None:
         verbosity = verbosity.lower()
     if verbosity == 'off':
