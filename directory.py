@@ -44,9 +44,9 @@ class VcsDirectory(object):
             sources = apt_pkg.GetPkgSrcRecords()
 
         urls = {}
-        lookup = getattr(sources, 'lookup', getattr(sources, 'Lookup'))
+        lookup = getattr(sources, 'lookup', getattr(sources, 'Lookup', None))
         while lookup(name):
-            record = getattr(sources, 'record', getattr(sources, 'Record'))
+            record = getattr(sources, 'record', getattr(sources, 'Record', None))
             for l in record.splitlines():
                 if not ": " in l:
                     continue
@@ -64,7 +64,7 @@ class VcsDirectory(object):
         if version is None:
             # Try the latest version
             cmp = getattr(apt_pkg, 'version_compare',
-                    getattr(apt_pkg, 'VersionCompare'))
+                    getattr(apt_pkg, 'VersionCompare', None))
             version = sorted(urls,cmp=cmp)[0]
 
         if not version in urls:
