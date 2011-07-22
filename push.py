@@ -41,7 +41,7 @@ from bzrlib.plugins.git.repository import (
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
     )
-from bzrlib.plugins.git.refs import (
+from bzrlib.plugins.git.unpeel_map import (
     UnpeelMap,
     )
 

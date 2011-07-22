@@ -16,16 +16,12 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
-from collections import defaultdict
-from cStringIO import StringIO
-
 from dulwich.repo import (
     RefsContainer,
     )
 
 from bzrlib import (
     errors,
-    trace,
     )
 
 is_tag = lambda x: x.startswith("refs/tags/")
@@ -181,62 +177,3 @@ class BazaarRefsContainer(RefsContainer):
             target_branch.generate_revision_history(rev_id)
         finally:
             target_branch.unlock()
-
-
-class UnpeelMap(object):
-    """Unpeel map.
-
-    Keeps track of the unpeeled object id of tags.
-    """
-
-    def __init__(self):
-        self._map = defaultdict(set)
-
-    def update(self, m):
-        for k, v in m.iteritems():
-            self._map[k].update(v)
-
-    def load(self, f):
-        firstline = f.readline()
-        if firstline != "unpeel map version 1\n":
-            raise AssertionError("invalid format for unpeel map: %r" % firstline)
-        for l in f.readlines():
-            (k, v) = l.split(":", 1)
-            self._map[k.strip()].add(v.strip())
-
-    def save(self, f):
-        f.write("unpeel map version 1\n")
-        for k, vs in self._map.iteritems():
-            for v in vs:
-                f.write("%s: %s\n" % (k, v))
-
-    def save_in_repository(self, repository):
-        f = StringIO()
-        try:
-            self.save(f)
-            f.seek(0)
-            repository.control_transport.put_file("git-unpeel-map", f)
-        finally:
-            f.close()
-
-    def re_unpeel_tag(self, new_git_sha, old_git_sha):
-        """Re-unpeel tags.
-
-        Bazaar can't store unpeeled refs so in order to prevent peeling
-        existing tags when pushing they are "re-peeled" here.
-        """
-        if old_git_sha is not None and old_git_sha in self._map[new_git_sha]:
-            trace.mutter("re-unpeeling %r to %r", new_git_sha, old_git_sha)
-            return old_git_sha
-        return new_git_sha
-
-    @classmethod
-    def from_repository(cls, repository):
-        """Load the unpeel map for a repository.
-        """
-        m = UnpeelMap()
-        try:
-            m.load(repository.control_transport.get("git-unpeel-map"))
-        except errors.NoSuchFile:
-            pass
-        return m

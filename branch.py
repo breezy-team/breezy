@@ -60,6 +60,8 @@ from bzrlib.plugins.git.refs import (
     ref_to_branch_name,
     ref_to_tag_name,
     tag_name_to_ref,
+    )
+from bzrlib.plugins.git.unpeel_map import (
     UnpeelMap,
     )
 

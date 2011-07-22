@@ -42,6 +42,9 @@ from bzrlib.testament import(
     StrictTestament3,
     )
 
+from bzrlib.plugins.git.cache import (
+    from_repository as cache_from_repository,
+    )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     directory_to_tree,
@@ -49,8 +52,8 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     symlink_to_blob,
     )
-from bzrlib.plugins.git.cache import (
-    from_repository as cache_from_repository,
+from bzrlib.plugins.git.unpeel_map import (
+    UnpeelMap,
     )
 
 import posixpath
@@ -121,9 +124,12 @@ def _find_missing_bzr_revids(graph, want, have):
     :param have: Revisions the target already has
     :return: Set of revisions to fetch
     """
+    handled = set(have)
     todo = set()
     for rev in want:
-        todo.update(graph.find_unique_ancestors(rev, have))
+        extra_todo = graph.find_unique_ancestors(rev, handled)
+        todo.update(extra_todo)
+        handled.update(extra_todo)
     if NULL_REVISION in todo:
         todo.remove(NULL_REVISION)
     return todo
@@ -315,6 +321,7 @@ class BazaarObjectStore(BaseObjectStore):
         self.abort_write_group = self._cache.idmap.abort_write_group
         self.commit_write_group = self._cache.idmap.commit_write_group
         self.tree_cache = LRUTreeCache(self.repository)
+        self.unpeel_map = UnpeelMap.from_repository(self.repository)
 
     def _update_sha_map(self, stop_revision=None):
         if not self.is_locked():
@@ -676,12 +683,13 @@ class BazaarObjectStore(BaseObjectStore):
         processed = set()
         ret = self.lookup_git_shas(have + want)
         for commit_sha in have:
+            commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for (type, type_data) in ret[commit_sha]:
                     assert type == "commit"
                     processed.add(type_data[0])
             except KeyError:
-                pass
+                trace.mutter("unable to find remote ref %s", commit_sha)
         pending = set()
         for commit_sha in want:
             if commit_sha in have:

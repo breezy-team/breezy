@@ -154,7 +154,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
         assert ie.revision is not None
         if ie.kind == 'symlink':
             chunks = []
-        else: 
+        else:
             chunks = blob.chunked
         texts.insert_record_stream([
             ChunkedContentFactory((file_id, ie.revision),
