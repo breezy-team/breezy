@@ -63,7 +63,7 @@ mentioned when needed.
 When do we relase ?
 ===================
 
-As of July 2010, we maintain four series (and one that is about to be EOLed).
+As of July 2011, we maintain four series (and one that is about to be EOLed).
 Concurrently releasing them all at the same time makes it harder to shorten
 the delay between the source availability and the package building longer
 than necessary (we delay the official announcement until most of our users
@@ -416,7 +416,17 @@ fixes.
 won't be released sooner than a month from now whereas people may already
 been waiting to land on ``lp:bzr``.
 
-   
+In a nutshell:
+
+#. Create or update the ``x.y`` PQM branch based on whatever
+   revision you want to release
+
+#. Open ``lp:bzr`` for ``x.(y+1)``
+
+#. Release ``x.y.0`` from ``lp:bzr/x.y``
+
+#. Open ``lp:bzr/x.y`` for bug fixes
+
 Announcing the source freeze
 ----------------------------
 
