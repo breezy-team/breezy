@@ -1623,6 +1623,8 @@ def get_transport_from_url(url, possible_transports=None):
                         raise AssertionError()
                     possible_transports.append(transport)
                 return transport
+    if not urlutils.is_url(url):
+        raise errors.InvalidURL(path=url)
     raise errors.UnsupportedProtocol(url, last_err)
 
 
