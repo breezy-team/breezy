@@ -1157,7 +1157,7 @@ class TestCase(testtools.TestCase):
 
     def permit_dir(self, name):
         """Permit a directory to be used by this test. See permit_url."""
-        name_transport = _mod_transport.get_transport(name)
+        name_transport = _mod_transport.get_transport_from_path(name)
         self.permit_url(name)
         self.permit_url(name_transport.base)
 
@@ -1242,7 +1242,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
-        t = _mod_transport.get_transport(transport_server.get_url())
+        t = _mod_transport.get_transport_from_url(transport_server.get_url())
         # Some transport servers effectively chroot the backing transport;
         # others like SFTPServer don't - users of the transport can walk up the
         # transport to read the entire backing transport. This wouldn't matter
@@ -2360,7 +2360,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = _mod_transport.get_transport(self.get_url(relpath))
+        t = _mod_transport.get_transport_from_url(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
@@ -2591,7 +2591,7 @@ class TestCaseWithMemoryTransport(TestCase):
             backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, backing_server)
-        remote_transport = _mod_transport.get_transport(smart_server.get_url()
+        remote_transport = _mod_transport.get_transport_from_url(smart_server.get_url()
                                                    ).clone(path)
         return remote_transport
 

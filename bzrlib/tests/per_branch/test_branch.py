@@ -673,7 +673,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             return
         # supported formats must be able to init and open
         t = self.get_transport()
-        readonly_t = transport.get_transport(self.get_readonly_url())
+        readonly_t = transport.get_transport_from_url(self.get_readonly_url())
         made_branch = self.make_branch('.')
         self.assertIsInstance(made_branch, _mod_branch.Branch)
 

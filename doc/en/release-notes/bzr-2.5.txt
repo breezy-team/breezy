@@ -87,6 +87,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* New methods ``get_transport_from_path`` and ``get_transport_from_url``
+  have been added that only support opening from a path or a URL,
+  unlike ``get_transport``. (Jelmer Vernooij)
+
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)
 
@@ -112,6 +116,7 @@ API Changes
   in favor of passing a filtered tree, and the specific exporter plugins
   no longer support it.
   (Martin Pool)
+
 
 Internals
 *********

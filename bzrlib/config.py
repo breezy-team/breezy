@@ -2562,7 +2562,7 @@ class LockableIniFileStore(IniFileStore):
 class GlobalStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport(config_dir(),
+        t = transport.get_transport_from_path(config_dir(),
                                     possible_transports=possible_transports)
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
 
@@ -2570,7 +2570,7 @@ class GlobalStore(LockableIniFileStore):
 class LocationStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport(config_dir(),
+        t = transport.get_transport_from_path(config_dir(),
                                     possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
 

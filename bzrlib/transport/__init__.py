@@ -1583,6 +1583,49 @@ def location_to_url(location):
     return urlutils.local_path_to_url(location)
 
 
+def get_transport_from_path(path, possible_transports=None):
+    """Open a transport for a local path.
+
+    :param path: Local path as byte or unicode string
+    :return: Transport object for path
+    """
+    return get_transport_from_url(urlutils.local_path_to_url(path),
+        possible_transports)
+
+
+def get_transport_from_url(url, possible_transports=None):
+    """Open a transport to access a URL.
+    
+    :param base: a URL
+    :param transports: optional reusable transports list. If not None, created
+        transports will be added to the list.
+
+    :return: A new transport optionally sharing its connection with one of
+        possible_transports.
+    """
+    transport = None
+    if possible_transports is not None:
+        for t in possible_transports:
+            t_same_connection = t._reuse_for(url)
+            if t_same_connection is not None:
+                # Add only new transports
+                if t_same_connection not in possible_transports:
+                    possible_transports.append(t_same_connection)
+                return t_same_connection
+
+    last_err = None
+    for proto, factory_list in transport_list_registry.items():
+        if proto is not None and url.startswith(proto):
+            transport, last_err = _try_transport_factories(url, factory_list)
+            if transport:
+                if possible_transports is not None:
+                    if transport in possible_transports:
+                        raise AssertionError()
+                    possible_transports.append(transport)
+                return transport
+    raise errors.UnsupportedProtocol(url, last_err)
+
+
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1596,29 +1639,7 @@ def get_transport(base, possible_transports=None):
     """
     if base is None:
         base = '.'
-    base = location_to_url(base)
-
-    transport = None
-    if possible_transports is not None:
-        for t in possible_transports:
-            t_same_connection = t._reuse_for(base)
-            if t_same_connection is not None:
-                # Add only new transports
-                if t_same_connection not in possible_transports:
-                    possible_transports.append(t_same_connection)
-                return t_same_connection
-
-    last_err = None
-    for proto, factory_list in transport_list_registry.items():
-        if proto is not None and base.startswith(proto):
-            transport, last_err = _try_transport_factories(base, factory_list)
-            if transport:
-                if possible_transports is not None:
-                    if transport in possible_transports:
-                        raise AssertionError()
-                    possible_transports.append(transport)
-                return transport
-    raise errors.UnsupportedProtocol(base, last_err)
+    return get_transport_from_url(location_to_url(base), possible_transports)
 
 
 def _try_transport_factories(base, factory_list):

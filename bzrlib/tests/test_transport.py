@@ -38,6 +38,7 @@ from bzrlib.transport import (
     pathfilter,
     readonly,
     )
+import bzrlib.transport.trace
 from bzrlib.tests import (
     features,
     test_server,
@@ -672,7 +673,7 @@ class TestTransportImplementation(tests.TestCaseInTempDir):
         base_url = self._server.get_url()
         url = self._adjust_url(base_url, relpath)
         # try getting the transport via the regular interface:
-        t = transport.get_transport(url)
+        t = transport.get_transport_from_url(url)
         # vila--20070607 if the following are commented out the test suite
         # still pass. Is this really still needed or was it a forgotten
         # temporary fix ?
@@ -842,7 +843,7 @@ class TestReusedTransports(tests.TestCase):
 
 class TestTransportTrace(tests.TestCase):
 
-    def test_get(self):
+    def test_decorator(self):
         t = transport.get_transport('trace+memory://')
         self.assertIsInstance(
             t, bzrlib.transport.trace.TransportTraceDecorator)
