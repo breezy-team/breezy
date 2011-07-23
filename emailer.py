@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 import errno
 import subprocess
+import tempfile
 
 from bzrlib import (
     errors,
@@ -82,7 +83,8 @@ class EmailSender(object):
             _body = 'At %s\n\n' % self.url()            
         outf.write(self.format(_body))
 
-        lf = log.log_formatter('long',
+        log_format = self.config.get_user_option('post_commit_log_format')
+        lf = log.log_formatter(log_format or 'long',
                                show_ids=True,
                                to_file=outf
                                )
@@ -131,7 +133,8 @@ class EmailSender(object):
         # 8-bit strings. It is an error to write a Unicode string here.
         from cStringIO import StringIO
         diff_content = StringIO()
-        show_diff_trees(tree_old, tree_new, diff_content)
+        diff_options = self.config.get_user_option('post_commit_diffoptions')
+        show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)
         numlines = diff_content.getvalue().count('\n')+1
         if numlines <= difflimit:
             return diff_content.getvalue()
@@ -184,6 +187,19 @@ class EmailSender(object):
             result = self.config.username()
         return result
 
+    def extra_headers(self):
+        """Additional headers to include when sending."""
+        result = {}
+        headers = self.config.get_user_option('revision_mail_headers')
+        if not headers:
+            return
+        if type(headers) is not list:
+            headers = [headers]
+        for line in headers:
+            key, value = line.split(": ", 1)
+            result[key] = value
+        return result
+
     def send(self):
         """Send the email.
 
@@ -208,30 +224,23 @@ class EmailSender(object):
         """Spawn a 'mail' subprocess to send the email."""
         # TODO think up a good test for this, but I think it needs
         # a custom binary shipped with. RBC 20051021
+        msgfile = tempfile.NamedTemporaryFile()
         try:
+            msgfile.write(self.body().encode('utf8'))
+            diff = self.get_diff()
+            if diff:
+                msgfile.write(diff)
+            msgfile.flush()
+            msgfile.seek(0)
+
             process = subprocess.Popen(self._command_line(),
-                                       stdin=subprocess.PIPE)
-            try:
-                message = self.body().encode('utf8') + self.get_diff()
-                result = process.communicate(message)[0]
-                if process.returncode is None:
-                    process.wait()
-                if process.returncode != 0:
-                    raise errors.BzrError("Failed to send email")
-                return result
-            except OSError, e:
-                if e.errno == errno.EPIPE:
-                    raise errors.BzrError("Failed to send email.")
-                else:
-                    raise
-        except ValueError:
-            # bad subprocess parameters, should never happen.
-            raise
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise errors.BzrError("mail is not installed !?")
-            else:
-                raise
+                stdin=msgfile.fileno())
+
+            rc = process.wait()
+            if rc != 0:
+                raise errors.BzrError("Failed to send email: exit status %s" % (rc,))
+        finally:
+            msgfile.close()
 
     def _send_using_smtplib(self):
         """Use python's smtplib to send the email."""
@@ -244,12 +253,16 @@ class EmailSender(object):
             to_addrs = [to_addrs]
 
         smtp = self._smtplib_implementation(self.config)
-        smtp.send_text_and_attachment_email(from_addr, to_addrs,
-                                            subject, body, diff,
-                                            self.diff_filename())
+        if diff:
+            smtp.send_text_and_attachment_email(from_addr, to_addrs,
+                                                subject, body, diff,
+                                                self.diff_filename(),
+                                                self.extra_headers())
+        else:
+            smtp.send_text_email(from_addr, to_addrs, subject, body,
+                                 self.extra_headers())
 
     def should_send(self):
-        result = self.config.get_user_option('post_commit_difflimit')
         post_commit_push_pull = self.config.get_user_option(
             'post_commit_push_pull') == 'True'
         if post_commit_push_pull and self.op == 'commit':
