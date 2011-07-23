@@ -403,6 +403,7 @@ class LocalGitRepository(GitRepository):
 class GitRepositoryFormat(repository.RepositoryFormat):
     """Git repository format."""
 
+    supports_versioned_directories = False
     supports_tree_reference = False
     rich_root_data = True
     supports_leaving_lock = False
