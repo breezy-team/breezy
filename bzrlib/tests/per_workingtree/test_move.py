@@ -372,14 +372,20 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
 
-
         tree.rename_one('a/b', 'a/c/b')
-        self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
-                               ('d', 'd-id'),
-                               ('a/c', 'c-id'),
-                               ('a/c/b', 'b-id'),
-                              ], tree)
+        if self.workingtree_format.supports_versioned_directories:
+            self.assertTreeLayout([('', root_id),
+                                   ('a', 'a-id'),
+                                   ('d', 'd-id'),
+                                   ('a/c', 'c-id'),
+                                   ('a/c/b', 'b-id'),
+                                  ], tree)
+        else:
+            self.assertTreeLayout([('', root_id),
+                                   ('a', 'a-id'),
+                                   ('a/c', 'c-id'),
+                                   ('a/c/b', 'b-id'),
+                                  ], tree)
         self.assertEqual([('a', 'd/a')],
                          tree.move(['a'], 'd'))
         self.assertTreeLayout([('', root_id),
