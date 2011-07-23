@@ -101,8 +101,11 @@ class TestKindChanges(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEquals([], list(tree.iter_changes(tree.basis_tree())))
-        self.assertEquals(
-            ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
+        if tree._format.supports_versioned_directories:
+            self.assertEquals(
+                ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
+        else:
+            self.assertEquals([], list(tree.list_files()))
 
     def test_dir_changes_to_symlink(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
