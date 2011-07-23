@@ -38,7 +38,8 @@ class UnpeelMap(object):
     def update(self, m):
         for k, v in m.iteritems():
             self._map[k].update(v)
-            self._re_map[v] = k
+            for i in v:
+                self._re_map[i] = k
 
     def load(self, f):
         firstline = f.readline()
