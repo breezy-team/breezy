@@ -2614,14 +2614,15 @@ class TestCaseWithMemoryTransport(TestCase):
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         # Ensure that ConnectedTransport doesn't leak sockets
-        def get_transport_with_cleanup(*args, **kwargs):
-            t = orig_get_transport(*args, **kwargs)
+        def get_transport_from_url_with_cleanup(*args, **kwargs):
+            t = orig_get_transport_from_url(*args, **kwargs)
             if isinstance(t, _mod_transport.ConnectedTransport):
                 self.addCleanup(t.disconnect)
             return t
 
-        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
-                                               get_transport_with_cleanup)
+        orig_get_transport_from_url = self.overrideAttr(
+            _mod_transport, 'get_transport_from_url',
+            get_transport_from_url_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
