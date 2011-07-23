@@ -35,6 +35,9 @@ New Features
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
 
+* Relative local paths can now be specified in URL syntax by using the
+  "file:" prefix.  (Jelmer Vernooij)
+
 Improvements
 ************
 
