@@ -638,6 +638,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     _tree_class = GitWorkingTree
 
+    supports_versioned_directories = False
+
     @property
     def _matchingbzrdir(self):
         from bzrlib.plugins.git.dir import LocalGitControlDirFormat
