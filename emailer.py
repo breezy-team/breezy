@@ -43,15 +43,14 @@ class EmailSender(object):
         self.revision = None
         self.revno = None
         self.op = op
-        self.committer = self.repository.get_revision(self._revision_id).committer
+        self.committer = self.repository.get_revision(
+            self._revision_id).committer
 
     def _setup_revision_and_revno(self):
         self.revision = self.repository.get_revision(self._revision_id)
         self.revno = self.branch.revision_id_to_revno(self._revision_id)
         
-    def format(self, text):
-        if text == None:
-            return None
+    def _format(self, text):
         fields = {
             'committer': self.committer,
             'message': self.revision.get_summary(),
@@ -60,7 +59,7 @@ class EmailSender(object):
         }        
         for name, value in fields.items():
             text = text.replace('$%s' % name, value)                 
-        return text.replace('\\n', '\n')
+        return text
 
     def body(self):
         from bzrlib import log
@@ -79,9 +78,9 @@ class EmailSender(object):
         outf = StringIO()
 
         _body = self.config.get_user_option('post_commit_body')
-        if _body == None:
+        if _body is None:
             _body = 'At %s\n\n' % self.url()            
-        outf.write(self.format(_body))
+        outf.write(self._format(_body))
 
         log_format = self.config.get_user_option('post_commit_log_format')
         lf = log.log_formatter(log_format or 'long',
@@ -279,12 +278,12 @@ class EmailSender(object):
             
     def subject(self):        
         _subject = self.config.get_user_option('post_commit_subject')
-        if _subject == None:
+        if _subject is None:
             _subject = ("Rev %d: %s in %s" % 
                 (self.revno,
                  self.revision.get_summary(),
                  self.url()))
-        return self.format(_subject)
+        return self._format(_subject)
 
     def diff_filename(self):
         return "patch-%s.diff" % (self.revno,)

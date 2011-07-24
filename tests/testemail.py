@@ -54,7 +54,8 @@ customized_mail_config=("[DEFAULT]\n"
                         "post_commit_to=demo@example.com\n"
                         "post_commit_sender=Sample <foo@example.com>\n"
                         "post_commit_subject=[commit] $message\n"
-                        "post_commit_body=$committer has committed revision 1 at $url.\\n\\n\n")
+                        "post_commit_body='''$committer has committed "
+                            "revision 1 at $url.\n\n'''\n")
 
 push_config=("[DEFAULT]\n"
     "post_commit_to=demo@example.com\n"
@@ -87,7 +88,8 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_custom_body(self):        
         sender = self.get_sender(customized_mail_config)
-        self.assertEqual('%s has committed revision 1 at %s.\n\n%s' % (sender.committer, sender.url(), sample_log),
+        self.assertEqual('%s has committed revision 1 at %s.\n\n%s' % 
+                            (sender.committer, sender.url(), sample_log),
                          sender.body())
 
     def test_command_line(self):
