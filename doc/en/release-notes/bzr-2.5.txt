@@ -136,6 +136,8 @@ Testing
   due to the order that `build_snapshot` performs its actions.
   (Andrew Bennetts)
 
+* Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
+
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,
   rather than opening the WorkingTree and calling ``last_revision()``.
