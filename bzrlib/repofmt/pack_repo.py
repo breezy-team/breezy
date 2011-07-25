@@ -25,6 +25,7 @@ import time
 from bzrlib import (
     chk_map,
     cleanup,
+    config,
     debug,
     graph,
     osutils,
@@ -489,7 +490,8 @@ class NewPack(Pack):
             self.index_sizes.append(None)
             self._write_index('chk', self.chk_index,
                 'content hash bytes', suspend)
-        self.write_stream.close(want_fdatasync=True)
+        self.write_stream.close(
+            want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
         # Note that this will clobber an existing pack with the same name,
         # without checking for hash collisions. While this is undesirable this
         # is something that can be rectified in a subsequent release. One way
@@ -543,7 +545,8 @@ class NewPack(Pack):
         write_stream = transport.open_write_stream(index_name,
             mode=self._file_mode)
         write_stream.write(index_bytes)
-        write_stream.close(want_fdatasync=True)
+        write_stream.close(
+            want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
         self.index_sizes[self.index_offset(index_type)] = len(index_bytes)
         if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
@@ -828,6 +831,7 @@ class RepositoryPackCollection(object):
                 set(all_combined).difference([combined_idx]))
         # resumed packs
         self._resumed_packs = []
+        self.config_stack = config.LocationStack(self.transport.base)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.repo)

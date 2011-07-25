@@ -2286,6 +2286,11 @@ option_registry.register(
     'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
     help='Flush dirstate changes onto physical disk?')
 
+option_registry.register(
+    'repository.fdatasync',
+    Option('repository.fdatasync', default=True),
+    help='Flush repository changes onto physical disk?')
+
 
 class Section(object):
     """A section defines a dict of option name => value.
