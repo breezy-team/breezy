@@ -229,7 +229,7 @@ class BzrDir(controldir.ControlDir):
     # TODO: This should be given a Transport, and should chdir up; otherwise
     # this will open a new connection.
     def _make_tail(self, url):
-        t = _mod_transport.get_transport_from_url(url)
+        t = _mod_transport.get_transport(url)
         t.ensure_base()
 
     @staticmethod
