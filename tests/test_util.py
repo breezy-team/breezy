@@ -73,6 +73,7 @@ from bzrlib.plugins.builddeb.util import (
     strip_changelog_message,
     suite_to_distribution,
     tarball_name,
+    tree_contains_upstream_source,
     write_if_different,
     )
 
@@ -950,3 +951,44 @@ class ComponentFromOrigTarballTests(TestCase):
     def test_invalid_character(self):
         self.assertRaises(ValueError,
             component_from_orig_tarball, "foo_0.1.orig;.tar.gz", "foo", "0.1")
+
+
+class TreeContainsUpstreamSourceTests(TestCaseWithTransport):
+
+    def test_empty(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertIs(None, tree_contains_upstream_source(tree))
+
+    def test_debian_dir_only(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['debian/'])
+        tree.add(['debian'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertFalse(tree_contains_upstream_source(tree))
+
+    def test_debian_dir_and_bzr_builddeb(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['debian/', '.bzr-builddeb/'])
+        tree.add(['debian', '.bzr-builddeb'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertFalse(tree_contains_upstream_source(tree))
+
+    def test_with_upstream_source(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['debian/', 'src/'])
+        tree.add(['debian', 'src'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertTrue(tree_contains_upstream_source(tree))
+
+    def test_with_unversioned_extra_data(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['debian/', 'x'])
+        tree.add(['debian'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertFalse(tree_contains_upstream_source(tree))
