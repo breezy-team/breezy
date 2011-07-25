@@ -24,9 +24,10 @@ from bzrlib import (
     errors as bzr_errors,
     tests,
     )
-from bzrlib.tests.features import (
-    Feature,
-    )
+try:
+    from bzrlib.tests.features import Feature
+except ImportError: # bzr < 2.5
+    from bzrlib.tests import Feature
 from bzrlib.plugins.git import (
     import_dulwich,
     )
