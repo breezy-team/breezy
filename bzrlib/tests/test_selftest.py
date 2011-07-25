@@ -1690,7 +1690,7 @@ class TestTestCase(tests.TestCase):
             test_selftest, '_add_numbers')
         self.assertEqual(test_selftest._add_numbers(2, 10),
             12)
-        self.assertEquals([(2, 10), {}], calls)
+        self.assertEquals(calls, [((2, 10), {}))
 
 
 def _add_numbers(a, b):
