@@ -5,12 +5,14 @@ bzr-builddeb (2.7.7) UNRELEASED; urgency=low
     LP: #776528
 
   [ Andrew Bennetts ]
-  * Use dpkg-mergechangelogs(1) to merge changelog files.  Fixes LP:
-    #718944 (preserve the existing ordering of changelog entries when
-    merging); LP: #552950 (Additional changelog entries are modified
-    when merging another branch); LP: #517093 (3-way changelog file
-    merge doesn't do textual merging on sections); and LP: #517090 (3-
-    way changelog file merge doesn't support deletions).
+  * Use dpkg-mergechangelogs(1) to merge changelog files.
+   + Preserve the existing ordering of changelog entries when merging.
+     LP: #718944
+   + Additional changelog entries are modified when merging another branch.
+     LP: #552950
+   + 3-way changelog file merge doesn't do textual merging on sections.
+     LP: #517093
+   + 3-way changelog file merge doesn't support deletions. LP: #517090
 
  -- Andrew Bennetts <andrew@bemusement.org>  Mon, 25 Jul 2011 16:38:09 +1000
 
