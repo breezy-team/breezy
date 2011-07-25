@@ -20,10 +20,12 @@
 import socket
 
 from bzrlib import tests
+from bzrlib.tests import features
 from bzrlib.plugins import launchpad
 from bzrlib.plugins.launchpad import lp_api_lite
 
-class _JSONParserFeature(tests.Feature):
+
+class _JSONParserFeature(features.Feature):
 
     def _probe(self):
         return lp_api_lite.json is not None
@@ -31,7 +33,9 @@ class _JSONParserFeature(tests.Feature):
     def feature_name(self):
         return 'simplejson or json'
 
+
 JSONParserFeature = _JSONParserFeature()
+
 
 _example_response = r"""
 {
