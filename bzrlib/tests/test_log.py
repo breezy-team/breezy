@@ -1601,7 +1601,12 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
 class TestLogDefaults(TestCaseForLogFormatter):
     def test_default_log_level(self):
-        #wt = self.make_standard_commit('test_default_log_level')
+        """
+        Test to ensure that specifying 'levels=1' to make_log_request_dict
+        doesn't get overwritten when using a LogFormatter that supports more
+        detail.
+        Fixes bug #747958.
+        """
         wt = self._prepare_tree_with_merges()
         b = wt.branch
 
@@ -1622,7 +1627,7 @@ class TestLogDefaults(TestCaseForLogFormatter):
         request = log.make_log_request_dict(limit=10)
         log.Logger(b, request).show(log_formatter)
         # should have all three revisions:
-        self.assert_(len(log_formatter.revisions) == 3)
+        self.assertEquals(len(log_formatter.revisions), 3)
 
         del log_formatter
         log_formatter = LogCatcher()
@@ -1630,4 +1635,4 @@ class TestLogDefaults(TestCaseForLogFormatter):
         request = log.make_log_request_dict(limit=10, levels=1)
         log.Logger(b, request).show(log_formatter)
         # should now only have 2 revisions:
-        self.assert_(len(log_formatter.revisions) == 2)
+        self.assertEquals(len(log_formatter.revisions), 2)

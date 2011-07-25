@@ -260,7 +260,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
 
     :param levels: the number of levels of revisions to
       generate; 1 for just the mainline; 0 for all levels, or None for
-      a sensible default..
+      a sensible default.
 
     :param generate_tags: If True, include tags for matched revisions.
 `
