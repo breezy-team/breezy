@@ -18,6 +18,7 @@
 
 import logging
 import os.path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -71,6 +72,23 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             # warning:" which makes the origin of the messages quite clear.
             _logger.warning('%s', stderr)
         if retcode == 1:
+            # dpkg-mergechangelogs reports a conflict.  Unfortunately it uses
+            # slightly non-standard conflict markers (<http://pad.lv/815700>:
+            # "<<<<<<" rather than "<<<<<<<", i.e. 6 chars instead of 7), so we
+            # correct that here to make the results of this plugin as
+            # consistent with regular bzr usage as possible.  Note that
+            # conflict markers are never valid lines in a changelog file, so
+            # it's reasonable for us to assume that any line that looks like a
+            # conflict marker is a conflict marker (rather than valid content).
+            # At worst a conflicted merge of an invalid changelog file that
+            # already contained a non-standard conflict marker will have that
+            # conflict marker made standard, which is more like a feature than
+            # a bug!
+            def replace_func(match_obj):
+                match_text = match_obj.group(0)
+                return match_text[0] * 7
+            stdout = re.sub(
+                '^[<=>]{6}$', replace_func, stdout, flags=re.MULTILINE)
             return 'conflicted', stdout
         else:
             return 'success', stdout

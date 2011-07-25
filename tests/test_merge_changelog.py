@@ -88,17 +88,16 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 
 # Merge of 2b and 2c using an empty base. (As calculated by
-# dpkg-mergechangelogs, including the non-standard <<<<<< markers: should be 7
-# chars, not 6.)
+# dpkg-mergechangelogs.)
 v_111_2bc_empty_base = """\
 psuedo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
-<<<<<<
+<<<<<<<
   * Awesome bug fixes.
-======
+=======
   * Yet another content for 1.1.1-2
->>>>>>
+>>>>>>>
   * But more is better
 
  -- Joe Foo <joe@example.com>  Thu, 28 Jan 2010 10:45:44 +0000
@@ -243,19 +242,17 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
         # XXX: ideally we'd expect ''.join(lines) ==
         # ''.join(invalid_changelog), but dpkg-mergechangelogs appears to lose
         # the final line in these examples.
-        #  - Andrew Bennetts, 22 July 2011.
+        # <https://bugs.launchpad.net/ubuntu/+source/dpkg/+bug/815704>
+        #  - Andrew Bennetts, 25 July 2011.
         #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
         status, lines = merge_changelog.merge_changelog(
             invalid_changelog, v_111_2, v_111_2)
         self.assertEqual('success', status)
         #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
-        # We are non-strict about parsing BASE, because its contents are not
-        # included in the output.
-        # This triggers a warning, but we don't want to clutter the test run
         self.assertMergeChangelog(v_112_1 + 
-                                  ['<<<<<<\n'] +
+                                  ['<<<<<<<\n'] +
                                   v_111_2 +
-                                  ['======\n>>>>>>\n'],
+                                  ['=======\n>>>>>>>\n'],
                                   this_lines=v_111_2,
                                   other_lines=v_112_1,
                                   base_lines=invalid_changelog,
