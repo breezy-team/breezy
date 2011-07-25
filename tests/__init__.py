@@ -34,7 +34,8 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version, Changelog
 
-from bzrlib.tests import TestUtil, multiply_tests, ModuleAvailableFeature
+from bzrlib.tests import TestUtil, multiply_tests
+from bzrlib.tests.features import ModuleAvailableFeature
 
 
 def make_new_upstream_dir(source, dest):

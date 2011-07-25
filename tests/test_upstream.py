@@ -34,9 +34,12 @@ from bzrlib.revision import (
     Revision,
     )
 from bzrlib.tests import (
-    Feature,
     TestCase,
     )
+try:
+    from bzrlib.tests.features import Feature
+except ImportError: # bzr < 2.5
+    from bzrlib.tests import Feature
 from bzrlib.plugins.builddeb.config import (
     DebBuildConfig,
     )
