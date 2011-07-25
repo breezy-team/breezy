@@ -24,6 +24,9 @@ from bzrlib import (
     errors as bzr_errors,
     tests,
     )
+from bzrlib.tests.features import (
+    Feature,
+    )
 from bzrlib.plugins.git import (
     import_dulwich,
     )
@@ -36,7 +39,7 @@ TestCaseInTempDir = tests.TestCaseInTempDir
 TestCaseWithTransport = tests.TestCaseWithTransport
 TestCaseWithMemoryTransport = tests.TestCaseWithMemoryTransport
 
-class _DulwichFeature(tests.Feature):
+class _DulwichFeature(Feature):
 
     def _probe(self):
         try:
