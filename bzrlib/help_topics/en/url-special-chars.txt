@@ -45,3 +45,4 @@ comma in a file system path, specify a URL and URL encode the comma::
 
   bzr log foo,branch=bla # path "foo" with the segment parameter "branch" set to "bla"
   bzr log file:foo%2Cbranch=bla # path "foo,branch=bla"
+  bzr log file:foo,branch=bla # path "foo" with segment parameter "branch" set to "bla"

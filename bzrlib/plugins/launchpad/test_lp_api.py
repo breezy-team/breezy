@@ -17,9 +17,11 @@
 
 from bzrlib import config, errors, osutils
 from bzrlib.tests import (
-    ModuleAvailableFeature,
     TestCase,
     TestCaseWithTransport,
+    )
+from bzrlib.tests.features import (
+    ModuleAvailableFeature,
     )
 
 

@@ -49,7 +49,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.assertEquals([], os.listdir("target"))
 
     def test_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         wt = self.make_branch_and_tree('.')
         os.symlink('source', 'link')
         wt.add(['link'])

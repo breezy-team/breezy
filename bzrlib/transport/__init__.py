@@ -1577,10 +1577,13 @@ def location_to_url(location):
                 extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
 
-    if urlutils.is_url(location):
-        return location
+    if location.startswith("file:") and not location.startswith("file://"):
+        return urlutils.join(urlutils.local_path_to_url("."), location[5:])
 
-    return urlutils.local_path_to_url(location)
+    if not urlutils.is_url(location):
+        return urlutils.local_path_to_url(location)
+
+    return location
 
 
 def get_transport_from_path(path, possible_transports=None):

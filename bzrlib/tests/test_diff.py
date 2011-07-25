@@ -35,27 +35,9 @@ from bzrlib import (
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import features, EncodingAdapter
 from bzrlib.tests.blackbox.test_diff import subst_dates
-
-
-class _AttribFeature(tests.Feature):
-
-    def _probe(self):
-        if (sys.platform not in ('cygwin', 'win32')):
-            return False
-        try:
-            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
-        except OSError, e:
-            return False
-        return (0 == proc.wait())
-
-    def feature_name(self):
-        return 'attrib Windows command-line tool'
-
-AttribFeature = _AttribFeature()
-
-
-compiled_patiencediff_feature = tests.ModuleAvailableFeature(
-                                    'bzrlib._patiencediff_c')
+from bzrlib.tests import (
+    features,
+    )
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -514,7 +496,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         is a binary file in the diff.
         """
         # See https://bugs.launchpad.net/bugs/110092.
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         # This bug isn't triggered with cStringIO.
         from StringIO import StringIO
@@ -539,7 +521,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
 
     def test_unicode_filename(self):
         """Test when the filename are unicode."""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         alpha, omega = u'\u03b1', u'\u03c9'
         autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')
@@ -571,7 +553,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         """Test for bug #382699: unicode filenames on Windows should be shown
         in user encoding.
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # The word 'test' in Russian
         _russian_test = u'\u0422\u0435\u0441\u0442'
         directory = _russian_test + u'/'
@@ -708,7 +690,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
              ' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.build_tree_contents([('old-tree/olddir/',),
                                   ('old-tree/olddir/oldfile', 'old\n')])
         self.old_tree.add('olddir')
@@ -1172,7 +1154,7 @@ pynff pzq_zxqve(Pbzznaq):
 
 class TestPatienceDiffLib_c(TestPatienceDiffLib):
 
-    _test_needs_features = [compiled_patiencediff_feature]
+    _test_needs_features = [features.compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLib_c, self).setUp()
@@ -1268,7 +1250,7 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
 
 class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 
-    _test_needs_features = [compiled_patiencediff_feature]
+    _test_needs_features = [features.compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLibFiles_c, self).setUp()
@@ -1280,7 +1262,7 @@ class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 class TestUsingCompiledIfAvailable(tests.TestCase):
 
     def test_PatienceSequenceMatcher(self):
-        if compiled_patiencediff_feature.available():
+        if features.compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import PatienceSequenceMatcher_c
             self.assertIs(PatienceSequenceMatcher_c,
                           patiencediff.PatienceSequenceMatcher)
@@ -1290,7 +1272,7 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
                           patiencediff.PatienceSequenceMatcher)
 
     def test_unique_lcs(self):
-        if compiled_patiencediff_feature.available():
+        if features.compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import unique_lcs_c
             self.assertIs(unique_lcs_c,
                           patiencediff.unique_lcs)
@@ -1300,7 +1282,7 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
                           patiencediff.unique_lcs)
 
     def test_recurse_matches(self):
-        if compiled_patiencediff_feature.available():
+        if features.compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import recurse_matches_c
             self.assertIs(recurse_matches_c,
                           patiencediff.recurse_matches)
@@ -1356,7 +1338,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                          ' on this machine', str(e))
 
     def test_prepare_files_creates_paths_readable_by_windows_tool(self):
-        self.requireFeature(AttribFeature)
+        self.requireFeature(features.AttribFeature)
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'content')])
