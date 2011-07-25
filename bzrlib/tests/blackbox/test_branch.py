@@ -29,9 +29,11 @@ from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     fixtures,
-    HardlinkFeature,
     script,
     test_server,
+    )
+from bzrlib.tests.features import (
+    HardlinkFeature,
     )
 from bzrlib.tests.blackbox import test_switch
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer

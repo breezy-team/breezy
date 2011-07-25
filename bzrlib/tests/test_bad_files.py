@@ -24,7 +24,10 @@ from bzrlib import (
     errors,
     )
 from bzrlib.status import show_tree_status
-from bzrlib.tests import OsFifoFeature, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.features import (
+    OsFifoFeature,
+    )
 
 
 def verify_status(tester, tree, value):

@@ -20,7 +20,7 @@ import sys
 
 from bzrlib.tests import (
     script,
-    SymlinkFeature,
+    features,
     TestCaseWithTransport,
     TestSkipped,
     )
@@ -125,7 +125,7 @@ class TestRemove(TestCaseWithTransport):
         self.assertNotInWorkingTree('bar', tree=tree)
 
     def test_remove_no_files_specified_missing_link(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self._make_tree_and_add(['foo'])
         os.symlink('foo', 'linkname')
         tree.add(['linkname'])
