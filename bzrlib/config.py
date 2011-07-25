@@ -2282,6 +2282,10 @@ option_registry.register(
     'editor', Option('editor'),
     help='The command called to launch an editor to enter a message.')
 
+option_registry.register(
+    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
+    help='Flush dirstate changes onto physical disk?')
+
 
 class Section(object):
     """A section defines a dict of option name => value.
@@ -2812,6 +2816,9 @@ class GlobalStack(_CompatibleStack):
 class LocationStack(_CompatibleStack):
 
     def __init__(self, location):
+        """Make a new stack for a location and global configuration.
+        
+        :param location: A URL prefix to """
         lstore = LocationStore()
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()

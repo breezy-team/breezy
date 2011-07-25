@@ -232,6 +232,7 @@ import zlib
 
 from bzrlib import (
     cache_utf8,
+    config,
     debug,
     errors,
     inventory,
@@ -239,6 +240,7 @@ from bzrlib import (
     osutils,
     static_tuple,
     trace,
+    urlutils,
     )
 
 
@@ -448,6 +450,8 @@ class DirState(object):
         self._known_hash_changes = set()
         # How many hash changed entries can we have without saving
         self._worth_saving_limit = worth_saving_limit
+        self._config_stack = config.LocationStack(urlutils.local_path_to_url(
+            path))
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -2529,7 +2533,7 @@ class DirState(object):
             self._state_file.writelines(lines)
             self._state_file.truncate()
             self._state_file.flush()
-            os.fdatasync(self._state_file.fileno())
+            self._maybe_fdatasync()
             self._mark_unmodified()
         finally:
             if grabbed_write_lock:
@@ -2538,6 +2542,11 @@ class DirState(object):
                 # TODO: jam 20070315 We should validate the disk file has
                 #       not changed contents. Since restore_read_lock may
                 #       not be an atomic operation.                
+
+    def _maybe_fdatasync(self):
+        """Flush to disk if possible and if not configured off."""
+        if self._config_stack.get('dirstate.fdatasync'):
+            os.fdatasync(self._state_file.fileno())
 
     def _worth_saving(self):
         """Is it worth saving the dirstate or not?"""
