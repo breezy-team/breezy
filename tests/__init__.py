@@ -18,7 +18,8 @@
 
 
 from bzrlib import errors as bzr_errors
-from bzrlib.tests import Feature, TestLoader
+from bzrlib.tests import TestLoader
+from bzrlib.tests.features import Feature
 from bzrlib.plugins.fastimport import load_fastimport
 
 
