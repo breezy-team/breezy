@@ -351,6 +351,9 @@ class TestMove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_move_directory_into_parent(self):
+        if not self.workingtree_format.supports_versioned_directories:
+            raise tests.TestNotApplicable(
+                "test requires versioned directories")
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c/', 'c/b/', 'c/b/d/'])
         tree.add(['c', 'c/b', 'c/b/d'],
@@ -375,14 +378,20 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
 
-
         tree.rename_one('a/b', 'a/c/b')
-        self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
-                               ('d', 'd-id'),
-                               ('a/c', 'c-id'),
-                               ('a/c/b', 'b-id'),
-                              ], tree)
+        if self.workingtree_format.supports_versioned_directories:
+            self.assertTreeLayout([('', root_id),
+                                   ('a', 'a-id'),
+                                   ('d', 'd-id'),
+                                   ('a/c', 'c-id'),
+                                   ('a/c/b', 'b-id'),
+                                  ], tree)
+        else:
+            self.assertTreeLayout([('', root_id),
+                                   ('a', 'a-id'),
+                                   ('a/c', 'c-id'),
+                                   ('a/c/b', 'b-id'),
+                                  ], tree)
         self.assertEqual([('a', 'd/a')],
                          tree.move(['a'], 'd'))
         self.assertTreeLayout([('', root_id),

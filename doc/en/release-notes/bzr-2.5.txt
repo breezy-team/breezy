@@ -24,7 +24,25 @@ New Features
   checks to see if the most recent published source package version for
   that project is present in the branch tags. This should help developers
   trust whether the packaging branch is up-to-date and can be used for new
-  changes. (John Arbash Meinel, #609187)
+  changes. The level of verbosity is controlled by the config item
+  ``launchpad.packaging_verbosity``. It can be set to one of
+
+  off
+    disable all checks
+
+
+  minimal
+    only display if the branch is out-of-date
+
+  short
+    also display single-line up-to-date and missing,
+
+
+  all
+    (default) display multi-line content for all states
+
+
+  (John Arbash Meinel, #609187, #812928)
 
 * Add a config option gpg_signature_key for setting which GPG key
   should be used to sign commits. Also default to using the gpg user
@@ -34,6 +52,9 @@ New Features
   of just matching the message.  --message keeps its original meaning,
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
+
+* Relative local paths can now be specified in URL syntax by using the
+  "file:" prefix.  (Jelmer Vernooij)
 
 Improvements
 ************
@@ -88,6 +109,12 @@ API Changes
 
 * Remove ``TransportListRegistry.set_default_transport``, as the concept of
   a default transport is currently unused. (Jelmer Vernooij)
+
+* There is a new class `ContentFilterTree` that provides a facade for 
+  content filtering.  The `filtered` parameter to `export` is deprecated 
+  in favor of passing a filtered tree, and the specific exporter plugins
+  no longer support it.
+  (Martin Pool)
 
 Internals
 *********
