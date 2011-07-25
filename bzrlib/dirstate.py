@@ -2508,34 +2508,36 @@ class DirState(object):
         #       IN_MEMORY_HASH_MODIFIED, we should only fail quietly if we fail
         #       to save an IN_MEMORY_HASH_MODIFIED, and fail *noisily* if we
         #       fail to save IN_MEMORY_MODIFIED
-        if self._worth_saving():
-            grabbed_write_lock = False
-            if self._lock_state != 'w':
-                grabbed_write_lock, new_lock = self._lock_token.temporary_write_lock()
-                # Switch over to the new lock, as the old one may be closed.
+        if not self._worth_saving():
+            return
+
+        grabbed_write_lock = False
+        if self._lock_state != 'w':
+            grabbed_write_lock, new_lock = self._lock_token.temporary_write_lock()
+            # Switch over to the new lock, as the old one may be closed.
+            # TODO: jam 20070315 We should validate the disk file has
+            #       not changed contents, since temporary_write_lock may
+            #       not be an atomic operation.
+            self._lock_token = new_lock
+            self._state_file = new_lock.f
+            if not grabbed_write_lock:
+                # We couldn't grab a write lock, so we switch back to a read one
+                return
+        try:
+            lines = self.get_lines()
+            self._state_file.seek(0)
+            self._state_file.writelines(lines)
+            self._state_file.truncate()
+            self._state_file.flush()
+            os.fdatasync(self._state_file.fileno())
+            self._mark_unmodified()
+        finally:
+            if grabbed_write_lock:
+                self._lock_token = self._lock_token.restore_read_lock()
+                self._state_file = self._lock_token.f
                 # TODO: jam 20070315 We should validate the disk file has
-                #       not changed contents. Since temporary_write_lock may
-                #       not be an atomic operation.
-                self._lock_token = new_lock
-                self._state_file = new_lock.f
-                if not grabbed_write_lock:
-                    # We couldn't grab a write lock, so we switch back to a read one
-                    return
-            try:
-                lines = self.get_lines()
-                self._state_file.seek(0)
-                self._state_file.writelines(lines)
-                self._state_file.truncate()
-                self._state_file.flush()
-                os.fdatasync(self._state_file.fileno())
-                self._mark_unmodified()
-            finally:
-                if grabbed_write_lock:
-                    self._lock_token = self._lock_token.restore_read_lock()
-                    self._state_file = self._lock_token.f
-                    # TODO: jam 20070315 We should validate the disk file has
-                    #       not changed contents. Since restore_read_lock may
-                    #       not be an atomic operation.
+                #       not changed contents. Since restore_read_lock may
+                #       not be an atomic operation.                
 
     def _worth_saving(self):
         """Is it worth saving the dirstate or not?"""
