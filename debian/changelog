@@ -1,9 +1,18 @@
 bzr-builddeb (2.7.7) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * Build type now defaults to normal mode when used in an empty tree.
     LP: #776528
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 20 Jul 2011 21:27:48 +0200
+  [ Andrew Bennetts ]
+  * Use dpkg-mergechangelogs(1) to merge changelog files.  Fixes LP:
+    #718944 (preserve the existing ordering of changelog entries when
+    merging); LP: #552950 (Additional changelog entries are modified
+    when merging another branch); LP: #517093 (3-way changelog file
+    merge doesn't do textual merging on sections); and LP: #517090 (3-
+    way changelog file merge doesn't support deletions).
+
+ -- Andrew Bennetts <andrew@bemusement.org>  Mon, 25 Jul 2011 16:38:09 +1000
 
 bzr-builddeb (2.7.6) unstable; urgency=low
 
