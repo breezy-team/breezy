@@ -1730,6 +1730,9 @@ class TestCase(testtools.TestCase):
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
 
+        :note: This should be used with discretion; you should think about
+        whether it's better to make the code testable without monkey-patching.
+
         :param obj: The object that will be mutated.
 
         :param attr_name: The attribute name we want to preserve/override in
