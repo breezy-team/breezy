@@ -183,7 +183,7 @@ def show_log(branch,
         if None or 0.
 
     :param show_diff: If True, output a diff after each revision.
-    
+
     :param match: Dictionary of search lists to use when matching revision
       properties.
     """
@@ -219,7 +219,7 @@ def show_log(branch,
 # make_log_request_dict() below
 _DEFAULT_REQUEST_PARAMS = {
     'direction': 'reverse',
-    'levels': 1,
+    'levels': None,
     'generate_tags': True,
     'exclude_common_ancestry': False,
     '_match_using_deltas': True,
@@ -228,7 +228,7 @@ _DEFAULT_REQUEST_PARAMS = {
 
 def make_log_request_dict(direction='reverse', specific_fileids=None,
                           start_revision=None, end_revision=None, limit=None,
-                          message_search=None, levels=1, generate_tags=True,
+                          message_search=None, levels=None, generate_tags=True,
                           delta_type=None,
                           diff_type=None, _match_using_deltas=True,
                           exclude_common_ancestry=False, match=None,
@@ -259,7 +259,8 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
       matching commit messages
 
     :param levels: the number of levels of revisions to
-      generate; 1 for just the mainline; 0 for all levels.
+      generate; 1 for just the mainline; 0 for all levels, or None for
+      a sensible default..
 
     :param generate_tags: If True, include tags for matched revisions.
 `
@@ -282,11 +283,11 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
       range operator or as a graph difference.
 
     :param signature: show digital signature information
-      
+
     :param match: Dictionary of list of search strings to use when filtering
       revisions. Keys can be 'message', 'author', 'committer', 'bugs' or
-      the empty string to match any of the preceding properties. 
-      
+      the empty string to match any of the preceding properties.
+
     """
     # Take care of old style message_search parameter
     if message_search:
@@ -325,7 +326,7 @@ def _apply_log_request_defaults(rqst):
 
 def format_signature_validity(rev_id, repo):
     """get the signature validity
-    
+
     :param rev_id: revision id to validate
     :param repo: repository of revision
     :return: human readable string to print to log
@@ -394,7 +395,10 @@ class Logger(object):
         # Tweak the LogRequest based on what the LogFormatter can handle.
         # (There's no point generating stuff if the formatter can't display it.)
         rqst = self.rqst
-        rqst['levels'] = lf.get_levels()
+        if rqst['levels'] is None or lf.get_levels() > rqst['levels']:
+            # user didn't specify levels, use whatever the LF can handle:
+            rqst['levels'] = lf.get_levels()
+
         if not getattr(lf, 'supports_tags', False):
             rqst['generate_tags'] = False
         if not getattr(lf, 'supports_delta', False):
@@ -412,7 +416,7 @@ class Logger(object):
 
     def _generator_factory(self, branch, rqst):
         """Make the LogGenerator object to use.
-        
+
         Subclasses may wish to override this.
         """
         return _DefaultLogGenerator(branch, rqst)
@@ -967,7 +971,7 @@ def _generate_deltas(repository, log_rev_iterator, delta_type, fileids,
 
 def _update_fileids(delta, fileids, stop_on):
     """Update the set of file-ids to search based on file lifecycle events.
-    
+
     :param fileids: a set of fileids to update
     :param stop_on: either 'add' or 'remove' - take file-ids out of the
       fileids set once their add or remove entry is detected respectively
@@ -1344,7 +1348,7 @@ class LogFormatter(object):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
-        :param to_exact_file: if set, gives an output stream to which 
+        :param to_exact_file: if set, gives an output stream to which
              non-Unicode diffs are written.
         :param show_ids: if True, revision-ids are to be displayed
         :param show_timezone: the timezone to use
@@ -1586,7 +1590,7 @@ class LongLogFormatter(LogFormatter):
         if revision.delta is not None:
             # Use the standard status output to display changes
             from bzrlib.delta import report_delta
-            report_delta(to_file, revision.delta, short_status=False, 
+            report_delta(to_file, revision.delta, short_status=False,
                          show_ids=self.show_ids, indent=indent)
         if revision.diff is not None:
             to_file.write(indent + 'diff:\n')
@@ -1658,8 +1662,8 @@ class ShortLogFormatter(LogFormatter):
         if revision.delta is not None:
             # Use the standard status output to display changes
             from bzrlib.delta import report_delta
-            report_delta(to_file, revision.delta, 
-                         short_status=self.delta_format==1, 
+            report_delta(to_file, revision.delta,
+                         short_status=self.delta_format==1,
                          show_ids=self.show_ids, indent=indent + offset)
         if revision.diff is not None:
             self.show_diff(self.to_exact_file, revision.diff, '      ')
