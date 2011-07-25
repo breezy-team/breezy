@@ -4401,7 +4401,8 @@ except ImportError:
     pass
 
 
-@deprecated_function(deprecated_in((2, 4, 0)))
+@deprecated_function(deprecated_in((2, 5, 0)))
 def ModuleAvailableFeature(name):
     from bzrlib.tests import features
     return features.ModuleAvailableFeature(name)
+    

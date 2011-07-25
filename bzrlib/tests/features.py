@@ -495,7 +495,7 @@ for name in ['HTTPServerFeature',
     'posix_permissions_feature',
     ]:
     setattr(tests, name, _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 4, 0)),
+        symbol_versioning.deprecated_in((2, 5, 0)),
         'bzrlib.tests', name,
         name, 'bzrlib.tests.features'))
 
@@ -504,6 +504,6 @@ for (old_name, new_name) in [
     ('UnicodeFilename', 'UnicodeFilenameFeature'),
     ]:
     setattr(tests, name, _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 4, 0)),
+        symbol_versioning.deprecated_in((2, 5, 0)),
         'bzrlib.tests', old_name,
         new_name, 'bzrlib.tests.features'))
