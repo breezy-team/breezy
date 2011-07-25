@@ -2546,7 +2546,7 @@ class DirState(object):
     def _maybe_fdatasync(self):
         """Flush to disk if possible and if not configured off."""
         if self._config_stack.get('dirstate.fdatasync'):
-            os.fdatasync(self._state_file.fileno())
+            osutils.fdatasync(self._state_file.fileno())
 
     def _worth_saving(self):
         """Is it worth saving the dirstate or not?"""

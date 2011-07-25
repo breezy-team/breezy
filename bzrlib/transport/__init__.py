@@ -271,7 +271,7 @@ class FileFileStream(FileStream):
             fileno = self.file_handle.fileno()
         except AttributeError:
             raise errors.TransportNotPossible()
-        os.fdatasync(fileno)
+        osutils.fdatasync(fileno)
 
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)

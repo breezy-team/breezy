@@ -2487,3 +2487,14 @@ if sys.platform == "win32":
     is_local_pid_dead = win32utils.is_local_pid_dead
 else:
     is_local_pid_dead = _posix_is_local_pid_dead
+
+
+def fdatasync(fileno):
+    """Flush file contents to disk if possible.
+    
+    :param fileno: Integer OS file handle.
+    :raises TransportNotPossible: If flushing to disk is not possible.
+    """
+    fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
+    if fn is not None:
+        fn(fileno)
