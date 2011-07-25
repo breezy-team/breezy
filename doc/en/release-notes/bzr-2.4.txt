@@ -43,7 +43,10 @@ Improvements
 
 * Pack, dirstate, and index files are synced to persistent storage if 
   possible when writing finishes, to reduce the risk of problems caused by
-  a machine crash or similar problem.  (Martin Pool)
+  a machine crash or similar problem.  This can be turned off through the
+  ``dirstate.fdatasync`` and ``repository.fdatasync`` options, which can
+  be set in ``locations.conf`` or ``bazaar.conf``.  (Martin Pool,
+  #343427)
 
 Bug Fixes
 *********
