@@ -1892,39 +1892,106 @@ class NotInOtherForRevs(AbstractSearch):
 
 
 def ignore():
-            # TODO: If we use this heavily, then we should just cache the
-            #       reverse map. It certainly only changes based on newly
-            #       requested entries.
-            parent_to_children_map = {}
-            for child, parents in parents_map.iteritems():
-                for p in parents:
-                    # Any given parent is likely to have only a small handful
-                    # of children, many will have only one.
-                    # TODO: Use static_tuple
-                    if p not in parent_to_children_map:
-                        parent_to_children_map[p] = (child,)
-                    else:
-                        parent_to_children_map[p] = parent_to_children_map[p] + (child,)
-            stop_keys = set(keys)
-            stop_keys.difference_update(self._unstacked_provider.missing_keys)
-            # Just look at immediate children
-            child_keys = set()
-            for k in keys:
-                child_keys.update(parent_to_children_map[k])
-            # Without this line, we get the revision count wrong for 'bzr'. I'm
-            # guessing a shortcut caused some revs to be found early, and then
-            # not walked now. So without c for c in parents_map[k] we get *way*
-            # too many keys, because the graph flood-fills. Without 'if c not
-            # in child_keys' we stop before we start and get the wrong answer
-            # that way.
-            map(stop_keys.update, [[c for c in parents_map[k] if c not in child_keys]
-                                   for k in child_keys])
-            mutter('Faking search set _get_parent_map_rpc,'
-                         ' %d cache size, %d start keys'
-                         ' %d included_keys %d stop_keys',
-                         len(parents_map), len(child_keys), len(child_keys),
-                         len(keys))
-            recipe = ('manual', child_keys, stop_keys, len(child_keys))
+    # TODO: If we use this heavily, then we should just cache the
+    #       reverse map. It certainly only changes based on newly
+    #       requested entries.
+    stop_keys = set(keys)
+    stop_keys.difference_update(self._unstacked_provider.missing_keys)
+    # Just look at immediate children
+    child_keys = set()
+    for k in keys:
+        child_keys.update(parent_to_children_map[k])
+    # Without this line, we get the revision count wrong for 'bzr'. I'm
+    # guessing a shortcut caused some revs to be found early, and then
+    # not walked now. So without c for c in parents_map[k] we get *way*
+    # too many keys, because the graph flood-fills. Without 'if c not
+    # in child_keys' we stop before we start and get the wrong answer
+    # that way.
+    map(stop_keys.update, [[c for c in parents_map[k] if c not in child_keys]
+                           for k in child_keys])
+    mutter('Faking search set _get_parent_map_rpc,'
+                 ' %d cache size, %d start keys'
+                 ' %d included_keys %d stop_keys',
+                 len(parents_map), len(child_keys), len(child_keys),
+                 len(keys))
+    recipe = ('manual', child_keys, stop_keys, len(child_keys))
+
+
+def invert_parent_map(parent_map):
+    """Given a map from child => parents, create a map of parent=>children"""
+    child_map = {}
+    for child, parents in parent_map.iteritems():
+        for p in parents:
+            # Any given parent is likely to have only a small handful
+            # of children, many will have only one. So we avoid mem overhead of
+            # a list, in exchange for extra copying of tuples
+            # TODO: Use static_tuple
+            if p not in child_map:
+                child_map[p] = (child,)
+            else:
+                child_map[p] = child_map[p] + (child,)
+    return child_map
+
+
+def search_result_from_parent_map_with_keys(parent_map, missing_keys,
+                                            tip_keys, depth):
+    """Transform a parent_map that is searching 'tip_keys' into an
+    approximate SearchResult.
+
+    We should be able to generate a SearchResult from a given set of starting
+    keys, that covers a subset of parent_map that has the last step pointing at
+    tip_keys. This is to handle the case that really-long-searches shouldn't be
+    started from scratch on each get_parent_map request, but we *do* want to
+    filter out some of the keys that we've already seen, so we don't get
+    information that we already know about on every request.
+
+    The server will validate the search (that starting at start_keys and
+    stopping at stop_keys yields the exact key_count), so we have to be careful
+    to give an exact recipe.
+
+    Basic algorithm is:
+        1) Invert parent_map to get child_map (todo: have it cached and pass it
+           in)
+        2) Starting at tip_keys, walk towards children for 'depth' steps.
+        3) At that point, we have the 'start' keys.
+        4) Start walking parent_map from 'start' keys, counting how many keys
+           are seen, and generating stop_keys for anything that would walk
+           outside of the parent_map.
+
+    :param parent_map: A map from {child_id: (parent_ids,)}
+    :param missing_keys: parent_ids that we know are unavailable
+    :param tip_keys: the revision_ids that we are searching
+    :param depth: How far back to walk.
+    """
+    child_map = invert_parent_map(parent_map)
+    current_tips = set(tip_keys)
+    walked = set(current_tips)
+    while current_tips and depth:
+        depth -= 1
+        children = set()
+        for p in current_tips:
+            # Is it better to pre- or post- filter the children?
+            children.update[child_map[p]]
+        # TODO: Use the right set notation here since 'walked' grows large,
+        #       while 'children' should usually be small
+        # Don't walk keys we've already walked
+        children.difference_update(walked)
+        walked.update(children)
+        ### if not children:
+        ###     # We walked off the graph
+        ###     break
+        current_tips = children
+    start_keys = current_tips
+    g = Graph(DictParentsProvider(parent_map))
+    s = g._make_breadth_first_searcher(start_keys)
+    while True:
+        try:
+            s.next_with_ghosts()
+        except StopIteration:
+            break
+    return s.get_result().get_recipe()
+
+
 def search_result_from_parent_map(parent_map, missing_keys):
     """Transform a parent_map into SearchResult information."""
     if not parent_map:
