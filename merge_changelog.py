@@ -87,8 +87,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             def replace_func(match_obj):
                 match_text = match_obj.group(0)
                 return match_text[0] * 7
-            stdout = re.sub(
-                '^[<=>]{6}$', replace_func, stdout, flags=re.MULTILINE)
+            stdout = re.sub('(?m)^[<=>]{6}$', replace_func, stdout)
             return 'conflicted', stdout
         else:
             return 'success', stdout
