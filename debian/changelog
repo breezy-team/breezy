@@ -1,4 +1,4 @@
-bzr-builddeb (2.7.7) UNRELEASED; urgency=low
+bzr-builddeb (2.7.7) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Build type now defaults to normal mode when used in an empty tree.
