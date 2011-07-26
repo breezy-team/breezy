@@ -16,8 +16,10 @@ bzr-builddeb (2.7.7) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Add python-lzma to build dependencies, for use in test suite.
+  * Recommend libalgorithm-merge-perl, required for conflict resolution
+    in dpkg-mergechangelogs.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 26 Jul 2011 10:51:57 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 26 Jul 2011 15:10:18 +0200
 
 bzr-builddeb (2.7.6) unstable; urgency=low
 
