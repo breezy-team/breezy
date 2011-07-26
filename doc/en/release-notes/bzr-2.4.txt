@@ -32,6 +32,31 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
+  checks to see if the most recent published source package version for
+  that project is present in the branch tags. This should help developers
+  trust whether the packaging branch is up-to-date and can be used for new
+  changes. The level of verbosity is controlled by the config item
+  ``launchpad.packaging_verbosity``. It can be set to one of
+
+  off
+    disable all checks
+
+
+  minimal
+    only display if the branch is out-of-date
+
+  short
+    also display single-line up-to-date and missing,
+
+
+  all
+    (default) display multi-line content for all states
+
+
+  (John Arbash Meinel, #609187, #812928)
+
+
 * The fix for bug #513709 caused us to open a new connection when
   switching a lightweight checkout that was pointing at a bound branch.
   This isn't necessary because we know the master URL without opening it,
