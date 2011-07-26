@@ -1891,6 +1891,68 @@ class NotInOtherForRevs(AbstractSearch):
             limit=self.limit)
 
 
+def ignore():
+            # TODO: If we use this heavily, then we should just cache the
+            #       reverse map. It certainly only changes based on newly
+            #       requested entries.
+            parent_to_children_map = {}
+            for child, parents in parents_map.iteritems():
+                for p in parents:
+                    # Any given parent is likely to have only a small handful
+                    # of children, many will have only one.
+                    # TODO: Use static_tuple
+                    if p not in parent_to_children_map:
+                        parent_to_children_map[p] = (child,)
+                    else:
+                        parent_to_children_map[p] = parent_to_children_map[p] + (child,)
+            stop_keys = set(keys)
+            stop_keys.difference_update(self._unstacked_provider.missing_keys)
+            # Just look at immediate children
+            child_keys = set()
+            for k in keys:
+                child_keys.update(parent_to_children_map[k])
+            # Without this line, we get the revision count wrong for 'bzr'. I'm
+            # guessing a shortcut caused some revs to be found early, and then
+            # not walked now. So without c for c in parents_map[k] we get *way*
+            # too many keys, because the graph flood-fills. Without 'if c not
+            # in child_keys' we stop before we start and get the wrong answer
+            # that way.
+            map(stop_keys.update, [[c for c in parents_map[k] if c not in child_keys]
+                                   for k in child_keys])
+            mutter('Faking search set _get_parent_map_rpc,'
+                         ' %d cache size, %d start keys'
+                         ' %d included_keys %d stop_keys',
+                         len(parents_map), len(child_keys), len(child_keys),
+                         len(keys))
+            recipe = ('manual', child_keys, stop_keys, len(child_keys))
+def search_result_from_parent_map(parent_map, missing_keys):
+    """Transform a parent_map into SearchResult information."""
+    if not parent_map:
+        # parent_map is empty or None, simple search result
+        return [], [], 0
+    # start_set is all the keys in the cache
+    start_set = set(parent_map)
+    # result set is all the references to keys in the cache
+    result_parents = set()
+    for parents in parent_map.itervalues():
+        result_parents.update(parents)
+    stop_keys = result_parents.difference(start_set)
+    # We don't need to send ghosts back to the server as a position to
+    # stop either.
+    stop_keys.difference_update(missing_keys)
+    key_count = len(parent_map)
+    if (revision.NULL_REVISION in result_parents
+        and revision.NULL_REVISION in missing_keys):
+        # If we pruned NULL_REVISION from the stop_keys because it's also
+        # in our cache of "missing" keys we need to increment our key count
+        # by 1, because the reconsitituted SearchResult on the server will
+        # still consider NULL_REVISION to be an included key.
+        key_count += 1
+    included_keys = start_set.intersection(result_parents)
+    start_set.difference_update(included_keys)
+    return start_set, stop_keys, key_count
+
+
 def collapse_linear_regions(parent_map):
     """Collapse regions of the graph that are 'linear'.
 
