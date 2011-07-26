@@ -1,4 +1,4 @@
-bzr-builddeb (2.7.7) unstable; urgency=low
+bzr-builddeb (2.7.7) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Build type now defaults to normal mode when used in an empty tree.
@@ -14,7 +14,10 @@ bzr-builddeb (2.7.7) unstable; urgency=low
      LP: #517093
    + 3-way changelog file merge doesn't support deletions. LP: #517090
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 26 Jul 2011 10:12:54 +0200
+  [ Jelmer Vernooij ]
+  * Add python-lzma to build dependencies, for use in test suite.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 26 Jul 2011 10:51:57 +0200
 
 bzr-builddeb (2.7.6) unstable; urgency=low
 
