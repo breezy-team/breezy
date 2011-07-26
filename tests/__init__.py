@@ -35,7 +35,10 @@ except ImportError:
     from debian_bundle.changelog import Version, Changelog
 
 from bzrlib.tests import TestUtil, multiply_tests
-from bzrlib.tests.features import ModuleAvailableFeature
+try:
+    from bzrlib.tests.features import ModuleAvailableFeature
+except ImportError: # bzr < 2.5
+    from bzrlib.tests import ModuleAvailableFeature
 
 
 def make_new_upstream_dir(source, dest):
