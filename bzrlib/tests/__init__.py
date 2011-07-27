@@ -3278,7 +3278,7 @@ def fork_for_tests(suite):
     """
     concurrency = osutils.local_concurrency()
     result = []
-    from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit import ProtocolTestCase
     from subunit.test_results import AutoTimingTestResultDecorator
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
@@ -3314,7 +3314,7 @@ def fork_for_tests(suite):
                 #sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = AutoTimingTestResultDecorator(
-                    TestProtocolClient(stream))
+                    SubUnitBzrProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
                 # GZ 2011-06-16: Is always exiting with silent success
