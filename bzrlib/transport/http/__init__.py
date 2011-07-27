@@ -271,7 +271,7 @@ class HttpTransportBase(ConnectedTransport):
                         cur_offset_and_size = iter_offsets.next()
 
             except (errors.ShortReadvError, errors.InvalidRange,
-                    errors.InvalidHttpRange), e:
+                    errors.InvalidHttpRange, errors.HttpBoundaryMissing), e:
                 mutter('Exception %r: %s during http._readv',e, e)
                 if (not isinstance(e, errors.ShortReadvError)
                     or retried_offset == cur_offset_and_size):
