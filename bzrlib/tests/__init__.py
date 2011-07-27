@@ -1730,6 +1730,9 @@ class TestCase(testtools.TestCase):
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
 
+        :note: This should be used with discretion; you should think about
+        whether it's better to make the code testable without monkey-patching.
+
         :param obj: The object that will be mutated.
 
         :param attr_name: The attribute name we want to preserve/override in
@@ -1759,6 +1762,26 @@ class TestCase(testtools.TestCase):
         value = osutils.set_or_unset_env(name, new)
         self.addCleanup(osutils.set_or_unset_env, name, value)
         return value
+
+    def recordCalls(self, obj, attr_name):
+        """Monkeypatch in a wrapper that will record calls.
+
+        The monkeypatch is automatically removed when the test concludes.
+
+        :param obj: The namespace holding the reference to be replaced;
+            typically a module, class, or object.
+        :param attr_name: A string for the name of the attribute to 
+            patch.
+        :returns: A list that will be extended with one item every time the
+            function is called, with a tuple of (args, kwargs).
+        """
+        calls = []
+
+        def decorator(*args, **kwargs):
+            calls.append((args, kwargs))
+            return orig(*args, **kwargs)
+        orig = self.overrideAttr(obj, attr_name, decorator)
+        return calls
 
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
