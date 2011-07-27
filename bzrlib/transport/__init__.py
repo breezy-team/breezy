@@ -294,7 +294,10 @@ class Transport(object):
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
         if getattr(e, 'errno', None) is not None:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            elif e.errno == errno.EINVAL:
+                mutter("EINVAL returned on path %s: %s" % (path, e))
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
