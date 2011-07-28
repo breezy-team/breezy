@@ -33,7 +33,6 @@ from dulwich.pack import (
     MemoryPackIndex,
     PackData,
     Pack,
-    ThinPackData,
     iter_sha1,
     load_pack_index_file,
     write_pack_data,
@@ -493,7 +492,7 @@ class TransportObjectStore(PackBasedObjectStore):
         :param path: Path to the pack file.
         """
         f.seek(0)
-        data = ThinPackData.from_file(self.get_raw, f, len(f.getvalue()))
+        data = PackData.from_file(self.get_raw, f, len(f.getvalue()))
         idx = MemoryPackIndex(data.sorted_entries(), data.get_stored_checksum())
         p = Pack.from_objects(data, idx)
 

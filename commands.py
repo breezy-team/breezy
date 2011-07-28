@@ -238,7 +238,9 @@ class cmd_git_apply(Command):
         import subprocess
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
-        p = subprocess.Popen(["patch", "-p1"], stdin=subprocess.PIPE, cwd=wt.basedir)
+        # FIXME: Add new files to working tree
+        p = subprocess.Popen(["patch", "-p1"], stdin=subprocess.PIPE,
+            cwd=wt.basedir)
         p.communicate(diff)
         exitcode = p.wait()
         if exitcode != 0:

@@ -70,7 +70,7 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
-    ThinPackData,
+    PackData,
     )
 import os
 import tempfile
@@ -256,7 +256,7 @@ class TemporaryPackIterator(Pack):
     @property
     def data(self):
         if self._data is None:
-            self._data = ThinPackData(self.resolve_ext_ref, self._data_path)
+            self._data = PackData(self._data_path)
         return self._data
 
     @property

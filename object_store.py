@@ -717,9 +717,9 @@ class BazaarObjectStore(BaseObjectStore):
                 for path, obj, ie in self._revision_to_objects(rev, tree,
                     roundtrip=not lossy):
                     ret.add(obj.id, path)
+            return ret
         finally:
             pb.finished()
-        return ret
 
     def add_thin_pack(self):
         import tempfile
