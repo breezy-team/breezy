@@ -345,9 +345,11 @@ class RemoteGitRepository(GitRepository):
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
                       progress=None):
         fd, path = tempfile.mkstemp(suffix=".pack")
-        self.fetch_pack(determine_wants, graph_walker,
-            lambda x: os.write(fd, x), progress)
-        os.close(fd)
+        try:
+            self.fetch_pack(determine_wants, graph_walker,
+                lambda x: os.write(fd, x), progress)
+        finally:
+            os.close(fd)
         if os.path.getsize(path) == 0:
             return EmptyObjectStoreIterator()
         return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
