@@ -746,7 +746,8 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         def get_changed_refs(old_refs):
-            result.old_revid = self.target.lookup_foreign_revision_id(old_refs.get(self.target.ref, ZERO_SHA))
+            old_ref = old_refs.get(self.target.ref, ZERO_SHA)
+            result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
             refs = { self.target.ref: self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():

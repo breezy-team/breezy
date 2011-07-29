@@ -502,12 +502,14 @@ class InterGitRepository(InterRepository):
         def determine_wants(refs):
             potential = set(wants)
             if include_tags:
-                potential.update([v[1] or v[0] for v in extract_tags(refs).itervalues()])
+                potential.update(
+                    [v[1] or v[0] for v in extract_tags(refs).itervalues()])
             return list(potential - self._target_has_shas(potential))
         return determine_wants
 
     def determine_wants_all(self, refs):
-        potential = set([sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")])
+        potential = set([sha for (ref, sha) in refs.iteritems() if not
+            ref.endswith("^{}")])
         return list(potential - self._target_has_shas(potential))
 
     @staticmethod
@@ -556,7 +558,8 @@ class InterGitNonGitRepository(InterGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 interesting_heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type %s" % recipe[0])
+                raise AssertionError("Unsupported search result type %s" %
+                        recipe[0])
         else:
             interesting_heads = None
 
@@ -629,9 +632,11 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw,
                     progress)
-                trace.mutter("Importing %d new revisions", len(wants_recorder.wants))
-                (pack_hint, last_rev) = import_git_objects(self.target, mapping,
-                    objects_iter, store, wants_recorder.wants, pb, limit)
+                trace.mutter("Importing %d new revisions",
+                             len(wants_recorder.wants))
+                (pack_hint, last_rev) = import_git_objects(self.target,
+                    mapping, objects_iter, store, wants_recorder.wants, pb,
+                    limit)
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
             finally:
                 if create_pb:
@@ -668,8 +673,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         try:
             target_git_object_retriever.lock_write()
             try:
-                (pack_hint, last_rev) = import_git_objects(self.target, mapping,
-                    self.source._git.object_store,
+                (pack_hint, last_rev) = import_git_objects(self.target,
+                    mapping, self.source._git.object_store,
                     target_git_object_retriever, wants, pb, limit)
                 return (pack_hint, last_rev, remote_refs)
             finally:
