@@ -333,17 +333,18 @@ class BazaarObjectStore(BaseObjectStore):
             return
         graph = self.repository.get_graph()
         if stop_revision is None:
-            heads = graph.heads(self.repository.all_revision_ids())
+            all_revids = self.repository.all_revision_ids()
+            missing_revids = self._cache.idmap.missing_revisions(all_revids)
         else:
             heads = set([stop_revision])
-        missing_revids = self._cache.idmap.missing_revisions(heads)
-        while heads:
-            parents = graph.get_parent_map(heads)
-            todo = set()
-            for p in parents.values():
-                todo.update([x for x in p if x not in missing_revids])
-            heads = self._cache.idmap.missing_revisions(todo)
-            missing_revids.update(heads)
+            missing_revids = self._cache.idmap.missing_revisions(heads)
+            while heads:
+                parents = graph.get_parent_map(heads)
+                todo = set()
+                for p in parents.values():
+                    todo.update([x for x in p if x not in missing_revids])
+                heads = self._cache.idmap.missing_revisions(todo)
+                missing_revids.update(heads)
         if NULL_REVISION in missing_revids:
             missing_revids.remove(NULL_REVISION)
         missing_revids = self.repository.has_revisions(missing_revids)
