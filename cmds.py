@@ -858,23 +858,12 @@ class cmd_fast_export_from_svn(Command):
                               "branch name and the second group is used "
                               "to match files.",
                         ),
-                    Option('branches-path', type=str, argname="STR",
-                        help="Path in repo to /branches."
-                        ),
-                    Option('tags-path', type=str, argname="STR",
-                        help="Path in repo to /tags."
-                        ),
                     ]
     encoding_type = 'exact'
-    def run(self, source, destination, verbose=False, trunk_path=None,
-        branches_path=None, tags_path=None):
+    def run(self, source, destination, verbose=False, trunk_path=None):
         load_fastimport()
         from bzrlib.plugins.fastimport.exporters import fast_export_from
         custom = []
         if trunk_path is not None:
             custom.extend(['--trunk-path', trunk_path])
-        if branches_path is not None:
-            custom.extend(['--branches-path', branches_path])
-        if tags_path is not None:
-            custom.extend(['--tags-path', tags_path])
         fast_export_from(source, destination, 'svn', verbose, custom)

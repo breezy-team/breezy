@@ -19,6 +19,10 @@ Bug fixes
 * Allow "bzr fast-import-filter" to be used without first argument.
   (Jelmer Vernooij, #792935)
 
+* Remove --branches-path and --tags-path options from ``bzr fast-export-from-svn``.
+  These options are not supported by the underlying svn-fast-export.py yet.
+  (Jelmer Vernooij, #513747)
+
 0.10 08-Mar-2011
 
 Changes
