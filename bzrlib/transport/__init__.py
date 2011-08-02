@@ -27,6 +27,7 @@ it.
 """
 
 from cStringIO import StringIO
+import os
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -227,9 +228,23 @@ class FileStream(object):
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
 
-    def close(self):
+    def close(self, want_fdatasync=False):
+        if want_fdatasync:
+            try:
+                self.fdatasync()
+            except errors.TransportNotPossible:
+                pass
         self._close()
         del _file_streams[self.transport.abspath(self.relpath)]
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible.
+
+        :raises TransportNotPossible: If this transport has no way to 
+            flush to disk.
+        """
+        raise errors.TransportNotPossible(
+            "%s cannot fdatasync" % (self.transport,))
 
 
 class FileFileStream(FileStream):
@@ -244,6 +259,15 @@ class FileFileStream(FileStream):
 
     def _close(self):
         self.file_handle.close()
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible."""
+        self.file_handle.flush()
+        try:
+            fileno = self.file_handle.fileno()
+        except AttributeError:
+            raise errors.TransportNotPossible()
+        osutils.fdatasync(fileno)
 
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)
