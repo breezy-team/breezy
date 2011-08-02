@@ -740,6 +740,25 @@ class TestLocalTransports(tests.TestCase):
         self.assertEquals(t.local_abspath(''), here)
 
 
+class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
+
+    def test_local_fdatasync_calls_fdatasync(self):
+        """Check fdatasync on a stream tries to flush the data to the OS.
+        
+        We can't easily observe the external effect but we can at least see
+        it's called.
+        """
+        t = self.get_transport('.')
+        calls = self.recordCalls(os, 'fdatasync')
+        w = t.open_write_stream('out')
+        w.write('foo')
+        w.fdatasync()
+        with open('out', 'rb') as f:
+            # Should have been flushed.
+            self.assertEquals(f.read(), 'foo')
+        self.assertEquals(len(calls), 1, calls)
+
+
 class TestWin32LocalTransport(tests.TestCase):
 
     def test_unc_clone_to_root(self):
