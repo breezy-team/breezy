@@ -21,13 +21,13 @@ import doctest
 import socket
 
 from bzrlib import tests
+from bzrlib.tests import features
 from bzrlib.plugins import launchpad
 from bzrlib.plugins.launchpad import lp_api_lite
-
 from testtools.matchers import DocTestMatches
 
 
-class _JSONParserFeature(tests.Feature):
+class _JSONParserFeature(features.Feature):
 
     def _probe(self):
         return lp_api_lite.json is not None
@@ -35,7 +35,9 @@ class _JSONParserFeature(tests.Feature):
     def feature_name(self):
         return 'simplejson or json'
 
+
 JSONParserFeature = _JSONParserFeature()
+
 
 _example_response = r"""
 {
@@ -185,7 +187,7 @@ class TestLatestPublication(tests.TestCase):
             return
         # The content should be a valid json result
         content = lp_api_lite.json.loads(json_txt)
-        entries = content['entries'] # It should have an 'entries' field.
+        entries = content['entries']  # It should have an 'entries' field.
         # ws.size should mean we get 0 or 1, and there should be something
         self.assertEqual(1, len(entries))
         entry = entries[0]
@@ -479,6 +481,7 @@ class Test_ReportFreshness(tests.TestCase):
         reported = []
         def report_func(value):
             reported.append(value)
+
         lp_api_lite._report_freshness(latest_ver, branch_latest_ver, place,
                                       verbosity, report_func)
         new_content = '\n'.join(reported)

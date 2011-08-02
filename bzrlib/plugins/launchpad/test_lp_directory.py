@@ -28,6 +28,7 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.tests import (
+    features,
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
@@ -50,7 +51,7 @@ def load_tests(standard_tests, module, loader):
     transport_scenarios = [
         ('http', dict(server_class=PreCannedHTTPServer,)),
         ]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         transport_scenarios.append(
             ('https', dict(server_class=PreCannedHTTPSServer,)),
             )
@@ -425,7 +426,7 @@ class PreCannedHTTPServer(PreCannedServerMixin, http_server.HttpServer):
     pass
 
 
-if tests.HTTPSServerFeature.available():
+if features.HTTPSServerFeature.available():
     from bzrlib.tests import https_server
     class PreCannedHTTPSServer(PreCannedServerMixin, https_server.HTTPSServer):
         pass

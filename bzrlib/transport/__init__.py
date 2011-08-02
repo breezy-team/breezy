@@ -27,6 +27,7 @@ it.
 """
 
 from cStringIO import StringIO
+import os
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -227,9 +228,23 @@ class FileStream(object):
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
 
-    def close(self):
+    def close(self, want_fdatasync=False):
+        if want_fdatasync:
+            try:
+                self.fdatasync()
+            except errors.TransportNotPossible:
+                pass
         self._close()
         del _file_streams[self.transport.abspath(self.relpath)]
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible.
+
+        :raises TransportNotPossible: If this transport has no way to 
+            flush to disk.
+        """
+        raise errors.TransportNotPossible(
+            "%s cannot fdatasync" % (self.transport,))
 
 
 class FileFileStream(FileStream):
@@ -244,6 +259,15 @@ class FileFileStream(FileStream):
 
     def _close(self):
         self.file_handle.close()
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible."""
+        self.file_handle.flush()
+        try:
+            fileno = self.file_handle.fileno()
+        except AttributeError:
+            raise errors.TransportNotPossible()
+        osutils.fdatasync(fileno)
 
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)
@@ -294,7 +318,10 @@ class Transport(object):
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
         if getattr(e, 'errno', None) is not None:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            elif e.errno == errno.EINVAL:
+                mutter("EINVAL returned on path %s: %s" % (path, e))
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -1586,6 +1613,51 @@ def location_to_url(location):
     return location
 
 
+def get_transport_from_path(path, possible_transports=None):
+    """Open a transport for a local path.
+
+    :param path: Local path as byte or unicode string
+    :return: Transport object for path
+    """
+    return get_transport_from_url(urlutils.local_path_to_url(path),
+        possible_transports)
+
+
+def get_transport_from_url(url, possible_transports=None):
+    """Open a transport to access a URL.
+    
+    :param base: a URL
+    :param transports: optional reusable transports list. If not None, created
+        transports will be added to the list.
+
+    :return: A new transport optionally sharing its connection with one of
+        possible_transports.
+    """
+    transport = None
+    if possible_transports is not None:
+        for t in possible_transports:
+            t_same_connection = t._reuse_for(url)
+            if t_same_connection is not None:
+                # Add only new transports
+                if t_same_connection not in possible_transports:
+                    possible_transports.append(t_same_connection)
+                return t_same_connection
+
+    last_err = None
+    for proto, factory_list in transport_list_registry.items():
+        if proto is not None and url.startswith(proto):
+            transport, last_err = _try_transport_factories(url, factory_list)
+            if transport:
+                if possible_transports is not None:
+                    if transport in possible_transports:
+                        raise AssertionError()
+                    possible_transports.append(transport)
+                return transport
+    if not urlutils.is_url(url):
+        raise errors.InvalidURL(path=url)
+    raise errors.UnsupportedProtocol(url, last_err)
+
+
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1599,29 +1671,7 @@ def get_transport(base, possible_transports=None):
     """
     if base is None:
         base = '.'
-    base = location_to_url(base)
-
-    transport = None
-    if possible_transports is not None:
-        for t in possible_transports:
-            t_same_connection = t._reuse_for(base)
-            if t_same_connection is not None:
-                # Add only new transports
-                if t_same_connection not in possible_transports:
-                    possible_transports.append(t_same_connection)
-                return t_same_connection
-
-    last_err = None
-    for proto, factory_list in transport_list_registry.items():
-        if proto is not None and base.startswith(proto):
-            transport, last_err = _try_transport_factories(base, factory_list)
-            if transport:
-                if possible_transports is not None:
-                    if transport in possible_transports:
-                        raise AssertionError()
-                    possible_transports.append(transport)
-                return transport
-    raise errors.UnsupportedProtocol(base, last_err)
+    return get_transport_from_url(location_to_url(base), possible_transports)
 
 
 def _try_transport_factories(base, factory_list):

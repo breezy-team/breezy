@@ -2291,6 +2291,15 @@ option_registry.register(
     'editor', Option('editor'),
     help='The command called to launch an editor to enter a message.')
 
+option_registry.register(
+    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
+    help='Flush dirstate changes onto physical disk?')
+
+option_registry.register(
+    'repository.fdatasync',
+    Option('repository.fdatasync', default=True),
+    help='Flush repository changes onto physical disk?')
+
 
 class Section(object):
     """A section defines a dict of option name => value.
@@ -2562,7 +2571,7 @@ class LockableIniFileStore(IniFileStore):
 class GlobalStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport(config_dir(),
+        t = transport.get_transport_from_path(config_dir(),
                                     possible_transports=possible_transports)
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
 
@@ -2570,7 +2579,7 @@ class GlobalStore(LockableIniFileStore):
 class LocationStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport(config_dir(),
+        t = transport.get_transport_from_path(config_dir(),
                                     possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
 
@@ -2821,6 +2830,9 @@ class GlobalStack(_CompatibleStack):
 class LocationStack(_CompatibleStack):
 
     def __init__(self, location):
+        """Make a new stack for a location and global configuration.
+        
+        :param location: A URL prefix to """
         lstore = LocationStore()
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()

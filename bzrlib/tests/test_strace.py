@@ -22,12 +22,15 @@ from bzrlib import (
     strace,
     tests,
     )
-from bzrlib.strace import StraceFeature, strace_detailed, StraceResult
+from bzrlib.strace import strace_detailed, StraceResult
+from bzrlib.tests.features import (
+    strace_feature,
+    )
 
 
 class TestStrace(tests.TestCaseWithTransport):
 
-    _test_needs_features = [StraceFeature]
+    _test_needs_features = [strace_feature]
 
     def setUp(self):
         # NB: see http://pad.lv/626679 and

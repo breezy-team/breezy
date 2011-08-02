@@ -22,20 +22,9 @@ import threading
 
 import bzrlib
 from bzrlib import errors, tests
-
-
-class _LSProfFeature(tests.Feature):
-
-    def available(self):
-        try:
-            from bzrlib import lsprof
-        except ImportError:
-            return False
-        else:
-            return True
-
-
-LSProfFeature = _LSProfFeature()
+from bzrlib.tests import (
+    features,
+    )
 
 
 _TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
@@ -56,7 +45,7 @@ def _collect_stats():
 
 class TestStatsSave(tests.TestCaseInTempDir):
 
-    _test_needs_features = [LSProfFeature]
+    _test_needs_features = [features.lsprof_feature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
@@ -96,7 +85,7 @@ class TestStatsSave(tests.TestCaseInTempDir):
 
 class TestBzrProfiler(tests.TestCase):
 
-    _test_needs_features = [LSProfFeature]
+    _test_needs_features = [features.lsprof_feature]
 
     def test_start_call_stuff_stop(self):
         profiler = bzrlib.lsprof.BzrProfiler()

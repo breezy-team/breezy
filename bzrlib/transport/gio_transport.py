@@ -24,15 +24,10 @@ It provides the gio+XXX:// protocols where XXX is any of the protocols
 supported by gio.
 """
 from cStringIO import StringIO
-import getpass
 import os
 import random
-import socket
 import stat
-import urllib
 import time
-import sys
-import getpass
 import urlparse
 
 from bzrlib import (
@@ -49,12 +44,11 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     warn,
     )
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 from bzrlib.transport import (
     FileStream,
     ConnectedTransport,
     _file_streams,
-    Server,
     )
 
 from bzrlib.tests.test_server import TestServer

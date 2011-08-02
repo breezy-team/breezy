@@ -20,8 +20,10 @@ import os
 from bzrlib import check, osutils
 from bzrlib.errors import PointlessCommit
 from bzrlib.tests import (
-    SymlinkFeature,
     TestCaseWithTransport,
+    )
+from bzrlib.tests.features import (
+    SymlinkFeature,
     )
 
 

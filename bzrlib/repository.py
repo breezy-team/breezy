@@ -340,18 +340,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         self.control_files.break_lock()
 
-    @needs_read_lock
-    def _eliminate_revisions_not_present(self, revision_ids):
-        """Check every revision id in revision_ids to see if we have it.
-
-        Returns a set of the present revisions.
-        """
-        result = []
-        graph = self.get_graph()
-        parent_map = graph.get_parent_map(revision_ids)
-        # The old API returned a list, should this actually be a set?
-        return parent_map.keys()
-
     @staticmethod
     def create(a_bzrdir):
         """Construct the current default format repository in a_bzrdir."""

@@ -33,6 +33,9 @@ from bzrlib.inventory import (
     )
 from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib.tests import (
+    features,
+    )
 from bzrlib.uncommit import uncommit
 
 
@@ -228,8 +231,8 @@ class TestSetParents(TestParents):
 
     def test_unicode_symlink(self):
         # this tests bug #272444
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
@@ -239,7 +242,7 @@ class TestSetParents(TestParents):
         target = u'\u03a9'
         link_name = u'\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
-        tree.add([link_name],['link-id'])
+        tree.add([link_name], ['link-id'])
 
         revision1 = tree.commit('added a link to a Unicode target')
         revision2 = tree.commit('this revision will be discarded')
@@ -476,8 +479,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def test_no_parents_just_root(self):
         """Test doing an empty commit - no parent, set a root only."""
-        basis_shape = Inventory(root_id=None) # empty tree
-        new_shape = Inventory() # tree with a root
+        basis_shape = Inventory(root_id=None)  # empty tree
+        new_shape = Inventory()  # tree with a root
         self.assertTransitionFromBasisToShape(basis_shape, None, new_shape,
             'new_parent')
 
@@ -528,10 +531,13 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         def do_file(inv, revid):
             self.add_file(inv, revid, 'path-id', 'root-id', 'path', '1' * 32,
                 12)
+
         def do_link(inv, revid):
             self.add_link(inv, revid, 'path-id', 'root-id', 'path', 'target')
+
         def do_dir(inv, revid):
             self.add_dir(inv, revid, 'path-id', 'root-id', 'path')
+
         for old_factory in (do_file, do_link, do_dir):
             for new_factory in (do_file, do_link, do_dir):
                 if old_factory == new_factory:

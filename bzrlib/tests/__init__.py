@@ -88,6 +88,10 @@ from bzrlib.transport import (
     memory,
     pathfilter,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 from bzrlib.tests import (
     test_server,
     TestUtil,
@@ -1157,7 +1161,7 @@ class TestCase(testtools.TestCase):
 
     def permit_dir(self, name):
         """Permit a directory to be used by this test. See permit_url."""
-        name_transport = _mod_transport.get_transport(name)
+        name_transport = _mod_transport.get_transport_from_path(name)
         self.permit_url(name)
         self.permit_url(name_transport.base)
 
@@ -1242,7 +1246,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
-        t = _mod_transport.get_transport(transport_server.get_url())
+        t = _mod_transport.get_transport_from_url(transport_server.get_url())
         # Some transport servers effectively chroot the backing transport;
         # others like SFTPServer don't - users of the transport can walk up the
         # transport to read the entire backing transport. This wouldn't matter
@@ -1724,6 +1728,9 @@ class TestCase(testtools.TestCase):
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
 
+        :note: This should be used with discretion; you should think about
+        whether it's better to make the code testable without monkey-patching.
+
         :param obj: The object that will be mutated.
 
         :param attr_name: The attribute name we want to preserve/override in
@@ -1753,6 +1760,26 @@ class TestCase(testtools.TestCase):
         value = osutils.set_or_unset_env(name, new)
         self.addCleanup(osutils.set_or_unset_env, name, value)
         return value
+
+    def recordCalls(self, obj, attr_name):
+        """Monkeypatch in a wrapper that will record calls.
+
+        The monkeypatch is automatically removed when the test concludes.
+
+        :param obj: The namespace holding the reference to be replaced;
+            typically a module, class, or object.
+        :param attr_name: A string for the name of the attribute to 
+            patch.
+        :returns: A list that will be extended with one item every time the
+            function is called, with a tuple of (args, kwargs).
+        """
+        calls = []
+
+        def decorator(*args, **kwargs):
+            calls.append((args, kwargs))
+            return orig(*args, **kwargs)
+        orig = self.overrideAttr(obj, attr_name, decorator)
+        return calls
 
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
@@ -2360,7 +2387,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = _mod_transport.get_transport(self.get_url(relpath))
+        t = _mod_transport.get_transport_from_url(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
@@ -2591,7 +2618,7 @@ class TestCaseWithMemoryTransport(TestCase):
             backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, backing_server)
-        remote_transport = _mod_transport.get_transport(smart_server.get_url()
+        remote_transport = _mod_transport.get_transport_from_url(smart_server.get_url()
                                                    ).clone(path)
         return remote_transport
 
@@ -2614,14 +2641,15 @@ class TestCaseWithMemoryTransport(TestCase):
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         # Ensure that ConnectedTransport doesn't leak sockets
-        def get_transport_with_cleanup(*args, **kwargs):
-            t = orig_get_transport(*args, **kwargs)
+        def get_transport_from_url_with_cleanup(*args, **kwargs):
+            t = orig_get_transport_from_url(*args, **kwargs)
             if isinstance(t, _mod_transport.ConnectedTransport):
                 self.addCleanup(t.disconnect)
             return t
 
-        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
-                                               get_transport_with_cleanup)
+        orig_get_transport_from_url = self.overrideAttr(
+            _mod_transport, 'get_transport_from_url',
+            get_transport_from_url_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
@@ -3886,6 +3914,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_export',
         'bzrlib.tests.test_export_pot',
         'bzrlib.tests.test_extract',
+        'bzrlib.tests.test_features',
         'bzrlib.tests.test_fetch',
         'bzrlib.tests.test_fixtures',
         'bzrlib.tests.test_fifo_cache',
@@ -4287,6 +4316,7 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         the module is available.
     """
 
+    from bzrlib.tests.features import ModuleAvailableFeature
     py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
         ('python', {'module': py_module}),
@@ -4333,157 +4363,6 @@ def _rmtree_temp_dir(dirname, test_id=None):
                          % (os.path.basename(dirname), printable_e))
 
 
-class Feature(object):
-    """An operating system Feature."""
-
-    def __init__(self):
-        self._available = None
-
-    def available(self):
-        """Is the feature available?
-
-        :return: True if the feature is available.
-        """
-        if self._available is None:
-            self._available = self._probe()
-        return self._available
-
-    def _probe(self):
-        """Implement this method in concrete features.
-
-        :return: True if the feature is available.
-        """
-        raise NotImplementedError
-
-    def __str__(self):
-        if getattr(self, 'feature_name', None):
-            return self.feature_name()
-        return self.__class__.__name__
-
-
-class _SymlinkFeature(Feature):
-
-    def _probe(self):
-        return osutils.has_symlinks()
-
-    def feature_name(self):
-        return 'symlinks'
-
-SymlinkFeature = _SymlinkFeature()
-
-
-class _HardlinkFeature(Feature):
-
-    def _probe(self):
-        return osutils.has_hardlinks()
-
-    def feature_name(self):
-        return 'hardlinks'
-
-HardlinkFeature = _HardlinkFeature()
-
-
-class _OsFifoFeature(Feature):
-
-    def _probe(self):
-        return getattr(os, 'mkfifo', None)
-
-    def feature_name(self):
-        return 'filesystem fifos'
-
-OsFifoFeature = _OsFifoFeature()
-
-
-class _UnicodeFilenameFeature(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            # Check for character combinations unlikely to be covered by any
-            # single non-unicode encoding. We use the characters
-            # - greek small letter alpha (U+03B1) and
-            # - braille pattern dots-123456 (U+283F).
-            os.stat(u'\u03b1\u283f')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilenameFeature = _UnicodeFilenameFeature()
-
-
-class _CompatabilityThunkFeature(Feature):
-    """This feature is just a thunk to another feature.
-
-    It issues a deprecation warning if it is accessed, to let you know that you
-    should really use a different feature.
-    """
-
-    def __init__(self, dep_version, module, name,
-                 replacement_name, replacement_module=None):
-        super(_CompatabilityThunkFeature, self).__init__()
-        self._module = module
-        if replacement_module is None:
-            replacement_module = module
-        self._replacement_module = replacement_module
-        self._name = name
-        self._replacement_name = replacement_name
-        self._dep_version = dep_version
-        self._feature = None
-
-    def _ensure(self):
-        if self._feature is None:
-            depr_msg = self._dep_version % ('%s.%s'
-                                            % (self._module, self._name))
-            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
-                                               self._replacement_name)
-            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
-            # Import the new feature and use it as a replacement for the
-            # deprecated one.
-            self._feature = pyutils.get_named_object(
-                self._replacement_module, self._replacement_name)
-
-    def _probe(self):
-        self._ensure()
-        return self._feature._probe()
-
-
-class ModuleAvailableFeature(Feature):
-    """This is a feature than describes a module we want to be available.
-
-    Declare the name of the module in __init__(), and then after probing, the
-    module will be available as 'self.module'.
-
-    :ivar module: The module if it is available, else None.
-    """
-
-    def __init__(self, module_name):
-        super(ModuleAvailableFeature, self).__init__()
-        self.module_name = module_name
-
-    def _probe(self):
-        try:
-            self._module = __import__(self.module_name, {}, {}, [''])
-            return True
-        except ImportError:
-            return False
-
-    @property
-    def module(self):
-        if self.available(): # Make sure the probe has been done
-            return self._module
-        return None
-
-    def feature_name(self):
-        return self.module_name
-
-
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
     Return first successfull match.
@@ -4517,165 +4396,6 @@ def probe_bad_non_ascii(encoding):
     return None
 
 
-class _HTTPSServerFeature(Feature):
-    """Some tests want an https Server, check if one is available.
-
-    Right now, the only way this is available is under python2.6 which provides
-    an ssl module.
-    """
-
-    def _probe(self):
-        try:
-            import ssl
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'HTTPSServer'
-
-
-HTTPSServerFeature = _HTTPSServerFeature()
-
-
-class _UnicodeFilename(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            os.stat(u'\u03b1')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilename = _UnicodeFilename()
-
-
-class _ByteStringNamedFilesystem(Feature):
-    """Is the filesystem based on bytes?"""
-
-    def _probe(self):
-        if os.name == "posix":
-            return True
-        return False
-
-ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
-
-
-class _UTF8Filesystem(Feature):
-    """Is the filesystem UTF-8?"""
-
-    def _probe(self):
-        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
-            return True
-        return False
-
-UTF8Filesystem = _UTF8Filesystem()
-
-
-class _BreakinFeature(Feature):
-    """Does this platform support the breakin feature?"""
-
-    def _probe(self):
-        from bzrlib import breakin
-        if breakin.determine_signal() is None:
-            return False
-        if sys.platform == 'win32':
-            # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
-            # We trigger SIGBREAK via a Console api so we need ctypes to
-            # access the function
-            try:
-                import ctypes
-            except OSError:
-                return False
-        return True
-
-    def feature_name(self):
-        return "SIGQUIT or SIGBREAK w/ctypes on win32"
-
-
-BreakinFeature = _BreakinFeature()
-
-
-class _CaseInsCasePresFilenameFeature(Feature):
-    """Is the file-system case insensitive, but case-preserving?"""
-
-    def _probe(self):
-        fileno, name = tempfile.mkstemp(prefix='MixedCase')
-        try:
-            # first check truly case-preserving for created files, then check
-            # case insensitive when opening existing files.
-            name = osutils.normpath(name)
-            base, rel = osutils.split(name)
-            found_rel = osutils.canonical_relpath(base, name)
-            return (found_rel == rel
-                    and os.path.isfile(name.upper())
-                    and os.path.isfile(name.lower()))
-        finally:
-            os.close(fileno)
-            os.remove(name)
-
-    def feature_name(self):
-        return "case-insensitive case-preserving filesystem"
-
-CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
-
-
-class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlying filesystem is case-insensitive but *not* case
-    preserving.
-    """
-    # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
-    # more likely to be case preserving, so this case is rare.
-
-    def _probe(self):
-        if CaseInsCasePresFilenameFeature.available():
-            return False
-
-        if TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
-            TestCaseWithMemoryTransport.TEST_ROOT = root
-        else:
-            root = TestCaseWithMemoryTransport.TEST_ROOT
-        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-            dir=root)
-        name_a = osutils.pathjoin(tdir, 'a')
-        name_A = osutils.pathjoin(tdir, 'A')
-        os.mkdir(name_a)
-        result = osutils.isdir(name_A)
-        _rmtree_temp_dir(tdir)
-        return result
-
-    def feature_name(self):
-        return 'case-insensitive filesystem'
-
-CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
-
-
-class _CaseSensitiveFilesystemFeature(Feature):
-
-    def _probe(self):
-        if CaseInsCasePresFilenameFeature.available():
-            return False
-        elif CaseInsensitiveFilesystemFeature.available():
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'case-sensitive filesystem'
-
-# new coding style is for feature instances to be lowercase
-case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
-
-
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
@@ -4699,26 +4419,9 @@ try:
 except ImportError:
     pass
 
-class _PosixPermissionsFeature(Feature):
 
-    def _probe(self):
-        def has_perms():
-            # create temporary file and check if specified perms are maintained.
-            import tempfile
-
-            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
-            fd, name = f
-            os.close(fd)
-            os.chmod(name, write_perms)
-
-            read_perms = os.stat(name).st_mode & 0777
-            os.unlink(name)
-            return (write_perms == read_perms)
-
-        return (os.name == 'posix') and has_perms()
-
-    def feature_name(self):
-        return 'POSIX permissions support'
-
-posix_permissions_feature = _PosixPermissionsFeature()
+@deprecated_function(deprecated_in((2, 5, 0)))
+def ModuleAvailableFeature(name):
+    from bzrlib.tests import features
+    return features.ModuleAvailableFeature(name)
+    

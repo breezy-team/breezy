@@ -1180,6 +1180,18 @@ class VersionedFileRepository(Repository):
                 'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
                 (record.key, sha1, item_data[1], item_data[2]))
 
+    @needs_read_lock
+    def _eliminate_revisions_not_present(self, revision_ids):
+        """Check every revision id in revision_ids to see if we have it.
+
+        Returns a set of the present revisions.
+        """
+        result = []
+        graph = self.get_graph()
+        parent_map = graph.get_parent_map(revision_ids)
+        # The old API returned a list, should this actually be a set?
+        return parent_map.keys()
+
     def __init__(self, _format, a_bzrdir, control_files):
         """Instantiate a VersionedFileRepository.
 
