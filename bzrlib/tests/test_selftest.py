@@ -824,7 +824,7 @@ class TestTestResult(tests.TestCase):
         self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
 
     def test_known_failure(self):
-        """A KnownFailure being raised should trigger several result actions."""
+        """Using knownFailure should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
             def report_tests_starting(self): pass
@@ -833,7 +833,7 @@ class TestTestResult(tests.TestCase):
         result = InstrumentedTestResult(None, None, None, None)
         class Test(tests.TestCase):
             def test_function(self):
-                raise tests.KnownFailure('failed!')
+                self.knownFailure('failed!')
         test = Test("test_function")
         test.run(result)
         # it should invoke 'report_known_failure'.
@@ -855,23 +855,13 @@ class TestTestResult(tests.TestCase):
             descriptions=0,
             verbosity=2,
             )
-        test = self.get_passing_test()
-        result.startTest(test)
-        prefix = len(result_stream.getvalue())
-        # the err parameter has the shape:
-        # (class, exception object, traceback)
-        # KnownFailures dont get their tracebacks shown though, so we
-        # can skip that.
-        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result.report_known_failure(test, err)
-        output = result_stream.getvalue()[prefix:]
-        lines = output.splitlines()
-        self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
-        if sys.version_info > (2, 7):
-            self.expectFailure("_ExpectedFailure on 2.7 loses the message",
-                self.assertNotEqual, lines[1], '    ')
-        self.assertEqual(lines[1], '    foo')
-        self.assertEqual(2, len(lines))
+        _get_test("test_xfail").run(result)
+        self.assertContainsRe(result_stream.getvalue(),
+            "\\S+\\.test_xfail\\s+XFAIL\\s+\\d+ms\n"
+            "\\s*(?:Text attachment: )?reason"
+            "(?:\n-+\n|: {{{)"
+            "this_fails"
+            "(?:\n-+\n|}}}\n)")
 
     def get_passing_test(self):
         """Return a test object that can't be run usefully."""
@@ -957,9 +947,8 @@ class TestTestResult(tests.TestCase):
     def test_strict_with_known_failure(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
                                              verbosity=1)
-        test = self.get_passing_test()
-        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result.addExpectedFailure(test, err)
+        test = _get_test("test_xfail")
+        test.run(result)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 

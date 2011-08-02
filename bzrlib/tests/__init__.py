@@ -1793,8 +1793,31 @@ class TestCase(testtools.TestCase):
         self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
-        """This test has failed for some known reason."""
-        raise KnownFailure(reason)
+        """Declare that this test fails for a known reason
+
+        Tests that are known to fail should generally be using expectedFailure
+        with an appropriate reverse assertion if a change could cause the test
+        to start passing. Conversely if the test has no immediate prospect of
+        succeeding then using skip is more suitable.
+
+        When this method is called while an exception is being handled, that
+        traceback will be used, otherwise a new exception will be thrown to
+        provide one but not reported.
+        """
+        self._add_reason(reason)
+        try:
+            exc_info = sys.exc_info()
+            if exc_info != (None, None, None):
+                self._report_traceback(exc_info)
+            else:
+                try:
+                    raise self.failureException(reason)
+                except self.failureException:
+                    exc_info = sys.exc_info()
+            # GZ 02-08-2011: Maybe cleanup this err.exc_info attribute too?
+            raise testtools.testcase._ExpectedFailure(exc_info)
+        finally:
+            del exc_info
 
     def _suppress_log(self):
         """Remove the log info from details."""
