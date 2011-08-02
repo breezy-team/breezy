@@ -100,7 +100,7 @@ def check_lp_login(username, _transport=None):
     uploaded SSH keys.
     """
     if _transport is None:
-        _transport = transport.get_transport(LAUNCHPAD_BASE)
+        _transport = transport.get_transport_from_url(LAUNCHPAD_BASE)
 
     try:
         data = _transport.get_bytes('~%s/+sshkeys' % username)
