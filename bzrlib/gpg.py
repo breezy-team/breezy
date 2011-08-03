@@ -290,6 +290,10 @@ class GPGStrategy(object):
         #test_verify_revoked_signature
         if result[0].summary & gpgme.SIGSUM_SYS_ERROR:
             return SIGNATURE_NOT_VALID, None
+        #no summary means an untrusted key
+        #test_verify_valid_but_untrusted
+        if result[0].summary == 0 and self.acceptable_keys is None:
+            return SIGNATURE_NOT_VALID, None
         #other error types such as revokes keys should (I think) be caught by
         #SIGSUM_RED so anything else means something is wrong
         raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
