@@ -1788,8 +1788,7 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_xfail')
         self.assertEqual(1, len(result.expectedFailures))
         result_content = result.expectedFailures[0][1]
-        if testtools_version <= (0, 9, 11):
-            self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content, 'Text attachment: log')
         self.assertNotContainsRe(result_content, 'test with expected failure')
 
     def test_unexpected_success_has_log(self):
