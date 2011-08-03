@@ -271,6 +271,7 @@ class GPGStrategy(object):
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
         #gpg does not know this key
+        #test_verify_unknown_key
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING, fingerprint[-8:]
         #summary isn't set if sig is valid but key is untrusted
@@ -284,10 +285,13 @@ class GPGStrategy(object):
             return SIGNATURE_NOT_VALID, None
         #if the expired key was not expired at time of signing it's good
         if result[0].summary & gpgme.SIGSUM_KEY_EXPIRED:
-            expires = context.get_key(result[0].fpr).subkeys[0].expires
+            expires = self.context.get_key(result[0].fpr).subkeys[0].expires
             if expires > result[0].timestamp:
+                #test_verify_expired_but_valid
                 return SIGNATURE_VALID, fingerprint[-8:]
             else:
+                #I can't work out how to create a test where the signature
+                #was expired at the time of signing
                 return SIGNATURE_NOT_VALID, None
         #a signature from a revoked key gets this
         #test_verify_revoked_signature

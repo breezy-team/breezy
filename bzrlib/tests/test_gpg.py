@@ -214,9 +214,31 @@ YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
 -----END PGP PUBLIC KEY BLOCK-----
 """)
 
+        expired_key = StringIO("""-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+mI0ETjZ6PAEEALkR4GcFQidCCxV7pgQwQd5MZua0YO2l92fVqHX+PhnZ6egCLKdD
+2bWlMUd6MLPF3FlRL7BBAxvW/DazkBOp7ljsnpMpptEzY49Uem1irYLYiVb9zK96
+0sQZzFxFkfEYetQEXC68mIck8tbySOX5NAOw++3jFm3J7dsU1R3XtYzRABEBAAG0
+G3Rlc3Qga2V5IDx0ZXN0QGV4YW1wbGUuY29tPoi+BBMBAgAoBQJONno8AhsDBQkA
+AVGABgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRAc4m97T40VEz+DA/9PBphG
+Yp9cHVaHSfTUKGTGgIbvRe60sFNpDCYZeAGDrygOMuI8MNzbVpwefRBFHVPx7jWd
+rrYMsLkcsNUS9D0baU+0D/qp7JVg7ZSQtG0O6IG4eTZhibteY1fu0+unlXmg9NHx
+5VvhwzBiJDYji00M2p/CZEMiYFUuy76CsxUpN7iNBE42ejwBBACkv2/mX7IPQg0C
+A3KSrJsJv+sdvKm4b4xuI4OwagwTIVz4KlTqV4IBrVjSBfwyMXucXz0bTW85qjgA
++n67td8vyjYYZUEz1uY9lSquQQDnAN0txL3cLHZXWiWOkmzZVddQtlflK2a/J9o0
+QkHPVUm+hc4l64dIzStrNl2S66fAvQARAQABiKUEGAECAA8FAk42ejwCGwwFCQAB
+UYAACgkQHOJve0+NFROEYQP/epg+o8iBs31hkSERyZjrRR66LpywezWj30Rn/3mX
+Fzi9HkF4xLemWOzdNt9C5PYrOep85PQg8haEjknxVjZFS0ikT1h3OWk/TF1ZrLVm
+WzyX8DaHQEjKpLJJjXcAbTiZBNMk0QaVC9RvIeHpCf3n3DC49DdjsPJRMKOn8KDi
+kRk=
+=p0gt
+-----END PGP PUBLIC KEY BLOCK-----
+""")
         context.import_(key)
         context.import_(secret_key)
         context.import_(revoked_key)
+        context.import_(expired_key)
 
     def test_verify_untrusted_but_accepted(self):
         #untrusted by gpg but listed as acceptable_keys by user
@@ -389,6 +411,55 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None),
+                            my_gpg.verify(content, plain))
+
+    def test_verify_expired_but_valid(self):
+        self.requireFeature(features.gpgme)
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+ 
+bazaar-ng testament short form 1
+revision-id: test@example.com-20110801100657-f1dr1nompeex723z
+sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+ 
+iJwEAQECAAYFAk42esUACgkQHOJve0+NFRPc5wP7BoZkzBU8JaHMLv/LmqLr0sUz
+zuE51ofZZ19L7KVtQWsOi4jFy0fi4A5TFwO8u9SOfoREGvkw292Uty9subSouK5/
+mFmDOYPQ+O83zWgYZsBmMJWYDZ+X9I6XXZSbPtV/7XyTjaxtl5uRnDVJjg+AzKvD
+dTp8VatVVrwuvzOPDVc=
+=uHen
+-----END PGP SIGNATURE-----
+"""
+        plain = """bazaar-ng testament short form 1
+revision-id: test@example.com-20110801100657-f1dr1nompeex723z
+sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
+"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertEqual((gpg.SIGNATURE_VALID, u'4F8D1513'),
+                            my_gpg.verify(content, plain))
+
+    def test_verify_unknown_key(self):
+        self.requireFeature(features.gpgme)
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+asdf
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQEcBAEBAgAGBQJOORKwAAoJENf6AkFdUeVvJDYH/1Cz+AJn1Jvy5n64o+0fZ5Ow
+Y7UQb4QQTIOV7jI7n4hv/yBzuHrtImFzYvQl/o2Ezzi8B8L5gZtQy+xCUF+Q8iWs
+gytZ5JUtSze7hDZo1NUl4etjoRGYqRfrUcvE2LkVH2dFbDGyyQfVmoeSHa5akuuP
+QZmyg2F983rACVIpGvsqTH6RcBdvE9vx68lugeKQA8ArDn39/74FBFipFzrXSPij
+eKFpl+yZmIb3g6HkPIC8o4j/tMvc37xF1OG5sBu8FT0+FC+VgY7vAblneDftAbyP
+sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
+=RNR5
+-----END PGP SIGNATURE-----
+"""
+        plain = "asdf\n"
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F'),
                             my_gpg.verify(content, plain))
 
     def test_set_acceptable_keys(self):
