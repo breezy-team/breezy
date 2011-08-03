@@ -44,9 +44,10 @@ New Features
 
   (John Arbash Meinel, #609187, #812928)
 
-* Add a config option gpg_signature_key for setting which GPG key
-  should be used to sign commits. Also default to using the gpg user
-  identity which matches user_email() as set by whoami.
+* Add a config option gpg_signing_key for setting which GPG key should
+  be used to sign commits. Also default to using the gpg user identity
+  which matches user_email() as set by whoami. (Jonathan Riddell,
+  #68501)
 
 * bzr log -m now matches message, author, committer and bugs instead
   of just matching the message.  --message keeps its original meaning,
