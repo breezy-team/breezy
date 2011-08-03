@@ -259,12 +259,15 @@ class GPGStrategy(object):
         if testament != plain_output.getvalue():
             return SIGNATURE_NOT_VALID, None 
         #yay gpgme set the valid bit
+        #can't write a test for this one as can't set a key to be
+        #trusted using gpgme
         if result[0].summary & gpgme.SIGSUM_VALID:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
             return SIGNATURE_VALID, name + " <" + email + ">"
-        #sigsum_red indicates a problem
+        #sigsum_red indicates a problem, unfortunatly I have not been able
+        #to write any tests which actually set this
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
         #gpg does not know this key
@@ -283,6 +286,10 @@ class GPGStrategy(object):
                 return SIGNATURE_VALID, fingerprint[-8:]
             else:
                 return SIGNATURE_NOT_VALID, None
+        #a signature from a revoked key gets this
+        #test_verify_revoked_signature
+        if result[0].summary & gpgme.SIGSUM_SYS_ERROR:
+            return SIGNATURE_NOT_VALID, None
         #other error types such as revokes keys should (I think) be caught by
         #SIGSUM_RED so anything else means something is wrong
         raise errors.SignatureVerificationFailed("Unknown GnuPG key "\

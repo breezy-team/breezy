@@ -189,8 +189,34 @@ Gmk1tz5uh9/6Qiyhr9MAwvC0mhKtfWdebQre9l49EuciCbBXN2Q4iRpElQba1JAW
 -----END PGP PRIVATE KEY BLOCK-----
 """)
 
+        revoked_key = StringIO("""-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+mI0ETjlW5gEEAOb/6P+TVM59E897wRtatxys2BhsHCXM4T7xjIiANfDwejDdifqh
+tluTfSJLLxPembtrrEjux1C0AJgc+f0MIfsc3Pr3eFJzKB2ot/1IVG1/1KnA0zt3
+W2xPT3lRib27WJ9Fag+dMtQaIzgJ7/n2DFxsFZ33FD2kxrEXB2exGg6FABEBAAGI
+pgQgAQIAEAUCTjlXkAkdAHJldm9rZWQACgkQjs6dvEpb0cQPHAP/Wi9rbx0e+1Sf
+ziGgyVdr3m3A6uvze5oXKVgFRbGRUYSH4/I8GW0W9x4TcRg9h+YaQ8NUdADr9kNE
+tKAljLqYA5qdqSfYuaij1M++Xj+KUZ359R74sHuQqwnRy1XXQNfRs/QpXA7vLdds
+rjg+pbWuXO92TZJUdnqtWW+VEyZBsPy0G3Rlc3Qga2V5IDx0ZXN0QGV4YW1wbGUu
+Y29tPoi4BBMBAgAiBQJOOVbmAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAK
+CRCOzp28SlvRxNWzA/42WVmI0b+6mF/imEOlY1TiyvrcpK250rkSDsCtL4lOwy7G
+antZhpgNfnXRd/ySfsS3EB6dpOWgOSxGRvWQhA+vxBT9BYNk49qd3JIrSaSWpR12
+rET8qO1rEQQFWsw03CxTGujxGlmEO+a1yguRXp2UWaY7FngcQmD+8q7BUIVm7riN
+BE45VuYBBADTEH2jHTjNCc5CMOhea6EJTrkx3upcEqB2oyhWeSWJiBGOxlcddsjo
+3J3/EmBB8kK1hM9TidD3SG64x1N287lg8ELJBlKv+pQVyxohGJ1u/THgpTDMMQcL
+luG5rAHQGSfyzKTiOnaTyBYg3M/nzgUOU9dKEFB0EA3tjUXFOT+r3wARAQABiJ8E
+GAECAAkFAk45VuYCGwwACgkQjs6dvEpb0cRSLQP/fzCWX2lXwlwWiVF8BOPF7o9z
+icHErc7/X17RGb4qj1kVf+UkRdUWJrbEVh4h6MncBIuA70WsYogiw+Kz/0LCtQAR
+YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
+7dMv2kKTJPoXUpiXJbg=
+=hLYO
+-----END PGP PUBLIC KEY BLOCK-----
+""")
+
         context.import_(key)
         context.import_(secret_key)
+        context.import_(revoked_key)
 
     def test_verify_valid(self):
         self.requireFeature(features.gpgme)
@@ -282,6 +308,31 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
+                            plain))
+
+
+    def test_verify_revoked_signature(self):
+        self.requireFeature(features.gpgme)
+        self.import_keys()
+            
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+asdf
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iJwEAQECAAYFAk45V18ACgkQjs6dvEpb0cSIZQP/eOGTXGPlrNwvDkcX2d8O///I
+ecB4sUIUEpv1XAk1MkNu58lsjjK72lRaLusEGqd7HwrFmpxVeVs0oWLg23PNPCFs
+yJBID9ma+VxFVPtkEFnrc1R72sBJLfBcTxMkwVTC8eeznjdtn+cg+aLkxbPdrGnr
+JFA6kUIJU2w9LU/b88Y=
+=UuRX
+-----END PGP SIGNATURE-----
+"""
+        plain = """asdf\n"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        my_gpg.set_acceptable_keys("test@example.com")
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
                             plain))
 
