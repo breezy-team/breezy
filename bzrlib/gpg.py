@@ -249,7 +249,7 @@ class GPGStrategy(object):
         if len(result) == 0:
             return SIGNATURE_NOT_VALID, None
         #user has specified a list of acceptable keys, check our result is in it
-        #test_verify_valid_but_unacceptable_key
+        #test_verify_unacceptable_key
         fingerprint = result[0].fpr
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:                
@@ -275,10 +275,13 @@ class GPGStrategy(object):
             return SIGNATURE_KEY_MISSING, fingerprint[-8:]
         #summary isn't set if sig is valid but key is untrusted
         #but if user has explicity set the key as acceptable we can validate it
-        # test_verify_valid
         if result[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
+                # test_verify_untrusted_but_accepted
                 return SIGNATURE_VALID, None 
+        #test_verify_valid_but_untrusted
+        if result[0].summary == 0 and self.acceptable_keys is None:
+            return SIGNATURE_NOT_VALID, None
         #if the expired key was not expired at time of signing it's good
         if result[0].summary & gpgme.SIGSUM_KEY_EXPIRED:
             expires = context.get_key(result[0].fpr).subkeys[0].expires
@@ -289,10 +292,6 @@ class GPGStrategy(object):
         #a signature from a revoked key gets this
         #test_verify_revoked_signature
         if result[0].summary & gpgme.SIGSUM_SYS_ERROR:
-            return SIGNATURE_NOT_VALID, None
-        #no summary means an untrusted key
-        #test_verify_valid_but_untrusted
-        if result[0].summary == 0 and self.acceptable_keys is None:
             return SIGNATURE_NOT_VALID, None
         #other error types such as revokes keys should (I think) be caught by
         #SIGSUM_RED so anything else means something is wrong

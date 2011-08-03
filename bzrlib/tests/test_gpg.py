@@ -218,7 +218,8 @@ YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
         context.import_(secret_key)
         context.import_(revoked_key)
 
-    def test_verify_valid(self):
+    def test_verify_untrusted_but_accepted(self):
+        #untrusted by gpg but listed as acceptable_keys by user
         self.requireFeature(features.gpgme)
         self.import_keys()
             
@@ -249,7 +250,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content,
                             plain))
 
-    def test_verify_valid_but_unacceptable_key(self):
+    def test_verify_unacceptable_key(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
             
