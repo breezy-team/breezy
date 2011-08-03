@@ -244,29 +244,43 @@ class GPGStrategy(object):
         except gpgme.GpgmeError,error:
             raise errors.SignatureVerificationFailed(error[2])
 
+        #no result if input is invalid
         if len(result) == 0:
             return SIGNATURE_NOT_VALID, None
+        #user has specified a list of acceptable keys, check our result is in it
         fingerprint = result[0].fpr
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:]
+        #check the signature actually matches the testament
         if testament != plain_output.getvalue():
             return SIGNATURE_NOT_VALID, None
+        #yay gpgme set the valid bit
         if result[0].summary & gpgme.SIGSUM_VALID:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
             return SIGNATURE_VALID, name + " <" + email + ">"
+        #sigsum_red indicates a problem
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
+        #gpg does not know this key
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING, fingerprint[-8:]
         #summary isn't set if sig is valid but key is untrusted
+        #but if user has explicity set the key as acceptable we can validate it
         if result[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
                 return SIGNATURE_VALID, None
-        else:
-            return SIGNATURE_KEY_MISSING, None
+        #if the expired key was not expired at time of signing it's good
+        if result[0].summary & gpgme.SIGSUM_KEY_EXPIRED:
+            expires = context.get_key(result[0].fpr).subkeys[0].expires
+            if expires > result[0].timestamp:
+                return SIGNATURE_VALID, fingerprint[-8:]
+            else:
+                return SIGNATURE_NOT_VALID, None
+        #other error types such as revokes keys should (I think) be caught by
+        #SIGSUM_RED so anything else means something is wrong
         raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
                                                  "verification result")
 
