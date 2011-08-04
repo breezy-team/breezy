@@ -85,6 +85,8 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Release instructions refreshed. (Vincent Ladeuil)
+
 API Changes
 ***********
 
