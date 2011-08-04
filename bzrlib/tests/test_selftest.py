@@ -29,6 +29,7 @@ import warnings
 from testtools import (
     ExtendedToOriginalDecorator,
     MultiTestResult,
+    __version__ as testtools_version,
     )
 from testtools.content import Content
 from testtools.content_type import ContentType
@@ -36,13 +37,14 @@ from testtools.matchers import (
     DocTestMatches,
     Equals,
     )
-import testtools.tests.helpers
+import testtools.testresult.doubles
 
 import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
     errors,
+    hooks,
     lockdir,
     memorytree,
     osutils,
@@ -92,19 +94,10 @@ class MetaTestLog(tests.TestCase):
             DocTestMatches(u"...a test message\n", doctest.ELLIPSIS))
 
 
-class TestUnicodeFilename(tests.TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilename._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        tests.UnicodeFilename._probe()
-
-
 class TestTreeShape(tests.TestCaseInTempDir):
 
     def test_unicode_paths(self):
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         filename = u'hell\u00d8'
         self.build_tree_contents([(filename, 'contents of hello')])
@@ -720,8 +713,8 @@ class TestChrootedTest(tests.ChrootedTestCase):
 class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
-        self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = testtools.tests.helpers.ExtendedTestResult()
+        self.requireFeature(features.lsprof_feature)
+        terminal = testtools.testresult.doubles.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -744,7 +737,7 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        capture = testtools.tests.helpers.ExtendedTestResult()
+        capture = testtools.testresult.doubles.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
         timed_string = result._testTimeString(run_case)
@@ -781,7 +774,7 @@ class TestTestResult(tests.TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             result_stream,
@@ -896,7 +889,7 @@ class TestTestResult(tests.TestCase):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
         test = SampleTestCase('_test_pass')
-        feature = tests.Feature()
+        feature = features.Feature()
         result.startTest(test)
         result.addNotSupported(test, feature)
         # it should invoke 'report_unsupported'.
@@ -921,7 +914,7 @@ class TestTestResult(tests.TestCase):
             verbosity=2,
             )
         test = self.get_passing_test()
-        feature = tests.Feature()
+        feature = features.Feature()
         result.startTest(test)
         prefix = len(result_stream.getvalue())
         result.report_unsupported(test, feature)
@@ -940,7 +933,7 @@ class TestTestResult(tests.TestCase):
             def addNotSupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
-        feature = tests.Feature()
+        feature = features.Feature()
         class Test(tests.TestCase):
             def test_function(self):
                 raise tests.UnavailableFeature(feature)
@@ -1005,15 +998,6 @@ class TestTestResult(tests.TestCase):
         self.assertEquals(2, result.count)
 
 
-class TestUnicodeFilenameFeature(tests.TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilenameFeature._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        tests.UnicodeFilenameFeature._probe()
-
-
 class TestRunner(tests.TestCase):
 
     def dummy_test(self):
@@ -1045,7 +1029,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            self.fail('foo')
+            raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1059,7 +1043,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    self.fail\\(\'foo\'\\)\n'
+            '    raise AssertionError\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1071,7 +1055,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                self.expectFailure('failed', self.assertTrue, False)
+                self.knownFailure("Never works...")
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1089,17 +1073,31 @@ class TestRunner(tests.TestCase):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
         runner = tests.TextTestRunner(stream=StringIO())
         result = self.run_test_runner(runner, Test("test_truth"))
-        self.assertContainsRe(runner.stream.getvalue(),
-            "=+\n"
-            "FAIL: \\S+\.test_truth\n"
-            "-+\n"
-            "(?:.*\n)*"
-            "No absolute truth\n"
-            "(?:.*\n)*"
-            "-+\n"
-            "Ran 1 test in .*\n"
-            "\n"
-            "FAILED \\(failures=1\\)\n\\Z")
+        if testtools_version <= (0, 9, 11):
+            self.assertContainsRe(runner.stream.getvalue(),
+                "=+\n"
+                "FAIL: \\S+\.test_truth\n"
+                "-+\n"
+                "(?:.*\n)*"
+                "No absolute truth\n"
+                "(?:.*\n)*"
+                "-+\n"
+                "Ran 1 test in .*\n"
+                "\n"
+                "FAILED \\(failures=1\\)\n\\Z")
+        else:
+            self.assertContainsRe(runner.stream.getvalue(),
+                "=+\n"
+                "FAIL: \\S+\.test_truth\n"
+                "-+\n"
+                "Empty attachments:\n"
+                "  log\n"
+                "\n"
+                "reason: {{{No absolute truth}}}\n"
+                "-+\n"
+                "Ran 1 test in .*\n"
+                "\n"
+                "FAILED \\(failures=1\\)\n\\Z")
 
     def test_result_decorator(self):
         # decorate results
@@ -1190,9 +1188,9 @@ class TestRunner(tests.TestCase):
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
-        class Feature1(tests.Feature):
+        class Feature1(features.Feature):
             def _probe(self): return False
-        class Feature2(tests.Feature):
+        class Feature2(features.Feature):
             def _probe(self): return False
         # create sample tests
         test1 = SampleTestCase('_test_pass')
@@ -1264,11 +1262,14 @@ class TestRunner(tests.TestCase):
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
-        self.assertContainsRe(out.getvalue(),
-            "Text attachment: log\n"
-            "-+\n"
-            "\d+\.\d+  \\\\u2606\n"
-            "-+\n")
+        if testtools_version > (0, 9, 11):
+            self.assertContainsRe(out.getvalue(), "log: {{{\d+\.\d+  \\\\u2606}}}")
+        else:
+            self.assertContainsRe(out.getvalue(),
+                "Text attachment: log\n"
+                "-+\n"
+                "\d+\.\d+  \\\\u2606\n"
+                "-+\n")
 
 
 class SampleTestCase(tests.TestCase):
@@ -1475,7 +1476,7 @@ class TestTestCase(tests.TestCase):
 
         Each self.time() call is individually and separately profiled.
         """
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         # overrides the class member with an instance member so no cleanup
         # needed.
         self._gather_lsprof_in_benchmarks = True
@@ -1511,14 +1512,14 @@ class TestTestCase(tests.TestCase):
 
     def test_requireFeature_available(self):
         """self.requireFeature(available) is a no-op."""
-        class Available(tests.Feature):
+        class Available(features.Feature):
             def _probe(self):return True
         feature = Available()
         self.requireFeature(feature)
 
     def test_requireFeature_unavailable(self):
         """self.requireFeature(unavailable) raises UnavailableFeature."""
-        class Unavailable(tests.Feature):
+        class Unavailable(features.Feature):
             def _probe(self):return False
         feature = Unavailable()
         self.assertRaises(tests.UnavailableFeature,
@@ -1683,8 +1684,20 @@ class TestTestCase(tests.TestCase):
         test.run(unittest.TestResult())
         self.assertEqual('original', obj.test_attr)
 
+    def test_recordCalls(self):
+        from bzrlib.tests import test_selftest
+        calls = self.recordCalls(
+            test_selftest, '_add_numbers')
+        self.assertEqual(test_selftest._add_numbers(2, 10),
+            12)
+        self.assertEquals(calls, [((2, 10), {})])
 
-class _MissingFeature(tests.Feature):
+
+def _add_numbers(a, b):
+    return a + b
+
+
+class _MissingFeature(features.Feature):
     def _probe(self):
         return False
 missing_feature = _MissingFeature()
@@ -1741,14 +1754,16 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_fail')
         self.assertEqual(1, len(result.failures))
         result_content = result.failures[0][1]
-        self.assertContainsRe(result_content, 'Text attachment: log')
+        if testtools_version < (0, 9, 12):
+            self.assertContainsRe(result_content, 'Text attachment: log')
         self.assertContainsRe(result_content, 'this was a failing test')
 
     def test_error_has_log(self):
         result = self._run_test('test_error')
         self.assertEqual(1, len(result.errors))
         result_content = result.errors[0][1]
-        self.assertContainsRe(result_content, 'Text attachment: log')
+        if testtools_version < (0, 9, 12):
+            self.assertContainsRe(result_content, 'Text attachment: log')
         self.assertContainsRe(result_content, 'this test errored')
 
     def test_skip_has_no_log(self):
@@ -2036,18 +2051,18 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertLength(2, output.readlines())
 
     def test_lsprof_tests(self):
-        self.requireFeature(test_lsprof.LSProfFeature)
-        calls = []
+        self.requireFeature(features.lsprof_feature)
+        results = []
         class Test(object):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                self.assertIsInstance(result, ExtendedToOriginalDecorator)
-                calls.append("called")
+                results.append(result)
             def countTestCases(self):
                 return 1
         self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
-        self.assertLength(1, calls)
+        self.assertLength(1, results)
+        self.assertIsInstance(results.pop(), ExtendedToOriginalDecorator)
 
     def test_random(self):
         # test randomising by listing a number of tests.
@@ -2505,16 +2520,23 @@ class _DontSpawnProcess(Exception):
 
 
 class TestStartBzrSubProcess(tests.TestCase):
+    """Stub test start_bzr_subprocess."""
 
-    def check_popen_state(self):
-        """Replace to make assertions when popen is called."""
+    def _subprocess_log_cleanup(self):
+        """Inhibits the base version as we don't produce a log file."""
 
     def _popen(self, *args, **kwargs):
-        """Record the command that is run, so that we can ensure it is correct"""
+        """Override the base version to record the command that is run.
+
+        From there we can ensure it is correct without spawning a real process.
+        """
         self.check_popen_state()
         self._popen_args = args
         self._popen_kwargs = kwargs
         raise _DontSpawnProcess()
+
+    def check_popen_state(self):
+        """Replace to make assertions when popen is called."""
 
     def test_run_bzr_subprocess_no_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
@@ -2525,7 +2547,7 @@ class TestStartBzrSubProcess(tests.TestCase):
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            allow_plugins=True)
+                          allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
@@ -2536,7 +2558,7 @@ class TestStartBzrSubProcess(tests.TestCase):
             self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':'set variable'})
+                          env_changes={'EXISTANT_ENV_VAR':'set variable'})
         # not set in theparent
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
@@ -2548,7 +2570,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':None})
+                          env_changes={'EXISTANT_ENV_VAR':None})
         # Still set in parent
         self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         del os.environ['EXISTANT_ENV_VAR']
@@ -2559,7 +2581,7 @@ class TestStartBzrSubProcess(tests.TestCase):
             self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'NON_EXISTANT_ENV_VAR':None})
+                          env_changes={'NON_EXISTANT_ENV_VAR':None})
 
     def test_working_dir(self):
         """Test that we can specify the working dir for the child"""
@@ -2568,18 +2590,12 @@ class TestStartBzrSubProcess(tests.TestCase):
         chdirs = []
         def chdir(path):
             chdirs.append(path)
-        os.chdir = chdir
-        try:
-            def getcwd():
-                return 'current'
-            osutils.getcwd = getcwd
-            try:
-                self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-                    working_dir='foo')
-            finally:
-                osutils.getcwd = orig_getcwd
-        finally:
-            os.chdir = orig_chdir
+        self.overrideAttr(os, 'chdir', chdir)
+        def getcwd():
+            return 'current'
+        self.overrideAttr(osutils, 'getcwd', getcwd)
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+                          working_dir='foo')
         self.assertEqual(['foo', 'current'], chdirs)
 
     def test_get_bzr_path_with_cwd_bzrlib(self):
@@ -2603,80 +2619,6 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
                                             retcode=3)
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
-
-
-class TestFeature(tests.TestCase):
-
-    def test_caching(self):
-        """Feature._probe is called by the feature at most once."""
-        class InstrumentedFeature(tests.Feature):
-            def __init__(self):
-                super(InstrumentedFeature, self).__init__()
-                self.calls = []
-            def _probe(self):
-                self.calls.append('_probe')
-                return False
-        feature = InstrumentedFeature()
-        feature.available()
-        self.assertEqual(['_probe'], feature.calls)
-        feature.available()
-        self.assertEqual(['_probe'], feature.calls)
-
-    def test_named_str(self):
-        """Feature.__str__ should thunk to feature_name()."""
-        class NamedFeature(tests.Feature):
-            def feature_name(self):
-                return 'symlinks'
-        feature = NamedFeature()
-        self.assertEqual('symlinks', str(feature))
-
-    def test_default_str(self):
-        """Feature.__str__ should default to __class__.__name__."""
-        class NamedFeature(tests.Feature):
-            pass
-        feature = NamedFeature()
-        self.assertEqual('NamedFeature', str(feature))
-
-
-class TestUnavailableFeature(tests.TestCase):
-
-    def test_access_feature(self):
-        feature = tests.Feature()
-        exception = tests.UnavailableFeature(feature)
-        self.assertIs(feature, exception.args[0])
-
-
-simple_thunk_feature = tests._CompatabilityThunkFeature(
-    deprecated_in((2, 1, 0)),
-    'bzrlib.tests.test_selftest',
-    'simple_thunk_feature','UnicodeFilename',
-    replacement_module='bzrlib.tests'
-    )
-
-class Test_CompatibilityFeature(tests.TestCase):
-
-    def test_does_thunk(self):
-        res = self.callDeprecated(
-            ['bzrlib.tests.test_selftest.simple_thunk_feature was deprecated'
-             ' in version 2.1.0. Use bzrlib.tests.UnicodeFilename instead.'],
-            simple_thunk_feature.available)
-        self.assertEqual(tests.UnicodeFilename.available(), res)
-
-
-class TestModuleAvailableFeature(tests.TestCase):
-
-    def test_available_module(self):
-        feature = tests.ModuleAvailableFeature('bzrlib.tests')
-        self.assertEqual('bzrlib.tests', feature.module_name)
-        self.assertEqual('bzrlib.tests', str(feature))
-        self.assertTrue(feature.available())
-        self.assertIs(tests, feature.module)
-
-    def test_unavailable_module(self):
-        feature = tests.ModuleAvailableFeature('bzrlib.no_such_module_exists')
-        self.assertEqual('bzrlib.no_such_module_exists', str(feature))
-        self.assertFalse(feature.available())
-        self.assertIs(None, feature.module)
 
 
 class TestSelftestFiltering(tests.TestCase):
@@ -3522,3 +3464,81 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees None
         self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)
+
+
+class TestSelftestExcludePatterns(tests.TestCase):
+
+    def setUp(self):
+        super(TestSelftestExcludePatterns, self).setUp()
+        self.overrideAttr(tests, 'test_suite', self.suite_factory)
+
+    def suite_factory(self, keep_only=None, starting_with=None):
+        """A test suite factory with only a few tests."""
+        class Test(tests.TestCase):
+            def id(self):
+                # We don't need the full class path
+                return self._testMethodName
+            def a(self):
+                pass
+            def b(self):
+                pass
+            def c(self):
+                pass
+        return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
+
+    def assertTestList(self, expected, *selftest_args):
+        # We rely on setUp installing the right test suite factory so we can
+        # test at the command level without loading the whole test suite
+        out, err = self.run_bzr(('selftest', '--list') + selftest_args)
+        actual = out.splitlines()
+        self.assertEquals(expected, actual)
+
+    def test_full_list(self):
+        self.assertTestList(['a', 'b', 'c'])
+
+    def test_single_exclude(self):
+        self.assertTestList(['b', 'c'], '-x', 'a')
+
+    def test_mutiple_excludes(self):
+        self.assertTestList(['c'], '-x', 'a', '-x', 'b')
+
+
+class TestCounterHooks(tests.TestCase, SelfTestHelper):
+
+    _test_needs_features = [features.subunit]
+
+    def setUp(self):
+        super(TestCounterHooks, self).setUp()
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                super(Test, self).setUp()
+                self.hooks = hooks.Hooks()
+                self.hooks.add_hook('myhook', 'Foo bar blah', (2,4))
+                self.install_counter_hook(self.hooks, 'myhook')
+
+            def no_hook(self):
+                pass
+
+            def run_hook_once(self):
+                for hook in self.hooks['myhook']:
+                    hook(self)
+
+        self.test_class = Test
+
+    def assertHookCalls(self, expected_calls, test_name):
+        test = self.test_class(test_name)
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertTrue(hasattr(test, '_counters'))
+        self.assertTrue(test._counters.has_key('myhook'))
+        self.assertEquals(expected_calls, test._counters['myhook'])
+
+    def test_no_hook(self):
+        self.assertHookCalls(0, 'no_hook')
+
+    def test_run_hook_once(self):
+        tt = features.testtools
+        if tt.module.__version__ < (0, 9, 8):
+            raise tests.TestSkipped('testtools-0.9.8 required for addDetail')
+        self.assertHookCalls(1, 'run_hook_once')

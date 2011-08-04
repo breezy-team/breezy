@@ -62,11 +62,13 @@ from bzrlib.osutils import (
 from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
     features,
-    HardlinkFeature,
-    SymlinkFeature,
     TestCaseInTempDir,
     TestSkipped,
-)
+    )
+from bzrlib.tests.features import (
+    HardlinkFeature,
+    SymlinkFeature,
+    )
 from bzrlib.transform import (
     build_tree,
     create_from_tree,
@@ -284,6 +286,68 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         new_trans_id = transform.new_directory('', ROOT_PARENT, 'new-root-id')
         new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
         self.assertRaises(ValueError, transform.fixup_new_roots)
+
+    def test_retain_existing_root(self):
+        tt, root = self.get_transform()
+        with tt:
+            tt.new_directory('', ROOT_PARENT, 'new-root-id')
+            tt.fixup_new_roots()
+            self.assertNotEqual('new-root-id', tt.final_file_id(tt.root))
+
+    def test_retain_existing_root_added_file(self):
+        tt, root = self.get_transform()
+        new_trans_id = tt.new_directory('', ROOT_PARENT, 'new-root-id')
+        child = tt.new_directory('child', new_trans_id, 'child-id')
+        tt.fixup_new_roots()
+        self.assertEqual(tt.root, tt.final_parent(child))
+
+    def test_add_unversioned_root(self):
+        transform, root = self.get_transform()
+        new_trans_id = transform.new_directory('', ROOT_PARENT, None)
+        transform.delete_contents(transform.root)
+        transform.fixup_new_roots()
+        self.assertNotIn(transform.root, transform._new_id)
+
+    def test_remove_root_fixup(self):
+        transform, root = self.get_transform()
+        old_root_id = self.wt.get_root_id()
+        self.assertNotEqual('new-root-id', old_root_id)
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots()
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
+
+        transform, root = self.get_transform()
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'new-root-id')
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
+        self.assertRaises(ValueError, transform.fixup_new_roots)
+
+    def test_fixup_new_roots_permits_empty_tree(self):
+        transform, root = self.get_transform()
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots()
+        self.assertIs(None, transform.final_kind(root))
+        self.assertIs(None, transform.final_file_id(root))
+
+    def test_apply_retains_root_directory(self):
+        # Do not attempt to delete the physical root directory, because that
+        # is impossible.
+        transform, root = self.get_transform()
+        with transform:
+            transform.delete_contents(root)
+            e = self.assertRaises(AssertionError, self.assertRaises,
+                                  errors.TransformRenameFailed,
+                                  transform.apply)
+        self.assertContainsRe('TransformRenameFailed not raised', str(e))
+
+    def test_apply_retains_file_id(self):
+        transform, root = self.get_transform()
+        old_root_id = transform.tree_file_id(root)
+        transform.unversion_file(root)
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
 
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -717,7 +781,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                             'wizard2', 'behind_curtain')
 
     def test_symlinks_unicode(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_symlinks(u'\N{Euro Sign}wizard',
                             u'wizard-targ\N{Euro Sign}t',
                             u'\N{Euro Sign}wizard2',
@@ -811,7 +875,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
-        conflicts_s = [str(c) for c in cooked_conflicts]
+        conflicts_s = [unicode(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
                                          'Moved existing file to '
@@ -1599,6 +1663,38 @@ def conflict_text(tree, merge):
     return template % ('<' * 7, tree, '=' * 7, merge, '>' * 7)
 
 
+class TestInventoryAltered(tests.TestCaseWithTransport):
+
+    def test_inventory_altered_unchanged(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            self.assertEqual([], tt._inventory_altered())
+
+    def test_inventory_altered_changed_parent_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            tt.unversion_file(tt.root)
+            tt.version_file('new-id', tt.root)
+            foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+            foo_tuple = ('foo', foo_trans_id)
+            root_tuple = ('', tt.root)
+            self.assertEqual([root_tuple, foo_tuple], tt._inventory_altered())
+
+    def test_inventory_altered_noop_changed_parent_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo', 'foo-id')
+        with TransformPreview(tree) as tt:
+            tt.unversion_file(tt.root)
+            tt.version_file(tree.get_root_id(), tt.root)
+            foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+            self.assertEqual([], tt._inventory_altered())
+
+
 class TestTransformMerge(TestCaseInTempDir):
 
     def test_text_merge(self):
@@ -2130,8 +2226,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqualStat(source_stat, target_stat)
 
     def test_case_insensitive_build_tree_inventory(self):
-        if (tests.CaseInsensitiveFilesystemFeature.available()
-            or tests.CaseInsCasePresFilenameFeature.available()):
+        if (features.CaseInsensitiveFilesystemFeature.available()
+            or features.CaseInsCasePresFilenameFeature.available()):
             raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
@@ -2462,6 +2558,130 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.assertPathExists('a')
         self.assertPathExists('a/b')
+
+
+class TestFinalizeRobustness(tests.TestCaseWithTransport):
+    """Ensure treetransform creation errors can be safely cleaned up after"""
+
+    def _override_globals_in_method(self, instance, method_name, globals):
+        """Replace method on instance with one with updated globals"""
+        import types
+        func = getattr(instance, method_name).im_func
+        new_globals = dict(func.func_globals)
+        new_globals.update(globals)
+        new_func = types.FunctionType(func.func_code, new_globals,
+            func.func_name, func.func_defaults)
+        setattr(instance, method_name,
+            types.MethodType(new_func, instance, instance.__class__))
+        self.addCleanup(delattr, instance, method_name)
+
+    @staticmethod
+    def _fake_open_raises_before(name, mode):
+        """Like open() but raises before doing anything"""
+        raise RuntimeError
+
+    @staticmethod
+    def _fake_open_raises_after(name, mode):
+        """Like open() but raises after creating file without returning"""
+        open(name, mode).close()
+        raise RuntimeError
+
+    def create_transform_and_root_trans_id(self):
+        """Setup a transform creating a file in limbo"""
+        tree = self.make_branch_and_tree('.')
+        tt = TreeTransform(tree)
+        return tt, tt.create_path("a", tt.root)
+
+    def create_transform_and_subdir_trans_id(self):
+        """Setup a transform creating a directory containing a file in limbo"""
+        tree = self.make_branch_and_tree('.')
+        tt = TreeTransform(tree)
+        d_trans_id = tt.create_path("d", tt.root)
+        tt.create_directory(d_trans_id)
+        f_trans_id = tt.create_path("a", d_trans_id)
+        tt.adjust_path("a", d_trans_id, f_trans_id)
+        return tt, f_trans_id
+
+    def test_root_create_file_open_raises_before_creation(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_before})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathDoesNotExist(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_root_create_file_open_raises_after_creation(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_after})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_subdir_create_file_open_raises_before_creation(self):
+        tt, trans_id = self.create_transform_and_subdir_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_before})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathDoesNotExist(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_subdir_create_file_open_raises_after_creation(self):
+        tt, trans_id = self.create_transform_and_subdir_trans_id()
+        self._override_globals_in_method(tt, "create_file",
+            {"open": self._fake_open_raises_after})
+        self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
+        path = tt._limbo_name(trans_id)
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_rename_in_limbo_rename_raises_after_rename(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        parent1 = tt.new_directory('parent1', tt.root)
+        child1 = tt.new_file('child1', parent1, 'contents')
+        parent2 = tt.new_directory('parent2', tt.root)
+
+        class FakeOSModule(object):
+            def rename(self, old, new):
+                os.rename(old, new)
+                raise RuntimeError
+        self._override_globals_in_method(tt, "_rename_in_limbo",
+            {"os": FakeOSModule()})
+        self.assertRaises(
+            RuntimeError, tt.adjust_path, "child1", parent2, child1)
+        path = osutils.pathjoin(tt._limbo_name(parent2), "child1")
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_rename_in_limbo_rename_raises_before_rename(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        parent1 = tt.new_directory('parent1', tt.root)
+        child1 = tt.new_file('child1', parent1, 'contents')
+        parent2 = tt.new_directory('parent2', tt.root)
+
+        class FakeOSModule(object):
+            def rename(self, old, new):
+                raise RuntimeError
+        self._override_globals_in_method(tt, "_rename_in_limbo",
+            {"os": FakeOSModule()})
+        self.assertRaises(
+            RuntimeError, tt.adjust_path, "child1", parent2, child1)
+        path = osutils.pathjoin(tt._limbo_name(parent1), "child1")
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
 
 
 class TestTransformMissingParent(tests.TestCaseWithTransport):
@@ -3126,7 +3346,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
 
     def test_ascii_limbo_paths(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         branch = self.make_branch('any')
         tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
         tt = TransformPreview(tree)
@@ -3149,7 +3369,7 @@ class FakeSerializer(object):
 
 class TestSerializeTransform(tests.TestCaseWithTransport):
 
-    _test_needs_features = [tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def get_preview(self, tree=None):
         if tree is None:
@@ -3230,13 +3450,13 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         return self.make_records(attribs, contents)
 
     def test_serialize_symlink_creation(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tt = self.get_preview()
         tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
         abspath = tt._limbo_name('new-1')

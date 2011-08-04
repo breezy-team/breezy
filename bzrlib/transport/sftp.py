@@ -114,12 +114,6 @@ class SFTPLock(object):
         except FileExists:
             raise LockError('File %r already locked' % (self.path,))
 
-    def __del__(self):
-        """Should this warn, or actually try to cleanup?"""
-        if self.lock_file:
-            warning("SFTPLock %r not explicitly unlocked" % (self.path,))
-            self.unlock()
-
     def unlock(self):
         if not self.lock_file:
             return
@@ -342,10 +336,6 @@ class SFTPTransport(ConnectedTransport):
     # size for paramiko <= 1.6.1. paramiko 1.6.2 will probably chop
     # up the request itself, rather than us having to worry about it
     _max_request_size = 32768
-
-    def __init__(self, base, _from_transport=None):
-        super(SFTPTransport, self).__init__(base,
-                                            _from_transport=_from_transport)
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.

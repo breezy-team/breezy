@@ -21,6 +21,9 @@ from bzrlib import (
     config,
     tests,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestAlias(tests.TestCaseWithTransport):
@@ -48,7 +51,7 @@ class TestAlias(tests.TestCaseWithTransport):
         """Unicode aliases should work (Bug #529930)"""
         # XXX: strictly speaking, lack of unicode filenames doesn't imply that
         # unicode command lines aren't available.
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'foo\xb6'
 
         tree = self.make_branch_and_tree('.')

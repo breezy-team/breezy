@@ -163,12 +163,13 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
         result.old_revno, result.old_revid = self.target.last_revision_info()
         self.source.lock_read()
         try:
+            graph = self.source.repository.get_graph()
             # This just handles simple cases, but that's good enough for tests
             my_history = self.target.revision_history()
             if stop_revision is None:
                 stop_revision = self.source.last_revision()
-            their_history = list(
-                self.source.repository.iter_reverse_revision_history(stop_revision))
+            their_history = list(graph.iter_lefthand_ancestry(stop_revision,
+                (revision.NULL_REVISION,)))
             their_history.reverse()
             if their_history[:min(len(my_history), len(their_history))] != my_history:
                 raise errors.DivergedBranches(self.target, self.source)
@@ -181,7 +182,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                     return (tree.get_file(file_id), None)
                 tree.get_file_with_stat = get_file_with_stat
                 new_revid = self.target.mapping.revision_id_foreign_to_bzr(
-                    (str(rev.timestamp), str(rev.timezone), 
+                    (str(rev.timestamp), str(rev.timezone),
                         str(self.target.revno())))
                 parent_revno, parent_revid= self.target.last_revision_info()
                 if parent_revid == revision.NULL_REVISION:

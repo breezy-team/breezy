@@ -29,9 +29,11 @@ from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     fixtures,
-    HardlinkFeature,
     script,
     test_server,
+    )
+from bzrlib.tests.features import (
+    HardlinkFeature,
     )
 from bzrlib.tests.blackbox import test_switch
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -60,6 +62,17 @@ class TestBranch(TestCaseWithTransport):
         # previously was erroneously created by branching
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
+
+    def test_branch_broken_pack(self):
+        """branching with a corrupted pack file."""
+        self.example_branch('a')
+        #now add some random corruption
+        fname = 'a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0]
+        with open(fname, 'rb+') as f:
+            f.seek(750)
+            f.write("\xff")
+        self.run_bzr_error(['Corruption while decompressing repository file'], 
+                            'branch a b', retcode=3)
 
     def test_branch_switch_no_branch(self):
         # No branch in the current directory:

@@ -73,6 +73,44 @@ $ bzr conflicts -d branch
 """)
 
 
+class TestBug788000(script.TestCaseWithTransportAndScript):
+
+    def test_bug_788000(self):
+        self.run_script('''\
+$ bzr init a
+$ mkdir a/dir
+$ echo foo > a/dir/file
+$ bzr add a/dir
+$ cd a
+$ bzr commit -m one
+$ cd ..
+$ bzr clone a b
+$ echo bar > b/dir/file
+$ cd a
+$ rm -r dir
+$ bzr commit -m two
+$ cd ../b
+''',
+                        null_output_matches_anything=True)
+
+        self.run_script('''\
+$ bzr pull
+Using saved parent location:...
+Now on revision 2.
+2>RM  dir/file => dir/file.THIS
+2>Conflict: can't delete dir because it is not empty.  Not deleting.
+2>Conflict because dir is not versioned, but has versioned children...
+2>Contents conflict in dir/file
+2>3 conflicts encountered.
+''')
+        self.run_script('''\
+$ bzr resolve --take-other
+2>deleted dir/file.THIS
+2>deleted dir
+2>3 conflict(s) resolved, 0 remaining
+''')
+
+
 class TestResolveAuto(tests.TestCaseWithTransport):
 
     def test_auto_resolve(self):

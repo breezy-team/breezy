@@ -24,15 +24,10 @@ It provides the gio+XXX:// protocols where XXX is any of the protocols
 supported by gio.
 """
 from cStringIO import StringIO
-import getpass
 import os
 import random
-import socket
 import stat
-import urllib
 import time
-import sys
-import getpass
 import urlparse
 
 from bzrlib import (
@@ -49,12 +44,11 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     warn,
     )
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 from bzrlib.transport import (
     FileStream,
     ConnectedTransport,
     _file_streams,
-    Server,
     )
 
 from bzrlib.tests.test_server import TestServer
@@ -176,7 +170,7 @@ class GioTransport(ConnectedTransport):
         user = None
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):
-            prompt = scheme.upper() + ' %(host)s DOMAIN\username'
+            prompt = u'%s' % (scheme.upper(),) + u' %(host)s DOMAIN\\username'
             user_and_domain = auth.get_user(scheme, host,
                     port=port, ask=True, prompt=prompt)
             (domain, user) = user_and_domain.split('\\', 1)
@@ -191,7 +185,7 @@ class GioTransport(ConnectedTransport):
             #a DOMAIN and a username prompt should be the
             #same so I will missuse the ui_factory get_username
             #a little bit here.
-            prompt = scheme.upper() + ' %(host)s DOMAIN'
+            prompt = u'%s' % (scheme.upper(),) + u' %(host)s DOMAIN'
             domain = ui.ui_factory.get_username(prompt=prompt)
             op.set_domain(domain)
 

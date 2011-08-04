@@ -120,8 +120,9 @@ def report_bug_to_apport(exc_info, stderr):
     # this function is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
 
-    # if the import fails, the exception will be caught at a higher level and
-    # we'll report the error by other means
+    # This import is apparently not used, but we're doing it so that if the
+    # import fails, the exception will be caught at a higher level and we'll
+    # report the error by other means.
     import apport
 
     crash_filename = _write_apport_report_to_file(exc_info)

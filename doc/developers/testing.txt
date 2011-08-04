@@ -516,9 +516,9 @@ We want to avoid loading code unnecessarily, for reasons including:
 regress.
 
 This is done by running the command in a subprocess with
-``--profile-imports``.  Starting a whole Python interpreter is pretty
-slow, so we don't want exhaustive testing here, but just enough to guard
-against distinct fixed problems.
+``PYTHON_VERBOSE=1``.  Starting a whole Python interpreter is pretty slow,
+so we don't want exhaustive testing here, but just enough to guard against
+distinct fixed problems.
 
 Assertions about precisely what is loaded tend to be brittle so we instead
 make assertions that particular things aren't loaded.
@@ -1017,6 +1017,23 @@ If your test needs to temporarily mutate some global state, and you need
 it restored at the end, you can say for example::
 
     self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+
+This should be used with discretion; sometimes it's better to make the
+underlying code more testable so that you don't need to rely on monkey
+patching.
+
+
+Observing calls to a function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes it's useful to observe how a function is called, typically when
+calling it has side effects but the side effects are not easy to observe
+from a test case.  For instance the function may be expensive and we want
+to assert it is not called too many times, or it has effects on the
+machine that are safe to run during a test but not easy to measure.  In
+these cases, you can use `recordCalls` which will monkey-patch in a
+wrapper that records when the function is called.
+
 
 Temporarily changing environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

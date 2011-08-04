@@ -224,7 +224,7 @@ class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
             "      ('ddd',) 'initial ddd content'\n",
             c_map._dump_tree())
 
-    def test_one_deep_map_16(self):
+    def test_root_only_aaa_ddd_16(self):
         c_map = self.make_root_only_aaa_ddd_map(
                 search_key_func=chk_map._search_key_16)
         # We use 'aaa' and 'ddd' because they happen to map to 'F' when using
@@ -1108,7 +1108,7 @@ class TestMap(TestCaseWithStore):
         basis_get = basis._store.get_record_stream
         def get_record_stream(keys, order, fulltext):
             if ('sha1:1adf7c0d1b9140ab5f33bb64c6275fa78b1580b7',) in keys:
-                self.fail("'aaa' pointer was followed %r" % keys)
+                raise AssertionError("'aaa' pointer was followed %r" % keys)
             return basis_get(keys, order, fulltext)
         basis._store.get_record_stream = get_record_stream
         result = sorted(list(target.iter_changes(basis)))

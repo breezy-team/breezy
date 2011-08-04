@@ -424,7 +424,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
     def test_empty_branch_api(self):
         """The branch_obj.push API should make a limited number of HPSS calls.
         """
-        t = transport.get_transport(self.smart_server.get_url()).clone('target')
+        t = transport.get_transport_from_url(self.smart_server.get_url()).clone('target')
         target = branch.Branch.open_from_transport(t)
         self.empty_branch.push(target)
         self.assertEqual(

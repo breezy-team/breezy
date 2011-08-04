@@ -36,7 +36,7 @@ from bzrlib.tests import (
     probe_bad_non_ascii,
     test_foreign,
     TestSkipped,
-    UnicodeFilenameFeature,
+    features,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -138,7 +138,7 @@ bzr: ERROR: No changes to commit.\
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
         open(file_name, 'w').write('hello world')
@@ -754,6 +754,16 @@ altered in u2
             "commit tree/hello.txt", stdin="n\n")
         self.assertEqual(expected, tree.last_revision())
 
+    def test_set_commit_message(self):
+        msgeditor.hooks.install_named_hook("set_commit_message",
+                lambda commit_obj, msg: "save me some typing\n", None)
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('save me some typing\n', last_rev.message)
+
     def test_commit_without_username(self):
         """Ensure commit error if username is not set.
         """
@@ -782,4 +792,3 @@ altered in u2
         self.assertEqual(out, '')
         self.assertContainsRe(err,
             'Branch.*test_checkout.*appears to be bound to itself')
-

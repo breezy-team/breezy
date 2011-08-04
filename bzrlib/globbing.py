@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,10 @@ expressions.
 
 import re
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    lazy_regex,
+    )
 from bzrlib.trace import (
     mutter,
     warning,
@@ -38,7 +41,7 @@ class Replacer(object):
     must not contain capturing groups.
     """
 
-    _expand = re.compile(ur'\\&')
+    _expand = lazy_regex.lazy_compile(ur'\\&')
 
     def __init__(self, source=None):
         self._pat = None
@@ -74,7 +77,7 @@ class Replacer(object):
 
     def __call__(self, text):
         if not self._pat:
-            self._pat = re.compile(
+            self._pat = lazy_regex.lazy_compile(
                     u'|'.join([u'(%s)' % p for p in self._pats]),
                     re.UNICODE)
         return self._pat.sub(self._do_sub, text)
@@ -217,9 +220,13 @@ class Globster(object):
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
-            grouped_rules = ['(%s)' % translator(pat) for pat in patterns[:99]]
+            grouped_rules = [
+                '(%s)' % translator(pat) for pat in patterns[:99]]
             joined_rule = '%s(?:%s)$' % (prefix, '|'.join(grouped_rules))
-            self._regex_patterns.append((re.compile(joined_rule, re.UNICODE),
+            # Explicitly use lazy_compile here, because we count on its
+            # nicer error reporting.
+            self._regex_patterns.append((
+                lazy_regex.lazy_compile(joined_rule, re.UNICODE),
                 patterns[:99]))
             patterns = patterns[99:]
 
@@ -275,7 +282,7 @@ class Globster(object):
         translator = Globster.pattern_info[Globster.identify(pattern)]["translator"]
         tpattern = '(%s)' % translator(pattern)
         try:
-            re_obj = re.compile(tpattern, re.UNICODE)
+            re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("") # force compile
         except errors.InvalidPattern, e:
             result = False
@@ -334,7 +341,7 @@ class _OrderedGlobster(Globster):
                 Globster.pattern_info[t]["prefix"])
 
 
-_slashes = re.compile(r'[\\/]+')
+_slashes = lazy_regex.lazy_compile(r'[\\/]+')
 def normalize_pattern(pattern):
     """Converts backslashes in path patterns to forward slashes.
 

@@ -74,7 +74,7 @@ def extract_auth(url, password_manager):
             password = urllib.unquote(password)
         else:
             password = ui.ui_factory.get_password(
-                prompt='HTTP %(user)s@%(host)s password',
+                prompt=u'HTTP %(user)s@%(host)s password',
                 user=username, host=host)
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
@@ -271,7 +271,7 @@ class HttpTransportBase(ConnectedTransport):
                         cur_offset_and_size = iter_offsets.next()
 
             except (errors.ShortReadvError, errors.InvalidRange,
-                    errors.InvalidHttpRange), e:
+                    errors.InvalidHttpRange, errors.HttpBoundaryMissing), e:
                 mutter('Exception %r: %s during http._readv',e, e)
                 if (not isinstance(e, errors.ShortReadvError)
                     or retried_offset == cur_offset_and_size):

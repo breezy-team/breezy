@@ -24,6 +24,7 @@ from itertools import chain
 from bzrlib import (
         bzrdir,
         cache_utf8,
+        cleanup,
         config as _mod_config,
         debug,
         errors,
@@ -507,7 +508,7 @@ class Branch(controldir.ControlComponent):
         rev_iter = iter(merge_sorted_revisions)
         if start_revision_id is not None:
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id != start_revision_id:
                     continue
                 else:
@@ -519,19 +520,19 @@ class Branch(controldir.ControlComponent):
         if stop_revision_id is None:
             # Yield everything
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
         elif stop_rule == 'exclude':
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id == stop_revision_id:
                     return
                 yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
         elif stop_rule == 'include':
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
                 if rev_id == stop_revision_id:
@@ -543,7 +544,7 @@ class Branch(controldir.ControlComponent):
             ancestors = graph.find_unique_ancestors(start_revision_id,
                                                     [stop_revision_id])
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id not in ancestors:
                     continue
                 yield (rev_id, node.merge_depth, node.revno,
@@ -559,7 +560,7 @@ class Branch(controldir.ControlComponent):
             reached_stop_revision_id = False
             revision_id_whitelist = []
             for node in rev_iter:
-                rev_id = node.key[-1]
+                rev_id = node.key
                 if rev_id == left_parent:
                     # reached the left parent after the stop_revision
                     return
@@ -926,8 +927,9 @@ class Branch(controldir.ControlComponent):
 
         :seealso: Branch._get_tags_bytes.
         """
-        return _run_with_write_locked_target(self, self._set_tags_bytes_locked,
-                bytes)
+        op = cleanup.OperationWithCleanups(self._set_tags_bytes_locked)
+        op.add_cleanup(self.lock_write().unlock)
+        return op.run_simple(bytes)
 
     def _set_tags_bytes_locked(self, bytes):
         self._tags_bytes = bytes
@@ -1286,11 +1288,11 @@ class Branch(controldir.ControlComponent):
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
-            master_branch = self.get_master_branch()
-            if master_branch is None:
+            master_url = self.get_bound_location()
+            if master_url is None:
                 result.set_parent(self.bzrdir.root_transport.base)
             else:
-                result.set_parent(master_branch.bzrdir.root_transport.base)
+                result.set_parent(master_url)
         finally:
             result.unlock()
         return result
@@ -2935,7 +2937,11 @@ class BzrBranch8(BzrBranch):
         # you can always ask for the URL; but you might not be able to use it
         # if the repo can't support stacking.
         ## self._check_stackable_repo()
-        stacked_url = self._get_config_location('stacked_on_location')
+        # stacked_on_location is only ever defined in branch.conf, so don't
+        # waste effort reading the whole stack of config files.
+        config = self.get_config()._get_branch_data_config()
+        stacked_url = self._get_config_location('stacked_on_location',
+            config=config)
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
@@ -3163,39 +3169,6 @@ class Converter7to8(object):
         branch._transport.put_bytes('format', format.get_format_string())
 
 
-def _run_with_write_locked_target(target, callable, *args, **kwargs):
-    """Run ``callable(*args, **kwargs)``, write-locking target for the
-    duration.
-
-    _run_with_write_locked_target will attempt to release the lock it acquires.
-
-    If an exception is raised by callable, then that exception *will* be
-    propagated, even if the unlock attempt raises its own error.  Thus
-    _run_with_write_locked_target should be preferred to simply doing::
-
-        target.lock_write()
-        try:
-            return callable(*args, **kwargs)
-        finally:
-            target.unlock()
-
-    """
-    # This is very similar to bzrlib.decorators.needs_write_lock.  Perhaps they
-    # should share code?
-    target.lock_write()
-    try:
-        result = callable(*args, **kwargs)
-    except:
-        exc_info = sys.exc_info()
-        try:
-            target.unlock()
-        finally:
-            raise exc_info[0], exc_info[1], exc_info[2]
-    else:
-        target.unlock()
-        return result
-
-
 class InterBranch(InterObject):
     """This class represents operations taking place between two branches.
 
@@ -3366,7 +3339,16 @@ class GenericInterBranch(InterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        source_is_master = (self.source.user_url == bound_location)
+        source_is_master = False
+        if bound_location:
+            # bound_location comes from a config file, some care has to be
+            # taken to relate it to source.user_url
+            normalized = urlutils.normalize_url(bound_location)
+            try:
+                relpath = self.source.user_transport.relpath(normalized)
+                source_is_master = (relpath == '')
+            except (errors.PathNotChild, errors.InvalidURL):
+                source_is_master = False
         if not local and bound_location and not source_is_master:
             # not pulling from master, so we need to update master.
             master_branch = self.target.get_master_branch(possible_transports)
@@ -3400,14 +3382,12 @@ class GenericInterBranch(InterBranch):
             raise errors.LossyPushToSameVCS(self.source, self.target)
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
-        self.source.lock_read()
-        try:
-            return _run_with_write_locked_target(
-                self.target, self._push_with_bound_branches, overwrite,
-                stop_revision, 
-                _override_hook_source_branch=_override_hook_source_branch)
-        finally:
-            self.source.unlock()
+
+        op = cleanup.OperationWithCleanups(self._push_with_bound_branches)
+        op.add_cleanup(self.source.lock_read().unlock)
+        op.add_cleanup(self.target.lock_write().unlock)
+        return op.run(overwrite, stop_revision,
+            _override_hook_source_branch=_override_hook_source_branch)
 
     def _basic_push(self, overwrite, stop_revision):
         """Basic implementation of push without bound branches or hooks.
@@ -3431,7 +3411,7 @@ class GenericInterBranch(InterBranch):
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
-    def _push_with_bound_branches(self, overwrite, stop_revision,
+    def _push_with_bound_branches(self, operation, overwrite, stop_revision,
             _override_hook_source_branch=None):
         """Push from source into target, and into target's master if any.
         """
@@ -3449,21 +3429,18 @@ class GenericInterBranch(InterBranch):
             # be bound to itself? -- mbp 20070507
             master_branch = self.target.get_master_branch()
             master_branch.lock_write()
-            try:
-                # push into the master from the source branch.
-                master_inter = InterBranch.get(self.source, master_branch)
-                master_inter._basic_push(overwrite, stop_revision)
-                # and push into the target branch from the source. Note that
-                # we push from the source branch again, because it's considered
-                # the highest bandwidth repository.
-                result = self._basic_push(overwrite, stop_revision)
-                result.master_branch = master_branch
-                result.local_branch = self.target
-                _run_hooks()
-                return result
-            finally:
-                master_branch.unlock()
+            operation.add_cleanup(master_branch.unlock)
+            # push into the master from the source branch.
+            master_inter = InterBranch.get(self.source, master_branch)
+            master_inter._basic_push(overwrite, stop_revision)
+            # and push into the target branch from the source. Note that
+            # we push from the source branch again, because it's considered
+            # the highest bandwidth repository.
+            result = self._basic_push(overwrite, stop_revision)
+            result.master_branch = master_branch
+            result.local_branch = self.target
         else:
+            master_branch = None
             # no master branch
             result = self._basic_push(overwrite, stop_revision)
             # TODO: Why set master_branch and local_branch if there's no
@@ -3471,8 +3448,8 @@ class GenericInterBranch(InterBranch):
             # 20070504
             result.master_branch = self.target
             result.local_branch = None
-            _run_hooks()
-            return result
+        _run_hooks()
+        return result
 
     def _pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,

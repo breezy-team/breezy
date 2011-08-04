@@ -32,7 +32,10 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    features,
+    TestCaseWithTransport,
+    )
 
 
 class TestExport(TestCaseWithTransport):
@@ -98,7 +101,7 @@ class TestExport(TestCaseWithTransport):
                          sorted(ball.getnames()))
 
     def test_tar_export_unicode_filename(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tar')
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
@@ -116,7 +119,7 @@ class TestExport(TestCaseWithTransport):
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         basedir = u'\N{euro sign}'
         os.mkdir(basedir)
         self.run_bzr(['init', basedir])
@@ -174,8 +177,8 @@ class TestExport(TestCaseWithTransport):
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
         tree = self.make_basic_tree()
         fname = 'test.%s' % (extension,)
-        mode = 'r|%s' % (tarfile_flags,)
         self.run_bzr('export -d tree %s' % (fname,))
+        mode = 'r|%s' % (tarfile_flags,)
         ball = tarfile.open(fname, mode=mode)
         self.assertTarANameAndContent(ball, root='test/')
         content = self.run_bzr('export -d tree --format=%s -' % (extension,))[0]
@@ -194,7 +197,7 @@ class TestExport(TestCaseWithTransport):
     # TODO: test_xz_export, I don't have pylzma working here to test it.
 
     def test_zip_export_unicode(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
         fname = u'\N{Euro Sign}.txt'
         self.build_tree(['zip/' + fname])
@@ -386,6 +389,16 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export --per-file-timestamps t branch')
         har_st = os.stat('t/har')
         self.assertEquals(315532800, har_st.st_mtime)
+
+    def test_dir_export_partial_tree_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree(['branch/subdir/', 'branch/subdir/foo.txt'])
+        tree.smart_add(['branch'])
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
+        self.run_bzr('export --per-file-timestamps tpart branch/subdir')
+        foo_st = os.stat('tpart/foo.txt')
+        self.assertEquals(315532800, foo_st.st_mtime)
 
     def test_export_directory(self):
         """Test --directory option"""

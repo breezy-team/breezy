@@ -171,12 +171,6 @@ class _OSLock(object):
             self.f.close()
             self.f = None
 
-    def __del__(self):
-        if self.f:
-            from warnings import warn
-            warn("lock on %r not released" % self.f)
-            self.unlock()
-
     def unlock(self):
         raise NotImplementedError()
 

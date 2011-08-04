@@ -27,8 +27,9 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import (
-    test_smart_add,
+    features,
     per_workingtree,
+    test_smart_add,
     )
 
 
@@ -288,7 +289,7 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
 
 class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
-    _test_needs_features = [tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(TestSmartAddTreeUnicode, self).setUp()
@@ -299,10 +300,11 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
     def test_requires_normalized_unicode_filenames_fails_on_unnormalized(self):
         """Adding unnormalized unicode filenames fail if and only if the
         workingtree format has the requires_normalized_unicode_filenames flag
-        set.
+        set and the underlying filesystem doesn't normalize.
         """
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        if self.workingtree_format.requires_normalized_unicode_filenames:
+        if (self.workingtree_format.requires_normalized_unicode_filenames
+            and sys.platform != 'darwin'):
             self.assertRaises(
                 errors.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
         else:

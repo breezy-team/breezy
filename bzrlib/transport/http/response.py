@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -108,6 +108,13 @@ class RangeFile(object):
             # string entity.
             # To be on the safe side we allow it before any boundary line
             boundary_line = self._file.readline()
+
+        if boundary_line == '':
+            # A timeout in the proxy server caused the response to end early.
+            # See launchpad bug 198646.
+            raise errors.HttpBoundaryMissing(
+                self._path,
+                self._boundary)
 
         if boundary_line != '--' + self._boundary + '\r\n':
             # rfc822.unquote() incorrectly unquotes strings enclosed in <>

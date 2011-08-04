@@ -3,10 +3,24 @@ Configuring Bazaar
 
 A configuration option has:
 
-- a name: a valid python identifier (even if it's not used as an
+* a name: a valid python identifier (even if it's not used as an
   identifier in python itself)
 
-- a value: a unicode string
+* a value: a unicode string
+
+Option
+------
+
+The Option object is used to define its properties:
+
+* name: a name: a valid python identifier (even if it's not used as an
+  identifier in python itself). This is also used to register the option.
+
+* default: the default value that Stack.get() should return if no
+  value can be found for the option.
+
+Since plugins should be able to lazily register options, the associated help
+is not part of the object but provided at registration time.
 
 Sections
 --------
@@ -14,9 +28,9 @@ Sections
 Options are grouped into sections which share some properties with the well
 known dict objects:
 
-- the key is the name,
-- you can get, set and remove an option,
-- the value is a unicode string.
+* the key is the name,
+* you can get, set and remove an option,
+* the value is a unicode string.
 
 MutableSection is needed to set or remove an option, ReadOnlySection should
 be used otherwise.

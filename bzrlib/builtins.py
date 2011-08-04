@@ -44,12 +44,12 @@ from bzrlib import (
     rename_map,
     revision as _mod_revision,
     static_tuple,
-    symbol_versioning,
     timestamp,
     transport,
     ui,
     urlutils,
     views,
+    gpg,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
@@ -72,6 +72,9 @@ from bzrlib.option import (
     _parse_revision_str,
     )
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
+from bzrlib import (
+    symbol_versioning,
+    )
 
 
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
@@ -229,9 +232,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
-    Additionally for directories, symlinks and files with an executable
-    bit, Bazaar indicates their type using a trailing character: '/', '@'
-    or '*' respectively.
+    Additionally for directories, symlinks and files with a changed
+    executable bit, Bazaar indicates their type using a trailing
+    character: '/', '@' or '*' respectively. These decorations can be
+    disabled using the '--no-classify' option.
 
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
@@ -268,6 +272,9 @@ class cmd_status(Command):
                             short_name='V'),
                      Option('no-pending', help='Don\'t show pending merges.',
                            ),
+                     Option('no-classify',
+                            help='Do not mark object type using indicator.',
+                           ),
                      ]
     aliases = ['st', 'stat']
 
@@ -276,7 +283,8 @@ class cmd_status(Command):
 
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False, no_pending=False, verbose=False):
+            versioned=False, no_pending=False, verbose=False,
+            no_classify=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -296,7 +304,8 @@ class cmd_status(Command):
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
                          to_file=self.outf, short=short, versioned=versioned,
-                         show_pending=(not no_pending), verbose=verbose)
+                         show_pending=(not no_pending), verbose=verbose,
+                         classify=not no_classify)
 
 
 class cmd_cat_revision(Command):
@@ -794,8 +803,9 @@ class cmd_inventory(Command):
                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
-                             for file_id in file_ids if file_id in tree)
+            entries = sorted(
+                (tree.id2path(file_id), tree.inventory[file_id])
+                for file_id in file_ids if tree.has_id(file_id))
         else:
             entries = tree.inventory.entries()
 
@@ -1738,9 +1748,13 @@ class cmd_ancestry(Command):
             b = wt.branch
             last_revision = wt.last_revision()
 
-        revision_ids = b.repository.get_ancestry(last_revision)
-        revision_ids.pop(0)
-        for revision_id in revision_ids:
+        self.add_cleanup(b.repository.lock_read().unlock)
+        graph = b.repository.get_graph()
+        revisions = [revid for revid, parents in
+            graph.iter_ancestry([last_revision])]
+        for revision_id in reversed(revisions):
+            if _mod_revision.is_null(revision_id):
+                continue
             self.outf.write(revision_id + '\n')
 
 
@@ -2148,7 +2162,7 @@ class cmd_added(Command):
         basis_inv = basis.inventory
         inv = wt.inventory
         for file_id in inv:
-            if file_id in basis_inv:
+            if basis_inv.has_id(file_id):
                 continue
             if inv.is_root(file_id) and len(basis_inv) == 0:
                 continue
@@ -2303,8 +2317,11 @@ class cmd_log(Command):
 
     :Other filtering:
 
-      The --message option can be used for finding revisions that match a
-      regular expression in a commit message.
+      The --match option can be used for finding revisions that match a
+      regular expression in a commit message, committer, author or bug.
+      Specifying the option several times will match any of the supplied
+      expressions. --match-author, --match-bugs, --match-committer and
+      --match-message can be used to only match a specific field.
 
     :Tips & tricks:
 
@@ -2370,10 +2387,10 @@ class cmd_log(Command):
                    argname='N',
                    type=_parse_levels),
             Option('message',
-                   short_name='m',
                    help='Show revisions whose message matches this '
                         'regular expression.',
-                   type=str),
+                   type=str,
+                   hidden=True),
             Option('limit',
                    short_name='l',
                    help='Limit the output to the first N revisions.',
@@ -2387,7 +2404,30 @@ class cmd_log(Command):
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
-                   )
+                   ),
+            Option('signatures',
+                   help='Show digital signature validity'),
+            ListOption('match',
+                short_name='m',
+                help='Show revisions whose properties match this '
+                'expression.',
+                type=str),
+            ListOption('match-message',
+                   help='Show revisions whose message matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-committer',
+                   help='Show revisions whose committer matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-author',
+                   help='Show revisions whose authors match this '
+                   'expression.',
+                type=str),
+            ListOption('match-bugs',
+                   help='Show revisions whose bugs match this '
+                   'expression.',
+                type=str)
             ]
     encoding_type = 'replace'
 
@@ -2406,6 +2446,12 @@ class cmd_log(Command):
             include_merges=False,
             authors=None,
             exclude_common_ancestry=False,
+            signatures=False,
+            match=None,
+            match_message=None,
+            match_committer=None,
+            match_author=None,
+            match_bugs=None,
             ):
         from bzrlib.log import (
             Logger,
@@ -2465,6 +2511,13 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
+        if b.get_config().validate_signatures_in_log():
+            signatures = True
+
+        if signatures:
+            if not gpg.GPGStrategy.verify_signatures_available():
+                raise errors.GpgmeNotInstalled(None)
+
         # Decide on the type of delta & diff filtering to use
         # TODO: add an --all-files option to make this configurable & consistent
         if not verbose:
@@ -2507,6 +2560,18 @@ class cmd_log(Command):
         match_using_deltas = (len(file_ids) != 1 or filter_by_dir
             or delta_type or partial_history)
 
+        match_dict = {}
+        if match:
+            match_dict[''] = match
+        if match_message:
+            match_dict['message'] = match_message
+        if match_committer:
+            match_dict['committer'] = match_committer
+        if match_author:
+            match_dict['author'] = match_author
+        if match_bugs:
+            match_dict['bugs'] = match_bugs
+            
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -2515,7 +2580,8 @@ class cmd_log(Command):
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
-            exclude_common_ancestry=exclude_common_ancestry,
+            exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
+            signature=signatures
             )
         Logger(b, rqst).show(lf)
 
@@ -3007,6 +3073,10 @@ class cmd_cat(Command):
 
         old_file_id = rev_tree.path2id(relpath)
 
+        # TODO: Split out this code to something that generically finds the
+        # best id for a path across one or more trees; it's like
+        # find_ids_across_trees but restricted to find just one. -- mbp
+        # 20110705.
         if name_from_revision:
             # Try in revision if requested
             if old_file_id is None:
@@ -3014,41 +3084,26 @@ class cmd_cat(Command):
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
             else:
-                content = rev_tree.get_file_text(old_file_id)
+                actual_file_id = old_file_id
         else:
             cur_file_id = tree.path2id(relpath)
-            found = False
-            if cur_file_id is not None:
-                # Then try with the actual file id
-                try:
-                    content = rev_tree.get_file_text(cur_file_id)
-                    found = True
-                except errors.NoSuchId:
-                    # The actual file id didn't exist at that time
-                    pass
-            if not found and old_file_id is not None:
-                # Finally try with the old file id
-                content = rev_tree.get_file_text(old_file_id)
-                found = True
-            if not found:
-                # Can't be found anywhere
+            if cur_file_id is not None and rev_tree.has_id(cur_file_id):
+                actual_file_id = cur_file_id
+            elif old_file_id is not None:
+                actual_file_id = old_file_id
+            else:
                 raise errors.BzrCommandError(
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
         if filtered:
-            from bzrlib.filters import (
-                ContentFilterContext,
-                filtered_output_bytes,
-                )
-            filters = rev_tree._content_filter_stack(relpath)
-            chunks = content.splitlines(True)
-            content = filtered_output_bytes(chunks, filters,
-                ContentFilterContext(relpath, rev_tree))
-            self.cleanup_now()
-            self.outf.writelines(content)
+            from bzrlib.filter_tree import ContentFilterTree
+            filter_tree = ContentFilterTree(rev_tree,
+                rev_tree._content_filter_stack)
+            content = filter_tree.get_file_text(actual_file_id)
         else:
-            self.cleanup_now()
-            self.outf.write(content)
+            content = rev_tree.get_file_text(actual_file_id)
+        self.cleanup_now()
+        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):
@@ -3191,7 +3246,8 @@ class cmd_commit(Command):
         from bzrlib.msgeditor import (
             edit_commit_message_encoded,
             generate_commit_message_template,
-            make_commit_message_template_encoded
+            make_commit_message_template_encoded,
+            set_commit_message,
         )
 
         commit_stamp = offset = None
@@ -3263,9 +3319,11 @@ class cmd_commit(Command):
                 # make_commit_message_template_encoded returns user encoding.
                 # We probably want to be using edit_commit_message instead to
                 # avoid this.
-                start_message = generate_commit_message_template(commit_obj)
-                my_message = edit_commit_message_encoded(text,
-                    start_message=start_message)
+                my_message = set_commit_message(commit_obj)
+                if my_message is None:
+                    start_message = generate_commit_message_template(commit_obj)
+                    my_message = edit_commit_message_encoded(text,
+                        start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
@@ -3646,10 +3704,10 @@ class cmd_selftest(Command):
         if typestring == "sftp":
             from bzrlib.tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
-        if typestring == "memory":
+        elif typestring == "memory":
             from bzrlib.tests import test_server
             return memory.MemoryServer
-        if typestring == "fakenfs":
+        elif typestring == "fakenfs":
             from bzrlib.tests import test_server
             return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
@@ -3689,10 +3747,10 @@ class cmd_selftest(Command):
                      Option('randomize', type=str, argname="SEED",
                             help='Randomize the order of tests using the given'
                                  ' seed or "now" for the current time.'),
-                     Option('exclude', type=str, argname="PATTERN",
-                            short_name='x',
-                            help='Exclude tests that match this regular'
-                                 ' expression.'),
+                     ListOption('exclude', type=str, argname="PATTERN",
+                                short_name='x',
+                                help='Exclude tests that match this regular'
+                                ' expression.'),
                      Option('subunit',
                         help='Output test progress via subunit.'),
                      Option('strict', help='Fail on missing dependencies or '
@@ -3749,6 +3807,10 @@ class cmd_selftest(Command):
                 "--benchmark is no longer supported from bzr 2.2; "
                 "use bzr-usertest instead")
         test_suite_factory = None
+        if not exclude:
+            exclude_pattern = None
+        else:
+            exclude_pattern = '(' + '|'.join(exclude) + ')'
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3759,7 +3821,7 @@ class cmd_selftest(Command):
                           "matching_tests_first": first,
                           "list_only": list_only,
                           "random_seed": randomize,
-                          "exclude_pattern": exclude,
+                          "exclude_pattern": exclude_pattern,
                           "strict": strict,
                           "load_list": load_list,
                           "debug_flags": debugflag,
@@ -3834,7 +3896,10 @@ class cmd_merge(Command):
     The source of the merge can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
     with bzr send. If neither is specified, the default is the upstream branch
-    or the branch most recently merged using --remember.
+    or the branch most recently merged using --remember.  The source of the
+    merge may also be specified in the form of a path to a file in another
+    branch:  in this case, only the modifications to that file are merged into
+    the current working tree.
 
     When merging from a branch, by default bzr will try to merge in all new
     work from the other branch, automatically determining an appropriate base
@@ -3870,7 +3935,9 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given. The --force option can also be used to create a
+    --force is given.  If --force is given, then the changes from the source 
+    will be merged with the current working tree, including any uncommitted
+    changes in the tree.  The --force option can also be used to create a
     merge revision which has more than two parents.
 
     If one would like to merge changes from the working tree of the other
@@ -4004,6 +4071,13 @@ class cmd_merge(Command):
         self.sanity_check_merger(merger)
         if (merger.base_rev_id == merger.other_rev_id and
             merger.other_rev_id is not None):
+            # check if location is a nonexistent file (and not a branch) to
+            # disambiguate the 'Nothing to do'
+            if merger.interesting_files:
+                if not merger.other_tree.has_filename(
+                    merger.interesting_files[0]):
+                    note("merger: " + str(merger))
+                    raise errors.PathsDoNotExist([location])
             note('Nothing to do.')
             return 0
         if pull and not preview:
@@ -4952,7 +5026,7 @@ class cmd_uncommit(Command):
 
         if not force:
             if not ui.ui_factory.confirm_action(
-                    'Uncommit these revisions',
+                    u'Uncommit these revisions',
                     'bzrlib.builtins.uncommit',
                     {}):
                 self.outf.write('Canceled\n')
@@ -5636,7 +5710,7 @@ class cmd_reconfigure(Command):
             unstacked=None):
         directory = bzrdir.BzrDir.open(location)
         if stacked_on and unstacked:
-            raise BzrCommandError("Can't use both --stacked-on and --unstacked")
+            raise errors.BzrCommandError("Can't use both --stacked-on and --unstacked")
         elif stacked_on is not None:
             reconfigure.ReconfigureStackedOn().apply(directory, stacked_on)
         elif unstacked:
@@ -6194,7 +6268,9 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
-        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
+        ('cmd_verify_signatures', [],
+                                        'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

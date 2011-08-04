@@ -33,8 +33,6 @@ import bzrlib
 from bzrlib import (
     branch as _mod_branch,
     cleanup,
-    config,
-    controldir,
     errors,
     fetch,
     graph,
@@ -65,6 +63,8 @@ from bzrlib.trace import (
     )
 
 from bzrlib import (
+    config,
+    controldir,
     hooks,
     registry,
     )
@@ -1416,7 +1416,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     @classmethod
     def get_format_string(cls):
         """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(cls.get_format_string)
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""

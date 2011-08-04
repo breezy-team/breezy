@@ -114,7 +114,7 @@ class TextUIFactory(UIFactory):
                 password = password[:-1]
         return password
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         """Prompt the user for a password.
 
         :param prompt: The prompt to present the user
@@ -198,6 +198,8 @@ class TextUIFactory(UIFactory):
         :param kwargs: Dictionary of arguments to insert into the prompt,
             to allow UIs to reformat the prompt.
         """
+        if type(prompt) != unicode:
+            raise ValueError("prompt %r not a unicode string" % prompt)
         if kwargs:
             # See <https://launchpad.net/bugs/365891>
             prompt = prompt % kwargs

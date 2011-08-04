@@ -36,7 +36,11 @@ from bzrlib.errors import (
     )
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestSkipped, TestNotApplicable
+from bzrlib.tests import (
+    features,
+    TestSkipped,
+    TestNotApplicable,
+    )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.workingtree import (
     TreeDirectory,
@@ -1085,7 +1089,7 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         if osutils.normalizes_filenames():
             # You *can't* create an illegal filename on OSX.
             raise tests.TestNotApplicable('OSX normalizes filenames')
-        self.requireFeature(tests.UTF8Filesystem)
+        self.requireFeature(features.UTF8Filesystem)
         # We require a UTF8 filesystem, because otherwise we would need to get
         # tricky to figure out how to create an illegal filename.
         # \xb5 is an illegal path because it should be \xc2\xb5 for UTF-8
@@ -1159,3 +1163,11 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
         # If the config entry is invalid, default to 10
         # TODO: This writes a warning to the user, trap it somehow
         self.assertEqual(10, wt._worth_saving_limit())
+
+
+class TestFormatAttributes(TestCaseWithWorkingTree):
+
+    def test_versioned_directories(self):
+        self.assertSubset(
+            [self.workingtree_format.supports_versioned_directories],
+            (True, False))

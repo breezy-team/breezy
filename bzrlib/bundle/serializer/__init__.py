@@ -159,10 +159,9 @@ class BundleSerializer(object):
         forced_bases = {revision_id:base_revision_id}
         if base_revision_id is NULL_REVISION:
             base_revision_id = None
-        revision_ids = set(repository.get_ancestry(revision_id,
-                           topo_sorted=False))
-        revision_ids.difference_update(repository.get_ancestry(
-            base_revision_id, topo_sorted=False))
+        graph = repository.get_graph()
+        revision_ids = graph.find_unique_ancestors(revision_id,
+            [base_revision_id])
         revision_ids = list(repository.get_graph().iter_topo_order(
             revision_ids))
         revision_ids.reverse()

@@ -29,6 +29,7 @@ __all__ = [
 from bzrlib import (
     cleanup,
     errors,
+    revision as _mod_revision,
     ui,
     )
 from bzrlib.trace import mutter
@@ -144,12 +145,12 @@ class BranchReconciler(object):
         self._reconcile_revision_history()
 
     def _reconcile_revision_history(self):
-        repo = self.branch.repository
         last_revno, last_revision_id = self.branch.last_revision_info()
         real_history = []
+        graph = self.branch.repository.get_graph()
         try:
-            for revid in repo.iter_reverse_revision_history(
-                    last_revision_id):
+            for revid in graph.iter_lefthand_ancestry(
+                    last_revision_id, (_mod_revision.NULL_REVISION,)):
                 real_history.append(revid)
         except errors.RevisionNotPresent:
             pass # Hit a ghost left hand parent

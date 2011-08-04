@@ -41,7 +41,7 @@ def _get_editor():
     except KeyError:
         pass
 
-    e = config.GlobalConfig().get_editor()
+    e = config.GlobalStack().get('editor')
     if e is not None:
         yield e, config.config_filename()
 
@@ -144,14 +144,14 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         if not msgfilename:
             return None
         basename = osutils.basename(msgfilename)
-        msg_transport = transport.get_transport(osutils.dirname(msgfilename))
+        msg_transport = transport.get_transport_from_path(osutils.dirname(msgfilename))
         reference_content = msg_transport.get_bytes(basename)
         if not _run_editor(msgfilename):
             return None
         edited_content = msg_transport.get_bytes(basename)
         if edited_content == reference_content:
             if not ui.ui_factory.confirm_action(
-                "Commit message was not edited, use anyway",
+                u"Commit message was not edited, use anyway",
                 "bzrlib.msgeditor.unchanged",
                 {}):
                 # Returning "" makes cmd_commit raise 'empty commit message
@@ -303,18 +303,36 @@ class MessageEditorHooks(Hooks):
         These are all empty initially.
         """
         Hooks.__init__(self, "bzrlib.msgeditor", "hooks")
+        self.add_hook('set_commit_message',
+            "Set a fixed commit message. "
+            "set_commit_message is called with the "
+            "bzrlib.commit.Commit object (so you can also change e.g. revision "
+            "properties by editing commit.builder._revprops) and the message "
+            "so far. set_commit_message must return the message to use or None"
+            " if it should use the message editor as normal.", (2, 4))
         self.add_hook('commit_message_template',
             "Called when a commit message is being generated. "
             "commit_message_template is called with the bzrlib.commit.Commit "
             "object and the message that is known so far. "
             "commit_message_template must return a new message to use (which "
-            "could be the same as it was given. When there are multiple "
+            "could be the same as it was given). When there are multiple "
             "hooks registered for commit_message_template, they are chained "
             "with the result from the first passed into the second, and so "
             "on.", (1, 10))
 
 
 hooks = MessageEditorHooks()
+
+
+def set_commit_message(commit, start_message=None):
+    """Sets the commit message.
+    :param commit: Commit object for the active commit.
+    :return: The commit message or None to continue using the message editor
+    """
+    start_message = None
+    for hook in hooks['set_commit_message']:
+        start_message = hook(commit, start_message)
+    return start_message
 
 
 def generate_commit_message_template(commit, start_message=None):

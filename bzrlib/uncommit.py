@@ -66,12 +66,10 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
             revno = old_revno
         new_revno = revno - 1
 
-        revid_iterator = branch.repository.iter_reverse_revision_history(
-                            old_tip)
         cur_revno = old_revno
         new_revision_id = old_tip
         graph = branch.repository.get_graph()
-        for rev_id in revid_iterator:
+        for rev_id in graph.iter_lefthand_ancestry(old_tip):
             if cur_revno == new_revno:
                 new_revision_id = rev_id
                 break

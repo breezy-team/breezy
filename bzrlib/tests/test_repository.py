@@ -1602,7 +1602,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.addCleanup(target.unlock)
         source = source_tree.branch.repository._get_source(target._format)
         self.orig_pack = target.pack
-        target.pack = self.log_pack
+        self.overrideAttr(target, "pack", self.log_pack)
         search = target.search_missing_revision_ids(
             source_tree.branch.repository, revision_ids=[tip])
         stream = source.get_stream(search)
@@ -1626,7 +1626,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.addCleanup(target.unlock)
         source = source_tree.branch.repository
         self.orig_pack = target.pack
-        target.pack = self.log_pack
+        self.overrideAttr(target, "pack", self.log_pack)
         target.fetch(source)
         if expect_pack_called:
             self.assertLength(1, self.calls)

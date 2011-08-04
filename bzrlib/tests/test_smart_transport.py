@@ -41,6 +41,7 @@ from bzrlib.smart import (
         vfs,
 )
 from bzrlib.tests import (
+    features,
     test_smart,
     test_server,
     )
@@ -82,7 +83,7 @@ class StringIOSSHConnection(ssh.SSHConnection):
         return 'pipes', (self.vendor.read_from, self.vendor.write_to)
 
 
-class _InvalidHostnameFeature(tests.Feature):
+class _InvalidHostnameFeature(features.Feature):
     """Does 'non_existent.invalid' fail to resolve?
 
     RFC 2606 states that .invalid is reserved for invalid domain names, and
@@ -1493,6 +1494,7 @@ class TestSmartProtocol(tests.TestCase):
         smart_protocol._has_dispatched = True
         smart_protocol.request = _mod_request.SmartServerRequestHandler(
             None, _mod_request.request_handlers, '/')
+        # GZ 2010-08-10: Cycle with closure affects 4 tests
         class FakeCommand(_mod_request.SmartServerRequest):
             def do_body(self_cmd, body_bytes):
                 self.end_received = True

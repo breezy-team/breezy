@@ -34,7 +34,13 @@ from bzrlib import (
     urlutils,
     workingtree,
     )
-from bzrlib.tests import script
+from bzrlib.tests import (
+    scenarios,
+    script,
+    )
+
+
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 class TestMerge(tests.TestCaseWithTransport):
@@ -353,6 +359,17 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertPathExists('file1')
         self.assertPathDoesNotExist('file2')
 
+    def test_merge_nonexistent_file(self):
+        """It should not be possible to merge changes from a file which
+        does not exist."""
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'bar\n')])
+        tree_a.add(['file'])
+        tree_a.commit('commit 1')
+        os.chdir('tree_a')
+        self.run_bzr_error(('Path\(s\) do not exist: non/existing',),
+                           ['merge', 'non/existing'])
+
     def pullable_branch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree_contents([('a/file', 'bar\n')])
@@ -651,18 +668,6 @@ class TestMerge(tests.TestCaseWithTransport):
         this.lock_write()
         this.unlock()
 
-    def test_merge_reversed_revision_range(self):
-        tree = self.make_branch_and_tree(".")
-        for f in ("a", "b"):
-            self.build_tree([f])
-            tree.add(f)
-            tree.commit("added "+f)
-        for context in (".", "", "a"):
-            self.run_bzr("merge -r 1..0 " + context)
-            self.assertPathDoesNotExist("a")
-            tree.revert()
-            self.assertPathExists("a")
-
     def test_merge_fetches_tags(self):
         """Tags are updated by merge, and revisions named in those tags are
         fetched.
@@ -683,6 +688,27 @@ class TestMerge(tests.TestCaseWithTransport):
         # The tag is present, and so is its revision.
         self.assertEqual('rev-2a', target.tags.lookup_tag('tag-a'))
         target.repository.get_revision('rev-2a')
+
+
+class TestMergeRevisionRange(tests.TestCaseWithTransport):
+
+    scenarios = (('whole-tree', dict(context='.')),
+                 ('file-only', dict(context='a')))
+
+    def setUp(self):
+        super(TestMergeRevisionRange, self).setUp()
+        self.tree = self.make_branch_and_tree(".")
+        self.tree.commit('initial commit')
+        for f in ("a", "b"):
+            self.build_tree([f])
+            self.tree.add(f)
+            self.tree.commit("added " + f)
+
+    def test_merge_reversed_revision_range(self):
+        self.run_bzr("merge -r 2..1 " + self.context)
+        self.assertPathDoesNotExist("a")
+        self.assertPathExists("b")
+
 
 class TestMergeScript(script.TestCaseWithTransportAndScript):
     def test_merge_empty_branch(self):

@@ -159,6 +159,11 @@ class VersionInfoBuilder(object):
             return self._working_tree.last_revision()
         return self._branch.last_revision()
 
+    def _get_revno_str(self, revision_id):
+        numbers = self._branch.revision_id_to_dotted_revno(revision_id)
+        revno_str = '.'.join([str(num) for num in numbers])
+        return revno_str
+
     def generate(self, to_file):
         """Output the version information to the supplied file.
 
