@@ -1338,6 +1338,15 @@ class InterTree(InterObject):
                     changed_file_ids.add(result[0])
                     yield result
 
+    def file_has_changed(self, source_file_id, target_file_id,
+            source_path=None, target_path=None):
+        source_verifier_kind, source_verifier_data = self.source.get_file_verifier(
+            file_id, path)
+        target_verifier_kind, target_verifier_data = self.target.get_file_verifier(
+            file_id, path)
+        if source_verifier_kind == target_verifier_kind:
+            return (source_verifier_data == target_verifier_data)
+        return (self.source.get_file_text(file_id, path) == self.get_target
 
 InterTree.register_optimiser(InterTree)
 
