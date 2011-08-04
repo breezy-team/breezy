@@ -99,6 +99,10 @@ API Changes
   to return non-sha1 checksums to verify files.
   (Jelmer Vernooij, #720831)
 
+* New method ``InterTree.file_content_matches`` which checks that
+  two files in different trees have the same contents.
+  (Jelmer Vernooij)
+
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)
 

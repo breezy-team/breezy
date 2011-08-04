@@ -23,12 +23,10 @@ from bzrlib import (
     errors,
     mutabletree,
     tests,
-    workingtree_4,
     )
-from bzrlib.osutils import file_kind, has_symlinks
+from bzrlib.osutils import has_symlinks
 from bzrlib.tests.per_intertree import TestCaseWithTwoTrees
 from bzrlib.tests import (
-    TestNotApplicable,
     features,
     )
 

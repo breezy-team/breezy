@@ -303,3 +303,23 @@ class TestGetFileSha1(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         expected = osutils.sha_strings('file content')
         self.assertEqual(expected, tree.get_file_sha1('file-id'))
+
+
+class TestGetFileVerifier(TestCaseWithTree):
+
+    def test_get_file_verifier(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/file1', 'file content'),
+            ('tree/file2', 'file content')])
+        work_tree.add(['file1', 'file2'], ['file-id-1', 'file-id-2'])
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        (kind, data) = tree.get_file_verifier('file-id-1')
+        self.assertEquals(
+            tree.get_file_verifier('file-id-1'),
+            tree.get_file_verifier('file-id-2'))
+        if kind == "sha1":
+            expected = osutils.sha_strings('file content')
+            self.assertEqual(expected, data)
