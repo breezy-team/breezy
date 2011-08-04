@@ -106,8 +106,8 @@ We want to respect the following rules:
 #. the series are aligned with Ubuntu releases for convenience since we
    create a new series every 6 months. This means that we support the
    stable series for 18 months. Note that we also propose the most recent
-   stable series via the ppa, so whether we keep supporting LTS directly
-   or via the ppa is still an open question.
+   stable series via the stable PPA but that the SRU processs allow us to
+   reach a wider audience.
 
 At the start of a series cycle
 ==============================
