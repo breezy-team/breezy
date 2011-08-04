@@ -313,6 +313,10 @@ class Tree(object):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         """Return the SHA1 file for a file.
 
+        :note: callers should use get_file_verifier instead
+            where possible, as the underlying repository implementation may
+            have quicker access to a non-sha1 verifier.
+
         :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
             These must point to the same object.
@@ -1018,8 +1022,8 @@ class InterTree(InterObject):
         if source_kind != target_kind:
             changed_content = True
         elif source_kind == 'file':
-            if (self.source.get_file_sha1(file_id, source_path, source_stat) !=
-                self.target.get_file_sha1(file_id, target_path, target_stat)):
+            if not self.file_contents_match(file_id, file_id, source_path,
+                    target_path, source_stat, target_stat):
                 changed_content = True
         elif source_kind == 'symlink':
             if (self.source.get_symlink_target(file_id) !=
@@ -1338,15 +1342,26 @@ class InterTree(InterObject):
                     changed_file_ids.add(result[0])
                     yield result
 
-    def file_has_changed(self, source_file_id, target_file_id,
-            source_path=None, target_path=None):
+    def file_contents_match(self, source_file_id, target_file_id,
+            source_path=None, target_path=None, source_stat=None, target_stat=None):
         source_verifier_kind, source_verifier_data = self.source.get_file_verifier(
-            file_id, path)
+            source_file_id, source_path, source_stat)
         target_verifier_kind, target_verifier_data = self.target.get_file_verifier(
-            file_id, path)
+            target_file_id, target_path, target_stat)
         if source_verifier_kind == target_verifier_kind:
             return (source_verifier_data == target_verifier_data)
-        return (self.source.get_file_text(file_id, path) == self.get_target
+        # Fall back to SHA1 for now
+        if source_verifier_kind != "sha1":
+            source_sha1 = self.source.get_file_sha1(source_file_id,
+                    source_path, source_stat)
+        else:
+            source_sha1 = source_verifier_data
+        if target_verifier_kind != "sha1":
+            target_sha1 = self.target.get_file_sha1(target_file_id,
+                    target_path, target_stat)
+        else:
+            target_sha1 = target_verifier_data
+        return (source_sha1 == target_sha1)
 
 InterTree.register_optimiser(InterTree)
 
