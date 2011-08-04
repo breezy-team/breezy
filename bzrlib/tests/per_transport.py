@@ -1136,7 +1136,7 @@ class TransportTests(TestTransportImplementation):
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
         except IOError:
-            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
+            self.knownFailure("Paramiko fails to create symlinks during tests")
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1555,7 +1555,7 @@ class TransportTests(TestTransportImplementation):
 
         no_unicode_support = getattr(self._server, 'no_unicode_support', False)
         if no_unicode_support:
-            raise tests.KnownFailure("test server cannot handle unicode paths")
+            self.knownFailure("test server cannot handle unicode paths")
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')

@@ -1767,7 +1767,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                      http_utils.ProxyDigestAuthServer):
             raise tests.TestNotApplicable('HTTP/proxy auth digest only test')
         if self._testing_pycurl():
-            raise tests.KnownFailure(
+            self.knownFailure(
                 'pycurl does not handle a nonce change')
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', 'foo')
@@ -1855,7 +1855,7 @@ class TestProxyAuth(TestAuth):
         if self._testing_pycurl():
             import pycurl
             if pycurl.version_info()[1] < '7.16.0':
-                raise tests.KnownFailure(
+                self.knownFailure(
                     'pycurl < 7.16.0 does not handle empty proxy passwords')
         super(TestProxyAuth, self).test_empty_pass()
 

@@ -26,7 +26,6 @@ from bzrlib.tag import (
     DisabledTags,
     )
 from bzrlib.tests import (
-    KnownFailure,
     TestCase,
     TestCaseWithTransport,
     )
@@ -168,7 +167,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.update()
         # and deletion of tags should also propagate
         master.tags.delete_tag('foo')
-        raise KnownFailure("tag deletion does not propagate: "
+        self.knownFailure"tag deletion does not propagate: "
             "https://bugs.launchpad.net/bzr/+bug/138802")
         self.assertRaises(errors.NoSuchTag,
             child.tags.lookup_tag, 'foo')
