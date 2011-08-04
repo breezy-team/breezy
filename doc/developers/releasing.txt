@@ -366,7 +366,7 @@ Making the source tarball
 Publishing the source tarball
 -----------------------------
 
-#. Go to the relevant series page in Launchpad.
+#. Go to the relevant <https://launchpad.net/bzr/x.y> series page in Launchpad.
 
 #. Create a release of the milestone, and upload the source tarball and
    the GPG signature.  Or, if you prefer, use the
@@ -596,7 +596,7 @@ bzr 2.2.0, so should get every 2.2.x update.)  This means going through
 the `SRU (Stable Release Updates)
 <https://wiki.ubuntu.com/StableReleaseUpdates>`__ process.   
 
-Since September 2010, bzr has receive approval by the technical
+Since September 2010, bzr has received approval by the technical
 board for the `MicroReleaseExceptions
 <https://wiki.ubuntu.com/StableReleaseUpdates/MicroReleaseExceptions>`__
 category so that whole bugfix releases can more easily be
