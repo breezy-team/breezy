@@ -1802,7 +1802,7 @@ class TestCase(testtools.TestCase):
 
         When this method is called while an exception is being handled, that
         traceback will be used, otherwise a new exception will be thrown to
-        provide one but not reported.
+        provide one but won't be reported.
         """
         self._add_reason(reason)
         try:

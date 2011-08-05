@@ -857,7 +857,7 @@ class TestTestResult(tests.TestCase):
             )
         _get_test("test_xfail").run(result)
         self.assertContainsRe(result_stream.getvalue(),
-            "\\S+\\.test_xfail\\s+XFAIL\\s+\\d+ms\n"
+            "\n\\S+\\.test_xfail\\s+XFAIL\\s+\\d+ms\n"
             "\\s*(?:Text attachment: )?reason"
             "(?:\n-+\n|: {{{)"
             "this_fails"

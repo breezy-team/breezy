@@ -148,5 +148,8 @@ Testing
   This reduces the overall test suite time by about 10% on my laptop.
   (Andrew Bennetts)
 
+* Update `TestCase.knownFailure` to the testtools way of handling expected
+  failures to resolve Python 2.7 incompatibility. (Martin [gz], #607400)
+
 ..
    vim: tw=74 ft=rst ff=unix
