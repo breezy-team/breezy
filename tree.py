@@ -194,11 +194,18 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def get_file_sha1(self, file_id, path=None):
         return osutils.sha_string(self.get_file_text(file_id, path))
 
+    def get_file_verifier(self, file_id, path=None, stat_value=None):
+        if path is None:
+            path = self.id2path(file_id)
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
+            path)
+        return ("GIT", hexsha)
+
     def get_file_text(self, file_id, path=None):
         """See RevisionTree.get_file_text."""
         if path is None:
             path = self.id2path(file_id)
-        (mode, hexsha)= tree_lookup_path(self.store.__getitem__, self.tree, path)
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
         if stat.S_ISREG(mode):
             return self.store[hexsha].data
         else:

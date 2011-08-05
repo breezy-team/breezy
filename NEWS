@@ -12,6 +12,11 @@
 
   * Add post-commit hook to update the git cache. (Jelmer Vernooij, #814651)
 
+ PERFORMANCE
+
+  * Significantly improve performance of WorkingTree.extras().
+    (Jelmer Vernooij)
+
 0.6.1	2011-06-18
 
  BUG FIXES

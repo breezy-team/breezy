@@ -347,13 +347,15 @@ class GitWorkingTree(workingtree.WorkingTree):
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
+        present_files = set()
         for (dirpath, dirnames, filenames) in os.walk(self.basedir):
-            if self.bzrdir.is_control_filename(dirpath[len(self.basedir):].strip("/")):
+            dir_relpath = dirpath[len(self.basedir):].strip("/")
+            if self.bzrdir.is_control_filename(dir_relpath):
                 continue
             for filename in filenames:
-                relpath = os.path.join(dirpath[len(self.basedir):].strip("/"), filename)
-                if not self._is_versioned(relpath):
-                    yield relpath
+                relpath = os.path.join(dir_relpath, filename)
+                present_files.add(relpath)
+        return present_files - set(self.index)
 
     def unlock(self):
         # non-implementation specific cleanup
@@ -459,11 +461,18 @@ class GitWorkingTree(workingtree.WorkingTree):
                 self.store[head].tree)
 
     @needs_read_lock
+    def get_file_verifier(self, file_id, path=None, stat_value=None):
+        if path is None:
+            path = self.id2path(file_id)
+        return ("GIT", self.index[path][-2])
+
+    @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self.id2path(file_id)
+        abspath = self.abspath(path).encode(osutils._fs_enc)
         try:
-            return osutils.sha_file_by_name(self.abspath(path).encode(osutils._fs_enc))
+            return osutils.sha_file_by_name(abspath)
         except OSError, (num, msg):
             if num in (errno.EISDIR, errno.ENOENT):
                 return None
