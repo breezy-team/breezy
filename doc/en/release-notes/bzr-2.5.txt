@@ -125,6 +125,10 @@ API Changes
 * Remove ``TransportListRegistry.set_default_transport``, as the concept of
   a default transport is currently unused. (Jelmer Vernooij)
 
+* Remove ``UIFactory.warn_cross_format_fetch`` and
+  ``UIFactory.warn_experimental_format_fetch`` in favor of
+  ``UIFactory.show_user_warning``. (Jelmer Vernooij)
+
 * There is a new class `ContentFilterTree` that provides a facade for 
   content filtering.  The `filtered` parameter to `export` is deprecated 
   in favor of passing a filtered tree, and the specific exporter plugins

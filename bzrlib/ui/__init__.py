@@ -145,6 +145,10 @@ class UIFactory(object):
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
             ),
+        experimental_format_fetch=("Fetching into experimental format "
+            "%(to_format)s.\n"
+            "This format may be unreliable or change in the future "
+            "without an upgrade path.\n"),
         deprecated_command=(
             "The command 'bzr %(deprecated_name)s' "
             "has been deprecated in bzr %(deprecated_in_version)s. "
@@ -407,22 +411,6 @@ class UIFactory(object):
     def show_warning(self, msg):
         """Show a warning to the user."""
         raise NotImplementedError(self.show_warning)
-
-    def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer.
-        
-        This is deprecated in favor of show_user_warning, but retained for api
-        compatibility in 2.0 and 2.1.
-        """
-        self.show_user_warning('cross_format_fetch', from_format=from_format,
-            to_format=to_format)
-
-    def warn_experimental_format_fetch(self, inter):
-        """Warn about fetching into experimental repository formats."""
-        if inter.target._format.experimental:
-            trace.warning("Fetching into experimental format %s.\n"
-                "This format may be unreliable or change in the future "
-                "without an upgrade path.\n" % (inter.target._format,))
 
 
 class NoninteractiveUIFactory(UIFactory):

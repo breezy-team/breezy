@@ -2495,7 +2495,10 @@ class InterVersionedFileRepository(InterRepository):
                             content is copied.
         :return: None.
         """
-        ui.ui_factory.warn_experimental_format_fetch(self)
+        if self.target._format.experimental:
+            ui.ui_factory.show_user_warning('experimental_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         from bzrlib.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
@@ -2940,7 +2943,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             revision_ids = fetch_spec.get_keys()
         else:
             revision_ids = None
-        ui.ui_factory.warn_experimental_format_fetch(self)
+        if self.source._format.experimental:
+            ui.ui_factory.show_user_warning('experimental_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True
