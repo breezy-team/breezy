@@ -239,3 +239,21 @@ class TestAdd(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
         self.assertEquals(out, "adding a\n" "adding b\n")
         self.assertEquals(err, "")
+        
+    def test_add_skip_large_files(self):
+        """Test skipping files larger than large_file_threshold"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['small.txt', 'big.txt'])
+        self.build_tree_contents([('small.txt', '0\n')])
+        self.build_tree_contents([('big.txt', '01234567890123456789\n')])
+        tree.branch.get_config().set_user_option('large_file_threshold', 5)
+        out = self.run_bzr('add')[0]
+        # the ordering is not defined at the moment
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals(['adding small.txt'], 
+                          results)
+        tree.branch.get_config().set_user_option('large_file_threshold', 30)
+        out = self.run_bzr('add')[0]
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals(['adding big.txt'], 
+                          results)

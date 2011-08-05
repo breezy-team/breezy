@@ -541,6 +541,8 @@ class PostCommitHookParams(object):
 class _SmartAddHelper(object):
     """Helper for MutableTree.smart_add."""
 
+    _DEFAULT_LARGE_FILE_THRESHOLD = 2<<20; # 1 MB
+
     def get_inventory_delta(self):
         return self._invdelta.values()
 
@@ -629,6 +631,28 @@ class _SmartAddHelper(object):
                 yield (path, inv_path, this_ie, None)
             prev_dir = path
 
+    def _large_file_threshold(self):
+        """The largest size file we allow to be added, in bytes.
+
+        :return: an integer. 0 means no limit.
+        """
+        config = self.tree.branch.get_config()
+        val = config.get_user_option('large_file_threshold')
+        if val is None:
+            val = self._DEFAULT_LARGE_FILE_THRESHOLD
+        else:
+            try:
+                val = int(val)
+                if (val < 0):
+                    val = self._DEFAULT_LARGE_FILE_THRESHOLD
+            except ValueError, e:
+                trace.warning('Invalid config value for'
+                              ' "large_file_threshold"'
+                              ' value %r is not an integer.'
+                              % (val,))
+                val = self._DEFAULT_LARGE_FILE_THRESHOLD
+        return val
+        
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
         if action is None:
@@ -688,6 +712,7 @@ class _SmartAddHelper(object):
 
         things_to_add = list(self._gather_dirs_to_add(user_dirs))
 
+        large_threshold = self._large_file_threshold()
         illegalpath_re = re.compile(r'[\r\n]')
         for directory, inv_path, this_ie, parent_ie in things_to_add:
             # directory is tree-relative
@@ -701,6 +726,15 @@ class _SmartAddHelper(object):
             else:
                 kind = this_ie.kind
 
+            
+            # if file size if greater than large_threshold, warn and skip
+            if (kind == 'file') and (large_threshold > 0) and (
+                os.path.getsize(abspath) > large_threshold):
+                    trace.warning("skipping %s (larger than "
+                    "large_file_threshold of %i bytes)",  
+                    abspath, large_threshold)
+                    continue
+                
             if not InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",
                               abspath, kind)
