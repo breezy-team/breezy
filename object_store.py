@@ -63,9 +63,9 @@ import stat
 def get_object_store(repo, mapping=None):
     git = getattr(repo, "_git", None)
     if git is not None:
-        git.object_store.unlock = lambda x: None
-        git.object_store.lock_read = LogicalLockResult(lambda: None)
-        git.object_store.lock_write = LogicalLockResult(lambda: None)
+        git.object_store.unlock = lambda: None
+        git.object_store.lock_read = lambda: LogicalLockResult(lambda: None)
+        git.object_store.lock_write = lambda: LogicalLockResult(lambda: None)
         return git.object_store
     return BazaarObjectStore(repo, mapping)
 
