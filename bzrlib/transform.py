@@ -2266,7 +2266,7 @@ class _PreviewTree(tree.InventoryTree):
         if kind == 'file':
             fileobj = self.get_file(file_id)
             try:
-                return ("sha1", sha_file(fileobj))
+                return ("SHA1", sha_file(fileobj))
             finally:
                 fileobj.close()
 

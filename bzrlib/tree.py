@@ -311,7 +311,7 @@ class Tree(object):
         :param stat_value: Optional stat value for the object
         :return: Tuple with verifier name and verifier data
         """
-        return ("sha1", self.get_file_sha1(file_id, path=path,
+        return ("SHA1", self.get_file_sha1(file_id, path=path,
             stat_value=stat_value))
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
@@ -1316,12 +1316,12 @@ class InterTree(InterObject):
         if source_verifier_kind == target_verifier_kind:
             return (source_verifier_data == target_verifier_data)
         # Fall back to SHA1 for now
-        if source_verifier_kind != "sha1":
+        if source_verifier_kind != "SHA1":
             source_sha1 = self.source.get_file_sha1(source_file_id,
                     source_path, source_stat)
         else:
             source_sha1 = source_verifier_data
-        if target_verifier_kind != "sha1":
+        if target_verifier_kind != "SHA1":
             target_sha1 = self.target.get_file_sha1(target_file_id,
                     target_path, target_stat)
         else:

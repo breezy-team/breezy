@@ -320,6 +320,6 @@ class TestGetFileVerifier(TestCaseWithTree):
         self.assertEquals(
             tree.get_file_verifier('file-id-1'),
             tree.get_file_verifier('file-id-2'))
-        if kind == "sha1":
+        if kind == "SHA1":
             expected = osutils.sha_strings('file content')
             self.assertEqual(expected, data)
