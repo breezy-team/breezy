@@ -541,7 +541,7 @@ class PostCommitHookParams(object):
 class _SmartAddHelper(object):
     """Helper for MutableTree.smart_add."""
 
-    _DEFAULT_LARGE_FILE_THRESHOLD = 2<<20; # 1 MB
+    _DEFAULT_LARGE_FILE_THRESHOLD = 1<<20; # 1 MB
 
     def get_inventory_delta(self):
         return self._invdelta.values()
