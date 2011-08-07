@@ -1,4 +1,4 @@
-0.6.2	UNRELEASED
+0.6.2	2011-08-07
 
  FEATURES
 
@@ -16,6 +16,10 @@
 
   * Significantly improve performance of WorkingTree.extras().
     (Jelmer Vernooij)
+
+ CHANGES
+
+  * Require Dulwich 0.8.0. (Jelmer Vernooij)
 
 0.6.1	2011-06-18
 
