@@ -2294,6 +2294,10 @@ option_registry.register(
     help='Flush dirstate changes onto physical disk?')
 
 option_registry.register(
+    'default_format', Option('default_format', default='2a'),
+    help='Format used when creating branches.')
+
+option_registry.register(
     'editor', Option('editor'),
     help='The command called to launch an editor to enter a message.')
 
