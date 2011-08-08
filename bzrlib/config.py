@@ -2292,19 +2292,18 @@ option_registry = registry.Registry()
 option_registry.register(
     'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
     help='Flush dirstate changes onto physical disk?')
-
 option_registry.register(
     'default_format', Option('default_format', default='2a'),
     help='Format used when creating branches.')
-
 option_registry.register(
     'editor', Option('editor'),
     help='The command called to launch an editor to enter a message.')
-
+option_registry.register(
+    'language', Option('language'),
+    help='Language to translate messages into.')
 option_registry.register(
     'output_encoding', Option('output_encoding'),
     help='Unicode encoding for output (terminal encoding if not specified).')
-
 option_registry.register(
     'repository.fdatasync',
     Option('repository.fdatasync', default=True),
