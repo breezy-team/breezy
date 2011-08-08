@@ -748,6 +748,10 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         We can't easily observe the external effect but we can at least see
         it's called.
         """
+        sentinel = object()
+        fdatasync = getattr(os, 'fdatasync', sentinel)
+        if fdatasync is sentinel:
+            raise tests.TestNotApplicable('fdatasync not supported')
         t = self.get_transport('.')
         calls = self.recordCalls(os, 'fdatasync')
         w = t.open_write_stream('out')
