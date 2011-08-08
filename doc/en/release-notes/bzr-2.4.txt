@@ -32,6 +32,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* A call to CHKInventory's filter-method will not result in a
+  DuplicateFileId error, if you move a subfolder and change a file in
+  that subfolder.
+  (Bastian Bowe, #809901)
+
 * Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
   checks to see if the most recent published source package version for
   that project is present in the branch tags. This should help developers
