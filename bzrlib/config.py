@@ -1513,14 +1513,18 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    elif sys.platform == 'darwin':
+    else:
+        if base is not None:
+            # paths in environment variables may not be ascii, we decode them
+            # as utf8 to be safe
+            base = base.decode('utf-8')
+    if sys.platform == 'darwin':
         if base is None:
             # this takes into account $HOME
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-
             xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
             if xdg_dir is None:
                 xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
@@ -1529,7 +1533,6 @@ def config_dir():
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
 
