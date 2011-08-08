@@ -16,7 +16,7 @@
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.commands import Command, Option
-from bzrlib import errors
+from bzrlib import errors, trace
 
 
 class cmd_fetch_all_records(Command):
@@ -51,14 +51,25 @@ class cmd_fetch_all_records(Command):
 
         self.add_cleanup(source.lock_read().unlock)
         self.add_cleanup(target.lock_write().unlock)
-        
+
+        # We need to find the keys to insert before we start the stream.
+        # Otherwise we'll be querying the target repo while we're trying to
+        # insert into it.
+        needed = []
+        for vf_name in ['signatures', 'texts', 'chk_bytes', 'inventories',
+                        'revisions']:
+            vf = getattr(source, vf_name)
+            target_vf = getattr(target, vf_name)
+            source_keys = vf.keys()
+            target_keys = target_vf.keys()
+            keys = source_keys.difference(target_keys)
+            needed.append((vf_name, keys))
+
         def source_stream():
-            for vf_name in ['signatures', 'texts', 'chk_bytes', 'inventories',
-                    'revisions']:
+            for vf_name, keys in needed:
                 vf = getattr(source, vf_name)
-                keys = set(vf.keys()).difference(getattr(target,vf_name).keys())
                 yield (vf_name, vf.get_record_stream(keys, 'unordered', True))
-        
+
         resume_tokens, missing_keys = target._get_sink().insert_stream(
             source_stream(), source._format, [])
 
