@@ -156,6 +156,9 @@ Testing
   due to the order that `build_snapshot` performs its actions.
   (Andrew Bennetts)
 
+* Don't require ``os.fdatasync`` do be defined on all supported OSes
+  (BSD-based OSes don't define it).  (Vincent Ladeuil, #822649)
+
 * Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
 
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
