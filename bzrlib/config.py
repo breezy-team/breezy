@@ -2287,13 +2287,19 @@ class Option(object):
 option_registry = registry.Registry()
 
 
+# Registered options in lexicographical order
+
+option_registry.register(
+    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
+    help='Flush dirstate changes onto physical disk?')
+
 option_registry.register(
     'editor', Option('editor'),
     help='The command called to launch an editor to enter a message.')
 
 option_registry.register(
-    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
-    help='Flush dirstate changes onto physical disk?')
+    'output_encoding', Option('output_encoding'),
+    help='Unicode encoding for output (terminal encoding if not specified).')
 
 option_registry.register(
     'repository.fdatasync',
