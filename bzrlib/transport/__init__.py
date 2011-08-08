@@ -1364,21 +1364,18 @@ class ConnectedTransport(Transport):
         """
         if not base.endswith('/'):
             base += '/'
-        (self._scheme,
-         self._user, self._password,
-         self._host, self._port,
-         self._path) = self._split_url(base)
+        self._parsed_url = self._split_url(base)
         if _from_transport is not None:
             # Copy the password as it does not appear in base and will be lost
             # otherwise. It can appear in the _split_url above if the user
             # provided it on the command line. Otherwise, daughter classes will
             # prompt the user for one when appropriate.
-            self._password = _from_transport._password
+            self._parsed_url.password = _from_transport._parsed_url.password
 
-        base = self._unsplit_url(self._scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 self._path)
+        base = self._unsplit_url(self._parsed_url.scheme,
+            self._parsed_url.user, self._parsed_url.password,
+            self._parsed_url.host, self._parsed_url.port,
+            self._parsed_url.path)
 
         super(ConnectedTransport, self).__init__(base)
         if _from_transport is None:
@@ -1436,23 +1433,24 @@ class ConnectedTransport(Transport):
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path"""
-        scheme, user, password, host, port, path = self._split_url(abspath)
+        parsed_url = self._split_url(abspath)
         error = []
-        if (scheme != self._scheme):
+        if parsed_url.scheme != self._parsed_url.scheme:
             error.append('scheme mismatch')
-        if (user != self._user):
+        if parsed_url.user != self._parsed_url.user:
             error.append('user name mismatch')
-        if (host != self._host):
+        if parsed_url.host != self._parsed_url.host:
             error.append('host mismatch')
-        if (port != self._port):
+        if parsed_url.port != self._parsed_url.port:
             error.append('port mismatch')
-        if not (path == self._path[:-1] or path.startswith(self._path)):
+        if (not (parsed_url.path == self._parsed_url.path[:-1] or
+            parsed_url.path.startswith(self._parsed_url.path))):
             error.append('path mismatch')
         if error:
             extra = ', '.join(error)
             raise errors.PathNotChild(abspath, self.base, extra=extra)
-        pl = len(self._path)
-        return path[pl:].strip('/')
+        pl = len(self._parsed_url.path)
+        return parsed_url.path[pl:].strip('/')
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -1462,10 +1460,10 @@ class ConnectedTransport(Transport):
         :returns: the Unicode version of the absolute path for relpath.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._scheme, self._user, self._password,
-                                 self._host, self._port,
-                                 path)
+        path = self._combine_paths(self._parsed_url.path, relative)
+        return self._unsplit_url(self._parsed_url.scheme,
+            self._parsed_url.user, self._parsed_url.password,
+            self._parsed_url.host, self._parsed_url.port, path)
 
     def _remote_path(self, relpath):
         """Return the absolute path part of the url to the given relative path.
@@ -1545,8 +1543,7 @@ class ConnectedTransport(Transport):
         :return: A new transport or None if the connection cannot be shared.
         """
         try:
-            (scheme, user, password,
-             host, port, path) = self._split_url(other_base)
+            parsed_url = self._split_url(other_base)
         except errors.InvalidURL:
             # No hope in trying to reuse an existing transport for an invalid
             # URL
@@ -1555,15 +1552,16 @@ class ConnectedTransport(Transport):
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
-        if (scheme == self._scheme
-            and user == self._user
-            and host == self._host
-            and port == self._port):
+        if (parsed_url.scheme == self._parsed_url.scheme
+            and parsed_url.user == self._parsed_url.user
+            and parsed_url.host == self._parsed_url.host
+            and parsed_url.port == self._parsed_url.port):
+            path = parsed_url.path
             if not path.endswith('/'):
                 # This normally occurs at __init__ time, but it's easier to do
                 # it now to avoid creating two transports for the same base.
                 path += '/'
-            if self._path  == path:
+            if self._parsed_url.path  == path:
                 # shortcut, it's really the same transport
                 return self
             # We don't call clone here because the intent is different: we

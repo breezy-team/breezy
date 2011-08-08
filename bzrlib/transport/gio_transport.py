@@ -165,35 +165,37 @@ class GioTransport(ConnectedTransport):
         #really use bzrlib.auth get_password for this
         #or possibly better gnome-keyring?
         auth = config.AuthenticationConfig()
-        (scheme, urluser, urlpassword, host, port, urlpath) = \
-           urlutils.parse_url(self.url)
+        parsed_url = urlutils.parse_url(self.url)
         user = None
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):
-            prompt = u'%s' % (scheme.upper(),) + u' %(host)s DOMAIN\\username'
-            user_and_domain = auth.get_user(scheme, host,
-                    port=port, ask=True, prompt=prompt)
+            prompt = (u'%s' % (parsed_url.scheme.upper(),) +
+                      u' %(host)s DOMAIN\\username')
+            user_and_domain = auth.get_user(parsed_url.scheme,
+                parsed_url.host, port=parsed_url.port, ask=True,
+                prompt=prompt)
             (domain, user) = user_and_domain.split('\\', 1)
             op.set_username(user)
             op.set_domain(domain)
         elif flags & gio.ASK_PASSWORD_NEED_USERNAME:
-            user = auth.get_user(scheme, host,
-                    port=port, ask=True)
+            user = auth.get_user(parsed_url.scheme, parsed_url.host,
+                    port=parsed_url.port, ask=True)
             op.set_username(user)
         elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
             #Don't know how common this case is, but anyway
             #a DOMAIN and a username prompt should be the
             #same so I will missuse the ui_factory get_username
             #a little bit here.
-            prompt = u'%s' % (scheme.upper(),) + u' %(host)s DOMAIN'
+            prompt = (u'%s' % (parsed_url.scheme.upper(),) +
+                      u' %(host)s DOMAIN')
             domain = ui.ui_factory.get_username(prompt=prompt)
             op.set_domain(domain)
 
         if flags & gio.ASK_PASSWORD_NEED_PASSWORD:
             if user is None:
                 user = op.get_username()
-            password = auth.get_password(scheme, host,
-                    user, port=port)
+            password = auth.get_password(parsed_url.scheme, parsed_url.host,
+                    user, port=parsed_url.port)
             op.set_password(password)
         op.reply(gio.MOUNT_OPERATION_HANDLED)
 
@@ -207,7 +209,7 @@ class GioTransport(ConnectedTransport):
 
     def _create_connection(self, credentials=None):
         if credentials is None:
-            user, password = self._user, self._password
+            user, password = self._parsed_url.user, self._parsed_url.password
         else:
             user, password = credentials
 

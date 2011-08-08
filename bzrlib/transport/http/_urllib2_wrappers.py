@@ -996,9 +996,8 @@ class ProxyHandler(urllib2.ProxyHandler):
         # grok user:password@host:port as well as
         # http://user:password@host:port
 
-        (scheme, user, password,
-         host, port, path) = transport.ConnectedTransport._split_url(proxy)
-        if not host:
+        parsed_url = transport.ConnectedTransport._split_url(proxy)
+        if not parsed_url.host:
             raise errors.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
@@ -1006,15 +1005,17 @@ class ProxyHandler(urllib2.ProxyHandler):
             # proxied request, intialize.  scheme (the authentication scheme)
             # and realm will be set by the AuthHandler
             request.proxy_auth = {
-                                  'host': host, 'port': port,
-                                  'user': user, 'password': password,
-                                  'protocol': scheme,
+                                  'host': parsed_url.host,
+                                  'port': parsed_url.port,
+                                  'user': parsed_url.user,
+                                  'password': parsed_url.password,
+                                  'protocol': parsed_url.scheme,
                                    # We ignore path since we connect to a proxy
                                   'path': None}
-        if port is None:
-            phost = host
+        if parsed_url.port is None:
+            phost = parsed_url.host
         else:
-            phost = host + ':%d' % port
+            phost = parsed_url.host + ':%d' % parsed_url.port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
             print 'set_proxy: proxy set to %s://%s' % (type, phost)
@@ -1129,12 +1130,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         auth['modified'] = False
         # Put some common info in auth if the caller didn't
         if auth.get('path', None) is None:
-            (protocol, _, _,
-             host, port, path) = urlutils.parse_url(request.get_full_url())
-            self.update_auth(auth, 'protocol', protocol)
-            self.update_auth(auth, 'host', host)
-            self.update_auth(auth, 'port', port)
-            self.update_auth(auth, 'path', path)
+            parsed_url = urlutils.parse_url(request.get_full_url())
+            self.update_auth(auth, 'protocol', parsed_url.scheme)
+            self.update_auth(auth, 'host', parsed_url.host)
+            self.update_auth(auth, 'port', parsed_url.port)
+            self.update_auth(auth, 'path', parsed_url.path)
         # FIXME: the auth handler should be selected at a single place instead
         # of letting all handlers try to match all headers, but the current
         # design doesn't allow a simple implementation.
