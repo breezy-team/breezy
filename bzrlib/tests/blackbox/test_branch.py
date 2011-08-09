@@ -287,6 +287,7 @@ class TestBranch(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.tags.set_tag('tag-a', 'rev-2')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')
@@ -479,6 +480,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         source.tags.set_tag('tag-a', 'rev-2')
         source.tags.set_tag('tag-missing', 'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
@@ -489,7 +491,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(9, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
 
     def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
