@@ -2274,10 +2274,11 @@ class Option(object):
     value, in which config files it can be stored, etc (TBC).
     """
 
-    def __init__(self, name, default=None, help=None):
+    def __init__(self, name, default=None, help=None, from_unicode=None):
         self.name = name
         self.default = default
         self.help = help
+        self.from_unicode = from_unicode
 
     def get_default(self):
         return self.default
@@ -2811,13 +2812,23 @@ class Stack(object):
                     break
             if value is not None:
                 break
+        # If the option is registered, it may provide additional info about
+        # value handling
+        try:
+            opt = option_registry.get(name)
+        except KeyError:
+            # Not registered
+            opt = None
+        if (opt is not None and opt.from_unicode is not None
+            and value is not None):
+            # If a value exists and the option provides a converter, use it
+            try:
+                value = opt.from_unicode(value)
+            except ValueError:
+                # Invalid values are ignored
+                value = None
         if value is None:
             # If the option is registered, it may provide a default value
-            try:
-                opt = option_registry.get(name)
-            except KeyError:
-                # Not registered
-                opt = None
             if opt is not None:
                 value = opt.get_default()
         for hook in ConfigHooks['get']:
