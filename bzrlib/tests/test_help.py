@@ -603,16 +603,19 @@ class TestHelpIndices(tests.TestCase):
     def test_default_search_path(self):
         """The default search path should include internal indexs."""
         indices = help.HelpIndices()
-        self.assertEqual(3, len(indices.search_path))
+        self.assertEqual(4, len(indices.search_path))
         # help topics should be searched in first.
         self.assertIsInstance(indices.search_path[0],
-            help_topics.HelpTopicIndex)
+                              help_topics.HelpTopicIndex)
         # with commands being search second.
         self.assertIsInstance(indices.search_path[1],
-            commands.HelpCommandIndex)
-        # and plugins are a third index.
+                              commands.HelpCommandIndex)
+        # plugins are a third index.
         self.assertIsInstance(indices.search_path[2],
-            plugin.PluginsHelpIndex)
+                              plugin.PluginsHelpIndex)
+        # config options are a fourth index
+        self.assertIsInstance(indices.search_path[3],
+                              help_topics.ConfigOptionHelpIndex)
 
     def test_search_for_unknown_topic_raises(self):
         """Searching for an unknown topic should raise NoHelpTopic."""
@@ -669,3 +672,6 @@ class TestHelpIndices(tests.TestCase):
         indices.search_path = [help_topics.HelpTopicIndex(),
             help_topics.HelpTopicIndex()]
         self.assertRaises(errors.DuplicateHelpPrefix, indices.search, None)
+
+class TestConfigOptionHelp():
+    pass

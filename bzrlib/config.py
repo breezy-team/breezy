@@ -2282,6 +2282,14 @@ class Option(object):
     def get_default(self):
         return self.default
 
+    def get_help_text(self, additional_see_also=None, plain=True):
+        result = self.help
+        from bzrlib import help_topics
+        result += help_topics._format_see_also(additional_see_also)
+        if plain:
+            result = help_topics.help_as_plain_text(result)
+        return result
+
 
 class OptionRegistry(registry.Registry):
     """Register config options by their name.
@@ -2301,13 +2309,12 @@ class OptionRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name):
         """Register a new option to be loaded on request.
 
-        :param key: This is the key to use to request the option later. Since
-            the registration is lazy, it should be provided and match the
-            option name.
+        :param key: the key to request the option later. Since the registration
+            is lazy, it should be provided and match the option name.
 
-        :param module_name: The python path to the module. Such as 'os.path'.
+        :param module_name: the python path to the module. Such as 'os.path'.
 
-        :param member_name: The member of the module to return.  If empty or
+        :param member_name: the member of the module to return.  If empty or 
                 None, get() will return the module itself.
         """
         super(OptionRegistry, self).register_lazy(key,
@@ -2329,7 +2336,7 @@ option_registry = OptionRegistry()
 
 option_registry.register(
     Option('dirstate.fdatasync', default=True,
-           help='''
+           help='''\
 Flush dirstate changes onto physical disk?
 
 If true (default), working tree metadata changes are flushed through the

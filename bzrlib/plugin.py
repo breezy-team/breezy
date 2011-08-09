@@ -506,17 +506,8 @@ class ModuleHelpTopic(object):
             result = self.module.__doc__
         if result[-1] != '\n':
             result += '\n'
-        # there is code duplicated here and in bzrlib/help_topic.py's
-        # matching Topic code. This should probably be factored in
-        # to a helper function and a common base class.
-        if additional_see_also is not None:
-            see_also = sorted(set(additional_see_also))
-        else:
-            see_also = None
-        if see_also:
-            result += 'See also: '
-            result += ', '.join(see_also)
-            result += '\n'
+        from bzrlib import help_topics
+        result += help_topics._sorted_see_also(additional_see_also)
         return result
 
     def get_help_topic(self):
