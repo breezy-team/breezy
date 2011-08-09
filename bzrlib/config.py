@@ -2334,7 +2334,7 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
-    Option('dirstate.fdatasync', default=True,
+    Option('dirstate.fdatasync', default=True, from_unicode=bool_from_store,
            help='''
 Flush dirstate changes onto physical disk?
 
@@ -2356,7 +2356,7 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
-    Option('repository.fdatasync', default=True,
+    Option('repository.fdatasync', default=True, from_unicode=bool_from_store,
            help='''\
 Flush repository changes onto physical disk?
 
