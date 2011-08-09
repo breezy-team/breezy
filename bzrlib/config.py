@@ -1515,9 +1515,7 @@ def config_dir():
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
         if base is not None:
-            # paths in environment variables may not be ascii, we decode them
-            # as utf8 to be safe
-            base = base.decode('utf-8')
+            base = base.decode(osutils._fs_enc)
     if sys.platform == 'darwin':
         if base is None:
             # this takes into account $HOME
@@ -2574,16 +2572,16 @@ class LockableIniFileStore(IniFileStore):
 class GlobalStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
 
 
 class LocationStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 
