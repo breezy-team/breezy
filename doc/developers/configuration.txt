@@ -19,8 +19,9 @@ The Option object is used to define its properties:
 * default: the default value that Stack.get() should return if no
   value can be found for the option.
 
-Since plugins should be able to lazily register options, the associated help
-is not part of the object but provided at registration time.
+* help: a doc string describing the option, the first line should be a
+  summary and can be followed by a blank line and a more detailed
+  explanation.
 
 Sections
 --------

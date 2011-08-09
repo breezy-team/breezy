@@ -105,6 +105,9 @@ API Changes
   two files in different trees have the same contents.
   (Jelmer Vernooij)
 
+* New registry ``OptionRegistry`` specialized for configuration options.
+  (Vincent Ladeuil)
+
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)
 
