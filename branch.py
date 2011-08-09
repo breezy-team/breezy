@@ -623,11 +623,15 @@ class InterFromGitBranch(branch.GenericInterBranch):
             return False
         return True
 
-    def fetch(self, stop_revision=None, fetch_tags=True, limit=None):
+    def fetch(self, stop_revision=None, fetch_tags=None, limit=None):
         self.fetch_objects(stop_revision, fetch_tags=fetch_tags, limit=limit)
 
     def fetch_objects(self, stop_revision, fetch_tags, limit=None):
         interrepo = self._get_interrepo(self.source, self.target)
+        if fetch_tags is None:
+            c = self.source.get_config()
+            fetch_tags = c.get_user_option_as_bool('branch.fetch_tags',
+                default=False)
         def determine_wants(heads):
             if self.source.ref is not None and not self.source.ref in heads:
                 raise NoSuchRef(self.source.ref, heads.keys())
@@ -651,7 +655,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         return head, refs
 
     def _update_revisions(self, stop_revision=None, overwrite=False):
-        head, refs = self.fetch_objects(stop_revision, fetch_tags=True)
+        head, refs = self.fetch_objects(stop_revision, fetch_tags=None)
         if overwrite:
             prev_last_revid = None
         else:
