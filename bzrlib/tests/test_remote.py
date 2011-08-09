@@ -1213,7 +1213,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         self.assertFinished(client)
         self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
 
-    def test_backwards_compatible(self):
+    def make_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
@@ -1225,6 +1225,12 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         # Add two tags to that branch
         branch.tags.set_tag('tag-1', 'rev-1')
         branch.tags.set_tag('tag-2', 'rev-2')
+        return branch
+
+    def test_backwards_compatible(self):
+        branch = self.make_branch_with_tags()
+        c = branch.get_config()
+        c.set_user_option('branch.fetch_tags', 'True')
         self.addCleanup(branch.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
@@ -1233,7 +1239,23 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         result = branch.heads_to_fetch()
         self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
+            ['Branch.last_revision_info', 'Branch.get_config_file',
+             'Branch.get_tags_bytes'],
+            [call.call.method for call in self.hpss_calls])
+
+    def test_backwards_compatible_no_tags(self):
+        branch = self.make_branch_with_tags()
+        c = branch.get_config()
+        c.set_user_option('branch.fetch_tags', 'False')
+        self.addCleanup(branch.lock_read().unlock)
+        # Disable the heads_to_fetch verb
+        verb = 'Branch.heads_to_fetch'
+        self.disable_verb(verb)
+        self.reset_smart_call_log()
+        result = branch.heads_to_fetch()
+        self.assertEqual((set(['tip']), set()), result)
+        self.assertEqual(
+            ['Branch.last_revision_info', 'Branch.get_config_file'],
             [call.call.method for call in self.hpss_calls])
 
 

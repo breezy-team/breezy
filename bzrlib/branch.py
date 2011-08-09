@@ -1545,10 +1545,15 @@ class Branch(controldir.ControlComponent):
         # For bzr native formats must_fetch is just the tip, and if_present_fetch
         # are the tags.
         must_fetch = set([self.last_revision()])
-        try:
-            if_present_fetch = set(self.tags.get_reverse_tag_dict())
-        except errors.TagsNotSupported:
-            if_present_fetch = set()
+        if_present_fetch = set()
+        c = self.get_config()
+        include_tags = c.get_user_option_as_bool('branch.fetch_tags',
+                                                 default=False)
+        if include_tags:
+            try:
+                if_present_fetch = set(self.tags.get_reverse_tag_dict())
+            except errors.TagsNotSupported:
+                pass
         must_fetch.discard(_mod_revision.NULL_REVISION)
         if_present_fetch.discard(_mod_revision.NULL_REVISION)
         return must_fetch, if_present_fetch
