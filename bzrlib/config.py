@@ -2283,6 +2283,11 @@ class Option(object):
     def get_default(self):
         return self.default
 
+# Predefined converters to get proper values from store
+
+def bool_from_store(unicode_str):
+    return ui.bool_from_string(unicode_str)
+
 
 class OptionRegistry(registry.Registry):
     """Register config options by their name.

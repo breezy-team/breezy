@@ -2966,7 +2966,7 @@ class TestStackGetWithConverter(TestStackGet):
 
     def register_bool_option(self, name, default):
         b = config.Option(name, default=default, help='A boolean.',
-                          from_unicode=ui.bool_from_string)
+                          from_unicode=config.bool_from_store)
         self.registry.register(b)
 
     def test_get_with_bool_not_defined_default_true(self):
