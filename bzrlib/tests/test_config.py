@@ -2219,25 +2219,30 @@ class TestOptionRegistry(tests.TestCase):
     def setUp(self):
         super(TestOptionRegistry, self).setUp()
         # Always start with an empty registry
-        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
 
     def test_register(self):
         opt = config.Option('foo')
-        self.registry.register('foo', opt)
+        self.registry.register(opt)
         self.assertIs(opt, self.registry.get('foo'))
 
-    lazy_option = config.Option('lazy_foo')
+    def test_registered_help(self):
+        opt = config.Option('foo', help='A simple option')
+        self.registry.register(opt)
+        self.assertEquals('A simple option', self.registry.get_help('foo'))
+
+    lazy_option = config.Option('lazy_foo', help='Lazy help')
 
     def test_register_lazy(self):
-        self.registry.register_lazy('foo', self.__module__,
+        self.registry.register_lazy('lazy_foo', self.__module__,
                                     'TestOptionRegistry.lazy_option')
-        self.assertIs(self.lazy_option, self.registry.get('foo'))
+        self.assertIs(self.lazy_option, self.registry.get('lazy_foo'))
 
-    def test_registered_help(self):
-        opt = config.Option('foo')
-        self.registry.register('foo', opt, help='A simple option')
-        self.assertEquals('A simple option', self.registry.get_help('foo'))
+    def test_registered_lazy_help(self):
+        self.registry.register_lazy('lazy_foo', self.__module__,
+                                    'TestOptionRegistry.lazy_option')
+        self.assertEquals('Lazy help', self.registry.get_help('lazy_foo'))
 
 
 class TestRegisteredOptions(tests.TestCase):
@@ -2866,6 +2871,9 @@ class TestStackGet(tests.TestCase):
     # FIXME: This should be parametrized for all known Stack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-03-31
 
+    def overrideOptionRegistry(self):
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
+
     def test_single_config_get(self):
         conf = dict(foo='bar')
         conf_stack = config.Stack([conf])
@@ -2874,21 +2882,21 @@ class TestStackGet(tests.TestCase):
     def test_get_with_registered_default_value(self):
         conf_stack = config.Stack([dict()])
         opt = config.Option('foo', default='bar')
-        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.overrideOptionRegistry()
         config.option_registry.register('foo', opt)
         self.assertEquals('bar', conf_stack.get('foo'))
 
     def test_get_without_registered_default_value(self):
         conf_stack = config.Stack([dict()])
         opt = config.Option('foo')
-        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.overrideOptionRegistry()
         config.option_registry.register('foo', opt)
         self.assertEquals(None, conf_stack.get('foo'))
 
     def test_get_without_default_value_for_not_registered(self):
         conf_stack = config.Stack([dict()])
         opt = config.Option('foo')
-        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.overrideOptionRegistry()
         self.assertEquals(None, conf_stack.get('foo'))
 
     def test_get_first_definition(self):
