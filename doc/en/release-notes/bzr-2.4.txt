@@ -63,6 +63,10 @@ Bug Fixes
   avoiding an extra SSH connection, etc.
   (John Arbash Meinel, #812285)
 
+* Cope with not all Python versions having a ``clear`` method on
+  ``TestCase._type_equality_funcs``. (#809048, Martin [gz], Jelmer
+  Vernooij)
+
 Documentation
 *************
 
