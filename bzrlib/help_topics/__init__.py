@@ -877,7 +877,7 @@ class RegisteredTopic(object):
             returned instead of plain text.
         """
         result = topic_registry.get_detail(self.topic)
-        result += _sorted_see_also(additional_see_also)
+        result += _format_see_also(additional_see_also)
         if plain:
             result = help_as_plain_text(result)
         return result
