@@ -1183,6 +1183,28 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         client.add_expected_call(
             'Branch.last_revision_info', ('quack/',),
             'success', ('ok', '1', 'rev-tip'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('quack/',),
+            'success', ('ok',), '')
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.heads_to_fetch()
+        self.assertFinished(client)
+        self.assertEqual((set(['rev-tip']), set()), result)
+
+    def test_uses_last_revision_info_and_tags_when_set(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info', ('quack/',),
+            'success', ('ok', '1', 'rev-tip'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('quack/',),
+            'success', ('ok',), 'branch.fetch_tags = True')
         # XXX: this will break if the default format's serialization of tags
         # changes, or if the RPC for fetching tags changes from get_tags_bytes.
         client.add_expected_call(
