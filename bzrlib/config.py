@@ -2287,7 +2287,7 @@ class OptionRegistry(registry.Registry):
     """Register config options by their name.
 
     This overrides ``registry.Registry`` to simplify registration by acquiring
-    some informations from the option object itself.
+    some information from the option object itself.
     """
 
     def register(self, option):
@@ -2320,8 +2320,6 @@ class OptionRegistry(registry.Registry):
         if callable(the_help):
             return the_help(self, key)
         return the_help
-
-
 
 
 option_registry = OptionRegistry()

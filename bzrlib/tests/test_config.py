@@ -2263,8 +2263,9 @@ class TestRegisteredOptions(tests.TestCase):
     def test_help_is_set(self):
         option_help = self.registry.get_help(self.option_name)
         self.assertNotEquals(None, option_help)
-        # Come on, think about the user, he really wants to know whst the
+        # Come on, think about the user, he really wants to know what the
         # option is about
+        self.assertIsNot(None, option_help)
         self.assertNotEquals('', option_help)
 
 
