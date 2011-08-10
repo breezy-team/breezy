@@ -752,6 +752,37 @@ class ParsedUrl(object):
         self.quoted_path = quoted_path
         self.path = urllib.unquote(self.quoted_path)
 
+    @classmethod
+    def from_url(cls, url):
+        """Create a ParsedUrl object from a URL.
+
+        :param url: URL as bytestring
+        """
+        if isinstance(url, unicode):
+            raise errors.InvalidURL('should be ascii:\n%r' % url)
+        url = url.encode('utf-8')
+        (scheme, netloc, path, params,
+         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        user = password = host = port = None
+        if '@' in netloc:
+            user, host = netloc.rsplit('@', 1)
+            if ':' in user:
+                user, password = user.split(':', 1)
+        else:
+            host = netloc
+
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+            host, port = host.rsplit(':',1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
+            host = host[1:-1]
+
+        return cls(scheme, user, password, host, port, path)
+
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.
@@ -764,27 +795,6 @@ def parse_url(url):
     :return: (scheme, user, password, host, port, path) tuple, all fields
         are unquoted.
     """
-    if isinstance(url, unicode):
-        raise errors.InvalidURL('should be ascii:\n%r' % url)
-    url = url.encode('utf-8')
-    (scheme, netloc, path, params,
-     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-    user = password = host = port = None
-    if '@' in netloc:
-        user, host = netloc.rsplit('@', 1)
-        if ':' in user:
-            user, password = user.split(':', 1)
-    else:
-        host = netloc
-
-    if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
-        host, port = host.rsplit(':',1)
-        try:
-            port = int(port)
-        except ValueError:
-            raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                    (port, url))
-    if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
-        host = host[1:-1]
-
-    return ParsedUrl(scheme, user, password, host, port, path)
+    parsed_url = ParsedUrl.from_url(url)
+    return (parsed_url.scheme, parsed_url.user, parsed_url.password,
+        parsed_url.host, parsed_url.port, parsed_url.path)

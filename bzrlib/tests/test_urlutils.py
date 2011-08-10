@@ -795,22 +795,15 @@ class TestParseURL(TestCase):
 
     def test_parse_simple(self):
         parsed = urlutils.parse_url('http://example.com:80/one')
-        self.assertEquals('http', parsed.scheme)
-        self.assertEquals('example.com', parsed.host)
-        self.assertIs(None, parsed.user)
-        self.assertIs(None, parsed.password)
-        self.assertEquals(80, parsed.port)
-        self.assertEquals('/one', parsed.path)
+        self.assertEquals(('http', None, None, 'example.com', 80, '/one'),
+            parsed)
 
     def test_ipv6(self):
         parsed = urlutils.parse_url('http://[1:2:3::40]/one')
-        self.assertEquals('1:2:3::40', parsed.host)
-        self.assertEquals('http', parsed.scheme)
-        self.assertEquals('/one', parsed.path)
+        self.assertEquals(('http', None, None, '1:2:3::40', None, '/one'),
+            parsed)
 
     def test_ipv6_port(self):
         parsed = urlutils.parse_url('http://[1:2:3::40]:80/one')
-        self.assertEquals('1:2:3::40', parsed.host)
-        self.assertEquals(80, parsed.port)
-        self.assertEquals('http', parsed.scheme)
-        self.assertEquals('/one', parsed.path)
+        self.assertEquals(('http', None, None, '1:2:3::40', 80, '/one'),
+            parsed)
