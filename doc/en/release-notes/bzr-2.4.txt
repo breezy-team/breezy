@@ -56,6 +56,10 @@ Bug Fixes
 
   (John Arbash Meinel, #609187, #812928)
 
+* Cope with not all Python versions having a ``clear`` method on
+  ``TestCase._type_equality_funcs``.
+  (Martin [gz], Jelmer Vernooij, #809048)
+
 * Fetching tags when fetching the tip revision of a branch is now
   controlled by the config setting ``branch.fetch_tags``. The behavior has
   been reverted to 2.3's not-fetching tagged revisions by default.

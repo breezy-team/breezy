@@ -386,9 +386,18 @@ class ExtendedTestResult(testtools.TextTestResult):
         getDetails = getattr(test, "getDetails", None)
         if getDetails is not None:
             getDetails().clear()
+        # Clear _type_equality_funcs to try to stop TestCase instances
+        # from wasting memory. 'clear' is not available in all Python
+        # versions (bug 809048)
         type_equality_funcs = getattr(test, "_type_equality_funcs", None)
         if type_equality_funcs is not None:
-            type_equality_funcs.clear()
+            tef_clear = getattr(type_equality_funcs, "clear", None)
+            if tef_clear is None:
+                tef_instance_dict = getattr(type_equality_funcs, "__dict__", None)
+                if tef_instance_dict is not None:
+                    tef_clear = tef_instance_dict.clear
+            if tef_clear is not None:
+                tef_clear()
         self._traceback_from_test = None
 
     def startTests(self):
