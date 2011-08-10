@@ -2983,9 +2983,14 @@ class TestStackGetWithConverter(TestStackGet):
         self.conf.store._load_from_string('foo=yes')
         self.assertEquals(True, self.conf.get('foo'))
 
-    def test_get_with_bool_converter_invalid(self):
+    def test_get_with_bool_converter_invalid_string(self):
         self.register_bool_option('foo', False)
         self.conf.store._load_from_string('foo=not-a-boolean')
+        self.assertEquals(False, self.conf.get('foo'))
+
+    def test_get_with_bool_converter_invalid_list(self):
+        self.register_bool_option('foo', False)
+        self.conf.store._load_from_string('foo=not,a,boolean')
         self.assertEquals(False, self.conf.get('foo'))
 
     def test_get_invalid_warns(self):
@@ -3019,10 +3024,17 @@ class TestStackGetWithConverter(TestStackGet):
         self.conf.store._load_from_string('foo=16')
         self.assertEquals(16, self.conf.get('foo'))
 
-    def test_get_with_integer_converter_invalid(self):
+    def test_get_with_integer_converter_invalid_string(self):
         # We don't set a default value
         self.register_integer_option('foo', None)
         self.conf.store._load_from_string('foo=forty-two')
+        # No default value, so we should get None
+        self.assertEquals(None, self.conf.get('foo'))
+
+    def test_get_with_integer_converter_invalid_list(self):
+        # We don't set a default value
+        self.register_integer_option('foo', None)
+        self.conf.store._load_from_string('foo=a,list')
         # No default value, so we should get None
         self.assertEquals(None, self.conf.get('foo'))
 
