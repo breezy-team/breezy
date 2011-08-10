@@ -730,11 +730,11 @@ def determine_relative_path(from_path, to_path):
     return osutils.pathjoin(*segments)
 
 
-class ParsedUrl(object):
+class URL(object):
     """Parsed URL."""
 
-    def __init__(self, scheme, quoted_user, quoted_password, quoted_host, port,
-            quoted_path):
+    def __init__(self, scheme, quoted_user, quoted_password, quoted_host,
+            port, quoted_path):
         self.scheme = scheme
         self.quoted_host = quoted_host
         self.host = urllib.unquote(self.quoted_host)
@@ -753,8 +753,8 @@ class ParsedUrl(object):
         self.path = urllib.unquote(self.quoted_path)
 
     @classmethod
-    def from_url(cls, url):
-        """Create a ParsedUrl object from a URL.
+    def from_string(cls, url):
+        """Create a URL object from a string.
 
         :param url: URL as bytestring
         """
@@ -791,10 +791,9 @@ def parse_url(url):
     chars.
 
     :param url: an quoted url
-
     :return: (scheme, user, password, host, port, path) tuple, all fields
         are unquoted.
     """
-    parsed_url = ParsedUrl.from_url(url)
+    parsed_url = URL.from_string(url)
     return (parsed_url.scheme, parsed_url.user, parsed_url.password,
         parsed_url.host, parsed_url.port, parsed_url.path)

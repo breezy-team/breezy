@@ -807,3 +807,45 @@ class TestParseURL(TestCase):
         parsed = urlutils.parse_url('http://[1:2:3::40]:80/one')
         self.assertEquals(('http', None, None, '1:2:3::40', 80, '/one'),
             parsed)
+
+
+class TestURL(TestCase):
+
+    def test_parse_simple(self):
+        parsed = urlutils.URL.from_string('http://example.com:80/one')
+        self.assertEquals('http', parsed.scheme)
+        self.assertIs(None, parsed.user)
+        self.assertIs(None, parsed.password)
+        self.assertEquals('example.com', parsed.host)
+        self.assertEquals(80, parsed.port)
+        self.assertEquals('/one', parsed.path)
+
+    def test_ipv6(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]/one')
+        self.assertEquals('http', parsed.scheme)
+        self.assertIs(None, parsed.port)
+        self.assertIs(None, parsed.user)
+        self.assertIs(None, parsed.password)
+        self.assertEquals('1:2:3::40', parsed.host)
+        self.assertEquals('/one', parsed.path)
+
+    def test_ipv6_port(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals('http', parsed.scheme)
+        self.assertEquals('1:2:3::40', parsed.host)
+        self.assertIs(None, parsed.user)
+        self.assertIs(None, parsed.password)
+        self.assertEquals(80, parsed.port)
+        self.assertEquals('/one', parsed.path)
+
+    def test_quoted(self):
+        parsed = urlutils.URL.from_string(
+            'http://ro%62ey:h%40t@ex%41mple.com:2222/path')
+        self.assertEquals(parsed.quoted_host, 'ex%41mple.com')
+        self.assertEquals(parsed.host, 'exAmple.com')
+        self.assertEquals(parsed.port, 2222)
+        self.assertEquals(parsed.quoted_user, 'ro%62ey')
+        self.assertEquals(parsed.user, 'robey')
+        self.assertEquals(parsed.quoted_password, 'h%40t')
+        self.assertEquals(parsed.password, 'h@t')
+        self.assertEquals(parsed.path, '/path')

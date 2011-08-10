@@ -1398,7 +1398,7 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        return urlutils.parse_url(url)
+        return urlutils.URL.from_string(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):

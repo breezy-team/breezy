@@ -165,7 +165,7 @@ class GioTransport(ConnectedTransport):
         #really use bzrlib.auth get_password for this
         #or possibly better gnome-keyring?
         auth = config.AuthenticationConfig()
-        parsed_url = urlutils.parse_url(self.url)
+        parsed_url = urlutils.URL.from_string(self.url)
         user = None
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):

@@ -1130,7 +1130,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         auth['modified'] = False
         # Put some common info in auth if the caller didn't
         if auth.get('path', None) is None:
-            parsed_url = urlutils.parse_url(request.get_full_url())
+            parsed_url = urlutils.URL.from_string(request.get_full_url())
             self.update_auth(auth, 'protocol', parsed_url.scheme)
             self.update_auth(auth, 'host', parsed_url.host)
             self.update_auth(auth, 'port', parsed_url.port)
