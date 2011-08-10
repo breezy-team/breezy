@@ -27,7 +27,6 @@ it.
 """
 
 from cStringIO import StringIO
-import os
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -1384,6 +1383,30 @@ class ConnectedTransport(Transport):
             self._shared_connection = _SharedConnection()
         else:
             self._shared_connection = _from_transport._shared_connection
+
+    @property
+    def _user(self):
+        return self._parsed_url.user
+
+    @property
+    def _password(self):
+        return self._parsed_url.password
+
+    @property
+    def _host(self):
+        return self._parsed_url.host
+
+    @property
+    def _port(self):
+        return self._parsed_url.port
+
+    @property
+    def _path(self):
+        return self._parsed_url.path
+
+    @property
+    def _scheme(self):
+        return self._parsed_url.scheme
 
     def clone(self, offset=None):
         """Return a new transport with root at self.base + offset
