@@ -47,6 +47,7 @@ import warnings
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    config,
     osutils,
     progress,
     trace,
@@ -247,9 +248,7 @@ class UIFactory(object):
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            from bzrlib import config
-            encoding = config.GlobalConfig().get_user_option(
-                'output_encoding')
+            encoding = config.GlobalStack().get('output_encoding')
         if encoding is None:
             encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:

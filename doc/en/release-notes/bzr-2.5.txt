@@ -74,6 +74,9 @@ Bug Fixes
   that subfolder.
   (Bastian Bowe, #809901)
 
+* Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
+  errors.  (Vincent Ladeuil, #822571)
+
 * Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
@@ -104,6 +107,9 @@ API Changes
 * New method ``InterTree.file_content_matches`` which checks that
   two files in different trees have the same contents.
   (Jelmer Vernooij)
+
+* New registry ``OptionRegistry`` specialized for configuration options.
+  (Vincent Ladeuil)
 
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)
@@ -155,6 +161,9 @@ Testing
   directory in the same revision.  Previously some changes were impossible
   due to the order that `build_snapshot` performs its actions.
   (Andrew Bennetts)
+
+* Don't require ``os.fdatasync`` to be defined on all supported OSes
+  (BSD-based OSes don't define it).  (Vincent Ladeuil, #822649)
 
 * Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
 

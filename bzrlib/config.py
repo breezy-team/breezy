@@ -1513,14 +1513,16 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    elif sys.platform == 'darwin':
+    else:
+        if base is not None:
+            base = base.decode(osutils._fs_enc)
+    if sys.platform == 'darwin':
         if base is None:
             # this takes into account $HOME
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-
             xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
             if xdg_dir is None:
                 xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
@@ -1529,7 +1531,6 @@ def config_dir():
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
 
@@ -2274,31 +2275,90 @@ class Option(object):
     value, in which config files it can be stored, etc (TBC).
     """
 
-    def __init__(self, name, default=None):
+    def __init__(self, name, default=None, help=None):
         self.name = name
         self.default = default
+        self.help = help
 
     def get_default(self):
         return self.default
 
 
-# Options registry
+class OptionRegistry(registry.Registry):
+    """Register config options by their name.
 
-option_registry = registry.Registry()
+    This overrides ``registry.Registry`` to simplify registration by acquiring
+    some information from the option object itself.
+    """
 
+    def register(self, option):
+        """Register a new option to its name.
+
+        :param option: The option to register. Its name is used as the key.
+        """
+        super(OptionRegistry, self).register(option.name, option,
+                                             help=option.help)
+
+    def register_lazy(self, key, module_name, member_name):
+        """Register a new option to be loaded on request.
+
+        :param key: This is the key to use to request the option later. Since
+            the registration is lazy, it should be provided and match the
+            option name.
+
+        :param module_name: The python path to the module. Such as 'os.path'.
+
+        :param member_name: The member of the module to return.  If empty or
+                None, get() will return the module itself.
+        """
+        super(OptionRegistry, self).register_lazy(key,
+                                                  module_name, member_name)
+
+    def get_help(self, key=None):
+        """Get the help text associated with the given key"""
+        option = self.get(key)
+        the_help = option.help
+        if callable(the_help):
+            return the_help(self, key)
+        return the_help
+
+
+option_registry = OptionRegistry()
+
+
+# Registered options in lexicographical order
 
 option_registry.register(
-    'editor', Option('editor'),
-    help='The command called to launch an editor to enter a message.')
+    Option('dirstate.fdatasync', default=True,
+           help='''
+Flush dirstate changes onto physical disk?
 
+If true (default), working tree metadata changes are flushed through the
+OS buffers to physical disk.  This is somewhat slower, but means data
+should not be lost if the machine crashes.  See also repository.fdatasync.
+'''))
 option_registry.register(
-    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
-    help='Flush dirstate changes onto physical disk?')
+    Option('default_format', default='2a',
+           help='Format used when creating branches.'))
+option_registry.register(
+    Option('editor',
+           help='The command called to launch an editor to enter a message.'))
+option_registry.register(
+    Option('language',
+           help='Language to translate messages into.'))
+option_registry.register(
+    Option('output_encoding',
+           help= 'Unicode encoding for output'
+           ' (terminal encoding if not specified).'))
+option_registry.register(
+    Option('repository.fdatasync', default=True,
+           help='''\
+Flush repository changes onto physical disk?
 
-option_registry.register(
-    'repository.fdatasync',
-    Option('repository.fdatasync', default=True),
-    help='Flush repository changes onto physical disk?')
+If true (default), repository changes are flushed through the OS buffers
+to physical disk.  This is somewhat slower, but means data should not be
+lost if the machine crashes.  See also dirstate.fdatasync.
+'''))
 
 
 class Section(object):
@@ -2571,16 +2631,16 @@ class LockableIniFileStore(IniFileStore):
 class GlobalStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
 
 
 class LocationStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 

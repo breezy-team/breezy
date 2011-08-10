@@ -134,7 +134,7 @@ def _check_win32_locale():
 def _get_current_locale():
     if not os.environ.get('LANGUAGE'):
         from bzrlib import config
-        lang = config.GlobalConfig().get_user_option('language')
+        lang = config.GlobalStack().get('language')
         if lang:
             os.environ['LANGUAGE'] = lang
             return lang
