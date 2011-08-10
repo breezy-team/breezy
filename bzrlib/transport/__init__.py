@@ -1400,22 +1400,16 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):
-        """
-        Build the full URL for the given already URL encoded path.
+        """Build the full URL for the given already URL encoded path.
 
         user, password, host and path will be quoted if they contain reserved
         chars.
 
         :param scheme: protocol
-
         :param user: login
-
         :param password: associated password
-
         :param host: the server address
-
         :param port: the associated port
-
         :param path: the absolute path on the server
 
         :return: The corresponding URL.
