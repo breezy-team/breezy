@@ -2271,10 +2271,24 @@ class Option(object):
     The option *values* are stored in config files and found in sections.
 
     Here we define various properties about the option itself, its default
-    value, in which config files it can be stored, etc (TBC).
+    value, how to convert it from stores, what to do when invalid values are
+    encoutered, in which config files it can be stored.
     """
 
     def __init__(self, name, default=None, help=None, from_unicode=None):
+        """Build an option definition.
+
+        :param name: the name used to refer to the option.
+
+        :param default: the default value to use when none exist in the config
+            stores.
+
+        :param help: a doc string to explain the option to the user.
+
+        :param from_unicode: a callable to convert the unicode string
+            representing the option value in a store. This is not called for
+            the default value.
+        """
         self.name = name
         self.default = default
         self.help = help
