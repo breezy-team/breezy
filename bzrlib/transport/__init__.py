@@ -1371,6 +1371,8 @@ class ConnectedTransport(Transport):
             # provided it on the command line. Otherwise, daughter classes will
             # prompt the user for one when appropriate.
             self._parsed_url.password = _from_transport._parsed_url.password
+            self._parsed_url.quoted_password = (
+                _from_transport._parsed_url.quoted_password)
 
         base = self._unsplit_url(self._parsed_url.scheme,
             self._parsed_url.user, self._parsed_url.password,
