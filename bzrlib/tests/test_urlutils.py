@@ -849,3 +849,17 @@ class TestURL(TestCase):
         self.assertEquals(parsed.quoted_password, 'h%40t')
         self.assertEquals(parsed.password, 'h@t')
         self.assertEquals(parsed.path, '/path')
+
+    def test_eq(self):
+        parsed1 = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        parsed2 = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals(parsed1, parsed2)
+        self.assertEquals(parsed1, parsed1)
+        parsed2.path = '/two'
+        self.assertNotEquals(parsed1, parsed1)
+
+    def test_repr(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals("URL('http', None, None, '1:2:3::40', 80, '/one')",
+            repr(parsed))
+

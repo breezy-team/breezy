@@ -752,6 +752,20 @@ class URL(object):
         self.quoted_path = quoted_path
         self.path = urllib.unquote(self.quoted_path)
 
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                self.scheme == other.scheme and
+                self.host == other.host and
+                self.user == other.user and
+                self.password == other.password and
+                self.path == other.path)
+
+    def __repr__(self):
+        return "<%s(%r,%r,%r,%r,%r)>" % (
+            self.__class__.__name__,
+            self.scheme, self.quoted_host, self.quoted_user,
+            self.quoted_password, self.port, self.quoted_path)
+
     @classmethod
     def from_string(cls, url):
         """Create a URL object from a string.
