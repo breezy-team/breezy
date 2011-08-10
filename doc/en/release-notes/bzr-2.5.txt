@@ -49,6 +49,11 @@ New Features
   which matches user_email() as set by whoami. (Jonathan Riddell,
   #68501)
 
+* An ``invalid`` parameter can be specified when registering a config option
+  to decide what should be done when invalid values are
+  encountered. 'warning' and 'eeror' will respectively emit a warning and
+  ignore the value or errors out. (Vincent Ladeuil)
+
 * bzr log -m now matches message, author, committer and bugs instead
   of just matching the message.  --message keeps its original meaning,
   while --match-message, --match-author, --match-committer and

@@ -2964,9 +2964,10 @@ class TestStackGetWithConverter(TestStackGet):
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
 
-    def register_bool_option(self, name, default):
+    def register_bool_option(self, name, default, invalid=None):
         b = config.Option(name, default=default, help='A boolean.',
-                          from_unicode=config.bool_from_store)
+                          from_unicode=config.bool_from_store,
+                          invalid=invalid)
         self.registry.register(b)
 
     def test_get_with_bool_not_defined_default_true(self):
@@ -2986,6 +2987,23 @@ class TestStackGetWithConverter(TestStackGet):
         self.register_bool_option('foo', False)
         self.conf.store._load_from_string('foo=not-a-boolean')
         self.assertEquals(False, self.conf.get('foo'))
+
+    def test_get_invalid_warns(self):
+        self.register_bool_option('foo', False, invalid='warning')
+        self.conf.store._load_from_string('foo=not-a-boolean')
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.assertEquals(False, self.conf.get('foo'))
+        self.assertLength(1, warnings)
+        self.assertEquals('Value "not-a-boolean" is not valid for "foo"',
+                          warnings[0])
+
+    def test_get_invalid_errors(self):
+        self.register_bool_option('foo', False, invalid='error')
+        self.conf.store._load_from_string('foo=not-a-boolean')
+        self.assertRaises(errors.ConfigOptionValueError, self.conf.get, 'foo')
 
 
 class TestStackSet(TestStackWithTransport):
