@@ -141,6 +141,9 @@ API Changes
   no longer support it.
   (Martin Pool)
 
+* ``urlutils.parse_url`` now returns a ``ParsedUrl`` object
+  rather than a tuple. (Jelmer Vernooij)
+
 
 Internals
 *********

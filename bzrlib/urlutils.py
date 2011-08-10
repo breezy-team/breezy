@@ -752,10 +752,6 @@ class ParsedUrl(object):
         self.quoted_path = quoted_path
         self.path = urllib.unquote(self.quoted_path)
 
-    def __tuple__(self):
-        return (self.scheme, self.quoted_user, self.quoted_password, self.quoted_host,
-            self.port, self.quoted_path)
-
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.
