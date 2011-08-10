@@ -21,9 +21,9 @@ New Features
 .. New commands, options, etc that users may wish to try out.
 
 * A ``from_unicode`` parameter can be specified when registering a config
-  option. This implements boolean and integer config options when the
-  provided ``bool_frfrom_store`` and ``int_from_store`` are used.
-  (Vincent Ladeuil)
+  option. This implements boolean, integer and list config options when the
+  provided ``bool_from_store``, ``int_from_store`` and ``list_from_store``
+  are used for this parameter.  (Vincent Ladeuil)
 
 * Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
   checks to see if the most recent published source package version for

@@ -3006,7 +3006,7 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertRaises(errors.ConfigOptionValueError, self.conf.get, 'foo')
 
     def register_integer_option(self, name, default):
-        i = config.Option(name, default=default, help='A boolean.',
+        i = config.Option(name, default=default, help='An integer.',
                           from_unicode=config.int_from_store)
         self.registry.register(i)
 
@@ -3025,6 +3025,36 @@ class TestStackGetWithConverter(TestStackGet):
         self.conf.store._load_from_string('foo=forty-two')
         # No default value, so we should get None
         self.assertEquals(None, self.conf.get('foo'))
+
+    def register_list_option(self, name, default):
+        l = config.Option(name, default=default, help='A list.',
+                          from_unicode=config.list_from_store)
+        self.registry.register(l)
+
+    def test_get_with_list_not_defined_returns_default(self):
+        self.register_list_option('foo', [])
+        self.assertEquals([], self.conf.get('foo'))
+
+    def test_get_with_list_converter_nothing(self):
+        self.register_list_option('foo', [1])
+        self.conf.store._load_from_string('foo=')
+        self.assertEquals([], self.conf.get('foo'))
+
+    def test_get_with_list_converter_no_item(self):
+        self.register_list_option('foo', [1])
+        self.conf.store._load_from_string('foo=,')
+        self.assertEquals([], self.conf.get('foo'))
+
+    def test_get_with_list_converter_one_item(self):
+        self.register_list_option('foo', [1])
+        self.conf.store._load_from_string('foo=2')
+        # We get a list of strings
+        self.assertEquals(['2'], self.conf.get('foo'))
+
+    def test_get_with_list_converter_many_items(self):
+        self.register_list_option('foo', [1])
+        self.conf.store._load_from_string('foo=m,o,r,e')
+        self.assertEquals(['m', 'o', 'r', 'e'], self.conf.get('foo'))
 
 
 class TestStackSet(TestStackWithTransport):
