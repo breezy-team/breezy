@@ -3005,6 +3005,27 @@ class TestStackGetWithConverter(TestStackGet):
         self.conf.store._load_from_string('foo=not-a-boolean')
         self.assertRaises(errors.ConfigOptionValueError, self.conf.get, 'foo')
 
+    def register_integer_option(self, name, default):
+        i = config.Option(name, default=default, help='A boolean.',
+                          from_unicode=config.int_from_store)
+        self.registry.register(i)
+
+    def test_get_with_integer_not_defined_returns_default(self):
+        self.register_integer_option('foo', 42)
+        self.assertEquals(42, self.conf.get('foo'))
+
+    def test_get_with_integer_converter_not_default(self):
+        self.register_integer_option('foo', 42)
+        self.conf.store._load_from_string('foo=16')
+        self.assertEquals(16, self.conf.get('foo'))
+
+    def test_get_with_integer_converter_invalid(self):
+        # We don't set a default value
+        self.register_integer_option('foo', None)
+        self.conf.store._load_from_string('foo=forty-two')
+        # No default value, so we should get None
+        self.assertEquals(None, self.conf.get('foo'))
+
 
 class TestStackSet(TestStackWithTransport):
 

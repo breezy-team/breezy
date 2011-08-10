@@ -2314,6 +2314,10 @@ def bool_from_store(unicode_str):
     return ui.bool_from_string(unicode_str)
 
 
+def int_from_store(unicode_str):
+    return int(unicode_str)
+
+
 class OptionRegistry(registry.Registry):
     """Register config options by their name.
 
