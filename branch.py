@@ -630,8 +630,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         interrepo = self._get_interrepo(self.source, self.target)
         if fetch_tags is None:
             c = self.source.get_config()
-            fetch_tags = c.get_user_option_as_bool('branch.fetch_tags',
-                default=False)
+            fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
         def determine_wants(heads):
             if self.source.ref is not None and not self.source.ref in heads:
                 raise NoSuchRef(self.source.ref, heads.keys())
