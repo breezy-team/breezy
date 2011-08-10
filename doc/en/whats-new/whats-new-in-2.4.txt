@@ -38,10 +38,11 @@ Tagged revisions are copied
 ***************************
 
 When tags are copied from a branch, the associated revisions are now copied
-too.  Previously operations like branching, merging or pulling might have
-copied new tags visible in ``bzr tags``, but not copied the revisions.  Now
-revisions from tags will always be present, so that operations like ``bzr
-log -r tag:foo`` will always work.
+too if the config entry ``branch.fetch_tags`` is set to True.  Operations
+like branching, merging or pulling will still always copy new tags visible
+in ``bzr tags``. When the config is set, it will now also copy the
+revisions and their ancestry.  This way tagged revisions will always be
+present, so that operations like ``bzr log -r tag:foo`` will always work.
 
 Deprecated command synonyms
 ***************************

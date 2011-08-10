@@ -61,6 +61,14 @@ Bug Fixes
 
   (John Arbash Meinel, #609187, #812928)
 
+* Cope with not all Python versions having a ``clear`` method on
+  ``TestCase._type_equality_funcs``.
+  (Martin [gz], Jelmer Vernooij, #809048)
+
+* Fetching tags when fetching the tip revision of a branch is now
+  controlled by the config setting ``branch.fetch_tags``. The behavior has
+  been reverted to 2.3's not-fetching tagged revisions by default.
+  (John Arbash Meinel, #771184)
 
 * The fix for bug #513709 caused us to open a new connection when
   switching a lightweight checkout that was pointing at a bound branch.
@@ -68,9 +76,6 @@ Bug Fixes
   avoiding an extra SSH connection, etc.
   (John Arbash Meinel, #812285)
 
-* Cope with not all Python versions having a ``clear`` method on
-  ``TestCase._type_equality_funcs``. (#809048, Martin [gz], Jelmer
-  Vernooij)
 
 Documentation
 *************
