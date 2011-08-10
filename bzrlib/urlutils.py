@@ -761,10 +761,10 @@ class URL(object):
                 self.path == other.path)
 
     def __repr__(self):
-        return "<%s(%r,%r,%r,%r,%r)>" % (
+        return "<%s(%r, %r, %r, %r, %r, %r)>" % (
             self.__class__.__name__,
-            self.scheme, self.quoted_host, self.quoted_user,
-            self.quoted_password, self.port, self.quoted_path)
+            self.scheme, self.quoted_user, self.quoted_password,
+            self.quoted_host, self.port, self.quoted_path)
 
     @classmethod
     def from_string(cls, url):

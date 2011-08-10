@@ -856,10 +856,11 @@ class TestURL(TestCase):
         self.assertEquals(parsed1, parsed2)
         self.assertEquals(parsed1, parsed1)
         parsed2.path = '/two'
-        self.assertNotEquals(parsed1, parsed1)
+        self.assertNotEquals(parsed1, parsed2)
 
     def test_repr(self):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
-        self.assertEquals("URL('http', None, None, '1:2:3::40', 80, '/one')",
+        self.assertEquals(
+            "<URL('http', None, None, '1:2:3::40', 80, '/one')>",
             repr(parsed))
 
