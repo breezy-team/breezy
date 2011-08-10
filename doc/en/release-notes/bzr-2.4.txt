@@ -56,12 +56,17 @@ Bug Fixes
 
   (John Arbash Meinel, #609187, #812928)
 
+* Fetching tags when fetching the tip revision of a branch is now
+  controlled by the config setting ``branch.fetch_tags``. The behavior has
+  been reverted to 2.3's not-fetching tagged revisions by default.
+  (John Arbash Meinel, #771184)
 
 * The fix for bug #513709 caused us to open a new connection when
   switching a lightweight checkout that was pointing at a bound branch.
   This isn't necessary because we know the master URL without opening it,
   avoiding an extra SSH connection, etc.
   (John Arbash Meinel, #812285)
+
 
 Documentation
 *************
