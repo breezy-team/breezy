@@ -251,7 +251,7 @@ class GioTransport(ConnectedTransport):
 
     def _remote_path(self, relpath):
         relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = self._combine_paths(self._path, relative)
+        remote_path = urlutils.URL._combine_paths(self._path, relative)
         return remote_path
 
     def has(self, relpath):

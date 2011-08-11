@@ -149,7 +149,7 @@ class HttpTransportBase(ConnectedTransport):
         user and passwords are not embedded in the path provided to the server.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._parsed_url.path, relative)
+        path = urlutils.URL._combine_paths(self._parsed_url.path, relative)
         return self._unsplit_url(self._unqualified_scheme,
                                  None, None, self._parsed_url.host,
                                  self._parsed_url.port, path)

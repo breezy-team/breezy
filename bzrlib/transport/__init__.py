@@ -479,50 +479,6 @@ class Transport(object):
         # interface ?
         raise NotImplementedError(self.abspath)
 
-    def _combine_paths(self, base_path, relpath):
-        """Transform a Transport-relative path to a remote absolute path.
-
-        This does not handle substitution of ~ but does handle '..' and '.'
-        components.
-
-        Examples::
-
-            t._combine_paths('/home/sarah', 'project/foo')
-                => '/home/sarah/project/foo'
-            t._combine_paths('/home/sarah', '../../etc')
-                => '/etc'
-            t._combine_paths('/home/sarah', '/etc')
-                => '/etc'
-
-        :param base_path: urlencoded path for the transport root; typically a
-             URL but need not contain scheme/host/etc.
-        :param relpath: relative url string for relative part of remote path.
-        :return: urlencoded string for final path.
-        """
-        if not isinstance(relpath, str):
-            raise errors.InvalidURL(relpath)
-        if relpath.startswith('/'):
-            base_parts = []
-        else:
-            base_parts = base_path.split('/')
-        if len(base_parts) > 0 and base_parts[-1] == '':
-            base_parts = base_parts[:-1]
-        for p in relpath.split('/'):
-            if p == '..':
-                if len(base_parts) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                base_parts.pop()
-            elif p == '.':
-                continue # No-op
-            elif p != '':
-                base_parts.append(p)
-        path = '/'.join(base_parts)
-        if not path.startswith('/'):
-            path = '/' + path
-        return path
-
     def recommended_page_size(self):
         """Return the recommended page size for this transport.
 
@@ -1479,7 +1435,7 @@ class ConnectedTransport(Transport):
         :returns: the Unicode version of the absolute path for relpath.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._parsed_url.path, relative)
+        path = urlutils.URL._combine_paths(self._parsed_url.path, relative)
         return self._unsplit_url(self._parsed_url.scheme,
             self._parsed_url.user, self._parsed_url.password,
             self._parsed_url.host, self._parsed_url.port, path)
@@ -1496,7 +1452,7 @@ class ConnectedTransport(Transport):
         :return: the absolute Unicode path on the server,
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = self._combine_paths(self._path, relative)
+        remote_path = urlutils.URL._combine_paths(self._path, relative)
         return remote_path
 
     def _get_shared_connection(self):

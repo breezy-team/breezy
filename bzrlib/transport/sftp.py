@@ -336,7 +336,8 @@ class SFTPTransport(ConnectedTransport):
         :param relpath: is a urlencoded string.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = self._combine_paths(self._parsed_url.path, relative)
+        remote_path = urlutils.URL._combine_paths(self._parsed_url.path,
+            relative)
         # the initial slash should be removed from the path, and treated as a
         # homedir relative path (the path begins with a double slash if it is
         # absolute).  see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
