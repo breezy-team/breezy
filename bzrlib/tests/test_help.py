@@ -562,11 +562,11 @@ class TestTopicIndex(TestHelp):
         self.assertEqual('', index.prefix)
 
 
-class TestConfigOptiondIndex(TestHelp):
+class TestConfigOptionIndex(TestHelp):
     """Tests for the HelpCommandIndex class."""
 
     def setUp(self):
-        super(TestConfigOptiondIndex, self).setUp()
+        super(TestConfigOptionIndex, self).setUp()
         self.index = help_topics.ConfigOptionHelpIndex()
 
     def test_get_topics_None(self):
@@ -698,6 +698,3 @@ class TestHelpIndices(tests.TestCase):
         indices.search_path = [help_topics.HelpTopicIndex(),
             help_topics.HelpTopicIndex()]
         self.assertRaises(errors.DuplicateHelpPrefix, indices.search, None)
-
-class TestConfigOptionHelp():
-    pass
