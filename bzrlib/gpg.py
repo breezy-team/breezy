@@ -143,6 +143,12 @@ class LoopbackGPGStrategy(object):
                              count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
 
+    def expired_commit_message(self, count):
+        return i18n.ngettext(u"{0} commit with key now expired",
+                             u"{0} commits with key now expired",
+                             count[SIGNATURE_EXPIRED]).format(
+                                        count[SIGNATURE_EXPIRED])
+
 
 def _set_gpg_tty():
     tty = os.environ.get('TTY')
