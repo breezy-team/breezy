@@ -75,6 +75,7 @@ up=pull
 import os
 import string
 import sys
+import re
 
 
 from bzrlib.decorators import needs_write_lock
@@ -415,6 +416,45 @@ class Config(object):
             # add) the final ','
             l = [l]
         return l
+        
+    def get_user_option_as_int_from_SI(self,  option_name,  default=None):
+        """Get a generic option from a human readable size in SI units, e.g 10MB
+        
+        Accepted suffixes are K,M,G. It is case-insensitive and may be followed
+        by a trailing b (i.e. Kb, MB). This is intended to be practical and not
+        pedantic.
+        
+        :return Integer, expanded to its base-10 value if a proper SI unit is 
+            found. If the option doesn't exist, or isn't a value in 
+            SI units, return default (which defaults to None)
+        """
+        val = self.get_user_option(option_name)
+        if isinstance(val, list):
+            val = val[0]
+        if val is None:
+            val = default
+        else:
+            p = re.compile("^(\d+)([kmg])*b*$", re.IGNORECASE)
+            try:
+                m = p.match(val)
+                if m is not None:
+                    val = int(m.group(1))
+                    if m.group(2) is not None:
+                        if m.group(2).lower() == 'k':
+                            val *= 10**3
+                        elif m.group(2).lower() == 'm':
+                            val *= 10**6
+                        elif m.group(2).lower() == 'g':
+                            val *= 10**9
+                else:
+                    ui.ui_factory.show_warning('Invalid config value for "%s" '
+                                               ' value %r is not an SI unit.'
+                                                % (option_name, val))
+                    val = default
+            except:
+                val = default
+        return val
+        
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
