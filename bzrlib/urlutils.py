@@ -856,6 +856,22 @@ class URL(object):
             path = '/' + path
         return path
 
+    def clone(self, offset=None):
+        """Return a new URL for a path relative to this URL.
+
+        :param offset: A relative path, already urlencoded
+        :return: `URL` instance
+        """
+        if offset is not None:
+            relative = unescape(offset).encode('utf-8')
+            path = self._combine_paths(self.path, relative)
+            path = urllib.quote(path)
+        else:
+            path = self.quoted_path
+        return self.__class__(self.scheme, self.quoted_user,
+                self.quoted_password, self.quoted_host, self.port,
+                path)
+
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.

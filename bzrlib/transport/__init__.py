@@ -1434,11 +1434,9 @@ class ConnectedTransport(Transport):
 
         :returns: the Unicode version of the absolute path for relpath.
         """
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = urlutils.URL._combine_paths(self._parsed_url.path, relative)
-        return self._unsplit_url(self._parsed_url.scheme,
-            self._parsed_url.user, self._parsed_url.password,
-            self._parsed_url.host, self._parsed_url.port, path)
+        other = self._parsed_url.clone(relpath)
+        return self._unsplit_url(other.scheme, other.user, other.password,
+            other.host, other.port, other.path)
 
     def _remote_path(self, relpath):
         """Return the absolute path part of the url to the given relative path.

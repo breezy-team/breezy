@@ -878,3 +878,13 @@ class TestURL(TestCase):
                          combine('/home/sarah', '../../../etc'))
         self.assertEqual('/etc',
                          combine('/home/sarah', '/etc'))
+
+    def test_clone(self):
+        url = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        url1 = url.clone("two")
+        self.assertEquals("/one/two", url1.path)
+        url2 = url.clone("/two")
+        self.assertEquals("/two", url2.path)
+        url3 = url.clone()
+        self.assertIsNot(url, url3)
+        self.assertEquals(url, url3)
