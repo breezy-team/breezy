@@ -864,3 +864,7 @@ class TestURL(TestCase):
             "<URL('http', None, None, '1:2:3::40', 80, '/one')>",
             repr(parsed))
 
+    def test_str(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals('http://[1:2:3::40]:80/one', str(parsed))
+

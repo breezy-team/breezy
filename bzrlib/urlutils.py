@@ -797,6 +797,20 @@ class URL(object):
 
         return cls(scheme, user, password, host, port, path)
 
+    def __str__(self):
+        netloc = self.quoted_host
+        if ":" in netloc:
+            netloc = "[%s]" % netloc
+        if self.quoted_user is not None:
+            # Note that we don't put the password back even if we
+            # have one so that it doesn't get accidentally
+            # exposed.
+            netloc = '%s@%s' % (self.quoted_user, netloc)
+        if self.port is not None:
+            netloc = '%s:%d' % (netloc, self.port)
+        return urlparse.urlunparse(
+            (self.scheme, netloc, self.quoted_path, None, None, None))
+
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.
