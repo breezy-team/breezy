@@ -868,3 +868,13 @@ class TestURL(TestCase):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
         self.assertEquals('http://[1:2:3::40]:80/one', str(parsed))
 
+    def test__combine_paths(self):
+        combine = urlutils.URL._combine_paths
+        self.assertEqual('/home/sarah/project/foo',
+                         combine('/home/sarah', 'project/foo'))
+        self.assertEqual('/etc',
+                         combine('/home/sarah', '../../etc'))
+        self.assertEqual('/etc',
+                         combine('/home/sarah', '../../../etc'))
+        self.assertEqual('/etc',
+                         combine('/home/sarah', '/etc'))

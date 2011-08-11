@@ -812,6 +812,50 @@ class URL(object):
         return urlparse.urlunparse(
             (self.scheme, netloc, self.quoted_path, None, None, None))
 
+    @staticmethod
+    def _combine_paths(base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            t._combine_paths('/home/sarah', 'project/foo')
+                => '/home/sarah/project/foo'
+            t._combine_paths('/home/sarah', '../../etc')
+                => '/etc'
+            t._combine_paths('/home/sarah', '/etc')
+                => '/etc'
+
+        :param base_path: base path
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL(relpath)
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        if not path.startswith('/'):
+            path = '/' + path
+        return path
+
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.
