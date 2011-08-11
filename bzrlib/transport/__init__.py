@@ -1449,9 +1449,7 @@ class ConnectedTransport(Transport):
 
         :return: the absolute Unicode path on the server,
         """
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = urlutils.URL._combine_paths(self._path, relative)
-        return remote_path
+        return self._parsed_url.clone(relpath).path
 
     def _get_shared_connection(self):
         """Get the object shared amongst cloned transports.
