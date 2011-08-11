@@ -250,9 +250,7 @@ class GioTransport(ConnectedTransport):
         self._set_connection(connection, credentials)
 
     def _remote_path(self, relpath):
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = urlutils.URL._combine_paths(self._path, relative)
-        return remote_path
+        return self._parsed_url.clone(relpath).path
 
     def has(self, relpath):
         """Does the target location exist?"""
