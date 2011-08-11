@@ -436,7 +436,7 @@ revision-id: test@example.com-20110801100657-f1dr1nompeex723z
 sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_VALID, u'4F8D1513'),
+        self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513'),
                             my_gpg.verify(content, plain))
 
     def test_verify_unknown_key(self):
