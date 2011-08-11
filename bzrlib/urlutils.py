@@ -785,7 +785,8 @@ class URL(object):
         else:
             host = netloc
 
-        if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'):
+            # there *is* port
             host, port = host.rsplit(':',1)
             try:
                 port = int(port)
