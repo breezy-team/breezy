@@ -1808,7 +1808,7 @@ class TestLimitedSearchResultFromParentMap(TestGraphBase):
                                 extended_history_shortcut, (), ['a'], 10)
         # Note that even though we only take 1 step back, we find 'f', which
         # means the described search will still find d and c.
-        self.assertSearchResult(['b', 'f'], ['a'], 4,
+        self.assertSearchResult(['f'], ['a'], 4,
                                 extended_history_shortcut, (), ['a'], 1)
-        self.assertSearchResult(['c', 'f'], ['a'], 4,
+        self.assertSearchResult(['f'], ['a'], 4,
                                 extended_history_shortcut, (), ['a'], 2)

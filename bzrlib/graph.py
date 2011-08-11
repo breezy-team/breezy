@@ -1419,13 +1419,14 @@ class _BreadthFirstSearcher(object):
         parents_of_found = set()
         # revisions may contain nodes that point to other nodes in revisions:
         # we want to filter them out.
-        self.seen.update(revisions)
+        seen = self.seen
+        seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
             if parents is None:
                 continue
-            new_found_parents = [p for p in parents if p not in self.seen]
+            new_found_parents = [p for p in parents if p not in seen]
             if new_found_parents:
                 # Calling set.update() with an empty generator is actually
                 # rather expensive.
@@ -1933,6 +1934,55 @@ def invert_parent_map(parent_map):
     return child_map
 
 
+def _find_possible_heads(parent_map, tip_keys, depth):
+    """Walk backwards through the parent_map, finding possible heads."""
+    child_map = invert_parent_map(parent_map)
+    heads = set()
+    current_roots = set(tip_keys)
+    walked = set(current_roots)
+    while current_roots and depth:
+        depth -= 1
+        children = set()
+        for p in current_roots:
+            # Is it better to pre- or post- filter the children?
+            try:
+                children.update(child_map[p])
+            except KeyError:
+                heads.add(p)
+        # TODO: Use the right set notation here since 'walked' grows large,
+        #       while 'children' should usually be small
+        # Don't walk keys we've already walked
+        children.difference_update(walked)
+        walked.update(children)
+        current_roots = children
+    if current_roots:
+        heads.update(current_roots)
+    return heads
+
+
+def _run_search(parent_map, heads, exclude_keys):
+    g = Graph(DictParentsProvider(parent_map))
+    s = g._make_breadth_first_searcher(heads)
+    found_heads = set()
+    while True:
+        try:
+            next_revs = s.next()
+        except StopIteration:
+            break
+        for parents in s._current_parents.itervalues():
+            f_heads = heads.intersection(parents)
+            if f_heads:
+                found_heads.update(f_heads)
+        stop_keys = exclude_keys.intersection(next_revs)
+        if stop_keys:
+            s.stop_searching_any(stop_keys)
+    for parents in s._current_parents.itervalues():
+        f_heads = heads.intersection(parents)
+        if f_heads:
+            found_heads.update(f_heads)
+    return s, found_heads
+
+
 def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
                                           depth):
     """Transform a parent_map that is searching 'tip_keys' into an
@@ -1963,37 +2013,16 @@ def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
     :param tip_keys: the revision_ids that we are searching
     :param depth: How far back to walk.
     """
-    child_map = invert_parent_map(parent_map)
-    exclude_keys = set(tip_keys)
-    heads = set()
-    current_roots = set(tip_keys)
-    walked = set(current_roots)
-    while current_roots and depth:
-        depth -= 1
-        children = set()
-        for p in current_roots:
-            # Is it better to pre- or post- filter the children?
-            try:
-                children.update(child_map[p])
-            except KeyError:
-                heads.add(p)
-        # TODO: Use the right set notation here since 'walked' grows large,
-        #       while 'children' should usually be small
-        # Don't walk keys we've already walked
-        children.difference_update(walked)
-        walked.update(children)
-        current_roots = children
-    if current_roots:
-        heads.update(current_roots)
-    start_keys = current_roots
-    g = Graph(DictParentsProvider(parent_map))
-    s = g._make_breadth_first_searcher(heads)
-    while True:
-        try:
-            next_revs = s.next()
-        except StopIteration:
-            break
-        s.stop_searching_any(exclude_keys.intersection(next_revs))
+    heads = _find_possible_heads(parent_map, tip_keys, depth)
+    s, found_heads = _run_search(parent_map, heads, set(tip_keys))
+    if found_heads:
+        s2, extra_heads = _run_search(parent_map, heads - found_heads,
+                                      set(tip_keys))
+        result1 = s.get_result()
+        result2 = s2.get_result()
+        assert result1._keys == result2._keys
+        assert not extra_heads
+        return result2.get_recipe()[1:]
     return s.get_result().get_recipe()[1:]
 
 
