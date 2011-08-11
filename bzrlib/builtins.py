@@ -706,7 +706,7 @@ class cmd_add(Command):
             action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
                           to_file=self.outf, should_print=(not is_quiet()))
         else:
-            action = bzrlib.add.AddAction(to_file=self.outf,
+            action = bzrlib.add.AddWithSkipLargeAction(to_file=self.outf,
                 should_print=(not is_quiet()))
 
         if base_tree:

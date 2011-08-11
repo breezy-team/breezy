@@ -17,6 +17,8 @@
 """Helper functions for adding files to working trees."""
 
 import sys
+import os
+import ui
 
 from bzrlib import (
     osutils,
@@ -52,6 +54,41 @@ class AddAction(object):
         if self.should_print:
             self._to_file.write('adding %s\n' % _quote(path))
         return None
+
+    def skipFile(self, tree, path, kind):
+        """Test whether the given file should be skipped or not.
+        
+        The default action never skips.
+        
+        :param tree: The tree we are working in
+        :param path: The path being added
+        :param kind: The kind of object being added.
+        :return bool. True if the file should be skipped (not added)
+        """
+        return False
+
+class AddWithSkipLargeAction(AddAction):
+    """A class that can decide to skip a file if it's considered too large"""
+
+    # default 20 MB
+    _DEFAULT_MAX_FILE_SIZE = 20000000
+    _optionName = 'add.maximum_file_size'
+    _maxSize = None
+
+    def skipFile(self, tree, path, kind):
+        if (kind != 'file'):
+            return False            
+        if self._maxSize is None:
+            config = tree.branch.get_config()
+            self._maxSize = config.get_user_option_as_int_from_SI(
+                self._optionName,  
+                self._DEFAULT_MAX_FILE_SIZE)
+        if (self._maxSize > 0) and (os.path.getsize(path) > self._maxSize):
+            ui.ui_factory.show_warning(
+                "skipping %s (larger than %s of %d bytes)" % 
+                (path, self._optionName,  self._maxSize))
+            return True
+        return False
 
 
 class AddFromBaseAction(AddAction):

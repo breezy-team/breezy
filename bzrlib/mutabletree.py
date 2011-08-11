@@ -541,8 +541,6 @@ class PostCommitHookParams(object):
 class _SmartAddHelper(object):
     """Helper for MutableTree.smart_add."""
 
-    _DEFAULT_LARGE_FILE_THRESHOLD = 1<<20; # 1 MB
-
     def get_inventory_delta(self):
         return self._invdelta.values()
 
@@ -584,8 +582,9 @@ class _SmartAddHelper(object):
         :param parent_ie: Parent inventory entry if known, or None.  If
             None, the parent is looked up by name and used if present, otherwise it
             is recursively added.
+        :param path: 
         :param kind: Kind of new entry (file, directory, etc)
-        :param action: callback(tree, parent_ie, path, kind); can return file_id
+        :param inv_path:
         :return: Inventory entry for path and a list of paths which have been added.
         """
         # Nothing to do if path is already versioned.
@@ -630,28 +629,6 @@ class _SmartAddHelper(object):
             if (prev_dir is None or not is_inside([prev_dir], path)):
                 yield (path, inv_path, this_ie, None)
             prev_dir = path
-
-    def _large_file_threshold(self):
-        """The largest size file we allow to be added, in bytes.
-
-        :return: an integer. 0 means no limit.
-        """
-        config = self.tree.branch.get_config()
-        val = config.get_user_option('large_file_threshold')
-        if val is None:
-            val = self._DEFAULT_LARGE_FILE_THRESHOLD
-        else:
-            try:
-                val = int(val)
-                if (val < 0):
-                    val = self._DEFAULT_LARGE_FILE_THRESHOLD
-            except ValueError, e:
-                trace.warning('Invalid config value for'
-                              ' "large_file_threshold"'
-                              ' value %r is not an integer.'
-                              % (val,))
-                val = self._DEFAULT_LARGE_FILE_THRESHOLD
-        return val
         
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
@@ -712,7 +689,6 @@ class _SmartAddHelper(object):
 
         things_to_add = list(self._gather_dirs_to_add(user_dirs))
 
-        large_threshold = self._large_file_threshold()
         illegalpath_re = re.compile(r'[\r\n]')
         for directory, inv_path, this_ie, parent_ie in things_to_add:
             # directory is tree-relative
@@ -725,16 +701,10 @@ class _SmartAddHelper(object):
                 kind = osutils.file_kind(abspath)
             else:
                 kind = this_ie.kind
-
             
-            # if file size if greater than large_threshold, warn and skip
-            if (kind == 'file') and (large_threshold > 0) and (
-                os.path.getsize(abspath) > large_threshold):
-                    trace.warning("skipping %s (larger than "
-                    "large_file_threshold of %i bytes)",  
-                    abspath, large_threshold)
-                    continue
-                
+            # allow AddAction to skip this file
+            if self.action.skipFile(self.tree,  abspath,  kind):
+                continue
             if not InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",
                               abspath, kind)
@@ -803,7 +773,7 @@ class _SmartAddHelper(object):
                         # recurse into this already versioned subdir.
                         things_to_add.append((subp, sub_invp, sub_ie, this_ie))
                     else:
-                        # user selection overrides ignoes
+                        # user selection overrides ignores
                         # ignore while selecting files - if we globbed in the
                         # outer loop we would ignore user files.
                         ignore_glob = self.tree.is_ignored(subp)
