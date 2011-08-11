@@ -1744,8 +1744,14 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
-        (start_set, stop_keys,
-         key_count) = graph.search_result_from_parent_map(parents_map,
+        if len(parents_map) > 100:
+            (start_set, stop_keys,
+             key_count) = graph.limited_search_result_from_parent_map(
+                parents_map, self._unstacked_provider.missing_keys,
+                keys, depth=1)
+        else:
+            (start_set, stop_keys,
+             key_count) = graph.search_result_from_parent_map(parents_map,
             self._unstacked_provider.missing_keys)
         recipe = ('manual', start_set, stop_keys, key_count)
         body = self._serialise_search_recipe(recipe)
