@@ -96,6 +96,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
+  (Jelmer Vernooij)
+
 * New methods ``get_transport_from_path`` and ``get_transport_from_url``
   have been added that only support opening from a path or a URL,
   unlike ``get_transport``. (Jelmer Vernooij)
@@ -141,8 +144,10 @@ API Changes
   no longer support it.
   (Martin Pool)
 
-* New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
-  (Jelmer Vernooij)
+* ``Transport`` now has a ``_parsed_url`` attribute instead of
+  separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
+  and ``_path`` attributes. Proxies are provided for the moment but
+  may be removed in the future. (Jelmer Vernooij)
 
 
 Internals
