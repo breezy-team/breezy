@@ -1058,6 +1058,16 @@ class SomeDirectory(object):
 
 class TestLocationToUrl(tests.TestCase):
 
+    def get_base_location(self):
+        path = osutils.abspath('/foo/bar')
+        if path.startswith('/'):
+            url = 'file://%s' % (path,)
+        else:
+            # On Windows, abspaths start with the drive letter, so we have to
+            # add in the extra '/'
+            url = 'file:///%s' % (path,)
+        return path, url
+
     def test_regular_url(self):
         self.assertEquals("file://foo", location_to_url("file://foo"))
 
@@ -1071,11 +1081,14 @@ class TestLocationToUrl(tests.TestCase):
             "http://fo/\xc3\xaf".decode("utf-8"))
 
     def test_unicode_path(self):
-        self.assertEquals("file:///foo/bar%C3%AF",
-            location_to_url("/foo/bar\xc3\xaf".decode("utf-8")))
+        path, url = self.get_base_location()
+        location = path + "\xc3\xaf".decode("utf-8")
+        url += '%C3%AF'
+        self.assertEquals(url, location_to_url(location))
 
     def test_path(self):
-        self.assertEquals("file:///foo/bar", location_to_url("/foo/bar"))
+        path, url = self.get_base_location()
+        self.assertEquals(url, location_to_url(path))
 
     def test_relative_file_url(self):
         self.assertEquals(urlutils.local_path_to_url(".") + "/bar",
