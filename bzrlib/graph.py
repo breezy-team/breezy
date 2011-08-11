@@ -1933,8 +1933,8 @@ def invert_parent_map(parent_map):
     return child_map
 
 
-def search_result_from_parent_map_with_keys(parent_map, missing_keys,
-                                            tip_keys, depth):
+def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
+                                          depth):
     """Transform a parent_map that is searching 'tip_keys' into an
     approximate SearchResult.
 
@@ -1964,32 +1964,37 @@ def search_result_from_parent_map_with_keys(parent_map, missing_keys,
     :param depth: How far back to walk.
     """
     child_map = invert_parent_map(parent_map)
-    current_tips = set(tip_keys)
-    walked = set(current_tips)
-    while current_tips and depth:
+    exclude_keys = set(tip_keys)
+    heads = set()
+    current_roots = set(tip_keys)
+    walked = set(current_roots)
+    while current_roots and depth:
         depth -= 1
         children = set()
-        for p in current_tips:
+        for p in current_roots:
             # Is it better to pre- or post- filter the children?
-            children.update[child_map[p]]
+            try:
+                children.update(child_map[p])
+            except KeyError:
+                heads.add(p)
         # TODO: Use the right set notation here since 'walked' grows large,
         #       while 'children' should usually be small
         # Don't walk keys we've already walked
         children.difference_update(walked)
         walked.update(children)
-        ### if not children:
-        ###     # We walked off the graph
-        ###     break
-        current_tips = children
-    start_keys = current_tips
+        current_roots = children
+    if current_roots:
+        heads.update(current_roots)
+    start_keys = current_roots
     g = Graph(DictParentsProvider(parent_map))
-    s = g._make_breadth_first_searcher(start_keys)
+    s = g._make_breadth_first_searcher(heads)
     while True:
         try:
-            s.next_with_ghosts()
+            next_revs = s.next()
         except StopIteration:
             break
-    return s.get_result().get_recipe()
+        s.stop_searching_any(exclude_keys.intersection(next_revs))
+    return s.get_result().get_recipe()[1:]
 
 
 def search_result_from_parent_map(parent_map, missing_keys):

@@ -1785,3 +1785,22 @@ class TestSearchResultFromParentMap(TestGraphBase):
         parent_map['b'] = extended_history_shortcut['b']
         self.assertSearchResult(['e', 'f'], [], 7,
                                 parent_map, missing_keys=[NULL_REVISION])
+
+
+class TestLimitedSearchResultFromParentMap(TestGraphBase):
+
+    def assertSearchResult(self, start_keys, stop_keys, key_count, parent_map,
+                           missing_keys, tip_keys, depth):
+        (start, stop, count) = _mod_graph.limited_search_result_from_parent_map(
+            parent_map, missing_keys, tip_keys, depth)
+        self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
+                         (sorted(start), sorted(stop), count))
+
+    def test_ancestry_1(self):
+        self.assertSearchResult(['rev4'], ['rev1'], 4,
+                                ancestry_1, (), ['rev1'], 10)
+        self.assertSearchResult(['rev2a', 'rev2b'], ['rev1'], 2,
+                                ancestry_1, (), ['rev1'], 1)
+
+    # TODO: Test heads that go nowhere
+    # TODO: Test heads that converge
