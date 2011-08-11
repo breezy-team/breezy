@@ -8,7 +8,23 @@ Bazaar Release Notes
 bzr 2.4.0
 #########
 
-:2.4.0: NOT RELEASED YET
+:2.4.0: 2011-08-11
+
+This release marks the start of a new long-term-stable series. From here, we
+will only make bugfix releases on the 2.4 series (2.4.1, etc, and support it
+until February 2013), while 2.5 will become our new development series.
+
+This is a bugfix and polish release over the 2.3 series, with a large number
+of bugs fixed (>150 for the 2.4 series alone), and some performance
+improvements. Support for python 2.4 and 2.5 has been dropped, many large
+working tree operations have been optimized as well as some stacked branches
+operations.
+
+Only bugfixes from other stables series have been included since 2.4b5 so
+all known fixed bugs are included here.
+
+Users are encouraged to upgrade from the other stable series.
+
 
 External Compatibility Breaks
 *****************************
@@ -121,7 +137,7 @@ bzr 2.4b5
 :2.4b5: 2011-07-07
 
 This is the fifth (and last) beta of the 2.4 series leading to
-2.4.0 release in Auguest 2011. Beta releases are suitable for
+2.4.0 release in August 2011. Beta releases are suitable for
 everyday use but may cause some incompatibilities with plugins.
 
 This release includes all bug fixed in previous series known at
@@ -306,7 +322,7 @@ Bug Fixes
 * Reports the original error when an InvalidHttpResponse exception is
   encountered to facilitate debug. (Vincent Ladeuil, #788530)
 
-* Reports a non-existant file error when trying to merge in a file
+* Reports a non-existent file error when trying to merge in a file
   that does not exist. (Jonathan Riddell, #330063)
 
 * ``UIFactory.prompt``, ``UIFactory.get_username``,
@@ -388,7 +404,7 @@ Testing
   (Vincent Ladeuil, #787942)
 
 * Re-target ``bb.test_merge.TestMerge.test_merge_reversed_revision_range``
-  and rewrite it as a parameterized test to avoid unrelated failures.
+  and rewrite it as a parametrized test to avoid unrelated failures.
   (Vincent Ladeuil, #795456)
 
 * Show log file contents from subprocesses started by
@@ -396,7 +412,7 @@ Testing
   strange hangs and failures involving subprocesses.  (Andrew Bennetts)
 
 * Skip ``utextwrap`` tests when ``sphinx`` breaks text_wrap by an hostile
-  monkeypatch to textwrap.TextWrapper.wordsep_re.
+  monkey-patch to textwrap.TextWrapper.wordsep_re.
   (Vincent Ladeuil, #785098)
 
 * Multiple ``selftest --exclude`` options are now combined instead of
@@ -1085,7 +1101,7 @@ Internals
   by catching them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
-* Correctly propogate malloc failures from diff-delta.c code as MemoryError
+* Correctly propagate malloc failures from diff-delta.c code as MemoryError
   so OOM conditions during groupcompress are clearly reported. This entailed a
   change to several function signatures. (Martin [gz], #633336)
 
