@@ -27,6 +27,9 @@ The Option object is used to define its properties:
   suitable value for the option. If the string cannot be coerced it should
   return None.
 
+* invalid: the action to be taken when an invalid value is encountered in a
+  store (during a Stack.get()).
+
 Sections
 --------
 

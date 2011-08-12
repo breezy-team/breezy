@@ -2272,14 +2272,39 @@ class Option(object):
     The option *values* are stored in config files and found in sections.
 
     Here we define various properties about the option itself, its default
-    value, in which config files it can be stored, etc (TBC).
+    value, how to convert it from stores, what to do when invalid values are
+    encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, help=None, from_unicode=None):
+    def __init__(self, name, default=None, help=None, from_unicode=None,
+                 invalid=None):
+        """Build an option definition.
+
+        :param name: the name used to refer to the option.
+
+        :param default: the default value to use when none exist in the config
+            stores.
+
+        :param help: a doc string to explain the option to the user.
+
+        :param from_unicode: a callable to convert the unicode string
+            representing the option value in a store. This is not called for
+            the default value.
+
+        :param invalid: the action to be taken when an invalid value is
+            encountered in a store. This is called only when from_unicode is
+            invoked to convert a string and returns None or raise
+            ValueError. Accepted values are: None (ignore invalid values),
+            'warning' (emit a warning), 'error' emit an error message and
+            terminates.
+        """
         self.name = name
         self.default = default
         self.help = help
         self.from_unicode = from_unicode
+        if invalid and invalid not in ('warning', 'error'):
+            raise AssertionError("%s not supported for 'invalid'" % (invalid,))
+        self.invalid = invalid
 
     def get_default(self):
         return self.default
@@ -2829,10 +2854,18 @@ class Stack(object):
             and value is not None):
             # If a value exists and the option provides a converter, use it
             try:
-                value = opt.from_unicode(value)
+                converted = opt.from_unicode(value)
             except ValueError:
                 # Invalid values are ignored
-                value = None
+                converted = None
+            if converted is None and opt.invalid is not None:
+                # The conversion failed
+                if opt.invalid == 'warning':
+                    trace.warning('Value "%s" is not valid for "%s"',
+                                  value, name)
+                elif opt.invalid == 'error':
+                    raise errors.ConfigOptionValueError(name, value)
+            value = converted
         if value is None:
             # If the option is registered, it may provide a default value
             if opt is not None:
