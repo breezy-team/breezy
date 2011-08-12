@@ -16,6 +16,7 @@
 
 """Repository formats built around versioned files."""
 
+import sys
 import time
 
 from bzrlib.lazy_import import lazy_import

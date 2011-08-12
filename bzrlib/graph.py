@@ -61,7 +61,7 @@ class DictParentsProvider(object):
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
-        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+        return dict([(k, ancestry[k]) for k in keys if k in ancestry])
 
 
 class StackedParentsProvider(object):
@@ -1926,7 +1926,6 @@ def invert_parent_map(parent_map):
             # Any given parent is likely to have only a small handful
             # of children, many will have only one. So we avoid mem overhead of
             # a list, in exchange for extra copying of tuples
-            # TODO: Use static_tuple
             if p not in child_map:
                 child_map[p] = (child,)
             else:
@@ -1935,27 +1934,35 @@ def invert_parent_map(parent_map):
 
 
 def _find_possible_heads(parent_map, tip_keys, depth):
-    """Walk backwards through the parent_map, finding possible heads."""
+    """Walk backwards (towards children) through the parent_map.
+
+    This finds 'heads' that will hopefully succinctly describe our search
+    graph.
+    """
     child_map = invert_parent_map(parent_map)
     heads = set()
-    current_roots = set(tip_keys)
+    current_roots = tip_keys
     walked = set(current_roots)
-    while current_roots and depth:
+    while current_roots and depth > 0:
         depth -= 1
         children = set()
+        children_update = children.update
         for p in current_roots:
             # Is it better to pre- or post- filter the children?
             try:
-                children.update(child_map[p])
+                children_update(child_map[p])
             except KeyError:
                 heads.add(p)
-        # TODO: Use the right set notation here since 'walked' grows large,
-        #       while 'children' should usually be small
-        # Don't walk keys we've already walked
-        children.difference_update(walked)
+        # If we've seen a key before, we don't want to walk it again. Note that
+        # 'children' stays relatively small while 'walked' grows large. So
+        # don't use 'difference_update' here which has to walk all of 'walked'.
+        # '.difference' is smart enough to walk only children and compare it to
+        # walked.
+        children = children.difference(walked)
         walked.update(children)
         current_roots = children
     if current_roots:
+        # We walked to the end of depth, so these are the new tips.
         heads.update(current_roots)
     return heads
 
