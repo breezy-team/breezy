@@ -2397,6 +2397,16 @@ option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
+    Option('locks.steal_dead', default=False, from_unicode=bool_from_store,
+           help='''\
+Steal locks that appears to be dead.
+
+If set to true, bzr will automatically break locks held by processes from
+the same machine and user that are no longer alive.  Otherwise, it will
+print a message and you can break the lock manually, if you are satisfied
+the object is no longer in use.
+'''))
+option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
