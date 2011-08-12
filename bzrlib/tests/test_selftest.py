@@ -1062,7 +1062,7 @@ class TestRunner(tests.TestCase):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
         runner = tests.TextTestRunner(stream=StringIO())
         result = self.run_test_runner(runner, Test("test_truth"))
-        if testtools_version <= (0, 9, 11):
+        if testtools_version[:3] <= (0, 9, 11):
             self.assertContainsRe(runner.stream.getvalue(),
                 "=+\n"
                 "FAIL: \\S+\.test_truth\n"
@@ -1251,7 +1251,7 @@ class TestRunner(tests.TestCase):
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
-        if testtools_version > (0, 9, 11):
+        if testtools_version[:3] > (0, 9, 11):
             self.assertContainsRe(out.getvalue(), "log: {{{\d+\.\d+  \\\\u2606}}}")
         else:
             self.assertContainsRe(out.getvalue(),

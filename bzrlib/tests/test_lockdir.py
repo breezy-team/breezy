@@ -17,7 +17,6 @@
 """Tests for LockDir"""
 
 import os
-import sys
 import time
 
 import bzrlib
@@ -46,7 +45,6 @@ from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
     )
-from bzrlib.trace import note
 
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport
