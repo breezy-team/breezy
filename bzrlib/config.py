@@ -2380,8 +2380,17 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
-    Option('dirstate.fdatasync', default=True, from_unicode=bool_from_store,
-           help='''
+    Option('bzr.workingtree.worth_saving_limit', default=10,
+           from_unicode=int_from_store,  invalid='warning',
+           help='''\
+How many changes before saving the dirstate.
+
+-1 means never save.
+'''))
+option_registry.register(
+    Option('dirstate.fdatasync', default=True,
+           from_unicode=bool_from_store,
+           help='''\
 Flush dirstate changes onto physical disk?
 
 If true (default), working tree metadata changes are flushed through the
