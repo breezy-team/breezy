@@ -785,7 +785,8 @@ class URL(object):
         else:
             host = netloc
 
-        if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'):
+            # there *is* port
             host, port = host.rsplit(':',1)
             try:
                 port = int(port)
@@ -796,6 +797,80 @@ class URL(object):
             host = host[1:-1]
 
         return cls(scheme, user, password, host, port, path)
+
+    def __str__(self):
+        netloc = self.quoted_host
+        if ":" in netloc:
+            netloc = "[%s]" % netloc
+        if self.quoted_user is not None:
+            # Note that we don't put the password back even if we
+            # have one so that it doesn't get accidentally
+            # exposed.
+            netloc = '%s@%s' % (self.quoted_user, netloc)
+        if self.port is not None:
+            netloc = '%s:%d' % (netloc, self.port)
+        return urlparse.urlunparse(
+            (self.scheme, netloc, self.quoted_path, None, None, None))
+
+    @staticmethod
+    def _combine_paths(base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            t._combine_paths('/home/sarah', 'project/foo')
+                => '/home/sarah/project/foo'
+            t._combine_paths('/home/sarah', '../../etc')
+                => '/etc'
+            t._combine_paths('/home/sarah', '/etc')
+                => '/etc'
+
+        :param base_path: base path
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL(relpath)
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        if not path.startswith('/'):
+            path = '/' + path
+        return path
+
+    def clone(self, offset=None):
+        """Return a new URL for a path relative to this URL.
+
+        :param offset: A relative path, already urlencoded
+        :return: `URL` instance
+        """
+        if offset is not None:
+            relative = unescape(offset).encode('utf-8')
+            path = self._combine_paths(self.path, relative)
+            path = urllib.quote(path)
+        else:
+            path = self.quoted_path
+        return self.__class__(self.scheme, self.quoted_user,
+                self.quoted_password, self.quoted_host, self.port,
+                path)
 
 
 def parse_url(url):
