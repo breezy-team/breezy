@@ -691,7 +691,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
         if repo.bzrdir._format.fixed_components:
-            raise tests.KnownFailure(
+            self.knownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")
         if isinstance(repo._format,

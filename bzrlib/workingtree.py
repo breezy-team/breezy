@@ -595,10 +595,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             else:
                 return None
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        # FIXME: Shouldn't this be in Tree?
-        raise NotImplementedError(self.get_file_sha1)
-
     @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds."""

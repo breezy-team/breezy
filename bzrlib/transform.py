@@ -2258,6 +2258,18 @@ class _PreviewTree(tree.InventoryTree):
         else:
             return None
 
+    def get_file_verifier(self, file_id, path=None, stat_value=None):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        kind = self._transform._new_contents.get(trans_id)
+        if kind is None:
+            return self._transform._tree.get_file_verifier(file_id)
+        if kind == 'file':
+            fileobj = self.get_file(file_id)
+            try:
+                return ("SHA1", sha_file(fileobj))
+            finally:
+                fileobj.close()
+
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         trans_id = self._transform.trans_id_file_id(file_id)
         kind = self._transform._new_contents.get(trans_id)

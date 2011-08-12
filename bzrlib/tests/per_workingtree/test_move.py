@@ -25,6 +25,9 @@ from bzrlib import (
     )
 
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestMove(TestCaseWithWorkingTree):
@@ -348,6 +351,9 @@ class TestMove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_move_directory_into_parent(self):
+        if not self.workingtree_format.supports_versioned_directories:
+            raise tests.TestNotApplicable(
+                "test requires versioned directories")
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c/', 'c/b/', 'c/b/d/'])
         tree.add(['c', 'c/b', 'c/b/d'],
@@ -372,14 +378,20 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
 
-
         tree.rename_one('a/b', 'a/c/b')
-        self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
-                               ('d', 'd-id'),
-                               ('a/c', 'c-id'),
-                               ('a/c/b', 'b-id'),
-                              ], tree)
+        if self.workingtree_format.supports_versioned_directories:
+            self.assertTreeLayout([('', root_id),
+                                   ('a', 'a-id'),
+                                   ('d', 'd-id'),
+                                   ('a/c', 'c-id'),
+                                   ('a/c/b', 'b-id'),
+                                  ], tree)
+        else:
+            self.assertTreeLayout([('', root_id),
+                                   ('a', 'a-id'),
+                                   ('a/c', 'c-id'),
+                                   ('a/c/b', 'b-id'),
+                                  ], tree)
         self.assertEqual([('a', 'd/a')],
                          tree.move(['a'], 'd'))
         self.assertTreeLayout([('', root_id),
@@ -546,7 +558,7 @@ class TestMove(TestCaseWithWorkingTree):
 
     def test_move_to_unversioned_non_ascii_dir(self):
         """Check error when moving to unversioned non-ascii directory"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", u"\xA7/"])
         tree.add(["a"])
@@ -557,7 +569,7 @@ class TestMove(TestCaseWithWorkingTree):
 
     def test_move_unversioned_non_ascii(self):
         """Check error when moving an unversioned non-ascii file"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7", "dir/"])
         tree.add("dir")

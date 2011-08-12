@@ -21,13 +21,9 @@ import os
 
 from bzrlib import errors, osutils
 from bzrlib.export import _export_iter_entries
-from bzrlib.filters import (
-    ContentFilterContext,
-    filtered_output_bytes,
-    )
 
 
-def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False,
+def dir_exporter_generator(tree, dest, root, subdir=None,
                            force_mtime=None, fileobj=None):
     """Return a generator that exports this tree to a new directory.
 
@@ -79,10 +75,6 @@ def dir_exporter_generator(tree, dest, root, subdir=None, filtered=False,
     # the directories
     flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
     for (relpath, executable), chunks in tree.iter_files_bytes(to_fetch):
-        if filtered:
-            filters = tree._content_filter_stack(relpath)
-            context = ContentFilterContext(relpath, tree, ie)
-            chunks = filtered_output_bytes(chunks, filters, context)
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0666

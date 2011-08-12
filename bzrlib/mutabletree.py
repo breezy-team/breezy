@@ -718,7 +718,7 @@ class _SmartAddHelper(object):
 
             if kind == 'directory' and directory != '':
                 try:
-                    transport = _mod_transport.get_transport(abspath)
+                    transport = _mod_transport.get_transport_from_path(abspath)
                     controldir.ControlDirFormat.find_format(transport)
                     sub_tree = True
                 except errors.NotBranchError:

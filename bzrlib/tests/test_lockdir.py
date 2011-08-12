@@ -17,7 +17,6 @@
 """Tests for LockDir"""
 
 import os
-import sys
 import time
 
 import bzrlib
@@ -46,7 +45,6 @@ from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
     )
-from bzrlib.trace import note
 
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport
@@ -686,9 +684,6 @@ class TestLockHeldInfo(TestCase):
         """Detect that the holder (this process) is still running."""
         info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123'
-        if sys.platform == 'win32':
-            self.knownFailure(
-                'live lock holder detection not implemented yet on win32')
         self.assertTrue(info.is_lock_holder_known_dead())
 
     def test_lock_holder_other_machine(self):

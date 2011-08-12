@@ -1180,6 +1180,18 @@ class VersionedFileRepository(Repository):
                 'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
                 (record.key, sha1, item_data[1], item_data[2]))
 
+    @needs_read_lock
+    def _eliminate_revisions_not_present(self, revision_ids):
+        """Check every revision id in revision_ids to see if we have it.
+
+        Returns a set of the present revisions.
+        """
+        result = []
+        graph = self.get_graph()
+        parent_map = graph.get_parent_map(revision_ids)
+        # The old API returned a list, should this actually be a set?
+        return parent_map.keys()
+
     def __init__(self, _format, a_bzrdir, control_files):
         """Instantiate a VersionedFileRepository.
 
@@ -2483,7 +2495,10 @@ class InterVersionedFileRepository(InterRepository):
                             content is copied.
         :return: None.
         """
-        ui.ui_factory.warn_experimental_format_fetch(self)
+        if self.target._format.experimental:
+            ui.ui_factory.show_user_warning('experimental_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         from bzrlib.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
@@ -2928,7 +2943,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             revision_ids = fetch_spec.get_keys()
         else:
             revision_ids = None
-        ui.ui_factory.warn_experimental_format_fetch(self)
+        if self.source._format.experimental:
+            ui.ui_factory.show_user_warning('experimental_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True

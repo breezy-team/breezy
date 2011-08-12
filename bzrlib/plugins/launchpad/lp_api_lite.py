@@ -33,6 +33,7 @@ except ImportError:
     except ImportError:
         json = None
 
+import time
 import urllib
 import urllib2
 
@@ -156,6 +157,21 @@ class LatestPublication(object):
             trace.log_exception_quietly()
             return None
 
+    def place(self):
+        """Text-form for what location this represents.
+
+        Example::
+            ubuntu, natty => Ubuntu Natty
+            ubuntu, natty-proposed => Ubuntu Natty Proposed
+        :return: A string representing the location we are checking.
+        """
+        place = self._archive
+        if self._series is not None:
+            place = '%s %s' % (place, self._series)
+        if self._pocket is not None and self._pocket != 'Release':
+            place = '%s %s' % (place, self._pocket)
+        return place.title()
+
 
 def get_latest_publication(archive, series, project):
     """Get the most recent publication for a given project.
@@ -187,3 +203,84 @@ def get_most_recent_tag(tag_dict, the_branch):
                 return reverse_dict[rev_id]
     finally:
         the_branch.unlock()
+
+
+def _get_newest_versions(the_branch, latest_pub):
+    """Get information about how 'fresh' this packaging branch is.
+
+    :param the_branch: The Branch to check
+    :param latest_pub: The LatestPublication used to check most recent
+        published version.
+    :return: (latest_ver, branch_latest_ver)
+    """
+    t = time.time()
+    latest_ver = latest_pub.get_latest_version()
+    t_latest_ver = time.time() - t
+    trace.mutter('LatestPublication.get_latest_version took: %.3fs'
+                 % (t_latest_ver,))
+    if latest_ver is None:
+        return None, None
+    t = time.time()
+    tags = the_branch.tags.get_tag_dict()
+    t_tag_dict = time.time() - t
+    trace.mutter('LatestPublication.get_tag_dict took: %.3fs' % (t_tag_dict,))
+    if latest_ver in tags:
+        # branch might have a newer tag, but we don't really care
+        return latest_ver, latest_ver
+    else:
+        best_tag = get_most_recent_tag(tags, the_branch)
+        return latest_ver, best_tag
+
+
+def _report_freshness(latest_ver, branch_latest_ver, place, verbosity,
+                      report_func):
+    """Report if the branch is up-to-date."""
+    if latest_ver is None:
+        if verbosity == 'all':
+            report_func('Most recent %s version: MISSING' % (place,))
+        elif verbosity == 'short':
+            report_func('%s is MISSING a version' % (place,))
+        return
+    elif latest_ver == branch_latest_ver:
+        if verbosity == 'minimal':
+            return
+        elif verbosity == 'short':
+            report_func('%s is CURRENT in %s' % (latest_ver, place))
+        else:
+            report_func('Most recent %s version: %s\n'
+                       'Packaging branch status: CURRENT'
+                       % (place, latest_ver))
+    else:
+        if verbosity in ('minimal', 'short'):
+            if branch_latest_ver is None:
+                branch_latest_ver = 'Branch'
+            report_func('%s is OUT-OF-DATE, %s has %s'
+                        % (branch_latest_ver, place, latest_ver))
+        else:
+            report_func('Most recent %s version: %s\n'
+                        'Packaging branch version: %s\n'
+                        'Packaging branch status: OUT-OF-DATE'
+                        % (place, latest_ver, branch_latest_ver))
+
+
+def report_freshness(the_branch, verbosity, latest_pub):
+    """Report to the user how up-to-date the packaging branch is.
+
+    :param the_branch: A Branch object
+    :param verbosity: Can be one of:
+        off: Do not print anything, and skip all checks.
+        all: Print all information that we have in a verbose manner, this
+             includes misses, etc.
+        short: Print information, but only one-line summaries
+        minimal: Only print a one-line summary when the package branch is
+                 out-of-date
+    :param latest_pub: A LatestPublication instance
+    """
+    if verbosity == 'off':
+        return
+    if verbosity is None:
+        verbosity = 'all'
+    latest_ver, branch_ver = _get_newest_versions(the_branch, latest_pub)
+    place = latest_pub.place()
+    _report_freshness(latest_ver, branch_ver, place, verbosity,
+                      trace.note)

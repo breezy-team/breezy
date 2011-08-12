@@ -21,6 +21,9 @@ import sys
 from bzrlib import (
     tests,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 try:
     from bzrlib import _simple_set_pyx
@@ -75,7 +78,7 @@ class _NoImplementCompare(_Hashable):
 
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
-compiled_simpleset_feature = tests.ModuleAvailableFeature(
+compiled_simpleset_feature = features.ModuleAvailableFeature(
                                 'bzrlib._simple_set_pyx')
 
 

@@ -277,8 +277,11 @@ class Tree(object):
 
         :param file_id: The file_id of the file.
         :param path: The path of the file.
+
         If both file_id and path are supplied, an implementation may use
         either one.
+
+        :returns: A single byte string for the whole file.
         """
         my_file = self.get_file(file_id, path)
         try:
@@ -297,8 +300,26 @@ class Tree(object):
         """
         return osutils.split_lines(self.get_file_text(file_id, path))
 
+    def get_file_verifier(self, file_id, path=None, stat_value=None):
+        """Return a verifier for a file.
+
+        The default implementation returns a sha1.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        :param stat_value: Optional stat value for the object
+        :return: Tuple with verifier name and verifier data
+        """
+        return ("SHA1", self.get_file_sha1(file_id, path=path,
+            stat_value=stat_value))
+
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         """Return the SHA1 file for a file.
+
+        :note: callers should use get_file_verifier instead
+            where possible, as the underlying repository implementation may
+            have quicker access to a non-sha1 verifier.
 
         :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
@@ -952,8 +973,8 @@ class InterTree(InterObject):
         if source_kind != target_kind:
             changed_content = True
         elif source_kind == 'file':
-            if (self.source.get_file_sha1(file_id, source_path, source_stat) !=
-                self.target.get_file_sha1(file_id, target_path, target_stat)):
+            if not self.file_content_matches(file_id, file_id, source_path,
+                    target_path, source_stat, target_stat):
                 changed_content = True
         elif source_kind == 'symlink':
             if (self.source.get_symlink_target(file_id) !=
@@ -1272,6 +1293,40 @@ class InterTree(InterObject):
                     changed_file_ids.add(result[0])
                     yield result
 
+    @needs_read_lock
+    def file_content_matches(self, source_file_id, target_file_id,
+            source_path=None, target_path=None, source_stat=None, target_stat=None):
+        """Check if two files are the same in the source and target trees.
+
+        This only checks that the contents of the files are the same,
+        it does not touch anything else.
+
+        :param source_file_id: File id of the file in the source tree
+        :param target_file_id: File id of the file in the target tree
+        :param source_path: Path of the file in the source tree
+        :param target_path: Path of the file in the target tree
+        :param source_stat: Optional stat value of the file in the source tree
+        :param target_stat: Optional stat value of the file in the target tree
+        :return: Boolean indicating whether the files have the same contents
+        """
+        source_verifier_kind, source_verifier_data = self.source.get_file_verifier(
+            source_file_id, source_path, source_stat)
+        target_verifier_kind, target_verifier_data = self.target.get_file_verifier(
+            target_file_id, target_path, target_stat)
+        if source_verifier_kind == target_verifier_kind:
+            return (source_verifier_data == target_verifier_data)
+        # Fall back to SHA1 for now
+        if source_verifier_kind != "SHA1":
+            source_sha1 = self.source.get_file_sha1(source_file_id,
+                    source_path, source_stat)
+        else:
+            source_sha1 = source_verifier_data
+        if target_verifier_kind != "SHA1":
+            target_sha1 = self.target.get_file_sha1(target_file_id,
+                    target_path, target_stat)
+        else:
+            target_sha1 = target_verifier_data
+        return (source_sha1 == target_sha1)
 
 InterTree.register_optimiser(InterTree)
 

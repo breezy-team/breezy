@@ -227,9 +227,23 @@ class FileStream(object):
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
 
-    def close(self):
+    def close(self, want_fdatasync=False):
+        if want_fdatasync:
+            try:
+                self.fdatasync()
+            except errors.TransportNotPossible:
+                pass
         self._close()
         del _file_streams[self.transport.abspath(self.relpath)]
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible.
+
+        :raises TransportNotPossible: If this transport has no way to 
+            flush to disk.
+        """
+        raise errors.TransportNotPossible(
+            "%s cannot fdatasync" % (self.transport,))
 
 
 class FileFileStream(FileStream):
@@ -244,6 +258,15 @@ class FileFileStream(FileStream):
 
     def _close(self):
         self.file_handle.close()
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible."""
+        self.file_handle.flush()
+        try:
+            fileno = self.file_handle.fileno()
+        except AttributeError:
+            raise errors.TransportNotPossible()
+        osutils.fdatasync(fileno)
 
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)
@@ -295,7 +318,10 @@ class Transport(object):
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
         if getattr(e, 'errno', None) is not None:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            elif e.errno == errno.EINVAL:
+                mutter("EINVAL returned on path %s: %s" % (path, e))
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -1343,27 +1369,50 @@ class ConnectedTransport(Transport):
         """
         if not base.endswith('/'):
             base += '/'
-        (self._scheme,
-         self._user, self._password,
-         self._host, self._port,
-         self._path) = self._split_url(base)
+        self._parsed_url = self._split_url(base)
         if _from_transport is not None:
             # Copy the password as it does not appear in base and will be lost
             # otherwise. It can appear in the _split_url above if the user
             # provided it on the command line. Otherwise, daughter classes will
             # prompt the user for one when appropriate.
-            self._password = _from_transport._password
+            self._parsed_url.password = _from_transport._parsed_url.password
+            self._parsed_url.quoted_password = (
+                _from_transport._parsed_url.quoted_password)
 
-        base = self._unsplit_url(self._scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 self._path)
+        base = self._unsplit_url(self._parsed_url.scheme,
+            self._parsed_url.user, self._parsed_url.password,
+            self._parsed_url.host, self._parsed_url.port,
+            self._parsed_url.path)
 
         super(ConnectedTransport, self).__init__(base)
         if _from_transport is None:
             self._shared_connection = _SharedConnection()
         else:
             self._shared_connection = _from_transport._shared_connection
+
+    @property
+    def _user(self):
+        return self._parsed_url.user
+
+    @property
+    def _password(self):
+        return self._parsed_url.password
+
+    @property
+    def _host(self):
+        return self._parsed_url.host
+
+    @property
+    def _port(self):
+        return self._parsed_url.port
+
+    @property
+    def _path(self):
+        return self._parsed_url.path
+
+    @property
+    def _scheme(self):
+        return self._parsed_url.scheme
 
     def clone(self, offset=None):
         """Return a new transport with root at self.base + offset
@@ -1378,26 +1427,20 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        return urlutils.parse_url(url)
+        return urlutils.URL.from_string(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):
-        """
-        Build the full URL for the given already URL encoded path.
+        """Build the full URL for the given already URL encoded path.
 
         user, password, host and path will be quoted if they contain reserved
         chars.
 
         :param scheme: protocol
-
         :param user: login
-
         :param password: associated password
-
         :param host: the server address
-
         :param port: the associated port
-
         :param path: the absolute path on the server
 
         :return: The corresponding URL.
@@ -1415,23 +1458,24 @@ class ConnectedTransport(Transport):
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path"""
-        scheme, user, password, host, port, path = self._split_url(abspath)
+        parsed_url = self._split_url(abspath)
         error = []
-        if (scheme != self._scheme):
+        if parsed_url.scheme != self._parsed_url.scheme:
             error.append('scheme mismatch')
-        if (user != self._user):
+        if parsed_url.user != self._parsed_url.user:
             error.append('user name mismatch')
-        if (host != self._host):
+        if parsed_url.host != self._parsed_url.host:
             error.append('host mismatch')
-        if (port != self._port):
+        if parsed_url.port != self._parsed_url.port:
             error.append('port mismatch')
-        if not (path == self._path[:-1] or path.startswith(self._path)):
+        if (not (parsed_url.path == self._parsed_url.path[:-1] or
+            parsed_url.path.startswith(self._parsed_url.path))):
             error.append('path mismatch')
         if error:
             extra = ', '.join(error)
             raise errors.PathNotChild(abspath, self.base, extra=extra)
-        pl = len(self._path)
-        return path[pl:].strip('/')
+        pl = len(self._parsed_url.path)
+        return parsed_url.path[pl:].strip('/')
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -1441,10 +1485,10 @@ class ConnectedTransport(Transport):
         :returns: the Unicode version of the absolute path for relpath.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._scheme, self._user, self._password,
-                                 self._host, self._port,
-                                 path)
+        path = self._combine_paths(self._parsed_url.path, relative)
+        return self._unsplit_url(self._parsed_url.scheme,
+            self._parsed_url.user, self._parsed_url.password,
+            self._parsed_url.host, self._parsed_url.port, path)
 
     def _remote_path(self, relpath):
         """Return the absolute path part of the url to the given relative path.
@@ -1524,8 +1568,7 @@ class ConnectedTransport(Transport):
         :return: A new transport or None if the connection cannot be shared.
         """
         try:
-            (scheme, user, password,
-             host, port, path) = self._split_url(other_base)
+            parsed_url = self._split_url(other_base)
         except errors.InvalidURL:
             # No hope in trying to reuse an existing transport for an invalid
             # URL
@@ -1534,15 +1577,16 @@ class ConnectedTransport(Transport):
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
-        if (scheme == self._scheme
-            and user == self._user
-            and host == self._host
-            and port == self._port):
+        if (parsed_url.scheme == self._parsed_url.scheme
+            and parsed_url.user == self._parsed_url.user
+            and parsed_url.host == self._parsed_url.host
+            and parsed_url.port == self._parsed_url.port):
+            path = parsed_url.path
             if not path.endswith('/'):
                 # This normally occurs at __init__ time, but it's easier to do
                 # it now to avoid creating two transports for the same base.
                 path += '/'
-            if self._path  == path:
+            if self._parsed_url.path  == path:
                 # shortcut, it's really the same transport
                 return self
             # We don't call clone here because the intent is different: we
@@ -1583,10 +1627,58 @@ def location_to_url(location):
                 extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
 
-    if urlutils.is_url(location):
-        return location
+    if location.startswith("file:") and not location.startswith("file://"):
+        return urlutils.join(urlutils.local_path_to_url("."), location[5:])
 
-    return urlutils.local_path_to_url(location)
+    if not urlutils.is_url(location):
+        return urlutils.local_path_to_url(location)
+
+    return location
+
+
+def get_transport_from_path(path, possible_transports=None):
+    """Open a transport for a local path.
+
+    :param path: Local path as byte or unicode string
+    :return: Transport object for path
+    """
+    return get_transport_from_url(urlutils.local_path_to_url(path),
+        possible_transports)
+
+
+def get_transport_from_url(url, possible_transports=None):
+    """Open a transport to access a URL.
+    
+    :param base: a URL
+    :param transports: optional reusable transports list. If not None, created
+        transports will be added to the list.
+
+    :return: A new transport optionally sharing its connection with one of
+        possible_transports.
+    """
+    transport = None
+    if possible_transports is not None:
+        for t in possible_transports:
+            t_same_connection = t._reuse_for(url)
+            if t_same_connection is not None:
+                # Add only new transports
+                if t_same_connection not in possible_transports:
+                    possible_transports.append(t_same_connection)
+                return t_same_connection
+
+    last_err = None
+    for proto, factory_list in transport_list_registry.items():
+        if proto is not None and url.startswith(proto):
+            transport, last_err = _try_transport_factories(url, factory_list)
+            if transport:
+                if possible_transports is not None:
+                    if transport in possible_transports:
+                        raise AssertionError()
+                    possible_transports.append(transport)
+                return transport
+    if not urlutils.is_url(url):
+        raise errors.InvalidURL(path=url)
+    raise errors.UnsupportedProtocol(url, last_err)
 
 
 def get_transport(base, possible_transports=None):
@@ -1602,29 +1694,7 @@ def get_transport(base, possible_transports=None):
     """
     if base is None:
         base = '.'
-    base = location_to_url(base)
-
-    transport = None
-    if possible_transports is not None:
-        for t in possible_transports:
-            t_same_connection = t._reuse_for(base)
-            if t_same_connection is not None:
-                # Add only new transports
-                if t_same_connection not in possible_transports:
-                    possible_transports.append(t_same_connection)
-                return t_same_connection
-
-    last_err = None
-    for proto, factory_list in transport_list_registry.items():
-        if proto is not None and base.startswith(proto):
-            transport, last_err = _try_transport_factories(base, factory_list)
-            if transport:
-                if possible_transports is not None:
-                    if transport in possible_transports:
-                        raise AssertionError()
-                    possible_transports.append(transport)
-                return transport
-    raise errors.UnsupportedProtocol(base, last_err)
+    return get_transport_from_url(location_to_url(base), possible_transports)
 
 
 def _try_transport_factories(base, factory_list):

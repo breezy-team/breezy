@@ -3073,6 +3073,10 @@ class cmd_cat(Command):
 
         old_file_id = rev_tree.path2id(relpath)
 
+        # TODO: Split out this code to something that generically finds the
+        # best id for a path across one or more trees; it's like
+        # find_ids_across_trees but restricted to find just one. -- mbp
+        # 20110705.
         if name_from_revision:
             # Try in revision if requested
             if old_file_id is None:
@@ -3080,41 +3084,26 @@ class cmd_cat(Command):
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
             else:
-                content = rev_tree.get_file_text(old_file_id)
+                actual_file_id = old_file_id
         else:
             cur_file_id = tree.path2id(relpath)
-            found = False
-            if cur_file_id is not None:
-                # Then try with the actual file id
-                try:
-                    content = rev_tree.get_file_text(cur_file_id)
-                    found = True
-                except errors.NoSuchId:
-                    # The actual file id didn't exist at that time
-                    pass
-            if not found and old_file_id is not None:
-                # Finally try with the old file id
-                content = rev_tree.get_file_text(old_file_id)
-                found = True
-            if not found:
-                # Can't be found anywhere
+            if cur_file_id is not None and rev_tree.has_id(cur_file_id):
+                actual_file_id = cur_file_id
+            elif old_file_id is not None:
+                actual_file_id = old_file_id
+            else:
                 raise errors.BzrCommandError(
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
         if filtered:
-            from bzrlib.filters import (
-                ContentFilterContext,
-                filtered_output_bytes,
-                )
-            filters = rev_tree._content_filter_stack(relpath)
-            chunks = content.splitlines(True)
-            content = filtered_output_bytes(chunks, filters,
-                ContentFilterContext(relpath, rev_tree))
-            self.cleanup_now()
-            self.outf.writelines(content)
+            from bzrlib.filter_tree import ContentFilterTree
+            filter_tree = ContentFilterTree(rev_tree,
+                rev_tree._content_filter_stack)
+            content = filter_tree.get_file_text(actual_file_id)
         else:
-            self.cleanup_now()
-            self.outf.write(content)
+            content = rev_tree.get_file_text(actual_file_id)
+        self.cleanup_now()
+        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):

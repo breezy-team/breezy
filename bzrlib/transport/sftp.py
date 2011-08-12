@@ -31,8 +31,6 @@ import random
 import stat
 import sys
 import time
-import urllib
-import urlparse
 import warnings
 
 from bzrlib import (
@@ -42,22 +40,17 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.errors import (FileExists,
-                           NoSuchFile, PathNotChild,
+                           NoSuchFile,
                            TransportError,
                            LockError,
                            PathError,
                            ParamikoNotPresent,
                            )
-from bzrlib.osutils import pathjoin, fancy_rename, getcwd
-from bzrlib.symbol_versioning import (
-        deprecated_function,
-        )
+from bzrlib.osutils import fancy_rename
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     FileFileStream,
     _file_streams,
-    local,
-    Server,
     ssh,
     ConnectedTransport,
     )
@@ -337,17 +330,13 @@ class SFTPTransport(ConnectedTransport):
     # up the request itself, rather than us having to worry about it
     _max_request_size = 32768
 
-    def __init__(self, base, _from_transport=None):
-        super(SFTPTransport, self).__init__(base,
-                                            _from_transport=_from_transport)
-
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
 
         :param relpath: is a urlencoded string.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = self._combine_paths(self._path, relative)
+        remote_path = self._combine_paths(self._parsed_url.path, relative)
         # the initial slash should be removed from the path, and treated as a
         # homedir relative path (the path begins with a double slash if it is
         # absolute).  see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
@@ -372,17 +361,18 @@ class SFTPTransport(ConnectedTransport):
         in base url at transport creation time.
         """
         if credentials is None:
-            password = self._password
+            password = self._parsed_url.password
         else:
             password = credentials
 
         vendor = ssh._get_ssh_vendor()
-        user = self._user
+        user = self._parsed_url.user
         if user is None:
             auth = config.AuthenticationConfig()
-            user = auth.get_user('ssh', self._host, self._port)
-        connection = vendor.connect_sftp(self._user, password,
-                                         self._host, self._port)
+            user = auth.get_user('ssh', self._parsed_url.host,
+                self._parsed_url.port)
+        connection = vendor.connect_sftp(self._parsed_url.user, password,
+            self._parsed_url.host, self._parsed_url.port)
         return connection, (user, password)
 
     def disconnect(self):
