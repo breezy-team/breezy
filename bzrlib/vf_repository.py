@@ -2506,10 +2506,11 @@ class InterVersionedFileRepository(InterRepository):
         """
         note('starting')
         t = time.time()
-        from bzrlib import commands
-        ret = commands.apply_lsprofiled(',,profile.txt',
-            self._do_walk_to_common_revisions, revision_ids,
+        ret = self._do_walk_to_common_revisions(revision_ids,
             if_present_ids=if_present_ids)
+        # ret = commands.apply_lsprofiled(',,profile.txt',
+        #     self._do_walk_to_common_revisions, revision_ids,
+        #     if_present_ids=if_present_ids)
         note('Walking took %.3fs' % (time.time() - t))
         sys.exit(1)
         return ret

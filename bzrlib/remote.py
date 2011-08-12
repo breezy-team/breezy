@@ -48,6 +48,9 @@ from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
 
 
+_DEFAULT_SEARCH_DEPTH = 10000
+
+
 class _RpcHelper(object):
     """Mixin class that helps with issuing RPCs."""
 
@@ -1744,15 +1747,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
-        if len(parents_map) > 100:
+        if _DEFAULT_SEARCH_DEPTH <= 0:
+            (start_set, stop_keys,
+             key_count) = graph.search_result_from_parent_map(
+                parents_map, self._unstacked_provider.missing_keys)
+        else:
             (start_set, stop_keys,
              key_count) = graph.limited_search_result_from_parent_map(
                 parents_map, self._unstacked_provider.missing_keys,
-                keys, depth=100)
-        else:
-            (start_set, stop_keys,
-             key_count) = graph.search_result_from_parent_map(parents_map,
-            self._unstacked_provider.missing_keys)
+                keys, depth=_DEFAULT_SEARCH_DEPTH)
         recipe = ('manual', start_set, stop_keys, key_count)
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
