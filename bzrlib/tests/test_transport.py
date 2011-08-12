@@ -796,7 +796,7 @@ class TestConnectedTransport(tests.TestCase):
         self.assertEquals(t._parsed_url.path, '/path/')
 
         # Base should not keep track of the password
-        self.assertEquals(t.base, 'http://robey@exAmple.com:2222/path/')
+        self.assertEquals(t.base, 'http://ro%62ey@ex%41mple.com:2222/path/')
 
     def test_parse_invalid_url(self):
         self.assertRaises(errors.InvalidURL,
