@@ -21,6 +21,11 @@ New Features
 .. New commands, options, etc that users may wish to try out.
 
 * A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean and integer config options when the
+  provided ``bool_from_store`` and ``int_from_store`` are used.
+  (Vincent Ladeuil)
+
+* A ``from_unicode`` parameter can be specified when registering a config
   option. This implements boolean, integer and list config options when the
   provided ``bool_from_store``, ``int_from_store`` and ``list_from_store``
   are used for this parameter.  (Vincent Ladeuil)
@@ -84,6 +89,9 @@ Bug Fixes
   that subfolder.
   (Bastian Bowe, #809901)
 
+* Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
+  errors.  (Vincent Ladeuil, #822571)
+
 * Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
@@ -102,6 +110,9 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
+  (Jelmer Vernooij)
 
 * New methods ``get_transport_from_path`` and ``get_transport_from_url``
   have been added that only support opening from a path or a URL,
@@ -147,6 +158,11 @@ API Changes
   in favor of passing a filtered tree, and the specific exporter plugins
   no longer support it.
   (Martin Pool)
+
+* ``Transport`` now has a ``_parsed_url`` attribute instead of
+  separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
+  and ``_path`` attributes. Proxies are provided for the moment but
+  may be removed in the future. (Jelmer Vernooij)
 
 
 Internals

@@ -1513,14 +1513,16 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    elif sys.platform == 'darwin':
+    else:
+        if base is not None:
+            base = base.decode(osutils._fs_enc)
+    if sys.platform == 'darwin':
         if base is None:
             # this takes into account $HOME
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-
             xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
             if xdg_dir is None:
                 xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
@@ -1529,7 +1531,6 @@ def config_dir():
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
 
@@ -2292,10 +2293,10 @@ class Option(object):
 
         :param invalid: the action to be taken when an invalid value is
             encountered in a store. This is called only when from_unicode is
-            invoked to convert a string and returns None or raise
-            ValueError. Accepted values are: None (ignore invalid values),
-            'warning' (emit a warning), 'error' emit an error message and
-            terminates.
+            invoked to convert a string and returns None or raise ValueError or
+            TypeError. Accepted values are: None (ignore invalid values),
+            'warning' (emit a warning), 'error' (emit an error message and
+            terminates).
         """
         self.name = name
         self.default = default
@@ -2681,16 +2682,16 @@ class LockableIniFileStore(IniFileStore):
 class GlobalStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
 
 
 class LocationStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 
@@ -2874,7 +2875,7 @@ class Stack(object):
             # If a value exists and the option provides a converter, use it
             try:
                 converted = opt.from_unicode(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 # Invalid values are ignored
                 converted = None
             if converted is None and opt.invalid is not None:
