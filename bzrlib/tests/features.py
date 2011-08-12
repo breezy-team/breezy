@@ -18,6 +18,7 @@
 """
 
 import os
+import subprocess
 import stat
 import sys
 import tempfile
