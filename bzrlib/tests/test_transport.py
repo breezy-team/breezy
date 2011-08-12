@@ -138,17 +138,6 @@ class TestTransport(tests.TestCase):
         self.assertRaises(errors.ReadError, a_file.read, 40)
         a_file.close()
 
-    def test__combine_paths(self):
-        t = transport.Transport('/')
-        self.assertEqual('/home/sarah/project/foo',
-                         t._combine_paths('/home/sarah', 'project/foo'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '../../etc'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '../../../etc'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '/etc'))
-
     def test_local_abspath_non_local_transport(self):
         # the base implementation should throw
         t = memory.MemoryTransport()
