@@ -1513,14 +1513,16 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    elif sys.platform == 'darwin':
+    else:
+        if base is not None:
+            base = base.decode(osutils._fs_enc)
+    if sys.platform == 'darwin':
         if base is None:
             # this takes into account $HOME
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-
             xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
             if xdg_dir is None:
                 xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
@@ -1529,7 +1531,6 @@ def config_dir():
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
 
@@ -2271,13 +2272,39 @@ class Option(object):
     The option *values* are stored in config files and found in sections.
 
     Here we define various properties about the option itself, its default
-    value, in which config files it can be stored, etc (TBC).
+    value, how to convert it from stores, what to do when invalid values are
+    encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, help=None):
+    def __init__(self, name, default=None, help=None, from_unicode=None,
+                 invalid=None):
+        """Build an option definition.
+
+        :param name: the name used to refer to the option.
+
+        :param default: the default value to use when none exist in the config
+            stores.
+
+        :param help: a doc string to explain the option to the user.
+
+        :param from_unicode: a callable to convert the unicode string
+            representing the option value in a store. This is not called for
+            the default value.
+
+        :param invalid: the action to be taken when an invalid value is
+            encountered in a store. This is called only when from_unicode is
+            invoked to convert a string and returns None or raise ValueError or
+            TypeError. Accepted values are: None (ignore invalid values),
+            'warning' (emit a warning), 'error' (emit an error message and
+            terminates).
+        """
         self.name = name
         self.default = default
         self.help = help
+        self.from_unicode = from_unicode
+        if invalid and invalid not in ('warning', 'error'):
+            raise AssertionError("%s not supported for 'invalid'" % (invalid,))
+        self.invalid = invalid
 
     def get_default(self):
         return self.default
@@ -2289,6 +2316,16 @@ class Option(object):
         if plain:
             result = help_topics.help_as_plain_text(result)
         return result
+
+
+# Predefined converters to get proper values from store
+
+def bool_from_store(unicode_str):
+    return ui.bool_from_string(unicode_str)
+
+
+def int_from_store(unicode_str):
+    return int(unicode_str)
 
 
 class OptionRegistry(registry.Registry):
@@ -2335,7 +2372,7 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
-    Option('dirstate.fdatasync', default=True,
+    Option('dirstate.fdatasync', default=True, from_unicode=bool_from_store,
            help='''\
 Flush dirstate changes onto physical disk?
 
@@ -2357,7 +2394,7 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
-    Option('repository.fdatasync', default=True,
+    Option('repository.fdatasync', default=True, from_unicode=bool_from_store,
            help='''\
 Flush repository changes onto physical disk?
 
@@ -2637,16 +2674,16 @@ class LockableIniFileStore(IniFileStore):
 class GlobalStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
 
 
 class LocationStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
-        t = transport.get_transport_from_path(config_dir(),
-                                    possible_transports=possible_transports)
+        t = transport.get_transport_from_path(
+            config_dir(), possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 
@@ -2818,13 +2855,31 @@ class Stack(object):
                     break
             if value is not None:
                 break
+        # If the option is registered, it may provide additional info about
+        # value handling
+        try:
+            opt = option_registry.get(name)
+        except KeyError:
+            # Not registered
+            opt = None
+        if (opt is not None and opt.from_unicode is not None
+            and value is not None):
+            # If a value exists and the option provides a converter, use it
+            try:
+                converted = opt.from_unicode(value)
+            except (ValueError, TypeError):
+                # Invalid values are ignored
+                converted = None
+            if converted is None and opt.invalid is not None:
+                # The conversion failed
+                if opt.invalid == 'warning':
+                    trace.warning('Value "%s" is not valid for "%s"',
+                                  value, name)
+                elif opt.invalid == 'error':
+                    raise errors.ConfigOptionValueError(name, value)
+            value = converted
         if value is None:
             # If the option is registered, it may provide a default value
-            try:
-                opt = option_registry.get(name)
-            except KeyError:
-                # Not registered
-                opt = None
             if opt is not None:
                 value = opt.get_default()
         for hook in ConfigHooks['get']:

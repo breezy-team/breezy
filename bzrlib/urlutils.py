@@ -730,6 +730,73 @@ def determine_relative_path(from_path, to_path):
     return osutils.pathjoin(*segments)
 
 
+class URL(object):
+    """Parsed URL."""
+
+    def __init__(self, scheme, quoted_user, quoted_password, quoted_host,
+            port, quoted_path):
+        self.scheme = scheme
+        self.quoted_host = quoted_host
+        self.host = urllib.unquote(self.quoted_host)
+        self.quoted_user = quoted_user
+        if self.quoted_user is not None:
+            self.user = urllib.unquote(self.quoted_user)
+        else:
+            self.user = None
+        self.quoted_password = quoted_password
+        if self.quoted_password is not None:
+            self.password = urllib.unquote(self.quoted_password)
+        else:
+            self.password = None
+        self.port = port
+        self.quoted_path = quoted_path
+        self.path = urllib.unquote(self.quoted_path)
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                self.scheme == other.scheme and
+                self.host == other.host and
+                self.user == other.user and
+                self.password == other.password and
+                self.path == other.path)
+
+    def __repr__(self):
+        return "<%s(%r, %r, %r, %r, %r, %r)>" % (
+            self.__class__.__name__,
+            self.scheme, self.quoted_user, self.quoted_password,
+            self.quoted_host, self.port, self.quoted_path)
+
+    @classmethod
+    def from_string(cls, url):
+        """Create a URL object from a string.
+
+        :param url: URL as bytestring
+        """
+        if isinstance(url, unicode):
+            raise errors.InvalidURL('should be ascii:\n%r' % url)
+        url = url.encode('utf-8')
+        (scheme, netloc, path, params,
+         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        user = password = host = port = None
+        if '@' in netloc:
+            user, host = netloc.rsplit('@', 1)
+            if ':' in user:
+                user, password = user.split(':', 1)
+        else:
+            host = netloc
+
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+            host, port = host.rsplit(':',1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
+            host = host[1:-1]
+
+        return cls(scheme, user, password, host, port, path)
+
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.
@@ -738,36 +805,9 @@ def parse_url(url):
     chars.
 
     :param url: an quoted url
-
     :return: (scheme, user, password, host, port, path) tuple, all fields
         are unquoted.
     """
-    if isinstance(url, unicode):
-        raise errors.InvalidURL('should be ascii:\n%r' % url)
-    url = url.encode('utf-8')
-    (scheme, netloc, path, params,
-     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-    user = password = host = port = None
-    if '@' in netloc:
-        user, host = netloc.rsplit('@', 1)
-        if ':' in user:
-            user, password = user.split(':', 1)
-            password = urllib.unquote(password)
-        user = urllib.unquote(user)
-    else:
-        host = netloc
-
-    if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
-        host, port = host.rsplit(':',1)
-        try:
-            port = int(port)
-        except ValueError:
-            raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                    (port, url))
-    if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
-        host = host[1:-1]
-
-    host = urllib.unquote(host)
-    path = urllib.unquote(path)
-
-    return (scheme, user, password, host, port, path)
+    parsed_url = URL.from_string(url)
+    return (parsed_url.scheme, parsed_url.user, parsed_url.password,
+        parsed_url.host, parsed_url.port, parsed_url.path)

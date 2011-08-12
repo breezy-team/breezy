@@ -96,7 +96,7 @@ class FtpTransport(ConnectedTransport):
         super(FtpTransport, self).__init__(base,
                                            _from_transport=_from_transport)
         self._unqualified_scheme = 'ftp'
-        if self._scheme == 'aftp':
+        if self._parsed_url.scheme == 'aftp':
             self.is_active = True
         else:
             self.is_active = False
