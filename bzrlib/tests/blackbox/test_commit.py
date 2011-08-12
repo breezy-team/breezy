@@ -29,13 +29,10 @@ from bzrlib import (
     osutils,
     ignores,
     msgeditor,
-    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
-    probe_bad_non_ascii,
     test_foreign,
-    TestSkipped,
     features,
     )
 from bzrlib.tests import TestCaseWithTransport
@@ -332,7 +329,7 @@ bzr: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
-        self.run_bzr('commit -m ""', retcode=3)
+        self.run_bzr('commit -m ""')
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -740,6 +737,16 @@ altered in u2
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         return tree
+
+    def test_edit_empty_message(self):
+        tree = self.make_branch_and_tree('tree')
+        self.setup_editor()
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt", retcode=3,
+            stdin="y\n")
+        self.assertContainsRe(err,
+            "bzr: ERROR: empty commit message specified")
 
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()
