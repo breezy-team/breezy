@@ -310,7 +310,8 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-        self._segment_parameters = urlutils.split_segment_parameters(base.rstrip("/"))[1]
+        self._segment_parameters = urlutils.split_segment_parameters(
+            base.rstrip("/"))[1]
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -1406,7 +1407,7 @@ class ConnectedTransport(Transport):
             netloc = '%s@%s' % (urllib.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
-        path = urlutils.escape(path, safe='/~,=')
+        path = urlutils.escape(path)
         return urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):

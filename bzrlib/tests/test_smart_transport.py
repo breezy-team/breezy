@@ -3558,7 +3558,7 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         # still work correctly.
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
         new_transport = base_transport.clone('c')
-        self.assertEqual('bzr+http://host/~a/b/c/', new_transport.base)
+        self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
         self.assertEqual(
             'c/',
             new_transport._client.remote_path_from_transport(new_transport))
