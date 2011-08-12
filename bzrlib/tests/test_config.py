@@ -2937,22 +2937,55 @@ class TestConcreteStacks(TestStackWithTransport):
 
 class TestStackGet(TestStackWithTransport):
 
+    def setUp(self):
+        super(TestStackGet, self).setUp()
+        self.conf = self.get_stack(self)
+
     def test_get_for_empty_stack(self):
-        conf = self.get_stack(self)
-        self.assertEquals(None, conf.get('foo'))
+        self.assertEquals(None, self.conf.get('foo'))
 
     def test_get_hook(self):
-        conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
+        self.conf.store._load_from_string('foo=bar')
         calls = []
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('get', hook, None)
         self.assertLength(0, calls)
-        value = conf.get('foo')
+        value = self.conf.get('foo')
         self.assertEquals('bar', value)
         self.assertLength(1, calls)
-        self.assertEquals((conf, 'foo', 'bar'), calls[0])
+        self.assertEquals((self.conf, 'foo', 'bar'), calls[0])
+
+
+class TestStackGetWithConverter(TestStackGet):
+
+    def setUp(self):
+        super(TestStackGetWithConverter, self).setUp()
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
+        self.registry = config.option_registry
+
+    def register_bool_option(self, name, default):
+        b = config.Option(name, default=default, help='A boolean.',
+                          from_unicode=config.bool_from_store)
+        self.registry.register(b)
+
+    def test_get_with_bool_not_defined_default_true(self):
+        self.register_bool_option('foo', True)
+        self.assertEquals(True, self.conf.get('foo'))
+
+    def test_get_with_bool_not_defined_default_false(self):
+        self.register_bool_option('foo', False)
+        self.assertEquals(False, self.conf.get('foo'))
+
+    def test_get_with_bool_converter_not_default(self):
+        self.register_bool_option('foo', False)
+        self.conf.store._load_from_string('foo=yes')
+        self.assertEquals(True, self.conf.get('foo'))
+
+    def test_get_with_bool_converter_invalid(self):
+        self.register_bool_option('foo', False)
+        self.conf.store._load_from_string('foo=not-a-boolean')
+        self.assertEquals(False, self.conf.get('foo'))
 
 
 class TestStackSet(TestStackWithTransport):
@@ -3184,7 +3217,7 @@ class TestAuthenticationConfigFile(tests.TestCase):
         conf = config.AuthenticationConfig(_file=StringIO(
                 'foo = bar\xff'))
         self.assertRaises(errors.ConfigContentError, conf._get_config)
-        
+
     def test_missing_auth_section_header(self):
         conf = config.AuthenticationConfig(_file=StringIO('foo = bar'))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
