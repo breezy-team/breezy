@@ -696,14 +696,17 @@ class _SmartAddHelper(object):
 
             # get the contents of this directory.
 
-            # find the kind of the path being added.
+            # find the kind of the path being added, and save stat_value
+            # for reuse
+            stat_value = None
             if this_ie is None:
-                kind = osutils.file_kind(abspath)
+                stat_value = osutils.file_stat(abspath)
+                kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
             else:
                 kind = this_ie.kind
             
             # allow AddAction to skip this file
-            if self.action.skipFile(self.tree,  abspath,  kind):
+            if self.action.skipFile(self.tree,  abspath,  kind,  stat_value):
                 continue
             if not InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",

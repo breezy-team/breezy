@@ -55,7 +55,7 @@ class AddAction(object):
             self._to_file.write('adding %s\n' % _quote(path))
         return None
 
-    def skipFile(self, tree, path, kind):
+    def skipFile(self, tree, path, kind, stat_value = None):
         """Test whether the given file should be skipped or not.
         
         The default action never skips.
@@ -63,6 +63,7 @@ class AddAction(object):
         :param tree: The tree we are working in
         :param path: The path being added
         :param kind: The kind of object being added.
+        :param stat: Stat result for this file, if available already
         :return bool. True if the file should be skipped (not added)
         """
         return False
@@ -75,7 +76,7 @@ class AddWithSkipLargeAction(AddAction):
     _optionName = 'add.maximum_file_size'
     _maxSize = None
 
-    def skipFile(self, tree, path, kind):
+    def skipFile(self, tree, path, kind, stat_value = None):
         if (kind != 'file'):
             return False            
         if self._maxSize is None:
@@ -83,7 +84,11 @@ class AddWithSkipLargeAction(AddAction):
             self._maxSize = config.get_user_option_as_int_from_SI(
                 self._optionName,  
                 self._DEFAULT_MAX_FILE_SIZE)
-        if (self._maxSize > 0) and (os.path.getsize(path) > self._maxSize):
+        if (stat_value is None):
+            file_size = os.path.getsize(path);
+        else:
+            file_size = stat_value.st_size;
+        if (self._maxSize > 0) and (file_size > self._maxSize):
             ui.ui_factory.show_warning(
                 "skipping %s (larger than %s of %d bytes)" % 
                 (path, self._optionName,  self._maxSize))
