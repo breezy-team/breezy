@@ -2293,10 +2293,10 @@ class Option(object):
 
         :param invalid: the action to be taken when an invalid value is
             encountered in a store. This is called only when from_unicode is
-            invoked to convert a string and returns None or raise
-            ValueError. Accepted values are: None (ignore invalid values),
-            'warning' (emit a warning), 'error' emit an error message and
-            terminates.
+            invoked to convert a string and returns None or raise ValueError or
+            TypeError. Accepted values are: None (ignore invalid values),
+            'warning' (emit a warning), 'error' (emit an error message and
+            terminates).
         """
         self.name = name
         self.default = default
@@ -2313,6 +2313,10 @@ class Option(object):
 
 def bool_from_store(unicode_str):
     return ui.bool_from_string(unicode_str)
+
+
+def int_from_store(unicode_str):
+    return int(unicode_str)
 
 
 class OptionRegistry(registry.Registry):
@@ -2855,7 +2859,7 @@ class Stack(object):
             # If a value exists and the option provides a converter, use it
             try:
                 converted = opt.from_unicode(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 # Invalid values are ignored
                 converted = None
             if converted is None and opt.invalid is not None:
