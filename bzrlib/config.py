@@ -2394,6 +2394,14 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
+    Option('ignore_missing_extensions', default=False,
+           from_unicode=bool_from_store,
+           help='''\
+Control the missing extensions warning display.
+
+The warning will not be emitted if set to True.
+'''))
+option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
