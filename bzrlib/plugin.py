@@ -507,11 +507,11 @@ class ModuleHelpTopic(object):
         if result[-1] != '\n':
             result += '\n'
         from bzrlib import help_topics
-        result += help_topics._sorted_see_also(additional_see_also)
+        result += help_topics._format_see_also(additional_see_also)
         return result
 
     def get_help_topic(self):
-        """Return the modules help topic - its __name__ after bzrlib.plugins.."""
+        """Return the module help topic: its basename."""
         return self.module.__name__[len('bzrlib.plugins.'):]
 
 
