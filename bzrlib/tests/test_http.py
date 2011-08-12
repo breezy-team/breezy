@@ -2027,7 +2027,7 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
-        self.assertEqual(t._user, r._user)
+        self.assertEqual(t._parsed_url.user, r._parsed_url.user)
 
 
 class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):

@@ -140,7 +140,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
     def test__remote_path_relative_root(self):
         # relative paths are preserved
         t = self.get_transport('')
-        self.assertEqual('/~/', t._path)
+        self.assertEqual('/~/', t._parsed_url.path)
         # the remote path should be relative to home dir
         # (i.e. not begining with a '/')
         self.assertEqual('a', t._remote_path('a'))
@@ -154,11 +154,11 @@ class SFTPNonServerTest(TestCase):
     def test_parse_url_with_home_dir(self):
         s = _mod_sftp.SFTPTransport(
             'sftp://ro%62ey:h%40t@example.com:2222/~/relative')
-        self.assertEquals(s._host, 'example.com')
-        self.assertEquals(s._port, 2222)
-        self.assertEquals(s._user, 'robey')
-        self.assertEquals(s._password, 'h@t')
-        self.assertEquals(s._path, '/~/relative/')
+        self.assertEquals(s._parsed_url.host, 'example.com')
+        self.assertEquals(s._parsed_url.port, 2222)
+        self.assertEquals(s._parsed_url.user, 'robey')
+        self.assertEquals(s._parsed_url.password, 'h@t')
+        self.assertEquals(s._parsed_url.path, '/~/relative/')
 
     def test_relpath(self):
         s = _mod_sftp.SFTPTransport('sftp://user@host.com/abs/path')
