@@ -353,7 +353,7 @@ A comma-separated list of debugging options to turn on.  The same values
 can be used as with the -D command-line option (see `help global-options`).
 For example::
 
-    debug_flags = hpss
+    debug_flags = hpss,
 
 email
 ~~~~~

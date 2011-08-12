@@ -2398,6 +2398,9 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 '''))
 option_registry.register(
+    Option('debug_flags', default=[], from_unicode=list_from_store,
+           help='Debug flags to activate.'))
+option_registry.register(
     Option('default_format', default='2a',
            help='Format used when creating branches.'))
 option_registry.register(
