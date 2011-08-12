@@ -785,8 +785,9 @@ class Branch(controldir.ControlComponent):
                                   other_branch=None):
         """See Branch.generate_revision_history"""
         graph = self.repository.get_graph()
+        (last_revno, last_revid) = self.last_revision_info()
         known_revision_ids = [
-            self.last_revision_info(),
+            (last_revid, last_revno),
             (_mod_revision.NULL_REVISION, 0),
             ]
         if last_rev is not None:
