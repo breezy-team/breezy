@@ -610,6 +610,14 @@ send_strict
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before sending a merge directive.
 
+add.maximum_file_size
+~~~~~~~~~~~~~~~~~~~~~
+
+Defines the maximum file size the command line "add" operation will allow,
+with files larger than this value being skipped. You may specify this value as
+an integer (in which case it is interpreted as bytes), or you may specify the 
+value using SI units, i.e. 10KB, 20MB, 1G. A value of 0 will disable the
+check.
 
 External Merge Tools
 --------------------
