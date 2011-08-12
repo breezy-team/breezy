@@ -2014,10 +2014,14 @@ def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
     :param depth: How far back to walk.
     """
     heads = _find_possible_heads(parent_map, tip_keys, depth)
-    s, found_heads = _run_search(parent_map, heads, set(tip_keys))
+    def first_search():
+        return _run_search(parent_map, heads, set(tip_keys))
+    s, found_heads = first_search()
     if found_heads:
-        s2, extra_heads = _run_search(parent_map, heads - found_heads,
+        def second_search():
+            return _run_search(parent_map, heads - found_heads,
                                       set(tip_keys))
+        s2, extra_heads = second_search()
         result1 = s.get_result()
         result2 = s2.get_result()
         assert result1._keys == result2._keys

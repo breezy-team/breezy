@@ -2503,8 +2503,17 @@ class InterVersionedFileRepository(InterRepository):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        import pdb; pdb.set_trace()
+        note('starting')
         t = time.time()
+        from bzrlib import commands
+        ret = commands.apply_lsprofiled(',,profile.txt',
+            self._do_walk_to_common_revisions, revision_ids,
+            if_present_ids=if_present_ids)
+        note('Walking took %.3fs' % (time.time() - t))
+        sys.exit(1)
+        return ret
+
+    def _do_walk_to_common_revisions(self, revision_ids, if_present_ids=None):
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
         if if_present_ids:
@@ -2562,9 +2571,6 @@ class InterVersionedFileRepository(InterRepository):
                 searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
-        note('Walking took %.3fs, with %d steps'
-             % (time.time() - t, search_step))
-        import pdb; pdb.set_trace()
         return searcher.get_result()
 
     @needs_read_lock

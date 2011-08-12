@@ -1748,7 +1748,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             (start_set, stop_keys,
              key_count) = graph.limited_search_result_from_parent_map(
                 parents_map, self._unstacked_provider.missing_keys,
-                keys, depth=1)
+                keys, depth=100)
         else:
             (start_set, stop_keys,
              key_count) = graph.search_result_from_parent_map(parents_map,
