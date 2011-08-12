@@ -3045,11 +3045,23 @@ class TestStackGetWithConverter(TestStackGet):
         self.conf.store._load_from_string('foo=,')
         self.assertEquals([], self.conf.get('foo'))
 
-    def test_get_with_list_converter_one_item(self):
+    def test_get_with_list_converter_one_boolean(self):
+        self.register_list_option('foo', [1])
+        self.conf.store._load_from_string('foo=True')
+        # We get a list of one string
+        self.assertEquals(['True'], self.conf.get('foo'))
+
+    def test_get_with_list_converter_one_integer(self):
         self.register_list_option('foo', [1])
         self.conf.store._load_from_string('foo=2')
-        # We get a list of strings
+        # We get a list of one string
         self.assertEquals(['2'], self.conf.get('foo'))
+
+    def test_get_with_list_converter_one_string(self):
+        self.register_list_option('foo', ['foo'])
+        self.conf.store._load_from_string('foo=bar')
+        # We get a list of one string
+        self.assertEquals(['bar'], self.conf.get('foo'))
 
     def test_get_with_list_converter_many_items(self):
         self.register_list_option('foo', [1])
