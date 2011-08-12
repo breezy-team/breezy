@@ -48,7 +48,7 @@ from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
 
 
-_DEFAULT_SEARCH_DEPTH = 10000
+_DEFAULT_SEARCH_DEPTH = 100
 
 
 class _RpcHelper(object):
