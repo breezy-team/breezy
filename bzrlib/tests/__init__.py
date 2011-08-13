@@ -386,9 +386,18 @@ class ExtendedTestResult(testtools.TextTestResult):
         getDetails = getattr(test, "getDetails", None)
         if getDetails is not None:
             getDetails().clear()
+        # Clear _type_equality_funcs to try to stop TestCase instances
+        # from wasting memory. 'clear' is not available in all Python
+        # versions (bug 809048)
         type_equality_funcs = getattr(test, "_type_equality_funcs", None)
         if type_equality_funcs is not None:
-            type_equality_funcs.clear()
+            tef_clear = getattr(type_equality_funcs, "clear", None)
+            if tef_clear is None:
+                tef_instance_dict = getattr(type_equality_funcs, "__dict__", None)
+                if tef_instance_dict is not None:
+                    tef_clear = tef_instance_dict.clear
+            if tef_clear is not None:
+                tef_clear()
         self._traceback_from_test = None
 
     def startTests(self):
@@ -1730,6 +1739,9 @@ class TestCase(testtools.TestCase):
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
 
+        :note: This should be used with discretion; you should think about
+        whether it's better to make the code testable without monkey-patching.
+
         :param obj: The object that will be mutated.
 
         :param attr_name: The attribute name we want to preserve/override in
@@ -1759,6 +1771,26 @@ class TestCase(testtools.TestCase):
         value = osutils.set_or_unset_env(name, new)
         self.addCleanup(osutils.set_or_unset_env, name, value)
         return value
+
+    def recordCalls(self, obj, attr_name):
+        """Monkeypatch in a wrapper that will record calls.
+
+        The monkeypatch is automatically removed when the test concludes.
+
+        :param obj: The namespace holding the reference to be replaced;
+            typically a module, class, or object.
+        :param attr_name: A string for the name of the attribute to 
+            patch.
+        :returns: A list that will be extended with one item every time the
+            function is called, with a tuple of (args, kwargs).
+        """
+        calls = []
+
+        def decorator(*args, **kwargs):
+            calls.append((args, kwargs))
+            return orig(*args, **kwargs)
+        orig = self.overrideAttr(obj, attr_name, decorator)
+        return calls
 
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
@@ -2505,7 +2537,11 @@ class TestCaseWithMemoryTransport(TestCase):
         real branch.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        bzrdir.BzrDir.create_standalone_workingtree(root)
+        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        # Hack for speed: remember the raw bytes of the dirstate file so that
+        # we don't need to re-open the wt to check it hasn't changed.
+        TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
+            wt.control_transport.get_bytes('dirstate'))
 
     def _check_safety_net(self):
         """Check that the safety .bzr directory have not been touched.
@@ -2514,10 +2550,10 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        self.permit_url(_mod_transport.get_transport(root).base)
-        wt = workingtree.WorkingTree.open(root)
-        last_rev = wt.last_revision()
-        if last_rev != 'null:':
+        t = _mod_transport.get_transport(root)
+        self.permit_url(t.base)
+        if (t.get_bytes('.bzr/checkout/dirstate') != 
+                TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE):
             # The current test have modified the /bzr directory, we need to
             # recreate a new one or all the followng tests will fail.
             # If you need to inspect its content uncomment the following line

@@ -1183,6 +1183,28 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         client.add_expected_call(
             'Branch.last_revision_info', ('quack/',),
             'success', ('ok', '1', 'rev-tip'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('quack/',),
+            'success', ('ok',), '')
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.heads_to_fetch()
+        self.assertFinished(client)
+        self.assertEqual((set(['rev-tip']), set()), result)
+
+    def test_uses_last_revision_info_and_tags_when_set(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info', ('quack/',),
+            'success', ('ok', '1', 'rev-tip'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('quack/',),
+            'success', ('ok',), 'branch.fetch_tags = True')
         # XXX: this will break if the default format's serialization of tags
         # changes, or if the RPC for fetching tags changes from get_tags_bytes.
         client.add_expected_call(
@@ -1213,7 +1235,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         self.assertFinished(client)
         self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
 
-    def test_backwards_compatible(self):
+    def make_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
@@ -1225,6 +1247,12 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         # Add two tags to that branch
         branch.tags.set_tag('tag-1', 'rev-1')
         branch.tags.set_tag('tag-2', 'rev-2')
+        return branch
+
+    def test_backwards_compatible(self):
+        branch = self.make_branch_with_tags()
+        c = branch.get_config()
+        c.set_user_option('branch.fetch_tags', 'True')
         self.addCleanup(branch.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
@@ -1233,7 +1261,23 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         result = branch.heads_to_fetch()
         self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
+            ['Branch.last_revision_info', 'Branch.get_config_file',
+             'Branch.get_tags_bytes'],
+            [call.call.method for call in self.hpss_calls])
+
+    def test_backwards_compatible_no_tags(self):
+        branch = self.make_branch_with_tags()
+        c = branch.get_config()
+        c.set_user_option('branch.fetch_tags', 'False')
+        self.addCleanup(branch.lock_read().unlock)
+        # Disable the heads_to_fetch verb
+        verb = 'Branch.heads_to_fetch'
+        self.disable_verb(verb)
+        self.reset_smart_call_log()
+        result = branch.heads_to_fetch()
+        self.assertEqual((set(['tip']), set()), result)
+        self.assertEqual(
+            ['Branch.last_revision_info', 'Branch.get_config_file'],
             [call.call.method for call in self.hpss_calls])
 
 
@@ -3359,8 +3403,9 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
-        local.repository.fetch(remote_branch.repository,
-                fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
+        local.repository.fetch(
+            remote_branch.repository,
+            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
 
     def override_verb(self, verb_name, verb):
@@ -3381,10 +3426,12 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
             """A version of the Repository.get_stream_1.19 verb patched to
             reject 'everything' searches the way 2.3 and earlier do.
             """
-            def recreate_search(self, repository, search_bytes, discard_excess=False):
+            def recreate_search(self, repository, search_bytes,
+                                discard_excess=False):
                 verb_log.append(search_bytes.split('\n', 1)[0])
                 if search_bytes == 'everything':
-                    return (None, request.FailedSmartServerResponse(('BadSearch',)))
+                    return (None,
+                            request.FailedSmartServerResponse(('BadSearch',)))
                 return super(OldGetStreamVerb,
                         self).recreate_search(repository, search_bytes,
                             discard_excess=discard_excess)
@@ -3395,11 +3442,31 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
-        local.repository.fetch(remote_branch.repository,
-                fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
+        local.repository.fetch(
+            remote_branch.repository,
+            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         # make sure the overridden verb was used
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback
         # its hard to predict exactly how many.
         self.assertTrue(len(self.hpss_calls) > 1)
 
+
+class TestUpdateBoundBranch(tests.TestCaseWithTransport):
+
+    def test_bug_786980(self):
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        wt = self.make_branch_and_tree('master')
+        checkout = wt.branch.create_checkout('checkout')
+        wt.commit('add stuff')
+        last_revid = wt.commit('even more stuff')
+        bound_location = checkout.branch.get_bound_location()
+        # For unclear reasons some users have a bound_location without a final
+        # '/', simulate that by forcing such a value
+        self.assertEndsWith(bound_location, '/')
+        new_location = bound_location.rstrip('/')
+        checkout.branch.set_bound_location(new_location)
+        # bug 786980 was raising ReadOnlyError: A write attempt was made in a
+        # read only transaction during the update()
+        checkout.update()
+        self.assertEquals(last_revid, checkout.last_revision())

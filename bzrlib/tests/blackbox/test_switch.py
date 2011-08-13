@@ -278,6 +278,7 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr('switch --directory checkout b')
         self.assertFileEqual('initial\nmore\n', 'checkout/a')
 
+
 class TestSwitchParentLocationBase(TestCaseWithTransport):
 
     def setUp(self):
@@ -328,3 +329,26 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
         self.assertParent('repo/trunk', bb)
         self.assertParent('repo/trunk', mb)
 
+
+class TestSwitchDoesntOpenMasterBranch(TestCaseWithTransport):
+    # See https://bugs.launchpad.net/bzr/+bug/812285
+    # "bzr switch --create-branch" can point the new branch's parent to the
+    # master branch, but it doesn't have to open it to do so.
+
+    def test_switch_create_doesnt_open_master_branch(self):
+        master = self.make_branch_and_tree('master')
+        master.commit('one')
+        # Note: not a lightweight checkout
+        checkout = master.branch.create_checkout('checkout')
+        opened = []
+        def open_hook(branch):
+            # Just append the final directory of the branch
+            name = branch.base.rstrip('/').rsplit('/', 1)[1]
+            opened.append(name)
+        branch.Branch.hooks.install_named_hook('open', open_hook,
+                                               'open_hook_logger')
+        self.run_bzr('switch --create-branch -d checkout feature')
+        # We only open the master branch 1 time.
+        # This test should be cleaner to write, but see bug:
+        #  https://bugs.launchpad.net/bzr/+bug/812295
+        self.assertEqual(1, opened.count('master'))

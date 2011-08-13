@@ -6,6 +6,14 @@
 #define __PYX_EXTERN_C extern
 #endif
 
+/* "/home/vila/src/bzr/integration/2.4.0-dev/bzrlib/_simple_set_pyx.pxd":31
+ * 
+ * 
+ * cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:             # <<<<<<<<<<<<<<
+ *     """A class similar to PySet, but with simpler implementation.
+ * 
+ */
+
 struct SimpleSetObject {
   PyObject_HEAD
   struct __pyx_vtabstruct_6bzrlib_15_simple_set_pyx_SimpleSet *__pyx_vtab;
