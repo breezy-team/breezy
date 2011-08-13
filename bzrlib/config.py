@@ -2317,6 +2317,22 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
+def list_from_store(unicode_str):
+    # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
+    if isinstance(unicode_str, (str, unicode)):
+        if unicode_str:
+            # A single value, most probably the user forgot (or didn't care to
+            # add) the final ','
+            l = [unicode_str]
+        else:
+            # The empty string, convert to empty list
+            l = []
+    else:
+        # We rely on ConfigObj providing us with a list already
+        l = unicode_str
+    return l
+
+
 class OptionRegistry(registry.Registry):
     """Register config options by their name.
 
