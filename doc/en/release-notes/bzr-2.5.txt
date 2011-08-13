@@ -167,6 +167,9 @@ Testing
 
 * Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
 
+* ``LockDir`` can now be run when the local hostname is ``localhost``.
+  (Jelmer Vernooij, #825994)
+
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,
   rather than opening the WorkingTree and calling ``last_revision()``.

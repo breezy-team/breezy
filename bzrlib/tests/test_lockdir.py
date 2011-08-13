@@ -684,6 +684,8 @@ class TestLockHeldInfo(TestCase):
 
     def test_lock_holder_dead_process(self):
         """Detect that the holder (this process) is still running."""
+        self.overrideAttr(lockdir, 'get_host_name',
+            lambda: 'aproperhostname')
         info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123'
         self.assertTrue(info.is_lock_holder_known_dead())
@@ -728,6 +730,8 @@ class TestStaleLockDir(TestCaseWithTransport):
 
         This generates a warning but no other user interaction.
         """
+        self.overrideAttr(lockdir, 'get_host_name',
+            lambda: 'aproperhostname')
         # This is off by default at present; see the discussion in the bug.
         # If you change the default, don't forget to update the docs.
         config.GlobalConfig().set_user_option('locks.steal_dead', True)
