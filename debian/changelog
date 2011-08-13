@@ -1,3 +1,11 @@
+bzr (2.4.0-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+   + Suggest python-gpgme and build-depend on python-gpgme-dbg for new
+     signatures features.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 13 Aug 2011 21:57:09 +0200
+
 bzr (2.4.0~beta5-3) unstable; urgency=low
 
   * Fix compatibility with Python 2.7.

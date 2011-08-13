@@ -171,9 +171,7 @@ class ConfigObj(configobj.ConfigObj):
 # FIXME: Until we can guarantee that each config file is loaded once and
 # only once for a given bzrlib session, we don't want to re-read the file every
 # time we query for an option so we cache the value (bad ! watch out for tests
-# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
-# yell at mgz^W vila and the RM if this is still present at that time
-# -- vila 20110219
+# needing to restore the proper value). -- vila 20110219
 _expand_default_value = None
 def _get_expand_default_value():
     global _expand_default_value
@@ -1504,14 +1502,16 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    elif sys.platform == 'darwin':
+    else:
+        if base is not None:
+            base = base.decode(osutils._fs_enc)
+    if sys.platform == 'darwin':
         if base is None:
             # this takes into account $HOME
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-
             xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
             if xdg_dir is None:
                 xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
@@ -1520,7 +1520,6 @@ def config_dir():
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
 
@@ -2282,6 +2281,15 @@ option_registry.register(
     'editor', Option('editor'),
     help='The command called to launch an editor to enter a message.')
 
+option_registry.register(
+    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
+    help='Flush dirstate changes onto physical disk?')
+
+option_registry.register(
+    'repository.fdatasync',
+    Option('repository.fdatasync', default=True),
+    help='Flush repository changes onto physical disk?')
+
 
 class Section(object):
     """A section defines a dict of option name => value.
@@ -2812,6 +2820,9 @@ class GlobalStack(_CompatibleStack):
 class LocationStack(_CompatibleStack):
 
     def __init__(self, location):
+        """Make a new stack for a location and global configuration.
+        
+        :param location: A URL prefix to """
         lstore = LocationStore()
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()

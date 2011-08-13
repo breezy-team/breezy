@@ -13,6 +13,7 @@ Build-Depends: cython-dbg | python-pyrex,
                python-all-dbg (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
+               python-gpgme-dbg,
                python-lzma-dbg,
                python-medusa,
                python-meliae-dbg,
@@ -67,6 +68,7 @@ Depends: python-configobj,
 Recommends: ca-certificates, python-launchpadlib, python-paramiko
 Suggests: python-bzrlib.tests,
           python-kerberos (>= 1.0+svn2455-1),
+          python-gpgme,
           python-pycurl,
           python-bzrlib-dbg,
           xdg-utils
@@ -91,7 +93,7 @@ Section: debug
 Depends: ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}, python-bzrlib (= ${binary:Version})
 Provides: ${python:Provides}
 Recommends: python-dbg
-Suggests: python-meliae-dbg, python-lzma-dbg
+Suggests: python-meliae-dbg, python-lzma-dbg, python-gpgme-dbg
 Description: distributed version control system - debug extension
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and

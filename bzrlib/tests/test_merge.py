@@ -1902,6 +1902,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot('C-id', ['A-id'], [])
         builder.build_snapshot('E-id', ['C-id', 'B-id'],
             [('unversion', 'a-id'),
+             ('flush', None),
              ('add', (u'a', 'a-id', 'directory', None))])
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         merge_obj = self.make_merge_obj(builder, 'E-id')
@@ -1925,6 +1926,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
         builder.build_snapshot('D-id', ['B-id', 'C-id'],
             [('unversion', 'a-id'),
+             ('flush', None),
              ('add', (u'a', 'a-id', 'directory', None))])
         merge_obj = self.make_merge_obj(builder, 'E-id')
         entries = list(merge_obj._entries_lca())
