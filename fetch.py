@@ -175,13 +175,16 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
 
 
 class SubmodulesRequireSubtrees(BzrError):
-    _fmt = """The repository you are fetching from contains submodules. To continue, upgrade your Bazaar repository to a format that supports nested trees, such as 'development-subtree'."""
+    _fmt = ("The repository you are fetching from contains submodules. "
+            "To continue, upgrade your Bazaar repository to a format that "
+            "supports nested trees, such as 'development-subtree'.")
     internal = False
 
 
 def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
     base_inv, parent_id, revision_id, parent_invs, lookup_object,
     (base_mode, mode), store_updater, lookup_file_id):
+    """Import a git submodule."""
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
     file_id = lookup_file_id(path)
@@ -322,7 +325,8 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
     diff = []
     new_objs = {}
     for path, obj, ie in _tree_to_objects(ret_tree, parent_trees,
-        target_git_object_retriever._cache.idmap, unusual_modes, mapping.BZR_DUMMY_FILE):
+        target_git_object_retriever._cache.idmap, unusual_modes,
+        mapping.BZR_DUMMY_FILE):
         old_obj_id = tree_lookup_path(lookup_object, o.tree, path)[1]
         new_objs[path] = obj
         if obj.id != old_obj_id:
@@ -372,7 +376,8 @@ def import_git_commit(repo, mapping, head, lookup_object,
             None, rev.revision_id, [p.inventory for p in parent_trees],
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             fileid_map.lookup_file_id,
-            allow_submodules=getattr(repo._format, "supports_tree_reference", False))
+            allow_submodules=getattr(repo._format, "supports_tree_reference",
+                False))
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
@@ -534,7 +539,8 @@ class InterGitNonGitRepository(InterGitRepository):
         for revid in set(revids):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
-        return self.get_determine_wants_heads(wants, include_tags=include_tags)
+        return self.get_determine_wants_heads(wants,
+            include_tags=include_tags)
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         """Fetch objects from a remote server.
@@ -564,8 +570,8 @@ class InterGitNonGitRepository(InterGitRepository):
             interesting_heads = None
 
         if interesting_heads is not None:
-            determine_wants = self.get_determine_wants_revids(interesting_heads,
-                include_tags=False)
+            determine_wants = self.get_determine_wants_revids(
+                interesting_heads, include_tags=False)
         else:
             determine_wants = self.determine_wants_all
 
@@ -741,8 +747,10 @@ class InterGitGitRepository(InterGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type %s" % recipe[0])
-            args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in heads]
+                raise AssertionError(
+                    "Unsupported search result type %s" % recipe[0])
+            args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in
+                    heads]
         if branches is not None:
             determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store and x[y] != ZERO_SHA]
         elif fetch_spec is None and revision_id is None:
@@ -764,4 +772,5 @@ class InterGitGitRepository(InterGitRepository):
         for revid in set(revids):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
-        return self.get_determine_wants_heads(wants, include_tags=include_tags)
+        return self.get_determine_wants_heads(wants,
+            include_tags=include_tags)
