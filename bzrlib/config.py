@@ -3079,6 +3079,39 @@ class cmd_config(commands.Command):
         if not removed:
             raise errors.NoSuchConfigOption(name)
 
+
+def cache_dir():
+    """Return the cache directory to use."""
+    if sys.platform in ("nt", "win32"):
+        from bzrlib.win32utils import get_local_appdata_location
+        s = get_local_appdata_location()
+        assert s is not None
+        # This can return a unicode string or a plain string in
+        # user encoding
+        if type(s) == str:
+            s = s.decode(bzrlib.user_encoding)
+        cache_dir = s.encode(osutils._fs_enc)
+    else:
+        try:
+            from xdg.BaseDirectory import xdg_cache_home
+        except ImportError:
+            cache_dir = None
+        else:
+            cache_dir = os.path.join(xdg_cache_home, "bazaar")
+        if type(cache_dir) == unicode:
+            cache_dir = cache_dir.encode(osutils._fs_enc)
+
+    if cache_dir is None:
+        base_dir = config_dir()
+        ensure_config_dir_exists(base_dir)
+        cache_dir = os.path.join(base_dir, ".cache")
+
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+
+    return cache_dir
+
+
 # Test registries
 #
 # We need adapters that can build a Store or a Stack in a test context. Test
