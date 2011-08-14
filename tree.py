@@ -184,7 +184,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
                         any(filter(lambda p: p.startswith(child_path), specific_paths))):
                         todo.add((child_path, hexsha, ie.file_id))
                 elif specific_paths is None or child_path in specific_paths:
-                    yield (child_path, self._get_file_ie(path, name, mode, hexsha,
+                    yield (child_path,
+                            self._get_file_ie(child_path, name, mode, hexsha,
                            ie.file_id))
 
     def get_revision_id(self):

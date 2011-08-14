@@ -78,7 +78,7 @@ class GitCommitBuilder(CommitBuilder):
         else:
             def link_sha1(path, file_id):
                 blob = Blob()
-                blob.data = workingtree.get_symlink_target(file_id)
+                blob.data = workingtree.get_symlink_target(file_id, path)
                 return blob.id
             def text_sha1(path, file_id):
                 blob = Blob()
@@ -136,9 +136,10 @@ class GitCommitBuilder(CommitBuilder):
             if not path in self._blobs:
                 blob = Blob()
                 if entry.kind == "symlink":
-                    blob.data = basis_tree.get_symlink_target(entry.file_id)
+                    blob.data = basis_tree.get_symlink_target(entry.file_id,
+                        path)
                 else:
-                    blob.data = basis_tree.get_file_text(entry.file_id)
+                    blob.data = basis_tree.get_file_text(entry.file_id, path)
                 self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
         self.new_inventory = None
 

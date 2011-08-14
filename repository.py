@@ -109,7 +109,8 @@ class GitRepository(ForeignRepository):
     chk_bytes = None
 
     def __init__(self, gitdir, lockfiles):
-        ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir, lockfiles)
+        super(GitRepository, self).__init__(GitRepositoryFormat(),
+            gitdir, lockfiles)
         from bzrlib.plugins.git import fetch, push
         for optimiser in [fetch.InterRemoteGitNonGitRepository,
                           fetch.InterLocalGitNonGitRepository,
@@ -119,7 +120,8 @@ class GitRepository(ForeignRepository):
             repository.InterRepository.register_optimiser(optimiser)
 
     def add_fallback_repository(self, basis_url):
-        raise errors.UnstackableRepositoryFormat(self._format, self.control_transport.base)
+        raise errors.UnstackableRepositoryFormat(self._format,
+            self.control_transport.base)
 
     def is_shared(self):
         return False
@@ -185,7 +187,8 @@ class LocalGitRepository(GitRepository):
             lossy)
 
     def get_file_graph(self):
-        return _mod_graph.Graph(GitFileParentProvider(self._file_change_scanner))
+        return _mod_graph.Graph(GitFileParentProvider(
+            self._file_change_scanner))
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
@@ -208,7 +211,8 @@ class LocalGitRepository(GitRepository):
         """
         per_revision = {}
         for (file_id, revision_id, identifier) in desired_files:
-            per_revision.setdefault(revision_id, []).append((file_id, identifier))
+            per_revision.setdefault(revision_id, []).append(
+                (file_id, identifier))
         for revid, files in per_revision.iteritems():
             (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
             try:
@@ -327,7 +331,8 @@ class LocalGitRepository(GitRepository):
             if mapping is None:
                 mapping = self.get_mapping()
             try:
-                return (self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping)
+                return (self._git.refs[mapping.revid_as_refname(bzr_revid)],
+                        mapping)
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
