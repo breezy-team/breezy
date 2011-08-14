@@ -505,9 +505,8 @@ class _VfsRefuser(object):
         except KeyError:
             # A method we don't know about doesn't count as a VFS method.
             return
-        if issubclass(request_method, vfs.fsRequest):
-            raise errors.BzrError("VFS request %r, %r" % (
-                request_method, params.args))
+        if issubclass(request_method, vfs.VfsRequest):
+            raise errors.HpssVfsRequestNotAllowed(params.method, params.args)
 
 
 class _DebugCounter(object):

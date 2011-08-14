@@ -148,6 +148,10 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* A new debug flags ``hpss_no_vfs`` will now cause the HPSS client
+  to raise a ``HpssVfsRequestNotAllowed`` exception when a VFS request
+  is attempted. (Jelmer Vernooij)
+
 Testing
 *******
 

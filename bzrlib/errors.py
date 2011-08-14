@@ -3316,3 +3316,13 @@ class NoCompatibleInter(BzrError):
     def __init__(self, source, target):
         self.source = source
         self.target = target
+
+
+class HpssVfsRequestNotAllowed(BzrError):
+
+    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
+            "%(method)s, %(arguments)s.")
+
+    def __init__(self, method, arguments):
+        self.method = method
+        self.arguments = arguments
