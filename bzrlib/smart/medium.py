@@ -497,7 +497,7 @@ class _VfsRefuser(object):
 
     def __init__(self):
         client._SmartClient.hooks.install_named_hook(
-            'call', self.check_vfs, 'hpss_vfs_refuser')
+            'call', self.check_vfs, 'vfs refuser')
 
     def check_vfs(self, params):
         try:
@@ -569,6 +569,7 @@ class _DebugCounter(object):
             self.done(ref)
 
 _debug_counter = None
+_vfs_refuser = None
 
 
 class SmartClientMedium(SmartMedium):
