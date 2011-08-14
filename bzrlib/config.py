@@ -73,7 +73,6 @@ up=pull
 """
 
 import os
-import string
 import sys
 
 
@@ -1523,9 +1522,14 @@ def config_dir():
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-            xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+            try:
+                from xdg.BaseDirectory import xdg_config_home
+            except ImportError:
+                xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+            else:
+                xdg_dir = xdg_config_home
             if xdg_dir is None:
-                xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
+                xdg_dir = os.path.join(os.path.expanduser("~"), ".config")
             xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
             if osutils.isdir(xdg_dir):
                 trace.mutter(
@@ -1570,16 +1574,6 @@ def crash_dir():
         # XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
         # 2010-01-31
         return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
-
-
-def xdg_cache_dir():
-    # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
-    # Possibly this should be different on Windows?
-    e = os.environ.get('XDG_CACHE_DIR', None)
-    if e:
-        return e
-    else:
-        return os.path.expanduser('~/.cache')
 
 
 def _get_default_mail_domain():
@@ -3095,16 +3089,14 @@ def cache_dir():
         try:
             from xdg.BaseDirectory import xdg_cache_home
         except ImportError:
-            cache_dir = None
+            cache_dir = os.environ.get('XDG_CACHE_DIR', None)
         else:
             cache_dir = os.path.join(xdg_cache_home, "bazaar")
         if type(cache_dir) == unicode:
             cache_dir = cache_dir.encode(osutils._fs_enc)
 
     if cache_dir is None:
-        base_dir = config_dir()
-        ensure_config_dir_exists(base_dir)
-        cache_dir = os.path.join(base_dir, ".cache")
+        cache_dir = os.path.expanduser('~/.cache')
 
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)

@@ -33,18 +33,14 @@ from bzrlib import (
     errors,
     osutils,
     mail_client,
-    mergetools,
     ui,
     urlutils,
-    registry,
     remote,
     tests,
     trace,
-    transport,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
-    deprecated_method,
     )
 from bzrlib.transport import remote as transport_remote
 from bzrlib.tests import (
@@ -539,7 +535,6 @@ class TestConfigPath(tests.TestCase):
     def setUp(self):
         super(TestConfigPath, self).setUp()
         self.overrideEnv('HOME', '/home/bogus')
-        self.overrideEnv('XDG_CACHE_DIR', '')
         if sys.platform == 'win32':
             self.overrideEnv(
                 'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
@@ -563,10 +558,6 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(config.authentication_config_filename(),
                          self.bzr_home + '/authentication.conf')
 
-    def test_xdg_cache_dir(self):
-        self.assertEqual(config.xdg_cache_dir(),
-            '/home/bogus/.cache')
-
 
 class TestXDGConfigDir(tests.TestCaseInTempDir):
     # must be in temp dir because config tests for the existence of the bazaar
@@ -583,7 +574,14 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
 
     def test_xdg_config_dir_exists(self):
         """When ~/.config/bazaar exists, use it as the config dir."""
-        newdir = osutils.pathjoin(self.test_home_dir, '.config', 'bazaar')
+        config_dir = osutils.pathjoin(self.test_home_dir, '.config')
+        newdir = osutils.pathjoin(config_dir, 'bazaar')
+        try:
+            from xdg import BaseDirectory
+        except ImportError:
+            pass
+        else:
+            self.overrideAttr(BaseDirectory, "xdg_config_home", config_dir)
         os.makedirs(newdir)
         self.assertEqual(config.config_dir(), newdir)
 
@@ -591,9 +589,56 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
         """When XDG_CONFIG_HOME is set, use it."""
         xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
         self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
+        try:
+            from xdg import BaseDirectory
+        except ImportError:
+            pass
+        else:
+            self.overrideAttr(BaseDirectory, "xdg_config_home", xdgconfigdir)
         newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
         os.makedirs(newdir)
         self.assertEqual(config.config_dir(), newdir)
+
+
+class TestXDGCacheDir(tests.TestCaseInTempDir):
+    # must be in temp dir because tests for the existence of the bazaar
+    # subdirectory of $XDG_CACHE_HOME
+
+    def setUp(self):
+        if sys.platform in ('darwin', 'win32'):
+            raise tests.TestNotApplicable(
+                'XDG cache dir not used on this platform')
+        super(TestXDGCacheDir, self).setUp()
+        self.overrideEnv('HOME', self.test_home_dir)
+        # BZR_HOME overrides everything we want to test so unset it.
+        self.overrideEnv('BZR_HOME', None)
+
+    def test_xdg_cache_dir_exists(self):
+        """When ~/.cache/bazaar exists, use it as the config dir."""
+        cachedir = osutils.pathjoin(self.test_home_dir, '.cache')
+        newdir = osutils.pathjoin(cachedir, 'bazaar')
+        try:
+            from xdg import BaseDirectory
+        except ImportError:
+            pass
+        else:
+            self.overrideAttr(BaseDirectory, "xdg_cache_home", cachedir)
+        os.makedirs(newdir)
+        self.assertEqual(config.cache_dir(), newdir)
+
+    def test_xdg_cache_home(self):
+        """When XDG_CACHE_HOME is set, use it."""
+        xdgcachedir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
+        self.overrideEnv('XDG_CACHE_HOME', xdgcachedir)
+        try:
+            from xdg import BaseDirectory
+        except ImportError:
+            pass
+        else:
+            self.overrideAttr(BaseDirectory, "xdg_cache_home", xdgcachedir)
+        newdir = osutils.pathjoin(xdgcachedir, 'bazaar')
+        os.makedirs(newdir)
+        self.assertEqual(config.cache_dir(), newdir)
 
 
 class TestIniConfig(tests.TestCaseInTempDir):
