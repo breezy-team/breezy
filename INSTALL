@@ -1,0 +1,7 @@
+How to install bzr-bisect:
+
+To install bzr-bisect, copy this folder into ~/.bazaar/plugins and make sure
+the name is "bisect". The easiest way to to do this is to run:
+
+$ mkdir -p ~/.bazaar/plugins
+$ bzr branch lp:bzr-bisect ~/.bazaar/plugins/bisect
