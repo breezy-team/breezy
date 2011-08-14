@@ -55,6 +55,7 @@ from bzrlib import (
 from bzrlib.decorators import (
     needs_read_lock,
     )
+from bzrlib.mutabletree import needs_tree_write_lock
 
 
 from bzrlib.plugins.git.dir import (
@@ -108,7 +109,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def _index_add_entry(self, path, file_id, kind):
         assert isinstance(path, basestring)
-        assert type(file_id) == str
+        assert type(file_id) == str or file_id is None
         if kind == "directory":
             # Git indexes don't contain directories
             return
@@ -255,19 +256,20 @@ class GitWorkingTree(workingtree.WorkingTree):
                 file_id = self._fileid_map.lookup_file_id(path.encode("utf-8"))
             self._index_add_entry(path, file_id, kind)
 
+    @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         added = []
         ignored = {}
         user_dirs = []
         for filepath in osutils.canonical_relpaths(self.basedir, file_list):
-            if action is not None:
-                file_id = action()
-            else:
-                file_id = None
             abspath = self.abspath(filepath)
             kind = osutils.file_kind(abspath)
+            if action is not None:
+                file_id = action(self, None, filepath, kind)
+            else:
+                file_id = None
             if kind in ("file", "symlink"):
-                if not save:
+                if save:
                     self._index_add_entry(filepath, file_id, kind)
                 added.append(filepath)
             elif kind == "directory":
@@ -294,13 +296,16 @@ class GitWorkingTree(workingtree.WorkingTree):
                         file_id = action()
                     else:
                         file_id = None
-                    if not save:
+                    if save:
                         self._index_add_entry(subp, file_id, kind)
+        if added and save:
+            self.flush()
         return added, ignored
 
     def _set_root_id(self, file_id):
         self._fileid_map.set_file_id("", file_id)
 
+    @needs_tree_write_lock
     def move(self, from_paths, to_dir=None, after=False):
         rename_tuples = []
         to_abs = self.abspath(to_dir)
@@ -315,6 +320,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             rename_tuples.append((from_rel, to_rel))
         return rename_tuples
 
+    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
         if not after:
             os.rename(self.abspath(from_rel), self.abspath(to_rel))
@@ -453,12 +459,13 @@ class GitWorkingTree(workingtree.WorkingTree):
         try:
             head = self.repository._git.head()
         except KeyError, name:
-            raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
+            raise errors.NotBranchError("branch %s at %s" % (name,
+                self.repository.base))
         if head == ZERO_SHA:
             self._basis_fileid_map = GitFileIdMap({}, self.mapping)
         else:
-            self._basis_fileid_map = self.mapping.get_fileid_map(self.store.__getitem__,
-                self.store[head].tree)
+            self._basis_fileid_map = self.mapping.get_fileid_map(
+                self.store.__getitem__, self.store[head].tree)
 
     @needs_read_lock
     def get_file_verifier(self, file_id, path=None, stat_value=None):
@@ -642,6 +649,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 self.path2id(path.decode("utf-8")),
                 mode_kind(mode)))
         return per_dir.iteritems()
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
