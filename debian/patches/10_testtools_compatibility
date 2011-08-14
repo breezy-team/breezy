@@ -1,104 +1,157 @@
-Description: (jelmer) Fix support for testtools 0.9.12. (Jelmer Vernooij)
-Origin: commit, revision id: pqm@pqm.ubuntu.com-20110803174555-pmpu6ms4lgjudxzf
-Author: Jelmer Vernooij <jelmer@samba.org>
-Author: Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>
-Bug: https://launchpad.net/bugs/815423
-Last-Update: 2011-08-03
-Applied-Upstream: no
-X-Bzr-Revision-Id: pqm@pqm.ubuntu.com-20110803174555-pmpu6ms4lgjudxzf
+=== modified file 'bzrlib/tests/blackbox/test_log.py'
+--- old/bzrlib/tests/blackbox/test_log.py	2011-07-12 14:03:52 +0000
++++ new/bzrlib/tests/blackbox/test_log.py	2011-08-04 00:17:53 +0000
+@@ -966,7 +966,7 @@
+         self.assertLogRevnos([], ["2", "1"])
+ 
+     def test_log_range_open_begin(self):
+-        raise tests.KnownFailure("log with ghosts fails. bug #726466")
++        self.knownFailure("log with ghosts fails. bug #726466")
+         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
+         self.assertEqual(["2", "1"],
+                          [r.revno for r in self.get_captured_revisions()])
 
-=== modified file 'bzrlib/tests/test_selftest.py'
---- old/bzrlib/tests/test_selftest.py	2011-08-02 01:10:27 +0000
-+++ new/bzrlib/tests/test_selftest.py	2011-08-03 14:34:34 +0000
-@@ -29,6 +29,7 @@
- from testtools import (
-     ExtendedToOriginalDecorator,
-     MultiTestResult,
-+    __version__ as testtools_version,
+=== modified file 'bzrlib/tests/blackbox/test_non_ascii.py'
+--- old/bzrlib/tests/blackbox/test_non_ascii.py	2011-05-13 12:51:05 +0000
++++ new/bzrlib/tests/blackbox/test_non_ascii.py	2011-08-04 00:17:53 +0000
+@@ -89,7 +89,7 @@
+             normal_thing = unicodedata.normalize('NFD', path)
+             mac_encoded = normal_thing.encode(fs_enc)
+             if mac_encoded != encoded:
+-                raise tests.KnownFailure(
++                self.knownFailure(
+                     'Unable to roundtrip path %r on OSX filesystem'
+                     ' using encoding "%s"'
+                     % (path, fs_enc))
+
+=== modified file 'bzrlib/tests/per_repository/test_fetch.py'
+--- old/bzrlib/tests/per_repository/test_fetch.py	2011-07-15 09:22:16 +0000
++++ new/bzrlib/tests/per_repository/test_fetch.py	2011-08-04 00:17:53 +0000
+@@ -344,7 +344,7 @@
+             # The code inside fetch() that tries to lock and then fails, also
+             # causes weird problems with 'lock_not_held' later on...
+             target.lock_read()
+-            raise tests.KnownFailure('some repositories fail to fetch'
++            self.knownFailure('some repositories fail to fetch'
+                 ' via the smart server because of locking issues.')
+ 
+     def test_fetch_from_smart_with_ghost(self):
+
+=== modified file 'bzrlib/tests/per_repository/test_repository.py'
+--- old/bzrlib/tests/per_repository/test_repository.py	2011-06-28 11:42:02 +0000
++++ new/bzrlib/tests/per_repository/test_repository.py	2011-08-04 00:17:53 +0000
+@@ -691,7 +691,7 @@
+         except errors.IncompatibleFormat:
+             raise tests.TestNotApplicable('Cannot make a shared repository')
+         if repo.bzrdir._format.fixed_components:
+-            raise tests.KnownFailure(
++            self.knownFailure(
+                 "pre metadir branches do not upgrade on push "
+                 "with stacking policy")
+         if isinstance(repo._format,
+
+=== modified file 'bzrlib/tests/per_transport.py'
+--- old/bzrlib/tests/per_transport.py	2011-05-18 14:45:15 +0000
++++ new/bzrlib/tests/per_transport.py	2011-08-04 00:17:53 +0000
+@@ -1136,7 +1136,7 @@
+             raise TestSkipped("Transport %s does not support symlinks." %
+                               self._server.__class__)
+         except IOError:
+-            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
++            self.knownFailure("Paramiko fails to create symlinks during tests")
+ 
+     def test_list_dir(self):
+         # TODO: Test list_dir, just try once, and if it throws, stop testing
+@@ -1555,7 +1555,7 @@
+ 
+         no_unicode_support = getattr(self._server, 'no_unicode_support', False)
+         if no_unicode_support:
+-            raise tests.KnownFailure("test server cannot handle unicode paths")
++            self.knownFailure("test server cannot handle unicode paths")
+ 
+         try:
+             self.build_tree(files, transport=t, line_endings='binary')
+
+=== modified file 'bzrlib/tests/test_conflicts.py'
+--- old/bzrlib/tests/test_conflicts.py	2011-07-07 10:20:59 +0000
++++ new/bzrlib/tests/test_conflicts.py	2011-08-04 00:17:53 +0000
+@@ -971,7 +971,7 @@
+         if self._other['xfail']:
+             # It's a bit hackish to raise from here relying on being called for
+             # both tests but this avoid overriding test_resolve_taking_other
+-            raise tests.KnownFailure(
++            self.knownFailure(
+                 "ParentLoop doesn't carry enough info to resolve --take-other")
+     _assert_conflict = assertParentLoop
+ 
+
+=== modified file 'bzrlib/tests/test_http.py'
+--- old/bzrlib/tests/test_http.py	2011-08-02 01:10:27 +0000
++++ new/bzrlib/tests/test_http.py	2011-08-04 00:17:53 +0000
+@@ -1767,7 +1767,7 @@
+                                      http_utils.ProxyDigestAuthServer):
+             raise tests.TestNotApplicable('HTTP/proxy auth digest only test')
+         if self._testing_pycurl():
+-            raise tests.KnownFailure(
++            self.knownFailure(
+                 'pycurl does not handle a nonce change')
+         self.server.add_user('joe', 'foo')
+         t = self.get_user_transport('joe', 'foo')
+@@ -1855,7 +1855,7 @@
+         if self._testing_pycurl():
+             import pycurl
+             if pycurl.version_info()[1] < '7.16.0':
+-                raise tests.KnownFailure(
++                self.knownFailure(
+                     'pycurl < 7.16.0 does not handle empty proxy passwords')
+         super(TestProxyAuth, self).test_empty_pass()
+ 
+
+=== modified file 'bzrlib/tests/test_lockdir.py'
+--- old/bzrlib/tests/test_lockdir.py	2011-06-10 07:31:54 +0000
++++ new/bzrlib/tests/test_lockdir.py	2011-08-04 00:05:53 +0000
+@@ -686,9 +686,6 @@
+         """Detect that the holder (this process) is still running."""
+         info = LockHeldInfo.for_this_process(None)
+         info.info_dict['pid'] = '123123123'
+-        if sys.platform == 'win32':
+-            self.knownFailure(
+-                'live lock holder detection not implemented yet on win32')
+         self.assertTrue(info.is_lock_holder_known_dead())
+ 
+     def test_lock_holder_other_machine(self):
+
+=== modified file 'bzrlib/tests/test_strace.py'
+--- old/bzrlib/tests/test_strace.py	2011-06-14 01:26:41 +0000
++++ new/bzrlib/tests/test_strace.py	2011-08-04 00:17:53 +0000
+@@ -50,7 +50,7 @@
+         # restriction.
+         active = threading.activeCount()
+         if active > 1: # There is always the main thread at least
+-            raise tests.KnownFailure(
++            self.knownFailure(
+                 '%d active threads, bug #103133 needs to be fixed.' % active)
+ 
+     def strace_detailed_or_skip(self, *args, **kwargs):
+
+=== modified file 'bzrlib/tests/test_tag.py'
+--- old/bzrlib/tests/test_tag.py	2010-11-18 00:43:57 +0000
++++ new/bzrlib/tests/test_tag.py	2011-08-06 07:32:51 +0000
+@@ -26,7 +26,6 @@
+     DisabledTags,
      )
- from testtools.content import Content
- from testtools.content_type import ContentType
-@@ -1072,17 +1073,31 @@
-                 self.expectFailure("No absolute truth", self.assertTrue, True)
-         runner = tests.TextTestRunner(stream=StringIO())
-         result = self.run_test_runner(runner, Test("test_truth"))
--        self.assertContainsRe(runner.stream.getvalue(),
--            "=+\n"
--            "FAIL: \\S+\.test_truth\n"
--            "-+\n"
--            "(?:.*\n)*"
--            "No absolute truth\n"
--            "(?:.*\n)*"
--            "-+\n"
--            "Ran 1 test in .*\n"
--            "\n"
--            "FAILED \\(failures=1\\)\n\\Z")
-+        if testtools_version <= (0, 9, 11):
-+            self.assertContainsRe(runner.stream.getvalue(),
-+                "=+\n"
-+                "FAIL: \\S+\.test_truth\n"
-+                "-+\n"
-+                "(?:.*\n)*"
-+                "No absolute truth\n"
-+                "(?:.*\n)*"
-+                "-+\n"
-+                "Ran 1 test in .*\n"
-+                "\n"
-+                "FAILED \\(failures=1\\)\n\\Z")
-+        else:
-+            self.assertContainsRe(runner.stream.getvalue(),
-+                "=+\n"
-+                "FAIL: \\S+\.test_truth\n"
-+                "-+\n"
-+                "Empty attachments:\n"
-+                "  log\n"
-+                "\n"
-+                "reason: {{{No absolute truth}}}\n"
-+                "-+\n"
-+                "Ran 1 test in .*\n"
-+                "\n"
-+                "FAILED \\(failures=1\\)\n\\Z")
- 
-     def test_result_decorator(self):
-         # decorate results
-@@ -1247,11 +1262,14 @@
-             lambda trace=False: "ascii")
-         result = self.run_test_runner(tests.TextTestRunner(stream=out),
-             FailureWithUnicode("test_log_unicode"))
--        self.assertContainsRe(out.getvalue(),
--            "Text attachment: log\n"
--            "-+\n"
--            "\d+\.\d+  \\\\u2606\n"
--            "-+\n")
-+        if testtools_version > (0, 9, 11):
-+            self.assertContainsRe(out.getvalue(), "log: {{{\d+\.\d+  \\\\u2606}}}")
-+        else:
-+            self.assertContainsRe(out.getvalue(),
-+                "Text attachment: log\n"
-+                "-+\n"
-+                "\d+\.\d+  \\\\u2606\n"
-+                "-+\n")
- 
- 
- class SampleTestCase(tests.TestCase):
-@@ -1736,14 +1754,16 @@
-         result = self._run_test('test_fail')
-         self.assertEqual(1, len(result.failures))
-         result_content = result.failures[0][1]
--        self.assertContainsRe(result_content, 'Text attachment: log')
-+        if testtools_version < (0, 9, 12):
-+            self.assertContainsRe(result_content, 'Text attachment: log')
-         self.assertContainsRe(result_content, 'this was a failing test')
- 
-     def test_error_has_log(self):
-         result = self._run_test('test_error')
-         self.assertEqual(1, len(result.errors))
-         result_content = result.errors[0][1]
--        self.assertContainsRe(result_content, 'Text attachment: log')
-+        if testtools_version < (0, 9, 12):
-+            self.assertContainsRe(result_content, 'Text attachment: log')
-         self.assertContainsRe(result_content, 'this test errored')
- 
-     def test_skip_has_no_log(self):
-
+ from bzrlib.tests import (
+-    KnownFailure,
+     TestCase,
+     TestCaseWithTransport,
+     )
+@@ -168,7 +167,7 @@
+         child.update()
+         # and deletion of tags should also propagate
+         master.tags.delete_tag('foo')
+-        raise KnownFailure("tag deletion does not propagate: "
++        self.knownFailure("tag deletion does not propagate: "
+             "https://bugs.launchpad.net/bzr/+bug/138802")
+         self.assertRaises(errors.NoSuchTag,
+             child.tags.lookup_tag, 'foo')
 
