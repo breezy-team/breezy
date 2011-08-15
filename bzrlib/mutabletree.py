@@ -706,7 +706,7 @@ class _SmartAddHelper(object):
                 kind = this_ie.kind
             
             # allow AddAction to skip this file
-            if self.action.skipFile(self.tree,  abspath,  kind,  stat_value):
+            if self.action.skip_file(self.tree,  abspath,  kind,  stat_value):
                 continue
             if not InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",

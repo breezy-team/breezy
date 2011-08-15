@@ -451,7 +451,7 @@ class Config(object):
                                                ' value %r is not an SI unit.'
                                                 % (option_name, val))
                     val = default
-            except:
+            except TypeError:
                 val = default
         return val
         
