@@ -194,6 +194,13 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
+    def find_branch_format(self, name=None):
+        """Find the branch 'format' for this bzrdir.
+
+        This might be a synthetic object for e.g. RemoteBranch and SVN.
+        """
+        raise NotImplementedError(self.find_branch_format)
+
     def get_branch_reference(self, name=None):
         """Return the referenced URL for the branch in this controldir.
 
