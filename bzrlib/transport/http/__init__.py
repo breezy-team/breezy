@@ -412,10 +412,9 @@ class HttpTransportBase(ConnectedTransport):
         """See bzrlib.transport.Transport.external_url."""
         # HTTP URL's are externally usable as long as they don't mention their
         # implementation qualifier
-        return self._unsplit_url(self._unqualified_scheme,
-                                 self._parsed_url.user, self._parsed_url.password,
-                                 self._parsed_url.host, self._parsed_url.port,
-                                 self._parsed_url.path)
+        url = self._parsed_url.clone()
+        url.scheme = self._unqualified_scheme
+        return str(url)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
