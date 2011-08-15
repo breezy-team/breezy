@@ -312,6 +312,10 @@ class LocalGitDir(GitDir):
         from bzrlib.plugins.git.repository import LocalGitRepository
         return LocalGitRepository
 
+    def __repr__(self):
+        return "<%s at %r>" % (
+            self.__class__.__name__, self.root_transport.base)
+
     _gitrepository_class = property(_get_gitrepository_class)
 
     @property
@@ -428,7 +432,7 @@ class LocalGitDir(GitDir):
 
     def list_branches(self):
         ret = []
-        for name in self._git.get_refs():
+        for name in self._git.refs.keys():
             if name.startswith("refs/heads/"):
                 ret.append(self.open_branch(name=name))
         return ret
