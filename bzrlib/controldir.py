@@ -31,6 +31,7 @@ from bzrlib import (
     revision as _mod_revision,
     transport as _mod_transport,
     ui,
+    urlutils,
     )
 from bzrlib.push import (
     PushResult,
@@ -271,7 +272,10 @@ class ControlDir(ControlComponent):
 
         :return: Name of the branch selected by the user, or None.
         """
-        return self.root_transport.get_segment_parameters().get("branch")
+        branch = self.root_transport.get_segment_parameters().get("branch")
+        if branch is not None:
+            branch = urlutils.unescape(branch)
+        return branch
 
     def has_workingtree(self):
         """Tell if this controldir contains a working tree.
