@@ -37,6 +37,9 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Corrected documentation for BZR_PROGRESS_BAR. 
+  (Dennis Benzinger, #735417)
+
 API Changes
 ***********
 
