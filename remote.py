@@ -226,6 +226,10 @@ class RemoteGitDir(GitDir):
     def user_url(self):
         return self.control_url
 
+    @property
+    def user_transport(self):
+        return self.root_transport
+
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
 
