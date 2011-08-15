@@ -62,32 +62,6 @@ class TestRefreshData(TestCaseWithRepository):
             # This is ok too.
             pass
 
-    def fetch_new_revision_into_concurrent_instance(self, repo, token):
-        """Create a new revision (revid 'new-rev') and fetch it into a
-        concurrent instance of repo.
-        """
-        source = self.make_branch_and_memory_tree('source')
-        source.lock_write()
-        self.addCleanup(source.unlock)
-        source.add([''], ['root-id'])
-        revid = source.commit('foo', rev_id='new-rev')
-        # Force data reading on weaves/knits
-        repo.all_revision_ids()
-        repo.revisions.keys()
-        repo.inventories.keys()
-        # server repo is the instance a smart server might hold for this
-        # repository.
-        server_repo = repo.bzrdir.open_repository()
-        try:
-            server_repo.lock_write(token)
-        except errors.TokenLockingNotSupported:
-            raise TestSkipped('Cannot concurrently insert into repo format %r'
-                % self.repository_format)
-        try:
-            server_repo.fetch(source.branch.repository, revid)
-        finally:
-            server_repo.unlock()
-
     def test_refresh_data_after_fetch_new_data_visible(self):
         repo = self.make_repository('target')
         token = repo.lock_write().repository_token
