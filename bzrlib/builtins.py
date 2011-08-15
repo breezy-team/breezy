@@ -5814,12 +5814,16 @@ class cmd_switch(Command):
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
         else:
+            # Perhaps it's a colocated branch?
             try:
-                to_branch = Branch.open(to_location)
-            except errors.NotBranchError:
-                this_url = self._get_branch_location(control_dir)
-                to_branch = Branch.open(
-                    urlutils.join(this_url, '..', to_location))
+                to_branch = control_dir.open_branch(to_location)
+            except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+                try:
+                    to_branch = Branch.open(to_location)
+                except errors.NotBranchError:
+                    this_url = self._get_branch_location(control_dir)
+                    to_branch = Branch.open(
+                        urlutils.join(this_url, '..', to_location))
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)

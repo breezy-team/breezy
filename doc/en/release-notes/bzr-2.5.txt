@@ -72,6 +72,9 @@ New Features
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
 
+* ``bzr switch`` will now look up and switch to colocated branches.
+  (Jelmer Vernooij, #826814)
+
 Improvements
 ************
 
