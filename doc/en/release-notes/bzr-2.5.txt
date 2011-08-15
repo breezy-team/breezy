@@ -171,6 +171,10 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* New method ``ControlDir._get_selected_branch`` which returns the
+  colocated branch selected using path segment parameters.
+  (Jelmer Vernooij, #380871)
+
 Testing
 *******
 
