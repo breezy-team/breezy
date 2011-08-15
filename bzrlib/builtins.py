@@ -1334,6 +1334,22 @@ class cmd_branch(Command):
                 urlutils.unescape_for_display(branch.base, 'utf-8'))
 
 
+class cmd_branches(Command):
+    __doc__ = """List the branches available at the current location.
+
+    """
+
+    takes_args = ['location?']
+
+    def run(self, location="."):
+        dir = bzrdir.BzrDir.open_containing(location)[0]
+        for branch in dir.list_branches():
+            if branch.name is None:
+                self.outf.write(" (default)\n")
+            else:
+                self.outf.write(" %s\n" % branch.name)
+
+
 class cmd_checkout(Command):
     __doc__ = """Create a new checkout of an existing branch.
 
