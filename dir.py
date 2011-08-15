@@ -129,6 +129,15 @@ class GitDir(ControlDir):
     def _branch_name_to_ref(self, name):
         raise NotImplementedError(self._branch_name_to_ref)
 
+    def _get_selected_ref(self, branch):
+        if branch is None and getattr(self, "_get_selected_branch", False):
+            branch = self._get_selected_branch()
+        if branch is not None:
+            return self._branch_name_to_ref(branch)
+        segment_parameters = getattr(
+            self.user_transport, "get_segment_parameters", lambda: {})()
+        return segment_parameters.get("ref")
+
     def get_config(self):
         return GitDirConfig()
 
@@ -360,11 +369,11 @@ class LocalGitDir(GitDir):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
-        return LocalGitBranch(self, repo, self._branch_name_to_ref(name),
-            self._lockfiles)
+        ref = self._get_selected_ref(name)
+        return LocalGitBranch(self, repo, ref, self._lockfiles)
 
     def destroy_branch(self, name=None):
-        refname = self._branch_name_to_ref(name)
+        refname = self._get_selected_ref(name)
         if not refname in self._git.refs:
             raise bzr_errors.NotBranchError(self.root_transport.base,
                     bzrdir=self)
@@ -416,7 +425,7 @@ class LocalGitDir(GitDir):
         return self.open_repository()
 
     def create_branch(self, name=None, repository=None):
-        refname = self._branch_name_to_ref(name)
+        refname = self._get_selected_ref(name)
         from dulwich.protocol import ZERO_SHA
         self._git.refs[refname or "HEAD"] = ZERO_SHA
         return self.open_branch(name)
