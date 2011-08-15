@@ -148,10 +148,11 @@ class HttpTransportBase(ConnectedTransport):
 
         user and passwords are not embedded in the path provided to the server.
         """
-        path = self._parsed_url.clone(relpath).path
-        return self._unsplit_url(self._unqualified_scheme,
-                                 None, None, self._parsed_url.host,
-                                 self._parsed_url.port, path)
+        url = self._parsed_url.clone(relpath)
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        url.scheme = self._unqualified_scheme
+        return str(url)
 
     def _create_auth(self):
         """Returns a dict containing the credentials provided at build time."""
@@ -537,7 +538,7 @@ class HttpTransportBase(ConnectedTransport):
         new_transport = None
         parsed_url = self._split_url(target)
         # Recalculate base path. This is needed to ensure that when the
-        # redirected tranport will be used to re-try whatever request was
+        # redirected transport will be used to re-try whatever request was
         # redirected, we end up with the same url
         base_path = parsed_url.path[:-len(relpath)]
         if parsed_url.scheme in ('http', 'https'):
