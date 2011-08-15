@@ -172,9 +172,7 @@ class ConfigObj(configobj.ConfigObj):
 # FIXME: Until we can guarantee that each config file is loaded once and
 # only once for a given bzrlib session, we don't want to re-read the file every
 # time we query for an option so we cache the value (bad ! watch out for tests
-# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
-# yell at mgz^W vila and the RM if this is still present at that time
-# -- vila 20110219
+# needing to restore the proper value). -- vila 20110219
 _expand_default_value = None
 def _get_expand_default_value():
     global _expand_default_value
@@ -2317,6 +2315,22 @@ def bool_from_store(unicode_str):
 
 def int_from_store(unicode_str):
     return int(unicode_str)
+
+
+def list_from_store(unicode_str):
+    # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
+    if isinstance(unicode_str, (str, unicode)):
+        if unicode_str:
+            # A single value, most probably the user forgot (or didn't care to
+            # add) the final ','
+            l = [unicode_str]
+        else:
+            # The empty string, convert to empty list
+            l = []
+    else:
+        # We rely on ConfigObj providing us with a list already
+        l = unicode_str
+    return l
 
 
 class OptionRegistry(registry.Registry):
