@@ -1302,6 +1302,22 @@ class TestControlDir(TestCaseWithControlDir):
             dir.user_transport.get_segment_parameters())
         self.assertEquals("foo", dir._get_selected_branch())
 
+    def test_get_selected_branch_none_selected(self):
+        # _get_selected_branch defaults to None
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
+        dir = bzrdir.BzrDir.open(t.base)
+        self.assertIs(None, dir._get_selected_branch())
+
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
         self.assertEqual(dir.root_transport.base,
