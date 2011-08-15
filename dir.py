@@ -404,9 +404,8 @@ class LocalGitDir(GitDir):
         ref = self._get_selected_ref(name)
         if ref is None:
             ref = "HEAD"
-        try:
-            ref, sha = self._git.refs._follow(ref)
-        except KeyError:
+        ref, sha = self._git.refs._follow(ref)
+        if not ref in self._git.refs:
             raise bzr_errors.NotBranchError(self.root_transport.base,
                     bzrdir=self)
         return LocalGitBranch(self, repo, ref, self._lockfiles)
