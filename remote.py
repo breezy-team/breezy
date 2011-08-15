@@ -226,9 +226,6 @@ class RemoteGitDir(GitDir):
     def user_url(self):
         return self.control_url
 
-    def _branch_name_to_ref(self, name, default=None):
-        return branch_name_to_ref(name, default=default)
-
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
 
@@ -421,7 +418,7 @@ class RemoteGitBranch(GitBranch):
         if self._sha is not None:
             return self._sha
         heads = self.repository.get_refs()
-        name = self.bzrdir._branch_name_to_ref(self.name, "HEAD")
+        name = branch_name_to_ref(self.name, "HEAD")
         if name in heads:
             self._sha = heads[name]
         else:

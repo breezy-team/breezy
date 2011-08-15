@@ -224,6 +224,21 @@ class DictTagDict(tag.BasicTags):
         return self._tags
 
 
+class GitSymrefBranchFormat(branch.BranchFormat):
+
+    def get_format_description(self):
+        return 'Git Symbolic Reference Branch'
+
+    def network_name(self):
+        return "git"
+
+    def get_reference(self, controldir, name=None):
+        return controldir.get_branch_reference(name)
+
+    def set_reference(self, controldir, name, target):
+        return controldir.set_branch_reference(name, target)
+
+
 class GitBranchFormat(branch.BranchFormat):
 
     def get_format_description(self):
@@ -327,7 +342,7 @@ class GitBranch(ForeignBranch):
 
     def __repr__(self):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
-            self.ref or "HEAD")
+            self.name)
 
     def generate_revision_history(self, revid, old_revid=None):
         if revid == NULL_REVISION:

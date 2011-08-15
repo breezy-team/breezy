@@ -17,6 +17,8 @@
 
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
+import urllib
+
 from bzrlib import (
     errors as bzr_errors,
     lockable_files,
@@ -126,17 +128,18 @@ class GitDir(ControlDir):
     def checkout_metadir(self, stacked=False):
         return format_registry.make_bzrdir("default")
 
-    def _branch_name_to_ref(self, name):
-        raise NotImplementedError(self._branch_name_to_ref)
-
     def _get_selected_ref(self, branch):
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
         if branch is not None:
-            return self._branch_name_to_ref(branch)
+            from bzrlib.plugins.git.refs import branch_name_to_ref
+            return branch_name_to_ref(branch, None)
         segment_parameters = getattr(
             self.user_transport, "get_segment_parameters", lambda: {})()
-        return segment_parameters.get("ref")
+        ref = segment_parameters.get("ref")
+        if ref is not None:
+            ref = urlutils.unescape(ref)
+        return ref
 
     def get_config(self):
         return GitDirConfig()
@@ -331,18 +334,47 @@ class LocalGitDir(GitDir):
         self._lockfiles = lockfiles
         self._mode_check_done = None
 
-    def _branch_name_to_ref(self, name):
-        from bzrlib.plugins.git.refs import branch_name_to_ref
-        ref = branch_name_to_ref(name, None)
-        if ref == "HEAD":
-            from dulwich.repo import SYMREF
-            refcontents = self._git.refs.read_ref(ref)
-            if refcontents.startswith(SYMREF):
-                ref = refcontents[len(SYMREF):]
-        return ref
-
     def is_control_filename(self, filename):
         return (filename == '.git' or filename.startswith('.git/'))
+
+    def _get_symref(self, ref):
+        from dulwich.repo import SYMREF
+        refcontents = self._git.refs.read_ref(ref)
+        if refcontents is None: # no such ref
+            return None
+        if refcontents.startswith(SYMREF):
+            return refcontents[len(SYMREF):].rstrip("\n")
+        return None
+
+    def set_branch_reference(self, name, target):
+        ref = self._get_selected_ref(name)
+        if ref is None:
+            ref = "HEAD"
+        if not getattr(target, "ref", None):
+            raise bzr_errors.BzrError("Can only set symrefs to Git refs")
+        self._git.refs.set_symbolic_ref(ref, target.ref)
+
+    def get_branch_reference(self, name=None):
+        ref = self._get_selected_ref(name)
+        if ref is None:
+            ref = "HEAD"
+        target_ref = self._get_symref(ref)
+        if target_ref is not None:
+            return ",ref=%s" % urllib.quote(target_ref)
+        return None
+
+    def find_branch_format(self, name=None):
+        from bzrlib.plugins.git.branch import (
+            GitBranchFormat,
+            GitSymrefBranchFormat,
+            )
+        ref = self._get_selected_ref(name)
+        if ref is None:
+            ref = "HEAD"
+        if self._get_symref(ref) is not None:
+            return GitSymrefBranchFormat()
+        else:
+            return GitBranchFormat()
 
     def get_branch_transport(self, branch_format, name=None):
         if branch_format is None:
@@ -370,6 +402,13 @@ class LocalGitDir(GitDir):
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
         ref = self._get_selected_ref(name)
+        if ref is None:
+            ref = "HEAD"
+        try:
+            ref, sha = self._git.refs._follow(ref)
+        except KeyError:
+            raise bzr_errors.NotBranchError(self.root_transport.base,
+                    bzrdir=self)
         return LocalGitBranch(self, repo, ref, self._lockfiles)
 
     def destroy_branch(self, name=None):
@@ -427,7 +466,12 @@ class LocalGitDir(GitDir):
     def create_branch(self, name=None, repository=None):
         refname = self._get_selected_ref(name)
         from dulwich.protocol import ZERO_SHA
-        self._git.refs[refname or "HEAD"] = ZERO_SHA
+        # FIXME: This is a bit awkward. Perhaps we should have a
+        # a separate method for changing the default branch?
+        if refname is None:
+            refname = "refs/heads/master"
+            self._git.refs.set_symbolic_ref("HEAD", refname)
+        self._git.refs[refname] = ZERO_SHA
         return self.open_branch(name)
 
     def backup_bzrdir(self):
