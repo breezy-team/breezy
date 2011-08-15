@@ -78,12 +78,7 @@ class InstrumentedTransport(_backing_transport_class):
         # The following is needed to minimize the effects of our trick above
         # while retaining the best compatibility.
         self._parsed_url.scheme = _hooked_scheme
-        base = self._unsplit_url(self._parsed_url.scheme,
-                                 self._parsed_url.user,
-                                 self._parsed_url.password,
-                                 self._parsed_url.host, self._parsed_url.port,
-                                 self._parsed_url.path)
-        super(ConnectedTransport, self).__init__(base)
+        super(ConnectedTransport, self).__init__(str(self._parsed_url))
 
 
 class ConnectionHookedTransport(InstrumentedTransport):
