@@ -266,6 +266,13 @@ class ControlDir(ControlComponent):
         except errors.NotBranchError:
             return False
 
+    def _get_selected_branch(self):
+        """Return the name of the branch selected by the user.
+
+        :return: Name of the branch selected by the user, or None.
+        """
+        return self.root_transport.get_segment_parameters().get("branch")
+
     def has_workingtree(self):
         """Tell if this controldir contains a working tree.
 
