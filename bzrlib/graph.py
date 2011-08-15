@@ -2021,20 +2021,13 @@ def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
     :param depth: How far back to walk.
     """
     heads = _find_possible_heads(parent_map, tip_keys, depth)
-    def first_search():
-        return _run_search(parent_map, heads, set(tip_keys))
-    s, found_heads = first_search()
+    s, found_heads = _run_search(parent_map, heads, set(tip_keys))
+    _, start_keys, exclude_keys, key_count = s.get_result().get_recipe()
     if found_heads:
-        def second_search():
-            return _run_search(parent_map, heads - found_heads,
-                                      set(tip_keys))
-        s2, extra_heads = second_search()
-        result1 = s.get_result()
-        result2 = s2.get_result()
-        assert result1._keys == result2._keys
-        assert not extra_heads
-        return result2.get_recipe()[1:]
-    return s.get_result().get_recipe()[1:]
+        # Anything in found_heads are redundant start_keys, we hit them while
+        # walking, so we can exclude them from the start list.
+        start_keys = set(start_keys).difference(found_heads)
+    return start_keys, exclude_keys, key_count
 
 
 def search_result_from_parent_map(parent_map, missing_keys):
