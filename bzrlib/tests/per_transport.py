@@ -1230,7 +1230,7 @@ class TransportTests(TestTransportImplementation):
             if host     is None: host     = t._parsed_url.host
             if port     is None: port     = t._parsed_url.port
             if path     is None: path     = t._parsed_url.path
-            return t._unsplit_url(scheme, user, password, host, port, path)
+            return str(urlutils.URL(scheme, user, password, host, port, path))
 
         if t._parsed_url.scheme == 'ftp':
             scheme = 'sftp'
