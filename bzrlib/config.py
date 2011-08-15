@@ -2385,7 +2385,11 @@ option_registry.register(
            help='''\
 How many changes before saving the dirstate.
 
--1 means never save.
+-1 means that we will never rewrite the dirstate file for only
+stat-cache changes. Regardless of this setting, we will always rewrite
+the dirstate file if a file is added/removed/renamed/etc. This flag only
+affects the behavior of updating the dirstate file after we notice that
+a file has been touched.
 '''))
 option_registry.register(
     Option('dirstate.fdatasync', default=True,
@@ -2422,10 +2426,12 @@ option_registry.register(
            help='''\
 Steal locks that appears to be dead.
 
-If set to true, bzr will automatically break locks held by processes from
-the same machine and user that are no longer alive.  Otherwise, it will
-print a message and you can break the lock manually, if you are satisfied
-the object is no longer in use.
+If set to True, bzr will check if a lock is supposed to be held by an
+active process from the same user on the same machine. If the user and
+machine match, but no process with the given PID is active, then bzr
+will automatically break the stale lock, and create a new lock for
+this process.
+Otherwise, bzr will prompt as normal to break the lock.
 '''))
 option_registry.register(
     Option('output_encoding',
