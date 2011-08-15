@@ -72,6 +72,8 @@ class LocalTransport(transport.Transport):
 
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
+        if self._local_base[-1] != '/':
+            self._local_base = self._local_base + '/'
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
