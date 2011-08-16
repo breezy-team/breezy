@@ -109,7 +109,8 @@ class LoopbackGPGStrategy(object):
         count = {SIGNATURE_VALID: 0,
                  SIGNATURE_KEY_MISSING: 0,
                  SIGNATURE_NOT_VALID: 0,
-                 SIGNATURE_NOT_SIGNED: 0}
+                 SIGNATURE_NOT_SIGNED: 0,
+                 SIGNATURE_EXPIRED: 0}
         result = []
         all_verifiable = True
         for rev_id in revisions:

@@ -132,6 +132,7 @@ class SignMyCommits(tests.TestCaseWithTransport):
         out = self.run_bzr(['verify-signatures', '--acceptable-keys=foo,bar'],
                             retcode=1)
         self.assertEquals(('4 commits with valid signatures\n'
+                           '0 commits with key now expired\n'
                            '0 commits with unknown keys\n'
                            '0 commits not valid\n'
                            '1 commit not signed\n', ''), out)
