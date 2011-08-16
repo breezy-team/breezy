@@ -276,7 +276,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/',
                          'foo/hello'])
-        if wt._format.supports_versioned_directories:
+        if not wt._format.supports_versioned_directories:
             wt.add('foo/hello')
         else:
             self.assertRaises(NotVersionedError,
