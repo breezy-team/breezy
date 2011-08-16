@@ -353,7 +353,11 @@ A comma-separated list of debugging options to turn on.  The same values
 can be used as with the -D command-line option (see `help global-options`).
 For example::
 
-    debug_flags = hpss,
+    debug_flags = hpss
+
+or::
+
+    debug_flags = hpss,evil
 
 email
 ~~~~~
@@ -423,7 +427,7 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 
 gpg_signing_key
-~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 The GnuPG user identity to use when signing commits.  Can be an e-mail
 address, key fingerprint or full key ID.  When unset or when set to
