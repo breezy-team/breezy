@@ -16,6 +16,7 @@
 
 """Tests for VersionedFileRepository.refresh_data."""
 
+from bzrlib import repository
 
 from bzrlib.tests.per_repository_vf import (
     TestCaseWithRepository,
@@ -55,5 +56,36 @@ class TestRefreshData(TestCaseWithRepository):
             server_repo.fetch(source.branch.repository, revid)
         finally:
             server_repo.unlock()
+
+    def test_refresh_data_after_fetch_new_data_visible_in_write_group(self):
+        tree = self.make_branch_and_memory_tree('target')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['root-id'])
+        tree.commit('foo', rev_id='commit-in-target')
+        repo = tree.branch.repository
+        token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        self.fetch_new_revision_into_concurrent_instance(repo, token)
+        # Call refresh_data.  It either fails with IsInWriteGroupError, or it
+        # succeeds and the new revisions are visible.
+        try:
+            repo.refresh_data()
+        except repository.IsInWriteGroupError:
+            pass
+        else:
+            self.assertEqual(
+                ['commit-in-target', 'new-rev'],
+                sorted(repo.all_revision_ids()))
+
+    def test_refresh_data_after_fetch_new_data_visible(self):
+        repo = self.make_repository('target')
+        token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        self.fetch_new_revision_into_concurrent_instance(repo, token)
+        repo.refresh_data()
+        self.assertNotEqual({}, repo.get_graph().get_parent_map(['new-rev']))
 
 
