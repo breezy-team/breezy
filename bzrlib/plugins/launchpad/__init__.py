@@ -479,9 +479,11 @@ def _get_package_branch_info(url):
     :return: If this isn't a packaging branch, return None. If it is, return
         (archive, series, project)
     """
+    if url is None:
+        return None
     m = _package_branch.search(url)
     if m is None:
-        return
+        return None
     archive, series, project, user = m.group('archive', 'series',
                                              'project', 'user')
     if series is not None:

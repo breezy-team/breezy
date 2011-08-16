@@ -681,6 +681,7 @@ class TestMerge(tests.TestCaseWithTransport):
         builder.build_commit(message="Rev 2a", rev_id='rev-2a')
         source.tags.set_tag('tag-a', 'rev-2a')
         source.set_last_revision_info(1, 'rev-1')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         builder.build_commit(message="Rev 2b", rev_id='rev-2b')
         # Merge from source
         self.run_bzr('merge -d target source')

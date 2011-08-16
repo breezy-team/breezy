@@ -172,9 +172,7 @@ class ConfigObj(configobj.ConfigObj):
 # FIXME: Until we can guarantee that each config file is loaded once and
 # only once for a given bzrlib session, we don't want to re-read the file every
 # time we query for an option so we cache the value (bad ! watch out for tests
-# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
-# yell at mgz^W vila and the RM if this is still present at that time
-# -- vila 20110219
+# needing to restore the proper value). -- vila 20110219
 _expand_default_value = None
 def _get_expand_default_value():
     global _expand_default_value
@@ -2309,6 +2307,15 @@ class Option(object):
     def get_default(self):
         return self.default
 
+    def get_help_text(self, additional_see_also=None, plain=True):
+        result = self.help
+        from bzrlib import help_topics
+        result += help_topics._format_see_also(additional_see_also)
+        if plain:
+            result = help_topics.help_as_plain_text(result)
+        return result
+
+
 # Predefined converters to get proper values from store
 
 def bool_from_store(unicode_str):
@@ -2353,13 +2360,12 @@ class OptionRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name):
         """Register a new option to be loaded on request.
 
-        :param key: This is the key to use to request the option later. Since
-            the registration is lazy, it should be provided and match the
-            option name.
+        :param key: the key to request the option later. Since the registration
+            is lazy, it should be provided and match the option name.
 
-        :param module_name: The python path to the module. Such as 'os.path'.
+        :param module_name: the python path to the module. Such as 'os.path'.
 
-        :param member_name: The member of the module to return.  If empty or
+        :param member_name: the member of the module to return.  If empty or 
                 None, get() will return the module itself.
         """
         super(OptionRegistry, self).register_lazy(key,
