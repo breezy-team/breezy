@@ -949,7 +949,6 @@ Improvements
 * ``bzr cat-revision`` no longer requires a working tree.
   (Jelmer Vernooij, #704405)
 
-
 * ``bzr export --per-file-timestamps`` for .tar.gz files will now
   override the mtime for trees exported on Python 2.7 and later, which
   expose the 'mtime' field in gzip files. This makes the output of
