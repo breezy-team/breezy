@@ -40,7 +40,7 @@ class TestCaseWithState(TestCaseWithWorkingTree):
         try:
             dirstate = tree.current_dirstate()
             dirstate_path = dirstate._filename
-            self.failUnlessExists(dirstate_path)
+            self.assertPathExists(dirstate_path)
         finally:
             tree.unlock()
         # We have to have the tree unlocked at this point, so we can safely
@@ -88,8 +88,8 @@ class TestResetState(TestCaseWithState):
         # have
         self.assertEqual(foo_id, tree.path2id('foo'))
         self.assertEqual(None, tree.path2id('baz'))
-        self.failIfExists('tree/foo')
-        self.failUnlessExists('tree/baz')
+        self.assertPathDoesNotExist('tree/foo')
+        self.assertPathExists('tree/baz')
 
     def test_reset_state_handles_corrupted_dirstate(self):
         tree = self.make_initial_tree()

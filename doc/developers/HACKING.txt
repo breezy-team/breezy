@@ -117,12 +117,12 @@ do this, you will need a Launchpad account and user name, e.g.
 `your_lp_username`.  You can push your branch to Launchpad directly from
 Bazaar::
 
-  $ bzr push lp:~your_lp_username/bzr/meaningful_name_here
+  $ bzr push lp:~<your_lp_username>/bzr/meaningful_name_here
 
 After you have pushed your branch, you will need to propose it for merging to
 the Bazaar trunk.  Go to
-<https://launchpad.net/your_lp_username/bzr/meaningful_name_here> and choose
-"Propose for merging into another branch".  Select "~bzr/bzr/trunk" to hand
+<https://launchpad.net/~<your_lp_username>/bzr/meaningful_name_here> and choose
+"Propose for merging into another branch".  Select "lp:bzr" to hand
 your changes off to the Bazaar developers for review and merging.
 
 Alternatively, after pushing you can use the ``lp-propose`` command to 
@@ -254,10 +254,6 @@ README
     This file covers a brief introduction to Bazaar and lists some of its
     key features.
 
-NEWS
-    Summary of changes in each Bazaar release that can affect users or
-    plugin developers.
-
 setup.py
     Installs Bazaar system-wide or to your home directory.  To perform
     development work on Bazaar it is not required to run this file - you
@@ -285,6 +281,16 @@ doc/developers
     Documentation specifically targeted at Bazaar and plugin developers.
     (Including this document.)
 
+doc/en/release-notes/
+
+    Detailed changes in each Bazaar release (there is one file by series:
+    bzr-2.3.txt, bzr-2.4.txt, etc) that can affect users or plugin
+    developers.
+
+doc/en/whats-new/
+
+    High-level summaries of changes in each Bazaar release (there is one
+    file by series: whats-new-in-2.3.txt, whats-new-in-2.4.txt, etc).
 
 
 Automatically-generated API reference information is available at
@@ -576,7 +582,6 @@ changes together into a cohesive whole. In addition to the general developer
 stuff covered above, "core" developers have responsibility for:
 
 * reviewing changes
-* reviewing blueprints
 * planning releases
 * managing releases (see `Releasing Bazaar <http://doc.bazaar.canonical.com/developers/releasing.html>`_)
 

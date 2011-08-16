@@ -21,6 +21,7 @@ from bzrlib import (
     errors,
     revision as _mod_revision,
     )
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import per_branch
 
 
@@ -112,7 +113,8 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         # Lock the branch, set the revision history, then repeatedly call
         # revision_history.
         branch.lock_write()
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         try:
             branch.revision_history()
             self.assertEqual([], calls)
@@ -124,7 +126,8 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         cause the revision history to be cached.
         """
         branch, calls = self.get_instrumented_branch()
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         branch.revision_history()
         self.assertEqual(['_gen_revision_history'], calls)
 
@@ -147,17 +150,14 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
             a_branch.unlock()
 
     def test_set_last_revision_info_none(self):
-        """Passing None to revision_info to None sets it to NULL_REVISION."""
+        """Passing None to set_last_revision_info raises an exception."""
         a_branch = self.get_branch()
         # Lock the branch, set the last revision info, then call
         # last_revision_info.
         a_branch.lock_write()
         self.addCleanup(a_branch.unlock)
-        self.callDeprecated(['NULL_REVISION should be used for the null'
-            ' revision instead of None, as of bzr 0.91.'],
+        self.assertRaises(errors.InvalidRevisionId,
             a_branch.set_last_revision_info, 0, None)
-        self.assertEqual((0, _mod_revision.NULL_REVISION),
-                         a_branch.last_revision_info())
 
     def test_set_last_revision_info_uncaches_revision_history_for_format6(self):
         """On format 6 branches, set_last_revision_info invalidates the revision

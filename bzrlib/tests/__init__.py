@@ -16,12 +16,6 @@
 
 """Testing framework extensions"""
 
-# TODO: Perhaps there should be an API to find out if bzr running under the
-# test suite -- some plugins might want to avoid making intrusive changes if
-# this is the case.  However, we want behaviour under to test to diverge as
-# little as possible, so this should be used rarely if it's added at all.
-# (Suggestion from j-a-meinel, 2005-11-24)
-
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
 # general style of bzrlib.  Please continue that consistency when adding e.g.
@@ -94,6 +88,10 @@ from bzrlib.transport import (
     memory,
     pathfilter,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 from bzrlib.tests import (
     test_server,
     TestUtil,
@@ -142,7 +140,10 @@ isolated_environ = {
     'BZREMAIL': None, # may still be present in the environment
     'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
     'BZR_PROGRESS_BAR': None,
-    'BZR_LOG': None,
+    # This should trap leaks to ~/.bzr.log. This occurs when tests use TestCase
+    # as a base class instead of TestCaseInTempDir. Tests inheriting from
+    # TestCase should not use disk resources, BZR_LOG is one.
+    'BZR_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
     'BZR_PLUGIN_PATH': None,
     'BZR_DISABLE_PLUGINS': None,
     'BZR_PLUGINS_AT': None,
@@ -377,12 +378,29 @@ class ExtendedTestResult(testtools.TextTestResult):
         if isinstance(test, TestCase):
             test.addCleanup(self._check_leaked_threads, test)
 
+    def stopTest(self, test):
+        super(ExtendedTestResult, self).stopTest(test)
+        # Manually break cycles, means touching various private things but hey
+        getDetails = getattr(test, "getDetails", None)
+        if getDetails is not None:
+            getDetails().clear()
+        # Clear _type_equality_funcs to try to stop TestCase instances
+        # from wasting memory. 'clear' is not available in all Python
+        # versions (bug 809048)
+        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+        if type_equality_funcs is not None:
+            tef_clear = getattr(type_equality_funcs, "clear", None)
+            if tef_clear is None:
+                tef_instance_dict = getattr(type_equality_funcs, "__dict__", None)
+                if tef_instance_dict is not None:
+                    tef_clear = tef_instance_dict.clear
+            if tef_clear is not None:
+                tef_clear()
+        self._traceback_from_test = None
+
     def startTests(self):
         self.report_tests_starting()
         self._active_threads = threading.enumerate()
-
-    def stopTest(self, test):
-        self._traceback_from_test = None
 
     def _check_leaked_threads(self, test):
         """See if any threads have leaked since last call
@@ -448,6 +466,19 @@ class ExtendedTestResult(testtools.TextTestResult):
     def addExpectedFailure(self, test, err):
         self.known_failure_count += 1
         self.report_known_failure(test, err)
+
+    def addUnexpectedSuccess(self, test, details=None):
+        """Tell result the test unexpectedly passed, counting as a failure
+
+        When the minimum version of testtools required becomes 0.9.8 this
+        can be updated to use the new handling there.
+        """
+        super(ExtendedTestResult, self).addFailure(test, details=details)
+        self.failure_count += 1
+        self.report_unexpected_success(test,
+            "".join(details["reason"].iter_text()))
+        if self.stop_early:
+            self.stop()
 
     def addNotSupported(self, test, feature):
         """The test will not be run because of a missing feature.
@@ -613,6 +644,13 @@ class TextTestResult(ExtendedTestResult):
     def report_known_failure(self, test, err):
         pass
 
+    def report_unexpected_success(self, test, reason):
+        self.stream.write('FAIL: %s\n    %s: %s\n' % (
+            self._test_description(test),
+            "Unexpected success. Should have failed",
+            reason,
+            ))
+
     def report_skip(self, test, reason):
         pass
 
@@ -669,6 +707,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write('XFAIL %s\n%s\n'
                 % (self._testTimeString(test),
                    self._error_summary(err)))
+
+    def report_unexpected_success(self, test, reason):
+        self.stream.write(' FAIL %s\n%s: %s\n'
+                % (self._testTimeString(test),
+                   "Unexpected success. Should have failed",
+                   reason))
 
     def report_success(self, test):
         self.stream.write('   OK %s\n' % self._testTimeString(test))
@@ -894,7 +938,7 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-    
+
     kwargs['setUp'] = isolated_doctest_setUp
     kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
@@ -937,10 +981,6 @@ class TestCase(testtools.TestCase):
         super(TestCase, self).setUp()
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
-        self._log_contents = None
-        self.addDetail("log", content.Content(content.ContentType("text",
-            "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -954,6 +994,17 @@ class TestCase(testtools.TestCase):
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
         self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
+        # Isolate config option expansion until its default value for bzrlib is
+        # settled on or a the FIXME associated with _get_expand_default_value
+        # is addressed -- vila 20110219
+        self.overrideAttr(config, '_expand_default_value', None)
+        self._log_files = set()
+        # Each key in the ``_counters`` dict holds a value for a different
+        # counter. When the test ends, addDetail() should be used to output the
+        # counter values. This happens in install_counter_hook().
+        self._counters = {}
+        if 'config_stats' in selftest_debug_flags:
+            self._install_config_stats_hooks()
 
     def debug(self):
         # debug a frame up.
@@ -976,6 +1027,50 @@ class TestCase(testtools.TestCase):
         if name in details:
             del details[name]
 
+    def install_counter_hook(self, hooks, name, counter_name=None):
+        """Install a counting hook.
+
+        Any hook can be counted as long as it doesn't need to return a value.
+
+        :param hooks: Where the hook should be installed.
+
+        :param name: The hook name that will be counted.
+
+        :param counter_name: The counter identifier in ``_counters``, defaults
+            to ``name``.
+        """
+        _counters = self._counters # Avoid closing over self
+        if counter_name is None:
+            counter_name = name
+        if _counters.has_key(counter_name):
+            raise AssertionError('%s is already used as a counter name'
+                                  % (counter_name,))
+        _counters[counter_name] = 0
+        self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
+            lambda: ['%d' % (_counters[counter_name],)]))
+        def increment_counter(*args, **kwargs):
+            _counters[counter_name] += 1
+        label = 'count %s calls' % (counter_name,)
+        hooks.install_named_hook(name, increment_counter, label)
+        self.addCleanup(hooks.uninstall_named_hook, name, label)
+
+    def _install_config_stats_hooks(self):
+        """Install config hooks to count hook calls.
+
+        """
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.ConfigHooks, hook_name,
+                                       'config.%s' % (hook_name,))
+
+        # The OldConfigHooks are private and need special handling to protect
+        # against recursive tests (tests that run other tests), so we just do
+        # manually what registering them into _builtin_known_hooks will provide
+        # us.
+        self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
+        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
+            self.install_counter_hook(config.OldConfigHooks, hook_name,
+                                      'old_config.%s' % (hook_name,))
+
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
 
@@ -996,6 +1091,8 @@ class TestCase(testtools.TestCase):
         for key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
+        self._preserved_lazy_hooks = hooks._lazy_hooks
+        hooks._lazy_hooks = {}
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
@@ -1033,9 +1130,13 @@ class TestCase(testtools.TestCase):
         # break some locks on purpose and should be taken into account by
         # considering that breaking a lock is just a dirty way of releasing it.
         if len(acquired_locks) != (len(released_locks) + len(broken_locks)):
-            message = ('Different number of acquired and '
-                       'released or broken locks. (%s, %s + %s)' %
-                       (acquired_locks, released_locks, broken_locks))
+            message = (
+                'Different number of acquired and '
+                'released or broken locks.\n'
+                'acquired=%s\n'
+                'released=%s\n'
+                'broken=%s\n' %
+                (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
                 print "Broken test %s: %s" % (self, message)
@@ -1069,7 +1170,7 @@ class TestCase(testtools.TestCase):
 
     def permit_dir(self, name):
         """Permit a directory to be used by this test. See permit_url."""
-        name_transport = _mod_transport.get_transport(name)
+        name_transport = _mod_transport.get_transport_from_path(name)
         self.permit_url(name)
         self.permit_url(name_transport.base)
 
@@ -1154,7 +1255,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
-        t = _mod_transport.get_transport(transport_server.get_url())
+        t = _mod_transport.get_transport_from_url(transport_server.get_url())
         # Some transport servers effectively chroot the backing transport;
         # others like SFTPServer don't - users of the transport can walk up the
         # transport to read the entire backing transport. This wouldn't matter
@@ -1261,11 +1362,15 @@ class TestCase(testtools.TestCase):
                          'st_mtime did not match')
         self.assertEqual(expected.st_ctime, actual.st_ctime,
                          'st_ctime did not match')
-        if sys.platform != 'win32':
+        if sys.platform == 'win32':
             # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
             # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
-            # odd. Regardless we shouldn't actually try to assert anything
-            # about their values
+            # odd. We just force it to always be 0 to avoid any problems.
+            self.assertEqual(0, expected.st_dev)
+            self.assertEqual(0, actual.st_dev)
+            self.assertEqual(0, expected.st_ino)
+            self.assertEqual(0, actual.st_ino)
+        else:
             self.assertEqual(expected.st_dev, actual.st_dev,
                              'st_dev did not match')
             self.assertEqual(expected.st_ino, actual.st_ino,
@@ -1280,20 +1385,20 @@ class TestCase(testtools.TestCase):
                 length, len(obj_with_len), obj_with_len))
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """Assert that `func(*args, **kwargs)` quietly logs a specific error.
         """
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly
         try:
             def capture():
                 orig_log_exception_quietly()
-                captured.append(sys.exc_info())
+                captured.append(sys.exc_info()[1])
             trace.log_exception_quietly = capture
             func(*args, **kwargs)
         finally:
             trace.log_exception_quietly = orig_log_exception_quietly
         self.assertLength(1, captured)
-        err = captured[0][1]
+        err = captured[0]
         self.assertIsInstance(err, exception_class)
         return err
 
@@ -1434,7 +1539,7 @@ class TestCase(testtools.TestCase):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnlessExists(path)
+        self.assertPathExists(path)
         f = file(path, 'rb')
         try:
             s = f.read()
@@ -1450,21 +1555,31 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failUnlessExists(self, path):
+        return self.assertPathExists(path)
+
+    def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failUnlessExists(p)
+                self.assertPathExists(p)
         else:
-            self.failUnless(osutils.lexists(path),path+" does not exist")
+            self.assertTrue(osutils.lexists(path),
+                path + " does not exist")
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failIfExists(self, path):
+        return self.assertPathDoesNotExist(path)
+
+    def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failIfExists(p)
+                self.assertPathDoesNotExist(p)
         else:
-            self.failIf(osutils.lexists(path),path+" exists")
+            self.assertFalse(osutils.lexists(path),
+                path + " exists")
 
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
@@ -1496,7 +1611,8 @@ class TestCase(testtools.TestCase):
         not other callers that go direct to the warning module.
 
         To test that a deprecated method raises an error, do something like
-        this::
+        this (remember that both assertRaises and applyDeprecated delays *args
+        and **kwargs passing)::
 
             self.assertRaises(errors.ReservedId,
                 self.applyDeprecated,
@@ -1584,21 +1700,26 @@ class TestCase(testtools.TestCase):
 
         The file is removed as the test is torn down.
         """
-        self._log_file = StringIO()
+        pseudo_log_file = StringIO()
+        def _get_log_contents_for_weird_testtools_api():
+            return [pseudo_log_file.getvalue().decode(
+                "utf-8", "replace").encode("utf-8")]
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            _get_log_contents_for_weird_testtools_api))
+        self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
     def _finishLogFile(self):
         """Finished with the log file.
 
-        Close the file and delete it, unless setKeepLogfile was called.
+        Close the file and delete it.
         """
         if trace._trace_file:
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
-        # Cache the log result and delete the file on disk
-        self._get_log(False)
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1615,6 +1736,9 @@ class TestCase(testtools.TestCase):
 
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
+
+        :note: This should be used with discretion; you should think about
+        whether it's better to make the code testable without monkey-patching.
 
         :param obj: The object that will be mutated.
 
@@ -1646,6 +1770,26 @@ class TestCase(testtools.TestCase):
         self.addCleanup(osutils.set_or_unset_env, name, value)
         return value
 
+    def recordCalls(self, obj, attr_name):
+        """Monkeypatch in a wrapper that will record calls.
+
+        The monkeypatch is automatically removed when the test concludes.
+
+        :param obj: The namespace holding the reference to be replaced;
+            typically a module, class, or object.
+        :param attr_name: A string for the name of the attribute to 
+            patch.
+        :returns: A list that will be extended with one item every time the
+            function is called, with a tuple of (args, kwargs).
+        """
+        calls = []
+
+        def decorator(*args, **kwargs):
+            calls.append((args, kwargs))
+            return orig(*args, **kwargs)
+        orig = self.overrideAttr(obj, attr_name, decorator)
+        return calls
+
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
             self.overrideEnv(name, value)
@@ -1653,10 +1797,36 @@ class TestCase(testtools.TestCase):
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
+        self._preserved_hooks.clear()
+        bzrlib.hooks._lazy_hooks = self._preserved_lazy_hooks
+        self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
-        """This test has failed for some known reason."""
-        raise KnownFailure(reason)
+        """Declare that this test fails for a known reason
+
+        Tests that are known to fail should generally be using expectedFailure
+        with an appropriate reverse assertion if a change could cause the test
+        to start passing. Conversely if the test has no immediate prospect of
+        succeeding then using skip is more suitable.
+
+        When this method is called while an exception is being handled, that
+        traceback will be used, otherwise a new exception will be thrown to
+        provide one but won't be reported.
+        """
+        self._add_reason(reason)
+        try:
+            exc_info = sys.exc_info()
+            if exc_info != (None, None, None):
+                self._report_traceback(exc_info)
+            else:
+                try:
+                    raise self.failureException(reason)
+                except self.failureException:
+                    exc_info = sys.exc_info()
+            # GZ 02-08-2011: Maybe cleanup this err.exc_info attribute too?
+            raise testtools.testcase._ExpectedFailure(exc_info)
+        finally:
+            del exc_info
 
     def _suppress_log(self):
         """Remove the log info from details."""
@@ -1749,41 +1919,6 @@ class TestCase(testtools.TestCase):
 
     def log(self, *args):
         trace.mutter(*args)
-
-    def _get_log(self, keep_log_file=False):
-        """Internal helper to get the log from bzrlib.trace for this test.
-
-        Please use self.getDetails, or self.get_log to access this in test case
-        code.
-
-        :param keep_log_file: When True, if the log is still a file on disk
-            leave it as a file on disk. When False, if the log is still a file
-            on disk, the log file is deleted and the log preserved as
-            self._log_contents.
-        :return: A string containing the log.
-        """
-        if self._log_contents is not None:
-            try:
-                self._log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = self._log_contents.decode('utf8', 'replace')
-                self._log_contents = unicodestr.encode('utf8')
-            return self._log_contents
-        if self._log_file is not None:
-            log_contents = self._log_file.getvalue()
-            try:
-                log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = log_contents.decode('utf8', 'replace')
-                log_contents = unicodestr.encode('utf8')
-            if not keep_log_file:
-                self._log_file = None
-                # Permit multiple calls to get_log until we clean it up in
-                # finishLogFile
-                self._log_contents = log_contents
-            return log_contents
-        else:
-            return "No log file content."
 
     def get_log(self):
         """Get a unicode string containing the log from bzrlib.trace.
@@ -1990,7 +2125,7 @@ class TestCase(testtools.TestCase):
     def start_bzr_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
-                             allow_plugins=False):
+                             allow_plugins=False, stderr=subprocess.PIPE):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -2008,6 +2143,9 @@ class TestCase(testtools.TestCase):
         :param skip_if_plan_to_signal: raise TestSkipped when true and system
             doesn't support signalling subprocesses.
         :param allow_plugins: If False (default) pass --no-plugins to bzr.
+        :param stderr: file to use for the subprocess's stderr.  Valid values
+            are those valid for the stderr argument of `subprocess.Popen`.
+            Default value is ``subprocess.PIPE``.
 
         :returns: Popen object for the started process.
         """
@@ -2039,6 +2177,9 @@ class TestCase(testtools.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
+            # Include the subprocess's log file in the test details, in case
+            # the test fails due to an error in the subprocess.
+            self._add_subprocess_log(trace._get_bzr_log_filename())
             command = [sys.executable]
             # frozen executables don't need the path to bzr
             if getattr(sys, "frozen", None) is None:
@@ -2048,13 +2189,40 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+                                  stderr=stderr)
         finally:
             restore_environment()
             if cwd is not None:
                 os.chdir(cwd)
 
         return process
+
+    def _add_subprocess_log(self, log_file_path):
+        if len(self._log_files) == 0:
+            # Register an addCleanup func.  We do this on the first call to
+            # _add_subprocess_log rather than in TestCase.setUp so that this
+            # addCleanup is registered after any cleanups for tempdirs that
+            # subclasses might create, which will probably remove the log file
+            # we want to read.
+            self.addCleanup(self._subprocess_log_cleanup)
+        # self._log_files is a set, so if a log file is reused we won't grab it
+        # twice.
+        self._log_files.add(log_file_path)
+
+    def _subprocess_log_cleanup(self):
+        for count, log_file_path in enumerate(self._log_files):
+            # We use buffer_now=True to avoid holding the file open beyond
+            # the life of this function, which might interfere with e.g.
+            # cleaning tempdirs on Windows.
+            # XXX: Testtools 0.9.5 doesn't have the content_from_file helper
+            #detail_content = content.content_from_file(
+            #    log_file_path, buffer_now=True)
+            with open(log_file_path, 'rb') as log_file:
+                log_file_bytes = log_file.read()
+            detail_content = content.Content(content.ContentType("text",
+                "plain", {"charset": "utf8"}), lambda: [log_file_bytes])
+            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+                detail_content)
 
     def _popen(self, *args, **kwargs):
         """Place a call to Popen.
@@ -2104,18 +2272,20 @@ class TestCase(testtools.TestCase):
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
-    def check_inventory_shape(self, inv, shape):
-        """Compare an inventory to a list of expected names.
+    def check_tree_shape(self, tree, shape):
+        """Compare a tree to a list of expected names.
 
         Fail if they are not precisely equal.
         """
         extras = []
         shape = list(shape)             # copy
-        for path, ie in inv.entries():
+        for path, ie in tree.iter_entries_by_dir():
             name = path.replace('\\', '/')
             if ie.kind == 'directory':
                 name = name + '/'
-            if name in shape:
+            if name == "/":
+                pass # ignore root entry
+            elif name in shape:
                 shape.remove(name)
             else:
                 extras.append(name)
@@ -2211,20 +2381,21 @@ class CapturedCall(object):
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
-    Tests that need disk resources should derive from TestCaseWithTransport.
+    Tests that need disk resources should derive from TestCaseInTempDir
+    orTestCaseWithTransport.
 
     TestCaseWithMemoryTransport sets the TEST_ROOT variable for all bzr tests.
 
-    For TestCaseWithMemoryTransport the test_home_dir is set to the name of
+    For TestCaseWithMemoryTransport the ``test_home_dir`` is set to the name of
     a directory which does not exist. This serves to help ensure test isolation
-    is preserved. test_dir is set to the TEST_ROOT, as is cwd, because they
-    must exist. However, TestCaseWithMemoryTransport does not offer local
-    file defaults for the transport in tests, nor does it obey the command line
+    is preserved. ``test_dir`` is set to the TEST_ROOT, as is cwd, because they
+    must exist. However, TestCaseWithMemoryTransport does not offer local file
+    defaults for the transport in tests, nor does it obey the command line
     override, so tests that accidentally write to the common directory should
     be rare.
 
-    :cvar TEST_ROOT: Directory containing all temporary directories, plus
-    a .bzr directory that stops us ascending higher into the filesystem.
+    :cvar TEST_ROOT: Directory containing all temporary directories, plus a
+        ``.bzr`` directory that stops us ascending higher into the filesystem.
     """
 
     TEST_ROOT = None
@@ -2248,7 +2419,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = _mod_transport.get_transport(self.get_url(relpath))
+        t = _mod_transport.get_transport_from_url(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
@@ -2387,7 +2558,11 @@ class TestCaseWithMemoryTransport(TestCase):
         real branch.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        bzrdir.BzrDir.create_standalone_workingtree(root)
+        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        # Hack for speed: remember the raw bytes of the dirstate file so that
+        # we don't need to re-open the wt to check it hasn't changed.
+        TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
+            wt.control_transport.get_bytes('dirstate'))
 
     def _check_safety_net(self):
         """Check that the safety .bzr directory have not been touched.
@@ -2396,10 +2571,10 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        self.permit_url(_mod_transport.get_transport(root).base)
-        wt = workingtree.WorkingTree.open(root)
-        last_rev = wt.last_revision()
-        if last_rev != 'null:':
+        t = _mod_transport.get_transport(root)
+        self.permit_url(t.base)
+        if (t.get_bytes('.bzr/checkout/dirstate') != 
+                TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE):
             # The current test have modified the /bzr directory, we need to
             # recreate a new one or all the followng tests will fail.
             # If you need to inspect its content uncomment the following line
@@ -2475,7 +2650,7 @@ class TestCaseWithMemoryTransport(TestCase):
             backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, backing_server)
-        remote_transport = _mod_transport.get_transport(smart_server.get_url()
+        remote_transport = _mod_transport.get_transport_from_url(smart_server.get_url()
                                                    ).clone(path)
         return remote_transport
 
@@ -2498,14 +2673,15 @@ class TestCaseWithMemoryTransport(TestCase):
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         # Ensure that ConnectedTransport doesn't leak sockets
-        def get_transport_with_cleanup(*args, **kwargs):
-            t = orig_get_transport(*args, **kwargs)
+        def get_transport_from_url_with_cleanup(*args, **kwargs):
+            t = orig_get_transport_from_url(*args, **kwargs)
             if isinstance(t, _mod_transport.ConnectedTransport):
                 self.addCleanup(t.disconnect)
             return t
 
-        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
-                                               get_transport_with_cleanup)
+        orig_get_transport_from_url = self.overrideAttr(
+            _mod_transport, 'get_transport_from_url',
+            get_transport_from_url_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
@@ -2553,6 +2729,12 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     """
 
     OVERRIDE_PYTHON = 'python'
+
+    def setUp(self):
+        super(TestCaseInTempDir, self).setUp()
+        # Remove the protection set in isolated_environ, we have a proper
+        # access to disk resources now.
+        self.overrideEnv('BZR_LOG', None)
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
@@ -3450,6 +3632,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
+
+#   -Econfig_stats          Will collect statistics using addDetail
 selftest_debug_flags = set()
 
 
@@ -3707,6 +3891,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_repository',
         'bzrlib.tests.per_repository_chk',
         'bzrlib.tests.per_repository_reference',
+        'bzrlib.tests.per_repository_vf',
         'bzrlib.tests.per_uifactory',
         'bzrlib.tests.per_versionedfile',
         'bzrlib.tests.per_workingtree',
@@ -3746,12 +3931,12 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_commit_merge',
         'bzrlib.tests.test_config',
         'bzrlib.tests.test_conflicts',
+        'bzrlib.tests.test_controldir',
         'bzrlib.tests.test_counted_lock',
         'bzrlib.tests.test_crash',
         'bzrlib.tests.test_decorators',
         'bzrlib.tests.test_delta',
         'bzrlib.tests.test_debug',
-        'bzrlib.tests.test_deprecated_graph',
         'bzrlib.tests.test_diff',
         'bzrlib.tests.test_directory_service',
         'bzrlib.tests.test_dirstate',
@@ -3759,11 +3944,14 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_eol_filters',
         'bzrlib.tests.test_errors',
         'bzrlib.tests.test_export',
+        'bzrlib.tests.test_export_pot',
         'bzrlib.tests.test_extract',
+        'bzrlib.tests.test_features',
         'bzrlib.tests.test_fetch',
         'bzrlib.tests.test_fixtures',
         'bzrlib.tests.test_fifo_cache',
         'bzrlib.tests.test_filters',
+        'bzrlib.tests.test_filter_tree',
         'bzrlib.tests.test_ftp_transport',
         'bzrlib.tests.test_foreign',
         'bzrlib.tests.test_generate_docs',
@@ -3778,6 +3966,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_http',
         'bzrlib.tests.test_http_response',
         'bzrlib.tests.test_https_ca_bundle',
+        'bzrlib.tests.test_i18n',
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
         'bzrlib.tests.test_index',
@@ -3858,6 +4047,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_testament',
         'bzrlib.tests.test_textfile',
         'bzrlib.tests.test_textmerge',
+        'bzrlib.tests.test_cethread',
         'bzrlib.tests.test_timestamp',
         'bzrlib.tests.test_trace',
         'bzrlib.tests.test_transactions',
@@ -3874,6 +4064,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_upgrade',
         'bzrlib.tests.test_upgrade_stacked',
         'bzrlib.tests.test_urlutils',
+        'bzrlib.tests.test_utextwrap',
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
@@ -3896,7 +4087,6 @@ def _test_suite_modules_to_doctest():
         'bzrlib',
         'bzrlib.branchbuilder',
         'bzrlib.decorators',
-        'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
         'bzrlib.lockdir',
@@ -4158,6 +4348,7 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         the module is available.
     """
 
+    from bzrlib.tests.features import ModuleAvailableFeature
     py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
         ('python', {'module': py_module}),
@@ -4204,158 +4395,6 @@ def _rmtree_temp_dir(dirname, test_id=None):
                          % (os.path.basename(dirname), printable_e))
 
 
-class Feature(object):
-    """An operating system Feature."""
-
-    def __init__(self):
-        self._available = None
-
-    def available(self):
-        """Is the feature available?
-
-        :return: True if the feature is available.
-        """
-        if self._available is None:
-            self._available = self._probe()
-        return self._available
-
-    def _probe(self):
-        """Implement this method in concrete features.
-
-        :return: True if the feature is available.
-        """
-        raise NotImplementedError
-
-    def __str__(self):
-        if getattr(self, 'feature_name', None):
-            return self.feature_name()
-        return self.__class__.__name__
-
-
-class _SymlinkFeature(Feature):
-
-    def _probe(self):
-        return osutils.has_symlinks()
-
-    def feature_name(self):
-        return 'symlinks'
-
-SymlinkFeature = _SymlinkFeature()
-
-
-class _HardlinkFeature(Feature):
-
-    def _probe(self):
-        return osutils.has_hardlinks()
-
-    def feature_name(self):
-        return 'hardlinks'
-
-HardlinkFeature = _HardlinkFeature()
-
-
-class _OsFifoFeature(Feature):
-
-    def _probe(self):
-        return getattr(os, 'mkfifo', None)
-
-    def feature_name(self):
-        return 'filesystem fifos'
-
-OsFifoFeature = _OsFifoFeature()
-
-
-class _UnicodeFilenameFeature(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            # Check for character combinations unlikely to be covered by any
-            # single non-unicode encoding. We use the characters
-            # - greek small letter alpha (U+03B1) and
-            # - braille pattern dots-123456 (U+283F).
-            os.stat(u'\u03b1\u283f')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilenameFeature = _UnicodeFilenameFeature()
-
-
-class _CompatabilityThunkFeature(Feature):
-    """This feature is just a thunk to another feature.
-
-    It issues a deprecation warning if it is accessed, to let you know that you
-    should really use a different feature.
-    """
-
-    def __init__(self, dep_version, module, name,
-                 replacement_name, replacement_module=None):
-        super(_CompatabilityThunkFeature, self).__init__()
-        self._module = module
-        if replacement_module is None:
-            replacement_module = module
-        self._replacement_module = replacement_module
-        self._name = name
-        self._replacement_name = replacement_name
-        self._dep_version = dep_version
-        self._feature = None
-
-    def _ensure(self):
-        if self._feature is None:
-            depr_msg = self._dep_version % ('%s.%s'
-                                            % (self._module, self._name))
-            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
-                                               self._replacement_name)
-            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
-            # Import the new feature and use it as a replacement for the
-            # deprecated one.
-            self._feature = pyutils.get_named_object(
-                self._replacement_module, self._replacement_name)
-
-    def _probe(self):
-        self._ensure()
-        return self._feature._probe()
-
-
-class ModuleAvailableFeature(Feature):
-    """This is a feature than describes a module we want to be available.
-
-    Declare the name of the module in __init__(), and then after probing, the
-    module will be available as 'self.module'.
-
-    :ivar module: The module if it is available, else None.
-    """
-
-    def __init__(self, module_name):
-        super(ModuleAvailableFeature, self).__init__()
-        self.module_name = module_name
-
-    def _probe(self):
-        try:
-            exec 'import %s' % (self.module_name)
-            self._module = sys.modules[self.module_name]
-            return True
-        except ImportError:
-            return False
-
-    @property
-    def module(self):
-        if self.available(): # Make sure the probe has been done
-            return self._module
-        return None
-
-    def feature_name(self):
-        return self.module_name
-
-
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
     Return first successfull match.
@@ -4389,165 +4428,6 @@ def probe_bad_non_ascii(encoding):
     return None
 
 
-class _HTTPSServerFeature(Feature):
-    """Some tests want an https Server, check if one is available.
-
-    Right now, the only way this is available is under python2.6 which provides
-    an ssl module.
-    """
-
-    def _probe(self):
-        try:
-            import ssl
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'HTTPSServer'
-
-
-HTTPSServerFeature = _HTTPSServerFeature()
-
-
-class _UnicodeFilename(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            os.stat(u'\u03b1')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilename = _UnicodeFilename()
-
-
-class _ByteStringNamedFilesystem(Feature):
-    """Is the filesystem based on bytes?"""
-
-    def _probe(self):
-        if os.name == "posix":
-            return True
-        return False
-
-ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
-
-
-class _UTF8Filesystem(Feature):
-    """Is the filesystem UTF-8?"""
-
-    def _probe(self):
-        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
-            return True
-        return False
-
-UTF8Filesystem = _UTF8Filesystem()
-
-
-class _BreakinFeature(Feature):
-    """Does this platform support the breakin feature?"""
-
-    def _probe(self):
-        from bzrlib import breakin
-        if breakin.determine_signal() is None:
-            return False
-        if sys.platform == 'win32':
-            # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
-            # We trigger SIGBREAK via a Console api so we need ctypes to
-            # access the function
-            try:
-                import ctypes
-            except OSError:
-                return False
-        return True
-
-    def feature_name(self):
-        return "SIGQUIT or SIGBREAK w/ctypes on win32"
-
-
-BreakinFeature = _BreakinFeature()
-
-
-class _CaseInsCasePresFilenameFeature(Feature):
-    """Is the file-system case insensitive, but case-preserving?"""
-
-    def _probe(self):
-        fileno, name = tempfile.mkstemp(prefix='MixedCase')
-        try:
-            # first check truly case-preserving for created files, then check
-            # case insensitive when opening existing files.
-            name = osutils.normpath(name)
-            base, rel = osutils.split(name)
-            found_rel = osutils.canonical_relpath(base, name)
-            return (found_rel == rel
-                    and os.path.isfile(name.upper())
-                    and os.path.isfile(name.lower()))
-        finally:
-            os.close(fileno)
-            os.remove(name)
-
-    def feature_name(self):
-        return "case-insensitive case-preserving filesystem"
-
-CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
-
-
-class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlying filesystem is case-insensitive but *not* case
-    preserving.
-    """
-    # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
-    # more likely to be case preserving, so this case is rare.
-
-    def _probe(self):
-        if CaseInsCasePresFilenameFeature.available():
-            return False
-
-        if TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
-            TestCaseWithMemoryTransport.TEST_ROOT = root
-        else:
-            root = TestCaseWithMemoryTransport.TEST_ROOT
-        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-            dir=root)
-        name_a = osutils.pathjoin(tdir, 'a')
-        name_A = osutils.pathjoin(tdir, 'A')
-        os.mkdir(name_a)
-        result = osutils.isdir(name_A)
-        _rmtree_temp_dir(tdir)
-        return result
-
-    def feature_name(self):
-        return 'case-insensitive filesystem'
-
-CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
-
-
-class _CaseSensitiveFilesystemFeature(Feature):
-
-    def _probe(self):
-        if CaseInsCasePresFilenameFeature.available():
-            return False
-        elif CaseInsensitiveFilesystemFeature.available():
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'case-sensitive filesystem'
-
-# new coding style is for feature instances to be lowercase
-case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
-
-
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
@@ -4571,26 +4451,9 @@ try:
 except ImportError:
     pass
 
-class _PosixPermissionsFeature(Feature):
 
-    def _probe(self):
-        def has_perms():
-            # create temporary file and check if specified perms are maintained.
-            import tempfile
-
-            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
-            fd, name = f
-            os.close(fd)
-            os.chmod(name, write_perms)
-
-            read_perms = os.stat(name).st_mode & 0777
-            os.unlink(name)
-            return (write_perms == read_perms)
-
-        return (os.name == 'posix') and has_perms()
-
-    def feature_name(self):
-        return 'POSIX permissions support'
-
-posix_permissions_feature = _PosixPermissionsFeature()
+@deprecated_function(deprecated_in((2, 5, 0)))
+def ModuleAvailableFeature(name):
+    from bzrlib.tests import features
+    return features.ModuleAvailableFeature(name)
+    

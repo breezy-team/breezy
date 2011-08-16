@@ -35,6 +35,9 @@ from bzrlib.inventory import (
 
 from bzrlib.tests.per_inventory import TestCaseWithInventory
 
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
 
 
 class TestInventory(TestCaseWithInventory):
@@ -149,7 +152,10 @@ class TestInventoryReads(TestInventory):
         inv = self.inv_to_test_inv(inv)
         self.assertEqual(inv.path2id('src'), 'src-id')
         self.assertEqual(inv.path2id('src/bye.c'), 'bye-id')
-        self.assertTrue('src-id' in inv)
+        self.assertTrue(
+            self.applyDeprecated(
+                deprecated_in((2, 4, 0)),
+                inv.__contains__, 'src-id'))
 
     def test_non_directory_children(self):
         """Test path2id when a parent directory has no children"""

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 
 from bzrlib.branch import (
     Branch,
-    InterBranch,
     )
 from bzrlib.commands import Command, Option
 from bzrlib.repository import Repository
@@ -29,7 +28,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     errors,
-    osutils,
     registry,
     transform,
     )
@@ -316,7 +314,7 @@ class cmd_dpush(Command):
         target_branch.lock_write()
         try:
             try:
-                push_result = source_branch.lossy_push(target_branch)
+                push_result = source_branch.push(target_branch, lossy=True)
             except errors.LossyPushToSameVCS:
                 raise BzrCommandError("%r and %r are in the same VCS, lossy "
                     "push not necessary. Please use regular push." %
@@ -339,23 +337,3 @@ class cmd_dpush(Command):
             push_result.report(self.outf)
         finally:
             target_branch.unlock()
-
-
-class InterToForeignBranch(InterBranch):
-
-    def lossy_push(self, stop_revision=None):
-        """Push deltas into another branch.
-
-        :note: This does not, like push, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param target: Target branch
-        :param stop_revision: Revision to push, defaults to last revision.
-        :return: BranchPushResult with an extra member revidmap: 
-            A dictionary mapping revision ids from the target branch 
-            to new revision ids in the target branch, for each 
-            revision that was pushed.
-        """
-        raise NotImplementedError(self.lossy_push)

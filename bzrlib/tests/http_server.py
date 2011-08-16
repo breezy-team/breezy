@@ -128,32 +128,42 @@ Message: %(message)s.
     def _handle_one_request(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
 
-    _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
+    _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)?$')
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
 
-    def parse_ranges(self, ranges_header):
-        """Parse the range header value and returns ranges and tail.
+    def _parse_ranges(self, ranges_header, file_size):
+        """Parse the range header value and returns ranges.
 
-        RFC2616 14.35 says that syntactically invalid range
-        specifiers MUST be ignored. In that case, we return 0 for
-        tail and [] for ranges.
+        RFC2616 14.35 says that syntactically invalid range specifiers MUST be
+        ignored. In that case, we return None instead of a range list.
+
+        :param ranges_header: The 'Range' header value.
+
+        :param file_size: The size of the requested file.
+
+        :return: A list of (start, end) tuples or None if some invalid range
+            specifier is encountered.
         """
-        tail = 0
-        ranges = []
         if not ranges_header.startswith('bytes='):
             # Syntactically invalid header
-            return 0, []
+            return None
 
+        tail = None
+        ranges = []
         ranges_header = ranges_header[len('bytes='):]
         for range_str in ranges_header.split(','):
-            # FIXME: RFC2616 says end is optional and default to file_size
             range_match = self._range_regexp.match(range_str)
             if range_match is not None:
                 start = int(range_match.group('start'))
-                end = int(range_match.group('end'))
+                end_match = range_match.group('end')
+                if end_match is None:
+                    # RFC2616 says end is optional and default to file_size
+                    end = file_size
+                else:
+                    end = int(end_match)
                 if start > end:
                     # Syntactically invalid range
-                    return 0, []
+                    return None
                 ranges.append((start, end))
             else:
                 tail_match = self._tail_regexp.match(range_str)
@@ -161,8 +171,21 @@ Message: %(message)s.
                     tail = int(tail_match.group('tail'))
                 else:
                     # Syntactically invalid range
-                    return 0, []
-        return tail, ranges
+                    return None
+        if tail is not None:
+            # Normalize tail into ranges
+            ranges.append((max(0, file_size - tail), file_size))
+
+        checked_ranges = []
+        for start, end in ranges:
+            if start >= file_size:
+                # RFC2616 14.35, ranges are invalid if start >= file_size
+                return None
+            # RFC2616 14.35, end values should be truncated
+            # to file_size -1 if they exceed it
+            end = min(end, file_size - 1)
+            checked_ranges.append((start, end))
+        return checked_ranges
 
     def _header_line_length(self, keyword, value):
         header_line = '%s: %s\r\n' % (keyword, value)
@@ -258,29 +281,8 @@ Message: %(message)s.
             return
 
         file_size = os.fstat(f.fileno())[6]
-        tail, ranges = self.parse_ranges(ranges_header_value)
-        # Normalize tail into ranges
-        if tail != 0:
-            ranges.append((file_size - tail, file_size))
-
-        self._satisfiable_ranges = True
-        if len(ranges) == 0:
-            self._satisfiable_ranges = False
-        else:
-            def check_range(range_specifier):
-                start, end = range_specifier
-                # RFC2616 14.35, ranges are invalid if start >= file_size
-                if start >= file_size:
-                    self._satisfiable_ranges = False # Side-effect !
-                    return 0, 0
-                # RFC2616 14.35, end values should be truncated
-                # to file_size -1 if they exceed it
-                end = min(end, file_size - 1)
-                return start, end
-
-            ranges = map(check_range, ranges)
-
-        if not self._satisfiable_ranges:
+        ranges = self._parse_ranges(ranges_header_value, file_size)
+        if not ranges:
             # RFC2616 14.16 and 14.35 says that when a server
             # encounters unsatisfiable range specifiers, it
             # SHOULD return a 416.

@@ -27,34 +27,10 @@ from bzrlib.tests import (
     TestNotApplicable,
     TestSkipped,
     )
+from bzrlib.tests.matchers import MatchesAncestry
 from bzrlib.tests.per_interrepository import (
     TestCaseWithInterRepository,
     )
-
-
-def check_old_format_lock_error(repository_format):
-    """Potentially ignore LockError on old formats.
-
-    On win32, with the old OS locks, we get a failure of double-lock when
-    we open a object in 2 objects and try to lock both.
-
-    On new formats, LockError would be invalid, but for old formats
-    this was not supported on Win32.
-    """
-    if sys.platform != 'win32':
-        raise
-
-    description = repository_format.get_format_description()
-    if description in ("Repository format 4",
-                       "Weave repository format 5",
-                       "Weave repository format 6"):
-        # jam 20060701
-        # win32 OS locks are not re-entrant. So one process cannot
-        # open the same repository twice and lock them both.
-        raise TestSkipped('%s on win32 cannot open the same'
-                          ' repository twice in different objects'
-                          % description)
-    raise
 
 
 def check_repo_format_for_funky_id_on_win32(repo):
@@ -138,7 +114,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             find_ghosts=False)
         self.callDeprecated(
             ['search_missing_revision_ids(revision_id=...) was deprecated in '
-             '2.3.  Use revision_ids=[...] instead.'],
+             '2.4.  Use revision_ids=[...] instead.'],
             self.assertRaises, errors.NoSuchRevision,
             repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
             find_ghosts=False)
@@ -153,6 +129,17 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             repo_a, revision_ids=['rev1'])
         self.assertEqual(set(['rev1']), result.get_keys())
         self.assertEqual(('search', set(['rev1']), set([NULL_REVISION]), 1),
+            result.get_recipe())
+
+    def test_search_missing_revision_ids_limit(self):
+        # The limit= argument makes fetch() limit
+        # the results to the first X topo-sorted revisions.
+        repo_b = self.make_to_repository('rev1_only')
+        repo_a = self.bzrdir.open_repository()
+        # check the test will be valid
+        self.assertFalse(repo_b.has_revision('rev2'))
+        result = repo_b.search_missing_revision_ids(repo_a, limit=1)
+        self.assertEqual(('search', set(['rev1']), set(['null:']), 1),
             result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
@@ -214,5 +201,5 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         rev = missing_ghost.get_revision('ghost')
         inv = missing_ghost.get_inventory('ghost')
         # rev must not be corrupt now
-        self.assertEqual([None, 'ghost', 'references', 'tip'],
-            missing_ghost.get_ancestry('tip'))
+        self.assertThat(['ghost', 'references', 'tip'],
+            MatchesAncestry(missing_ghost, 'tip'))

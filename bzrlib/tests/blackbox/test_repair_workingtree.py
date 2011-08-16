@@ -33,7 +33,7 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         try:
             dirstate = tree.current_dirstate()
             dirstate_path = dirstate._filename
-            self.failUnlessExists(dirstate_path)
+            self.assertPathExists(dirstate_path)
         finally:
             tree.unlock()
         # We have to have the tree unlocked at this point, so we can safely
@@ -72,7 +72,7 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         self.run_bzr('repair-workingtree -d tree --force')
         # This requires the tree has reloaded the working state
         self.assertIs(None, tree.path2id('alt_dir'))
-        self.failUnlessExists('tree/alt_dir')
+        self.assertPathExists('tree/alt_dir')
 
     def test_repair_corrupted_dirstate(self):
         tree = self.make_initial_tree()

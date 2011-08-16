@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,10 +44,10 @@ from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
     errors,
-    versionedfile,
     )
 """)
 from bzrlib import (
+    errors,
     lru_cache,
     osutils,
     registry,

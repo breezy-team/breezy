@@ -23,7 +23,6 @@ from bzrlib import (
     revision,
     trace,
     )
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -64,9 +63,6 @@ class DictParentsProvider(object):
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
-@deprecated_function(deprecated_in((1, 16, 0)))
-def _StackedParentsProvider(*args, **kwargs):
-    return StackedParentsProvider(*args, **kwargs)
 
 class StackedParentsProvider(object):
     """A parents provider which stacks (or unions) multiple providers.
@@ -183,6 +179,23 @@ class CachingParentsProvider(object):
             self.missing_keys.add(key)
 
 
+class CallableToParentsProviderAdapter(object):
+    """A parents provider that adapts any callable to the parents provider API.
+
+    i.e. it accepts calls to self.get_parent_map and relays them to the
+    callable it was constructed with.
+    """
+
+    def __init__(self, a_callable):
+        self.callable = a_callable
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.callable)
+
+    def get_parent_map(self, keys):
+        return self.callable(keys)
+
+
 class Graph(object):
     """Provide incremental access to revision graphs.
 
@@ -237,7 +250,8 @@ class Graph(object):
         common ancestor of all border ancestors, because this shows that it
         cannot be a descendant of any border ancestor.
 
-        The scaling of this operation should be proportional to
+        The scaling of this operation should be proportional to:
+
         1. The number of uncommon ancestors
         2. The number of border ancestors
         3. The length of the shortest path between a border ancestor and an
@@ -375,8 +389,8 @@ class Graph(object):
 
         :param unique_revision: The revision_id whose ancestry we are
             interested in.
-            XXX: Would this API be better if we allowed multiple revisions on
-                 to be searched here?
+            (XXX: Would this API be better if we allowed multiple revisions on
+            to be searched here?)
         :param common_revisions: Revision_ids of ancestries to exclude.
         :return: A set of revisions in the ancestry of unique_revision
         """
@@ -1537,13 +1551,20 @@ class _BreadthFirstSearcher(object):
 
 
 class AbstractSearchResult(object):
+    """The result of a search, describing a set of keys.
+    
+    Search results are typically used as the 'fetch_spec' parameter when
+    fetching revisions.
+
+    :seealso: AbstractSearch
+    """
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
 
         The recipe allows reconstruction of the same results at a later date.
 
-        :return: A tuple of (search_kind_str, *details).  The details vary by
+        :return: A tuple of `(search_kind_str, *details)`.  The details vary by
             kind of search result.
         """
         raise NotImplementedError(self.get_recipe)
@@ -1575,15 +1596,20 @@ class AbstractSearchResult(object):
 
 
 class AbstractSearch(object):
+    """A search that can be executed, producing a search result.
 
-    def get_search_result(self):
+    :seealso: AbstractSearchResult
+    """
+
+    def execute(self):
         """Construct a network-ready search result from this search description.
 
         This may take some time to search repositories, etc.
 
-        :return: A search result.
+        :return: A search result (an object that implements
+            AbstractSearchResult's API).
         """
-        raise NotImplementedError(self.get_search_result)
+        raise NotImplementedError(self.execute)
 
 
 class SearchResult(AbstractSearchResult):
@@ -1705,7 +1731,8 @@ class PendingAncestryResult(AbstractSearchResult):
 
     def __repr__(self):
         if len(self.heads) > 5:
-            heads_repr = repr(list(self.heads)[:5] + ', ...]')
+            heads_repr = repr(list(self.heads)[:5])[:-1]
+            heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
         return '<%s heads:%s repo:%r>' % (
@@ -1813,7 +1840,7 @@ class EverythingNotInOther(AbstractSearch):
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
 
-    def get_search_result(self):
+    def execute(self):
         return self.to_repo.search_missing_revision_ids(
             self.from_repo, find_ghosts=self.find_ghosts)
 
@@ -1822,7 +1849,7 @@ class NotInOtherForRevs(AbstractSearch):
     """Find all revisions missing in one repo for a some specific heads."""
 
     def __init__(self, to_repo, from_repo, required_ids, if_present_ids=None,
-            find_ghosts=False):
+            find_ghosts=False, limit=None):
         """Constructor.
 
         :param required_ids: revision IDs of heads that must be found, or else
@@ -1832,12 +1859,14 @@ class NotInOtherForRevs(AbstractSearch):
         :param if_present_ids: revision IDs of heads that may be absent in the
             source repository.  If present, then their ancestry not already
             found in other will be included in the search result.
+        :param limit: maximum number of revisions to fetch
         """
         self.to_repo = to_repo
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
         self.required_ids = required_ids
         self.if_present_ids = if_present_ids
+        self.limit = limit
 
     def __repr__(self):
         if len(self.required_ids) > 5:
@@ -1849,14 +1878,17 @@ class NotInOtherForRevs(AbstractSearch):
         else:
             ifp_revs_repr = repr(self.if_present_ids)
 
-        return "<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r>" % (
-            self.__class__.__name__, self.from_repo, self.to_repo,
-            self.find_ghosts, reqd_revs_repr, ifp_revs_repr)
+        return ("<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r"
+                "limit:%r>") % (
+                self.__class__.__name__, self.from_repo, self.to_repo,
+                self.find_ghosts, reqd_revs_repr, ifp_revs_repr,
+                self.limit)
 
-    def get_search_result(self):
+    def execute(self):
         return self.to_repo.search_missing_revision_ids(
             self.from_repo, revision_ids=self.required_ids,
-            if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts)
+            if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts,
+            limit=self.limit)
 
 
 def collapse_linear_regions(parent_map):
@@ -1948,7 +1980,10 @@ class GraphThunkIdsToKeys(object):
         return set([h[0] for h in head_keys])
 
     def merge_sort(self, tip_revision):
-        return self._graph.merge_sort((tip_revision,))
+        nodes = self._graph.merge_sort((tip_revision,))
+        for node in nodes:
+            node.key = node.key[0]
+        return nodes
 
     def add_node(self, revision, parents):
         self._graph.add_node((revision,), [(p,) for p in parents])

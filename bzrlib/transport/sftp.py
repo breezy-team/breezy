@@ -31,8 +31,6 @@ import random
 import stat
 import sys
 import time
-import urllib
-import urlparse
 import warnings
 
 from bzrlib import (
@@ -42,22 +40,17 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.errors import (FileExists,
-                           NoSuchFile, PathNotChild,
+                           NoSuchFile,
                            TransportError,
                            LockError,
                            PathError,
                            ParamikoNotPresent,
                            )
-from bzrlib.osutils import pathjoin, fancy_rename, getcwd
-from bzrlib.symbol_versioning import (
-        deprecated_function,
-        )
+from bzrlib.osutils import fancy_rename
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     FileFileStream,
     _file_streams,
-    local,
-    Server,
     ssh,
     ConnectedTransport,
     )
@@ -113,12 +106,6 @@ class SFTPLock(object):
             self.lock_file = transport._sftp_open_exclusive(abspath)
         except FileExists:
             raise LockError('File %r already locked' % (self.path,))
-
-    def __del__(self):
-        """Should this warn, or actually try to cleanup?"""
-        if self.lock_file:
-            warning("SFTPLock %r not explicitly unlocked" % (self.path,))
-            self.unlock()
 
     def unlock(self):
         if not self.lock_file:
@@ -281,6 +268,8 @@ class _SFTPReadvHelper(object):
                     buffered = buffered[buffered_offset:]
                     buffered_data = [buffered]
                     buffered_len = len(buffered)
+        # now that the data stream is done, close the handle
+        fp.close()
         if buffered_len:
             buffered = ''.join(buffered_data)
             del buffered_data[:]
@@ -341,17 +330,12 @@ class SFTPTransport(ConnectedTransport):
     # up the request itself, rather than us having to worry about it
     _max_request_size = 32768
 
-    def __init__(self, base, _from_transport=None):
-        super(SFTPTransport, self).__init__(base,
-                                            _from_transport=_from_transport)
-
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
 
         :param relpath: is a urlencoded string.
         """
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = self._combine_paths(self._path, relative)
+        remote_path = self._parsed_url.clone(relpath).path
         # the initial slash should be removed from the path, and treated as a
         # homedir relative path (the path begins with a double slash if it is
         # absolute).  see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
@@ -376,17 +360,18 @@ class SFTPTransport(ConnectedTransport):
         in base url at transport creation time.
         """
         if credentials is None:
-            password = self._password
+            password = self._parsed_url.password
         else:
             password = credentials
 
         vendor = ssh._get_ssh_vendor()
-        user = self._user
+        user = self._parsed_url.user
         if user is None:
             auth = config.AuthenticationConfig()
-            user = auth.get_user('ssh', self._host, self._port)
-        connection = vendor.connect_sftp(self._user, password,
-                                         self._host, self._port)
+            user = auth.get_user('ssh', self._parsed_url.host,
+                self._parsed_url.port)
+        connection = vendor.connect_sftp(self._parsed_url.user, password,
+            self._parsed_url.host, self._parsed_url.port)
         return connection, (user, password)
 
     def disconnect(self):
@@ -421,11 +406,6 @@ class SFTPTransport(ConnectedTransport):
         :param relpath: The relative path to the file
         """
         try:
-            # FIXME: by returning the file directly, we don't pass this
-            # through to report_activity.  We could try wrapping the object
-            # before it's returned.  For readv and get_bytes it's handled in
-            # the higher-level function.
-            # -- mbp 20090126
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):

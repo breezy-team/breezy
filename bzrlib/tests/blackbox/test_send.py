@@ -27,10 +27,13 @@ from bzrlib import (
     )
 from bzrlib.bundle import serializer
 from bzrlib.transport import memory
-from bzrlib.tests.scenarios import load_tests_apply_scenarios
+from bzrlib.tests import (
+    scenarios,
+    script,
+    )
 
 
-load_tests = load_tests_apply_scenarios
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 class TestSendMixin(object):
@@ -346,7 +349,7 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
 
 
 class TestSendStrictWithChanges(tests.TestCaseWithTransport,
-                                   TestSendStrictMixin):
+                                TestSendStrictMixin):
 
     # These are textually the same as test_push.strict_push_change_scenarios,
     # but since the functions are reimplemented here, the definitions are left

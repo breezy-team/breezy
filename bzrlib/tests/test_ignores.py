@@ -76,11 +76,11 @@ class TestUserIgnores(TestCaseInTempDir):
     def test_create_if_missing(self):
         # $HOME should be set to '.'
         ignore_path = config.user_ignore_config_filename()
-        self.failIfExists(ignore_path)
+        self.assertPathDoesNotExist(ignore_path)
         user_ignores = ignores.get_user_ignores()
         self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
 
-        self.failUnlessExists(ignore_path)
+        self.assertPathExists(ignore_path)
         f = open(ignore_path, 'rb')
         try:
             entries = ignores.parse_ignore_file(f)

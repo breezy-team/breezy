@@ -88,7 +88,7 @@ Location:
         cdir = BzrDir.open('a/c')
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
-        self.failUnlessExists('a/c/hello')
+        self.assertPathExists('a/c/hello')
         cdir.open_workingtree()
 
     def test_trees_default(self):

@@ -86,7 +86,7 @@ class SmartServerRequestOpenBzrDir_2_1(SmartServerRequest):
 class SmartServerRequestBzrDir(SmartServerRequest):
 
     def do(self, path, *args):
-        """Open a BzrDir at path, and return self.do_bzrdir_request(*args)."""
+        """Open a BzrDir at path, and return `self.do_bzrdir_request(*args)`."""
         try:
             self._bzrdir = BzrDir.open_from_transport(
                 self.transport_from_client_path(path))
@@ -181,7 +181,8 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
 
         :param path: The path to the bzrdir.
         :param network_name: The network name of the branch type to create.
-        :return: (ok, network_name)
+        :return: ('ok', branch_format, repo_path, rich_root, tree_ref,
+            external_lookup, repo_format)
         """
         bzrdir = BzrDir.open_from_transport(
             self.transport_from_client_path(path))

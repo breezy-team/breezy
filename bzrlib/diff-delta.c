@@ -4,7 +4,7 @@
  * This code was greatly inspired by parts of LibXDiff from Davide Libenzi
  * http://www.xmailserver.org/xdiff-lib.html
  *
- * Rewritten for GIT by Nicolas Pitre <nico@cam.org>, (C) 2005-2007
+ * Rewritten for GIT by Nicolas Pitre <nico@fluxnic.net>, (C) 2005-2007
  * Adapted for Bazaar by John Arbash Meinel <john@arbash-meinel.com> (C) 2009
  *
  * This program is free software; you can redistribute it and/or modify
@@ -280,8 +280,11 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
         if (fit_in_old) {
             // fprintf(stderr, "Fit all %d entries into old index\n",
             //                 copied_count);
-            /* No need to allocate a new buffer */
-            return NULL;
+            /*
+             * No need to allocate a new buffer, but return old_index ptr so
+             * callers can distinguish this from an OOM failure.
+             */
+            return old_index;
         } else {
             // fprintf(stderr, "Fit only %d entries into old index,"
             //                 " reallocating\n", copied_count);
@@ -370,12 +373,14 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 }
 
 
-struct delta_index *
+delta_result
 create_delta_index(const struct source_info *src,
-                   struct delta_index *old)
+                   struct delta_index *old,
+                   struct delta_index **fresh,
+                   int max_bytes_to_index)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
-    unsigned int total_num_entries;
+    unsigned int total_num_entries, stride, max_entries;
     const unsigned char *data, *buffer;
     struct delta_index *index;
     struct unpacked_index_entry *entry, **hash;
@@ -383,13 +388,24 @@ create_delta_index(const struct source_info *src,
     unsigned long memsize;
 
     if (!src->buf || !src->size)
-        return NULL;
+        return DELTA_SOURCE_EMPTY;
     buffer = src->buf;
 
     /* Determine index hash size.  Note that indexing skips the
-       first byte to allow for optimizing the Rabin's polynomial
-       initialization in create_delta(). */
+       first byte so we subtract 1 to get the edge cases right.
+     */
+    stride = RABIN_WINDOW;
     num_entries = (src->size - 1)  / RABIN_WINDOW;
+    if (max_bytes_to_index > 0) {
+        max_entries = (unsigned int) (max_bytes_to_index / RABIN_WINDOW);
+        if (num_entries > max_entries) {
+            /* Limit the max number of matching entries. This reduces the 'best'
+             * possible match, but means we don't consume all of ram.
+             */
+            num_entries = max_entries;
+            stride = (src->size - 1) / num_entries;
+        }
+    }
     if (old != NULL)
         total_num_entries = num_entries + old->num_entries;
     else
@@ -408,7 +424,7 @@ create_delta_index(const struct source_info *src,
           sizeof(*entry) * total_num_entries;
     mem = malloc(memsize);
     if (!mem)
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     hash = mem;
     mem = hash + hsize;
     entry = mem;
@@ -419,14 +435,14 @@ create_delta_index(const struct source_info *src,
     hash_count = calloc(hsize, sizeof(*hash_count));
     if (!hash_count) {
         free(hash);
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     }
 
     /* then populate the index for the new data */
     prev_val = ~0;
-    for (data = buffer + num_entries * RABIN_WINDOW - RABIN_WINDOW;
+    for (data = buffer + num_entries * stride - RABIN_WINDOW;
          data >= buffer;
-         data -= RABIN_WINDOW) {
+         data -= stride) {
         unsigned int val = 0;
         for (i = 1; i <= RABIN_WINDOW; i++)
             val = ((val << 8) | data[i]) ^ T[val >> RABIN_SHIFT];
@@ -450,16 +466,15 @@ create_delta_index(const struct source_info *src,
     total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
                                            total_num_entries);
     free(hash_count);
-    if (old) {
-        old->last_src = src;
-    }
     index = pack_delta_index(hash, hsize, total_num_entries, old);
     free(hash);
+    /* pack_delta_index only returns NULL on malloc failure */
     if (!index) {
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     }
     index->last_src = src;
-    return index;
+    *fresh = index;
+    return DELTA_OK;
 }
 
 /* Take some entries, and put them into a custom hash.
@@ -473,7 +488,7 @@ _put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
                        unsigned int hsize)
 {
     unsigned int hash_offset, hmask, memsize;
-    struct index_entry *entry, *last_entry;
+    struct index_entry *entry;
     struct index_entry_linked_list *out_entry, **hash;
     void *mem;
 
@@ -493,7 +508,6 @@ _put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
     /* We know that entries are in the order we want in the output, but they
      * aren't "grouped" by hash bucket yet.
      */
-    last_entry = entries + num_entries;
     for (entry = entries + num_entries - 1; entry >= entries; --entry) {
         hash_offset = entry->val & hmask;
         out_entry->p_entry = entry;
@@ -518,7 +532,7 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
     unsigned int i, j, hsize, hmask, total_num_entries;
     struct delta_index *index;
     struct index_entry *entry, *packed_entry, **packed_hash;
-    struct index_entry *last_entry, null_entry = {0};
+    struct index_entry null_entry = {0};
     void *mem;
     unsigned long memsize;
     struct index_entry_linked_list *unpacked_entry, **mini_hash;
@@ -569,7 +583,6 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
         free(index);
         return NULL;
     }
-    last_entry = entries + num_entries;
     for (i = 0; i < hsize; i++) {
         /*
          * Coalesce all entries belonging in one hash bucket
@@ -679,9 +692,10 @@ get_text(char buff[128], const unsigned char *ptr)
     }
 }
 
-struct delta_index *
+delta_result
 create_delta_index_from_delta(const struct source_info *src,
-                              struct delta_index *old_index)
+                              struct delta_index *old_index,
+                              struct delta_index **fresh)
 {
     unsigned int i, num_entries, max_num_entries, prev_val, num_inserted;
     unsigned int hash_offset;
@@ -690,8 +704,10 @@ create_delta_index_from_delta(const struct source_info *src,
     struct delta_index *new_index;
     struct index_entry *entry, *entries;
 
+    if (!old_index)
+        return DELTA_INDEX_NEEDED;
     if (!src->buf || !src->size)
-        return NULL;
+        return DELTA_SOURCE_EMPTY;
     buffer = src->buf;
     top = buffer + src->size;
 
@@ -707,7 +723,7 @@ create_delta_index_from_delta(const struct source_info *src,
     /* allocate an array to hold whatever entries we find */
     entries = malloc(sizeof(*entry) * max_num_entries);
     if (!entries) /* malloc failure */
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
 
     /* then populate the index for the new data */
     prev_val = ~0;
@@ -774,16 +790,16 @@ create_delta_index_from_delta(const struct source_info *src,
         }
     }
     if (data != top) {
-        /* Something was wrong with this delta */
+        /* The source_info data passed was corrupted or otherwise invalid */
         free(entries);
-        return NULL;
+        return DELTA_SOURCE_BAD;
     }
     if (num_entries == 0) {
         /** Nothing to index **/
         free(entries);
-        return NULL;
+        *fresh = old_index;
+        return DELTA_OK;
     }
-    assert(old_index != NULL);
     old_index->last_src = src;
     /* See if we can fill in these values into the holes in the array */
     entry = entries;
@@ -841,11 +857,15 @@ create_delta_index_from_delta(const struct source_info *src,
         new_index = create_index_from_old_and_new_entries(old_index,
             entry, num_entries);
     } else {
-        new_index = NULL;
+        new_index = old_index;
         // fprintf(stderr, "inserted %d without resizing\n", num_inserted);
     }
     free(entries);
-    return new_index;
+    /* create_index_from_old_and_new_entries returns NULL on malloc failure */
+    if (!new_index)
+        return DELTA_OUT_OF_MEMORY;
+    *fresh = new_index;
+    return DELTA_OK;
 }
 
 void free_delta_index(struct delta_index *index)
@@ -868,10 +888,11 @@ sizeof_delta_index(struct delta_index *index)
  */
 #define MAX_OP_SIZE (5 + 5 + 1 + RABIN_WINDOW + 7)
 
-void *
+delta_result
 create_delta(const struct delta_index *index,
              const void *trg_buf, unsigned long trg_size,
-             unsigned long *delta_size, unsigned long max_size)
+             unsigned long *delta_size, unsigned long max_size,
+             void **delta_data)
 {
     unsigned int i, outpos, outsize, moff, val;
     int msize;
@@ -882,9 +903,9 @@ create_delta(const struct delta_index *index,
     unsigned long source_size;
 
     if (!trg_buf || !trg_size)
-        return NULL;
+        return DELTA_BUFFER_EMPTY;
     if (index == NULL)
-        return NULL;
+        return DELTA_INDEX_NEEDED;
 
     outpos = 0;
     outsize = 8192;
@@ -892,7 +913,7 @@ create_delta(const struct delta_index *index,
         outsize = max_size + MAX_OP_SIZE + 1;
     out = malloc(outsize);
     if (!out)
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
 
     source_size = index->last_src->size + index->last_src->agg_offset;
 
@@ -1071,7 +1092,7 @@ create_delta(const struct delta_index *index,
             out = realloc(out, outsize);
             if (!out) {
                 free(tmp);
-                return NULL;
+                return DELTA_OUT_OF_MEMORY;
             }
         }
     }
@@ -1081,11 +1102,81 @@ create_delta(const struct delta_index *index,
 
     if (max_size && outpos > max_size) {
         free(out);
-        return NULL;
+        return DELTA_SIZE_TOO_BIG;
     }
 
     *delta_size = outpos;
-    return out;
+    *delta_data = out;
+    return DELTA_OK;
+}
+
+
+int
+get_entry_summary(const struct delta_index *index, int pos,
+                  unsigned int *text_offset, unsigned int *hash_val)
+{
+    int hsize;
+    const struct index_entry *entry;
+    const struct index_entry *start_of_entries;
+    unsigned int offset;
+    if (pos < 0 || text_offset == NULL || hash_val == NULL
+        || index == NULL)
+    {
+        return 0;
+    }
+    hsize = index->hash_mask + 1;
+    start_of_entries = (struct index_entry *)(((struct index_entry **)index->hash) + (hsize + 1));
+    entry = start_of_entries + pos;
+    if (entry > index->last_entry) {
+        return 0;
+    }
+    if (entry->ptr == NULL) {
+        *text_offset = 0;
+        *hash_val = 0;
+    } else {
+        offset = entry->src->agg_offset;
+        offset += (entry->ptr - ((unsigned char *)entry->src->buf));
+        *text_offset = offset;
+        *hash_val = entry->val;
+    }
+    return 1;
+}
+
+
+int
+get_hash_offset(const struct delta_index *index, int pos,
+                unsigned int *entry_offset)
+{
+    int hsize;
+    const struct index_entry *entry;
+    const struct index_entry *start_of_entries;
+    if (pos < 0 || index == NULL || entry_offset == NULL)
+    {
+        return 0;
+    }
+    hsize = index->hash_mask + 1;
+    start_of_entries = (struct index_entry *)(((struct index_entry **)index->hash) + (hsize + 1));
+    if (pos >= hsize) {
+        return 0;
+    }
+    entry = index->hash[pos];
+    if (entry == NULL) {
+        *entry_offset = -1;
+    } else {
+        *entry_offset = (entry - start_of_entries);
+    }
+    return 1;
+}
+
+
+unsigned int
+rabin_hash(const unsigned char *data)
+{
+    int i;
+    unsigned int val = 0;
+    for (i = 0; i < RABIN_WINDOW; i++)
+        val = ((val << 8) | data[i]) ^ T[val >> RABIN_SHIFT];
+    return val;
 }
 
 /* vim: et ts=4 sw=4 sts=4

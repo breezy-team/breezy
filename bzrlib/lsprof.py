@@ -275,12 +275,13 @@ class _CallTreeFilter(object):
         code = subentry.code
         totaltime = int(subentry.totaltime * 1000)
         #out_file.write('cob=%s\n' % (code.co_filename,))
-        out_file.write('cfn=%s\n' % (label(code, True),))
         if isinstance(code, str):
             out_file.write('cfi=~\n')
+            out_file.write('cfn=%s\n' % (label(code, True),))
             out_file.write('calls=%d 0\n' % (subentry.callcount,))
         else:
             out_file.write('cfi=%s\n' % (code.co_filename,))
+            out_file.write('cfn=%s\n' % (label(code, True),))
             out_file.write('calls=%d %d\n' % (
                 subentry.callcount, code.co_firstlineno))
         out_file.write('%d %d\n' % (lineno, totaltime))

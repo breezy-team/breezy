@@ -24,7 +24,6 @@ so these tests are testing that when there is a cache, it performs correctly.
 """
 
 from bzrlib import (
-    branchbuilder,
     errors,
     tests,
     )

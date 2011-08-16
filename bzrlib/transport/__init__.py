@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@ it.
 """
 
 from cStringIO import StringIO
-import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -47,8 +46,8 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        DEPRECATED_PARAMETER,
-        )
+    DEPRECATED_PARAMETER,
+    )
 from bzrlib.trace import (
     mutter,
     )
@@ -84,10 +83,7 @@ def _get_transport_modules():
     modules = set()
     for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
-            if hasattr(factory, "_module_name"):
-                modules.add(factory._module_name)
-            else:
-                modules.add(factory._obj.__module__)
+            modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
     # registered for it.
     modules.add('bzrlib.transport.chroot')
@@ -121,10 +117,6 @@ class TransportListRegistry(registry.Registry):
 
     def register_transport(self, key, help=None):
         self.register(key, [], help)
-
-    def set_default_transport(self, key=None):
-        """Return either 'key' or the default key if key is None"""
-        self._default_key = key
 
 
 transport_list_registry = TransportListRegistry()
@@ -235,9 +227,23 @@ class FileStream(object):
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
 
-    def close(self):
+    def close(self, want_fdatasync=False):
+        if want_fdatasync:
+            try:
+                self.fdatasync()
+            except errors.TransportNotPossible:
+                pass
         self._close()
         del _file_streams[self.transport.abspath(self.relpath)]
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible.
+
+        :raises TransportNotPossible: If this transport has no way to 
+            flush to disk.
+        """
+        raise errors.TransportNotPossible(
+            "%s cannot fdatasync" % (self.transport,))
 
 
 class FileFileStream(FileStream):
@@ -252,6 +258,15 @@ class FileFileStream(FileStream):
 
     def _close(self):
         self.file_handle.close()
+
+    def fdatasync(self):
+        """Force data out to physical disk if possible."""
+        self.file_handle.flush()
+        try:
+            fileno = self.file_handle.fileno()
+        except AttributeError:
+            raise errors.TransportNotPossible()
+        osutils.fdatasync(fileno)
 
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)
@@ -302,7 +317,10 @@ class Transport(object):
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
         if getattr(e, 'errno', None) is not None:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            elif e.errno == errno.EINVAL:
+                mutter("EINVAL returned on path %s: %s" % (path, e))
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -460,50 +478,6 @@ class Transport(object):
         # XXX: Robert Collins 20051016 - is this really needed in the public
         # interface ?
         raise NotImplementedError(self.abspath)
-
-    def _combine_paths(self, base_path, relpath):
-        """Transform a Transport-relative path to a remote absolute path.
-
-        This does not handle substitution of ~ but does handle '..' and '.'
-        components.
-
-        Examples::
-
-            t._combine_paths('/home/sarah', 'project/foo')
-                => '/home/sarah/project/foo'
-            t._combine_paths('/home/sarah', '../../etc')
-                => '/etc'
-            t._combine_paths('/home/sarah', '/etc')
-                => '/etc'
-
-        :param base_path: urlencoded path for the transport root; typically a
-             URL but need not contain scheme/host/etc.
-        :param relpath: relative url string for relative part of remote path.
-        :return: urlencoded string for final path.
-        """
-        if not isinstance(relpath, str):
-            raise errors.InvalidURL(relpath)
-        if relpath.startswith('/'):
-            base_parts = []
-        else:
-            base_parts = base_path.split('/')
-        if len(base_parts) > 0 and base_parts[-1] == '':
-            base_parts = base_parts[:-1]
-        for p in relpath.split('/'):
-            if p == '..':
-                if len(base_parts) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                base_parts.pop()
-            elif p == '.':
-                continue # No-op
-            elif p != '':
-                base_parts.append(p)
-        path = '/'.join(base_parts)
-        if not path.startswith('/'):
-            path = '/' + path
-        return path
 
     def recommended_page_size(self):
         """Return the recommended page size for this transport.
@@ -676,7 +650,9 @@ class Transport(object):
 
         This uses _coalesce_offsets to issue larger reads and fewer seeks.
 
-        :param fp: A file-like object that supports seek() and read(size)
+        :param fp: A file-like object that supports seek() and read(size).
+            Note that implementations are allowed to call .close() on this file
+            handle, so don't trust that you can use it for other work.
         :param offsets: A list of offsets to be read from the given file.
         :return: yield (pos, data) tuples for each request
         """
@@ -693,37 +669,32 @@ class Transport(object):
 
         # Cache the results, but only until they have been fulfilled
         data_map = {}
-        for c_offset in coalesced:
-            # TODO: jam 20060724 it might be faster to not issue seek if
-            #       we are already at the right location. This should be
-            #       benchmarked.
-            fp.seek(c_offset.start)
-            data = fp.read(c_offset.length)
-            if len(data) < c_offset.length:
-                raise errors.ShortReadvError(relpath, c_offset.start,
-                            c_offset.length, actual=len(data))
-            for suboffset, subsize in c_offset.ranges:
-                key = (c_offset.start+suboffset, subsize)
-                data_map[key] = data[suboffset:suboffset+subsize]
+        try:
+            for c_offset in coalesced:
+                # TODO: jam 20060724 it might be faster to not issue seek if
+                #       we are already at the right location. This should be
+                #       benchmarked.
+                fp.seek(c_offset.start)
+                data = fp.read(c_offset.length)
+                if len(data) < c_offset.length:
+                    raise errors.ShortReadvError(relpath, c_offset.start,
+                                c_offset.length, actual=len(data))
+                for suboffset, subsize in c_offset.ranges:
+                    key = (c_offset.start+suboffset, subsize)
+                    data_map[key] = data[suboffset:suboffset+subsize]
 
-            # Now that we've read some data, see if we can yield anything back
-            while cur_offset_and_size in data_map:
-                this_data = data_map.pop(cur_offset_and_size)
-                this_offset = cur_offset_and_size[0]
-                try:
-                    cur_offset_and_size = offset_stack.next()
-                except StopIteration:
-                    # Close the file handle as there will be no more data
-                    # The handle would normally be cleaned up as this code goes
-                    # out of scope, but as we are a generator, not all code
-                    # will re-enter once we have consumed all the expected
-                    # data. For example:
-                    #   zip(range(len(requests)), readv(foo, requests))
-                    # Will stop because the range is done, and not run the
-                    # cleanup code for the readv().
-                    fp.close()
-                    cur_offset_and_size = None
-                yield this_offset, this_data
+                # Now that we've read some data, see if we can yield anything back
+                while cur_offset_and_size in data_map:
+                    this_data = data_map.pop(cur_offset_and_size)
+                    this_offset = cur_offset_and_size[0]
+                    try:
+                        cur_offset_and_size = offset_stack.next()
+                    except StopIteration:
+                        fp.close()
+                        cur_offset_and_size = None
+                    yield this_offset, this_data
+        finally:
+            fp.close()
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.
@@ -1348,27 +1319,50 @@ class ConnectedTransport(Transport):
         """
         if not base.endswith('/'):
             base += '/'
-        (self._scheme,
-         self._user, self._password,
-         self._host, self._port,
-         self._path) = self._split_url(base)
+        self._parsed_url = self._split_url(base)
         if _from_transport is not None:
             # Copy the password as it does not appear in base and will be lost
             # otherwise. It can appear in the _split_url above if the user
             # provided it on the command line. Otherwise, daughter classes will
             # prompt the user for one when appropriate.
-            self._password = _from_transport._password
+            self._parsed_url.password = _from_transport._parsed_url.password
+            self._parsed_url.quoted_password = (
+                _from_transport._parsed_url.quoted_password)
 
-        base = self._unsplit_url(self._scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 self._path)
+        base = self._unsplit_url(self._parsed_url.scheme,
+            self._parsed_url.user, self._parsed_url.password,
+            self._parsed_url.host, self._parsed_url.port,
+            self._parsed_url.path)
 
         super(ConnectedTransport, self).__init__(base)
         if _from_transport is None:
             self._shared_connection = _SharedConnection()
         else:
             self._shared_connection = _from_transport._shared_connection
+
+    @property
+    def _user(self):
+        return self._parsed_url.user
+
+    @property
+    def _password(self):
+        return self._parsed_url.password
+
+    @property
+    def _host(self):
+        return self._parsed_url.host
+
+    @property
+    def _port(self):
+        return self._parsed_url.port
+
+    @property
+    def _path(self):
+        return self._parsed_url.path
+
+    @property
+    def _scheme(self):
+        return self._parsed_url.scheme
 
     def clone(self, offset=None):
         """Return a new transport with root at self.base + offset
@@ -1383,26 +1377,20 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        return urlutils.parse_url(url)
+        return urlutils.URL.from_string(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):
-        """
-        Build the full URL for the given already URL encoded path.
+        """Build the full URL for the given already URL encoded path.
 
         user, password, host and path will be quoted if they contain reserved
         chars.
 
         :param scheme: protocol
-
         :param user: login
-
         :param password: associated password
-
         :param host: the server address
-
         :param port: the associated port
-
         :param path: the absolute path on the server
 
         :return: The corresponding URL.
@@ -1420,23 +1408,24 @@ class ConnectedTransport(Transport):
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path"""
-        scheme, user, password, host, port, path = self._split_url(abspath)
+        parsed_url = self._split_url(abspath)
         error = []
-        if (scheme != self._scheme):
+        if parsed_url.scheme != self._parsed_url.scheme:
             error.append('scheme mismatch')
-        if (user != self._user):
+        if parsed_url.user != self._parsed_url.user:
             error.append('user name mismatch')
-        if (host != self._host):
+        if parsed_url.host != self._parsed_url.host:
             error.append('host mismatch')
-        if (port != self._port):
+        if parsed_url.port != self._parsed_url.port:
             error.append('port mismatch')
-        if not (path == self._path[:-1] or path.startswith(self._path)):
+        if (not (parsed_url.path == self._parsed_url.path[:-1] or
+            parsed_url.path.startswith(self._parsed_url.path))):
             error.append('path mismatch')
         if error:
             extra = ', '.join(error)
             raise errors.PathNotChild(abspath, self.base, extra=extra)
-        pl = len(self._path)
-        return path[pl:].strip('/')
+        pl = len(self._parsed_url.path)
+        return parsed_url.path[pl:].strip('/')
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -1445,11 +1434,9 @@ class ConnectedTransport(Transport):
 
         :returns: the Unicode version of the absolute path for relpath.
         """
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._scheme, self._user, self._password,
-                                 self._host, self._port,
-                                 path)
+        other = self._parsed_url.clone(relpath)
+        return self._unsplit_url(other.scheme, other.user, other.password,
+            other.host, other.port, other.path)
 
     def _remote_path(self, relpath):
         """Return the absolute path part of the url to the given relative path.
@@ -1462,9 +1449,7 @@ class ConnectedTransport(Transport):
 
         :return: the absolute Unicode path on the server,
         """
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        remote_path = self._combine_paths(self._path, relative)
-        return remote_path
+        return self._parsed_url.clone(relpath).path
 
     def _get_shared_connection(self):
         """Get the object shared amongst cloned transports.
@@ -1529,8 +1514,7 @@ class ConnectedTransport(Transport):
         :return: A new transport or None if the connection cannot be shared.
         """
         try:
-            (scheme, user, password,
-             host, port, path) = self._split_url(other_base)
+            parsed_url = self._split_url(other_base)
         except errors.InvalidURL:
             # No hope in trying to reuse an existing transport for an invalid
             # URL
@@ -1539,15 +1523,16 @@ class ConnectedTransport(Transport):
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
-        if (scheme == self._scheme
-            and user == self._user
-            and host == self._host
-            and port == self._port):
+        if (parsed_url.scheme == self._parsed_url.scheme
+            and parsed_url.user == self._parsed_url.user
+            and parsed_url.host == self._parsed_url.host
+            and parsed_url.port == self._parsed_url.port):
+            path = parsed_url.path
             if not path.endswith('/'):
                 # This normally occurs at __init__ time, but it's easier to do
                 # it now to avoid creating two transports for the same base.
                 path += '/'
-            if self._path  == path:
+            if self._parsed_url.path  == path:
                 # shortcut, it's really the same transport
                 return self
             # We don't call clone here because the intent is different: we
@@ -1564,6 +1549,84 @@ class ConnectedTransport(Transport):
         raise NotImplementedError(self.disconnect)
 
 
+def location_to_url(location):
+    """Determine a fully qualified URL from a location string.
+
+    This will try to interpret location as both a URL and a directory path. It
+    will also lookup the location in directories.
+
+    :param location: Unicode or byte string object with a location
+    :raise InvalidURL: If the location is already a URL, but not valid.
+    :return: Byte string with resulting URL
+    """
+    if not isinstance(location, basestring):
+        raise AssertionError("location not a byte or unicode string")
+    from bzrlib.directory_service import directories
+    location = directories.dereference(location)
+
+    # Catch any URLs which are passing Unicode rather than ASCII
+    try:
+        location = location.encode('ascii')
+    except UnicodeError:
+        if urlutils.is_url(location):
+            raise errors.InvalidURL(path=location,
+                extra='URLs must be properly escaped')
+        location = urlutils.local_path_to_url(location)
+
+    if location.startswith("file:") and not location.startswith("file://"):
+        return urlutils.join(urlutils.local_path_to_url("."), location[5:])
+
+    if not urlutils.is_url(location):
+        return urlutils.local_path_to_url(location)
+
+    return location
+
+
+def get_transport_from_path(path, possible_transports=None):
+    """Open a transport for a local path.
+
+    :param path: Local path as byte or unicode string
+    :return: Transport object for path
+    """
+    return get_transport_from_url(urlutils.local_path_to_url(path),
+        possible_transports)
+
+
+def get_transport_from_url(url, possible_transports=None):
+    """Open a transport to access a URL.
+    
+    :param base: a URL
+    :param transports: optional reusable transports list. If not None, created
+        transports will be added to the list.
+
+    :return: A new transport optionally sharing its connection with one of
+        possible_transports.
+    """
+    transport = None
+    if possible_transports is not None:
+        for t in possible_transports:
+            t_same_connection = t._reuse_for(url)
+            if t_same_connection is not None:
+                # Add only new transports
+                if t_same_connection not in possible_transports:
+                    possible_transports.append(t_same_connection)
+                return t_same_connection
+
+    last_err = None
+    for proto, factory_list in transport_list_registry.items():
+        if proto is not None and url.startswith(proto):
+            transport, last_err = _try_transport_factories(url, factory_list)
+            if transport:
+                if possible_transports is not None:
+                    if transport in possible_transports:
+                        raise AssertionError()
+                    possible_transports.append(transport)
+                return transport
+    if not urlutils.is_url(url):
+        raise errors.InvalidURL(path=url)
+    raise errors.UnsupportedProtocol(url, last_err)
+
+
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1577,58 +1640,7 @@ def get_transport(base, possible_transports=None):
     """
     if base is None:
         base = '.'
-    last_err = None
-    from bzrlib.directory_service import directories
-    base = directories.dereference(base)
-
-    def convert_path_to_url(base, error_str):
-        if urlutils.is_url(base):
-            # This looks like a URL, but we weren't able to
-            # instantiate it as such raise an appropriate error
-            # FIXME: we have a 'error_str' unused and we use last_err below
-            raise errors.UnsupportedProtocol(base, last_err)
-        # This doesn't look like a protocol, consider it a local path
-        new_base = urlutils.local_path_to_url(base)
-        # mutter('converting os path %r => url %s', base, new_base)
-        return new_base
-
-    # Catch any URLs which are passing Unicode rather than ASCII
-    try:
-        base = base.encode('ascii')
-    except UnicodeError:
-        # Only local paths can be Unicode
-        base = convert_path_to_url(base,
-            'URLs must be properly escaped (protocol: %s)')
-
-    transport = None
-    if possible_transports is not None:
-        for t in possible_transports:
-            t_same_connection = t._reuse_for(base)
-            if t_same_connection is not None:
-                # Add only new transports
-                if t_same_connection not in possible_transports:
-                    possible_transports.append(t_same_connection)
-                return t_same_connection
-
-    for proto, factory_list in transport_list_registry.items():
-        if proto is not None and base.startswith(proto):
-            transport, last_err = _try_transport_factories(base, factory_list)
-            if transport:
-                if possible_transports is not None:
-                    if transport in possible_transports:
-                        raise AssertionError()
-                    possible_transports.append(transport)
-                return transport
-
-    # We tried all the different protocols, now try one last time
-    # as a local protocol
-    base = convert_path_to_url(base, 'Unsupported protocol: %s')
-
-    # The default handler is the filesystem handler, stored as protocol None
-    factory_list = transport_list_registry.get(None)
-    transport, last_err = _try_transport_factories(base, factory_list)
-
-    return transport
+    return get_transport_from_url(location_to_url(base), possible_transports)
 
 
 def _try_transport_factories(base, factory_list):
@@ -1703,7 +1715,6 @@ class Server(object):
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
-transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
             help="Access using SFTP (most SSH servers provide SFTP).",
@@ -1776,9 +1787,6 @@ register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
                         'MemoryTransport')
 
-# chroots cannot be implicitly accessed, they must be explicitly created:
-register_transport_proto('chroot+')
-
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
@@ -1812,12 +1820,6 @@ register_lazy_transport('vfat+',
 register_transport_proto('nosmart+')
 register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
                         'NoSmartTransportDecorator')
-
-# These two schemes were registered, but don't seem to have an actual transport
-# protocol registered
-for scheme in ['ssh', 'bzr+loopback']:
-    register_urlparse_netloc_protocol(scheme)
-del scheme
 
 register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.",

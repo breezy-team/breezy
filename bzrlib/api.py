@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,10 +22,7 @@ examples.
 """
 
 import bzrlib
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
 from bzrlib.errors import IncompatibleAPI
-""")
 
 
 def get_current_api_version(object_with_api):

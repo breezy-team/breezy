@@ -239,7 +239,7 @@ HTTPリダイレクトを使うことです。
 ``bzr`` コマンドを通してこれらを作るのは現時点では難しいですが、便利だと思う人がいれば変わるかもしれません。
 これは実際には `Launchpad`_ が ``bzr checkout https://launchpad.net/bzr`` をできるようにしている方法です。
 ``BranchReference`` は機能的にはシンボリックリンクですが、他のURLの参照ができます。
-相対パスによる参照ができるように拡張されれば、http、sftp、ローカルパスを通しても\
+相対パスによる参照ができるように拡張されれば、HTTP、SFTP、ローカルパスを通しても\
 動作するでしょう。
 
 .. _Launchpad: https://launchpad.net

@@ -65,7 +65,8 @@ class ShelfCreator(object):
         """Iterable of tuples describing shelvable changes.
 
         As well as generating the tuples, this updates several members.
-        Tuples may be:
+        Tuples may be::
+
            ('add file', file_id, work_kind, work_path)
            ('delete file', file_id, target_kind, target_path)
            ('rename', file_id, target_path, work_path)
@@ -80,6 +81,9 @@ class ShelfCreator(object):
             # FIXME ADHB (2009-08-09): should still shelve adds of tree roots
             # when a tree root was deleted / renamed.
             if kind[0] is None and names[1] == '':
+                continue
+            # Also don't shelve deletion of tree root.
+            if kind[1] is None and names[0] == '':
                 continue
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],

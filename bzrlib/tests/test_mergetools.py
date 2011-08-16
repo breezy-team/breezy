@@ -71,7 +71,7 @@ class TestFilenameSubstitution(tests.TestCaseInTempDir):
                          'test.txt.OTHER'))
         cmd_list = ['some_tool', '{this_temp}']
         args, tmpfile = mergetools._subst_filename(cmd_list, 'test.txt')
-        self.failUnlessExists(tmpfile)
+        self.assertPathExists(tmpfile)
         os.remove(tmpfile)
 
 
@@ -81,8 +81,11 @@ class TestCheckAvailability(tests.TestCaseInTempDir):
         self.assertTrue(mergetools.check_availability(sys.executable))
 
     def test_exe_on_path(self):
-        self.assertTrue(mergetools.check_availability(
-            os.path.basename(sys.executable)))
+        if sys.platform == 'win32':
+            exe = 'cmd.exe'
+        else:
+            exe = 'sh'
+        self.assertTrue(mergetools.check_availability(exe))
 
     def test_nonexistent(self):
         self.assertFalse(mergetools.check_availability('DOES NOT EXIST'))
@@ -135,7 +138,7 @@ class TestInvoke(tests.TestCaseInTempDir):
         def dummy_invoker(exe, args, cleanup):
             self._exe = exe
             self._args = args
-            self.failUnlessExists(args[0])
+            self.assertPathExists(args[0])
             f = open(args[0], 'wt')
             f.write('temp stuff')
             f.close()
@@ -145,14 +148,14 @@ class TestInvoke(tests.TestCaseInTempDir):
                                     dummy_invoker)
         self.assertEqual(0, retcode)
         self.assertEqual('tool', self._exe)
-        self.failIfExists(self._args[0])
+        self.assertPathDoesNotExist(self._args[0])
         self.assertFileEqual('temp stuff', 'test.txt')
     
     def test_failure_tempfile(self):
         def dummy_invoker(exe, args, cleanup):
             self._exe = exe
             self._args = args
-            self.failUnlessExists(args[0])
+            self.assertPathExists(args[0])
             self.log(repr(args))
             f = open(args[0], 'wt')
             self.log(repr(f))

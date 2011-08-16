@@ -21,6 +21,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     annotate,
+    symbol_versioning,
     tests,
     )
 
@@ -260,14 +261,25 @@ class TestAnnotate(tests.TestCaseWithTransport):
             ('modify', ('file-id', e_text))])
         return builder
 
-    def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
-        """Assert that the revision is properly annotated."""
-        actual = list(repo.revision_tree(revision_id).annotate_iter(file_id))
+    def assertAnnotateEqualDiff(self, actual, expected):
         if actual != expected:
             # Create an easier to understand diff when the lines don't actually
             # match
             self.assertEqualDiff(''.join('\t'.join(l) for l in expected),
                                  ''.join('\t'.join(l) for l in actual))
+
+    def assertBranchAnnotate(self, expected, branch, file_id, revision_id,
+            verbose=False, full=False, show_ids=False):
+        tree = branch.repository.revision_tree(revision_id)
+        to_file = StringIO()
+        annotate.annotate_file_tree(tree, file_id, to_file,
+            verbose=verbose, full=full, show_ids=show_ids, branch=branch)
+        self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
+
+    def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
+        """Assert that the revision is properly annotated."""
+        actual = list(repo.revision_tree(revision_id).annotate_iter(file_id))
+        self.assertAnnotateEqualDiff(actual, expected)
 
     def test_annotate_duplicate_lines(self):
         # XXX: Should this be a per_repository test?
@@ -285,62 +297,64 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_shows_dotted_revnos(self):
         builder = self.create_merged_trees()
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-3', 'a-id',
-                               to_file=sio)
-        self.assertEqualDiff('1     joe@foo | first\n'
-                             '2     joe@foo | second\n'
-                             '1.1.1 barry@f | third\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '2     joe@foo | second\n'
+                                  '1.1.1 barry@f | third\n',
+                                  builder.get_branch(), 'a-id', 'rev-3')
+
+    def test_annotate_file(self):
+        builder = self.create_merged_trees()
+
+        to_file = StringIO()
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            annotate.annotate_file, builder.get_branch(),
+                'rev-3', 'a-id', to_file=to_file)
+
+        self.assertAnnotateEqualDiff('1     joe@foo | first\n'
+                                     '2     joe@foo | second\n'
+                                     '1.1.1 barry@f | third\n',
+                                     to_file.getvalue())
 
     def test_annotate_limits_dotted_revnos(self):
         """Annotate should limit dotted revnos to a depth of 12"""
         builder = self.create_deeply_merged_trees()
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
-                               to_file=sio, verbose=False, full=False)
-        self.assertEqualDiff('1     joe@foo | first\n'
-                             '2     joe@foo | second\n'
-                             '1.1.1 barry@f | third\n'
-                             '1.2.1 jerry@f | fourth\n'
-                             '1.3.1 george@ | fifth\n'
-                             '              | sixth\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '2     joe@foo | second\n'
+                                  '1.1.1 barry@f | third\n'
+                                  '1.2.1 jerry@f | fourth\n'
+                                  '1.3.1 george@ | fifth\n'
+                                  '              | sixth\n',
+                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  verbose=False, full=False)
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
-                               to_file=sio, verbose=False, full=True)
-        self.assertEqualDiff('1     joe@foo | first\n'
-                             '2     joe@foo | second\n'
-                             '1.1.1 barry@f | third\n'
-                             '1.2.1 jerry@f | fourth\n'
-                             '1.3.1 george@ | fifth\n'
-                             '1.3.1 george@ | sixth\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '2     joe@foo | second\n'
+                                  '1.1.1 barry@f | third\n'
+                                  '1.2.1 jerry@f | fourth\n'
+                                  '1.3.1 george@ | fifth\n'
+                                  '1.3.1 george@ | sixth\n',
+                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  verbose=False, full=True)
 
         # verbose=True shows everything, the full revno, user id, and date
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
-                               to_file=sio, verbose=True, full=False)
-        self.assertEqualDiff('1     joe@foo.com    20061213 | first\n'
-                             '2     joe@foo.com    20061213 | second\n'
-                             '1.1.1 barry@foo.com  20061213 | third\n'
-                             '1.2.1 jerry@foo.com  20061213 | fourth\n'
-                             '1.3.1 george@foo.com 20061213 | fifth\n'
-                             '                              | sixth\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('1     joe@foo.com    20061213 | first\n'
+                                  '2     joe@foo.com    20061213 | second\n'
+                                  '1.1.1 barry@foo.com  20061213 | third\n'
+                                  '1.2.1 jerry@foo.com  20061213 | fourth\n'
+                                  '1.3.1 george@foo.com 20061213 | fifth\n'
+                                  '                              | sixth\n',
+                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  verbose=True, full=False)
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
-                               to_file=sio, verbose=True, full=True)
-        self.assertEqualDiff('1     joe@foo.com    20061213 | first\n'
-                             '2     joe@foo.com    20061213 | second\n'
-                             '1.1.1 barry@foo.com  20061213 | third\n'
-                             '1.2.1 jerry@foo.com  20061213 | fourth\n'
-                             '1.3.1 george@foo.com 20061213 | fifth\n'
-                             '1.3.1 george@foo.com 20061213 | sixth\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('1     joe@foo.com    20061213 | first\n'
+                                  '2     joe@foo.com    20061213 | second\n'
+                                  '1.1.1 barry@foo.com  20061213 | third\n'
+                                  '1.2.1 jerry@foo.com  20061213 | fourth\n'
+                                  '1.3.1 george@foo.com 20061213 | fifth\n'
+                                  '1.3.1 george@foo.com 20061213 | sixth\n',
+                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  verbose=True, full=True)
 
     def test_annotate_uses_branch_context(self):
         """Dotted revnos should use the Branch context.
@@ -350,43 +364,35 @@ class TestAnnotate(tests.TestCaseWithTransport):
         """
         builder = self.create_deeply_merged_trees()
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-1_3_1', 'a-id',
-                               to_file=sio, verbose=False, full=False)
-        self.assertEqualDiff('1     joe@foo | first\n'
-                             '1.1.1 barry@f | third\n'
-                             '1.2.1 jerry@f | fourth\n'
-                             '1.3.1 george@ | fifth\n'
-                             '              | sixth\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '1.1.1 barry@f | third\n'
+                                  '1.2.1 jerry@f | fourth\n'
+                                  '1.3.1 george@ | fifth\n'
+                                  '              | sixth\n',
+                                  builder.get_branch(), 'a-id', 'rev-1_3_1',
+                                  verbose=False, full=False)
 
     def test_annotate_show_ids(self):
         builder = self.create_deeply_merged_trees()
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
-                               to_file=sio, show_ids=True, full=False)
-
         # It looks better with real revision ids :)
-        self.assertEqualDiff('    rev-1 | first\n'
-                             '    rev-2 | second\n'
-                             'rev-1_1_1 | third\n'
-                             'rev-1_2_1 | fourth\n'
-                             'rev-1_3_1 | fifth\n'
-                             '          | sixth\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('    rev-1 | first\n'
+                                  '    rev-2 | second\n'
+                                  'rev-1_1_1 | third\n'
+                                  'rev-1_2_1 | fourth\n'
+                                  'rev-1_3_1 | fifth\n'
+                                  '          | sixth\n',
+                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  show_ids=True, full=False)
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
-                               to_file=sio, show_ids=True, full=True)
-
-        self.assertEqualDiff('    rev-1 | first\n'
-                             '    rev-2 | second\n'
-                             'rev-1_1_1 | third\n'
-                             'rev-1_2_1 | fourth\n'
-                             'rev-1_3_1 | fifth\n'
-                             'rev-1_3_1 | sixth\n',
-                             sio.getvalue())
+        self.assertBranchAnnotate('    rev-1 | first\n'
+                                  '    rev-2 | second\n'
+                                  'rev-1_1_1 | third\n'
+                                  'rev-1_2_1 | fourth\n'
+                                  'rev-1_3_1 | fifth\n'
+                                  'rev-1_3_1 | sixth\n',
+                                  builder.get_branch(), 'a-id', 'rev-6',
+                                  show_ids=True, full=True)
 
     def test_annotate_unicode_author(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -405,25 +411,33 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
+
+        revtree_1 = tree1.branch.repository.revision_tree('rev-1')
+        revtree_2 = tree1.branch.repository.revision_tree('rev-2')
+
         # this passes if no exception is raised
         to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
+        annotate.annotate_file_tree(revtree_1, 'a-id',
+            to_file=to_file, branch=tree1.branch)
 
         sio = StringIO()
         to_file = codecs.getwriter('ascii')(sio)
         to_file.encoding = 'ascii' # codecs does not set it
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        annotate.annotate_file_tree(revtree_2, 'b-id',
+            to_file=to_file, branch=tree1.branch)
         self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
         # test now with to_file.encoding = None
         to_file = tests.StringIOWrapper()
         to_file.encoding = None
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        annotate.annotate_file_tree(revtree_2, 'b-id',
+            to_file=to_file, branch=tree1.branch)
         self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
         # and when it does not exist
         to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        annotate.annotate_file_tree(revtree_2, 'b-id',
+            to_file=to_file, branch=tree1.branch)
         self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
     def test_annotate_author_or_committer(self):
@@ -444,13 +458,13 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
-        to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
-        self.assertEqual('1   committ | hello\n', to_file.getvalue())
+
+        self.assertBranchAnnotate('1   committ | hello\n', tree1.branch,
+            'a-id', 'rev-1')
 
         to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
-        self.assertEqual('2   author@ | bye\n', to_file.getvalue())
+        self.assertBranchAnnotate('2   author@ | bye\n', tree1.branch,
+            'b-id', 'rev-2')
 
 
 class TestReannotate(tests.TestCase):

@@ -72,14 +72,14 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         t = self.get_transport()
 
         l = t.lock_write('bogus')
-        self.failUnlessExists('bogus.write-lock')
+        self.assertPathExists('bogus.write-lock')
 
         # Don't wait for the lock, locking an already locked
         # file should raise an assert
         self.assertRaises(LockError, t.lock_write, 'bogus')
 
         l.unlock()
-        self.failIf(lexists('bogus.write-lock'))
+        self.assertFalse(lexists('bogus.write-lock'))
 
         open('something.write-lock', 'wb').write('fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
@@ -140,7 +140,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
     def test__remote_path_relative_root(self):
         # relative paths are preserved
         t = self.get_transport('')
-        self.assertEqual('/~/', t._path)
+        self.assertEqual('/~/', t._parsed_url.path)
         # the remote path should be relative to home dir
         # (i.e. not begining with a '/')
         self.assertEqual('a', t._remote_path('a'))
@@ -154,11 +154,11 @@ class SFTPNonServerTest(TestCase):
     def test_parse_url_with_home_dir(self):
         s = _mod_sftp.SFTPTransport(
             'sftp://ro%62ey:h%40t@example.com:2222/~/relative')
-        self.assertEquals(s._host, 'example.com')
-        self.assertEquals(s._port, 2222)
-        self.assertEquals(s._user, 'robey')
-        self.assertEquals(s._password, 'h@t')
-        self.assertEquals(s._path, '/~/relative/')
+        self.assertEquals(s._parsed_url.host, 'example.com')
+        self.assertEquals(s._parsed_url.port, 2222)
+        self.assertEquals(s._parsed_url.user, 'robey')
+        self.assertEquals(s._parsed_url.password, 'h@t')
+        self.assertEquals(s._parsed_url.path, '/~/relative/')
 
     def test_relpath(self):
         s = _mod_sftp.SFTPTransport('sftp://user@host.com/abs/path')
@@ -188,20 +188,6 @@ class SFTPNonServerTest(TestCase):
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
-
-    def test_lock_file(self):
-        # old format branches use a special lock file on sftp.
-        b = self.make_branch('', format=bzrdir.BzrDirFormat6())
-        b = bzrlib.branch.Branch.open(self.get_url())
-        self.failUnlessExists('.bzr/')
-        self.failUnlessExists('.bzr/branch-format')
-        self.failUnlessExists('.bzr/branch-lock')
-
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
-        b.lock_write()
-        self.failUnlessExists('.bzr/branch-lock.write-lock')
-        b.unlock()
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
 
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
@@ -431,7 +417,7 @@ class TestSocketDelay(TestCase):
 
 
 class ReadvFile(object):
-    """An object that acts like Paramiko's SFTPFile.readv()"""
+    """An object that acts like Paramiko's SFTPFile when readv() is used"""
 
     def __init__(self, data):
         self._data = data
@@ -439,6 +425,9 @@ class ReadvFile(object):
     def readv(self, requests):
         for start, length in requests:
             yield self._data[start:start+length]
+
+    def close(self):
+        pass
 
 
 def _null_report_activity(*a, **k):

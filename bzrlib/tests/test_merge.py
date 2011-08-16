@@ -37,6 +37,7 @@ from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import basename, pathjoin, file_kind
 from bzrlib.tests import (
+    features,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     test_merge_core,
@@ -90,8 +91,8 @@ class TestMerge(TestCaseWithTransport):
         os.chdir('branch2')
         self.run_bzr('merge ../branch1/baz', retcode=3)
         self.run_bzr('merge ../branch1/foo')
-        self.failUnlessExists('foo')
-        self.failIfExists('bar')
+        self.assertPathExists('foo')
+        self.assertPathDoesNotExist('bar')
         wt2 = WorkingTree.open('.') # opens branch2
         self.assertEqual([tip], wt2.get_parent_ids())
 
@@ -120,6 +121,32 @@ class TestMerge(TestCaseWithTransport):
             self.assertEqual(last2, graph.find_unique_lca(last, last2))
         finally:
             wt1.unlock()
+
+    def test_merge_into_null_tree(self):
+        wt = self.make_branch_and_tree('tree')
+        null_tree = wt.basis_tree()
+        self.build_tree(['tree/file'])
+        wt.add('file')
+        wt.commit('tree with root')
+        merger = _mod_merge.Merge3Merger(null_tree, null_tree, null_tree, wt,
+                                         this_branch=wt.branch,
+                                         do_merge=False)
+        with merger.make_preview_transform() as tt:
+            self.assertEqual([], tt.find_conflicts())
+            preview = tt.get_preview_tree()
+            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+
+    def test_merge_unrelated_retains_root(self):
+        wt = self.make_branch_and_tree('tree')
+        other_tree = self.make_branch_and_tree('other')
+        self.addCleanup(other_tree.lock_read().unlock)
+        merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
+                                         this_branch=wt.branch,
+                                         do_merge=False)
+        with transform.TransformPreview(wt) as merger.tt:
+            merger._compute_transform()
+            new_root_id = merger.tt.final_file_id(merger.tt.root)
+            self.assertEqual(wt.get_root_id(), new_root_id)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
@@ -157,12 +184,12 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        self.failUnless('All changes applied successfully.\n' not in
+        self.assertTrue('All changes applied successfully.\n' not in
             self.get_log())
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        self.failUnless('All changes applied successfully.\n' in self.get_log())
+        self.assertTrue('All changes applied successfully.\n' in self.get_log())
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -387,6 +414,26 @@ class TestMerge(TestCaseWithTransport):
                              '>>>>>>> MERGE-SOURCE\n',
                              'this/file')
 
+    def test_merge_reverse_revision_range(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit("added a")
+        first_rev = tree.branch.revision_history()[0]
+        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+                                          _mod_revision.NULL_REVISION,
+                                          first_rev)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.interesting_files = 'a'
+        conflict_count = merger.do_merge()
+        self.assertEqual(0, conflict_count)
+
+        self.assertPathDoesNotExist("a")
+        tree.revert()
+        self.assertPathExists("a")
+
     def test_make_merger(self):
         this_tree = self.make_branch_and_tree('this')
         this_tree.commit('rev1', rev_id='rev1')
@@ -455,6 +502,24 @@ class TestMerge(TestCaseWithTransport):
             self.assertEqual('2b\n1\n2a\n', tree_file.read())
         finally:
             tree_file.close()
+
+    def test_merge_require_tree_root(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit("added a")
+        old_root_id = tree.get_root_id()
+        first_rev = tree.branch.revision_history()[0]
+        merger = _mod_merge.Merger.from_revision_ids(None, tree,
+                                          _mod_revision.NULL_REVISION,
+                                          first_rev)
+        merger.merge_type = _mod_merge.Merge3Merger
+        conflict_count = merger.do_merge()
+        self.assertEqual(0, conflict_count)
+        self.assertEquals(set([old_root_id]), tree.all_file_ids())
+        tree.set_parent_ids([])
 
     def test_merge_add_into_deleted_root(self):
         # Yes, people actually do this.  And report bugs if it breaks.
@@ -1827,6 +1892,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot('C-id', ['A-id'], [])
         builder.build_snapshot('E-id', ['C-id', 'B-id'],
             [('unversion', 'a-id'),
+             ('flush', None),
              ('add', (u'a', 'a-id', 'directory', None))])
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         merge_obj = self.make_merge_obj(builder, 'E-id')
@@ -1850,6 +1916,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot('E-id', ['C-id', 'B-id'], [])
         builder.build_snapshot('D-id', ['B-id', 'C-id'],
             [('unversion', 'a-id'),
+             ('flush', None),
              ('add', (u'a', 'a-id', 'directory', None))])
         merge_obj = self.make_merge_obj(builder, 'E-id')
         entries = list(merge_obj._entries_lca())
@@ -2118,7 +2185,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertTrue(wt.is_executable('foo-id'))
 
     def test_create_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A
         #  / \
         # B   C
@@ -2183,7 +2250,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                              wt.get_file_text('foo-id'))
 
     def test_modified_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2228,7 +2295,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_renamed_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B renames foo => barry
@@ -2284,7 +2351,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('blah', wt.id2path('foo-id'))
 
     def test_symlink_no_content_change(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2335,7 +2402,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_symlink_this_changed_kind(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Nothing
         #  / \
         # B   C     B creates symlink foo => bar
@@ -2388,7 +2455,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def test_symlink_all_wt(self):
         """Check behavior if all trees are Working Trees."""
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         # The big issue is that entry.symlink_target is None for WorkingTrees.
         # So we need to make sure we handle that case correctly.
         #   A   foo => bar
@@ -2863,14 +2930,14 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def get_merger_factory(self):
         # Allows  the inner methods to access the test attributes
-        test = self
+        calls = self.calls
 
         class FooMerger(_mod_merge.ConfigurableFileMerger):
             name_prefix = "foo"
             default_files = ['bar']
 
             def merge_text(self, params):
-                test.calls.append('merge_text')
+                calls.append('merge_text')
                 return ('not_applicable', None)
 
         def factory(merger):

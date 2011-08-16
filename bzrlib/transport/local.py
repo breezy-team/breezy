@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ This is a fairly thin wrapper on regular file IO.
 """
 
 import os
-from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
+from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -33,9 +33,7 @@ from bzrlib import (
     osutils,
     urlutils,
     symbol_versioning,
-    transport,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport import LateReadError
 """)
 
@@ -329,10 +327,9 @@ class LocalTransport(transport.Transport):
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
-        # initialise the file
-        self.put_bytes_non_atomic(relpath, "", mode=mode)
         abspath = self._abspath(relpath)
         handle = osutils.open_file(abspath, 'wb')
+        handle.truncate()
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle

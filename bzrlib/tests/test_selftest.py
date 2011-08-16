@@ -29,6 +29,7 @@ import warnings
 from testtools import (
     ExtendedToOriginalDecorator,
     MultiTestResult,
+    __version__ as testtools_version,
     )
 from testtools.content import Content
 from testtools.content_type import ContentType
@@ -36,13 +37,14 @@ from testtools.matchers import (
     DocTestMatches,
     Equals,
     )
-import testtools.tests.helpers
+import testtools.testresult.doubles
 
 import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
     errors,
+    hooks,
     lockdir,
     memorytree,
     osutils,
@@ -52,10 +54,11 @@ from bzrlib import (
     tests,
     transport,
     workingtree,
+    workingtree_3,
+    workingtree_4,
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
-    weaverepo,
     )
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -91,23 +94,14 @@ class MetaTestLog(tests.TestCase):
             DocTestMatches(u"...a test message\n", doctest.ELLIPSIS))
 
 
-class TestUnicodeFilename(tests.TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilename._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        tests.UnicodeFilename._probe()
-
-
 class TestTreeShape(tests.TestCaseInTempDir):
 
     def test_unicode_paths(self):
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         filename = u'hell\u00d8'
         self.build_tree_contents([(filename, 'contents of hello')])
-        self.failUnlessExists(filename)
+        self.assertPathExists(filename)
 
 
 class TestClassesAvailable(tests.TestCase):
@@ -339,11 +333,11 @@ class TestWorkingTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat2(),
-                   workingtree.WorkingTreeFormat3(),]
+        formats = [workingtree_4.WorkingTreeFormat4(),
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
-            ('WorkingTreeFormat2',
+            ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
@@ -376,15 +370,15 @@ class TestTreeScenarios(tests.TestCase):
             )
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat2(),
-                   workingtree.WorkingTreeFormat3(),]
+        formats = [workingtree_4.WorkingTreeFormat4(),
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
-        default_wt_format = workingtree.WorkingTreeFormat4._default_format
-        wt4_format = workingtree.WorkingTreeFormat4()
-        wt5_format = workingtree.WorkingTreeFormat5()
+        default_wt_format = workingtree.format_registry.get_default()
+        wt4_format = workingtree_4.WorkingTreeFormat4()
+        wt5_format = workingtree_4.WorkingTreeFormat5()
         expected_scenarios = [
-            ('WorkingTreeFormat2',
+            ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
@@ -450,17 +444,17 @@ class TestInterTreeScenarios(tests.TestCase):
         # ones to add.
         from bzrlib.tests.per_tree import (
             return_parameter,
-            revision_tree_from_workingtree
             )
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
+        from bzrlib.workingtree_3 import WorkingTreeFormat3
+        from bzrlib.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
         server2 = "b"
-        format1 = WorkingTreeFormat2()
+        format1 = WorkingTreeFormat4()
         format2 = WorkingTreeFormat3()
         formats = [("1", str, format1, format2, "converter1"),
             ("2", int, format2, format1, "converter2")]
@@ -512,6 +506,25 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertRaises(AssertionError, self.assertEqualStat,
             os.lstat("foo"), os.lstat("longname"))
 
+    def test_failUnlessExists(self):
+        """Deprecated failUnlessExists and failIfExists"""
+        self.applyDeprecated(
+            deprecated_in((2, 4)),
+            self.failUnlessExists, '.')
+        self.build_tree(['foo/', 'foo/bar'])
+        self.applyDeprecated(
+            deprecated_in((2, 4)),
+            self.failUnlessExists, 'foo/bar')
+        self.applyDeprecated(
+            deprecated_in((2, 4)),
+            self.failIfExists, 'foo/foo')
+
+    def test_assertPathExists(self):
+        self.assertPathExists('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        self.assertPathExists('foo/bar')
+        self.assertPathDoesNotExist('foo/foo')
+
 
 class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
 
@@ -551,17 +564,17 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('dir')
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
-        self.failIf(osutils.lexists('dir'))
+        self.assertFalse(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
 
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = weaverepo.RepositoryFormat7()
+        format.repository_format = repository.format_registry.get_default()
         tree = self.make_branch_and_memory_tree('dir', format=format)
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
-        self.failIf(osutils.lexists('dir'))
+        self.assertFalse(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
@@ -571,19 +584,19 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(builder, branchbuilder.BranchBuilder)
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
-        self.failIf(osutils.lexists('dir'))
+        self.assertFalse(osutils.lexists('dir'))
 
     def test_make_branch_builder_with_format(self):
         # Use a repo layout that doesn't conform to a 'named' layout, to ensure
         # that the format objects are used.
         format = bzrdir.BzrDirMetaFormat1()
-        repo_format = weaverepo.RepositoryFormat7()
+        repo_format = repository.format_registry.get_default()
         format.repository_format = repo_format
         builder = self.make_branch_builder('dir', format=format)
         the_branch = builder.get_branch()
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
-        self.failIf(osutils.lexists('dir'))
+        self.assertFalse(osutils.lexists('dir'))
         self.assertEqual(format.repository_format.__class__,
                          the_branch.repository._format.__class__)
         self.assertEqual(repo_format.get_format_string(),
@@ -595,7 +608,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         the_branch = builder.get_branch()
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
-        self.failIf(osutils.lexists('dir'))
+        self.assertFalse(osutils.lexists('dir'))
         dir_format = bzrdir.format_registry.make_bzrdir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
@@ -634,8 +647,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         url2 = self.get_readonly_url('foo/bar')
         t = transport.get_transport(url)
         t2 = transport.get_transport(url2)
-        self.failUnless(isinstance(t, ReadonlyTransportDecorator))
-        self.failUnless(isinstance(t2, ReadonlyTransportDecorator))
+        self.assertIsInstance(t, ReadonlyTransportDecorator)
+        self.assertIsInstance(t2, ReadonlyTransportDecorator)
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
@@ -649,8 +662,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         # the transport returned may be any HttpTransportBase subclass
         t = transport.get_transport(url)
         t2 = transport.get_transport(url2)
-        self.failUnless(isinstance(t, HttpTransportBase))
-        self.failUnless(isinstance(t2, HttpTransportBase))
+        self.assertIsInstance(t, HttpTransportBase)
+        self.assertIsInstance(t2, HttpTransportBase)
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_is_directory(self):
@@ -664,7 +677,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     def test_make_branch_builder(self):
         builder = self.make_branch_builder('dir')
         rev_id = builder.build_commit()
-        self.failUnlessExists('dir')
+        self.assertPathExists('dir')
         a_dir = bzrdir.BzrDir.open('dir')
         self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
         a_branch = a_dir.open_branch()
@@ -686,7 +699,7 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
         self.assertIsInstance(result_bzrdir.transport,
                               memory.MemoryTransport)
         # should not be on disk, should only be in memory
-        self.failIfExists('subdir')
+        self.assertPathDoesNotExist('subdir')
 
 
 class TestChrootedTest(tests.ChrootedTestCase):
@@ -700,8 +713,8 @@ class TestChrootedTest(tests.ChrootedTestCase):
 class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
-        self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = testtools.tests.helpers.ExtendedTestResult()
+        self.requireFeature(features.lsprof_feature)
+        terminal = testtools.testresult.doubles.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -724,7 +737,7 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        capture = testtools.tests.helpers.ExtendedTestResult()
+        capture = testtools.testresult.doubles.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
         timed_string = result._testTimeString(run_case)
@@ -751,46 +764,6 @@ class TestTestResult(tests.TestCase):
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
 
-    def _patch_get_bzr_source_tree(self):
-        # Reading from the actual source tree breaks isolation, but we don't
-        # want to assume that thats *all* that would happen.
-        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree', lambda: None)
-
-    def test_assigned_benchmark_file_stores_date(self):
-        self._patch_get_bzr_source_tree()
-        output = StringIO()
-        result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1,
-                                        bench_history=output
-                                        )
-        output_string = output.getvalue()
-        # if you are wondering about the regexp please read the comment in
-        # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
-        # XXX: what comment?  -- Andrew Bennetts
-        self.assertContainsRe(output_string, "--date [0-9.]+")
-
-    def test_benchhistory_records_test_times(self):
-        self._patch_get_bzr_source_tree()
-        result_stream = StringIO()
-        result = bzrlib.tests.TextTestResult(
-            self._log_file,
-            descriptions=0,
-            verbosity=1,
-            bench_history=result_stream
-            )
-
-        # we want profile a call and check that its test duration is recorded
-        # make a new test instance that when run will generate a benchmark
-        example_test_case = TestTestResult("_time_hello_world_encoding")
-        # execute the test, which should succeed and record times
-        example_test_case.run(result)
-        lines = result_stream.getvalue().splitlines()
-        self.assertEqual(2, len(lines))
-        self.assertContainsRe(lines[1],
-            " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
-            "._time_hello_world_encoding")
-
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
 
@@ -801,7 +774,7 @@ class TestTestResult(tests.TestCase):
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
             result_stream,
@@ -852,7 +825,7 @@ class TestTestResult(tests.TestCase):
         self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
 
     def test_known_failure(self):
-        """A KnownFailure being raised should trigger several result actions."""
+        """Using knownFailure should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
             def report_tests_starting(self): pass
@@ -861,7 +834,7 @@ class TestTestResult(tests.TestCase):
         result = InstrumentedTestResult(None, None, None, None)
         class Test(tests.TestCase):
             def test_function(self):
-                raise tests.KnownFailure('failed!')
+                self.knownFailure('failed!')
         test = Test("test_function")
         test.run(result)
         # it should invoke 'report_known_failure'.
@@ -883,23 +856,13 @@ class TestTestResult(tests.TestCase):
             descriptions=0,
             verbosity=2,
             )
-        test = self.get_passing_test()
-        result.startTest(test)
-        prefix = len(result_stream.getvalue())
-        # the err parameter has the shape:
-        # (class, exception object, traceback)
-        # KnownFailures dont get their tracebacks shown though, so we
-        # can skip that.
-        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result.report_known_failure(test, err)
-        output = result_stream.getvalue()[prefix:]
-        lines = output.splitlines()
-        self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
-        if sys.version_info > (2, 7):
-            self.expectFailure("_ExpectedFailure on 2.7 loses the message",
-                self.assertNotEqual, lines[1], '    ')
-        self.assertEqual(lines[1], '    foo')
-        self.assertEqual(2, len(lines))
+        _get_test("test_xfail").run(result)
+        self.assertContainsRe(result_stream.getvalue(),
+            "\n\\S+\\.test_xfail\\s+XFAIL\\s+\\d+ms\n"
+            "\\s*(?:Text attachment: )?reason"
+            "(?:\n-+\n|: {{{)"
+            "this_fails"
+            "(?:\n-+\n|}}}\n)")
 
     def get_passing_test(self):
         """Return a test object that can't be run usefully."""
@@ -916,7 +879,7 @@ class TestTestResult(tests.TestCase):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
         test = SampleTestCase('_test_pass')
-        feature = tests.Feature()
+        feature = features.Feature()
         result.startTest(test)
         result.addNotSupported(test, feature)
         # it should invoke 'report_unsupported'.
@@ -941,7 +904,7 @@ class TestTestResult(tests.TestCase):
             verbosity=2,
             )
         test = self.get_passing_test()
-        feature = tests.Feature()
+        feature = features.Feature()
         result.startTest(test)
         prefix = len(result_stream.getvalue())
         result.report_unsupported(test, feature)
@@ -960,7 +923,7 @@ class TestTestResult(tests.TestCase):
             def addNotSupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
-        feature = tests.Feature()
+        feature = features.Feature()
         class Test(tests.TestCase):
             def test_function(self):
                 raise tests.UnavailableFeature(feature)
@@ -985,9 +948,8 @@ class TestTestResult(tests.TestCase):
     def test_strict_with_known_failure(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
                                              verbosity=1)
-        test = self.get_passing_test()
-        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result.addExpectedFailure(test, err)
+        test = _get_test("test_xfail")
+        test.run(result)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
@@ -1025,15 +987,6 @@ class TestTestResult(tests.TestCase):
         self.assertEquals(2, result.count)
 
 
-class TestUnicodeFilenameFeature(tests.TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilenameFeature._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        tests.UnicodeFilenameFeature._probe()
-
-
 class TestRunner(tests.TestCase):
 
     def dummy_test(self):
@@ -1065,7 +1018,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            self.fail('foo')
+            raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1079,7 +1032,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    self.fail\\(\'foo\'\\)\n'
+            '    raise AssertionError\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1091,7 +1044,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                self.expectFailure('failed', self.assertTrue, False)
+                self.knownFailure("Never works...")
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1102,6 +1055,38 @@ class TestRunner(tests.TestCase):
             'Ran 1 test in .*\n'
             '\n'
             'OK \\(known_failures=1\\)\n')
+
+    def test_unexpected_success_bad(self):
+        class Test(tests.TestCase):
+            def test_truth(self):
+                self.expectFailure("No absolute truth", self.assertTrue, True)
+        runner = tests.TextTestRunner(stream=StringIO())
+        result = self.run_test_runner(runner, Test("test_truth"))
+        if testtools_version[:3] <= (0, 9, 11):
+            self.assertContainsRe(runner.stream.getvalue(),
+                "=+\n"
+                "FAIL: \\S+\.test_truth\n"
+                "-+\n"
+                "(?:.*\n)*"
+                "No absolute truth\n"
+                "(?:.*\n)*"
+                "-+\n"
+                "Ran 1 test in .*\n"
+                "\n"
+                "FAILED \\(failures=1\\)\n\\Z")
+        else:
+            self.assertContainsRe(runner.stream.getvalue(),
+                "=+\n"
+                "FAIL: \\S+\.test_truth\n"
+                "-+\n"
+                "Empty attachments:\n"
+                "  log\n"
+                "\n"
+                "reason: {{{No absolute truth}}}\n"
+                "-+\n"
+                "Ran 1 test in .*\n"
+                "\n"
+                "FAILED \\(failures=1\\)\n\\Z")
 
     def test_result_decorator(self):
         # decorate results
@@ -1192,9 +1177,9 @@ class TestRunner(tests.TestCase):
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
-        class Feature1(tests.Feature):
+        class Feature1(features.Feature):
             def _probe(self): return False
-        class Feature2(tests.Feature):
+        class Feature2(features.Feature):
             def _probe(self): return False
         # create sample tests
         test1 = SampleTestCase('_test_pass')
@@ -1214,29 +1199,6 @@ class TestRunner(tests.TestCase):
             "Missing feature 'Feature2' skipped 1 tests.",
             ],
             lines[-3:])
-
-    def _patch_get_bzr_source_tree(self):
-        # Reading from the actual source tree breaks isolation, but we don't
-        # want to assume that thats *all* that would happen.
-        self._get_source_tree_calls = []
-        def new_get():
-            self._get_source_tree_calls.append("called")
-            return None
-        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree',  new_get)
-
-    def test_bench_history(self):
-        # tests that the running the benchmark passes bench_history into
-        # the test result object. We can tell that happens if
-        # _get_bzr_source_tree is called.
-        self._patch_get_bzr_source_tree()
-        test = TestRunner('dummy_test')
-        output = StringIO()
-        runner = tests.TextTestRunner(stream=self._log_file,
-                                      bench_history=output)
-        result = self.run_test_runner(runner, test)
-        output_string = output.getvalue()
-        self.assertContainsRe(output_string, "--date [0-9.]+")
-        self.assertLength(1, self._get_source_tree_calls)
 
     def test_verbose_test_count(self):
         """A verbose test run reports the right test count at the start"""
@@ -1289,11 +1251,14 @@ class TestRunner(tests.TestCase):
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
-        self.assertContainsRe(out.getvalue(),
-            "Text attachment: log\n"
-            "-+\n"
-            "\d+\.\d+  \\\\u2606\n"
-            "-+\n")
+        if testtools_version[:3] > (0, 9, 11):
+            self.assertContainsRe(out.getvalue(), "log: {{{\d+\.\d+  \\\\u2606}}}")
+        else:
+            self.assertContainsRe(out.getvalue(),
+                "Text attachment: log\n"
+                "-+\n"
+                "\d+\.\d+  \\\\u2606\n"
+                "-+\n")
 
 
 class SampleTestCase(tests.TestCase):
@@ -1488,19 +1453,19 @@ class TestTestCase(tests.TestCase):
         # Note this test won't fail with hooks that the core library doesn't
         # use - but it trigger with a plugin that adds hooks, so its still a
         # useful warning in that case.
-        self.assertEqual(bzrlib.branch.BranchHooks(),
-            bzrlib.branch.Branch.hooks)
-        self.assertEqual(bzrlib.smart.server.SmartServerHooks(),
+        self.assertEqual(bzrlib.branch.BranchHooks(), bzrlib.branch.Branch.hooks)
+        self.assertEqual(
+            bzrlib.smart.server.SmartServerHooks(),
             bzrlib.smart.server.SmartTCPServer.hooks)
-        self.assertEqual(bzrlib.commands.CommandHooks(),
-            bzrlib.commands.Command.hooks)
+        self.assertEqual(
+            bzrlib.commands.CommandHooks(), bzrlib.commands.Command.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
 
         Each self.time() call is individually and separately profiled.
         """
-        self.requireFeature(test_lsprof.LSProfFeature)
+        self.requireFeature(features.lsprof_feature)
         # overrides the class member with an instance member so no cleanup
         # needed.
         self._gather_lsprof_in_benchmarks = True
@@ -1536,14 +1501,14 @@ class TestTestCase(tests.TestCase):
 
     def test_requireFeature_available(self):
         """self.requireFeature(available) is a no-op."""
-        class Available(tests.Feature):
+        class Available(features.Feature):
             def _probe(self):return True
         feature = Available()
         self.requireFeature(feature)
 
     def test_requireFeature_unavailable(self):
         """self.requireFeature(unavailable) raises UnavailableFeature."""
-        class Unavailable(tests.Feature):
+        class Unavailable(features.Feature):
             def _probe(self):return False
         feature = Unavailable()
         self.assertRaises(tests.UnavailableFeature,
@@ -1708,8 +1673,20 @@ class TestTestCase(tests.TestCase):
         test.run(unittest.TestResult())
         self.assertEqual('original', obj.test_attr)
 
+    def test_recordCalls(self):
+        from bzrlib.tests import test_selftest
+        calls = self.recordCalls(
+            test_selftest, '_add_numbers')
+        self.assertEqual(test_selftest._add_numbers(2, 10),
+            12)
+        self.assertEquals(calls, [((2, 10), {})])
 
-class _MissingFeature(tests.Feature):
+
+def _add_numbers(a, b):
+    return a + b
+
+
+class _MissingFeature(features.Feature):
     def _probe(self):
         return False
 missing_feature = _MissingFeature()
@@ -1766,14 +1743,16 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_fail')
         self.assertEqual(1, len(result.failures))
         result_content = result.failures[0][1]
-        self.assertContainsRe(result_content, 'Text attachment: log')
+        if testtools_version < (0, 9, 12):
+            self.assertContainsRe(result_content, 'Text attachment: log')
         self.assertContainsRe(result_content, 'this was a failing test')
 
     def test_error_has_log(self):
         result = self._run_test('test_error')
         self.assertEqual(1, len(result.errors))
         result_content = result.errors[0][1]
-        self.assertContainsRe(result_content, 'Text attachment: log')
+        if testtools_version < (0, 9, 12):
+            self.assertContainsRe(result_content, 'Text attachment: log')
         self.assertContainsRe(result_content, 'this test errored')
 
     def test_skip_has_no_log(self):
@@ -1977,11 +1956,8 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
         self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
-        self.make_branch_and_tree('b', format=bzrlib.bzrdir.BzrDirFormat6())
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
                               bzrlib.bzrdir.BzrDirMetaFormat1)
-        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
-                              bzrlib.bzrdir.BzrDirFormat6)
 
     def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from
@@ -2064,18 +2040,18 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertLength(2, output.readlines())
 
     def test_lsprof_tests(self):
-        self.requireFeature(test_lsprof.LSProfFeature)
-        calls = []
+        self.requireFeature(features.lsprof_feature)
+        results = []
         class Test(object):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                self.assertIsInstance(result, ExtendedToOriginalDecorator)
-                calls.append("called")
+                results.append(result)
             def countTestCases(self):
                 return 1
         self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
-        self.assertLength(1, calls)
+        self.assertLength(1, results)
+        self.assertIsInstance(results.pop(), ExtendedToOriginalDecorator)
 
     def test_random(self):
         # test randomising by listing a number of tests.
@@ -2223,9 +2199,13 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_unexpected_success')
         self.assertContainsRe(content, '(?m)^log$')
         self.assertContainsRe(content, 'test with unexpected success')
-        self.expectFailure('subunit treats "unexpectedSuccess"'
-                           ' as a plain success',
-            self.assertEqual, 1, len(result.unexpectedSuccesses))
+        # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
+        #                success, if a min version check is added remove this
+        from subunit import TestProtocolClient as _Client
+        if _Client.addUnexpectedSuccess.im_func is _Client.addSuccess.im_func:
+            self.expectFailure('subunit treats "unexpectedSuccess"'
+                               ' as a plain success',
+                self.assertEqual, 1, len(result.unexpectedSuccesses))
         self.assertEqual(1, len(result.unexpectedSuccesses))
         test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"
@@ -2366,7 +2346,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
         # stdout and stderr of the invoked run_bzr
         current_factory = bzrlib.ui.ui_factory
         self.run_bzr(['foo'])
-        self.failIf(current_factory is self.factory)
+        self.assertFalse(current_factory is self.factory)
         self.assertNotEqual(sys.stdout, self.factory.stdout)
         self.assertNotEqual(sys.stderr, self.factory.stderr)
         self.assertEqual('foo\n', self.factory.stdout.getvalue())
@@ -2529,16 +2509,23 @@ class _DontSpawnProcess(Exception):
 
 
 class TestStartBzrSubProcess(tests.TestCase):
+    """Stub test start_bzr_subprocess."""
 
-    def check_popen_state(self):
-        """Replace to make assertions when popen is called."""
+    def _subprocess_log_cleanup(self):
+        """Inhibits the base version as we don't produce a log file."""
 
     def _popen(self, *args, **kwargs):
-        """Record the command that is run, so that we can ensure it is correct"""
+        """Override the base version to record the command that is run.
+
+        From there we can ensure it is correct without spawning a real process.
+        """
         self.check_popen_state()
         self._popen_args = args
         self._popen_kwargs = kwargs
         raise _DontSpawnProcess()
+
+    def check_popen_state(self):
+        """Replace to make assertions when popen is called."""
 
     def test_run_bzr_subprocess_no_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
@@ -2549,41 +2536,41 @@ class TestStartBzrSubProcess(tests.TestCase):
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            allow_plugins=True)
+                          allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
     def test_set_env(self):
-        self.failIf('EXISTANT_ENV_VAR' in os.environ)
+        self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
         # set in the child
         def check_environment():
             self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':'set variable'})
+                          env_changes={'EXISTANT_ENV_VAR':'set variable'})
         # not set in theparent
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
     def test_run_bzr_subprocess_env_del(self):
         """run_bzr_subprocess can remove environment variables too."""
-        self.failIf('EXISTANT_ENV_VAR' in os.environ)
+        self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
         def check_environment():
             self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'EXISTANT_ENV_VAR':None})
+                          env_changes={'EXISTANT_ENV_VAR':None})
         # Still set in parent
         self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         del os.environ['EXISTANT_ENV_VAR']
 
     def test_env_del_missing(self):
-        self.failIf('NON_EXISTANT_ENV_VAR' in os.environ)
+        self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
         def check_environment():
             self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-            env_changes={'NON_EXISTANT_ENV_VAR':None})
+                          env_changes={'NON_EXISTANT_ENV_VAR':None})
 
     def test_working_dir(self):
         """Test that we can specify the working dir for the child"""
@@ -2592,18 +2579,12 @@ class TestStartBzrSubProcess(tests.TestCase):
         chdirs = []
         def chdir(path):
             chdirs.append(path)
-        os.chdir = chdir
-        try:
-            def getcwd():
-                return 'current'
-            osutils.getcwd = getcwd
-            try:
-                self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
-                    working_dir='foo')
-            finally:
-                osutils.getcwd = orig_getcwd
-        finally:
-            os.chdir = orig_chdir
+        self.overrideAttr(os, 'chdir', chdir)
+        def getcwd():
+            return 'current'
+        self.overrideAttr(osutils, 'getcwd', getcwd)
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+                          working_dir='foo')
         self.assertEqual(['foo', 'current'], chdirs)
 
     def test_get_bzr_path_with_cwd_bzrlib(self):
@@ -2627,80 +2608,6 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
                                             retcode=3)
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
-
-
-class TestFeature(tests.TestCase):
-
-    def test_caching(self):
-        """Feature._probe is called by the feature at most once."""
-        class InstrumentedFeature(tests.Feature):
-            def __init__(self):
-                super(InstrumentedFeature, self).__init__()
-                self.calls = []
-            def _probe(self):
-                self.calls.append('_probe')
-                return False
-        feature = InstrumentedFeature()
-        feature.available()
-        self.assertEqual(['_probe'], feature.calls)
-        feature.available()
-        self.assertEqual(['_probe'], feature.calls)
-
-    def test_named_str(self):
-        """Feature.__str__ should thunk to feature_name()."""
-        class NamedFeature(tests.Feature):
-            def feature_name(self):
-                return 'symlinks'
-        feature = NamedFeature()
-        self.assertEqual('symlinks', str(feature))
-
-    def test_default_str(self):
-        """Feature.__str__ should default to __class__.__name__."""
-        class NamedFeature(tests.Feature):
-            pass
-        feature = NamedFeature()
-        self.assertEqual('NamedFeature', str(feature))
-
-
-class TestUnavailableFeature(tests.TestCase):
-
-    def test_access_feature(self):
-        feature = tests.Feature()
-        exception = tests.UnavailableFeature(feature)
-        self.assertIs(feature, exception.args[0])
-
-
-simple_thunk_feature = tests._CompatabilityThunkFeature(
-    deprecated_in((2, 1, 0)),
-    'bzrlib.tests.test_selftest',
-    'simple_thunk_feature','UnicodeFilename',
-    replacement_module='bzrlib.tests'
-    )
-
-class Test_CompatibilityFeature(tests.TestCase):
-
-    def test_does_thunk(self):
-        res = self.callDeprecated(
-            ['bzrlib.tests.test_selftest.simple_thunk_feature was deprecated'
-             ' in version 2.1.0. Use bzrlib.tests.UnicodeFilename instead.'],
-            simple_thunk_feature.available)
-        self.assertEqual(tests.UnicodeFilename.available(), res)
-
-
-class TestModuleAvailableFeature(tests.TestCase):
-
-    def test_available_module(self):
-        feature = tests.ModuleAvailableFeature('bzrlib.tests')
-        self.assertEqual('bzrlib.tests', feature.module_name)
-        self.assertEqual('bzrlib.tests', str(feature))
-        self.assertTrue(feature.available())
-        self.assertIs(tests, feature.module)
-
-    def test_unavailable_module(self):
-        feature = tests.ModuleAvailableFeature('bzrlib.no_such_module_exists')
-        self.assertEqual('bzrlib.no_such_module_exists', str(feature))
-        self.assertFalse(feature.available())
-        self.assertIs(None, feature.module)
 
 
 class TestSelftestFiltering(tests.TestCase):
@@ -2859,16 +2766,16 @@ class TestSelftestFiltering(tests.TestCase):
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
-class TestCheckInventoryShape(tests.TestCaseWithTransport):
+class TestCheckTreeShape(tests.TestCaseWithTransport):
 
-    def test_check_inventory_shape(self):
+    def test_check_tree_shape(self):
         files = ['a', 'b/', 'b/c']
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
         tree.add(files)
         tree.lock_read()
         try:
-            self.check_inventory_shape(tree.inventory, files)
+            self.check_tree_shape(tree, files)
         finally:
             tree.unlock()
 
@@ -3410,7 +3317,7 @@ class TestRunSuite(tests.TestCase):
 class TestEnvironHandling(tests.TestCase):
 
     def test_overrideEnv_None_called_twice_doesnt_leak(self):
-        self.failIf('MYVAR' in os.environ)
+        self.assertFalse('MYVAR' in os.environ)
         self.overrideEnv('MYVAR', '42')
         # We use an embedded test to make sure we fix the _captureVar bug
         class Test(tests.TestCase):
@@ -3546,3 +3453,81 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees None
         self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)
+
+
+class TestSelftestExcludePatterns(tests.TestCase):
+
+    def setUp(self):
+        super(TestSelftestExcludePatterns, self).setUp()
+        self.overrideAttr(tests, 'test_suite', self.suite_factory)
+
+    def suite_factory(self, keep_only=None, starting_with=None):
+        """A test suite factory with only a few tests."""
+        class Test(tests.TestCase):
+            def id(self):
+                # We don't need the full class path
+                return self._testMethodName
+            def a(self):
+                pass
+            def b(self):
+                pass
+            def c(self):
+                pass
+        return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
+
+    def assertTestList(self, expected, *selftest_args):
+        # We rely on setUp installing the right test suite factory so we can
+        # test at the command level without loading the whole test suite
+        out, err = self.run_bzr(('selftest', '--list') + selftest_args)
+        actual = out.splitlines()
+        self.assertEquals(expected, actual)
+
+    def test_full_list(self):
+        self.assertTestList(['a', 'b', 'c'])
+
+    def test_single_exclude(self):
+        self.assertTestList(['b', 'c'], '-x', 'a')
+
+    def test_mutiple_excludes(self):
+        self.assertTestList(['c'], '-x', 'a', '-x', 'b')
+
+
+class TestCounterHooks(tests.TestCase, SelfTestHelper):
+
+    _test_needs_features = [features.subunit]
+
+    def setUp(self):
+        super(TestCounterHooks, self).setUp()
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                super(Test, self).setUp()
+                self.hooks = hooks.Hooks()
+                self.hooks.add_hook('myhook', 'Foo bar blah', (2,4))
+                self.install_counter_hook(self.hooks, 'myhook')
+
+            def no_hook(self):
+                pass
+
+            def run_hook_once(self):
+                for hook in self.hooks['myhook']:
+                    hook(self)
+
+        self.test_class = Test
+
+    def assertHookCalls(self, expected_calls, test_name):
+        test = self.test_class(test_name)
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertTrue(hasattr(test, '_counters'))
+        self.assertTrue(test._counters.has_key('myhook'))
+        self.assertEquals(expected_calls, test._counters['myhook'])
+
+    def test_no_hook(self):
+        self.assertHookCalls(0, 'no_hook')
+
+    def test_run_hook_once(self):
+        tt = features.testtools
+        if tt.module.__version__ < (0, 9, 8):
+            raise tests.TestSkipped('testtools-0.9.8 required for addDetail')
+        self.assertHookCalls(1, 'run_hook_once')

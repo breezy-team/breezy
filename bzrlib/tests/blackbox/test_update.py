@@ -90,7 +90,7 @@ All changes applied successfully.
 Updated to revision 1 of branch %s
 """ % osutils.pathjoin(self.test_dir, 'branch',),
                          err)
-        self.failUnlessExists('branch/file')
+        self.assertPathExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
@@ -140,10 +140,9 @@ Updated to revision 2 of branch %s
         # smoke test for doing an update of a checkout of a bound
         # branch with local commits.
         master = self.make_branch_and_tree('master')
+        master.commit('first commit')
         # make a bound branch
         self.run_bzr('checkout master child')
-        # get an object form of child
-        child = workingtree.WorkingTree.open('child')
         # check that out
         self.run_bzr('checkout --lightweight child checkout')
         # get an object form of the checkout to manipulate
@@ -158,6 +157,8 @@ Updated to revision 2 of branch %s
         a_file = file('child/file_b', 'wt')
         a_file.write('Foo')
         a_file.close()
+        # get an object form of child
+        child = workingtree.WorkingTree.open('child')
         child.add(['file_b'])
         child_tip = child.commit('add file_b', local=True)
         # check checkout
@@ -174,14 +175,14 @@ Updated to revision 2 of branch %s
 All changes applied successfully.
 +N  file
 All changes applied successfully.
-Updated to revision 1 of branch %s
+Updated to revision 2 of branch %s
 Your local commits will now show as pending merges with 'bzr status', and can be committed with 'bzr commit'.
 """ % osutils.pathjoin(self.test_dir, 'master',),
                          err)
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
-        self.failUnlessExists('checkout/file')
-        self.failUnlessExists('checkout/file_b')
-        self.failUnlessExists('checkout/file_c')
+        self.assertPathExists('checkout/file')
+        self.assertPathExists('checkout/file_b')
+        self.assertPathExists('checkout/file_c')
         self.assertTrue(wt.has_filename('file_c'))
 
     def test_update_with_merges(self):
@@ -299,8 +300,8 @@ $ bzr update -r 1
 2>All changes applied successfully.
 2>Updated to revision 1 of .../master
 ''')
-        self.failUnlessExists('./file1')
-        self.failIfExists('./file2')
+        self.assertPathExists('./file1')
+        self.assertPathDoesNotExist('./file2')
         self.assertEquals(['m1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):

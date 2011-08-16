@@ -8,4 +8,4 @@
    tutorial
    using_bazaar_with_launchpad
    centralized_workflow
-
+   licence

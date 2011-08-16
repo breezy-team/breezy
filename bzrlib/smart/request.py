@@ -31,8 +31,6 @@ Interesting module attributes:
 # of a SmartServerRequest subclass.
 
 
-import tempfile
-import thread
 import threading
 
 from bzrlib import (
@@ -48,6 +46,9 @@ from bzrlib import (
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.bundle import serializer
+
+import tempfile
+import thread
 """)
 
 
@@ -134,7 +135,7 @@ class SmartServerRequest(object):
         It will return a SmartServerResponse if the command does not expect a
         body.
 
-        :param *args: the arguments of the request.
+        :param args: the arguments of the request.
         """
         self._check_enabled()
         return self.do(*args)
@@ -446,9 +447,13 @@ def _translate_error(err):
         return ('TokenMismatch', err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
         return ('LockContention',)
+    elif isinstance(err, MemoryError):
+        # GZ 2011-02-24: Copy bzrlib.trace -Dmem_dump functionality here?
+        return ('MemoryError',)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
-    return ('error', str(err))
+    return ('error', trace._qualified_exception_name(err.__class__, True),
+        str(err))
 
 
 class HelloRequest(SmartServerRequest):
@@ -500,6 +505,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.set_tags_bytes', 'bzrlib.smart.branch',
     'SmartServerBranchSetTagsBytes')
+request_handlers.register_lazy(
+    'Branch.heads_to_fetch', 'bzrlib.smart.branch',
+    'SmartServerBranchHeadsToFetch')
 request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(

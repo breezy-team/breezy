@@ -41,6 +41,7 @@ from bzrlib.smart import (
         vfs,
 )
 from bzrlib.tests import (
+    features,
     test_smart,
     test_server,
     )
@@ -82,7 +83,7 @@ class StringIOSSHConnection(ssh.SSHConnection):
         return 'pipes', (self.vendor.read_from, self.vendor.write_to)
 
 
-class _InvalidHostnameFeature(tests.Feature):
+class _InvalidHostnameFeature(features.Feature):
     """Does 'non_existent.invalid' fail to resolve?
 
     RFC 2606 states that .invalid is reserved for invalid domain names, and
@@ -1355,7 +1356,7 @@ class RemoteTransportRegistration(tests.TestCase):
     def test_registration(self):
         t = transport.get_transport('bzr+ssh://example.com/path')
         self.assertIsInstance(t, remote.RemoteSSHTransport)
-        self.assertEqual('example.com', t._host)
+        self.assertEqual('example.com', t._parsed_url.host)
 
     def test_bzr_https(self):
         # https://bugs.launchpad.net/bzr/+bug/128456
@@ -1493,6 +1494,7 @@ class TestSmartProtocol(tests.TestCase):
         smart_protocol._has_dispatched = True
         smart_protocol.request = _mod_request.SmartServerRequestHandler(
             None, _mod_request.request_handlers, '/')
+        # GZ 2010-08-10: Cycle with closure affects 4 tests
         class FakeCommand(_mod_request.SmartServerRequest):
             def do_body(self_cmd, body_bytes):
                 self.end_received = True
@@ -2412,7 +2414,7 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
         self.assertEqual('aaa', stream.next())
         self.assertEqual('bbb', stream.next())
         exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
-        self.assertEqual(('error', 'Boom!'), exc.error_tuple)
+        self.assertEqual(('error', 'Exception', 'Boom!'), exc.error_tuple)
 
     def test_interrupted_by_connection_lost(self):
         interrupted_body_stream = (
@@ -2815,7 +2817,8 @@ interrupted_body_stream = (
     'b\x00\x00\x00\x03aaa' # body part ('aaa')
     'b\x00\x00\x00\x03bbb' # body part ('bbb')
     'oE' # status flag (error)
-    's\x00\x00\x00\x10l5:error5:Boom!e' # err struct ('error', 'Boom!')
+    # err struct ('error', 'Exception', 'Boom!')
+    's\x00\x00\x00\x1bl5:error9:Exception5:Boom!e'
     'e' # EOM
     )
 
@@ -3578,8 +3581,8 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'http://www.example.com/bar')
         self.assertEquals(type(r), type(t))
-        self.assertEquals('joe', t._user)
-        self.assertEquals(t._user, r._user)
+        self.assertEquals('joe', t._parsed_url.user)
+        self.assertEquals(t._parsed_url.user, r._parsed_url.user)
 
     def test_redirected_to_same_host_different_protocol(self):
         t = remote.RemoteHTTPTransport('bzr+http://joe@www.example.com/foo')

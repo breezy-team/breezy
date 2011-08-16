@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd.
+# Copyright (C) 2005-2011 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,10 +25,8 @@ lazy_import(globals(), """
 import errno
 import subprocess
 import tempfile
-import time
 
 from bzrlib import (
-    branch as _mod_branch,
     bzrdir,
     cmdline,
     cleanup,
@@ -45,10 +43,6 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.registry import (
     Registry,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
     )
 from bzrlib.trace import mutter, note, warning
 
@@ -290,39 +284,6 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
-@deprecated_function(deprecated_in((2, 2, 0)))
-def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
-                                   apply_view=True):
-    """Get the trees and specific files to diff given a list of paths.
-
-    This method works out the trees to be diff'ed and the files of
-    interest within those trees.
-
-    :param path_list:
-        the list of arguments passed to the diff command
-    :param revision_specs:
-        Zero, one or two RevisionSpecs from the diff command line,
-        saying what revisions to compare.
-    :param old_url:
-        The url of the old branch or tree. If None, the tree to use is
-        taken from the first path, if any, or the current working tree.
-    :param new_url:
-        The url of the new branch or tree. If None, the tree to use is
-        taken from the first path, if any, or the current working tree.
-    :param apply_view:
-        if True and a view is set, apply the view or check that the paths
-        are within it
-    :returns:
-        a tuple of (old_tree, new_tree, old_branch, new_branch,
-        specific_files, extra_trees) where extra_trees is a sequence of
-        additional trees to search in for file-ids.  The trees and branches
-        are not locked.
-    """
-    op = cleanup.OperationWithCleanups(get_trees_and_branches_to_diff_locked)
-    return op.run_simple(path_list, revision_specs, old_url, new_url,
-            op.add_cleanup, apply_view=apply_view)
-    
-
 def get_trees_and_branches_to_diff_locked(
     path_list, revision_specs, old_url, new_url, add_cleanup, apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
@@ -438,7 +399,8 @@ def get_trees_and_branches_to_diff_locked(
     extra_trees = None
     if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
-    return old_tree, new_tree, old_branch, new_branch, specific_files, extra_trees
+    return (old_tree, new_tree, old_branch, new_branch,
+            specific_files, extra_trees)
 
 
 def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
@@ -465,7 +427,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     """Show in text form the changes from one tree to another.
 
     :param to_file: The output stream.
-    :param specific_files:Include only changes to these files - None for all
+    :param specific_files: Include only changes to these files - None for all
         changes.
     :param external_diff_options: If set, use an external GNU diff and pass 
         these options.
@@ -747,8 +709,18 @@ class DiffFromTool(DiffPath):
 
     def _get_command(self, old_path, new_path):
         my_map = {'old_path': old_path, 'new_path': new_path}
-        return [AtTemplate(t).substitute(my_map) for t in
-                self.command_template]
+        command = [AtTemplate(t).substitute(my_map) for t in
+                   self.command_template]
+        if sys.platform == 'win32': # Popen doesn't accept unicode on win32
+            command_encoded = []
+            for c in command:
+                if isinstance(c, unicode):
+                    command_encoded.append(c.encode('mbcs'))
+                else:
+                    command_encoded.append(c)
+            return command_encoded
+        else:
+            return command
 
     def _execute(self, old_path, new_path):
         command = self._get_command(old_path, new_path)
@@ -774,12 +746,42 @@ class DiffFromTool(DiffPath):
                 raise
         return True
 
+    @staticmethod
+    def _fenc():
+        """Returns safe encoding for passing file path to diff tool"""
+        if sys.platform == 'win32':
+            return 'mbcs'
+        else:
+            # Don't fallback to 'utf-8' because subprocess may not be able to
+            # handle utf-8 correctly when locale is not utf-8.
+            return sys.getfilesystemencoding() or 'ascii'
+
+    def _is_safepath(self, path):
+        """Return true if `path` may be able to pass to subprocess."""
+        fenc = self._fenc()
+        try:
+            return path == path.encode(fenc).decode(fenc)
+        except UnicodeError:
+            return False
+
+    def _safe_filename(self, prefix, relpath):
+        """Replace unsafe character in `relpath` then join `self._root`,
+        `prefix` and `relpath`."""
+        fenc = self._fenc()
+        # encoded_str.replace('?', '_') may break multibyte char.
+        # So we should encode, decode, then replace(u'?', u'_')
+        relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
+        relpath_tmp = relpath_tmp.replace(u'?', u'_')
+        return osutils.pathjoin(self._root, prefix, relpath_tmp)
+
     def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
                     allow_write=False):
         if not force_temp and isinstance(tree, WorkingTree):
-            return tree.abspath(tree.id2path(file_id))
-        
-        full_path = osutils.pathjoin(self._root, prefix, relpath)
+            full_path = tree.abspath(tree.id2path(file_id))
+            if self._is_safepath(full_path):
+                return full_path
+
+        full_path = self._safe_filename(prefix, relpath)
         if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
@@ -842,13 +844,13 @@ class DiffFromTool(DiffPath):
         """
         old_path = self.old_tree.id2path(file_id)
         new_path = self.new_tree.id2path(file_id)
-        new_abs_path = self._prepare_files(file_id, old_path, new_path,
-                                           allow_write_new=True,
-                                           force_temp=True)[1]
-        command = self._get_command(osutils.pathjoin('old', old_path),
-                                    osutils.pathjoin('new', new_path))
+        old_abs_path, new_abs_path = self._prepare_files(
+                                            file_id, old_path, new_path,
+                                            allow_write_new=True,
+                                            force_temp=True)
+        command = self._get_command(old_abs_path, new_abs_path)
         subprocess.call(command, cwd=self._root)
-        new_file = open(new_abs_path, 'r')
+        new_file = open(new_abs_path, 'rb')
         try:
             return new_file.read()
         finally:
@@ -904,6 +906,7 @@ class DiffTree(object):
         """Factory for producing a DiffTree.
 
         Designed to accept options used by show_diff_trees.
+
         :param old_tree: The tree to show as old in the comparison
         :param new_tree: The tree to show as new in the comparison
         :param to_file: File to write comparisons to

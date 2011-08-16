@@ -21,6 +21,7 @@ from bzrlib import (
     cache_utf8,
     errors,
     inventory,
+    lazy_regex,
     revision as _mod_revision,
     trace,
     )
@@ -44,6 +45,35 @@ _xml_escape_map = {
     "<":"&lt;",
     ">":"&gt;",
     }
+
+_xml_unescape_map = {
+    'apos':"'",
+    'quot':'"',
+    'amp':'&',
+    'lt':'<',
+    'gt':'>'
+}
+
+
+def _unescaper(match, _map=_xml_unescape_map):
+    code = match.group(1)
+    try:
+        return _map[code]
+    except KeyError:
+        if not code.startswith('#'):
+            raise
+        return unichr(int(code[1:])).encode('utf8')
+
+
+_unescape_re = None
+
+
+def _unescape_xml(data):
+    """Unescape predefined XML entities in a string of data."""
+    global _unescape_re
+    if _unescape_re is None:
+        _unescape_re = re.compile('\&([^;]*);')
+    return _unescape_re.sub(_unescaper, data)
 
 
 def _ensure_utf8_re():
@@ -160,6 +190,13 @@ class Serializer_v8(XMLSerializer):
     supported_kinds = set(['file', 'directory', 'symlink'])
     format_num = '8'
     revision_format_num = None
+
+    # The search regex used by xml based repositories to determine what things
+    # where changed in a single commit.
+    _file_ids_altered_regex = lazy_regex.lazy_compile(
+        r'file_id="(?P<file_id>[^"]+)"'
+        r'.* revision="(?P<revision_id>[^"]+)"'
+        )
 
     def _check_revisions(self, inv):
         """Extension point for subclasses to check during serialisation.
@@ -531,6 +568,85 @@ class Serializer_v8(XMLSerializer):
             if name in rev.properties:
                 raise AssertionError("repeated property %r" % name)
             rev.properties[name] = value
+
+    def _find_text_key_references(self, line_iterator):
+        """Core routine for extracting references to texts from inventories.
+
+        This performs the translation of xml lines to revision ids.
+
+        :param line_iterator: An iterator of lines, origin_version_id
+        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. Note that if that revision_id was
+            not part of the line_iterator's output then False will be given -
+            even though it may actually refer to that key.
+        """
+        if not self.support_altered_by_hack:
+            raise AssertionError(
+                "_find_text_key_references only "
+                "supported for branches which store inventory as unnested xml"
+                ", not on %r" % self)
+        result = {}
+
+        # this code needs to read every new line in every inventory for the
+        # inventories [revision_ids]. Seeing a line twice is ok. Seeing a line
+        # not present in one of those inventories is unnecessary but not
+        # harmful because we are filtering by the revision id marker in the
+        # inventory lines : we only select file ids altered in one of those
+        # revisions. We don't need to see all lines in the inventory because
+        # only those added in an inventory in rev X can contain a revision=X
+        # line.
+        unescape_revid_cache = {}
+        unescape_fileid_cache = {}
+
+        # jam 20061218 In a big fetch, this handles hundreds of thousands
+        # of lines, so it has had a lot of inlining and optimizing done.
+        # Sorry that it is a little bit messy.
+        # Move several functions to be local variables, since this is a long
+        # running loop.
+        search = self._file_ids_altered_regex.search
+        unescape = _unescape_xml
+        setdefault = result.setdefault
+        for line, line_key in line_iterator:
+            match = search(line)
+            if match is None:
+                continue
+            # One call to match.group() returning multiple items is quite a
+            # bit faster than 2 calls to match.group() each returning 1
+            file_id, revision_id = match.group('file_id', 'revision_id')
+
+            # Inlining the cache lookups helps a lot when you make 170,000
+            # lines and 350k ids, versus 8.4 unique ids.
+            # Using a cache helps in 2 ways:
+            #   1) Avoids unnecessary decoding calls
+            #   2) Re-uses cached strings, which helps in future set and
+            #      equality checks.
+            # (2) is enough that removing encoding entirely along with
+            # the cache (so we are using plain strings) results in no
+            # performance improvement.
+            try:
+                revision_id = unescape_revid_cache[revision_id]
+            except KeyError:
+                unescaped = unescape(revision_id)
+                unescape_revid_cache[revision_id] = unescaped
+                revision_id = unescaped
+
+            # Note that unconditionally unescaping means that we deserialise
+            # every fileid, which for general 'pull' is not great, but we don't
+            # really want to have some many fulltexts that this matters anyway.
+            # RBC 20071114.
+            try:
+                file_id = unescape_fileid_cache[file_id]
+            except KeyError:
+                unescaped = unescape(file_id)
+                unescape_fileid_cache[file_id] = unescaped
+                file_id = unescaped
+
+            key = (file_id, revision_id)
+            setdefault(key, False)
+            if revision_id == line_key[-1]:
+                result[key] = True
+        return result
 
 
 serializer_v8 = Serializer_v8()

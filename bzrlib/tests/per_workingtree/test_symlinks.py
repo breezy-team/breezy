@@ -20,19 +20,21 @@
 import os
 
 from bzrlib import (
-    builtins,
     osutils,
     tests,
     workingtree,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestSmartAddTree(TestCaseWithWorkingTree):
 
     # See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 
-    _test_needs_features = [tests.SymlinkFeature]
+    _test_needs_features = [features.SymlinkFeature]
 
     def test_smart_add_symlink(self):
         tree = self.make_branch_and_tree('tree')
@@ -78,7 +80,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
 class TestKindChanges(TestCaseWithWorkingTree):
 
-    _test_needs_features = [tests.SymlinkFeature]
+    _test_needs_features = [features.SymlinkFeature]
 
     def test_symlink_changes_to_dir(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
@@ -102,8 +104,11 @@ class TestKindChanges(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEquals([], list(tree.iter_changes(tree.basis_tree())))
-        self.assertEquals(
-            ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
+        if tree._format.supports_versioned_directories:
+            self.assertEquals(
+                ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
+        else:
+            self.assertEquals([], list(tree.list_files()))
 
     def test_dir_changes_to_symlink(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
@@ -128,7 +133,7 @@ class TestKindChanges(TestCaseWithWorkingTree):
 
 class TestOpenTree(TestCaseWithWorkingTree):
 
-    _test_needs_features = [tests.SymlinkFeature]
+    _test_needs_features = [features.SymlinkFeature]
 
     def test_open_containing_through_symlink(self):
         self.make_test_tree()

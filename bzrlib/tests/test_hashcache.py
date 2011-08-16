@@ -22,13 +22,14 @@ from bzrlib import osutils
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
 from bzrlib.tests import (
-    OsFifoFeature,
     TestCaseInTempDir,
+    )
+from bzrlib.tests.features import (
+    OsFifoFeature,
     )
 
 
-def sha1(t):
-    return osutils.sha(t).hexdigest()
+sha1 = osutils.sha_string
 
 
 def pause():

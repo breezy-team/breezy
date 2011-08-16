@@ -54,6 +54,20 @@ identifies where to install the hook.  The second argument is the hook
 itself.  The third argument is a name ``'My post_push hook'``, which can be
 used in progress messages and error messages.
 
+To reduce the start-up time of Bazaar it is also possible to "lazily" install hooks,
+using the ``bzrlib.hooks.install_lazy_named_hook`` function. This removes the need
+to load the module that contains the hook point just to install the hook. Here's lazy
+version of the example above::
+
+    from bzrlib import hooks
+
+    def post_push_hook(push_result):
+        print "The new revno is %d" % push_result.new_revno
+
+
+    hooks.install_lazy_named_hook('bzrlib.branch', 'Branch.hooks',
+        'post_push', post_push_hook, 'My post_push hook')
+
 Debugging hooks
 ---------------
 

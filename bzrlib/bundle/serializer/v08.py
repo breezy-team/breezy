@@ -263,7 +263,7 @@ class BundleSerializerV08(BundleSerializer):
 
         def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, require_text=False):
-                if file_id in tree:
+                if tree.has_id(file_id):
                     tree_file = tree.get_file(file_id)
                     if require_text is True:
                         tree_file = text_file(tree_file)
@@ -553,5 +553,5 @@ class BundleInfo08(BundleInfo):
         testament = StrictTestament.from_revision(repository, revision_id)
         return testament.as_sha1()
 
-    def _testament_sha1(self, revision, inventory):
-        return StrictTestament(revision, inventory).as_sha1()
+    def _testament_sha1(self, revision, tree):
+        return StrictTestament(revision, tree).as_sha1()

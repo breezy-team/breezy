@@ -13,7 +13,7 @@ Bazaar_ は、非常にフレキシブルに設計されており、完全な分
 このワークフローは、初めてのユーザでも簡単に Bazaar_ を使いこなすことができ、\
 分散型と集中型のオペレーションを組み合わせた業務にも対応できるようになっています。
 
-基本的に、この文書はCVSやSubvresionのような集中型バージョンコントロールシステムの経験があるユーザ向けに書かれています。
+基本的に、この文書はCVSや Subversion のような集中型バージョンコントロールシステムの経験があるユーザ向けに書かれています。
 これらの環境では、一般的に、コードベースをホストする単一の中央サーバが存在し、複数の人々がこのコードベース上で作業して、\
 お互いの作業の同期をとることになります。 
 また、このワークフローは、一人の開発者が複数のマシーン上で作業をする場合にも適用できます。
@@ -32,7 +32,7 @@ Bazaar_ がうまく動くようにするための、まあまあ簡単なセッ
 ユーザIDは各コミットに保存されます。これは正確だったり一意だったりする必要はありませんが、\
 ログメッセージや注釈で使用されるため、何かしら実在する値を設定しておいた方がよいでしょう。
 
-::  
+::
 
    % bzr whoami "John Doe <jdoe@organization.com>"
 
@@ -69,11 +69,18 @@ Bazaar_ のブランチは、通常は履歴のコピーを持っています。
 
 ::
 
-  % bzr init-repo --no-trees sftp://centralhost/srv/bzr/
+  % bzr init-repo --no-trees bzr+ssh://centralhost/srv/bzr/
 
 この手順は、新しくcvsrootやSubversionのリポジトリを作るのと同じようなものだと考えることができます。
 ``--no-tree`` オプションの指定によって、ワーキングツリーを作らないようになります。
 中央リポジトリ内のブランチを直接変更することは無いので、このオプションを指定しておくとよいでしょう。
+
+ここで、 ``bzr+ssh`` というURLを使っていますが、これは、 SSH セキュアシェ
+ル上の
+Bazaar 独自プロトコルを意味しています。 bzr+ssh サーバーのセットアップに関
+する
+情報に着いては、管理者向けガイドを参照してください。
+
 
 
 既存のプロジェクトからの移行
@@ -88,7 +95,7 @@ Bazaar_ のブランチは、通常は履歴のコピーを持っています。
 
 .. _Tracking Upstream: http://wiki.bazaar.canonical.com/TrackingUpstream
 
-.. 
+..
    XXX: プロジェクトの変換について話をするための別の文書が必要なのですが、\
    今ある中ではTrackingUpstreamが一番よい文書です。
 
@@ -101,7 +108,7 @@ Developer 1: 最初のリビジョンを作成する
 
 ::
 
-  % bzr init sftp://centralhost/srv/bzr/sigil
+  % bzr init bzr+ssh://centralhost/srv/bzr/sigil
 
 これは、CVSで言うところの"HEAD"ブランチ、Subversionなら"trunk"にあたるものだと考えてかまいません。
 これを ``dev`` ブランチと呼ぶことにしましょう。
@@ -115,7 +122,7 @@ Developer 1: 最初のリビジョンを作成する
   % cd work
   % mkdir sigil
   % cd sigil
-  % bzr checkout sftp://centralhost/srv/bzr/sigil dev
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil dev
   % cd dev
   % cp -ar ~/sigil/* .
   % bzr add
@@ -141,9 +148,9 @@ Developer N: プロジェクトの作業コピーを取得する
 現在開発中のツリーのコピーを取得するためには::
 
   % cd ~/work/sigil
-  % bzr checkout sftp://centralhost/srv/bzr/sigil dev
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil dev
 
-今、二人の人が ``sftp://centralhost/srv/bzr/sigil`` のチェックアウトを持っている状態なので、\
+今、二人の人が ``bzr+ssh://centralhost/srv/bzr/sigil`` のチェックアウトを持っている状態なので、\
 片方のチェックアウトが最新のものより古くなってしまうタイミングが出てきます。
 コミットの時に、チェックアウトが古いければ Bazaar_ がエラーを返して、コミットは失敗します。
 チェックアウトを最新にするには、よそで変更されたツリーに対して ``bzr update`` を使用します。
@@ -175,9 +182,9 @@ Bazaar_ は、何がマージ済みかを記憶し、たとえファイルが変
 ::
 
   % cd ~/work/sigil
-  % bzr branch sftp://centralhost/srv/bzr/sigil \
-               sftp://centralhost/srv/bzr/sigil/doodle-fixes
-  % bzr checkout sftp://centralhost/srv/bzr/sigil/doodle-fixes doodle-fixes
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil \
+               bzr+ssh://centralhost/srv/bzr/sigil/doodle-fixes
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil/doodle-fixes doodle-fixes
   % cd doodle-fixes
 
 これで、 ``doodle`` に必要な修正を当てるための場所ができました。
@@ -238,19 +245,19 @@ Bazaar_ は、何がマージ済みかを記憶し、たとえファイルが変
 とても一般的なブランチ構成として、開発者ごとにひとつずつ専用のブランチを割り当て、中央サーバにも開発者ごとの\
 作業領域を用意するという方法があります。これは以下のコマンドでできます。::
 
-  % bzr branch sftp://centralhost/srv/bzr/sigil \
-               sftp://centralhost/srv/bzr/sigil/user-a
-  % bzr branch sftp://centralhost/srv/bzr/sigil \
-               sftp://centralhost/srv/bzr/sigil/user-b
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil \
+               bzr+ssh://centralhost/srv/bzr/sigil/user-a
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil \
+               bzr+ssh://centralhost/srv/bzr/sigil/user-b
 
 これで、開発者ごとに専用の作業用ブランチを割り当てています。
 さらに、開発者自身で [#cbranch]_ を使用して新しく新機能開発用ブランチを作成することも簡単にできます。
 ::
 
-  % bzr branch sftp://centralhost/srv/bzr/sigil/user-a \
-               sftp://centralhost/srv/bzr/sigil/user-a/feature 
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil/user-a \
+               bzr+ssh://centralhost/srv/bzr/sigil/user-a/feature
   % cd ~/work/sigil
-  % bzr checkout sftp://centralhost/srv/bzr/sigil/user-a/feature myfeature
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil/user-a/feature myfeature
 
 
 用語解説
@@ -272,5 +279,5 @@ Bazaar_ の用語では、"共用リポジトリ"とは複数のブランチが�
 いいためです。
 
 
-.. 
+..
    vim: tw=74 ft=rst

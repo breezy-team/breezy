@@ -52,7 +52,6 @@
 from bzrlib import (
     debug,
     errors,
-    revision,
     trace,
     tree,
     ui,
@@ -229,7 +228,8 @@ class Commit(object):
                message_callback=None,
                recursive='down',
                exclude=None,
-               possible_master_transports=None):
+               possible_master_transports=None,
+               lossy=False):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -262,6 +262,8 @@ class Commit(object):
         :param exclude: None or a list of relative paths to exclude from the
             commit. Pending changes to excluded files will be ignored by the
             commit.
+        :param lossy: When committing to a foreign VCS, ignore any
+            data that can not be natively represented.
         """
         operation = OperationWithCleanups(self._commit)
         self.revprops = revprops or {}
@@ -283,12 +285,13 @@ class Commit(object):
                message_callback=message_callback,
                recursive=recursive,
                exclude=exclude,
-               possible_master_transports=possible_master_transports)
+               possible_master_transports=possible_master_transports,
+               lossy=lossy)
 
     def _commit(self, operation, message, timestamp, timezone, committer,
             specific_files, rev_id, allow_pointless, strict, verbose,
             working_tree, local, reporter, message_callback, recursive,
-            exclude, possible_master_transports):
+            exclude, possible_master_transports, lossy):
         mutter('preparing to commit')
 
         if working_tree is None:
@@ -326,7 +329,7 @@ class Commit(object):
                 minimum_path_selection(specific_files))
         else:
             self.specific_files = None
-            
+
         self.allow_pointless = allow_pointless
         self.message_callback = message_callback
         self.timestamp = timestamp
@@ -400,8 +403,13 @@ class Commit(object):
 
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
+        self._lossy = lossy
         self.builder = self.branch.get_commit_builder(self.parents,
-            self.config, timestamp, timezone, committer, self.revprops, rev_id)
+            self.config, timestamp, timezone, committer, self.revprops,
+            rev_id, lossy=lossy)
+        if not self.builder.supports_record_entry_contents and self.exclude:
+            self.builder.abort()
+            raise errors.ExcludesUnsupported(self.branch.repository)
 
         try:
             self.builder.will_record_deletes()
@@ -434,7 +442,6 @@ class Commit(object):
         except Exception, e:
             mutter("aborting commit write group because of exception:")
             trace.log_exception_quietly()
-            note("aborting commit write group: %r" % (e,))
             self.builder.abort()
             raise
 
@@ -446,8 +453,10 @@ class Commit(object):
             self._set_progress_stage("Uploading data to master branch")
             # 'commit' to the master first so a timeout here causes the
             # local branch to be out of date
-            self.master_branch.import_last_revision_info(
-                self.branch.repository, new_revno, self.rev_id)
+            (new_revno, self.rev_id) = self.master_branch.import_last_revision_info_and_tags(
+                self.branch, new_revno, self.rev_id, lossy=lossy)
+            if lossy:
+                self.branch.fetch(self.master_branch, self.rev_id)
 
         # and now do the commit locally.
         self.branch.set_last_revision_info(new_revno, self.rev_id)
@@ -484,15 +493,6 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # TODO: we could simplify this by using self.builder.basis_delta.
-
-        # The initial commit adds a root directory, but this in itself is not
-        # a worthwhile commit.
-        if (self.basis_revid == revision.NULL_REVISION and
-            ((self.builder.new_inventory is not None and
-             len(self.builder.new_inventory) == 1) or
-            len(self.builder._basis_delta) == 1)):
-            raise PointlessCommit()
         if self.builder.any_changes():
             return
         raise PointlessCommit()
@@ -723,7 +723,7 @@ class Commit(object):
         if self.specific_files or self.exclude:
             specific_files = self.specific_files or []
             for path, old_ie in self.basis_inv.iter_entries():
-                if old_ie.file_id in self.builder.new_inventory:
+                if self.builder.new_inventory.has_id(old_ie.file_id):
                     # already added - skip.
                     continue
                 if (is_inside_any(specific_files, path)

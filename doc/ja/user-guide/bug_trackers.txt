@@ -17,7 +17,7 @@ Bazaarにはコミットをプロジェクトのバグトラッカーのバグ�
 Bugzilla、Trac、Roundupとその他のバグ/問題トラッカーに対してこれを設定する方法の詳細に関しては、
 Bazaarユーザーリファレンスの `バグトラッカーの設定`_ を参照してください。
 
-.. _バグトラッカーの設定: ../user-reference/bzr_man.html#bug-tracker-settings
+.. _バグトラッカーの設定: ../user-reference/index.html#bug-tracker-settings
 
 メタデータの記録 vs バグトラッカーの更新
 ------------------------------------------

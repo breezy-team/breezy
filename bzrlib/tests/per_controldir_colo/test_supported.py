@@ -33,7 +33,10 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         branch = self.make_branch('branch')
         bzrdir = branch.bzrdir
         colo_branch = bzrdir.create_branch('colo')
-        bzrdir.destroy_branch("colo")
+        try:
+            bzrdir.destroy_branch("colo")
+        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+            raise tests.TestNotApplicable('Format does not support destroying branch')
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch,
                           "colo")
 
@@ -52,5 +55,5 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
                 'Control dir does not support creating new branches.')
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch("colo")
-        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
+        self.assertIsInstance(made_branch, bzrlib.branch.Branch)
         self.assertEqual(made_control, made_branch.bzrdir)

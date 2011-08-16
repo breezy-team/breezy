@@ -270,8 +270,8 @@ shell.example.com, then::
 
 would refer to ``/home/remote/myproject/trunk``.
 
-Many commands that accept URLs also accept location aliases too.  See
-::doc:`location-alias-help`.
+Many commands that accept URLs also accept location aliases too.
+See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 """
 
     return out
@@ -316,6 +316,7 @@ command.  (e.g. ``bzr --profile help``).
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
+--no-l10n      Do not translate messages.
 --concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.
@@ -777,6 +778,8 @@ topic_registry.register('location-alias', _load_from_file,
                         'Aliases for remembered locations')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
+topic_registry.register('url-special-chars', _load_from_file,
+                        'Special character handling in URLs')
 
 
 # Register concept topics.
@@ -897,6 +900,6 @@ def help_as_plain_text(text):
         elif line.endswith('::'):
             line = line[:-1]
         # Map :doc:`xxx-help` to ``bzr help xxx``
-        line = re.sub(":doc:`(.+)-help`", r'``bzr help \1``', line)
+        line = re.sub(":doc:`(.+?)-help`", r'``bzr help \1``', line)
         result.append(line)
     return "\n".join(result) + "\n"

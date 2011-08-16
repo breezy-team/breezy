@@ -131,7 +131,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree.add('foo')
         self.run_bzr('reconfigure --with-no-trees --force',
             working_dir='repo/branch')
-        self.failUnlessExists('repo/branch/foo')
+        self.assertPathExists('repo/branch/foo')
         tree = workingtree.WorkingTree.open('repo/branch')
 
     def test_shared_format_to_standalone(self, format=None):

@@ -16,14 +16,13 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-from errno import EEXIST
+from cStringIO import StringIO
 import os
 
 from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
     )
 from bzrlib.inventory import (
@@ -32,8 +31,11 @@ from bzrlib.inventory import (
     InventoryDirectory,
     InventoryLink,
     )
-from bzrlib.revision import Revision
+from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib.tests import (
+    features,
+    )
 from bzrlib.uncommit import uncommit
 
 
@@ -229,8 +231,8 @@ class TestSetParents(TestParents):
 
     def test_unicode_symlink(self):
         # this tests bug #272444
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
@@ -240,7 +242,7 @@ class TestSetParents(TestParents):
         target = u'\u03a9'
         link_name = u'\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
-        tree.add([link_name],['link-id'])
+        tree.add([link_name], ['link-id'])
 
         revision1 = tree.commit('added a link to a Unicode target')
         revision2 = tree.commit('this revision will be discarded')
@@ -386,32 +388,41 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         return delta
 
     def fake_up_revision(self, tree, revid, shape):
+
+        class ShapeTree(InventoryRevisionTree):
+
+            def __init__(self, shape):
+                self._repository = tree.branch.repository
+                self._inventory = shape
+
+            def get_file_text(self, file_id, path=None):
+                ie = self.inventory[file_id]
+                if ie.kind != "file":
+                    return ""
+                return 'a' * ie.text_size
+
+            def get_file(self, file_id, path=None):
+                return StringIO(self.get_file_text(file_id))
+
         tree.lock_write()
         try:
-            tree.branch.repository.start_write_group()
-            try:
-                if shape.root.revision is None:
-                    shape.root.revision = revid
-                # Create the text records for this inventory.
-                for path, ie in shape.iter_entries():
-                    if ie.text_size:
-                        lines = ['a' * ie.text_size]
-                    else:
-                        lines = []
-                    tree.branch.repository.texts.add_lines(
-                        (ie.file_id, ie.revision), [], lines)
-                sha1 = tree.branch.repository.add_inventory(revid, shape, [])
-                rev = Revision(timestamp=0,
-                               timezone=None,
-                               committer="Foo Bar <foo@example.com>",
-                               message="Message",
-                               inventory_sha1=sha1,
-                               revision_id=revid)
-                tree.branch.repository.add_revision(revid, rev)
-                tree.branch.repository.commit_write_group()
-            except:
-                tree.branch.repository.abort_write_group()
-                raise
+            if shape.root.revision is None:
+                shape.root.revision = revid
+            builder = tree.branch.get_commit_builder(
+                    parents=[],
+                    timestamp=0,
+                    timezone=None,
+                    committer="Foo Bar <foo@example.com>",
+                    revision_id=revid)
+            shape_tree = ShapeTree(shape)
+            base_tree = tree.branch.repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
+            changes = shape_tree.iter_changes(
+                base_tree)
+            list(builder.record_iter_changes(shape_tree,
+                base_tree.get_revision_id(), changes))
+            builder.finish_inventory()
+            builder.commit("Message")
         finally:
             tree.unlock()
 
@@ -468,8 +479,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def test_no_parents_just_root(self):
         """Test doing an empty commit - no parent, set a root only."""
-        basis_shape = Inventory(root_id=None) # empty tree
-        new_shape = Inventory() # tree with a root
+        basis_shape = Inventory(root_id=None)  # empty tree
+        new_shape = Inventory()  # tree with a root
         self.assertTransitionFromBasisToShape(basis_shape, None, new_shape,
             'new_parent')
 
@@ -520,10 +531,13 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         def do_file(inv, revid):
             self.add_file(inv, revid, 'path-id', 'root-id', 'path', '1' * 32,
                 12)
+
         def do_link(inv, revid):
             self.add_link(inv, revid, 'path-id', 'root-id', 'path', 'target')
+
         def do_dir(inv, revid):
             self.add_dir(inv, revid, 'path-id', 'root-id', 'path')
+
         for old_factory in (do_file, do_link, do_dir):
             for new_factory in (do_file, do_link, do_dir):
                 if old_factory == new_factory:

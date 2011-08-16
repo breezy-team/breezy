@@ -28,6 +28,7 @@ from bzrlib import (
     merge,
     osutils,
     revision as _mod_revision,
+    symbol_versioning,
     tests,
     treebuilder,
     )
@@ -45,6 +46,9 @@ from bzrlib.tests import (
     test_commit,
     )
 from bzrlib.transform import TreeTransform
+from bzrlib.tests import (
+    features,
+    )
 
 
 def get_text(vf, key):
@@ -64,6 +68,7 @@ def get_inventory_text(repo, revision_id):
 
 
 class MockTree(object):
+
     def __init__(self):
         from bzrlib.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
@@ -74,8 +79,8 @@ class MockTree(object):
 
     inventory = property(lambda x:x)
 
-    def __iter__(self):
-        return self.paths.iterkeys()
+    def all_file_ids(self):
+        return set(self.paths.keys())
 
     def __getitem__(self, file_id):
         if file_id == self.root.file_id:
@@ -141,6 +146,9 @@ class MockTree(object):
         result.write(self.contents[file_id])
         result.seek(0,0)
         return result
+
+    def get_file_revision(self, file_id):
+        return self.inventory[file_id].revision
 
     def contents_stats(self, file_id):
         if file_id not in self.contents:
@@ -489,7 +497,7 @@ class BundleTester(object):
                                  % (ancestor,))
 
                 # Now check that the file contents are all correct
-                for inventory_id in old:
+                for inventory_id in old.all_file_ids():
                     try:
                         old_file = old.get_file(inventory_id)
                     except errors.NoSuchFile:
@@ -503,7 +511,8 @@ class BundleTester(object):
                 old.unlock()
         if not _mod_revision.is_null(rev_id):
             rh = self.b1.revision_history()
-            tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
+            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                tree.branch.set_revision_history, rh[:rh.index(rev_id)+1])
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
@@ -676,7 +685,7 @@ class BundleTester(object):
     def _test_symlink_bundle(self, link_name, link_target, new_link_target):
         link_id = 'link-1'
 
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
@@ -723,7 +732,7 @@ class BundleTester(object):
         self._test_symlink_bundle('link', 'bar/foo', 'mars')
 
     def test_unicode_symlink_bundle(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_symlink_bundle(u'\N{Euro Sign}link',
                                   u'bar/\N{Euro Sign}foo',
                                   u'mars\N{Euro Sign}')
@@ -830,7 +839,7 @@ class BundleTester(object):
         return bundle_file.getvalue()
 
     def test_unicode_bundle(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Handle international characters
         os.mkdir('b1')
         f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
@@ -1409,7 +1418,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         branch = tree_a.branch
         repo_a = branch.repository
         tree_a.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -1437,12 +1446,6 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         s.seek(0)
         # ensure repeat installs are harmless
         install_bundle(repo_b, serializer.read(s))
-
-
-class V4WeaveBundleTester(V4BundleTester):
-
-    def bzrdir_format(self):
-        return 'metaweave'
 
 
 class V4_2aBundleTester(V4BundleTester):

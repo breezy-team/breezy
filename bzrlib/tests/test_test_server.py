@@ -30,46 +30,6 @@ from bzrlib.tests.scenarios import load_tests_apply_scenarios
 load_tests = load_tests_apply_scenarios
 
 
-class TestThreadWithException(tests.TestCase):
-
-    def test_start_and_join_smoke_test(self):
-        def do_nothing():
-            pass
-
-        tt = test_server.ThreadWithException(target=do_nothing)
-        tt.start()
-        tt.join()
-
-    def test_exception_is_re_raised(self):
-        class MyException(Exception):
-            pass
-
-        def raise_my_exception():
-            raise MyException()
-
-        tt = test_server.ThreadWithException(target=raise_my_exception)
-        tt.start()
-        self.assertRaises(MyException, tt.join)
-
-    def test_join_when_no_exception(self):
-        resume = threading.Event()
-        class MyException(Exception):
-            pass
-
-        def raise_my_exception():
-            # Wait for the test to tell us to resume
-            resume.wait()
-            # Now we can raise
-            raise MyException()
-
-        tt = test_server.ThreadWithException(target=raise_my_exception)
-        tt.start()
-        tt.join(timeout=0)
-        self.assertIs(None, tt.exception)
-        resume.set()
-        self.assertRaises(MyException, tt.join)
-
-
 class TCPClient(object):
 
     def __init__(self):
@@ -221,7 +181,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
             def handle_connection(self):
                 req = self.rfile.readline()
-                threading.currentThread().set_ready_event(sync)
+                threading.currentThread().set_sync_event(sync)
                 raise FailToRespond()
 
         server = self.get_server(
@@ -243,7 +203,7 @@ class TestTCPServerInAThread(tests.TestCase):
             def handle(self):
                 # We want to sync with the thread that is serving the
                 # connection.
-                threading.currentThread().set_ready_event(sync)
+                threading.currentThread().set_sync_event(sync)
                 raise CantServe()
 
         server = self.get_server(

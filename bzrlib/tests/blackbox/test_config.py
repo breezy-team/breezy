@@ -76,22 +76,24 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
 
     def test_multiline_all_values(self):
         self.bazaar_config.set_user_option('multiline', '1\n2\n')
-        script.run_script(self, """\
+        # Fallout from bug 710410, the triple quotes have been toggled
+        script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
-              multiline = '''1
+              multiline = """1
             2
-            '''
-            """)
+            """
+            ''')
 
     def test_multiline_value_only(self):
         self.bazaar_config.set_user_option('multiline', '1\n2\n')
-        script.run_script(self, """\
+        # Fallout from bug 710410, the triple quotes have been toggled
+        script.run_script(self, '''\
             $ bzr config -d tree multiline
-            '''1
+            """1
             2
-            '''
-            """)
+            """
+            ''')
 
     def test_list_all_values(self):
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])

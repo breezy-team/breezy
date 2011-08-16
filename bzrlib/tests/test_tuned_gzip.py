@@ -89,7 +89,7 @@ class TestGzip(tests.TestCase):
         # all the data should have been read now
         self.assertEqual('', stream.read())
         # and it should be new member time in the stream.
-        self.failUnless(myfile._new_member)
+        self.assertTrue(myfile._new_member)
 
     def test_negative_crc(self):
         """Content with a negative crc should not break when written"""

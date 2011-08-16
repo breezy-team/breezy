@@ -44,9 +44,9 @@ class TestCaseAFTP(tests.TestCaseWithTransport):
 
     def test_aftp_degrade(self):
         t = transport.get_transport('aftp://host/path')
-        self.failUnless(t.is_active)
+        self.assertTrue(t.is_active)
         parent = t.clone('..')
-        self.failUnless(parent.is_active)
+        self.assertTrue(parent.is_active)
 
         self.assertEqual('aftp://host/path', t.abspath(''))
 
@@ -81,10 +81,10 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
     def get_url(self, relpath=None):
         """Overrides get_url to inject our user."""
         base = super(TestFTPTestServerUI, self).get_url(relpath)
-        (scheme, user, password,
-         host, port, path) = transport.ConnectedTransport._split_url(base)
+        parsed_url = transport.ConnectedTransport._split_url(base)
         url = transport.ConnectedTransport._unsplit_url(
-            scheme, self.user, self.password, host, port, path)
+            parsed_url.scheme, self.user, self.password, parsed_url.host,
+            parsed_url.port, parsed_url.path)
         return url
 
     def test_no_prompt_for_username(self):

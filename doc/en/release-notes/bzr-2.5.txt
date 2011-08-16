@@ -1,0 +1,206 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.5b1
+#########
+
+:2.5b1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+* A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean and integer config options when the
+  provided ``bool_from_store`` and ``int_from_store`` are used.
+  (Vincent Ladeuil)
+
+* A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean, integer and list config options when the
+  provided ``bool_from_store``, ``int_from_store`` and ``list_from_store``
+  are used for this parameter.  (Vincent Ladeuil)
+
+* Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
+  checks to see if the most recent published source package version for
+  that project is present in the branch tags. This should help developers
+  trust whether the packaging branch is up-to-date and can be used for new
+  changes. The level of verbosity is controlled by the config item
+  ``launchpad.packaging_verbosity``. It can be set to one of
+
+  off
+    disable all checks
+
+
+  minimal
+    only display if the branch is out-of-date
+
+  short
+    also display single-line up-to-date and missing,
+
+
+  all
+    (default) display multi-line content for all states
+
+
+  (John Arbash Meinel, #609187, #812928)
+
+* Add a config option gpg_signing_key for setting which GPG key should
+  be used to sign commits. Also default to using the gpg user identity
+  which matches user_email() as set by whoami. (Jonathan Riddell,
+  #68501)
+
+* An ``invalid`` parameter can be specified when registering a config option
+  to decide what should be done when invalid values are
+  encountered. 'warning' and 'eeror' will respectively emit a warning and
+  ignore the value or errors out. (Vincent Ladeuil)
+
+* bzr log -m now matches message, author, committer and bugs instead
+  of just matching the message.  --message keeps its original meaning,
+  while --match-message, --match-author, --match-committer and
+  --match-bugs match each of those fields.
+
+* Relative local paths can now be specified in URL syntax by using the
+  "file:" prefix.  (Jelmer Vernooij)
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* A call to CHKInventory's filter-method will not result in a
+  DuplicateFileId error, if you move a subfolder and change a file in
+  that subfolder.
+  (Bastian Bowe, #809901)
+
+* Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
+  errors.  (Vincent Ladeuil, #822571)
+
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
+* TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
+  operations that use it, like merge, can now create trees without a root.
+  (Aaron Bentley)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+* Release instructions refreshed. (Vincent Ladeuil)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+* New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
+  (Jelmer Vernooij)
+
+* New methods ``get_transport_from_path`` and ``get_transport_from_url``
+  have been added that only support opening from a path or a URL,
+  unlike ``get_transport``. (Jelmer Vernooij)
+
+* New method ``Tree.get_file_verifier`` which allows tree implementations
+  to return non-sha1 checksums to verify files.
+  (Jelmer Vernooij, #720831)
+
+* New method ``InterTree.file_content_matches`` which checks that
+  two files in different trees have the same contents.
+  (Jelmer Vernooij)
+
+* New registry ``OptionRegistry`` specialized for configuration options.
+  (Vincent Ladeuil)
+
+* Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
+  (Vincent Ladeuil)
+
+* Remove ``commands._builtin_commands``, ``commands.shlex_split_unicode``,
+  ``Command._maybe_expand_globs`` and ``Command.run_direct`` deprecated in
+  2.10 and 2.2.0. (Vincent Ladeuil)
+
+* Remove ``diff.get_trees_and_branches_to_diff`` deprecated in 2.2.0.
+
+* Remove ``log.calculate_view_revisions``, ``log._filter_revision_range``,
+  ``log.get_view_revisions`` which have been deprecated in bzr 2.1.0. Also
+  remove ``log.show_one_log`` which was never properly deprecated but wasn't
+  used and is easy to inline if needed. (Vincent Ladeuil)
+
+* Remove ``trace.info``, ``trace.error`` and ``trace.show_log_error``
+  deprecated in 2.1.0. (Vincent Ladeuil)
+
+* Remove ``TransportListRegistry.set_default_transport``, as the concept of
+  a default transport is currently unused. (Jelmer Vernooij)
+
+* Remove ``UIFactory.warn_cross_format_fetch`` and
+  ``UIFactory.warn_experimental_format_fetch`` in favor of
+  ``UIFactory.show_user_warning``. (Jelmer Vernooij)
+
+* There is a new class `ContentFilterTree` that provides a facade for 
+  content filtering.  The `filtered` parameter to `export` is deprecated 
+  in favor of passing a filtered tree, and the specific exporter plugins
+  no longer support it.
+  (Martin Pool)
+
+* ``Transport`` now has a ``_parsed_url`` attribute instead of
+  separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
+  and ``_path`` attributes. Proxies are provided for the moment but
+  may be removed in the future. (Jelmer Vernooij)
+
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* `BranchBuilder.build_snapshot` now supports a "flush" action.  This
+  cleanly and reliably allows tests using `BranchBuilder` to construct
+  branches that e.g. rename files out of a directory and unversion that
+  directory in the same revision.  Previously some changes were impossible
+  due to the order that `build_snapshot` performs its actions.
+  (Andrew Bennetts)
+
+* Don't require ``os.fdatasync`` to be defined on all supported OSes
+  (BSD-based OSes don't define it).  (Vincent Ladeuil, #822649)
+
+* Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
+
+* ``LockDir`` can now be run when the local hostname is ``localhost``.
+  (Jelmer Vernooij, #825994)
+
+* `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
+  just compares the bytes in the dirstate file to its pristine state,
+  rather than opening the WorkingTree and calling ``last_revision()``.
+  This reduces the overall test suite time by about 10% on my laptop.
+  (Andrew Bennetts)
+
+* Update `TestCase.knownFailure` to the testtools way of handling expected
+  failures to resolve Python 2.7 incompatibility. (Martin [gz], #607400)
+
+..
+   vim: tw=74 ft=rst ff=unix

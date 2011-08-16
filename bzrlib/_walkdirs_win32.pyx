@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -69,9 +69,13 @@ cdef extern from "Python.h":
 
 
 import operator
+import os
 import stat
 
-from bzrlib import osutils, _readdir_py
+from bzrlib import _readdir_py
+
+cdef object osutils
+osutils = None
 
 
 cdef class _Win32Stat:
@@ -170,6 +174,9 @@ cdef class Win32ReadDir:
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
         """See DirReader.top_prefix_to_starting_dir."""
+        global osutils
+        if osutils is None:
+            from bzrlib import osutils
         return (osutils.safe_utf8(prefix), None, None, None,
                 osutils.safe_unicode(top))
 
@@ -250,3 +257,37 @@ cdef class Win32ReadDir:
                 #       earlier Exception, so for now, I'm ignoring this
         dirblock.sort(key=operator.itemgetter(1))
         return dirblock
+
+
+def lstat(path):
+    """Equivalent to os.lstat, except match Win32ReadDir._get_stat_value.
+    """
+    return wrap_stat(os.lstat(path))
+
+
+def fstat(fd):
+    """Like os.fstat, except match Win32ReadDir._get_stat_value
+
+    :seealso: wrap_stat
+    """
+    return wrap_stat(os.fstat(fd))
+
+
+def wrap_stat(st):
+    """Return a _Win32Stat object, based on the given stat result.
+
+    On Windows, os.fstat(open(fname).fileno()) != os.lstat(fname). This is
+    generally because os.lstat and os.fstat differ in what they put into st_ino
+    and st_dev. What gets set where seems to also be dependent on the python
+    version. So we always set it to 0 to avoid worrying about it.
+    """
+    cdef _Win32Stat statvalue
+    statvalue = _Win32Stat()
+    statvalue.st_mode = st.st_mode
+    statvalue.st_ctime = st.st_ctime
+    statvalue.st_mtime = st.st_mtime
+    statvalue.st_atime = st.st_atime
+    statvalue._st_size = st.st_size
+    statvalue.st_ino = 0
+    statvalue.st_dev = 0
+    return statvalue

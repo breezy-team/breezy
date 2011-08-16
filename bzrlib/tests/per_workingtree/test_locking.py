@@ -21,7 +21,6 @@ import sys
 from bzrlib import (
     branch,
     errors,
-    lockdir,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.matchers import *

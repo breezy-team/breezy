@@ -37,6 +37,24 @@ The ``no_proxy`` variable can be set to a comma-separated list of hosts
 which shouldn't be reached by the proxy.  (See
 <http://docs.python.org/library/urllib.html> for more details.)
 
+Various ways to configure
+-------------------------
+
+As shown in the example above, there are various ways to
+configure Bazaar, they all share some common properties though.
+An option has:
+
+- a name which is generally a valid python identifier,
+
+- a value which is a string. In some cases, Bazaar will be able
+  to recognize special values like 'True', 'False' to infer a
+  boolean type, but basically, as a user, you will always specify
+  a value as a string.
+
+Options are grouped in various contexts so the option name
+uniquely identifies it in this context. When needed, options can
+be made persistent by recording them in a configuration file.
+
 
 Configuration files
 -------------------
@@ -133,3 +151,17 @@ certain patterns. Per-user rule-based preferences are defined in
 For further information on how rules are searched and the detailed syntax of
 the relevant files, see `Rules <../user-reference/index.html#rules>`_
 in the Bazaar User Reference.
+
+
+Escaping command lines
+----------------------
+
+When you give a program name or command line in configuration, you can quote
+to include special characters or whitespace.  The same rules are used across
+all platforms.
+
+The rules are: strings surrounded by double-quotes are interpreted as single
+"words" even if they contain whitespace, and backslash may be used to quote
+quotation marks.  For example::
+
+    BZR_EDITOR="C:\Program Files\My Editor\myeditor.exe"

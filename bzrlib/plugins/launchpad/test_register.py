@@ -67,16 +67,19 @@ class InstrumentedXMLRPCConnection(object):
         """
         class FakeHttpResponse(object):
 
-            def __init__(self, status, reason, headers, body):
+            def __init__(self, status, reason, body):
                 self.status = status
                 self.reason = reason
-                self.headers = headers
                 self.body = body
 
             def read(self, size=-1):
                 return self.body.read(size)
 
-        return FakeHttpResponse(200, 'OK', [], self.getfile())
+            def getheader(self, name, default):
+                # We don't have headers
+                return default
+
+        return FakeHttpResponse(200, 'OK', self.getfile())
 
     def getfile(self):
         """Return a fake file containing the response content."""

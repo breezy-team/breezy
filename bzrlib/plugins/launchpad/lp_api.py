@@ -35,7 +35,6 @@ from bzrlib import (
     )
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
-    NotLaunchpadBranch,
     )
 
 try:
@@ -197,6 +196,9 @@ class LaunchpadBranch(object):
         url = bzr_branch.get_push_location()
         if url is not None:
             yield url
+        url = bzr_branch.get_parent()
+        if url is not None:
+            yield url
         yield bzr_branch.base
 
     @staticmethod
@@ -292,29 +294,6 @@ class LaunchpadBranch(object):
         lca = graph.find_unique_lca(self.bzr.last_revision(),
                                     other.bzr.last_revision())
         return self.bzr.repository.revision_tree(lca)
-
-
-def load_branch(launchpad, branch):
-    """Return the launchpadlib Branch object corresponding to 'branch'.
-
-    :param launchpad: The root `Launchpad` object from launchpadlib.
-    :param branch: A `bzrlib.branch.Branch`.
-    :raise NotLaunchpadBranch: If we cannot determine the Launchpad URL of
-        `branch`.
-    :return: A launchpadlib Branch object.
-    """
-    # XXX: This duplicates the "What are possible URLs for the branch that
-    # Launchpad might recognize" logic found in cmd_lp_open.
-
-    # XXX: This makes multiple roundtrips to Launchpad for what is
-    # conceptually a single operation -- get me the branches that match these
-    # URLs. Unfortunately, Launchpad's support for such operations is poor, so
-    # we have to allow multiple roundtrips.
-    for url in branch.get_public_branch(), branch.get_push_location():
-        lp_branch = launchpad.branches.getByUrl(url=url)
-        if lp_branch:
-            return lp_branch
-    raise NotLaunchpadBranch(url)
 
 
 def canonical_url(object):

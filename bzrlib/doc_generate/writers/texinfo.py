@@ -123,6 +123,17 @@ this is currently worked on.
     def depart_topic(self, node):
         pass
 
+    def visit_compound(self, node):
+        # compound is new in sphinx >= 1.0 and just add a optional layer so we
+        # relay the text to the parent when it occurs. This may requires a
+        # cleaner approach once we settle on which sphinx versions we want to
+        # support.
+        set_item_list_collector(node, 'text')
+
+    def depart_compound(self, node):
+        text = ''.join(node['text'])
+        node.parent.collect_text(text)
+
     def visit_paragraph(self, node):
         set_item_list_collector(node, 'text')
 
@@ -143,9 +154,10 @@ this is currently worked on.
         # FIXME: Using a different visitor specific to toctree may be a better
         # design and makes code clearer. -- vila 20100708
         if node.has_key('toctree'):
-            node.parent.collect_text('@menu\n')
-            node.parent.collect_text(''.join(node['text']))
-            node.parent.collect_text('@end menu\n')
+            if node['text']:
+                node.parent.collect_text('@menu\n')
+                node.parent.collect_text(''.join(node['text']))
+                node.parent.collect_text('@end menu\n')
             self.in_toctree = False
         elif self.in_toctree:
             # * FIRST-ENTRY-NAME:(FILENAME)NODENAME.     DESCRIPTION

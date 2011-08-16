@@ -40,28 +40,29 @@ The plugin also provides the following commands:
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
-# Since we are a built-in plugin we share the bzrlib version
-from bzrlib import version_info
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    branch as _mod_branch,
-    errors,
     ui,
     trace,
     )
 """)
 
-from bzrlib import bzrdir
+from bzrlib import (
+    branch as _mod_branch,
+    bzrdir,
+    lazy_regex,
+    # Since we are a built-in plugin we share the bzrlib version
+    version_info,
+    )
 from bzrlib.commands import (
-        Command,
-        register_command,
-)
+    Command,
+    register_command,
+    )
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
     BzrCommandError,
-    DependencyNotPresent,
+    InvalidRevisionSpec,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
@@ -296,11 +297,12 @@ class cmd_launchpad_mirror(Command):
     def run(self, location='.'):
         from bzrlib.plugins.launchpad import lp_api
         from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
-        branch = _mod_branch.Branch.open(location)
+        branch, _ = _mod_branch.Branch.open_containing(location)
         service = LaunchpadService()
         launchpad = lp_api.login(service)
-        lp_branch = lp_api.load_branch(launchpad, branch)
-        lp_branch.requestMirror()
+        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
+                create_missing=False)
+        lp_branch.lp.requestMirror()
 
 
 register_command(cmd_launchpad_mirror)
@@ -420,7 +422,7 @@ class cmd_lp_find_proposal(Command):
             merging_revision = graph.find_lefthand_merger(
                 revision_id, b.last_revision())
             if merging_revision is None:
-                raise errors.InvalidRevisionSpec(revision[0].user_spec, b)
+                raise InvalidRevisionSpec(revision[0].user_spec, b)
         pb.update('Finding revno')
         return b.revision_id_to_revno(merging_revision)
 
@@ -462,12 +464,70 @@ def _register_directory():
 
 _register_directory()
 
+# This is kept in __init__ so that we don't load lp_api_lite unless the branch
+# actually matches. That way we can avoid importing extra dependencies like
+# json.
+_package_branch = lazy_regex.lazy_compile(
+    r'bazaar.launchpad.net.*?/'
+    r'(?P<user>~[^/]+/)?(?P<archive>ubuntu|debian)/(?P<series>[^/]+/)?'
+    r'(?P<project>[^/]+)(?P<branch>/[^/]+)?'
+    )
+
+def _get_package_branch_info(url):
+    """Determine the packaging information for this URL.
+
+    :return: If this isn't a packaging branch, return None. If it is, return
+        (archive, series, project)
+    """
+    if url is None:
+        return None
+    m = _package_branch.search(url)
+    if m is None:
+        return None
+    archive, series, project, user = m.group('archive', 'series',
+                                             'project', 'user')
+    if series is not None:
+        # series is optional, so the regex includes the extra '/', we don't
+        # want to send that on (it causes Internal Server Errors.)
+        series = series.strip('/')
+    if user is not None:
+        user = user.strip('~/')
+        if user != 'ubuntu-branches':
+            return None
+    return archive, series, project
+
+
+def _check_is_up_to_date(the_branch):
+    info = _get_package_branch_info(the_branch.base)
+    if info is None:
+        return
+    c = the_branch.get_config()
+    verbosity = c.get_user_option('launchpad.packaging_verbosity')
+    if verbosity is not None:
+        verbosity = verbosity.lower()
+    if verbosity == 'off':
+        trace.mutter('not checking %s because verbosity is turned off'
+                     % (the_branch.base,))
+        return
+    archive, series, project = info
+    from bzrlib.plugins.launchpad import lp_api_lite
+    latest_pub = lp_api_lite.LatestPublication(archive, series, project)
+    lp_api_lite.report_freshness(the_branch, verbosity, latest_pub)
+
+
+def _register_hooks():
+    _mod_branch.Branch.hooks.install_named_hook('open',
+        _check_is_up_to_date, 'package-branch-up-to-date')
+
+
+_register_hooks()
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
         'test_account',
         'test_register',
         'test_lp_api',
+        'test_lp_api_lite',
         'test_lp_directory',
         'test_lp_login',
         'test_lp_open',

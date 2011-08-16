@@ -49,14 +49,14 @@ class TestInfo(tests.TestCaseWithTransport):
         transport = self.get_transport()
 
         # Create initial standalone branch
-        tree1 = self.make_branch_and_tree('standalone', 'weave')
+        tree1 = self.make_branch_and_tree('standalone', 'knit')
         self.build_tree(['standalone/a'])
         tree1.add('a')
         branch1 = tree1.branch
 
         out, err = self.run_bzr('info standalone')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: standalone
 """, out)
@@ -65,15 +65,15 @@ Location:
         # Standalone branch - verbose mode
         out, err = self.run_bzr('info standalone -v')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          0 unchanged
@@ -96,15 +96,15 @@ Repository:
         # Standalone branch - really verbose mode
         out, err = self.run_bzr('info standalone -vv')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          0 unchanged
@@ -134,7 +134,7 @@ Repository:
 
         out, err = self.run_bzr('info branch')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -146,7 +146,7 @@ Related branches:
 
         out, err = self.run_bzr('info branch --verbose')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -155,10 +155,10 @@ Related branches:
   parent branch: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          1 unchanged
@@ -213,7 +213,7 @@ In the working tree:
          0 removed
          0 renamed
          0 unknown
-         1 ignored
+         0 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -276,6 +276,10 @@ Repository:
         tree5 = branch1.create_checkout('lightcheckout', lightweight=True)
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
+        if "metaweave" in bzrdir.format_registry:
+            format_description = "knit or metaweave"
+        else:
+            format_description = "knit"
         self.assertEqualDiff(
 """Lightweight checkout (format: %s)
 Location:
@@ -284,9 +288,9 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 6
-        branch: Branch format 4
-    repository: Weave repository format 6
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          1 unchanged
@@ -306,7 +310,7 @@ Branch history:
 
 Repository:
          1 revision
-""" % (self._repo_strings, datestring_first, datestring_first,), out)
+""" % (format_description, datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -319,7 +323,7 @@ Repository:
         # Out of date branched standalone branch will not be detected
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -328,10 +332,10 @@ Related branches:
   parent branch: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          1 unchanged
@@ -381,7 +385,7 @@ In the working tree:
          0 removed
          0 renamed
          0 unknown
-         1 ignored
+         0 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -446,9 +450,9 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 6
-        branch: Branch format 4
-    repository: Weave repository format 6
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 Working tree is out of date: missing 1 revision.
 
@@ -470,7 +474,7 @@ Branch history:
 
 Repository:
          2 revisions
-""" % (self._repo_strings, datestring_first, datestring_last,), out)
+""" % (format_description, datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):
@@ -1322,89 +1326,6 @@ Repository:
         if sys.platform == 'win32':
             self.knownFailure('Win32 cannot run "bzr info"'
                               ' when the tree is locked.')
-
-    def test_info_locking_oslocks(self):
-        if sys.platform == "win32":
-            self.skip("don't use oslocks on win32 in unix manner")
-        # This test tests old (all-in-one, OS lock using) behaviour which
-        # simply cannot work on windows (and is indeed why we changed our
-        # design. As such, don't try to remove the thisFailsStrictLockCheck
-        # call here.
-        self.thisFailsStrictLockCheck()
-
-        tree = self.make_branch_and_tree('branch',
-                                         format=bzrdir.BzrDirFormat6())
-
-        # Test all permutations of locking the working tree, branch and repository
-        # XXX: Well not yet, as we can't query oslocks yet. Currently, it's
-        # implemented by raising NotImplementedError and get_physical_lock_status()
-        # always returns false. This makes bzr info hide the lock status.  (Olaf)
-        # W B R
-
-        # U U U
-        out, err = self.run_bzr('info -v branch')
-        self.assertEqualDiff(
-"""Standalone tree (format: weave)
-Location:
-  branch root: %s
-
-Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: %s
-
-In the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-Branch history:
-         0 revisions
-
-Repository:
-         0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
-        self.assertEqual('', err)
-        # L L L
-        tree.lock_write()
-        out, err = self.run_bzr('info -v branch')
-        self.assertEqualDiff(
-"""Standalone tree (format: weave)
-Location:
-  branch root: %s
-
-Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: %s
-
-In the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-Branch history:
-         0 revisions
-
-Repository:
-         0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
-        self.assertEqual('', err)
-        tree.unlock()
 
     def test_info_stacked(self):
         # We have a mainline

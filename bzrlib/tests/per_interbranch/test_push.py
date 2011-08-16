@@ -30,9 +30,9 @@ from bzrlib import (
     check,
     errors,
     push,
-    repository,
     symbol_versioning,
     tests,
+    vf_repository,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -287,7 +287,7 @@ class TestPush(TestCaseWithInterBranch):
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
-        self.overrideAttr(repository.InterRepository,
+        self.overrideAttr(vf_repository.InterVersionedFileRepository,
                           '_walk_to_common_revisions_batch_size', 1)
         self.overrideAttr(SmartServerRepositoryGetParentMap,
                             'no_extra_results', True)

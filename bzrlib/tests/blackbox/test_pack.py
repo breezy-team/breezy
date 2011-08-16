@@ -38,7 +38,9 @@ class TestPack(tests.TestCaseWithTransport):
 
     def _update_file(self, path, text, checkin=True):
         """append text to file 'path' and check it in"""
-        open(path, 'a').write(text)
+        with open(path, 'a') as f:
+            f.write(text)
+
         if checkin:
             self.run_bzr(['ci', path, '-m', '"' + path + '"'])
 
