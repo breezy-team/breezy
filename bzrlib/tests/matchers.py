@@ -27,6 +27,7 @@ assertions in Test Case objects, so they are recommended for new testing work.
 """
 
 __all__ = [
+    'HasLayout',
     'MatchesAncestry',
     'ReturnsUnlockable',
     ]
