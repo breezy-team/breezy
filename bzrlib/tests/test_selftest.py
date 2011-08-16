@@ -29,6 +29,7 @@ import warnings
 from testtools import (
     ExtendedToOriginalDecorator,
     MultiTestResult,
+    __version__ as testtools_version,
     )
 from testtools.content import Content
 from testtools.content_type import ContentType
@@ -824,7 +825,7 @@ class TestTestResult(tests.TestCase):
         self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
 
     def test_known_failure(self):
-        """A KnownFailure being raised should trigger several result actions."""
+        """Using knownFailure should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
             def report_tests_starting(self): pass
@@ -833,7 +834,7 @@ class TestTestResult(tests.TestCase):
         result = InstrumentedTestResult(None, None, None, None)
         class Test(tests.TestCase):
             def test_function(self):
-                raise tests.KnownFailure('failed!')
+                self.knownFailure('failed!')
         test = Test("test_function")
         test.run(result)
         # it should invoke 'report_known_failure'.
@@ -855,23 +856,13 @@ class TestTestResult(tests.TestCase):
             descriptions=0,
             verbosity=2,
             )
-        test = self.get_passing_test()
-        result.startTest(test)
-        prefix = len(result_stream.getvalue())
-        # the err parameter has the shape:
-        # (class, exception object, traceback)
-        # KnownFailures dont get their tracebacks shown though, so we
-        # can skip that.
-        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result.report_known_failure(test, err)
-        output = result_stream.getvalue()[prefix:]
-        lines = output.splitlines()
-        self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
-        if sys.version_info > (2, 7):
-            self.expectFailure("_ExpectedFailure on 2.7 loses the message",
-                self.assertNotEqual, lines[1], '    ')
-        self.assertEqual(lines[1], '    foo')
-        self.assertEqual(2, len(lines))
+        _get_test("test_xfail").run(result)
+        self.assertContainsRe(result_stream.getvalue(),
+            "\n\\S+\\.test_xfail\\s+XFAIL\\s+\\d+ms\n"
+            "\\s*(?:Text attachment: )?reason"
+            "(?:\n-+\n|: {{{)"
+            "this_fails"
+            "(?:\n-+\n|}}}\n)")
 
     def get_passing_test(self):
         """Return a test object that can't be run usefully."""
@@ -957,9 +948,8 @@ class TestTestResult(tests.TestCase):
     def test_strict_with_known_failure(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
                                              verbosity=1)
-        test = self.get_passing_test()
-        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result.addExpectedFailure(test, err)
+        test = _get_test("test_xfail")
+        test.run(result)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
@@ -1072,17 +1062,31 @@ class TestRunner(tests.TestCase):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
         runner = tests.TextTestRunner(stream=StringIO())
         result = self.run_test_runner(runner, Test("test_truth"))
-        self.assertContainsRe(runner.stream.getvalue(),
-            "=+\n"
-            "FAIL: \\S+\.test_truth\n"
-            "-+\n"
-            "(?:.*\n)*"
-            "No absolute truth\n"
-            "(?:.*\n)*"
-            "-+\n"
-            "Ran 1 test in .*\n"
-            "\n"
-            "FAILED \\(failures=1\\)\n\\Z")
+        if testtools_version[:3] <= (0, 9, 11):
+            self.assertContainsRe(runner.stream.getvalue(),
+                "=+\n"
+                "FAIL: \\S+\.test_truth\n"
+                "-+\n"
+                "(?:.*\n)*"
+                "No absolute truth\n"
+                "(?:.*\n)*"
+                "-+\n"
+                "Ran 1 test in .*\n"
+                "\n"
+                "FAILED \\(failures=1\\)\n\\Z")
+        else:
+            self.assertContainsRe(runner.stream.getvalue(),
+                "=+\n"
+                "FAIL: \\S+\.test_truth\n"
+                "-+\n"
+                "Empty attachments:\n"
+                "  log\n"
+                "\n"
+                "reason: {{{No absolute truth}}}\n"
+                "-+\n"
+                "Ran 1 test in .*\n"
+                "\n"
+                "FAILED \\(failures=1\\)\n\\Z")
 
     def test_result_decorator(self):
         # decorate results
@@ -1247,11 +1251,14 @@ class TestRunner(tests.TestCase):
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
-        self.assertContainsRe(out.getvalue(),
-            "Text attachment: log\n"
-            "-+\n"
-            "\d+\.\d+  \\\\u2606\n"
-            "-+\n")
+        if testtools_version[:3] > (0, 9, 11):
+            self.assertContainsRe(out.getvalue(), "log: {{{\d+\.\d+  \\\\u2606}}}")
+        else:
+            self.assertContainsRe(out.getvalue(),
+                "Text attachment: log\n"
+                "-+\n"
+                "\d+\.\d+  \\\\u2606\n"
+                "-+\n")
 
 
 class SampleTestCase(tests.TestCase):
@@ -1736,14 +1743,16 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_fail')
         self.assertEqual(1, len(result.failures))
         result_content = result.failures[0][1]
-        self.assertContainsRe(result_content, 'Text attachment: log')
+        if testtools_version < (0, 9, 12):
+            self.assertContainsRe(result_content, 'Text attachment: log')
         self.assertContainsRe(result_content, 'this was a failing test')
 
     def test_error_has_log(self):
         result = self._run_test('test_error')
         self.assertEqual(1, len(result.errors))
         result_content = result.errors[0][1]
-        self.assertContainsRe(result_content, 'Text attachment: log')
+        if testtools_version < (0, 9, 12):
+            self.assertContainsRe(result_content, 'Text attachment: log')
         self.assertContainsRe(result_content, 'this test errored')
 
     def test_skip_has_no_log(self):

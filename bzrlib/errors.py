@@ -1802,6 +1802,14 @@ class ParseConfigError(BzrError):
         self.errors = '\n'.join(e.msg for e in errors)
 
 
+class ConfigOptionValueError(BzrError):
+
+    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
+
+
 class NoEmailInUsername(BzrError):
 
     _fmt = "%(username)r does not seem to contain a reasonable email address"

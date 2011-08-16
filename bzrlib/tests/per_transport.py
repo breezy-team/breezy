@@ -1136,7 +1136,7 @@ class TransportTests(TestTransportImplementation):
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
         except IOError:
-            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
+            self.knownFailure("Paramiko fails to create symlinks during tests")
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1206,11 +1206,11 @@ class TransportTests(TestTransportImplementation):
             raise TestSkipped("not a connected transport")
 
         t2 = t1.clone('subdir')
-        self.assertEquals(t1._scheme, t2._scheme)
-        self.assertEquals(t1._user, t2._user)
-        self.assertEquals(t1._password, t2._password)
-        self.assertEquals(t1._host, t2._host)
-        self.assertEquals(t1._port, t2._port)
+        self.assertEquals(t1._parsed_url.scheme, t2._parsed_url.scheme)
+        self.assertEquals(t1._parsed_url.user, t2._parsed_url.user)
+        self.assertEquals(t1._parsed_url.password, t2._parsed_url.password)
+        self.assertEquals(t1._parsed_url.host, t2._parsed_url.host)
+        self.assertEquals(t1._parsed_url.port, t2._parsed_url.port)
 
     def test__reuse_for(self):
         t = self.get_transport()
@@ -1223,21 +1223,21 @@ class TransportTests(TestTransportImplementation):
 
             Only the parameters different from None will be changed.
             """
-            if scheme   is None: scheme   = t._scheme
-            if user     is None: user     = t._user
-            if password is None: password = t._password
-            if user     is None: user     = t._user
-            if host     is None: host     = t._host
-            if port     is None: port     = t._port
-            if path     is None: path     = t._path
+            if scheme   is None: scheme   = t._parsed_url.scheme
+            if user     is None: user     = t._parsed_url.user
+            if password is None: password = t._parsed_url.password
+            if user     is None: user     = t._parsed_url.user
+            if host     is None: host     = t._parsed_url.host
+            if port     is None: port     = t._parsed_url.port
+            if path     is None: path     = t._parsed_url.path
             return t._unsplit_url(scheme, user, password, host, port, path)
 
-        if t._scheme == 'ftp':
+        if t._parsed_url.scheme == 'ftp':
             scheme = 'sftp'
         else:
             scheme = 'ftp'
         self.assertIsNot(t, t._reuse_for(new_url(scheme=scheme)))
-        if t._user == 'me':
+        if t._parsed_url.user == 'me':
             user = 'you'
         else:
             user = 'me'
@@ -1254,8 +1254,8 @@ class TransportTests(TestTransportImplementation):
         #   (they may be typed by the user when prompted for example)
         self.assertIs(t, t._reuse_for(new_url(password='from space')))
         # We will not connect, we can use a invalid host
-        self.assertIsNot(t, t._reuse_for(new_url(host=t._host + 'bar')))
-        if t._port == 1234:
+        self.assertIsNot(t, t._reuse_for(new_url(host=t._parsed_url.host + 'bar')))
+        if t._parsed_url.port == 1234:
             port = 4321
         else:
             port = 1234
@@ -1555,7 +1555,7 @@ class TransportTests(TestTransportImplementation):
 
         no_unicode_support = getattr(self._server, 'no_unicode_support', False)
         if no_unicode_support:
-            raise tests.KnownFailure("test server cannot handle unicode paths")
+            self.knownFailure("test server cannot handle unicode paths")
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')
