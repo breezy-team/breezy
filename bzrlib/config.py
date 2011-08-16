@@ -172,9 +172,7 @@ class ConfigObj(configobj.ConfigObj):
 # FIXME: Until we can guarantee that each config file is loaded once and
 # only once for a given bzrlib session, we don't want to re-read the file every
 # time we query for an option so we cache the value (bad ! watch out for tests
-# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
-# yell at mgz^W vila and the RM if this is still present at that time
-# -- vila 20110219
+# needing to restore the proper value). -- vila 20110219
 _expand_default_value = None
 def _get_expand_default_value():
     global _expand_default_value
@@ -2293,10 +2291,10 @@ class Option(object):
 
         :param invalid: the action to be taken when an invalid value is
             encountered in a store. This is called only when from_unicode is
-            invoked to convert a string and returns None or raise
-            ValueError. Accepted values are: None (ignore invalid values),
-            'warning' (emit a warning), 'error' emit an error message and
-            terminates.
+            invoked to convert a string and returns None or raise ValueError or
+            TypeError. Accepted values are: None (ignore invalid values),
+            'warning' (emit a warning), 'error' (emit an error message and
+            terminates).
         """
         self.name = name
         self.default = default
@@ -2309,10 +2307,39 @@ class Option(object):
     def get_default(self):
         return self.default
 
+    def get_help_text(self, additional_see_also=None, plain=True):
+        result = self.help
+        from bzrlib import help_topics
+        result += help_topics._format_see_also(additional_see_also)
+        if plain:
+            result = help_topics.help_as_plain_text(result)
+        return result
+
+
 # Predefined converters to get proper values from store
 
 def bool_from_store(unicode_str):
     return ui.bool_from_string(unicode_str)
+
+
+def int_from_store(unicode_str):
+    return int(unicode_str)
+
+
+def list_from_store(unicode_str):
+    # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
+    if isinstance(unicode_str, (str, unicode)):
+        if unicode_str:
+            # A single value, most probably the user forgot (or didn't care to
+            # add) the final ','
+            l = [unicode_str]
+        else:
+            # The empty string, convert to empty list
+            l = []
+    else:
+        # We rely on ConfigObj providing us with a list already
+        l = unicode_str
+    return l
 
 
 class OptionRegistry(registry.Registry):
@@ -2333,13 +2360,12 @@ class OptionRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name):
         """Register a new option to be loaded on request.
 
-        :param key: This is the key to use to request the option later. Since
-            the registration is lazy, it should be provided and match the
-            option name.
+        :param key: the key to request the option later. Since the registration
+            is lazy, it should be provided and match the option name.
 
-        :param module_name: The python path to the module. Such as 'os.path'.
+        :param module_name: the python path to the module. Such as 'os.path'.
 
-        :param member_name: The member of the module to return.  If empty or
+        :param member_name: the member of the module to return.  If empty or 
                 None, get() will return the module itself.
         """
         super(OptionRegistry, self).register_lazy(key,
@@ -2361,7 +2387,7 @@ option_registry = OptionRegistry()
 
 option_registry.register(
     Option('dirstate.fdatasync', default=True, from_unicode=bool_from_store,
-           help='''
+           help='''\
 Flush dirstate changes onto physical disk?
 
 If true (default), working tree metadata changes are flushed through the
@@ -2855,7 +2881,7 @@ class Stack(object):
             # If a value exists and the option provides a converter, use it
             try:
                 converted = opt.from_unicode(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 # Invalid values are ignored
                 converted = None
             if converted is None and opt.invalid is not None:

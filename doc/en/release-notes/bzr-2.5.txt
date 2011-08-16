@@ -20,6 +20,16 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean and integer config options when the
+  provided ``bool_from_store`` and ``int_from_store`` are used.
+  (Vincent Ladeuil)
+
+* A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean, integer and list config options when the
+  provided ``bool_from_store``, ``int_from_store`` and ``list_from_store``
+  are used for this parameter.  (Vincent Ladeuil)
+
 * Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
   checks to see if the most recent published source package version for
   that project is present in the branch tags. This should help developers
@@ -58,6 +68,9 @@ New Features
   of just matching the message.  --message keeps its original meaning,
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
+
+* ``bzr help configuration/<option>`` display the help for ``option`` for
+  all registered configuration options. (Vincent Ladeuil, #747050)
 
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
@@ -183,6 +196,9 @@ Testing
   (BSD-based OSes don't define it).  (Vincent Ladeuil, #822649)
 
 * Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
+
+* ``LockDir`` can now be run when the local hostname is ``localhost``.
+  (Jelmer Vernooij, #825994)
 
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,
