@@ -25,7 +25,6 @@ from bzrlib import (
     merge,
     )
 from bzrlib.tests import per_workingtree
-from bzrlib.tests.matchers import HasLayout
 
 
 class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
@@ -147,7 +146,14 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         return br
 
     def assertTreeLayout(self, expected, tree):
-        self.assertThat(tree, HasLayout(expected))
+        tree.lock_read()
+        try:
+            actual = [e[0] for e in tree.list_files()]
+            # list_files doesn't guarantee order
+            actual = sorted(actual)
+            self.assertEqual(expected, actual)
+        finally:
+            tree.unlock()
 
     def make_outer_tree(self):
         outer = self.make_branch_and_tree('outer')
