@@ -140,4 +140,6 @@ class HasLayout(Matcher):
 
     def match(self, tree):
         actual = self.get_tree_layout(tree)
+        if self.entries and isinstance(self.entries[0], basestring):
+            actual = [path for (path, fileid) in actual]
         return Equals(actual).match(self.entries)
