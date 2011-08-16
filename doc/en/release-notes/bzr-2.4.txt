@@ -1167,9 +1167,5 @@ Testing
 * The Range parsing for HTTP requests will correctly parse incomplete ranges.
   (Vincent Ladeuil, #731240)
 
-* ``ModuleAvailableFeature`` can now be used for modules with side-effects
-  that can't be imported twice with ``__import__``.
-  (Vincent Ladeuil, #712474)
-
 ..
    vim: tw=74 ft=rst ff=unix

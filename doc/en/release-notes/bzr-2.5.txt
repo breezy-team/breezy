@@ -193,6 +193,10 @@ Testing
 * ``LockDir`` can now be run when the local hostname is ``localhost``.
   (Jelmer Vernooij, #825994)
 
+* ``ModuleAvailableFeature`` can now be used for modules with side-effects
+  that can't be imported twice with ``__import__``.
+  (Vincent Ladeuil, #712474)
+
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,
   rather than opening the WorkingTree and calling ``last_revision()``.
