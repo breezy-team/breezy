@@ -16,9 +16,13 @@
 """'Features' which are used to skip tests."""
 
 from bzrlib import tests
+try:
+    from bzrlib.tests.features import Feature
+except ImportError: # bzr < 2.5
+    from bzrlib.tests import Feature
 from termcolor import allow_color
 
-class _ColorFeature(tests.Feature):
+class _ColorFeature(Feature):
 
     def _probe(self):
         return allow_color()
