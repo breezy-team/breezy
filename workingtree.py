@@ -495,7 +495,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         return (path in self.index or self._has_dir(path))
 
     def filter_unversioned_files(self, files):
-        return set([p for p in files if self._is_versioned(p.encode("utf-8"))])
+        return set([p for p in files if not self._is_versioned(p.encode("utf-8"))])
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
