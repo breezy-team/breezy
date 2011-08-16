@@ -14,7 +14,7 @@ Override the email id used by Bazaar.  Typical format::
 
   "John Doe <jdoe@example.com>"
 
-See also the ``email`` configuration value.
+See also the ``email`` configuration option.
 
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ BZR_REMOTE_PATH
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
-See also the ``bzr_remote_path`` configuration value.
+See also the ``bzr_remote_path`` configuration option.
 
 BZR_EDITOR
 ~~~~~~~~~~
