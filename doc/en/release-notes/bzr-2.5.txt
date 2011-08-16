@@ -68,6 +68,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr commit -m ''`` can now be used to force an empty commit message.
+  Entering an empty commit message in the message editor still triggers
+  an error. (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
