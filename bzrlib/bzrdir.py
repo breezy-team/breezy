@@ -634,8 +634,10 @@ class BzrDir(controldir.ControlDir):
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
-            ui.ui_factory.note('making backup of %s\n  to %s'
-                               % (old_path, new_path,))
+            ui_encoding = osutils.get_terminal_encoding()
+            ui.ui_factory.note('making backup of %s\n  to %s' % (
+                urlutils.unescape_for_display(old_path, ui_encoding),
+                urlutils.unescape_for_display(new_path, ui_encoding)))
             self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
         finally:

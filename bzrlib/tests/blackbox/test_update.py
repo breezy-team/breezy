@@ -18,14 +18,12 @@
 """Tests for the update command of bzr."""
 
 import os
-import re
 
 from bzrlib import (
     branch,
     bzrdir,
     osutils,
     tests,
-    urlutils,
     workingtree,
     )
 from bzrlib.tests.script import ScriptRunner
