@@ -26,6 +26,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     controldir,
     errors,
     help_topics,
@@ -1208,7 +1209,7 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
 
     def __init__(self, *args, **kwargs):
         super(_TestBzrDir, self).__init__(*args, **kwargs)
-        self.test_branch = _TestBranch()
+        self.test_branch = _TestBranch(self.transport)
         self.test_branch.repository = self.create_repository()
 
     def open_branch(self, unsupported=False):
@@ -1225,15 +1226,17 @@ class _TestBranchFormat(bzrlib.branch.BranchFormat):
 class _TestBranch(bzrlib.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, transport, *args, **kwargs):
         self._format = _TestBranchFormat()
+        self._transport = transport
+        self.base = transport.base
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
         self._parent = None
 
     def sprout(self, *args, **kwargs):
         self.calls.append('sprout')
-        return _TestBranch()
+        return _TestBranch(self._transport)
 
     def copy_content_into(self, destination, revision_id=None):
         self.calls.append('copy_content_into')
@@ -1243,6 +1246,9 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def get_parent(self):
         return self._parent
+
+    def _get_config(self):
+        return config.TransportConfig(self._transport, 'branch.conf')
 
     def set_parent(self, parent):
         self._parent = parent

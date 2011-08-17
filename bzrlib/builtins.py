@@ -1195,7 +1195,7 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved push location: %s\n" % display_url)
+                note("Using saved push location: %s" % display_url)
                 location = stored_loc
 
         _show_push_branch(br_from, revision_id, location, self.outf,
@@ -3345,7 +3345,10 @@ class cmd_commit(Command):
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
             if my_message == "":
-                raise errors.BzrCommandError("empty commit message specified")
+                raise errors.BzrCommandError("Empty commit message specified."
+                        " Please specify a commit message with either"
+                        " --message or --file or leave a blank message"
+                        " with --message \"\".")
             return my_message
 
         # The API permits a commit with a filter of [] to mean 'select nothing'

@@ -172,9 +172,7 @@ class ConfigObj(configobj.ConfigObj):
 # FIXME: Until we can guarantee that each config file is loaded once and
 # only once for a given bzrlib session, we don't want to re-read the file every
 # time we query for an option so we cache the value (bad ! watch out for tests
-# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
-# yell at mgz^W vila and the RM if this is still present at that time
-# -- vila 20110219
+# needing to restore the proper value). -- vila 20110219
 _expand_default_value = None
 def _get_expand_default_value():
     global _expand_default_value
@@ -2272,16 +2270,76 @@ class Option(object):
     The option *values* are stored in config files and found in sections.
 
     Here we define various properties about the option itself, its default
-    value, in which config files it can be stored, etc (TBC).
+    value, how to convert it from stores, what to do when invalid values are
+    encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, help=None):
+    def __init__(self, name, default=None, help=None, from_unicode=None,
+                 invalid=None):
+        """Build an option definition.
+
+        :param name: the name used to refer to the option.
+
+        :param default: the default value to use when none exist in the config
+            stores.
+
+        :param help: a doc string to explain the option to the user.
+
+        :param from_unicode: a callable to convert the unicode string
+            representing the option value in a store. This is not called for
+            the default value.
+
+        :param invalid: the action to be taken when an invalid value is
+            encountered in a store. This is called only when from_unicode is
+            invoked to convert a string and returns None or raise ValueError or
+            TypeError. Accepted values are: None (ignore invalid values),
+            'warning' (emit a warning), 'error' (emit an error message and
+            terminates).
+        """
         self.name = name
         self.default = default
         self.help = help
+        self.from_unicode = from_unicode
+        if invalid and invalid not in ('warning', 'error'):
+            raise AssertionError("%s not supported for 'invalid'" % (invalid,))
+        self.invalid = invalid
 
     def get_default(self):
         return self.default
+
+    def get_help_text(self, additional_see_also=None, plain=True):
+        result = self.help
+        from bzrlib import help_topics
+        result += help_topics._format_see_also(additional_see_also)
+        if plain:
+            result = help_topics.help_as_plain_text(result)
+        return result
+
+
+# Predefined converters to get proper values from store
+
+def bool_from_store(unicode_str):
+    return ui.bool_from_string(unicode_str)
+
+
+def int_from_store(unicode_str):
+    return int(unicode_str)
+
+
+def list_from_store(unicode_str):
+    # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
+    if isinstance(unicode_str, (str, unicode)):
+        if unicode_str:
+            # A single value, most probably the user forgot (or didn't care to
+            # add) the final ','
+            l = [unicode_str]
+        else:
+            # The empty string, convert to empty list
+            l = []
+    else:
+        # We rely on ConfigObj providing us with a list already
+        l = unicode_str
+    return l
 
 
 class OptionRegistry(registry.Registry):
@@ -2302,13 +2360,12 @@ class OptionRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name):
         """Register a new option to be loaded on request.
 
-        :param key: This is the key to use to request the option later. Since
-            the registration is lazy, it should be provided and match the
-            option name.
+        :param key: the key to request the option later. Since the registration
+            is lazy, it should be provided and match the option name.
 
-        :param module_name: The python path to the module. Such as 'os.path'.
+        :param module_name: the python path to the module. Such as 'os.path'.
 
-        :param member_name: The member of the module to return.  If empty or
+        :param member_name: the member of the module to return.  If empty or 
                 None, get() will return the module itself.
         """
         super(OptionRegistry, self).register_lazy(key,
@@ -2329,8 +2386,21 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
+    Option('bzr.workingtree.worth_saving_limit', default=10,
+           from_unicode=int_from_store,  invalid='warning',
+           help='''\
+How many changes before saving the dirstate.
+
+-1 means that we will never rewrite the dirstate file for only
+stat-cache changes. Regardless of this setting, we will always rewrite
+the dirstate file if a file is added/removed/renamed/etc. This flag only
+affects the behavior of updating the dirstate file after we notice that
+a file has been touched.
+'''))
+option_registry.register(
     Option('dirstate.fdatasync', default=True,
-           help='''
+           from_unicode=bool_from_store,
+           help='''\
 Flush dirstate changes onto physical disk?
 
 If true (default), working tree metadata changes are flushed through the
@@ -2338,20 +2408,43 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 '''))
 option_registry.register(
+    Option('debug_flags', default=[], from_unicode=list_from_store,
+           help='Debug flags to activate.'))
+option_registry.register(
     Option('default_format', default='2a',
            help='Format used when creating branches.'))
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
+    Option('ignore_missing_extensions', default=False,
+           from_unicode=bool_from_store,
+           help='''\
+Control the missing extensions warning display.
+
+The warning will not be emitted if set to True.
+'''))
+option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
+option_registry.register(
+    Option('locks.steal_dead', default=False, from_unicode=bool_from_store,
+           help='''\
+Steal locks that appears to be dead.
+
+If set to True, bzr will check if a lock is supposed to be held by an
+active process from the same user on the same machine. If the user and
+machine match, but no process with the given PID is active, then bzr
+will automatically break the stale lock, and create a new lock for
+this process.
+Otherwise, bzr will prompt as normal to break the lock.
+'''))
 option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
-    Option('repository.fdatasync', default=True,
+    Option('repository.fdatasync', default=True, from_unicode=bool_from_store,
            help='''\
 Flush repository changes onto physical disk?
 
@@ -2812,13 +2905,31 @@ class Stack(object):
                     break
             if value is not None:
                 break
+        # If the option is registered, it may provide additional info about
+        # value handling
+        try:
+            opt = option_registry.get(name)
+        except KeyError:
+            # Not registered
+            opt = None
+        if (opt is not None and opt.from_unicode is not None
+            and value is not None):
+            # If a value exists and the option provides a converter, use it
+            try:
+                converted = opt.from_unicode(value)
+            except (ValueError, TypeError):
+                # Invalid values are ignored
+                converted = None
+            if converted is None and opt.invalid is not None:
+                # The conversion failed
+                if opt.invalid == 'warning':
+                    trace.warning('Value "%s" is not valid for "%s"',
+                                  value, name)
+                elif opt.invalid == 'error':
+                    raise errors.ConfigOptionValueError(name, value)
+            value = converted
         if value is None:
             # If the option is registered, it may provide a default value
-            try:
-                opt = option_registry.get(name)
-            except KeyError:
-                # Not registered
-                opt = None
             if opt is not None:
                 value = opt.get_default()
         for hook in ConfigHooks['get']:

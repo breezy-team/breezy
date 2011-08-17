@@ -295,9 +295,7 @@ class LockDir(lock.Lock):
         """
         if (other_holder is not None):
             if other_holder.is_lock_holder_known_dead():
-                if self.get_config().get_user_option_as_bool(
-                    'locks.steal_dead',
-                    default=False):
+                if self.get_config().get('locks.steal_dead'):
                     ui.ui_factory.show_user_warning(
                         'locks_steal_dead',
                         lock_url=urlutils.join(self.transport.base, self.path),
@@ -709,7 +707,8 @@ class LockDir(lock.Lock):
         """Get the configuration that governs this lockdir."""
         # XXX: This really should also use the locationconfig at least, but
         # that seems a bit hard to hook up at the moment. -- mbp 20110329
-        return config.GlobalConfig()
+        # FIXME: The above is still true ;) -- vila 20110811
+        return config.GlobalStack()
 
 
 class LockHeldInfo(object):

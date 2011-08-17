@@ -14,7 +14,7 @@ Override the email id used by Bazaar.  Typical format::
 
   "John Doe <jdoe@example.com>"
 
-See also the ``email`` configuration value.
+See also the ``email`` configuration option.
 
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ BZR_REMOTE_PATH
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
-See also the ``bzr_remote_path`` configuration value.
+See also the ``bzr_remote_path`` configuration option.
 
 BZR_EDITOR
 ~~~~~~~~~~
@@ -355,6 +355,10 @@ For example::
 
     debug_flags = hpss
 
+or::
+
+    debug_flags = hpss,evil
+
 email
 ~~~~~
 
@@ -423,7 +427,7 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 
 gpg_signing_key
-~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 The GnuPG user identity to use when signing commits.  Can be an e-mail
 address, key fingerprint or full key ID.  When unset or when set to
