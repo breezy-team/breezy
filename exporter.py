@@ -61,6 +61,39 @@ def _get_output_stream(destination):
     else:
         return open(destination, 'wb')
 
+# from dulwich.repo:
+def check_ref_format(refname):
+    """Check if a refname is correctly formatted.
+
+    Implements all the same rules as git-check-ref-format[1].
+
+    [1] http://www.kernel.org/pub/software/scm/git/docs/git-check-ref-format.html
+
+    :param refname: The refname to check
+    :return: True if refname is valid, False otherwise
+    """
+    # These could be combined into one big expression, but are listed separately
+    # to parallel [1].
+    if '/.' in refname or refname.startswith('.'):
+        return False
+    if '/' not in refname:
+        return False
+    if '..' in refname:
+        return False
+    for c in refname:
+        if ord(c) < 040 or c in '\177 ~^:?*[':
+            return False
+    if refname[-1] in '/.':
+        return False
+    if refname.endswith('.lock'):
+        return False
+    if '@{' in refname:
+        return False
+    if '\\' in refname:
+        return False
+    return True
+
+
 
 class BzrFastExporter(object):
 
@@ -507,6 +540,10 @@ class BzrFastExporter(object):
                     'revision %s' % (tag, revid))
             else:
                 git_ref = 'refs/tags/%s' % tag.encode("utf-8")
+                if self.plain_format and not check_ref_format(git_ref):
+                    self.warning('not creating tag %r as its name would not be '
+                                 'valid in git.', git_ref)
+                    continue
                 self.print_cmd(commands.ResetCommand(git_ref, ":" + str(mark)))
 
     def _next_tmp_branch_name(self):

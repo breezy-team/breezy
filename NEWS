@@ -23,6 +23,9 @@ Bug fixes
   These options are not supported by the underlying svn-fast-export.py yet.
   (Jelmer Vernooij, #513747)
 
+* In "plain" mode, skip tags that contain characters not valid in Git.
+  (Jelmer Vernooij, #386986)
+
 0.10 08-Mar-2011
 
 Changes

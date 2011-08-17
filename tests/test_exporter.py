@@ -24,6 +24,7 @@ from bzrlib import tests
 
 from bzrlib.plugins.fastimport.exporter import (
     _get_output_stream,
+    check_ref_format,
     )
 
 from bzrlib.plugins.fastimport.tests import (
@@ -60,3 +61,30 @@ class TestOutputStream(tests.TestCase):
         f = open(filename, 'r')
         self.assertEquals("foo", f.read())
         f.close()
+
+
+# from dulwich.tests.test_repository:
+class CheckRefFormatTests(tests.TestCase):
+    """Tests for the check_ref_format function.
+
+    These are the same tests as in the git test suite.
+    """
+
+    def test_valid(self):
+        self.assertTrue(check_ref_format('heads/foo'))
+        self.assertTrue(check_ref_format('foo/bar/baz'))
+        self.assertTrue(check_ref_format('refs///heads/foo'))
+        self.assertTrue(check_ref_format('foo./bar'))
+        self.assertTrue(check_ref_format('heads/foo@bar'))
+        self.assertTrue(check_ref_format('heads/fix.lock.error'))
+
+    def test_invalid(self):
+        self.assertFalse(check_ref_format('foo'))
+        self.assertFalse(check_ref_format('heads/foo/'))
+        self.assertFalse(check_ref_format('./foo'))
+        self.assertFalse(check_ref_format('.refs/foo'))
+        self.assertFalse(check_ref_format('heads/foo..bar'))
+        self.assertFalse(check_ref_format('heads/foo?bar'))
+        self.assertFalse(check_ref_format('heads/foo.lock'))
+        self.assertFalse(check_ref_format('heads/v@{ation'))
+        self.assertFalse(check_ref_format('heads/foo\bar'))
