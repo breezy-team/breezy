@@ -26,6 +26,9 @@ Bug fixes
 * In "plain" mode, skip tags that contain characters not valid in Git.
   (Jelmer Vernooij, #386986)
 
+* Support exporting files that are changed into directories.
+  (Henrik Nyberg, #631979)
+
 0.10 08-Mar-2011
 
 Changes
