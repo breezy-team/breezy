@@ -2759,6 +2759,14 @@ class BranchStore(IniFileStore):
         super(BranchStore, self).save()
 
 
+class ControlStore(LockableIniFileStore):
+
+    def __init__(self, bzrdir):
+        super(ControlStore, self).__init__(bzrdir.transport,
+                                          'control.conf',
+                                           lock_dir_name='branch_lock')
+
+
 class SectionMatcher(object):
     """Select sections into a given Store.
 
@@ -3010,6 +3018,7 @@ class LocationStack(_CompatibleStack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
+
 class BranchStack(_CompatibleStack):
 
     def __init__(self, branch):
@@ -3019,6 +3028,26 @@ class BranchStack(_CompatibleStack):
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            bstore)
+        self.branch = branch
+
+
+class RemoteControlStack(_CompatibleStack):
+
+    def __init__(self, bzrdir):
+        cstore = ControlStore(bzrdir)
+        super(RemoteControlStack, self).__init__(
+            [cstore.get_sections],
+            cstore)
+        self.bzrdir = bzrdir
+
+
+class RemoteBranchStack(_CompatibleStack):
+
+    def __init__(self, branch):
+        bstore = BranchStore(branch)
+        super(RemoteBranchStack, self).__init__(
+            [bstore.get_sections],
             bstore)
         self.branch = branch
 
