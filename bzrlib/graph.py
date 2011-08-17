@@ -1892,32 +1892,6 @@ class NotInOtherForRevs(AbstractSearch):
             limit=self.limit)
 
 
-def ignore():
-    # TODO: If we use this heavily, then we should just cache the
-    #       reverse map. It certainly only changes based on newly
-    #       requested entries.
-    stop_keys = set(keys)
-    stop_keys.difference_update(self._unstacked_provider.missing_keys)
-    # Just look at immediate children
-    child_keys = set()
-    for k in keys:
-        child_keys.update(parent_to_children_map[k])
-    # Without this line, we get the revision count wrong for 'bzr'. I'm
-    # guessing a shortcut caused some revs to be found early, and then
-    # not walked now. So without c for c in parents_map[k] we get *way*
-    # too many keys, because the graph flood-fills. Without 'if c not
-    # in child_keys' we stop before we start and get the wrong answer
-    # that way.
-    map(stop_keys.update, [[c for c in parents_map[k] if c not in child_keys]
-                           for k in child_keys])
-    mutter('Faking search set _get_parent_map_rpc,'
-                 ' %d cache size, %d start keys'
-                 ' %d included_keys %d stop_keys',
-                 len(parents_map), len(child_keys), len(child_keys),
-                 len(keys))
-    recipe = ('manual', child_keys, stop_keys, len(child_keys))
-
-
 def invert_parent_map(parent_map):
     """Given a map from child => parents, create a map of parent=>children"""
     child_map = {}
@@ -1968,6 +1942,17 @@ def _find_possible_heads(parent_map, tip_keys, depth):
 
 
 def _run_search(parent_map, heads, exclude_keys):
+    """Given a parent map, run a _BreadthFirstSearcher on it.
+
+    Start at heads, walk until you hit exclude_keys. As a further improvement,
+    watch for any heads that you encounter while walking, which means they were
+    not heads of the search.
+
+    This is mostly used to generate a succinct recipe for how to walk through
+    most of parent_map.
+
+    :return: (_BreadthFirstSearcher, set(heads_encountered_by_walking))
+    """
     g = Graph(DictParentsProvider(parent_map))
     s = g._make_breadth_first_searcher(heads)
     found_heads = set()

@@ -16,8 +16,6 @@
 
 """Repository formats built around versioned files."""
 
-import sys
-import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -72,7 +70,7 @@ from bzrlib.repository import (
     )
 
 from bzrlib.trace import (
-    mutter, note
+    mutter
     )
 
 
@@ -2516,21 +2514,12 @@ class InterVersionedFileRepository(InterRepository):
         searcher = source_graph._make_breadth_first_searcher(all_wanted_revs)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         searcher_exhausted = False
-        search_step = 0
-        gpm = searcher._parents_provider.get_parent_map
-        def get_parent_map_logging(revisions):
-            res = gpm(revisions)
-            mutter('step %d, requested %d returned %d'
-                   % (search_step, len(revisions), len(res)))
-            return res
-        searcher._parents_provider.get_parent_map = get_parent_map_logging
         while True:
             next_revs = set()
             ghosts = set()
             # Iterate the searcher until we have enough next_revs
             while len(next_revs) < self._walk_to_common_revisions_batch_size:
                 try:
-                    search_step += 1
                     next_revs_part, ghosts_part = searcher.next_with_ghosts()
                     next_revs.update(next_revs_part)
                     ghosts.update(ghosts_part)
