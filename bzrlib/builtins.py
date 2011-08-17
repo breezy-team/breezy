@@ -1337,6 +1337,7 @@ class cmd_branch(Command):
 class cmd_branches(Command):
     __doc__ = """List the branches available at the current location.
 
+    This command will print the names of all the branches at the current location.
     """
 
     takes_args = ['location?']
@@ -1347,7 +1348,7 @@ class cmd_branches(Command):
             if branch.name is None:
                 self.outf.write(" (default)\n")
             else:
-                self.outf.write(" %s\n" % branch.name)
+                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
 
 
 class cmd_checkout(Command):
