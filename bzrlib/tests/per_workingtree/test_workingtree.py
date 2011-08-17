@@ -278,9 +278,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/',
                          'foo/hello'])
-        self.assertRaises(NotVersionedError,
-                          wt.add,
-                          'foo/hello')
+        if not wt._format.supports_versioned_directories:
+            wt.add('foo/hello')
+        else:
+            self.assertRaises(NotVersionedError,
+                              wt.add,
+                              'foo/hello')
 
     def test_add_missing(self):
         # adding a msising file -> NoSuchFile
@@ -641,6 +644,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # FIXME: This doesn't really test that it works; also this is not
         # implementation-independent. mbp 20070226
         tree = self.make_branch_and_tree('master')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("merge-hashes is specific to bzr "
+                "working trees")
         tree._transport.put_bytes('merge-hashes', 'asdfasdf')
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
