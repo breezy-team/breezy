@@ -669,7 +669,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
-        return client.remote_path_from_transport(self.root_transport)
+        return urlutils.split_segment_parameters_raw(
+            client.remote_path_from_transport(self.root_transport))[0]
 
     def get_branch_transport(self, branch_format, name=None):
         self._ensure_real()
