@@ -254,7 +254,7 @@ class SFTPTests(TestCaseWithSFTPServer):
         t = self.get_transport()
         url = t.base
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
-        backup_dir = 'backup.bzr.~1~'
+        backup_dir = 'backup.bzr.%7E1%7E'
         self.assertEqualDiff("""Upgrading branch %s ...
 starting upgrade of %s
 making backup of %s.bzr
@@ -262,7 +262,7 @@ making backup of %s.bzr
 starting repository conversion
 repository converted
 finished
-""" % (url, url, url, url,backup_dir), out)
+""" % (url, url, url, url, backup_dir), out)
         self.assertEqual('', err)
 
 

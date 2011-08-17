@@ -998,7 +998,8 @@ class TestControlDir(TestCaseWithControlDir):
         repo_name = old_fmt.repository_format.network_name()
         # Should end up with a 1.9 format (stackable)
         repo, control = self.assertInitializeEx(t, need_meta=True,
-            repo_format_name=repo_name, stacked_on='../trunk', stack_on_pwd=t.base)
+            repo_format_name=repo_name, stacked_on='../trunk',
+            stack_on_pwd=t.base)
         if control is None:
             # uninitialisable format
             return
@@ -1281,6 +1282,41 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.assertIsInstance(opened_tree, made_tree.__class__)
         self.assertIsInstance(opened_tree._format, made_tree._format.__class__)
+
+    def test_get_selected_branch(self):
+        # The segment parameters are accessible from the root transport
+        # if a URL with segment parameters is opened.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
+        dir = bzrdir.BzrDir.open(t.base+",branch=foo")
+        self.assertEquals({"branch": "foo"},
+            dir.user_transport.get_segment_parameters())
+        self.assertEquals("foo", dir._get_selected_branch())
+
+    def test_get_selected_branch_none_selected(self):
+        # _get_selected_branch defaults to None
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
+        dir = bzrdir.BzrDir.open(t.base)
+        self.assertIs(None, dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
