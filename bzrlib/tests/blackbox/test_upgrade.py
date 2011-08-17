@@ -22,7 +22,6 @@ from bzrlib import (
     bzrdir,
     controldir,
     lockable_files,
-    osutils,
     ui,
     urlutils,
     )
@@ -261,7 +260,7 @@ class SFTPTests(TestCaseWithSFTPServer):
         t = self.get_transport()
         url = t.base
         display_url = urlutils.unescape_for_display(url,
-            osutils.get_terminal_encoding())
+            'utf-8')
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
         backup_dir = 'backup.bzr.~1~'
         self.assertEqualDiff("""Upgrading branch %s ...
