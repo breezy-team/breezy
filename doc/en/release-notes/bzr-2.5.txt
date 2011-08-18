@@ -64,13 +64,16 @@ New Features
   encountered. 'warning' and 'eeror' will respectively emit a warning and
   ignore the value or errors out. (Vincent Ladeuil)
 
+* ``bzr help configuration/<option>`` display the help for ``option`` for
+  all registered configuration options. (Vincent Ladeuil, #747050)
+
 * bzr log -m now matches message, author, committer and bugs instead
   of just matching the message.  --message keeps its original meaning,
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
 
-* ``bzr help configuration/<option>`` display the help for ``option`` for
-  all registered configuration options. (Vincent Ladeuil, #747050)
+* New builtin ``bzr branches`` command, which lists all colocated branches
+  in a directory. (Jelmer Vernooij, #826820)
 
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
