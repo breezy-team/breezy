@@ -336,16 +336,23 @@ class TestUrlToPath(TestCase):
 
     def test_function_type(self):
         if sys.platform == 'win32':
-            self.assertEqual(urlutils._win32_local_path_to_url, urlutils.local_path_to_url)
-            self.assertEqual(urlutils._win32_local_path_from_url, urlutils.local_path_from_url)
+            self.assertEqual(urlutils._win32_local_path_to_url,
+                urlutils.local_path_to_url)
+            self.assertEqual(urlutils._win32_local_path_from_url,
+                urlutils.local_path_from_url)
         else:
-            self.assertEqual(urlutils._posix_local_path_to_url, urlutils.local_path_to_url)
-            self.assertEqual(urlutils._posix_local_path_from_url, urlutils.local_path_from_url)
+            self.assertEqual(urlutils._posix_local_path_to_url,
+                urlutils.local_path_to_url)
+            self.assertEqual(urlutils._posix_local_path_from_url,
+                urlutils.local_path_from_url)
 
     def test_posix_local_path_to_url(self):
         to_url = urlutils._posix_local_path_to_url
         self.assertEqual('file:///path/to/foo',
             to_url('/path/to/foo'))
+
+        self.assertEqual('file:///path/to/foo%2Cbar',
+            to_url('/path/to/foo,bar'))
 
         try:
             result = to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s')
@@ -359,6 +366,8 @@ class TestUrlToPath(TestCase):
         from_url = urlutils._posix_local_path_from_url
         self.assertEqual('/path/to/foo',
             from_url('file:///path/to/foo'))
+        self.assertEqual('/path/to/foo',
+            from_url('file:///path/to/foo,branch=foo'))
         self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
@@ -386,6 +395,8 @@ class TestUrlToPath(TestCase):
 
         self.assertEqual('file:///', to_url('/'))
 
+        self.assertEqual('file:///C:/path/to/foo%2Cbar',
+            to_url('C:/path/to/foo,bar'))
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
@@ -418,6 +429,8 @@ class TestUrlToPath(TestCase):
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
         self.assertEqual('/', from_url('file:///'))
+        self.assertEqual('C:/path/to/foo',
+            from_url('file:///C|/path/to/foo,branch=foo'))
 
         self.assertRaises(InvalidURL, from_url, 'file:///C:')
         self.assertRaises(InvalidURL, from_url, 'file:///c')
@@ -428,6 +441,8 @@ class TestUrlToPath(TestCase):
     def test_win32_unc_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
         self.assertEqual('//HOST/path', from_url('file://HOST/path'))
+        self.assertEqual('//HOST/path',
+            from_url('file://HOST/path,branch=foo'))
         # despite IE allows 2, 4, 5 and 6 slashes in URL to another machine
         # we want to use only 2 slashes
         # Firefox understand only 5 slashes in URL, but it's ugly
@@ -494,6 +509,8 @@ class TestUrlToPath(TestCase):
             split_segment_parameters_raw(",key1=val1"))
         self.assertEquals(("foo/", ["key1=val1"]),
             split_segment_parameters_raw("foo/,key1=val1"))
+        self.assertEquals(("/foo", ["key1=val1"]),
+            split_segment_parameters_raw("foo,key1=val1"))
         self.assertEquals(("foo/base,la=bla/other/elements", []),
             split_segment_parameters_raw("foo/base,la=bla/other/elements"))
         self.assertEquals(("foo/base,la=bla/other/elements", ["a=b"]),

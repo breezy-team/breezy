@@ -1195,7 +1195,7 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved push location: %s\n" % display_url)
+                note("Using saved push location: %s" % display_url)
                 location = stored_loc
 
         _show_push_branch(br_from, revision_id, location, self.outf,
@@ -1332,6 +1332,23 @@ class cmd_branch(Command):
             _mod_switch.switch(wt.bzrdir, branch)
             note('Switched to branch: %s',
                 urlutils.unescape_for_display(branch.base, 'utf-8'))
+
+
+class cmd_branches(Command):
+    __doc__ = """List the branches available at the current location.
+
+    This command will print the names of all the branches at the current location.
+    """
+
+    takes_args = ['location?']
+
+    def run(self, location="."):
+        dir = bzrdir.BzrDir.open_containing(location)[0]
+        for branch in dir.list_branches():
+            if branch.name is None:
+                self.outf.write(" (default)\n")
+            else:
+                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
 
 
 class cmd_checkout(Command):
@@ -3327,11 +3344,11 @@ class cmd_commit(Command):
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            if my_message == "":
-                raise errors.BzrCommandError("Empty commit message specified."
-                        " Please specify a commit message with either"
-                        " --message or --file or leave a blank message"
-                        " with --message \"\".")
+                if my_message == "":
+                    raise errors.BzrCommandError("Empty commit message specified."
+                            " Please specify a commit message with either"
+                            " --message or --file or leave a blank message"
+                            " with --message \"\".")
             return my_message
 
         # The API permits a commit with a filter of [] to mean 'select nothing'

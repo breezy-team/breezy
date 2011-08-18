@@ -44,6 +44,7 @@ def load_tests(basic_tests, module, loader):
         'test__generate_text_key_index',
         'test_fetch',
         'test_reconcile',
+        'test_refresh_data',
         'test_repository',
         'test_write_group',
         ]

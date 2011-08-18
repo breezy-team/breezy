@@ -310,6 +310,8 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
+        self._segment_parameters = urlutils.split_segment_parameters(
+            base.rstrip("/"))[1]
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -408,6 +410,11 @@ class Transport(object):
             then InProcessTransport is raised.
         """
         raise NotImplementedError(self.external_url)
+
+    def get_segment_parameters(self):
+        """Return the segment parameters for the top segment of the URL.
+        """
+        return self._segment_parameters
 
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like
@@ -1329,10 +1336,7 @@ class ConnectedTransport(Transport):
             self._parsed_url.quoted_password = (
                 _from_transport._parsed_url.quoted_password)
 
-        base = self._unsplit_url(self._parsed_url.scheme,
-            self._parsed_url.user, self._parsed_url.password,
-            self._parsed_url.host, self._parsed_url.port,
-            self._parsed_url.path)
+        base = str(self._parsed_url)
 
         super(ConnectedTransport, self).__init__(base)
         if _from_transport is None:
@@ -1434,9 +1438,7 @@ class ConnectedTransport(Transport):
 
         :returns: the Unicode version of the absolute path for relpath.
         """
-        other = self._parsed_url.clone(relpath)
-        return self._unsplit_url(other.scheme, other.user, other.password,
-            other.host, other.port, other.path)
+        return str(self._parsed_url.clone(relpath))
 
     def _remote_path(self, relpath):
         """Return the absolute path part of the url to the given relative path.

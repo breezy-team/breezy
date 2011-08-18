@@ -523,7 +523,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # Just a couple simple tests to ensure that it actually follows
             # the RevisionTree api.
             self.assertEqual(rev_id, rev_tree.get_revision_id())
-            self.assertEqual([], rev_tree.get_parent_ids())
+            self.assertEqual((), tuple(rev_tree.get_parent_ids()))
         finally:
             tree.unlock()
 

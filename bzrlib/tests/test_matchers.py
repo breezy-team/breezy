@@ -104,3 +104,31 @@ class TestMatchesAncestry(TestCaseWithTransport):
             "mismatched ancestry for revision '%s' was ['%s'], expected []" % (
                 revid1, revid1),
             mismatch.describe())
+
+
+class TestHasLayout(TestCaseWithTransport):
+
+    def test__str__(self):
+        matcher = HasLayout([("a", "a-id")])
+        self.assertEqual("HasLayout([('a', 'a-id')])", str(matcher))
+
+    def test_match(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        self.assertThat(t, HasLayout(['', 'a', 'b', 'b/c']))
+        self.assertThat(t, HasLayout(
+            [('', t.get_root_id()),
+             ('a', 'a-id'),
+             ('b', 'b-id'),
+             ('b/c', 'c-id')]))
+
+    def test_mismatch(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        mismatch = HasLayout(['a']).match(t)
+        self.assertIsNot(None, mismatch)
+        self.assertEquals(
+            "[u'', u'a', u'b', u'b/c'] != ['a']",
+            mismatch.describe())

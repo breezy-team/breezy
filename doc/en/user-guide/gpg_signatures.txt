@@ -16,7 +16,7 @@ Signatures are passed around with commits during branch, push, merge and other
 operations.
 
 Setting up GnuPG
---------------
+----------------
 
 There are many guides to creating a digital signature key with GnuPG.  See
 for example the `GnuPG Handbook

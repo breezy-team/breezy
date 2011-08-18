@@ -1230,7 +1230,7 @@ class TransportTests(TestTransportImplementation):
             if host     is None: host     = t._parsed_url.host
             if port     is None: port     = t._parsed_url.port
             if path     is None: path     = t._parsed_url.path
-            return t._unsplit_url(scheme, user, password, host, port, path)
+            return str(urlutils.URL(scheme, user, password, host, port, path))
 
         if t._parsed_url.scheme == 'ftp':
             scheme = 'sftp'
@@ -1775,6 +1775,21 @@ class TransportTests(TestTransportImplementation):
         # also raise a special error
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
+
+    def test_no_segment_parameters(self):
+        """Segment parameters should be stripped and stored in
+        transport.segment_parameters."""
+        transport = self.get_transport("foo")
+        self.assertEquals({}, transport.get_segment_parameters())
+
+    def test_segment_parameters(self):
+        """Segment parameters should be stripped and stored in
+        transport.get_segment_parameters()."""
+        base_url = self._server.get_url()
+        parameters = {"key1": "val1", "key2": "val2"}
+        url = urlutils.join_segment_parameters(base_url, parameters)
+        transport = _mod_transport.get_transport(url)
+        self.assertEquals(parameters, transport.get_segment_parameters())
 
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks
