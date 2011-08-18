@@ -395,6 +395,9 @@ class RemoteGitBranch(GitBranch):
         super(RemoteGitBranch, self).__init__(bzrdir, repository, name,
                 lockfiles)
 
+    def last_revision_info(self):
+        raise GitSmartRemoteNotSupported()
+
     @property
     def user_url(self):
         return self.control_url
