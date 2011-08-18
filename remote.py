@@ -136,7 +136,7 @@ class GitSmartTransport(Transport):
         raise NotImplementedError(self._get_client)
 
     def _get_path(self):
-        return self._path
+        return urlutils.split_segment_parameters_raw(self._path)[0]
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
@@ -191,9 +191,10 @@ class SSHGitSmartTransport(GitSmartTransport):
     _scheme = 'git+ssh'
 
     def _get_path(self):
-        if self._path.startswith("/~/"):
-            return self._path[3:]
-        return self._path
+        path = urlutils.split_segment_parameters_raw(self._path)[0]
+        if path.startswith("/~/"):
+            return path[3:]
+        return path
 
     def _get_client(self, thin_packs):
         if self._client is not None:
