@@ -323,27 +323,30 @@ class BazaarObjectStore(BaseObjectStore):
         self.tree_cache = LRUTreeCache(self.repository)
         self.unpeel_map = UnpeelMap.from_repository(self.repository)
 
+    def _missing_revisions(self, revisions):
+        return self._cache.idmap.missing_revisions(revisions)
+
     def _update_sha_map(self, stop_revision=None):
         if not self.is_locked():
             raise AssertionError()
         if self._map_updated:
             return
         if (stop_revision is not None and
-            not self._cache.idmap.missing_revisions([stop_revision])):
+            not self._missing_revisions([stop_revision])):
             return
         graph = self.repository.get_graph()
         if stop_revision is None:
             all_revids = self.repository.all_revision_ids()
-            missing_revids = self._cache.idmap.missing_revisions(all_revids)
+            missing_revids = self._missing_revisions(all_revids)
         else:
             heads = set([stop_revision])
-            missing_revids = self._cache.idmap.missing_revisions(heads)
+            missing_revids = self._missing_revisions(heads)
             while heads:
                 parents = graph.get_parent_map(heads)
                 todo = set()
                 for p in parents.values():
                     todo.update([x for x in p if x not in missing_revids])
-                heads = self._cache.idmap.missing_revisions(todo)
+                heads = self._missing_revisions(todo)
                 missing_revids.update(heads)
         if NULL_REVISION in missing_revids:
             missing_revids.remove(NULL_REVISION)
@@ -656,7 +659,8 @@ class BazaarObjectStore(BaseObjectStore):
                     tree = self.tree_cache.revision_tree(revid)
                     rev = self.repository.get_revision(revid)
                 except errors.NoSuchRevision:
-                    trace.mutter('entry for %s %s in shamap: %r, but not found in repository', kind, sha, type_data)
+                    trace.mutter('entry for %s %s in shamap: %r, but not found in '
+                        'repository', kind, sha, type_data)
                     raise KeyError(sha)
                 unusual_modes = extract_unusual_modes(rev)
                 try:

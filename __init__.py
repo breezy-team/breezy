@@ -336,7 +336,11 @@ def update_git_cache(repository, revid):
     store = BazaarObjectStore(repository)
     store.lock_write()
     try:
-        store._update_sha_map_revision(revid)
+        parent_revisions = set(repository.get_parent_map([revid])[revid])
+        missing_revisions = store._missing_revisions(parent_revisions)
+        if not missing_revisions:
+            # Only update if the cache was up to date previously
+            store._update_sha_map_revision(revid)
     finally:
         store.unlock()
 
