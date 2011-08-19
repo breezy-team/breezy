@@ -2274,14 +2274,19 @@ class Option(object):
     encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, help=None, from_unicode=None,
-                 invalid=None):
+    def __init__(self, name, default=None, default_from_env=None,
+                 help=None,
+                 from_unicode=None, invalid=None):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
 
         :param default: the default value to use when none exist in the config
             stores.
+
+        :param default_from_env: A list of environment variables which can
+           provide a default value. 'default' will be used only if none of the
+           variables specified here are set in the environment.
 
         :param help: a doc string to explain the option to the user.
 
@@ -2296,8 +2301,11 @@ class Option(object):
             'warning' (emit a warning), 'error' (emit an error message and
             terminates).
         """
+        if default_from_env is None:
+            default_from_env = []
         self.name = name
         self.default = default
+        self.default_from_env = default_from_env
         self.help = help
         self.from_unicode = from_unicode
         if invalid and invalid not in ('warning', 'error'):
@@ -2305,6 +2313,11 @@ class Option(object):
         self.invalid = invalid
 
     def get_default(self):
+        for var in self.default_from_env:
+            try:
+                return os.environ[var]
+            except KeyError:
+                continue
         return self.default
 
     def get_help_text(self, additional_see_also=None, plain=True):

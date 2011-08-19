@@ -2213,6 +2213,20 @@ class TestOption(tests.TestCase):
         opt = config.Option('foo', default='bar')
         self.assertEquals('bar', opt.get_default())
 
+    def test_default_value_from_env(self):
+        opt = config.Option('foo', default='bar', default_from_env=['FOO'])
+        self.overrideEnv('FOO', 'quux')
+        # Env variable provides a default taking over the option one
+        self.assertEquals('quux', opt.get_default())
+        
+    def test_first_default_value_from_env_wins(self):
+        opt = config.Option('foo', default='bar',
+                            default_from_env=['NO_VALUE', 'FOO', 'BAZ'])
+        self.overrideEnv('FOO', 'foo')
+        self.overrideEnv('BAZ', 'baz')
+        # The first env var set wins
+        self.assertEquals('foo', opt.get_default())
+
 
 class TestOptionRegistry(tests.TestCase):
 
