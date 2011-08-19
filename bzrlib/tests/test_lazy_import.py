@@ -1170,6 +1170,7 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                           ('import', self.root_name, []),
                          ], self.actions)
 
+
 class TestScopeReplacerReentrance(TestCase):
     """The ScopeReplacer should be reentrant.
 
