@@ -58,7 +58,8 @@ class AddAction(object):
     def skip_file(self, tree, path, kind, stat_value = None):
         """Test whether the given file should be skipped or not.
         
-        The default action never skips.
+        The default action never skips. Note this is only called during
+        recursive adds
         
         :param tree: The tree we are working in
         :param path: The path being added
@@ -67,6 +68,7 @@ class AddAction(object):
         :return bool. True if the file should be skipped (not added)
         """
         return False
+
 
 class AddWithSkipLargeAction(AddAction):
     """A class that can decide to skip a file if it's considered too large"""

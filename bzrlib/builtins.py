@@ -675,8 +675,9 @@ class cmd_add(Command):
     Any files matching patterns in the ignore list will not be added
     unless they are explicitly mentioned.
     
-    Files larger than the configuration option add.maximum_file_size
-    will be skipped.
+    In recursive mode, files larger than the configuration option 
+    add.maximum_file_size will be skipped. Named items are never skipped due
+    to file size.
     """
     takes_args = ['file*']
     takes_options = [
