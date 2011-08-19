@@ -192,6 +192,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Blackbox tests can be debugged interactively (see bzrlib.debug.BzrPdb for
+  details). (Vincent Ladeuil)
+
 * `BranchBuilder.build_snapshot` now supports a "flush" action.  This
   cleanly and reliably allows tests using `BranchBuilder` to construct
   branches that e.g. rename files out of a directory and unversion that

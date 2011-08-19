@@ -24,6 +24,8 @@ See `bzr help debug-flags` or `bzrlib/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 
+import pdb
+import sys
 
 debug_flags = set()
 
@@ -36,3 +38,27 @@ def set_debug_flags_from_config():
     c = config.GlobalStack()
     for f in c.get('debug_flags'):
         debug_flags.add(f)
+
+
+class BzrPdb(pdb.Pdb):
+    """Pdb using original stdin and stdout.
+
+    When debugging blackbox tests, sys.stdin and sys.stdout are captured for
+    test purposes and cannot be used for interactive debugging. This class uses
+    the origianl stdin/stdout to allow such use.
+
+    Instead of doing:
+
+       import pdb; pdb.set_trace()
+
+    you can do:
+
+       from bzrlib import debug; debug.set_trace()
+    """
+
+    def __init__(self):
+        pdb.Pdb.__init__(self, stdin=sys.__stdin__, stdout=sys.__stdout__)
+
+
+def set_trace():
+    BzrPdb().set_trace(sys._getframe().f_back)
