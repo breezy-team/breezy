@@ -2812,30 +2812,34 @@ class LocationMatcher(SectionMatcher):
         # We slightly diverge from LocalConfig here by allowing the no-name
         # section as the most generic one and the lower priority.
         no_name_section = None
-        sections = []
+        all_sections = []
         # Filter out the no_name_section so _iter_for_location_by_parts can be
         # used (it assumes all sections have a name).
         for section in self.store.get_sections():
             if section.id is None:
                 no_name_section = section
             else:
-                sections.append(section)
+                all_sections.append(section)
         # Unfortunately _iter_for_location_by_parts deals with section names so
         # we have to resync.
         filtered_sections = _iter_for_location_by_parts(
-            [s.id for s in sections], self.location)
-        iter_sections = iter(sections)
+            [s.id for s in all_sections], self.location)
+        iter_all_sections = iter(all_sections)
         matching_sections = []
         if no_name_section is not None:
             matching_sections.append(
                 LocationSection(no_name_section, 0, self.location))
         for section_id, extra_path, length in filtered_sections:
-            # a section id is unique for a given store so it's safe to iterate
-            # again
-            section = iter_sections.next()
-            if section_id == section.id:
-                matching_sections.append(
-                    LocationSection(section, length, extra_path))
+            # a section id is unique for a given store so it's safe to take the
+            # first matching section while iterating. Also, all filtered
+            # sections are part of 'all_sections' and will always be found
+            # there.
+            while True:
+                section = iter_all_sections.next()
+                if section_id == section.id:
+                    matching_sections.append(
+                        LocationSection(section, length, extra_path))
+                    break
         return matching_sections
 
     def get_sections(self):
