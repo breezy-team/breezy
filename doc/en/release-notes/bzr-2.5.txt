@@ -72,7 +72,7 @@ New Features
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
 
-* ``config.Option`` can now declares ``default_from_env``, a list of
+* ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
 
 * New builtin ``bzr branches`` command, which lists all colocated branches
