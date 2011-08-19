@@ -40,7 +40,7 @@ def set_debug_flags_from_config():
         debug_flags.add(f)
 
 
-class BzrPdb(pdb.Pdb):
+def set_trace():
     """Pdb using original stdin and stdout.
 
     When debugging blackbox tests, sys.stdin and sys.stdout are captured for
@@ -55,10 +55,5 @@ class BzrPdb(pdb.Pdb):
 
        from bzrlib import debug; debug.set_trace()
     """
-
-    def __init__(self):
-        pdb.Pdb.__init__(self, stdin=sys.__stdin__, stdout=sys.__stdout__)
-
-
-def set_trace():
-    BzrPdb().set_trace(sys._getframe().f_back)
+    pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
+            ).set_trace(sys._getframe().f_back)
