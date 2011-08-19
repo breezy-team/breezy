@@ -262,7 +262,7 @@ class SFTPTests(TestCaseWithSFTPServer):
         display_url = urlutils.unescape_for_display(url,
             'utf-8')
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
-        backup_dir = 'backup.bzr.%7E1%7E'
+        backup_dir = 'backup.bzr.~1~'
         self.assertEqualDiff("""Upgrading branch %s ...
 starting upgrade of %s
 making backup of %s.bzr
