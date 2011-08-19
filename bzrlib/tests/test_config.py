@@ -819,6 +819,7 @@ hidden={start}{middle}{end}
         self.assertEquals(['{foo', '}', '{', 'bar}'],
                           conf.get_user_option('hidden', expand=True))
 
+
 class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
 
     def get_config(self, location, string=None):
@@ -3105,6 +3106,134 @@ class TestStackGetWithConverter(TestStackGet):
         self.register_list_option('foo', [1])
         self.conf.store._load_from_string('foo=m,o,r,e')
         self.assertEquals(['m', 'o', 'r', 'e'], self.conf.get('foo'))
+
+
+class TestStackExpandOptions(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestStackExpandOptions, self).setUp()
+        self.conf = build_branch_stack(self)
+
+    def assertExpansion(self, expected, string, env=None):
+        self.assertEquals(expected, self.conf.expand_options(string, env))
+
+    def test_no_expansion(self):
+        self.assertExpansion('foo', 'foo')
+
+    def test_env_adding_options(self):
+        self.assertExpansion('bar', '{foo}', {'foo': 'bar'})
+
+    def test_env_overriding_options(self):
+        self.conf.store._load_from_string('foo=baz')
+        self.assertExpansion('bar', '{foo}', {'foo': 'bar'})
+
+    def test_simple_ref(self):
+        self.conf.store._load_from_string('foo=xxx')
+        self.assertExpansion('xxx', '{foo}')
+
+    def test_unknown_ref(self):
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          self.conf.expand_options, '{foo}')
+
+    def test_indirect_ref(self):
+        self.conf.store._load_from_string('''
+foo=xxx
+bar={foo}
+''')
+        self.assertExpansion('xxx', '{bar}')
+
+    def test_embedded_ref(self):
+        self.conf.store._load_from_string('''
+foo=xxx
+bar=foo
+''')
+        self.assertExpansion('xxx', '{{bar}}')
+
+    def test_simple_loop(self):
+        self.conf.store._load_from_string('foo={foo}')
+        self.assertRaises(errors.OptionExpansionLoop,
+                          self.conf.expand_options, '{foo}')
+
+    def test_indirect_loop(self):
+        self.conf.store._load_from_string('''
+foo={bar}
+bar={baz}
+baz={foo}''')
+        e = self.assertRaises(errors.OptionExpansionLoop,
+                              self.conf.expand_options, '{foo}')
+        self.assertEquals('foo->bar->baz', e.refs)
+        self.assertEquals('{foo}', e.string)
+
+    def test_list(self):
+        self.conf.store._load_from_string('''
+foo=start
+bar=middle
+baz=end
+list={foo},{bar},{baz}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           self.conf.get('list', expand=True))
+
+    def test_cascading_list(self):
+        self.conf.store._load_from_string('''
+foo=start,{bar}
+bar=middle,{baz}
+baz=end
+list={foo}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           self.conf.get('list', expand=True))
+
+    def test_pathologically_hidden_list(self):
+        self.conf.store._load_from_string('''
+foo=bin
+bar=go
+start={foo
+middle=},{
+end=bar}
+hidden={start}{middle}{end}
+''')
+        # Nope, it's either a string or a list, and the list wins as soon as a
+        # ',' appears, so the string concatenation never occur.
+        self.assertEquals(['{foo', '}', '{', 'bar}'],
+                          self.conf.get('hidden', expand=True))
+
+
+class TestStackCrossSectionsExpand(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestStackCrossSectionsExpand, self).setUp()
+
+    def get_config(self, location, string):
+        if string is None:
+            string = ''
+        # Since we don't save the config we won't strictly require to inherit
+        # from TestCaseInTempDir, but an error occurs so quickly...
+        c = config.LocationStack(location)
+        c.store._load_from_string(string)
+        return c
+
+    def test_dont_cross_unrelated_section(self):
+        c = self.get_config('/another/branch/path','''
+[/one/branch/path]
+foo = hello
+bar = {foo}/2
+
+[/another/branch/path]
+bar = {foo}/2
+''')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.get, 'bar', expand=True)
+
+    def test_cross_related_sections(self):
+        c = self.get_config('/project/branch/path','''
+[/project]
+foo = qu
+
+[/project/branch/path]
+bar = {foo}ux
+''')
+        self.assertEquals('quux', c.get('bar', expand=True))
 
 
 class TestStackSet(TestStackWithTransport):
