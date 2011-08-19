@@ -31,6 +31,9 @@ Bug Fixes
 * Avoid spurious ValueErrors when autopacking a subset of the repository,
   and seeing a revision without its related inventory
   (John Arbash Meinel, #437003)
+ 
+* Fix activity reporting for pycurl when using https with some
+  implementations of curl. (Vincent Ladeuil, #614713)
 
 Improvements
 ************
