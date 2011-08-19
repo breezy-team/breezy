@@ -42,6 +42,7 @@ import unicodedata
 
 from bzrlib import (
     cache_utf8,
+    config,
     errors,
     trace,
     win32utils,
@@ -985,8 +986,7 @@ def failed_to_load_extension(exception):
 def report_extension_load_failures():
     if not _extension_load_failures:
         return
-    from bzrlib.config import GlobalConfig
-    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+    if config.GlobalStack().get('ignore_missing_extensions'):
         return
     # the warnings framework should by default show this only once
     from bzrlib.trace import warning
@@ -2490,3 +2490,14 @@ if sys.platform == "win32":
     is_local_pid_dead = win32utils.is_local_pid_dead
 else:
     is_local_pid_dead = _posix_is_local_pid_dead
+
+
+def fdatasync(fileno):
+    """Flush file contents to disk if possible.
+    
+    :param fileno: Integer OS file handle.
+    :raises TransportNotPossible: If flushing to disk is not possible.
+    """
+    fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
+    if fn is not None:
+        fn(fileno)

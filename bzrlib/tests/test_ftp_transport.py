@@ -16,6 +16,7 @@
 
 import ftplib
 import getpass
+import urllib
 
 from bzrlib import (
     config,
@@ -81,11 +82,13 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
     def get_url(self, relpath=None):
         """Overrides get_url to inject our user."""
         base = super(TestFTPTestServerUI, self).get_url(relpath)
-        (scheme, user, password,
-         host, port, path) = transport.ConnectedTransport._split_url(base)
-        url = transport.ConnectedTransport._unsplit_url(
-            scheme, self.user, self.password, host, port, path)
-        return url
+        parsed_url = transport.ConnectedTransport._split_url(base)
+        new_url = parsed_url.clone()
+        new_url.user = self.user
+        new_url.quoted_user = urllib.quote(self.user)
+        new_url.password = self.password
+        new_url.quoted_password = urllib.quote(self.password)
+        return str(new_url)
 
     def test_no_prompt_for_username(self):
         """ensure getpass.getuser() is used if there's no username in the 

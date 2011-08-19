@@ -1048,6 +1048,72 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
         self.assertEqual('single', t._range_hint)
 
 
+class TruncatedBeforeBoundaryRequestHandler(
+    http_server.TestingHTTPRequestHandler):
+    """Truncation before a boundary, like in bug 198646"""
+
+    _truncated_ranges = 1
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        self.send_response(206)
+        self.send_header('Accept-Ranges', 'bytes')
+        boundary = 'tagada'
+        self.send_header('Content-Type',
+                         'multipart/byteranges; boundary=%s' % boundary)
+        boundary_line = '--%s\r\n' % boundary
+        # Calculate the Content-Length
+        content_length = 0
+        for (start, end) in ranges:
+            content_length += len(boundary_line)
+            content_length += self._header_line_length(
+                'Content-type', 'application/octet-stream')
+            content_length += self._header_line_length(
+                'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
+            content_length += len('\r\n') # end headers
+            content_length += end - start # + 1
+        content_length += len(boundary_line)
+        self.send_header('Content-length', content_length)
+        self.end_headers()
+
+        # Send the multipart body
+        cur = 0
+        for (start, end) in ranges:
+            if cur + self._truncated_ranges >= len(ranges):
+                # Abruptly ends the response and close the connection
+                self.close_connection = 1
+                return
+            self.wfile.write(boundary_line)
+            self.send_header('Content-type', 'application/octet-stream')
+            self.send_header('Content-Range', 'bytes %d-%d/%d'
+                             % (start, end, file_size))
+            self.end_headers()
+            self.send_range_content(file, start, end - start + 1)
+            cur += 1
+        # Final boundary
+        self.wfile.write(boundary_line)
+
+
+class TestTruncatedBeforeBoundary(TestSpecificRequestHandler):
+    """Tests the case of bug 198646, disconnecting before a boundary."""
+
+    _req_handler_class = TruncatedBeforeBoundaryRequestHandler
+
+    def setUp(self):
+        super(TestTruncatedBeforeBoundary, self).setUp()
+        self.build_tree_contents([('a', '0123456789')],)
+
+    def test_readv_with_short_reads(self):
+        server = self.get_readonly_server()
+        t = self.get_readonly_transport()
+        # Force separate ranges for each offset
+        t._bytes_to_read_before_seek = 0
+        ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
+        self.assertEqual((0, '0'), ireadv.next())
+        self.assertEqual((2, '2'), ireadv.next())
+        self.assertEqual((4, '45'), ireadv.next())
+        self.assertEqual((9, '9'), ireadv.next())
+
+
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
     """Errors out when range specifiers exceed the limit"""
 
@@ -1701,7 +1767,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                      http_utils.ProxyDigestAuthServer):
             raise tests.TestNotApplicable('HTTP/proxy auth digest only test')
         if self._testing_pycurl():
-            raise tests.KnownFailure(
+            self.knownFailure(
                 'pycurl does not handle a nonce change')
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', 'foo')
@@ -1789,7 +1855,7 @@ class TestProxyAuth(TestAuth):
         if self._testing_pycurl():
             import pycurl
             if pycurl.version_info()[1] < '7.16.0':
-                raise tests.KnownFailure(
+                self.knownFailure(
                     'pycurl < 7.16.0 does not handle empty proxy passwords')
         super(TestProxyAuth, self).test_empty_pass()
 
@@ -1961,7 +2027,7 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
-        self.assertEqual(t._user, r._user)
+        self.assertEqual(t._parsed_url.user, r._parsed_url.user)
 
 
 class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):

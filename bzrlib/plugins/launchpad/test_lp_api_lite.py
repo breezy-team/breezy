@@ -330,6 +330,9 @@ class TestIsUpToDate(tests.TestCase):
         self.assertNotPackageBranch(
             'http://bazaar.launchpad.net/+branch'
             '/~user/ubuntu/natty/foo/natty')
+        # Older versions of bzr-svn/hg/git did not set Branch.base until after
+        # they called Branch.__init__().
+        self.assertNotPackageBranch(None)
 
     def test__get_package_branch_info(self):
         self.assertBranchInfo(

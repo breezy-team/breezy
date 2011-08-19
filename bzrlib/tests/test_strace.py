@@ -50,7 +50,7 @@ class TestStrace(tests.TestCaseWithTransport):
         # restriction.
         active = threading.activeCount()
         if active > 1: # There is always the main thread at least
-            raise tests.KnownFailure(
+            self.knownFailure(
                 '%d active threads, bug #103133 needs to be fixed.' % active)
 
     def strace_detailed_or_skip(self, *args, **kwargs):

@@ -1537,7 +1537,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
     def make_branch_with_alternate_ancestries(self, relpath='.'):
         # See test_merge_sorted_exclude_ancestry below for the difference with
         # bt.per_branch.test_iter_merge_sorted_revision.
-        # TestIterMergeSortedRevisionsBushyGraph. 
+        # TestIterMergeSortedRevisionsBushyGraph.
         # make_branch_with_alternate_ancestries
         # and test_merge_sorted_exclude_ancestry
         # See the FIXME in assertLogRevnos too.
@@ -1598,3 +1598,41 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
                              b, '1', '3', exclude_common_ancestry=True,
                              generate_merge_revisions=True)
 
+
+class TestLogDefaults(TestCaseForLogFormatter):
+    def test_default_log_level(self):
+        """
+        Test to ensure that specifying 'levels=1' to make_log_request_dict
+        doesn't get overwritten when using a LogFormatter that supports more
+        detail.
+        Fixes bug #747958.
+        """
+        wt = self._prepare_tree_with_merges()
+        b = wt.branch
+
+        class CustomLogFormatter(log.LogFormatter):
+            def __init__(self, *args, **kwargs):
+                super(CustomLogFormatter, self).__init__(*args, **kwargs)
+                self.revisions = []
+            def get_levels(self):
+                # log formatter supports all levels:
+                return 0
+            def log_revision(self, revision):
+                self.revisions.append(revision)
+
+        log_formatter = LogCatcher()
+        # First request we don't specify number of levels, we should get a
+        # sensible default (whatever the LogFormatter handles - which in this
+        # case is 0/everything):
+        request = log.make_log_request_dict(limit=10)
+        log.Logger(b, request).show(log_formatter)
+        # should have all three revisions:
+        self.assertEquals(len(log_formatter.revisions), 3)
+
+        del log_formatter
+        log_formatter = LogCatcher()
+        # now explicitly request mainline revisions only:
+        request = log.make_log_request_dict(limit=10, levels=1)
+        log.Logger(b, request).show(log_formatter)
+        # should now only have 2 revisions:
+        self.assertEquals(len(log_formatter.revisions), 2)

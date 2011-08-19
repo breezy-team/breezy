@@ -1737,6 +1737,19 @@ class InvalidHttpRange(InvalidHttpResponse):
         InvalidHttpResponse.__init__(self, path, msg)
 
 
+class HttpBoundaryMissing(InvalidHttpResponse):
+    """A multipart response ends with no boundary marker.
+
+    This is a special case caused by buggy proxies, described in
+    <https://bugs.launchpad.net/bzr/+bug/198646>.
+    """
+
+    _fmt = "HTTP MIME Boundary missing for %(path)s: %(msg)s"
+
+    def __init__(self, path, msg):
+        InvalidHttpResponse.__init__(self, path, msg)
+
+
 class InvalidHttpContentType(InvalidHttpResponse):
 
     _fmt = 'Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s'
@@ -1787,6 +1800,14 @@ class ParseConfigError(BzrError):
         BzrError.__init__(self)
         self.filename = filename
         self.errors = '\n'.join(e.msg for e in errors)
+
+
+class ConfigOptionValueError(BzrError):
+
+    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
 
 
 class NoEmailInUsername(BzrError):

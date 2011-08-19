@@ -148,17 +148,18 @@ class HttpTransportBase(ConnectedTransport):
 
         user and passwords are not embedded in the path provided to the server.
         """
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._unqualified_scheme,
-                                 None, None, self._host, self._port, path)
+        url = self._parsed_url.clone(relpath)
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        url.scheme = self._unqualified_scheme
+        return str(url)
 
     def _create_auth(self):
         """Returns a dict containing the credentials provided at build time."""
-        auth = dict(host=self._host, port=self._port,
-                    user=self._user, password=self._password,
+        auth = dict(host=self._parsed_url.host, port=self._parsed_url.port,
+                    user=self._parsed_url.user, password=self._parsed_url.password,
                     protocol=self._unqualified_scheme,
-                    path=self._path)
+                    path=self._parsed_url.path)
         return auth
 
     def get_smart_medium(self):
@@ -271,7 +272,7 @@ class HttpTransportBase(ConnectedTransport):
                         cur_offset_and_size = iter_offsets.next()
 
             except (errors.ShortReadvError, errors.InvalidRange,
-                    errors.InvalidHttpRange), e:
+                    errors.InvalidHttpRange, errors.HttpBoundaryMissing), e:
                 mutter('Exception %r: %s during http._readv',e, e)
                 if (not isinstance(e, errors.ShortReadvError)
                     or retried_offset == cur_offset_and_size):
@@ -412,10 +413,9 @@ class HttpTransportBase(ConnectedTransport):
         """See bzrlib.transport.Transport.external_url."""
         # HTTP URL's are externally usable as long as they don't mention their
         # implementation qualifier
-        return self._unsplit_url(self._unqualified_scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 self._path)
+        url = self._parsed_url.clone()
+        url.scheme = self._unqualified_scheme
+        return str(url)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -526,12 +526,9 @@ class HttpTransportBase(ConnectedTransport):
             relying on the caller to give us a proper url (i.e. one returned by
             the server mirroring the one we sent).
             """
-            (scheme,
-             user, password,
-             host, port,
-             path) = self._split_url(abspath)
-            pl = len(self._path)
-            return path[pl:].strip('/')
+            parsed_url = self._split_url(abspath)
+            pl = len(self._parsed_url.path)
+            return parsed_url.path[pl:].strip('/')
 
         relpath = relpath(source)
         if not target.endswith(relpath):
@@ -539,24 +536,22 @@ class HttpTransportBase(ConnectedTransport):
             # redirection.
             return None
         new_transport = None
-        (scheme,
-         user, password,
-         host, port,
-         path) = self._split_url(target)
+        parsed_url = self._split_url(target)
         # Recalculate base path. This is needed to ensure that when the
-        # redirected tranport will be used to re-try whatever request was
+        # redirected transport will be used to re-try whatever request was
         # redirected, we end up with the same url
-        base_path = path[:-len(relpath)]
-        if scheme in ('http', 'https'):
+        base_path = parsed_url.path[:-len(relpath)]
+        if parsed_url.scheme in ('http', 'https'):
             # Same protocol family (i.e. http[s]), we will preserve the same
             # http client implementation when a redirection occurs from one to
             # the other (otherwise users may be surprised that bzr switches
             # from one implementation to the other, and devs may suffer
             # debugging it).
-            if (scheme == self._unqualified_scheme
-                and host == self._host
-                and port == self._port
-                and (user is None or user == self._user)):
+            if (parsed_url.scheme == self._unqualified_scheme
+                and parsed_url.host == self._parsed_url.host
+                and parsed_url.port == self._parsed_url.port
+                and (parsed_url.user is None or
+                     parsed_url.user == self._parsed_url.user)):
                 # If a user is specified, it should match, we don't care about
                 # passwords, wrong passwords will be rejected anyway.
                 new_transport = self.clone(base_path)
@@ -565,17 +560,18 @@ class HttpTransportBase(ConnectedTransport):
                 # credentials (if they don't apply, the redirected to server
                 # will tell us, but if they do apply, we avoid prompting the
                 # user)
-                redir_scheme = scheme + '+' + self._impl_name
+                redir_scheme = parsed_url.scheme + '+' + self._impl_name
                 new_url = self._unsplit_url(redir_scheme,
-                                            self._user, self._password,
-                                            host, port,
+                                            self._parsed_url.user,
+                                            self._parsed_url.password,
+                                            parsed_url.host, parsed_url.port,
                                             base_path)
                 new_transport = transport.get_transport(new_url)
         else:
             # Redirected to a different protocol
-            new_url = self._unsplit_url(scheme,
-                                        user, password,
-                                        host, port,
+            new_url = self._unsplit_url(parsed_url.scheme,
+                                        parsed_url.user, parsed_url.password,
+                                        parsed_url.host, parsed_url.port,
                                         base_path)
             new_transport = transport.get_transport(new_url)
         return new_transport

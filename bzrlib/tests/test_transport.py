@@ -138,17 +138,6 @@ class TestTransport(tests.TestCase):
         self.assertRaises(errors.ReadError, a_file.read, 40)
         a_file.close()
 
-    def test__combine_paths(self):
-        t = transport.Transport('/')
-        self.assertEqual('/home/sarah/project/foo',
-                         t._combine_paths('/home/sarah', 'project/foo'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '../../etc'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '../../../etc'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '/etc'))
-
     def test_local_abspath_non_local_transport(self):
         # the base implementation should throw
         t = memory.MemoryTransport()
@@ -712,6 +701,15 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEquals(t.base.rstrip("/"), url)
 
+    def test_with_url_and_segment_parameters(self):
+        url = urlutils.local_path_to_url(self.test_dir)+",branch=foo"
+        t = transport.get_transport_from_url(url)
+        self.assertIsInstance(t, local.LocalTransport)
+        self.assertEquals(t.base.rstrip("/"), url)
+        with open(os.path.join(self.test_dir, "afile"), 'w') as f:
+            f.write("data")
+        self.assertTrue(t.has("afile"))
+
 
 class TestLocalTransports(tests.TestCase):
 
@@ -740,6 +738,29 @@ class TestLocalTransports(tests.TestCase):
         self.assertEquals(t.local_abspath(''), here)
 
 
+class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
+
+    def test_local_fdatasync_calls_fdatasync(self):
+        """Check fdatasync on a stream tries to flush the data to the OS.
+        
+        We can't easily observe the external effect but we can at least see
+        it's called.
+        """
+        sentinel = object()
+        fdatasync = getattr(os, 'fdatasync', sentinel)
+        if fdatasync is sentinel:
+            raise tests.TestNotApplicable('fdatasync not supported')
+        t = self.get_transport('.')
+        calls = self.recordCalls(os, 'fdatasync')
+        w = t.open_write_stream('out')
+        w.write('foo')
+        w.fdatasync()
+        with open('out', 'rb') as f:
+            # Should have been flushed.
+            self.assertEquals(f.read(), 'foo')
+        self.assertEquals(len(calls), 1, calls)
+
+
 class TestWin32LocalTransport(tests.TestCase):
 
     def test_unc_clone_to_root(self):
@@ -761,30 +782,30 @@ class TestConnectedTransport(tests.TestCase):
     def test_parse_url(self):
         t = transport.ConnectedTransport(
             'http://simple.example.com/home/source')
-        self.assertEquals(t._host, 'simple.example.com')
-        self.assertEquals(t._port, None)
-        self.assertEquals(t._path, '/home/source/')
-        self.assertTrue(t._user is None)
-        self.assertTrue(t._password is None)
+        self.assertEquals(t._parsed_url.host, 'simple.example.com')
+        self.assertEquals(t._parsed_url.port, None)
+        self.assertEquals(t._parsed_url.path, '/home/source/')
+        self.assertTrue(t._parsed_url.user is None)
+        self.assertTrue(t._parsed_url.password is None)
 
         self.assertEquals(t.base, 'http://simple.example.com/home/source/')
 
     def test_parse_url_with_at_in_user(self):
         # Bug 228058
         t = transport.ConnectedTransport('ftp://user@host.com@www.host.com/')
-        self.assertEquals(t._user, 'user@host.com')
+        self.assertEquals(t._parsed_url.user, 'user@host.com')
 
     def test_parse_quoted_url(self):
         t = transport.ConnectedTransport(
             'http://ro%62ey:h%40t@ex%41mple.com:2222/path')
-        self.assertEquals(t._host, 'exAmple.com')
-        self.assertEquals(t._port, 2222)
-        self.assertEquals(t._user, 'robey')
-        self.assertEquals(t._password, 'h@t')
-        self.assertEquals(t._path, '/path/')
+        self.assertEquals(t._parsed_url.host, 'exAmple.com')
+        self.assertEquals(t._parsed_url.port, 2222)
+        self.assertEquals(t._parsed_url.user, 'robey')
+        self.assertEquals(t._parsed_url.password, 'h@t')
+        self.assertEquals(t._parsed_url.path, '/path/')
 
         # Base should not keep track of the password
-        self.assertEquals(t.base, 'http://robey@exAmple.com:2222/path/')
+        self.assertEquals(t.base, 'http://ro%62ey@ex%41mple.com:2222/path/')
 
     def test_parse_invalid_url(self):
         self.assertRaises(errors.InvalidURL,
@@ -814,13 +835,13 @@ class TestConnectedTransport(tests.TestCase):
 
     def test_connection_sharing_propagate_credentials(self):
         t = transport.ConnectedTransport('ftp://user@host.com/abs/path')
-        self.assertEquals('user', t._user)
-        self.assertEquals('host.com', t._host)
+        self.assertEquals('user', t._parsed_url.user)
+        self.assertEquals('host.com', t._parsed_url.host)
         self.assertIs(None, t._get_connection())
-        self.assertIs(None, t._password)
+        self.assertIs(None, t._parsed_url.password)
         c = t.clone('subdir')
         self.assertIs(None, c._get_connection())
-        self.assertIs(None, t._password)
+        self.assertIs(None, t._parsed_url.password)
 
         # Simulate the user entering a password
         password = 'secret'
@@ -1035,6 +1056,16 @@ class SomeDirectory(object):
 
 class TestLocationToUrl(tests.TestCase):
 
+    def get_base_location(self):
+        path = osutils.abspath('/foo/bar')
+        if path.startswith('/'):
+            url = 'file://%s' % (path,)
+        else:
+            # On Windows, abspaths start with the drive letter, so we have to
+            # add in the extra '/'
+            url = 'file:///%s' % (path,)
+        return path, url
+
     def test_regular_url(self):
         self.assertEquals("file://foo", location_to_url("file://foo"))
 
@@ -1048,11 +1079,14 @@ class TestLocationToUrl(tests.TestCase):
             "http://fo/\xc3\xaf".decode("utf-8"))
 
     def test_unicode_path(self):
-        self.assertEquals("file:///foo/bar%C3%AF",
-            location_to_url("/foo/bar\xc3\xaf".decode("utf-8")))
+        path, url = self.get_base_location()
+        location = path + "\xc3\xaf".decode("utf-8")
+        url += '%C3%AF'
+        self.assertEquals(url, location_to_url(location))
 
     def test_path(self):
-        self.assertEquals("file:///foo/bar", location_to_url("/foo/bar"))
+        path, url = self.get_base_location()
+        self.assertEquals(url, location_to_url(path))
 
     def test_relative_file_url(self):
         self.assertEquals(urlutils.local_path_to_url(".") + "/bar",

@@ -24,10 +24,12 @@ from bzrlib import (
     branch,
     branchbuilder,
     bzrdir,
+    config,
     errors,
     osutils,
     symbol_versioning,
     tests,
+    trace,
     urlutils,
     )
 from bzrlib.errors import (
@@ -276,9 +278,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/',
                          'foo/hello'])
-        self.assertRaises(NotVersionedError,
-                          wt.add,
-                          'foo/hello')
+        if not wt._format.supports_versioned_directories:
+            wt.add('foo/hello')
+        else:
+            self.assertRaises(NotVersionedError,
+                              wt.add,
+                              'foo/hello')
 
     def test_add_missing(self):
         # adding a msising file -> NoSuchFile
@@ -639,6 +644,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # FIXME: This doesn't really test that it works; also this is not
         # implementation-independent. mbp 20070226
         tree = self.make_branch_and_tree('master')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("merge-hashes is specific to bzr "
+                "working trees")
         tree._transport.put_bytes('merge-hashes', 'asdfasdf')
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
@@ -1119,7 +1127,7 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
 
 class TestControlComponent(TestCaseWithWorkingTree):
     """WorkingTree implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         wt = self.make_branch_and_tree('wt')
         self.assertIsInstance(wt.user_url, str)
@@ -1150,19 +1158,26 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
 
     def test_set_in_branch(self):
         wt = self.make_wt_with_worth_saving_limit()
-        config = wt.branch.get_config()
-        config.set_user_option('bzr.workingtree.worth_saving_limit', '20')
+        conf = config.BranchStack(wt.branch)
+        conf.set('bzr.workingtree.worth_saving_limit', '20')
         self.assertEqual(20, wt._worth_saving_limit())
         ds = wt.current_dirstate()
         self.assertEqual(10, ds._worth_saving_limit)
 
     def test_invalid(self):
         wt = self.make_wt_with_worth_saving_limit()
-        config = wt.branch.get_config()
-        config.set_user_option('bzr.workingtree.worth_saving_limit', 'a')
+        conf = config.BranchStack(wt.branch)
+        conf.set('bzr.workingtree.worth_saving_limit', 'a')
         # If the config entry is invalid, default to 10
-        # TODO: This writes a warning to the user, trap it somehow
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
         self.assertEqual(10, wt._worth_saving_limit())
+        self.assertLength(1, warnings)
+        self.assertEquals('Value "a" is not valid for'
+                          ' "bzr.workingtree.worth_saving_limit"',
+                          warnings[0])
 
 
 class TestFormatAttributes(TestCaseWithWorkingTree):

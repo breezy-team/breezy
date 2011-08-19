@@ -384,9 +384,18 @@ class ExtendedTestResult(testtools.TextTestResult):
         getDetails = getattr(test, "getDetails", None)
         if getDetails is not None:
             getDetails().clear()
+        # Clear _type_equality_funcs to try to stop TestCase instances
+        # from wasting memory. 'clear' is not available in all Python
+        # versions (bug 809048)
         type_equality_funcs = getattr(test, "_type_equality_funcs", None)
         if type_equality_funcs is not None:
-            type_equality_funcs.clear()
+            tef_clear = getattr(type_equality_funcs, "clear", None)
+            if tef_clear is None:
+                tef_instance_dict = getattr(type_equality_funcs, "__dict__", None)
+                if tef_instance_dict is not None:
+                    tef_clear = tef_instance_dict.clear
+            if tef_clear is not None:
+                tef_clear()
         self._traceback_from_test = None
 
     def startTests(self):
@@ -1728,6 +1737,9 @@ class TestCase(testtools.TestCase):
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
 
+        :note: This should be used with discretion; you should think about
+        whether it's better to make the code testable without monkey-patching.
+
         :param obj: The object that will be mutated.
 
         :param attr_name: The attribute name we want to preserve/override in
@@ -1758,6 +1770,26 @@ class TestCase(testtools.TestCase):
         self.addCleanup(osutils.set_or_unset_env, name, value)
         return value
 
+    def recordCalls(self, obj, attr_name):
+        """Monkeypatch in a wrapper that will record calls.
+
+        The monkeypatch is automatically removed when the test concludes.
+
+        :param obj: The namespace holding the reference to be replaced;
+            typically a module, class, or object.
+        :param attr_name: A string for the name of the attribute to 
+            patch.
+        :returns: A list that will be extended with one item every time the
+            function is called, with a tuple of (args, kwargs).
+        """
+        calls = []
+
+        def decorator(*args, **kwargs):
+            calls.append((args, kwargs))
+            return orig(*args, **kwargs)
+        orig = self.overrideAttr(obj, attr_name, decorator)
+        return calls
+
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
             self.overrideEnv(name, value)
@@ -1770,8 +1802,31 @@ class TestCase(testtools.TestCase):
         self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
-        """This test has failed for some known reason."""
-        raise KnownFailure(reason)
+        """Declare that this test fails for a known reason
+
+        Tests that are known to fail should generally be using expectedFailure
+        with an appropriate reverse assertion if a change could cause the test
+        to start passing. Conversely if the test has no immediate prospect of
+        succeeding then using skip is more suitable.
+
+        When this method is called while an exception is being handled, that
+        traceback will be used, otherwise a new exception will be thrown to
+        provide one but won't be reported.
+        """
+        self._add_reason(reason)
+        try:
+            exc_info = sys.exc_info()
+            if exc_info != (None, None, None):
+                self._report_traceback(exc_info)
+            else:
+                try:
+                    raise self.failureException(reason)
+                except self.failureException:
+                    exc_info = sys.exc_info()
+            # GZ 02-08-2011: Maybe cleanup this err.exc_info attribute too?
+            raise testtools.testcase._ExpectedFailure(exc_info)
+        finally:
+            del exc_info
 
     def _suppress_log(self):
         """Remove the log info from details."""

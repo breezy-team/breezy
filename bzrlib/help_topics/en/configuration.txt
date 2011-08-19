@@ -14,7 +14,7 @@ Override the email id used by Bazaar.  Typical format::
 
   "John Doe <jdoe@example.com>"
 
-See also the ``email`` configuration value.
+See also the ``email`` configuration option.
 
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ BZR_REMOTE_PATH
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
-See also the ``bzr_remote_path`` configuration value.
+See also the ``bzr_remote_path`` configuration option.
 
 BZR_EDITOR
 ~~~~~~~~~~
@@ -355,6 +355,10 @@ For example::
 
     debug_flags = hpss
 
+or::
+
+    debug_flags = hpss,evil
+
 email
 ~~~~~
 
@@ -415,8 +419,15 @@ In future it is planned that ``when-required`` will sign newly
 committed revisions only when the branch requires them.  ``never`` will refuse
 to sign newly committed revisions, even if the branch requires signatures.
 
+dirstate.fdatasync
+~~~~~~~~~~~~~~~~~~
+
+If true (default), working tree metadata changes are flushed through the
+OS buffers to physical disk.  This is somewhat slower, but means data
+should not be lost if the machine crashes.  See also repository.fdatasync.
+
 gpg_signing_key
-~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 The GnuPG user identity to use when signing commits.  Can be an e-mail
 address, key fingerprint or full key ID.  When unset or when set to
@@ -504,6 +515,13 @@ Supported generic values are:
     smtp_username and smtp_password.
 :mapi: Use your preferred e-mail client on Windows.
 :xdg-email: Use xdg-email to run your preferred mail program
+
+repository.fdatasync
+~~~~~~~~~~~~~~~~~~~~
+
+If true (default), repository changes are flushed through the OS buffers
+to physical disk.  This is somewhat slower, but means data should not be
+lost if the machine crashes.  See also dirstate.fdatasync.
 
 submit_branch
 ~~~~~~~~~~~~~

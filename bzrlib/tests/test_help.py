@@ -21,6 +21,7 @@ import textwrap
 from bzrlib import (
     builtins,
     commands,
+    config,
     errors,
     help,
     help_topics,
@@ -561,6 +562,31 @@ class TestTopicIndex(TestHelp):
         self.assertEqual('', index.prefix)
 
 
+class TestConfigOptionIndex(TestHelp):
+    """Tests for the HelpCommandIndex class."""
+
+    def setUp(self):
+        super(TestConfigOptionIndex, self).setUp()
+        self.index = help_topics.ConfigOptionHelpIndex()
+
+    def test_get_topics_None(self):
+        """Searching for None returns an empty list."""
+        self.assertEqual([], self.index.get_topics(None))
+
+    def test_get_topics_no_topic(self):
+        self.assertEqual([], self.index.get_topics('nothing by this name'))
+
+    def test_prefix(self):
+        self.assertEqual('configuration/', self.index.prefix)
+
+    def test_get_topic_with_prefix(self):
+        topics = self.index.get_topics('configuration/default_format')
+        self.assertLength(1, topics)
+        opt = topics[0]
+        self.assertIsInstance(opt, config.Option)
+        self.assertEquals('default_format', opt.name)
+
+
 class TestCommandIndex(TestHelp):
     """Tests for the HelpCommandIndex class."""
 
@@ -603,16 +629,19 @@ class TestHelpIndices(tests.TestCase):
     def test_default_search_path(self):
         """The default search path should include internal indexs."""
         indices = help.HelpIndices()
-        self.assertEqual(3, len(indices.search_path))
+        self.assertEqual(4, len(indices.search_path))
         # help topics should be searched in first.
         self.assertIsInstance(indices.search_path[0],
-            help_topics.HelpTopicIndex)
+                              help_topics.HelpTopicIndex)
         # with commands being search second.
         self.assertIsInstance(indices.search_path[1],
-            commands.HelpCommandIndex)
-        # and plugins are a third index.
+                              commands.HelpCommandIndex)
+        # plugins are a third index.
         self.assertIsInstance(indices.search_path[2],
-            plugin.PluginsHelpIndex)
+                              plugin.PluginsHelpIndex)
+        # config options are a fourth index
+        self.assertIsInstance(indices.search_path[3],
+                              help_topics.ConfigOptionHelpIndex)
 
     def test_search_for_unknown_topic_raises(self):
         """Searching for an unknown topic should raise NoHelpTopic."""

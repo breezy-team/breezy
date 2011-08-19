@@ -89,7 +89,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             normal_thing = unicodedata.normalize('NFD', path)
             mac_encoded = normal_thing.encode(fs_enc)
             if mac_encoded != encoded:
-                raise tests.KnownFailure(
+                self.knownFailure(
                     'Unable to roundtrip path %r on OSX filesystem'
                     ' using encoding "%s"'
                     % (path, fs_enc))

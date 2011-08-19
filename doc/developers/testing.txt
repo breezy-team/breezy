@@ -1018,6 +1018,23 @@ it restored at the end, you can say for example::
 
     self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
 
+This should be used with discretion; sometimes it's better to make the
+underlying code more testable so that you don't need to rely on monkey
+patching.
+
+
+Observing calls to a function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes it's useful to observe how a function is called, typically when
+calling it has side effects but the side effects are not easy to observe
+from a test case.  For instance the function may be expensive and we want
+to assert it is not called too many times, or it has effects on the
+machine that are safe to run during a test but not easy to measure.  In
+these cases, you can use `recordCalls` which will monkey-patch in a
+wrapper that records when the function is called.
+
+
 Temporarily changing environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1072,9 +1089,8 @@ A more precise version that only filters traffic to port 4155 is::
 
     tc qdisc add dev lo root handle 1: prio
     tc qdisc add dev lo parent 1:3 handle 30: netem delay 500ms 
-    tc qdisc add dev lo parent 30:1 handle 40: prio
-    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 handle 800::800
-    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 handle 800::801
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 
 
 and to remove this::
 

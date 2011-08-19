@@ -31,15 +31,8 @@ debug_flags = set()
 def set_debug_flags_from_config():
     """Turn on debug flags based on the global configuration"""
 
-    from bzrlib.config import GlobalConfig
+    from bzrlib import config
 
-    c = GlobalConfig()
-    value = c.get_user_option("debug_flags")
-    if value is not None:
-        # configobject gives us either a string if there's just one or a list
-        # if there's multiple
-        if isinstance(value, basestring):
-            value = [value]
-        for w in value:
-            w = w.strip()
-            debug_flags.add(w)
+    c = config.GlobalStack()
+    for f in c.get('debug_flags'):
+        debug_flags.add(f)
