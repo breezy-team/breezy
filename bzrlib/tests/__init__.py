@@ -1009,7 +1009,9 @@ class TestCase(testtools.TestCase):
     def debug(self):
         # debug a frame up.
         import pdb
-        pdb.Pdb().set_trace(sys._getframe().f_back)
+        # The sys preserved stdin/stdout should allow blackbox tests debugging
+        pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
+                ).set_trace(sys._getframe().f_back)
 
     def discardDetail(self, name):
         """Extend the addDetail, getDetails api so we can remove a detail.
