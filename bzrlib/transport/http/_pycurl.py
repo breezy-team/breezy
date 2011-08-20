@@ -325,19 +325,19 @@ class PyCurlTransport(HttpTransportBase):
                 % (code, msg, plaintext_body))
 
     def _debug_cb(self, kind, text):
-        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN,
-                    pycurl.INFOTYPE_SSL_DATA_IN):
+        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN):
             self._report_activity(len(text), 'read')
             if (kind == pycurl.INFOTYPE_HEADER_IN
                 and 'http' in debug.debug_flags):
                 mutter('< %s' % text)
-        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT,
-                      pycurl.INFOTYPE_SSL_DATA_OUT):
+        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT):
             self._report_activity(len(text), 'write')
             if (kind == pycurl.INFOTYPE_HEADER_OUT
                 and 'http' in debug.debug_flags):
                 mutter('> %s' % text)
-        elif kind == pycurl.INFOTYPE_TEXT and 'http' in debug.debug_flags:
+        elif (kind in (pycurl.INFOTYPE_TEXT, pycurl.INFOTYPE_SSL_DATA_IN,
+                       pycurl.INFOTYPE_SSL_DATA_OUT)
+              and 'http' in debug.debug_flags):
             mutter('* %s' % text)
 
     def _set_curl_options(self, curl):
