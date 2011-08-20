@@ -24,9 +24,6 @@ See `bzr help debug-flags` or `bzrlib/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 
-import pdb
-import sys
-
 debug_flags = set()
 
 
@@ -55,5 +52,7 @@ def set_trace():
 
        from bzrlib import debug; debug.set_trace()
     """
+    import pdb
+    import sys
     pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
             ).set_trace(sys._getframe().f_back)
