@@ -81,6 +81,11 @@ New Features
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
 
+* bzr add now skips large files in recursive mode. The default "large"
+  size is 20MB, and is configurable via the add.maximum_file_size
+  option. A value of 0 disables skipping. Named items passed to add are
+  never skipped. (Shannon Weyrick, #54624)
+
 Improvements
 ************
 
@@ -174,6 +179,10 @@ API Changes
   in favor of passing a filtered tree, and the specific exporter plugins
   no longer support it.
   (Martin Pool)
+
+* New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
+  value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
+  (Shannon Weyrick)
 
 * ``Transport`` now has a ``_parsed_url`` attribute instead of
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``

@@ -1035,6 +1035,26 @@ one_item = x
         # automatically cast to list
         self.assertEqual(['x'], get_list('one_item'))
 
+    def test_get_user_option_as_int_from_SI(self):
+        conf, parser = self.make_config_parser("""
+plain = 100
+si_k = 5k,
+si_kb = 5kb,
+si_m = 5M,
+si_mb = 5MB,
+si_g = 5g,
+si_gb = 5gB,
+""")
+        get_si = conf.get_user_option_as_int_from_SI
+        self.assertEqual(100, get_si('plain'))
+        self.assertEqual(5000, get_si('si_k'))
+        self.assertEqual(5000, get_si('si_kb'))
+        self.assertEqual(5000000, get_si('si_m'))
+        self.assertEqual(5000000, get_si('si_mb'))
+        self.assertEqual(5000000000, get_si('si_g'))
+        self.assertEqual(5000000000, get_si('si_gb'))
+        self.assertEqual(None, get_si('non-exist'))
+        self.assertEqual(42, get_si('non-exist-with-default',  42))
 
 class TestSupressWarning(TestIniConfig):
 
