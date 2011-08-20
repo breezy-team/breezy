@@ -904,6 +904,21 @@ class DistributionBranchTests(BuilddebTestCase):
         os.mkdir(basedir)
         write_to_file(os.path.join(basedir, "README"), "Hi\n")
         write_to_file(os.path.join(basedir, "BUGS"), "")
+        # Some versions of tar, including that in Ubuntu lucid and maverick,
+        # but not natty and later, have a bug which prevents them from
+        # autodetecting the compression type of files less than 512 bytes in
+        # length. So, add some extra verbiage to push us just above that
+        # boundary. This matters for lzma, but not gz and bz2, because
+        # pristine-tar has its own decompression support for those.
+        write_to_file(os.path.join(basedir, "LOREM"), 
+                "Lorem ipsum dolor sit amet, consectetur adipisicing elit, "
+                "sed do eiusmod tempor incididunt ut labore et dolore magna "
+                "aliqua.  Ut enim ad minim veniam, quis nostrud exercitation "
+                "ullamco laboris nisi ut aliquip ex ea commodo consequat. "
+                "Duis aute irure dolor in reprehenderit in voluptate velit "
+                "esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
+                "occaecat cupidatat non proident, sunt in culpa qui officia "
+                "deserunt mollit anim id est laborum.")
         tar_path = "package_0.1.orig.tar.lzma"
         f = lzma.LZMAFile(tar_path, 'w')
         try:
