@@ -1025,7 +1025,7 @@ class LockableConfig(IniBasedConfig):
         # local transports are not shared. But if/when we start using
         # LockableConfig for other kind of transports, we will need to reuse
         # whatever connection is already established -- vila 20100929
-        self.transport = transport.get_transport(self.dir)
+        self.transport = transport.get_transport_from_path(self.dir)
         self._lock = lockdir.LockDir(self.transport, self.lock_name)
 
     def _create_from_string(self, unicode_bytes, save):

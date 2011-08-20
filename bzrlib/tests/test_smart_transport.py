@@ -1015,13 +1015,13 @@ class SmartTCPTests(tests.TestCase):
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
             self.permit_url(mem_server.get_url())
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 mem_server.get_url())
         else:
             self.backing_transport = backing_transport
         if readonly:
             self.real_backing_transport = self.backing_transport
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 "readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_server('127.0.0.1', 0)
@@ -1179,7 +1179,8 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
-        self.start_server(backing_transport=transport.get_transport("."))
+        self.start_server(
+            backing_transport=transport.get_transport_from_path("."))
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1212,7 +1213,8 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
-        self.start_server(backing_transport=transport.get_transport("."))
+        self.start_server(
+            backing_transport=transport.get_transport_from_path("."))
         result = [(
             [self.backing_transport.base, self.backing_transport.external_url()]
             , self.transport.base)]
@@ -1354,13 +1356,13 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
-        t = transport.get_transport('bzr+ssh://example.com/path')
+        t = transport.get_transport_from_url('bzr+ssh://example.com/path')
         self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._parsed_url.host)
 
     def test_bzr_https(self):
         # https://bugs.launchpad.net/bzr/+bug/128456
-        t = transport.get_transport('bzr+https://example.com/path')
+        t = transport.get_transport_from_url('bzr+https://example.com/path')
         self.assertIsInstance(t, remote.RemoteHTTPTransport)
         self.assertStartsWith(
             t._http_transport.base,

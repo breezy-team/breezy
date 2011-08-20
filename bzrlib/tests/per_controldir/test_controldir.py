@@ -1120,7 +1120,7 @@ class TestControlDir(TestCaseWithControlDir):
         # test the formats specific behaviour for no-content or similar dirs.
         self.assertRaises(errors.NotBranchError,
                           self.bzrdir_format.open,
-                          transport.get_transport(self.get_readonly_url()))
+                          transport.get_transport_from_url(self.get_readonly_url()))
 
     def test_create_branch(self):
         # a bzrdir can construct a branch and repository for itself.
@@ -1637,7 +1637,7 @@ class ChrootedControlDirTests(ChrootedTestCase):
         # - do the vfs initialisation over the basic vfs transport
         # XXX: TODO this should become a 'bzrdirlocation' api call.
         url = self.get_vfs_only_url('subdir')
-        transport.get_transport(self.get_vfs_only_url()).mkdir('subdir')
+        transport.get_transport_from_url(self.get_vfs_only_url()).mkdir('subdir')
         made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
         try:
             repo = made_control.open_repository()

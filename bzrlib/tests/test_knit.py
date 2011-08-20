@@ -1603,13 +1603,13 @@ class TestKnitIndex(KnitTests):
         # could leave an empty .kndx file, which bzr would later claim was a
         # corrupted file since the header was not present. In reality, the file
         # just wasn't created, so it should be ignored.
-        t = transport.get_transport('.')
+        t = transport.get_transport_from_path('.')
         t.put_bytes('test.kndx', '')
 
         knit = self.make_test_knit()
 
     def test_knit_index_checks_header(self):
-        t = transport.get_transport('.')
+        t = transport.get_transport_from_path('.')
         t.put_bytes('test.kndx', '# not really a knit header\n\n')
         k = self.make_test_knit()
         self.assertRaises(KnitHeaderError, k.keys)
