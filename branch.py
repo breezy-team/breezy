@@ -184,7 +184,7 @@ class LocalGitTagDict(GitTags):
                 obj = self.repository._git[peeled]
             except KeyError:
                 mutter("Tag %s points at unknown object %s, ignoring", peeled,
-                       obj)
+                       peeled)
                 continue
             # FIXME: this shouldn't really be necessary, the repository
             # already should have these unpeeled.
