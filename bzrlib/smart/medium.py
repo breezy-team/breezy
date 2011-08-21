@@ -592,7 +592,7 @@ class SmartClientMedium(SmartMedium):
             if _debug_counter is None:
                 _debug_counter = _DebugCounter()
             _debug_counter.track(self)
-        if 'hpss_no_vfs' in debug.debug_flags:
+        if 'hpss_client_no_vfs' in debug.debug_flags:
             global _vfs_refuser
             if _vfs_refuser is None:
                 _vfs_refuser = _VfsRefuser()
