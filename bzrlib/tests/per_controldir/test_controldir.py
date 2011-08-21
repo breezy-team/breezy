@@ -690,6 +690,7 @@ class TestControlDir(TestCaseWithControlDir):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         # Now source has a tag not in its ancestry.  Sprout its controldir.
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
@@ -761,6 +762,7 @@ class TestControlDir(TestCaseWithControlDir):
             source.tags.set_tag('tag-absent', 'absent-rev')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
@@ -996,7 +998,8 @@ class TestControlDir(TestCaseWithControlDir):
         repo_name = old_fmt.repository_format.network_name()
         # Should end up with a 1.9 format (stackable)
         repo, control = self.assertInitializeEx(t, need_meta=True,
-            repo_format_name=repo_name, stacked_on='../trunk', stack_on_pwd=t.base)
+            repo_format_name=repo_name, stacked_on='../trunk',
+            stack_on_pwd=t.base)
         if control is None:
             # uninitialisable format
             return
@@ -1117,7 +1120,7 @@ class TestControlDir(TestCaseWithControlDir):
         # test the formats specific behaviour for no-content or similar dirs.
         self.assertRaises(errors.NotBranchError,
                           self.bzrdir_format.open,
-                          transport.get_transport(self.get_readonly_url()))
+                          transport.get_transport_from_url(self.get_readonly_url()))
 
     def test_create_branch(self):
         # a bzrdir can construct a branch and repository for itself.
@@ -1279,6 +1282,41 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.assertIsInstance(opened_tree, made_tree.__class__)
         self.assertIsInstance(opened_tree._format, made_tree._format.__class__)
+
+    def test_get_selected_branch(self):
+        # The segment parameters are accessible from the root transport
+        # if a URL with segment parameters is opened.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
+        dir = bzrdir.BzrDir.open(t.base+",branch=foo")
+        self.assertEquals({"branch": "foo"},
+            dir.user_transport.get_segment_parameters())
+        self.assertEquals("foo", dir._get_selected_branch())
+
+    def test_get_selected_branch_none_selected(self):
+        # _get_selected_branch defaults to None
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
+        dir = bzrdir.BzrDir.open(t.base)
+        self.assertIs(None, dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
@@ -1599,7 +1637,7 @@ class ChrootedControlDirTests(ChrootedTestCase):
         # - do the vfs initialisation over the basic vfs transport
         # XXX: TODO this should become a 'bzrdirlocation' api call.
         url = self.get_vfs_only_url('subdir')
-        transport.get_transport(self.get_vfs_only_url()).mkdir('subdir')
+        transport.get_transport_from_url(self.get_vfs_only_url()).mkdir('subdir')
         made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
         try:
             repo = made_control.open_repository()

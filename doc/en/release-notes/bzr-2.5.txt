@@ -20,6 +20,16 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean and integer config options when the
+  provided ``bool_from_store`` and ``int_from_store`` are used.
+  (Vincent Ladeuil)
+
+* A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean, integer and list config options when the
+  provided ``bool_from_store``, ``int_from_store`` and ``list_from_store``
+  are used for this parameter.  (Vincent Ladeuil)
+
 * Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
   checks to see if the most recent published source package version for
   that project is present in the branch tags. This should help developers
@@ -49,19 +59,45 @@ New Features
   which matches user_email() as set by whoami. (Jonathan Riddell,
   #68501)
 
+* An ``invalid`` parameter can be specified when registering a config option
+  to decide what should be done when invalid values are
+  encountered. 'warning' and 'eeror' will respectively emit a warning and
+  ignore the value or errors out. (Vincent Ladeuil)
+
+* ``bzr help configuration/<option>`` display the help for ``option`` for
+  all registered configuration options. (Vincent Ladeuil, #747050)
+
 * bzr log -m now matches message, author, committer and bugs instead
   of just matching the message.  --message keeps its original meaning,
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
 
+* ``config.Option`` can now declare ``default_from_env``, a list of
+  environment variables to get a default value from. (Vincent Ladeuil)
+
+* New builtin ``bzr branches`` command, which lists all colocated branches
+  in a directory. (Jelmer Vernooij, #826820)
+
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
+
+* bzr add now skips large files in recursive mode. The default "large"
+  size is 20MB, and is configurable via the add.maximum_file_size
+  option. A value of 0 disables skipping. Named items passed to add are
+  never skipped. (Shannon Weyrick, #54624)
 
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+* ``bzr commit -m ''`` can now be used to force an empty commit message.
+  Entering an empty commit message in the message editor still triggers
+  an error. (Jelmer Vernooij)
+
+* Locations printed by ``bzr upgrade`` are now formatted before display.
+  (Jelmer Vernooij)
 
 Bug Fixes
 *********
@@ -95,6 +131,9 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
+  (Jelmer Vernooij)
 
 * New methods ``get_transport_from_path`` and ``get_transport_from_url``
   have been added that only support opening from a path or a URL,
@@ -141,6 +180,15 @@ API Changes
   no longer support it.
   (Martin Pool)
 
+* New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
+  value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
+  (Shannon Weyrick)
+
+* ``Transport`` now has a ``_parsed_url`` attribute instead of
+  separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
+  and ``_path`` attributes. Proxies are provided for the moment but
+  may be removed in the future. (Jelmer Vernooij)
+
 
 Internals
 *********
@@ -152,12 +200,19 @@ Internals
   to raise a ``HpssVfsRequestNotAllowed`` exception when a VFS request
   is attempted. (Jelmer Vernooij)
 
+* New method ``ControlDir._get_selected_branch`` which returns the
+  colocated branch selected using path segment parameters.
+  (Jelmer Vernooij, #380871)
+
 Testing
 *******
 
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Blackbox tests can be debugged interactively (see bzrlib.debug.BzrPdb for
+  details). (Vincent Ladeuil)
 
 * `BranchBuilder.build_snapshot` now supports a "flush" action.  This
   cleanly and reliably allows tests using `BranchBuilder` to construct
@@ -170,6 +225,13 @@ Testing
   (BSD-based OSes don't define it).  (Vincent Ladeuil, #822649)
 
 * Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
+
+* ``LockDir`` can now be run when the local hostname is ``localhost``.
+  (Jelmer Vernooij, #825994)
+
+* ``ModuleAvailableFeature`` won't try to import already imported modules,
+  allowing it to be used for modules with side-effects.
+  (Vincent Ladeuil, #712474)
 
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,

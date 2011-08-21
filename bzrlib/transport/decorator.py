@@ -50,7 +50,8 @@ class TransportDecorator(transport.Transport):
                              (url, prefix))
         not_decorated_url = url[len(prefix):]
         if _decorated is None:
-            self._decorated = transport.get_transport(not_decorated_url)
+            self._decorated = transport.get_transport(
+                not_decorated_url)
         else:
             self._decorated = _decorated
         super(TransportDecorator, self).__init__(prefix + self._decorated.base)
@@ -155,6 +156,15 @@ class TransportDecorator(transport.Transport):
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)
+
+    def _get_segment_parameters(self):
+        return self._decorated.segment_parameters
+
+    def _set_segment_parameters(self, value):
+        self._decorated.segment_parameters = value
+
+    segment_parameters = property(_get_segment_parameters,
+        _set_segment_parameters, "See Transport.segment_parameters")
 
     def stat(self, relpath):
         """See Transport.stat()."""

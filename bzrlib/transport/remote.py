@@ -170,7 +170,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
-        return self._combine_paths(self._path, relpath)
+        return urlutils.URL._combine_paths(self._parsed_url.path, relpath)
 
     def _call(self, method, *args):
         resp = self._call2(method, *args)
@@ -483,7 +483,7 @@ class RemoteTCPTransport(RemoteTransport):
 
     def _build_medium(self):
         client_medium = medium.SmartTCPClientMedium(
-            self._host, self._port, self.base)
+            self._parsed_url.host, self._parsed_url.port, self.base)
         return client_medium, None
 
 
@@ -496,7 +496,7 @@ class RemoteTCPTransportV2Only(RemoteTransport):
 
     def _build_medium(self):
         client_medium = medium.SmartTCPClientMedium(
-            self._host, self._port, self.base)
+            self._parsed_url.host, self._parsed_url.port, self.base)
         client_medium._protocol_version = 2
         client_medium._remember_remote_is_before((1, 6))
         return client_medium, None
@@ -512,14 +512,16 @@ class RemoteSSHTransport(RemoteTransport):
     def _build_medium(self):
         location_config = config.LocationConfig(self.base)
         bzr_remote_path = location_config.get_bzr_remote_path()
-        user = self._user
+        user = self._parsed_url.user
         if user is None:
             auth = config.AuthenticationConfig()
-            user = auth.get_user('ssh', self._host, self._port)
-        ssh_params = medium.SSHParams(self._host, self._port, user,
-            self._password, bzr_remote_path)
+            user = auth.get_user('ssh', self._parsed_url.host,
+                self._parsed_url.port)
+        ssh_params = medium.SSHParams(self._parsed_url.host,
+                self._parsed_url.port, user, self._parsed_url.password,
+                bzr_remote_path)
         client_medium = medium.SmartSSHClientMedium(self.base, ssh_params)
-        return client_medium, (user, self._password)
+        return client_medium, (user, self._parsed_url.password)
 
 
 class RemoteHTTPTransport(RemoteTransport):
@@ -539,7 +541,7 @@ class RemoteHTTPTransport(RemoteTransport):
             # url only for an intial construction (when the url came from the
             # command-line).
             http_url = base[len('bzr+'):]
-            self._http_transport = transport.get_transport(http_url)
+            self._http_transport = transport.get_transport_from_url(http_url)
         else:
             self._http_transport = http_transport
         super(RemoteHTTPTransport, self).__init__(

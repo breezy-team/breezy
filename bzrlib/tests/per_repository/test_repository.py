@@ -604,7 +604,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository(path, shared=shared)
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
-        remote_transport = transport.get_transport(
+        remote_transport = transport.get_transport_from_url(
             smart_server.get_url()).clone(path)
         remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
         remote_repo = remote_bzrdir.open_repository()

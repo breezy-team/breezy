@@ -26,6 +26,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     controldir,
     errors,
     help_topics,
@@ -285,7 +286,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         self.build_tree(["foo/", "bar/"], transport=t)
         def check_format(format, url):
             format.initialize(url)
-            t = _mod_transport.get_transport(url)
+            t = _mod_transport.get_transport_from_path(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
             self.assertIsInstance(found_format, format.__class__)
         check_format(BzrDirFormatTest1(), "foo")
@@ -294,7 +295,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format_nothing_there(self):
         self.assertRaises(NotBranchError,
                           bzrdir.BzrDirFormat.find_format,
-                          _mod_transport.get_transport('.'))
+                          _mod_transport.get_transport_from_path('.'))
 
     def test_find_format_unknown_format(self):
         t = self.get_transport()
@@ -302,7 +303,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t.put_bytes('.bzr/branch-format', '')
         self.assertRaises(UnknownFormatError,
                           bzrdir.BzrDirFormat.find_format,
-                          _mod_transport.get_transport('.'))
+                          _mod_transport.get_transport_from_path('.'))
 
     def test_register_unregister_format(self):
         format = SampleBzrDirFormat()
@@ -316,7 +317,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # which bzrdir.open_containing will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open_containing, url)
         # but open_downlevel will work
-        t = _mod_transport.get_transport(url)
+        t = _mod_transport.get_transport_from_url(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
         # unregister the format
         bzrdir.BzrProber.formats.remove(format.get_format_string())
@@ -710,16 +711,19 @@ class ChrootedTests(TestCaseWithTransport):
     def test_open_containing_from_transport(self):
         self.assertRaises(NotBranchError,
             bzrdir.BzrDir.open_containing_from_transport,
-            _mod_transport.get_transport(self.get_readonly_url('')))
+            _mod_transport.get_transport_from_url(self.get_readonly_url('')))
         self.assertRaises(NotBranchError,
             bzrdir.BzrDir.open_containing_from_transport,
-            _mod_transport.get_transport(self.get_readonly_url('g/p/q')))
+            _mod_transport.get_transport_from_url(
+                self.get_readonly_url('g/p/q')))
         control = bzrdir.BzrDir.create(self.get_url())
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
-            _mod_transport.get_transport(self.get_readonly_url('')))
+            _mod_transport.get_transport_from_url(
+                self.get_readonly_url('')))
         self.assertEqual('', relpath)
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
-            _mod_transport.get_transport(self.get_readonly_url('g/p/q')))
+            _mod_transport.get_transport_from_url(
+                self.get_readonly_url('g/p/q')))
         self.assertEqual('g/p/q', relpath)
 
     def test_open_containing_tree_or_branch(self):
@@ -898,7 +902,7 @@ class ChrootedTests(TestCaseWithTransport):
         def evaluate(bzrdir):
             try:
                 repo = bzrdir.open_repository()
-            except NoRepositoryPresent:
+            except errors.NoRepositoryPresent:
                 return True, bzrdir.root_transport.base
             else:
                 return False, bzrdir.root_transport.base
@@ -1208,7 +1212,7 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
 
     def __init__(self, *args, **kwargs):
         super(_TestBzrDir, self).__init__(*args, **kwargs)
-        self.test_branch = _TestBranch()
+        self.test_branch = _TestBranch(self.transport)
         self.test_branch.repository = self.create_repository()
 
     def open_branch(self, unsupported=False):
@@ -1225,15 +1229,17 @@ class _TestBranchFormat(bzrlib.branch.BranchFormat):
 class _TestBranch(bzrlib.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, transport, *args, **kwargs):
         self._format = _TestBranchFormat()
+        self._transport = transport
+        self.base = transport.base
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
         self._parent = None
 
     def sprout(self, *args, **kwargs):
         self.calls.append('sprout')
-        return _TestBranch()
+        return _TestBranch(self._transport)
 
     def copy_content_into(self, destination, revision_id=None):
         self.calls.append('copy_content_into')
@@ -1243,6 +1249,9 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def get_parent(self):
         return self._parent
+
+    def _get_config(self):
+        return config.TransportConfig(self._transport, 'branch.conf')
 
     def set_parent(self, parent):
         self._parent = parent

@@ -674,6 +674,10 @@ class cmd_add(Command):
     
     Any files matching patterns in the ignore list will not be added
     unless they are explicitly mentioned.
+    
+    In recursive mode, files larger than the configuration option 
+    add.maximum_file_size will be skipped. Named items are never skipped due
+    to file size.
     """
     takes_args = ['file*']
     takes_options = [
@@ -706,7 +710,7 @@ class cmd_add(Command):
             action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
                           to_file=self.outf, should_print=(not is_quiet()))
         else:
-            action = bzrlib.add.AddAction(to_file=self.outf,
+            action = bzrlib.add.AddWithSkipLargeAction(to_file=self.outf,
                 should_print=(not is_quiet()))
 
         if base_tree:
@@ -1195,7 +1199,7 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved push location: %s\n" % display_url)
+                note("Using saved push location: %s" % display_url)
                 location = stored_loc
 
         _show_push_branch(br_from, revision_id, location, self.outf,
@@ -1332,6 +1336,23 @@ class cmd_branch(Command):
             _mod_switch.switch(wt.bzrdir, branch)
             note('Switched to branch: %s',
                 urlutils.unescape_for_display(branch.base, 'utf-8'))
+
+
+class cmd_branches(Command):
+    __doc__ = """List the branches available at the current location.
+
+    This command will print the names of all the branches at the current location.
+    """
+
+    takes_args = ['location?']
+
+    def run(self, location="."):
+        dir = bzrdir.BzrDir.open_containing(location)[0]
+        for branch in dir.list_branches():
+            if branch.name is None:
+                self.outf.write(" (default)\n")
+            else:
+                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
 
 
 class cmd_checkout(Command):
@@ -3327,8 +3348,11 @@ class cmd_commit(Command):
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            if my_message == "":
-                raise errors.BzrCommandError("empty commit message specified")
+                if my_message == "":
+                    raise errors.BzrCommandError("Empty commit message specified."
+                            " Please specify a commit message with either"
+                            " --message or --file or leave a blank message"
+                            " with --message \"\".")
             return my_message
 
         # The API permits a commit with a filter of [] to mean 'select nothing'

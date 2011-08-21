@@ -1889,3 +1889,7 @@ class _LazyListJoin(object):
         for list_part in self.list_parts:
             full_list.extend(list_part)
         return iter(full_list)
+
+    def __repr__(self):
+        return "%s.%s(%s)" % (self.__module__, self.__class__.__name__,
+                              self.list_parts)

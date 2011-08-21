@@ -6,14 +6,14 @@ The Transport API in bzrlib provides URL based access to network resources.
    >>> from bzrlib.urlutils import local_path_from_url
    >>> import bzrlib.transport as transport
    >>> if sys.platform == 'win32':
-   ...     root = transport.get_transport('file:///C:/')
+   ...     root = transport.get_transport_from_url('file:///C:/')
    ... else:
-   ...     root = transport.get_transport('file:///')
+   ...     root = transport.get_transport_from_url('file:///')
    >>>
 
 Each Transport instance represents a single logical directory.
 
-   >>> dir = transport.get_transport(".")
+   >>> dir = transport.get_transport_from_path(".")
    >>> local_path_from_url(dir.base) == getcwd() + '/'
    True
 

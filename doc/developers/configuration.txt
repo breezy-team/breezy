@@ -6,7 +6,7 @@ A configuration option has:
 * a name: a valid python identifier (even if it's not used as an
   identifier in python itself)
 
-* a value: a unicode string
+* a value: a unicode string or a list of unicode strings.
 
 Option
 ------
@@ -19,9 +19,20 @@ The Option object is used to define its properties:
 * default: the default value that Stack.get() should return if no
   value can be found for the option.
 
+* default_from_env: a list of environment variables. The first variable set
+  will provide a default value overriding 'default' which remains the
+  default value if *no* environment variable is set.
+
 * help: a doc string describing the option, the first line should be a
   summary and can be followed by a blank line and a more detailed
   explanation.
+
+* from_unicode: a callable accepting a unicode string and returning a
+  suitable value for the option. If the string cannot be coerced it should
+  return None.
+
+* invalid: the action to be taken when an invalid value is encountered in a
+  store (during a Stack.get()).
 
 Sections
 --------

@@ -44,6 +44,7 @@ def load_tests(basic_tests, module, loader):
                      'test_ancestry',
                      'test_annotate',
                      'test_branch',
+                     'test_branches',
                      'test_break_lock',
                      'test_bound_branches',
                      'test_bundle_info',

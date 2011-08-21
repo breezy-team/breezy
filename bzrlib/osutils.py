@@ -42,6 +42,7 @@ import unicodedata
 
 from bzrlib import (
     cache_utf8,
+    config,
     errors,
     trace,
     win32utils,
@@ -985,8 +986,7 @@ def failed_to_load_extension(exception):
 def report_extension_load_failures():
     if not _extension_load_failures:
         return
-    from bzrlib.config import GlobalConfig
-    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+    if config.GlobalStack().get('ignore_missing_extensions'):
         return
     # the warnings framework should by default show this only once
     from bzrlib.trace import warning
@@ -2178,15 +2178,18 @@ def file_kind_from_stat_mode_thunk(mode):
     return file_kind_from_stat_mode(mode)
 file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
 
-
-def file_kind(f, _lstat=os.lstat):
+def file_stat(f, _lstat=os.lstat):
     try:
-        return file_kind_from_stat_mode(_lstat(f).st_mode)
+        # XXX cache?
+        return _lstat(f)
     except OSError, e:
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
+def file_kind(f, _lstat=os.lstat):
+    stat_value = file_stat(f, _lstat)
+    return file_kind_from_stat_mode(stat_value.st_mode)
 
 def until_no_eintr(f, *a, **kw):
     """Run f(*a, **kw), retrying if an EINTR error occurs.

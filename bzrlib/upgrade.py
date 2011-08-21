@@ -21,6 +21,7 @@ from bzrlib import (
     errors,
     trace,
     ui,
+    urlutils,
     )
 from bzrlib.bzrdir import (
     BzrDir,
@@ -72,7 +73,8 @@ class Convert(object):
             if branch.user_url != self.bzrdir.user_url:
                 ui.ui_factory.note(
                     'This is a checkout. The branch (%s) needs to be upgraded'
-                    ' separately.' % (branch.user_url,))
+                    ' separately.' % (urlutils.unescape_for_display(
+                        branch.user_url, 'utf-8')))
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
             # might not be a format we can open without upgrading; see e.g.
@@ -96,7 +98,8 @@ class Convert(object):
             raise errors.BzrError("cannot upgrade from bzrdir format %s" %
                            self.bzrdir._format)
         self.bzrdir.check_conversion_target(format)
-        ui.ui_factory.note('starting upgrade of %s' % self.transport.base)
+        ui.ui_factory.note('starting upgrade of %s' % 
+            urlutils.unescape_for_display(self.transport.base, 'utf-8'))
 
         self.backup_oldpath, self.backup_newpath = self.bzrdir.backup_bzrdir()
         while self.bzrdir.needs_format_conversion(format):
@@ -274,7 +277,8 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
         bzr_object, bzr_label = _get_object_and_label(control_dir)
         type_label = label or bzr_label
         child_pb.update("Upgrading %s" % (type_label), i+1, len(items))
-        ui.ui_factory.note('Upgrading %s %s ...' % (type_label, location,))
+        ui.ui_factory.note('Upgrading %s %s ...' % (type_label, 
+            urlutils.unescape_for_display(location, 'utf-8'),))
         try:
             if not dry_run:
                 cv = Convert(control_dir=control_dir, format=format)

@@ -224,7 +224,7 @@ class TestBzrServe(TestBzrServeBase):
     def test_bzr_serve_port_readonly(self):
         """bzr server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
-        t = transport.get_transport(url)
+        t = transport.get_transport_from_url(url)
         self.assertRaises(errors.TransportNotPossible, t.mkdir, 'adir')
         self.assertServerFinishesCleanly(process)
 

@@ -16,7 +16,6 @@
 
 
 from cStringIO import StringIO
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -780,8 +779,9 @@ class Branch(controldir.ControlComponent):
                                   other_branch=None):
         """See Branch.generate_revision_history"""
         graph = self.repository.get_graph()
+        (last_revno, last_revid) = self.last_revision_info()
         known_revision_ids = [
-            self.last_revision_info(),
+            (last_revid, last_revno),
             (_mod_revision.NULL_REVISION, 0),
             ]
         if last_rev is not None:
@@ -1540,10 +1540,15 @@ class Branch(controldir.ControlComponent):
         # For bzr native formats must_fetch is just the tip, and if_present_fetch
         # are the tags.
         must_fetch = set([self.last_revision()])
-        try:
-            if_present_fetch = set(self.tags.get_reverse_tag_dict())
-        except errors.TagsNotSupported:
-            if_present_fetch = set()
+        if_present_fetch = set()
+        c = self.get_config()
+        include_tags = c.get_user_option_as_bool('branch.fetch_tags',
+                                                 default=False)
+        if include_tags:
+            try:
+                if_present_fetch = set(self.tags.get_reverse_tag_dict())
+            except errors.TagsNotSupported:
+                pass
         must_fetch.discard(_mod_revision.NULL_REVISION)
         if_present_fetch.discard(_mod_revision.NULL_REVISION)
         return must_fetch, if_present_fetch
@@ -2240,6 +2245,8 @@ class BranchReferenceFormat(BranchFormat):
             # creation contract must see it as uninitializable
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.user_url)
+        if a_bzrdir._format.fixed_components:
+            raise errors.IncompatibleFormat(self, a_bzrdir._format)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.bzrdir.user_url)

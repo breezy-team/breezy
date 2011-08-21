@@ -115,8 +115,8 @@ class TestHasSameLocation(TestCaseWithRepository):
         if repo._format == other_repo._format:
             # We're testing the default format!  So we have to use a non-default
             # format for other_repo.
-            transport.get_transport(self.get_vfs_only_url()
-                                    ).delete_tree('other')
+            transport.get_transport_from_url(
+                self.get_vfs_only_url()).delete_tree('other')
             other_repo = self.make_repository('other', format='knit')
         # Make sure the other_repo is not a RemoteRepository.
         other_bzrdir = bzrdir.BzrDir.open(self.get_vfs_only_url('other'))
