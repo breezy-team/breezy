@@ -2857,6 +2857,32 @@ class TestLocationMatcher(TestStore):
     def get_store(self, file_name):
         return config.IniFileStore(self.get_readonly_transport(), file_name)
 
+    def test_unrelated_section_excluded(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+[/foo]
+section=/foo
+[/foo/baz]
+section=/foo/baz
+[/foo/bar]
+section=/foo/bar
+[/foo/bar/baz]
+section=/foo/bar/baz
+[/quux/quux]
+section=/quux/quux
+''')
+        self.assertEquals(['/foo', '/foo/baz', '/foo/bar', '/foo/bar/baz',
+                           '/quux/quux'],
+                          [section.id for section in store.get_sections()])
+        matcher = config.LocationMatcher(store, '/foo/bar/quux')
+        sections = list(matcher.get_sections())
+        self.assertEquals([3, 2],
+                          [section.length for section in sections])
+        self.assertEquals(['/foo/bar', '/foo'],
+                          [section.id for section in sections])
+        self.assertEquals(['quux', 'bar/quux'],
+                          [section.extra_path for section in sections])
+
     def test_more_specific_sections_first(self):
         store = self.get_store('foo.conf')
         store._load_from_string('''
