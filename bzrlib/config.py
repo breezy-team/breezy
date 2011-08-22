@@ -2371,12 +2371,18 @@ class Option(object):
         return converted
 
     def get_default(self):
+        value = None
         for var in self.default_from_env:
             try:
-                return os.environ[var]
+                # If the env variable is defined, its value is the default one
+                value = os.environ[var]
+                break
             except KeyError:
                 continue
-        return self.default
+        if value is None:
+            # Otherwise, fallback to the value defined at registration
+            value = self.default
+        return value
 
     def get_help_text(self, additional_see_also=None, plain=True):
         result = self.help
