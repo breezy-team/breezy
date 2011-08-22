@@ -3139,10 +3139,15 @@ class TestStackGetWithConverter(TestStackGet):
         self.register_bool_option('foo', u'False')
         self.assertEquals(False, self.conf.get('foo'))
 
-    def test_get_default_from_env_converted(self):
+    def test_get_default_bool_from_env_converted(self):
         self.register_bool_option('foo', u'True', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'False')
         self.assertEquals(False, self.conf.get('foo'))
+
+    def test_get_default_bool_when_conversion_fails(self):
+        self.register_bool_option('foo', default='True')
+        self.conf.store._load_from_string('foo=invalid boolean')
+        self.assertEquals(True, self.conf.get('foo'))
 
     def register_integer_option(self, name,
                                 default=None, default_from_env=None):
@@ -3163,6 +3168,11 @@ class TestStackGetWithConverter(TestStackGet):
         self.register_integer_option('foo', default_from_env=['FOO'])
         self.overrideEnv('FOO', '18')
         self.assertEquals(18, self.conf.get('foo'))
+
+    def test_get_default_integer_when_conversion_fails(self):
+        self.register_integer_option('foo', default='12')
+        self.conf.store._load_from_string('foo=invalid integer')
+        self.assertEquals(12, self.conf.get('foo'))
 
     def register_list_option(self, name, default=None, default_from_env=None):
         l = config.Option(name, help='A list.',
