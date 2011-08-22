@@ -1148,6 +1148,15 @@ class BzrDirMeta1(BzrDir):
         return True
 
     def _get_branch_path(self, name):
+        """Obtain the branch path to use.
+
+        This uses the API specified branch name first, and then falls back to
+        the branch name specified in the URL. If neither of those is specified,
+        it uses the default branch.
+
+        :param name: Optional branch name to use
+        :return: Relative path to branch
+        """
         if name is None:
             name = self._get_selected_branch()
         if name is None:
@@ -1224,10 +1233,11 @@ class BzrDirMeta1(BzrDir):
             branch_format.get_format_string()
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
-        try:
-            self.transport.mkdir('branches')
-        except errors.FileExists:
-            pass
+        if path != 'branch':
+            try:
+                self.transport.mkdir('branches', mode=self._get_mkdir_mode())
+            except errors.FileExists:
+                pass
         try:
             self.transport.mkdir(path, mode=self._get_mkdir_mode())
         except errors.FileExists:
