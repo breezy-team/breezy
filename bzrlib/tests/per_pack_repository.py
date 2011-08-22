@@ -266,7 +266,7 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         server = test_server.FakeNFSServer()
         self.start_server(server)
-        t = transport.get_transport(server.get_url())
+        t = transport.get_transport_from_url(server.get_url())
         bzrdir = self.get_format().initialize_on_transport(t)
         repo = bzrdir.create_repository()
         repo_transport = bzrdir.get_repository_transport(None)

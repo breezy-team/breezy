@@ -32,10 +32,16 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``config.LocationMatcher`` properly excludes unrelated sections.
+  (Vincent Ladeuil, #829237)
+
 Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Corrected documentation for BZR_PROGRESS_BAR. 
+  (Dennis Benzinger, #735417)
 
 API Changes
 ***********

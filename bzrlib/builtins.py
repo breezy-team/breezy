@@ -674,6 +674,10 @@ class cmd_add(Command):
     
     Any files matching patterns in the ignore list will not be added
     unless they are explicitly mentioned.
+    
+    In recursive mode, files larger than the configuration option 
+    add.maximum_file_size will be skipped. Named items are never skipped due
+    to file size.
     """
     takes_args = ['file*']
     takes_options = [
@@ -706,7 +710,7 @@ class cmd_add(Command):
             action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
                           to_file=self.outf, should_print=(not is_quiet()))
         else:
-            action = bzrlib.add.AddAction(to_file=self.outf,
+            action = bzrlib.add.AddWithSkipLargeAction(to_file=self.outf,
                 should_print=(not is_quiet()))
 
         if base_tree:

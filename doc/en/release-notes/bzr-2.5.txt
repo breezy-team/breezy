@@ -72,11 +72,19 @@ New Features
   while --match-message, --match-author, --match-committer and
   --match-bugs match each of those fields.
 
+* ``config.Option`` can now declare ``default_from_env``, a list of
+  environment variables to get a default value from. (Vincent Ladeuil)
+
 * New builtin ``bzr branches`` command, which lists all colocated branches
   in a directory. (Jelmer Vernooij, #826820)
 
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
+
+* bzr add now skips large files in recursive mode. The default "large"
+  size is 20MB, and is configurable via the add.maximum_file_size
+  option. A value of 0 disables skipping. Named items passed to add are
+  never skipped. (Shannon Weyrick, #54624)
 
 Improvements
 ************
@@ -87,6 +95,9 @@ Improvements
 * ``bzr commit -m ''`` can now be used to force an empty commit message.
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
+
+* Locations printed by ``bzr upgrade`` are now formatted before display.
+  (Jelmer Vernooij)
 
 Bug Fixes
 *********
@@ -169,6 +180,10 @@ API Changes
   no longer support it.
   (Martin Pool)
 
+* New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
+  value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
+  (Shannon Weyrick)
+
 * ``Transport`` now has a ``_parsed_url`` attribute instead of
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
   and ``_path`` attributes. Proxies are provided for the moment but
@@ -191,6 +206,9 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Blackbox tests can be debugged interactively (see bzrlib.debug.BzrPdb for
+  details). (Vincent Ladeuil)
 
 * `BranchBuilder.build_snapshot` now supports a "flush" action.  This
   cleanly and reliably allows tests using `BranchBuilder` to construct

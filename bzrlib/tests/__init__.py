@@ -1009,7 +1009,9 @@ class TestCase(testtools.TestCase):
     def debug(self):
         # debug a frame up.
         import pdb
-        pdb.Pdb().set_trace(sys._getframe().f_back)
+        # The sys preserved stdin/stdout should allow blackbox tests debugging
+        pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
+                ).set_trace(sys._getframe().f_back)
 
     def discardDetail(self, name):
         """Extend the addDetail, getDetails api so we can remove a detail.
@@ -2431,7 +2433,8 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = _mod_transport.get_transport(self.get_readonly_url(relpath))
+        t = _mod_transport.get_transport_from_url(
+            self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -2571,7 +2574,7 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        t = _mod_transport.get_transport(root)
+        t = _mod_transport.get_transport_from_path(root)
         self.permit_url(t.base)
         if (t.get_bytes('.bzr/checkout/dirstate') != 
                 TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE):
@@ -2822,7 +2825,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 "a list or a tuple. Got %r instead" % (shape,))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
-            transport = _mod_transport.get_transport(".")
+            transport = _mod_transport.get_transport_from_path(".")
         for name in shape:
             self.assertIsInstance(name, basestring)
             if name[-1] == '/':

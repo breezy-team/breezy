@@ -541,7 +541,7 @@ class RemoteHTTPTransport(RemoteTransport):
             # url only for an intial construction (when the url came from the
             # command-line).
             http_url = base[len('bzr+'):]
-            self._http_transport = transport.get_transport(http_url)
+            self._http_transport = transport.get_transport_from_url(http_url)
         else:
             self._http_transport = http_transport
         super(RemoteHTTPTransport, self).__init__(

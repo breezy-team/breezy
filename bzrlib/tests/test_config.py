@@ -116,6 +116,13 @@ def build_branch_store(test):
 config.test_store_builder_registry.register('branch', build_branch_store)
 
 
+def build_control_store(test):
+    build_backing_branch(test, 'branch')
+    b = bzrdir.BzrDir.open('branch')
+    return config.ControlStore(b)
+config.test_store_builder_registry.register('control', build_control_store)
+
+
 def build_remote_branch_store(test):
     # There is only one permutation (but we won't be able to handle more with
     # this design anyway)
@@ -148,9 +155,22 @@ def build_remote_branch_stack(test):
      server_class) = transport_remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return config.BranchStack(b)
+    return config.RemoteBranchStack(b)
 config.test_stack_builder_registry.register('remote_branch',
                                             build_remote_branch_stack)
+
+def build_remote_control_stack(test):
+    # There is only one permutation (but we won't be able to handle more with
+    # this design anyway)
+    (transport_class,
+     server_class) = transport_remote.get_test_permutations()[0]
+    # We need only a bzrdir for this, not a full branch, but it's not worth
+    # creating a dedicated helper to create only the bzrdir
+    build_backing_branch(test, 'branch', transport_class, server_class)
+    b = branch.Branch.open(test.get_url('branch'))
+    return config.RemoteControlStack(b.bzrdir)
+config.test_stack_builder_registry.register('remote_control',
+                                            build_remote_control_stack)
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -1035,6 +1055,26 @@ one_item = x
         # automatically cast to list
         self.assertEqual(['x'], get_list('one_item'))
 
+    def test_get_user_option_as_int_from_SI(self):
+        conf, parser = self.make_config_parser("""
+plain = 100
+si_k = 5k,
+si_kb = 5kb,
+si_m = 5M,
+si_mb = 5MB,
+si_g = 5g,
+si_gb = 5gB,
+""")
+        get_si = conf.get_user_option_as_int_from_SI
+        self.assertEqual(100, get_si('plain'))
+        self.assertEqual(5000, get_si('si_k'))
+        self.assertEqual(5000, get_si('si_kb'))
+        self.assertEqual(5000000, get_si('si_m'))
+        self.assertEqual(5000000, get_si('si_mb'))
+        self.assertEqual(5000000000, get_si('si_g'))
+        self.assertEqual(5000000000, get_si('si_gb'))
+        self.assertEqual(None, get_si('non-exist'))
+        self.assertEqual(42, get_si('non-exist-with-default',  42))
 
 class TestSupressWarning(TestIniConfig):
 
@@ -2213,6 +2253,20 @@ class TestOption(tests.TestCase):
         opt = config.Option('foo', default='bar')
         self.assertEquals('bar', opt.get_default())
 
+    def test_default_value_from_env(self):
+        opt = config.Option('foo', default='bar', default_from_env=['FOO'])
+        self.overrideEnv('FOO', 'quux')
+        # Env variable provides a default taking over the option one
+        self.assertEquals('quux', opt.get_default())
+        
+    def test_first_default_value_from_env_wins(self):
+        opt = config.Option('foo', default='bar',
+                            default_from_env=['NO_VALUE', 'FOO', 'BAZ'])
+        self.overrideEnv('FOO', 'foo')
+        self.overrideEnv('BAZ', 'baz')
+        # The first env var set wins
+        self.assertEquals('foo', opt.get_default())
+
 
 class TestOptionRegistry(tests.TestCase):
 
@@ -2822,6 +2876,32 @@ class TestLocationMatcher(TestStore):
 
     def get_store(self, file_name):
         return config.IniFileStore(self.get_readonly_transport(), file_name)
+
+    def test_unrelated_section_excluded(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+[/foo]
+section=/foo
+[/foo/baz]
+section=/foo/baz
+[/foo/bar]
+section=/foo/bar
+[/foo/bar/baz]
+section=/foo/bar/baz
+[/quux/quux]
+section=/quux/quux
+''')
+        self.assertEquals(['/foo', '/foo/baz', '/foo/bar', '/foo/bar/baz',
+                           '/quux/quux'],
+                          [section.id for section in store.get_sections()])
+        matcher = config.LocationMatcher(store, '/foo/bar/quux')
+        sections = list(matcher.get_sections())
+        self.assertEquals([3, 2],
+                          [section.length for section in sections])
+        self.assertEquals(['/foo/bar', '/foo'],
+                          [section.id for section in sections])
+        self.assertEquals(['quux', 'bar/quux'],
+                          [section.extra_path for section in sections])
 
     def test_more_specific_sections_first(self):
         store = self.get_store('foo.conf')

@@ -619,7 +619,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
     def test_dangling_locks_cause_failures(self):
         class TestDanglingLock(tests.TestCaseWithMemoryTransport):
             def test_function(self):
-                t = self.get_transport('.')
+                t = self.get_transport_from_path('.')
                 l = lockdir.LockDir(t, 'lock')
                 l.create()
                 l.attempt_lock()
@@ -645,8 +645,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         # for the server
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
-        t = transport.get_transport(url)
-        t2 = transport.get_transport(url2)
+        t = transport.get_transport_from_url(url)
+        t2 = transport.get_transport_from_url(url2)
         self.assertIsInstance(t, ReadonlyTransportDecorator)
         self.assertIsInstance(t2, ReadonlyTransportDecorator)
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
@@ -660,8 +660,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
         # the transport returned may be any HttpTransportBase subclass
-        t = transport.get_transport(url)
-        t2 = transport.get_transport(url2)
+        t = transport.get_transport_from_url(url)
+        t2 = transport.get_transport_from_url(url2)
         self.assertIsInstance(t, HttpTransportBase)
         self.assertIsInstance(t2, HttpTransportBase)
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
@@ -705,7 +705,7 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
 class TestChrootedTest(tests.ChrootedTestCase):
 
     def test_root_is_root(self):
-        t = transport.get_transport(self.get_readonly_url())
+        t = transport.get_transport_from_url(self.get_readonly_url())
         url = t.base
         self.assertEqual(url, t.clone('..').base)
 
@@ -1490,7 +1490,7 @@ class TestTestCase(tests.TestCase):
         transport_server = memory.MemoryServer()
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
-        t = transport.get_transport(transport_server.get_url())
+        t = transport.get_transport_from_url(transport_server.get_url())
         bzrdir.BzrDir.create(t.base)
         self.assertRaises(errors.BzrError,
             bzrdir.BzrDir.open_from_transport, t)
