@@ -2999,6 +2999,7 @@ class _CompatibleStack(Stack):
 
 
 class GlobalStack(_CompatibleStack):
+    """Global options only stack."""
 
     def __init__(self):
         # Get a GlobalStore
@@ -3007,6 +3008,7 @@ class GlobalStack(_CompatibleStack):
 
 
 class LocationStack(_CompatibleStack):
+    """Per-location options falling back to global options stack."""
 
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
@@ -3020,6 +3022,7 @@ class LocationStack(_CompatibleStack):
 
 
 class BranchStack(_CompatibleStack):
+    """Per-location options falling back to branch then global options stack."""
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
@@ -3033,6 +3036,7 @@ class BranchStack(_CompatibleStack):
 
 
 class RemoteControlStack(_CompatibleStack):
+    """Remote control-only options stack."""
 
     def __init__(self, bzrdir):
         cstore = ControlStore(bzrdir)
@@ -3043,6 +3047,7 @@ class RemoteControlStack(_CompatibleStack):
 
 
 class RemoteBranchStack(_CompatibleStack):
+    """Remote branch-only options stack."""
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
