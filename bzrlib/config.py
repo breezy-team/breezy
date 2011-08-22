@@ -2987,12 +2987,11 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
+        if value is None and opt is not None:
+            # If the option is registered, it may provide a default value
+            value = opt.get_default()
         if opt is not None:
             value = opt.convert_from_unicode(value)
-        if value is None:
-            # If the option is registered, it may provide a default value
-            if opt is not None:
-                value = opt.get_default()
         for hook in ConfigHooks['get']:
             hook(self, name, value)
         return value
