@@ -2947,8 +2947,6 @@ class Stack(object):
             # If the option is registered, it may provide a default value
             if opt is not None:
                 value = opt.get_default()
-        for hook in ConfigHooks['get']:
-            hook(self, name, value)
         if expand:
             if isinstance(value, list):
                 value = self._expand_options_in_list(value)
@@ -2958,6 +2956,8 @@ class Stack(object):
                               % (name,))
             elif isinstance(value, (str, unicode)):
                 value = self._expand_options_in_string(value)
+        for hook in ConfigHooks['get']:
+            hook(self, name, value)
         return value
 
     def expand_options(self, string, env=None):
