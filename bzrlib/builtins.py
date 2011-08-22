@@ -4979,6 +4979,8 @@ class cmd_uncommit(Command):
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes.'),
                     Option('force', help='Say yes to all questions.'),
+                    Option('keep-tags',
+                           help='Keep tags that point to removed revisions.'),
                     Option('local',
                            help="Only remove the commits from the local branch"
                                 " when in a checkout."
@@ -4989,7 +4991,7 @@ class cmd_uncommit(Command):
     encoding_type = 'replace'
 
     def run(self, location=None,
-            dry_run=False, verbose=False,
+            dry_run=False, verbose=False, keep_tags=False,
             revision=None, force=False, local=False):
         if location is None:
             location = u'.'
@@ -5005,9 +5007,11 @@ class cmd_uncommit(Command):
             self.add_cleanup(tree.lock_write().unlock)
         else:
             self.add_cleanup(b.lock_write().unlock)
-        return self._run(b, tree, dry_run, verbose, revision, force, local=local)
+        return self._run(b, tree, dry_run, verbose, revision, force,
+                         keep_tags, local=local)
 
-    def _run(self, b, tree, dry_run, verbose, revision, force, local=False):
+    def _run(self, b, tree, dry_run, verbose, revision, force, keep_tags,
+             local=False):
         from bzrlib.log import log_formatter, show_log
         from bzrlib.uncommit import uncommit
 
@@ -5059,7 +5063,7 @@ class cmd_uncommit(Command):
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
-                 revno=revno, local=local)
+                 revno=revno, local=local, keep_tags=keep_tags)
         self.outf.write('You can restore the old tip by running:\n'
              '  bzr pull . -r revid:%s\n' % last_rev_id)
 
