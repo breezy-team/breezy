@@ -1146,6 +1146,13 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
+    def _get_branch_path(self, name):
+        if name is None:
+            name = self._get_selected_branch()
+        if name is None:
+            return 'branch'
+        return urlutils.join('branches', name)
+
     def create_branch(self, name=None, repository=None):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self, name=name,
@@ -1153,8 +1160,7 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+        path = self._get_branch_path(name)
         self.transport.delete_tree('branch')
 
     def create_repository(self, shared=False):
@@ -1208,21 +1214,21 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+        path = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:
-            return self.transport.clone('branch')
+            return self.transport.clone(path)
         try:
             branch_format.get_format_string()
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
         try:
-            self.transport.mkdir('branch', mode=self._get_mkdir_mode())
+            self.transport.mkdir('branches')
+            self.transport.mkdir(path, mode=self._get_mkdir_mode())
         except errors.FileExists:
             pass
-        return self.transport.clone('branch')
+        return self.transport.clone(path)
 
     def get_repository_transport(self, repository_format):
         """See BzrDir.get_repository_transport()."""
@@ -1292,6 +1298,22 @@ class BzrDirMeta1(BzrDir):
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         return False
+
+    def list_branches(self):
+        """See ControlDir.list_branches."""
+        try:
+            entries = self.control_transport.list_dir("branches")
+        except errors.NoSuchFile:
+            # Not colocated
+            try:
+                return [self.open_branch()]
+            except (errors.NotBranchError, errors.NoRepositoryPresent):
+                return []
+        else:
+            ret = []
+            for name in entries:
+                ret.append(self.open_branch(name))
+            return ret
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
@@ -1619,13 +1641,15 @@ class BzrDirMetaFormat1(BzrDirFormat):
     It has:
 
     - Format 3 working trees [optional]
-    - Format 5 branches [optional]
+    - Format 5 branches [zero or more]
     - Format 7 repositories [optional]
     """
 
     _lock_class = lockdir.LockDir
 
     fixed_components = False
+
+    colocated_branches = True
 
     def __init__(self):
         self._workingtree_format = None
