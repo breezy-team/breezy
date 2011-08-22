@@ -108,7 +108,7 @@ class TestUncommit(tests.TestCaseWithTransport):
         self.assertEqual((1, history[0]), tree.branch.last_revision_info())
         self.assertEqual({
             "pointsatexisting": history[0]
-            }, self.branch.tags.get_tag_dict())
+            }, tree.branch.tags.get_tag_dict())
 
     def test_uncommit_keep_tags(self):
         tree, history = self.make_linear_tree()
@@ -122,4 +122,4 @@ class TestUncommit(tests.TestCaseWithTransport):
         self.assertEqual({
             "pointsatexisting": history[0],
             "pointsatremoved": history[1],
-            }, self.branch.tags.get_tag_dict())
+            }, tree.branch.tags.get_tag_dict())
