@@ -2238,7 +2238,7 @@ class TestOption(tests.TestCase):
         self.overrideEnv('FOO', 'quux')
         # Env variable provides a default taking over the option one
         self.assertEquals('quux', opt.get_default())
-        
+
     def test_first_default_value_from_env_wins(self):
         opt = config.Option('foo', default='bar',
                             default_from_env=['NO_VALUE', 'FOO', 'BAZ'])
@@ -2246,6 +2246,99 @@ class TestOption(tests.TestCase):
         self.overrideEnv('BAZ', 'baz')
         # The first env var set wins
         self.assertEquals('foo', opt.get_default())
+
+
+class TestOptionConverterMixin(object):
+
+    def assertConverted(self, expected, opt, value):
+        self.assertEquals(expected, opt.convert_from_unicode(value))
+
+    def assertWarns(self, opt, value):
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.assertEquals(None, opt.convert_from_unicode(value))
+        self.assertLength(1, warnings)
+        self.assertEquals(
+            'Value "%s" is not valid for "%s"' % (value, opt.name),
+            warnings[0])
+
+    def assertErrors(self, opt, value):
+        self.assertRaises(errors.ConfigOptionValueError,
+                          opt.convert_from_unicode, value)
+
+    def assertConvertInvalid(self, opt, invalid_value):
+        opt.invalid = None
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        opt.invalid = 'warning'
+        self.assertWarns(opt, invalid_value)
+        opt.invalid = 'error'
+        self.assertErrors(opt, invalid_value)
+
+
+class TestOptionWithBooleanConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A boolean.',
+                             from_unicode=config.bool_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as a boolean
+        self.assertConvertInvalid(opt, u'invalid-boolean')
+        # A list of strings is never recognized as a boolean
+        self.assertConvertInvalid(opt, [u'not', u'a', u'boolean'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(True, opt, u'True')
+        self.assertConverted(True, opt, u'1')
+        self.assertConverted(False, opt, u'False')
+
+
+class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer.',
+                             from_unicode=config.int_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as an integer
+        self.assertConvertInvalid(opt, u'forty-two')
+        # A list of strings is never recognized as an integer
+        self.assertConvertInvalid(opt, [u'a', u'list'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(16, opt, u'16')
+
+class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A list.',
+                             from_unicode=config.list_from_store)
+
+    def test_convert_invalid(self):
+        # No string is invalid as all forms can be converted to a list
+        pass
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        # An empty string is an empty list
+        self.assertConverted([], opt, '') # Using a bare str() just in case
+        self.assertConverted([], opt, u'')
+        # A boolean
+        self.assertConverted([u'True'], opt, u'True')
+        # An integer
+        self.assertConverted([u'42'], opt, u'42')
+        # A single string
+        self.assertConverted([u'bar'], opt, u'bar')
+        # A list remains a list (configObj will turn a string containing commas
+        # into a list, but that's not what we're testing here)
+        self.assertConverted([u'foo', u'1', u'True'],
+                             opt, [u'foo', u'1', u'True'])
 
 
 class TestOptionRegistry(tests.TestCase):

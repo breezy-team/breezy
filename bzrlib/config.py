@@ -2352,6 +2352,24 @@ class Option(object):
             raise AssertionError("%s not supported for 'invalid'" % (invalid,))
         self.invalid = invalid
 
+    def convert_from_unicode(self, unicode_value):
+        if self.from_unicode is None or unicode_value is None:
+            # Cannot convert
+            return unicode_value
+        try:
+            converted = self.from_unicode(unicode_value)
+        except (ValueError, TypeError):
+            # Invalid values are ignored
+            converted = None
+        if converted is None and self.invalid is not None:
+            # The conversion failed
+            if self.invalid == 'warning':
+                trace.warning('Value "%s" is not valid for "%s"',
+                              unicode_value, self.name)
+            elif self.invalid == 'error':
+                raise errors.ConfigOptionValueError(self.name, unicode_value)
+        return converted
+
     def get_default(self):
         for var in self.default_from_env:
             try:
@@ -2969,22 +2987,8 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
-        if (opt is not None and opt.from_unicode is not None
-            and value is not None):
-            # If a value exists and the option provides a converter, use it
-            try:
-                converted = opt.from_unicode(value)
-            except (ValueError, TypeError):
-                # Invalid values are ignored
-                converted = None
-            if converted is None and opt.invalid is not None:
-                # The conversion failed
-                if opt.invalid == 'warning':
-                    trace.warning('Value "%s" is not valid for "%s"',
-                                  value, name)
-                elif opt.invalid == 'error':
-                    raise errors.ConfigOptionValueError(name, value)
-            value = converted
+        if opt is not None:
+            value = opt.convert_from_unicode(value)
         if value is None:
             # If the option is registered, it may provide a default value
             if opt is not None:
