@@ -96,3 +96,30 @@ class TestUncommit(tests.TestCaseWithTransport):
         # If this tree isn't bound, local=True raises an exception
         self.assertRaises(errors.LocalRequiresBoundBranch,
             uncommit.uncommit, tree.branch, tree=tree, local=True)
+
+    def test_uncommit_remove_tags(self):
+        tree, history = self.make_linear_tree()
+        self.assertEqual(history[1], tree.last_revision())
+        self.assertEqual((2, history[1]), tree.branch.last_revision_info())
+        tree.branch.tags.set_tag(u"pointsatexisting", history[0])
+        tree.branch.tags.set_tag(u"pointsatremoved", history[1])
+        uncommit.uncommit(tree.branch, tree=tree)
+        self.assertEqual(history[0], tree.last_revision())
+        self.assertEqual((1, history[0]), tree.branch.last_revision_info())
+        self.assertEqual({
+            "pointsatexisting": history[0]
+            }, self.branch.tags.get_tag_dict())
+
+    def test_uncommit_keep_tags(self):
+        tree, history = self.make_linear_tree()
+        self.assertEqual(history[1], tree.last_revision())
+        self.assertEqual((2, history[1]), tree.branch.last_revision_info())
+        tree.branch.tags.set_tag(u"pointsatexisting", history[0])
+        tree.branch.tags.set_tag(u"pointsatremoved", history[1])
+        uncommit.uncommit(tree.branch, tree=tree, keep_tags=True)
+        self.assertEqual(history[0], tree.last_revision())
+        self.assertEqual((1, history[0]), tree.branch.last_revision_info())
+        self.assertEqual({
+            "pointsatexisting": history[0],
+            "pointsatremoved": history[1],
+            }, self.branch.tags.get_tag_dict())

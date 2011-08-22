@@ -27,7 +27,7 @@ from bzrlib.errors import BoundBranchOutOfDate
 
 
 def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
-             local=False):
+             local=False, keep_tags=False):
     """Remove the last revision from the supplied branch.
 
     :param dry_run: Don't actually change anything
@@ -36,6 +36,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
     :param local: If this branch is bound, only remove the revisions from the
         local branch. If this branch is not bound, it is an error to pass
         local=True.
+    :param keep_tags: Whether to keep tags pointing at the removed revisions
+        around.
     """
     unlockable = []
     try:
