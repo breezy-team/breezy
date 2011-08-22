@@ -99,6 +99,11 @@ Improvements
 * Locations printed by ``bzr upgrade`` are now formatted before display.
   (Jelmer Vernooij)
 
+* The default Bazaar format now supports colocated branches. Older
+  versions of Bazaar will be able to access the active branch, but
+  can not browse the available colocated branches or switch between them.
+  (Jelmer Vernooij, #831481)
+
 Bug Fixes
 *********
 
