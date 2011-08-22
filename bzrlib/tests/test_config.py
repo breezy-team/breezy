@@ -116,6 +116,13 @@ def build_branch_store(test):
 config.test_store_builder_registry.register('branch', build_branch_store)
 
 
+def build_control_store(test):
+    build_backing_branch(test, 'branch')
+    b = bzrdir.BzrDir.open('branch')
+    return config.ControlStore(b)
+config.test_store_builder_registry.register('control', build_control_store)
+
+
 def build_remote_branch_store(test):
     # There is only one permutation (but we won't be able to handle more with
     # this design anyway)
@@ -148,9 +155,22 @@ def build_remote_branch_stack(test):
      server_class) = transport_remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return config.BranchStack(b)
+    return config.RemoteBranchStack(b)
 config.test_stack_builder_registry.register('remote_branch',
                                             build_remote_branch_stack)
+
+def build_remote_control_stack(test):
+    # There is only one permutation (but we won't be able to handle more with
+    # this design anyway)
+    (transport_class,
+     server_class) = transport_remote.get_test_permutations()[0]
+    # We need only a bzrdir for this, not a full branch, but it's not worth
+    # creating a dedicated helper to create only the bzrdir
+    build_backing_branch(test, 'branch', transport_class, server_class)
+    b = branch.Branch.open(test.get_url('branch'))
+    return config.RemoteControlStack(b.bzrdir)
+config.test_stack_builder_registry.register('remote_control',
+                                            build_remote_control_stack)
 
 
 sample_long_alias="log -r-15..-1 --line"

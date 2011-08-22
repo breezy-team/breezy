@@ -2812,6 +2812,14 @@ class BranchStore(IniFileStore):
         super(BranchStore, self).save()
 
 
+class ControlStore(LockableIniFileStore):
+
+    def __init__(self, bzrdir):
+        super(ControlStore, self).__init__(bzrdir.transport,
+                                          'control.conf',
+                                           lock_dir_name='branch_lock')
+
+
 class SectionMatcher(object):
     """Select sections into a given Store.
 
@@ -3048,6 +3056,7 @@ class _CompatibleStack(Stack):
 
 
 class GlobalStack(_CompatibleStack):
+    """Global options only stack."""
 
     def __init__(self):
         # Get a GlobalStore
@@ -3056,6 +3065,7 @@ class GlobalStack(_CompatibleStack):
 
 
 class LocationStack(_CompatibleStack):
+    """Per-location options falling back to global options stack."""
 
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
@@ -3067,7 +3077,9 @@ class LocationStack(_CompatibleStack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
+
 class BranchStack(_CompatibleStack):
+    """Per-location options falling back to branch then global options stack."""
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
@@ -3076,6 +3088,28 @@ class BranchStack(_CompatibleStack):
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            bstore)
+        self.branch = branch
+
+
+class RemoteControlStack(_CompatibleStack):
+    """Remote control-only options stack."""
+
+    def __init__(self, bzrdir):
+        cstore = ControlStore(bzrdir)
+        super(RemoteControlStack, self).__init__(
+            [cstore.get_sections],
+            cstore)
+        self.bzrdir = bzrdir
+
+
+class RemoteBranchStack(_CompatibleStack):
+    """Remote branch-only options stack."""
+
+    def __init__(self, branch):
+        bstore = BranchStore(branch)
+        super(RemoteBranchStack, self).__init__(
+            [bstore.get_sections],
             bstore)
         self.branch = branch
 
