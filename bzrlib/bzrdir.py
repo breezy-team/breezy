@@ -1162,7 +1162,7 @@ class BzrDirMeta1(BzrDir):
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
         path = self._get_branch_path(name)
-        self.transport.delete_tree('branch')
+        self.transport.delete_tree(path)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -1226,6 +1226,9 @@ class BzrDirMeta1(BzrDir):
             raise errors.IncompatibleFormat(branch_format, self._format)
         try:
             self.transport.mkdir('branches')
+        except errors.FileExists:
+            pass
+        try:
             self.transport.mkdir(path, mode=self._get_mkdir_mode())
         except errors.FileExists:
             pass
@@ -1302,19 +1305,23 @@ class BzrDirMeta1(BzrDir):
 
     def list_branches(self):
         """See ControlDir.list_branches."""
+        ret = []
+        # Default branch
         try:
-            entries = self.control_transport.list_dir("branches")
+            ret.append(self.open_branch())
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
+            pass
+
+        # colocated branches
+        try:
+            entries = self.control_transport.list_dir('branches')
         except errors.NoSuchFile:
-            # Not colocated
-            try:
-                return [self.open_branch()]
-            except (errors.NotBranchError, errors.NoRepositoryPresent):
-                return []
+            pass
         else:
-            ret = []
             for name in entries:
                 ret.append(self.open_branch(name))
-            return ret
+
+        return ret
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
