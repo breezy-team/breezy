@@ -2264,12 +2264,19 @@ class Option(object):
     value, in which config files it can be stored, etc (TBC).
     """
 
-    def __init__(self, name, default=None):
+    def __init__(self, name, default=None, from_unicode=None):
         self.name = name
         self.default = default
+        self.from_unicode = from_unicode
 
     def get_default(self):
         return self.default
+
+
+# Predefined converters to get proper values from store
+
+def bool_from_store(unicode_str):
+    return ui.bool_from_string(unicode_str)
 
 
 # Options registry
@@ -2282,12 +2289,13 @@ option_registry.register(
     help='The command called to launch an editor to enter a message.')
 
 option_registry.register(
-    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
+    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True,
+                                 from_unicode=bool_from_store),
     help='Flush dirstate changes onto physical disk?')
 
 option_registry.register(
     'repository.fdatasync',
-    Option('repository.fdatasync', default=True),
+    Option('repository.fdatasync', default=True, from_unicode=bool_from_store),
     help='Flush repository changes onto physical disk?')
 
 
@@ -2746,15 +2754,28 @@ class Stack(object):
                     break
             if value is not None:
                 break
+        # If the option is registered, it may provide additional info about
+        # value handling
+        try:
+            opt = option_registry.get(name)
+        except KeyError:
+            # Not registered
+            opt = None
+        if (opt is not None and opt.from_unicode is not None
+            and value is not None):
+            # If a value exists and the option provides a converter, use it
+            try:
+                converted = opt.from_unicode(value)
+            except (ValueError, TypeError):
+                # Invalid values are ignored
+                converted = None
+            value = converted
         if value is None:
             # If the option is registered, it may provide a default value
-            try:
-                opt = option_registry.get(name)
-            except KeyError:
-                # Not registered
-                opt = None
             if opt is not None:
                 value = opt.get_default()
+        if opt is not None and value is None:
+            value = opt.get_default()
         for hook in ConfigHooks['get']:
             hook(self, name, value)
         return value
