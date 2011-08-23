@@ -103,7 +103,7 @@ class cmd_register_branch(Command):
                 'Launchpad project short name to associate with the branch.',
                 unicode),
          Option('product',
-                'Launchpad product short name to associate with the branch.', 
+                'Launchpad product short name to associate with the branch.',
                 unicode,
                 hidden=True),
          Option('branch-name',

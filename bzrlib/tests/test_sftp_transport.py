@@ -180,7 +180,7 @@ class SFTPNonServerTest(TestCase):
         server.start_server()
         self.addCleanup(server.stop_server)
 
-        transport = _mod_transport.get_transport(server.get_url())
+        transport = _mod_transport.get_transport_from_url(server.get_url())
         self.assertFalse(transport.abspath('/').endswith('/~/'))
         self.assertTrue(transport.abspath('/').endswith('/'))
         del transport
@@ -287,7 +287,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         """Test that a real connection attempt raises the right error"""
         from bzrlib.transport import ssh
         self.set_vendor(ssh.ParamikoVendor())
-        t = _mod_transport.get_transport(self.bogus_url)
+        t = _mod_transport.get_transport_from_url(self.bogus_url)
         self.assertRaises(errors.ConnectionError, t.get, 'foobar')
 
     def test_bad_connection_ssh(self):
@@ -488,7 +488,8 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
             conf._get_config().update(
                 {'sftptest': {'scheme': 'ssh', 'port': port, 'user': 'bar'}})
             conf._save()
-        t = _mod_transport.get_transport('sftp://localhost:%d' % port)
+        t = _mod_transport.get_transport_from_url(
+            'sftp://localhost:%d' % port)
         # force a connection to be performed.
         t.has('foo')
         return t

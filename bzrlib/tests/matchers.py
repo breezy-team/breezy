@@ -27,6 +27,7 @@ assertions in Test Case objects, so they are recommended for new testing work.
 """
 
 __all__ = [
+    'HasLayout',
     'MatchesAncestry',
     'ReturnsUnlockable',
     ]
@@ -35,7 +36,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-from testtools.matchers import Mismatch, Matcher
+from testtools.matchers import Equals, Mismatch, Matcher
 
 
 class ReturnsUnlockable(Matcher):
@@ -112,4 +113,34 @@ class MatchesAncestry(Matcher):
         finally:
             self.repository.unlock()
         if sorted(got) != sorted(expected):
-            return _AncestryMismatch(self.revision_id, sorted(got), sorted(expected))
+            return _AncestryMismatch(self.revision_id, sorted(got),
+                sorted(expected))
+
+
+class HasLayout(Matcher):
+    """A matcher that checks if a tree has a specific layout.
+
+    :ivar entries: List of expected entries, as (path, file_id) pairs.
+    """
+
+    def __init__(self, entries):
+        Matcher.__init__(self)
+        self.entries = entries
+
+    def get_tree_layout(self, tree):
+        """Get the (path, file_id) pairs for the current tree."""
+        tree.lock_read()
+        try:
+            return [(path, ie.file_id) for path, ie
+                    in tree.iter_entries_by_dir()]
+        finally:
+            tree.unlock()
+
+    def __str__(self):
+        return ('HasLayout(%r)' % self.entries)
+
+    def match(self, tree):
+        actual = self.get_tree_layout(tree)
+        if self.entries and isinstance(self.entries[0], basestring):
+            actual = [path for (path, fileid) in actual]
+        return Equals(actual).match(self.entries)

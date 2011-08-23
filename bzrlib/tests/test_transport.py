@@ -701,6 +701,15 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEquals(t.base.rstrip("/"), url)
 
+    def test_with_url_and_segment_parameters(self):
+        url = urlutils.local_path_to_url(self.test_dir)+",branch=foo"
+        t = transport.get_transport_from_url(url)
+        self.assertIsInstance(t, local.LocalTransport)
+        self.assertEquals(t.base.rstrip("/"), url)
+        with open(os.path.join(self.test_dir, "afile"), 'w') as f:
+            f.write("data")
+        self.assertTrue(t.has("afile"))
+
 
 class TestLocalTransports(tests.TestCase):
 
@@ -796,7 +805,7 @@ class TestConnectedTransport(tests.TestCase):
         self.assertEquals(t._parsed_url.path, '/path/')
 
         # Base should not keep track of the password
-        self.assertEquals(t.base, 'http://robey@exAmple.com:2222/path/')
+        self.assertEquals(t.base, 'http://ro%62ey@ex%41mple.com:2222/path/')
 
     def test_parse_invalid_url(self):
         self.assertRaises(errors.InvalidURL,

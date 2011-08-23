@@ -26,25 +26,16 @@ from bzrlib import (
 from bzrlib.tests import (
     features,
     )
+from bzrlib.tests.matchers import HasLayout
 
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestRenameOne(TestCaseWithWorkingTree):
 
-    def get_tree_layout(self, tree):
-        """Get the (path, file_id) pairs for the current tree."""
-        tree.lock_read()
-        try:
-            return [(path, ie.file_id) for path, ie
-                    in tree.iter_entries_by_dir()]
-        finally:
-            tree.unlock()
-
     def assertTreeLayout(self, expected, tree):
         """Check that the tree has the correct layout."""
-        actual = self.get_tree_layout(tree)
-        self.assertEqual(expected, actual)
+        self.assertThat(tree, HasLayout(expected))
 
     def test_rename_one_target_not_dir(self):
         tree = self.make_branch_and_tree('.')

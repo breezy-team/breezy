@@ -1050,7 +1050,7 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = _mod_transport.get_transport(url)
+        t = _mod_transport.get_transport_from_url(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
@@ -1230,7 +1230,7 @@ class TransportTests(TestTransportImplementation):
             if host     is None: host     = t._parsed_url.host
             if port     is None: port     = t._parsed_url.port
             if path     is None: path     = t._parsed_url.path
-            return t._unsplit_url(scheme, user, password, host, port, path)
+            return str(urlutils.URL(scheme, user, password, host, port, path))
 
         if t._parsed_url.scheme == 'ftp':
             scheme = 'sftp'
@@ -1418,11 +1418,11 @@ class TransportTests(TestTransportImplementation):
 
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
-        transport = _mod_transport.get_transport("file:///")
+        transport = _mod_transport.get_transport_from_url("file:///")
         self.assertEqual(transport.abspath("/"), "file:///")
 
         # but a transport that starts with a drive spec must keep it.
-        transport = _mod_transport.get_transport("file:///C:/")
+        transport = _mod_transport.get_transport_from_url("file:///C:/")
         self.assertEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):
@@ -1775,6 +1775,21 @@ class TransportTests(TestTransportImplementation):
         # also raise a special error
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
+
+    def test_no_segment_parameters(self):
+        """Segment parameters should be stripped and stored in
+        transport.segment_parameters."""
+        transport = self.get_transport("foo")
+        self.assertEquals({}, transport.get_segment_parameters())
+
+    def test_segment_parameters(self):
+        """Segment parameters should be stripped and stored in
+        transport.get_segment_parameters()."""
+        base_url = self._server.get_url()
+        parameters = {"key1": "val1", "key2": "val2"}
+        url = urlutils.join_segment_parameters(base_url, parameters)
+        transport = _mod_transport.get_transport_from_url(url)
+        self.assertEquals(parameters, transport.get_segment_parameters())
 
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks

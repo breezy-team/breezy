@@ -75,6 +75,7 @@ up=pull
 import os
 import string
 import sys
+import re
 
 
 from bzrlib.decorators import needs_write_lock
@@ -413,6 +414,45 @@ class Config(object):
             # add) the final ','
             l = [l]
         return l
+        
+    def get_user_option_as_int_from_SI(self,  option_name,  default=None):
+        """Get a generic option from a human readable size in SI units, e.g 10MB
+        
+        Accepted suffixes are K,M,G. It is case-insensitive and may be followed
+        by a trailing b (i.e. Kb, MB). This is intended to be practical and not
+        pedantic.
+        
+        :return Integer, expanded to its base-10 value if a proper SI unit is 
+            found. If the option doesn't exist, or isn't a value in 
+            SI units, return default (which defaults to None)
+        """
+        val = self.get_user_option(option_name)
+        if isinstance(val, list):
+            val = val[0]
+        if val is None:
+            val = default
+        else:
+            p = re.compile("^(\d+)([kmg])*b*$", re.IGNORECASE)
+            try:
+                m = p.match(val)
+                if m is not None:
+                    val = int(m.group(1))
+                    if m.group(2) is not None:
+                        if m.group(2).lower() == 'k':
+                            val *= 10**3
+                        elif m.group(2).lower() == 'm':
+                            val *= 10**6
+                        elif m.group(2).lower() == 'g':
+                            val *= 10**9
+                else:
+                    ui.ui_factory.show_warning('Invalid config value for "%s" '
+                                               ' value %r is not an SI unit.'
+                                                % (option_name, val))
+                    val = default
+            except TypeError:
+                val = default
+        return val
+        
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
@@ -985,7 +1025,7 @@ class LockableConfig(IniBasedConfig):
         # local transports are not shared. But if/when we start using
         # LockableConfig for other kind of transports, we will need to reuse
         # whatever connection is already established -- vila 20100929
-        self.transport = transport.get_transport(self.dir)
+        self.transport = transport.get_transport_from_path(self.dir)
         self._lock = lockdir.LockDir(self.transport, self.lock_name)
 
     def _create_from_string(self, unicode_bytes, save):
@@ -2274,14 +2314,19 @@ class Option(object):
     encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, help=None, from_unicode=None,
-                 invalid=None):
+    def __init__(self, name, default=None, default_from_env=None,
+                 help=None,
+                 from_unicode=None, invalid=None):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
 
         :param default: the default value to use when none exist in the config
             stores.
+
+        :param default_from_env: A list of environment variables which can
+           provide a default value. 'default' will be used only if none of the
+           variables specified here are set in the environment.
 
         :param help: a doc string to explain the option to the user.
 
@@ -2296,8 +2341,11 @@ class Option(object):
             'warning' (emit a warning), 'error' (emit an error message and
             terminates).
         """
+        if default_from_env is None:
+            default_from_env = []
         self.name = name
         self.default = default
+        self.default_from_env = default_from_env
         self.help = help
         self.from_unicode = from_unicode
         if invalid and invalid not in ('warning', 'error'):
@@ -2305,6 +2353,11 @@ class Option(object):
         self.invalid = invalid
 
     def get_default(self):
+        for var in self.default_from_env:
+            try:
+                return os.environ[var]
+            except KeyError:
+                continue
         return self.default
 
     def get_help_text(self, additional_see_also=None, plain=True):
@@ -2759,6 +2812,14 @@ class BranchStore(IniFileStore):
         super(BranchStore, self).save()
 
 
+class ControlStore(LockableIniFileStore):
+
+    def __init__(self, bzrdir):
+        super(ControlStore, self).__init__(bzrdir.transport,
+                                          'control.conf',
+                                           lock_dir_name='branch_lock')
+
+
 class SectionMatcher(object):
     """Select sections into a given Store.
 
@@ -2812,30 +2873,34 @@ class LocationMatcher(SectionMatcher):
         # We slightly diverge from LocalConfig here by allowing the no-name
         # section as the most generic one and the lower priority.
         no_name_section = None
-        sections = []
+        all_sections = []
         # Filter out the no_name_section so _iter_for_location_by_parts can be
         # used (it assumes all sections have a name).
         for section in self.store.get_sections():
             if section.id is None:
                 no_name_section = section
             else:
-                sections.append(section)
+                all_sections.append(section)
         # Unfortunately _iter_for_location_by_parts deals with section names so
         # we have to resync.
         filtered_sections = _iter_for_location_by_parts(
-            [s.id for s in sections], self.location)
-        iter_sections = iter(sections)
+            [s.id for s in all_sections], self.location)
+        iter_all_sections = iter(all_sections)
         matching_sections = []
         if no_name_section is not None:
             matching_sections.append(
                 LocationSection(no_name_section, 0, self.location))
         for section_id, extra_path, length in filtered_sections:
-            # a section id is unique for a given store so it's safe to iterate
-            # again
-            section = iter_sections.next()
-            if section_id == section.id:
-                matching_sections.append(
-                    LocationSection(section, length, extra_path))
+            # a section id is unique for a given store so it's safe to take the
+            # first matching section while iterating. Also, all filtered
+            # sections are part of 'all_sections' and will always be found
+            # there.
+            while True:
+                section = iter_all_sections.next()
+                if section_id == section.id:
+                    matching_sections.append(
+                        LocationSection(section, length, extra_path))
+                    break
         return matching_sections
 
     def get_sections(self):
@@ -2991,6 +3056,7 @@ class _CompatibleStack(Stack):
 
 
 class GlobalStack(_CompatibleStack):
+    """Global options only stack."""
 
     def __init__(self):
         # Get a GlobalStore
@@ -2999,6 +3065,7 @@ class GlobalStack(_CompatibleStack):
 
 
 class LocationStack(_CompatibleStack):
+    """Per-location options falling back to global options stack."""
 
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
@@ -3010,7 +3077,9 @@ class LocationStack(_CompatibleStack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
+
 class BranchStack(_CompatibleStack):
+    """Per-location options falling back to branch then global options stack."""
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
@@ -3019,6 +3088,28 @@ class BranchStack(_CompatibleStack):
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            bstore)
+        self.branch = branch
+
+
+class RemoteControlStack(_CompatibleStack):
+    """Remote control-only options stack."""
+
+    def __init__(self, bzrdir):
+        cstore = ControlStore(bzrdir)
+        super(RemoteControlStack, self).__init__(
+            [cstore.get_sections],
+            cstore)
+        self.bzrdir = bzrdir
+
+
+class RemoteBranchStack(_CompatibleStack):
+    """Remote branch-only options stack."""
+
+    def __init__(self, branch):
+        bstore = BranchStore(branch)
+        super(RemoteBranchStack, self).__init__(
+            [bstore.get_sections],
             bstore)
         self.branch = branch
 
