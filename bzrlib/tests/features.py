@@ -346,6 +346,7 @@ not_running_as_root = _NotRunningAsRoot()
 apport = ModuleAvailableFeature('apport')
 gpgme = ModuleAvailableFeature('gpgme')
 lzma = ModuleAvailableFeature('lzma')
+meliae = ModuleAvailableFeature('meliae.scanner')
 paramiko = ModuleAvailableFeature('paramiko')
 pycurl = ModuleAvailableFeature('pycurl')
 pywintypes = ModuleAvailableFeature('pywintypes')
@@ -355,7 +356,6 @@ testtools = ModuleAvailableFeature('testtools')
 
 compiled_patiencediff_feature = ModuleAvailableFeature(
     'bzrlib._patiencediff_c')
-meliae_feature = ModuleAvailableFeature('meliae.scanner')
 lsprof_feature = ModuleAvailableFeature('bzrlib.lsprof')
 
 
