@@ -52,6 +52,7 @@ SIGNATURE_VALID = 0
 SIGNATURE_KEY_MISSING = 1
 SIGNATURE_NOT_VALID = 2
 SIGNATURE_NOT_SIGNED = 3
+SIGNATURE_EXPIRED = 4
 
 
 class DisabledGPGStrategy(object):
@@ -108,7 +109,8 @@ class LoopbackGPGStrategy(object):
         count = {SIGNATURE_VALID: 0,
                  SIGNATURE_KEY_MISSING: 0,
                  SIGNATURE_NOT_VALID: 0,
-                 SIGNATURE_NOT_SIGNED: 0}
+                 SIGNATURE_NOT_SIGNED: 0,
+                 SIGNATURE_EXPIRED: 0}
         result = []
         all_verifiable = True
         for rev_id in revisions:
@@ -141,6 +143,12 @@ class LoopbackGPGStrategy(object):
                              u"{0} commits not signed",
                              count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
+
+    def expired_commit_message(self, count):
+        return i18n.ngettext(u"{0} commit with key now expired",
+                             u"{0} commits with key now expired",
+                             count[SIGNATURE_EXPIRED]).format(
+                                        count[SIGNATURE_EXPIRED])
 
 
 def _set_gpg_tty():
@@ -244,29 +252,61 @@ class GPGStrategy(object):
         except gpgme.GpgmeError,error:
             raise errors.SignatureVerificationFailed(error[2])
 
+        # No result if input is invalid.
+        # test_verify_invalid()
         if len(result) == 0:
             return SIGNATURE_NOT_VALID, None
+        # User has specified a list of acceptable keys, check our result is in it.
+        # test_verify_unacceptable_key()
         fingerprint = result[0].fpr
         if self.acceptable_keys is not None:
-            if not fingerprint in self.acceptable_keys:
+            if not fingerprint in self.acceptable_keys:                
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:]
+        # Check the signature actually matches the testament.
+        # test_verify_bad_testament()
         if testament != plain_output.getvalue():
-            return SIGNATURE_NOT_VALID, None
+            return SIGNATURE_NOT_VALID, None 
+        # Yay gpgme set the valid bit.
+        # Can't write a test for this one as you can't set a key to be
+        # trusted using gpgme.
         if result[0].summary & gpgme.SIGSUM_VALID:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
             return SIGNATURE_VALID, name + " <" + email + ">"
+        # Sigsum_red indicates a problem, unfortunatly I have not been able
+        # to write any tests which actually set this.
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
+        # GPG does not know this key.
+        # test_verify_unknown_key()
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING, fingerprint[-8:]
-        #summary isn't set if sig is valid but key is untrusted
+        # Summary isn't set if sig is valid but key is untrusted
+        # but if user has explicity set the key as acceptable we can validate it.
         if result[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
-                return SIGNATURE_VALID, None
-        else:
-            return SIGNATURE_KEY_MISSING, None
+                # test_verify_untrusted_but_accepted()
+                return SIGNATURE_VALID, None 
+        # test_verify_valid_but_untrusted()
+        if result[0].summary == 0 and self.acceptable_keys is None:
+            return SIGNATURE_NOT_VALID, None
+        if result[0].summary & gpgme.SIGSUM_KEY_EXPIRED:
+            expires = self.context.get_key(result[0].fpr).subkeys[0].expires
+            if expires > result[0].timestamp:
+                # The expired key was not expired at time of signing.
+                # test_verify_expired_but_valid()
+                return SIGNATURE_EXPIRED, fingerprint[-8:]
+            else:
+                # I can't work out how to create a test where the signature
+                # was expired at the time of signing.
+                return SIGNATURE_NOT_VALID, None
+        # A signature from a revoked key gets this.
+        # test_verify_revoked_signature()
+        if result[0].summary & gpgme.SIGSUM_SYS_ERROR:
+            return SIGNATURE_NOT_VALID, None
+        # Other error types such as revoked keys should (I think) be caught by
+        # SIGSUM_RED so anything else means something is buggy.
         raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
                                                  "verification result")
 
@@ -322,7 +362,8 @@ class GPGStrategy(object):
         count = {SIGNATURE_VALID: 0,
                  SIGNATURE_KEY_MISSING: 0,
                  SIGNATURE_NOT_VALID: 0,
-                 SIGNATURE_NOT_SIGNED: 0}
+                 SIGNATURE_NOT_SIGNED: 0,
+                 SIGNATURE_EXPIRED: 0}
         result = []
         all_verifiable = True
         for rev_id in revisions:
@@ -397,6 +438,27 @@ class GPGStrategy(object):
                                  number).format(fingerprint, number) )
         return result
 
+    def verbose_expired_key_message(self, result, repo):
+        """takes a verify result and returns list of expired key info"""
+        signers = {}
+        fingerprint_to_authors = {}
+        for rev_id, validity, fingerprint in result:
+            if validity == SIGNATURE_EXPIRED:
+                revision = repo.get_revision(rev_id)
+                authors = ', '.join(revision.get_apparent_authors())
+                signers.setdefault(fingerprint, 0)
+                signers[fingerprint] += 1
+                fingerprint_to_authors[fingerprint] = authors
+        result = []
+        for fingerprint, number in signers.items():
+            result.append( i18n.ngettext(u"{0} commit by author {1} with "\
+                                          "key {2} now expired", 
+                                 u"{0} commits by author {1} with key {2} now "\
+                                  "expired",
+                                 number).format(number,
+                            fingerprint_to_authors[fingerprint], fingerprint) )
+        return result
+
     def valid_commits_message(self, count):
         """returns message for number of commits"""
         return i18n.gettext(u"{0} commits with valid signatures").format(
@@ -422,3 +484,10 @@ class GPGStrategy(object):
                              u"{0} commits not signed",
                              count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
+
+    def expired_commit_message(self, count):
+        """returns message for number of commits"""
+        return i18n.ngettext(u"{0} commit with key now expired",
+                             u"{0} commits with key now expired",
+                             count[SIGNATURE_EXPIRED]).format(
+                                        count[SIGNATURE_EXPIRED])

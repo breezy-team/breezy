@@ -81,10 +81,14 @@ New Features
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
 
+* Report commits signed with expired keys in "verify-signatures".
+  (Jonathan Riddell, #804254)
+
 * bzr add now skips large files in recursive mode. The default "large"
   size is 20MB, and is configurable via the add.maximum_file_size
   option. A value of 0 disables skipping. Named items passed to add are
   never skipped. (Shannon Weyrick, #54624)
+
 
 Improvements
 ************
