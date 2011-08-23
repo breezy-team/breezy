@@ -252,61 +252,61 @@ class GPGStrategy(object):
         except gpgme.GpgmeError,error:
             raise errors.SignatureVerificationFailed(error[2])
 
-        #no result if input is invalid
-        #test_verify_invalid()
+        # No result if input is invalid.
+        # test_verify_invalid()
         if len(result) == 0:
             return SIGNATURE_NOT_VALID, None
-        #user has specified a list of acceptable keys, check our result is in it
-        #test_verify_unacceptable_key
+        # User has specified a list of acceptable keys, check our result is in it.
+        # test_verify_unacceptable_key()
         fingerprint = result[0].fpr
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:                
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:]
-        #check the signature actually matches the testament
-        #test_verify_bad_testament
+        # Check the signature actually matches the testament.
+        # test_verify_bad_testament()
         if testament != plain_output.getvalue():
             return SIGNATURE_NOT_VALID, None 
-        #yay gpgme set the valid bit
-        #can't write a test for this one as can't set a key to be
-        #trusted using gpgme
+        # Yay gpgme set the valid bit.
+        # Can't write a test for this one as you can't set a key to be
+        # trusted using gpgme.
         if result[0].summary & gpgme.SIGSUM_VALID:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
             return SIGNATURE_VALID, name + " <" + email + ">"
-        #sigsum_red indicates a problem, unfortunatly I have not been able
-        #to write any tests which actually set this
+        # Sigsum_red indicates a problem, unfortunatly I have not been able
+        # to write any tests which actually set this.
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
-        #gpg does not know this key
-        #test_verify_unknown_key
+        # GPG does not know this key.
+        # test_verify_unknown_key()
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING, fingerprint[-8:]
-        #summary isn't set if sig is valid but key is untrusted
-        #but if user has explicity set the key as acceptable we can validate it
+        # Summary isn't set if sig is valid but key is untrusted
+        # but if user has explicity set the key as acceptable we can validate it.
         if result[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
-                # test_verify_untrusted_but_accepted
+                # test_verify_untrusted_but_accepted()
                 return SIGNATURE_VALID, None 
-        #test_verify_valid_but_untrusted
+        # test_verify_valid_but_untrusted()
         if result[0].summary == 0 and self.acceptable_keys is None:
             return SIGNATURE_NOT_VALID, None
         if result[0].summary & gpgme.SIGSUM_KEY_EXPIRED:
             expires = self.context.get_key(result[0].fpr).subkeys[0].expires
             if expires > result[0].timestamp:
-                #the expired key was not expired at time of signing
-                #test_verify_expired_but_valid
+                # The expired key was not expired at time of signing.
+                # test_verify_expired_but_valid()
                 return SIGNATURE_EXPIRED, fingerprint[-8:]
             else:
-                #I can't work out how to create a test where the signature
-                #was expired at the time of signing
+                # I can't work out how to create a test where the signature
+                # was expired at the time of signing.
                 return SIGNATURE_NOT_VALID, None
-        #a signature from a revoked key gets this
-        #test_verify_revoked_signature
+        # A signature from a revoked key gets this.
+        # test_verify_revoked_signature()
         if result[0].summary & gpgme.SIGSUM_SYS_ERROR:
             return SIGNATURE_NOT_VALID, None
-        #other error types such as revokes keys should (I think) be caught by
-        #SIGSUM_RED so anything else means something is wrong
+        # Other error types such as revoked keys should (I think) be caught by
+        # SIGSUM_RED so anything else means something is buggy.
         raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
                                                  "verification result")
 
