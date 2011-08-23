@@ -543,8 +543,6 @@ class BzrDir(controldir.ControlDir):
                     stacked=stacked)
         return result
 
-
-
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
                                   force_new_tree=None, format=None,
@@ -1143,6 +1141,11 @@ class BzrDirMeta1(BzrDir):
     present within a BzrDir.
     """
 
+    def __init__(self, _transport, _format):
+        super(BzrDirMeta1, self).__init__(_transport, _format)
+        self.control_files = lockable_files.LockableFiles(_transport,
+            self._format._lock_file_name, self._format._lock_class)
+
     def can_convert_format(self):
         """See BzrDir.can_convert_format()."""
         return True
@@ -1155,13 +1158,39 @@ class BzrDirMeta1(BzrDir):
         it uses the default branch.
 
         :param name: Optional branch name to use
-        :return: Relative path to branch
+        :return: Relative path to branch, branch name
         """
         if name is None:
             name = self._get_selected_branch()
         if name is None:
-            return 'branch'
-        return urlutils.join('branches', name)
+            return 'branch', None
+        return urlutils.join('branches', name), name
+
+    def _read_branch_list(self):
+        """Read the branch list.
+
+        :return: List of utf-8 encoded branch names.
+        """
+        try:
+            f = self.control_transport.get('branch-list')
+        except errors.NoSuchFile:
+            return []
+
+        ret = []
+        try:
+            for name in f:
+                ret.append(name.rstrip("\n"))
+        finally:
+            f.close()
+        return ret
+
+    def _write_branch_list(self, branches):
+        """Write out the branch list.
+
+        :param branches: List of utf-8 branch names to write
+        """
+        self.transport.put_bytes('branch-list',
+            "".join([name+"\n" for name in branches]))
 
     def create_branch(self, name=None, repository=None):
         """See BzrDir.create_branch."""
@@ -1170,7 +1199,18 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
-        path = self._get_branch_path(name)
+        path, name = self._get_branch_path(name)
+        if name is not None:
+            self.control_files.lock_write()
+            try:
+                branches = self._read_branch_list()
+                try:
+                    branches.remove(name)
+                except ValueError:
+                    raise errors.NotBranchError(name)
+                self._write_branch_list(name)
+            finally:
+                self.control_files.unlock()
         self.transport.delete_tree(path)
 
     def create_repository(self, shared=False):
@@ -1224,7 +1264,7 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        path = self._get_branch_path(name)
+        path, name = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:
@@ -1233,11 +1273,20 @@ class BzrDirMeta1(BzrDir):
             branch_format.get_format_string()
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
-        if path != 'branch':
+        if name is not None:
             try:
                 self.transport.mkdir('branches', mode=self._get_mkdir_mode())
             except errors.FileExists:
                 pass
+            branches = self._read_branch_list()
+            if not name in branches:
+                self.control_files.lock_write()
+                try:
+                    branches = self._read_branch_list()
+                    branches.append(name)
+                    self._write_branch_list(branches)
+                finally:
+                    self.control_files.unlock()
         try:
             self.transport.mkdir(path, mode=self._get_mkdir_mode())
         except errors.FileExists:
@@ -1323,13 +1372,8 @@ class BzrDirMeta1(BzrDir):
             pass
 
         # colocated branches
-        try:
-            entries = self.control_transport.list_dir('branches')
-        except errors.NoSuchFile:
-            pass
-        else:
-            for name in entries:
-                ret.append(self.open_branch(name))
+        ret.extend([self.open_branch(name) for name in
+                    self._read_branch_list()])
 
         return ret
 
