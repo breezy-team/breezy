@@ -2259,7 +2259,7 @@ class TestOption(tests.TestCase):
         self.overrideEnv('FOO', 'quux')
         # Env variable provides a default taking over the option one
         self.assertEquals('quux', opt.get_default())
-        
+
     def test_first_default_value_from_env_wins(self):
         opt = config.Option('foo', default='bar',
                             default_from_env=['NO_VALUE', 'FOO', 'BAZ'])
@@ -2267,6 +2267,99 @@ class TestOption(tests.TestCase):
         self.overrideEnv('BAZ', 'baz')
         # The first env var set wins
         self.assertEquals('foo', opt.get_default())
+
+
+class TestOptionConverterMixin(object):
+
+    def assertConverted(self, expected, opt, value):
+        self.assertEquals(expected, opt.convert_from_unicode(value))
+
+    def assertWarns(self, opt, value):
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.assertEquals(None, opt.convert_from_unicode(value))
+        self.assertLength(1, warnings)
+        self.assertEquals(
+            'Value "%s" is not valid for "%s"' % (value, opt.name),
+            warnings[0])
+
+    def assertErrors(self, opt, value):
+        self.assertRaises(errors.ConfigOptionValueError,
+                          opt.convert_from_unicode, value)
+
+    def assertConvertInvalid(self, opt, invalid_value):
+        opt.invalid = None
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        opt.invalid = 'warning'
+        self.assertWarns(opt, invalid_value)
+        opt.invalid = 'error'
+        self.assertErrors(opt, invalid_value)
+
+
+class TestOptionWithBooleanConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A boolean.',
+                             from_unicode=config.bool_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as a boolean
+        self.assertConvertInvalid(opt, u'invalid-boolean')
+        # A list of strings is never recognized as a boolean
+        self.assertConvertInvalid(opt, [u'not', u'a', u'boolean'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(True, opt, u'True')
+        self.assertConverted(True, opt, u'1')
+        self.assertConverted(False, opt, u'False')
+
+
+class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer.',
+                             from_unicode=config.int_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as an integer
+        self.assertConvertInvalid(opt, u'forty-two')
+        # A list of strings is never recognized as an integer
+        self.assertConvertInvalid(opt, [u'a', u'list'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(16, opt, u'16')
+
+class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A list.',
+                             from_unicode=config.list_from_store)
+
+    def test_convert_invalid(self):
+        # No string is invalid as all forms can be converted to a list
+        pass
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        # An empty string is an empty list
+        self.assertConverted([], opt, '') # Using a bare str() just in case
+        self.assertConverted([], opt, u'')
+        # A boolean
+        self.assertConverted([u'True'], opt, u'True')
+        # An integer
+        self.assertConverted([u'42'], opt, u'42')
+        # A single string
+        self.assertConverted([u'bar'], opt, u'bar')
+        # A list remains a list (configObj will turn a string containing commas
+        # into a list, but that's not what we're testing here)
+        self.assertConverted([u'foo', u'1', u'True'],
+                             opt, [u'foo', u'1', u'True'])
 
 
 class TestOptionRegistry(tests.TestCase):
@@ -3045,116 +3138,86 @@ class TestStackGetWithConverter(TestStackGet):
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
 
-    def register_bool_option(self, name, default, invalid=None):
-        b = config.Option(name, default=default, help='A boolean.',
-                          from_unicode=config.bool_from_store,
-                          invalid=invalid)
+    def register_bool_option(self, name, default=None, default_from_env=None):
+        b = config.Option(name, help='A boolean.',
+                          default=default, default_from_env=default_from_env,
+                          from_unicode=config.bool_from_store)
         self.registry.register(b)
 
-    def test_get_with_bool_not_defined_default_true(self):
-        self.register_bool_option('foo', True)
+    def test_get_default_bool_None(self):
+        self.register_bool_option('foo')
+        self.assertEquals(None, self.conf.get('foo'))
+
+    def test_get_default_bool_True(self):
+        self.register_bool_option('foo', u'True')
         self.assertEquals(True, self.conf.get('foo'))
 
-    def test_get_with_bool_not_defined_default_false(self):
-        self.register_bool_option('foo', False)
+    def test_get_default_bool_False(self):
+        self.register_bool_option('foo', u'False')
         self.assertEquals(False, self.conf.get('foo'))
 
-    def test_get_with_bool_converter_not_default(self):
-        self.register_bool_option('foo', False)
-        self.conf.store._load_from_string('foo=yes')
+    def test_get_default_bool_False(self):
+        self.register_bool_option('foo', u'False')
+        self.assertEquals(False, self.conf.get('foo'))
+
+    def test_get_default_bool_from_env_converted(self):
+        self.register_bool_option('foo', u'True', default_from_env=['FOO'])
+        self.overrideEnv('FOO', 'False')
+        self.assertEquals(False, self.conf.get('foo'))
+
+    def test_get_default_bool_when_conversion_fails(self):
+        self.register_bool_option('foo', default='True')
+        self.conf.store._load_from_string('foo=invalid boolean')
         self.assertEquals(True, self.conf.get('foo'))
 
-    def test_get_with_bool_converter_invalid_string(self):
-        self.register_bool_option('foo', False)
-        self.conf.store._load_from_string('foo=not-a-boolean')
-        self.assertEquals(False, self.conf.get('foo'))
-
-    def test_get_with_bool_converter_invalid_list(self):
-        self.register_bool_option('foo', False)
-        self.conf.store._load_from_string('foo=not,a,boolean')
-        self.assertEquals(False, self.conf.get('foo'))
-
-    def test_get_invalid_warns(self):
-        self.register_bool_option('foo', False, invalid='warning')
-        self.conf.store._load_from_string('foo=not-a-boolean')
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
-        self.assertEquals(False, self.conf.get('foo'))
-        self.assertLength(1, warnings)
-        self.assertEquals('Value "not-a-boolean" is not valid for "foo"',
-                          warnings[0])
-
-    def test_get_invalid_errors(self):
-        self.register_bool_option('foo', False, invalid='error')
-        self.conf.store._load_from_string('foo=not-a-boolean')
-        self.assertRaises(errors.ConfigOptionValueError, self.conf.get, 'foo')
-
-    def register_integer_option(self, name, default):
-        i = config.Option(name, default=default, help='An integer.',
+    def register_integer_option(self, name,
+                                default=None, default_from_env=None):
+        i = config.Option(name, help='An integer.',
+                          default=default, default_from_env=default_from_env,
                           from_unicode=config.int_from_store)
         self.registry.register(i)
 
-    def test_get_with_integer_not_defined_returns_default(self):
-        self.register_integer_option('foo', 42)
+    def test_get_default_integer_None(self):
+        self.register_integer_option('foo')
+        self.assertEquals(None, self.conf.get('foo'))
+
+    def test_get_default_integer(self):
+        self.register_integer_option('foo', u'42')
         self.assertEquals(42, self.conf.get('foo'))
 
-    def test_get_with_integer_converter_not_default(self):
-        self.register_integer_option('foo', 42)
-        self.conf.store._load_from_string('foo=16')
-        self.assertEquals(16, self.conf.get('foo'))
+    def test_get_default_integer_from_env(self):
+        self.register_integer_option('foo', default_from_env=['FOO'])
+        self.overrideEnv('FOO', '18')
+        self.assertEquals(18, self.conf.get('foo'))
 
-    def test_get_with_integer_converter_invalid_string(self):
-        # We don't set a default value
-        self.register_integer_option('foo', None)
-        self.conf.store._load_from_string('foo=forty-two')
-        # No default value, so we should get None
-        self.assertEquals(None, self.conf.get('foo'))
+    def test_get_default_integer_when_conversion_fails(self):
+        self.register_integer_option('foo', default='12')
+        self.conf.store._load_from_string('foo=invalid integer')
+        self.assertEquals(12, self.conf.get('foo'))
 
-    def test_get_with_integer_converter_invalid_list(self):
-        # We don't set a default value
-        self.register_integer_option('foo', None)
-        self.conf.store._load_from_string('foo=a,list')
-        # No default value, so we should get None
-        self.assertEquals(None, self.conf.get('foo'))
-
-    def register_list_option(self, name, default):
-        l = config.Option(name, default=default, help='A list.',
+    def register_list_option(self, name, default=None, default_from_env=None):
+        l = config.Option(name, help='A list.',
+                          default=default, default_from_env=default_from_env,
                           from_unicode=config.list_from_store)
         self.registry.register(l)
 
-    def test_get_with_list_not_defined_returns_default(self):
-        self.register_list_option('foo', [])
+    def test_get_default_list_None(self):
+        self.register_list_option('foo')
+        self.assertEquals(None, self.conf.get('foo'))
+
+    def test_get_default_list_empty(self):
+        self.register_list_option('foo', '')
         self.assertEquals([], self.conf.get('foo'))
 
-    def test_get_with_list_converter_nothing(self):
-        self.register_list_option('foo', [1])
-        self.conf.store._load_from_string('foo=')
+    def test_get_default_list_from_env(self):
+        self.register_list_option('foo', default_from_env=['FOO'])
+        self.overrideEnv('FOO', '')
         self.assertEquals([], self.conf.get('foo'))
 
     def test_get_with_list_converter_no_item(self):
         self.register_list_option('foo', [1])
         self.conf.store._load_from_string('foo=,')
         self.assertEquals([], self.conf.get('foo'))
-
-    def test_get_with_list_converter_one_boolean(self):
-        self.register_list_option('foo', [1])
-        self.conf.store._load_from_string('foo=True')
-        # We get a list of one string
-        self.assertEquals(['True'], self.conf.get('foo'))
-
-    def test_get_with_list_converter_one_integer(self):
-        self.register_list_option('foo', [1])
-        self.conf.store._load_from_string('foo=2')
-        # We get a list of one string
-        self.assertEquals(['2'], self.conf.get('foo'))
-
-    def test_get_with_list_converter_one_string(self):
-        self.register_list_option('foo', ['foo'])
-        self.conf.store._load_from_string('foo=bar')
-        # We get a list of one string
-        self.assertEquals(['bar'], self.conf.get('foo'))
 
     def test_get_with_list_converter_many_items(self):
         self.register_list_option('foo', [1])
