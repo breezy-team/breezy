@@ -16,7 +16,6 @@
 
 
 from cStringIO import StringIO
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -2246,6 +2245,8 @@ class BranchReferenceFormat(BranchFormat):
             # creation contract must see it as uninitializable
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.user_url)
+        if a_bzrdir._format.fixed_components:
+            raise errors.IncompatibleFormat(self, a_bzrdir._format)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.bzrdir.user_url)

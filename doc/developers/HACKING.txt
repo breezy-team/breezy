@@ -436,6 +436,12 @@ this as Fn-Pause).  You can continue execution by typing ``c``.  This can
 be disabled if necessary by setting the environment variable
 ``BZR_SIGQUIT_PDB=0``.
 
+All tests inheriting from bzrlib.tests.TestCase can use ``self.debug()``
+instead of the longer ``import pdb; pdb.set_trace()``. The former also works
+when ``stdin/stdout`` are redirected (by using the original ``stdin/stdout``
+file handles at the start of the ``bzr`` script) while the later doesn't.
+``bzrlib.debug.set_trace()`` also uses the original ``stdin/stdout`` file
+handles.
 
 Debug Flags
 ===========

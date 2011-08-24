@@ -108,7 +108,7 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         # standard test support code will work and permit the server url
         # correctly.
         url = self.get_url()
-        t = transport.get_transport(url)
+        t = transport.get_transport_from_url(url)
         if t.base.endswith('work/'):
             t = t.clone('../..')
         self.permit_url(t.base)

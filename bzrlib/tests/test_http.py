@@ -533,7 +533,8 @@ class TestHttpTransportRegistration(tests.TestCase):
     scenarios = vary_by_http_client_implementation()
 
     def test_http_registered(self):
-        t = transport.get_transport('%s://foo.com/' % self._url_protocol)
+        t = transport.get_transport_from_url(
+            '%s://foo.com/' % self._url_protocol)
         self.assertIsInstance(t, transport.Transport)
         self.assertIsInstance(t, self._transport)
 
@@ -551,7 +552,7 @@ class TestPost(tests.TestCase):
         self.start_server(server)
         url = server.get_url()
         # FIXME: needs a cleanup -- vila 20100611
-        http_transport = transport.get_transport(url)
+        http_transport = transport.get_transport_from_url(url)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
             server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
@@ -1635,7 +1636,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         return url
 
     def get_user_transport(self, user, password):
-        t = transport.get_transport(self.get_user_url(user, password))
+        t = transport.get_transport_from_url(
+            self.get_user_url(user, password))
         return t
 
     def test_no_user(self):
@@ -1915,7 +1917,8 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         # The 'readv' command in the smart protocol both sends and receives
         # bulk data, so we use that.
         self.build_tree(['data-file'])
-        http_transport = transport.get_transport(self.http_server.get_url())
+        http_transport = transport.get_transport_from_url(
+            self.http_server.get_url())
         medium = http_transport.get_smart_medium()
         # Since we provide the medium, the url below will be mostly ignored
         # during the test, as long as the path is '/'.
@@ -1929,7 +1932,8 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         post_body = 'hello\n'
         expected_reply_body = 'ok\x012\n'
 
-        http_transport = transport.get_transport(self.http_server.get_url())
+        http_transport = transport.get_transport_from_url(
+            self.http_server.get_url())
         medium = http_transport.get_smart_medium()
         response = medium.send_http_smart_request(post_body)
         reply_body = response.read()

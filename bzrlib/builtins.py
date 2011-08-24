@@ -674,6 +674,10 @@ class cmd_add(Command):
     
     Any files matching patterns in the ignore list will not be added
     unless they are explicitly mentioned.
+    
+    In recursive mode, files larger than the configuration option 
+    add.maximum_file_size will be skipped. Named items are never skipped due
+    to file size.
     """
     takes_args = ['file*']
     takes_options = [
@@ -706,7 +710,7 @@ class cmd_add(Command):
             action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
                           to_file=self.outf, should_print=(not is_quiet()))
         else:
-            action = bzrlib.add.AddAction(to_file=self.outf,
+            action = bzrlib.add.AddWithSkipLargeAction(to_file=self.outf,
                 should_print=(not is_quiet()))
 
         if base_tree:
@@ -4975,6 +4979,8 @@ class cmd_uncommit(Command):
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes.'),
                     Option('force', help='Say yes to all questions.'),
+                    Option('keep-tags',
+                           help='Keep tags that point to removed revisions.'),
                     Option('local',
                            help="Only remove the commits from the local branch"
                                 " when in a checkout."
@@ -4984,9 +4990,8 @@ class cmd_uncommit(Command):
     aliases = []
     encoding_type = 'replace'
 
-    def run(self, location=None,
-            dry_run=False, verbose=False,
-            revision=None, force=False, local=False):
+    def run(self, location=None, dry_run=False, verbose=False,
+            revision=None, force=False, local=False, keep_tags=False):
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
@@ -5001,9 +5006,11 @@ class cmd_uncommit(Command):
             self.add_cleanup(tree.lock_write().unlock)
         else:
             self.add_cleanup(b.lock_write().unlock)
-        return self._run(b, tree, dry_run, verbose, revision, force, local=local)
+        return self._run(b, tree, dry_run, verbose, revision, force,
+                         local, keep_tags)
 
-    def _run(self, b, tree, dry_run, verbose, revision, force, local=False):
+    def _run(self, b, tree, dry_run, verbose, revision, force, local,
+             keep_tags):
         from bzrlib.log import log_formatter, show_log
         from bzrlib.uncommit import uncommit
 
@@ -5055,7 +5062,7 @@ class cmd_uncommit(Command):
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
-                 revno=revno, local=local)
+                 revno=revno, local=local, keep_tags=keep_tags)
         self.outf.write('You can restore the old tip by running:\n'
              '  bzr pull . -r revid:%s\n' % last_rev_id)
 

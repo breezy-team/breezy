@@ -535,7 +535,7 @@ class _RelockDebugMixin(object):
     locked the same way), and -Drelock is set, then this will trace.note a
     message about it.
     """
-    
+
     _prev_lock = None
 
     def _note_lock(self, lock_type):

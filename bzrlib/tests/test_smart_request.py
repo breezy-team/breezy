@@ -240,7 +240,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
         self.assertRaises(errors.JailBreak, _pre_open_hook, t.clone('..'))
         # A completely unrelated transport is not allowed
         self.assertRaises(errors.JailBreak, _pre_open_hook,
-                          transport.get_transport('http://host/'))
+                          transport.get_transport_from_url('http://host/'))
 
     def test_open_bzrdir_in_non_main_thread(self):
         """Opening a bzrdir in a non-main thread should work ok.

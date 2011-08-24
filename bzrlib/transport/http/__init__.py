@@ -566,14 +566,16 @@ class HttpTransportBase(ConnectedTransport):
                                             self._parsed_url.password,
                                             parsed_url.host, parsed_url.port,
                                             base_path)
-                new_transport = transport.get_transport(new_url)
+                new_transport = transport.get_transport_from_url(
+                    new_url)
         else:
             # Redirected to a different protocol
             new_url = self._unsplit_url(parsed_url.scheme,
                                         parsed_url.user, parsed_url.password,
                                         parsed_url.host, parsed_url.port,
                                         base_path)
-            new_transport = transport.get_transport(new_url)
+            new_transport = transport.get_transport_from_url(
+                new_url)
         return new_transport
 
 
