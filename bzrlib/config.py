@@ -2322,7 +2322,8 @@ class Option(object):
         :param name: the name used to refer to the option.
 
         :param default: the default value to use when none exist in the config
-            stores. This must be a string as it appears in the config stores.
+            stores. This must be a unicode string as provided by the config
+            stores.
 
         :param default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
@@ -2463,7 +2464,7 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
-    Option('bzr.workingtree.worth_saving_limit', default='10',
+    Option('bzr.workingtree.worth_saving_limit', default=u'10',
            from_unicode=int_from_store,  invalid='warning',
            help='''\
 How many changes before saving the dirstate.
@@ -2475,7 +2476,7 @@ affects the behavior of updating the dirstate file after we notice that
 a file has been touched.
 '''))
 option_registry.register(
-    Option('dirstate.fdatasync', default='True',
+    Option('dirstate.fdatasync', default=u'True',
            from_unicode=bool_from_store,
            help='''\
 Flush dirstate changes onto physical disk?
@@ -2485,16 +2486,16 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 '''))
 option_registry.register(
-    Option('debug_flags', default='', from_unicode=list_from_store,
+    Option('debug_flags', default=u'', from_unicode=list_from_store,
            help='Debug flags to activate.'))
 option_registry.register(
-    Option('default_format', default='2a',
+    Option('default_format', default=u'2a',
            help='Format used when creating branches.'))
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('ignore_missing_extensions', default='False',
+    Option('ignore_missing_extensions', default=u'False',
            from_unicode=bool_from_store,
            help='''\
 Control the missing extensions warning display.
@@ -2505,7 +2506,7 @@ option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
-    Option('locks.steal_dead', default='False', from_unicode=bool_from_store,
+    Option('locks.steal_dead', default=u'False', from_unicode=bool_from_store,
            help='''\
 Steal locks that appears to be dead.
 
@@ -2521,7 +2522,8 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
-    Option('repository.fdatasync', default='True', from_unicode=bool_from_store,
+    Option('repository.fdatasync', default=u'True',
+           from_unicode=bool_from_store,
            help='''\
 Flush repository changes onto physical disk?
 
