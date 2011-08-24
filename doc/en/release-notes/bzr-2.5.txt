@@ -113,8 +113,6 @@ Bug Fixes
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
 
-* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
-
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
