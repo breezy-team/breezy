@@ -3229,6 +3229,8 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestStackExpandOptions, self).setUp()
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
+        self.registry = config.option_registry
         self.conf = build_branch_stack(self)
 
     def assertExpansion(self, expected, string, env=None):
@@ -3236,6 +3238,24 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
 
     def test_no_expansion(self):
         self.assertExpansion('foo', 'foo')
+
+    def test_expand_default_value(self):
+        self.conf.store._load_from_string('bar=baz')
+        self.registry.register(config.Option('foo', default=u'{bar}'))
+        self.assertEquals('baz', self.conf.get('foo', expand=True))
+
+    def test_expand_default_from_env(self):
+        self.conf.store._load_from_string('bar=baz')
+        self.registry.register(config.Option('foo', default_from_env=['FOO']))
+        self.overrideEnv('FOO', '{bar}')
+        self.assertEquals('baz', self.conf.get('foo', expand=True))
+
+    def test_expand_default_on_failed_conversion(self):
+        self.conf.store._load_from_string('baz=bogus\nbar=42\nfoo={baz}')
+        self.registry.register(
+            config.Option('foo', default=u'{bar}',
+                          from_unicode=config.int_from_store))
+        self.assertEquals(42, self.conf.get('foo', expand=True))
 
     def test_env_adding_options(self):
         self.assertExpansion('bar', '{foo}', {'foo': 'bar'})

@@ -3014,27 +3014,33 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
-        if value is None:
+        if opt is not None and value is None:
             # If the option is registered, it may provide a default value
-            if opt is not None:
-                value = opt.get_default()
+            value = opt.get_default()
         if expand:
-            if isinstance(value, list):
-                value = self._expand_options_in_list(value)
-            elif isinstance(value, dict):
-                trace.warning('Cannot expand "%s":'
-                              ' Dicts do not support option expansion'
-                              % (name,))
-            elif isinstance(value, (str, unicode)):
-                value = self._expand_options_in_string(value)
-        if opt is not None:
+            value = self._expand_option_value(value)
+        if opt is not None and value is not None:
             value = opt.convert_from_unicode(value)
             if value is None:
-                # The conversion failed or there was no value to convert,
-                # fallback to the default value
-                value = opt.convert_from_unicode(opt.get_default())
+                # The conversion failed fallback to the default value
+                value = opt.get_default()
+                if expand:
+                    value = self._expand_option_value(value)
+                value = opt.convert_from_unicode(value)
         for hook in ConfigHooks['get']:
             hook(self, name, value)
+        return value
+
+    def _expand_option_value(self, value):
+        """Expand the option value depending on its type."""
+        if isinstance(value, list):
+            value = self._expand_options_in_list(value)
+        elif isinstance(value, dict):
+            trace.warning('Cannot expand "%s":'
+                          ' Dicts do not support option expansion'
+                          % (name,))
+        elif isinstance(value, (str, unicode)):
+            value = self._expand_options_in_string(value)
         return value
 
     def expand_options(self, string, env=None):
