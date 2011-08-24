@@ -4990,9 +4990,8 @@ class cmd_uncommit(Command):
     aliases = []
     encoding_type = 'replace'
 
-    def run(self, location=None,
-            dry_run=False, verbose=False, keep_tags=False,
-            revision=None, force=False, local=False):
+    def run(self, location=None, dry_run=False, verbose=False,
+            revision=None, force=False, local=False, keep_tags=False):
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
@@ -5008,10 +5007,10 @@ class cmd_uncommit(Command):
         else:
             self.add_cleanup(b.lock_write().unlock)
         return self._run(b, tree, dry_run, verbose, revision, force,
-                         keep_tags, local=local)
+                         local, keep_tags)
 
-    def _run(self, b, tree, dry_run, verbose, revision, force, keep_tags,
-             local=False):
+    def _run(self, b, tree, dry_run, verbose, revision, force, local,
+             keep_tags):
         from bzrlib.log import log_formatter, show_log
         from bzrlib.uncommit import uncommit
 
