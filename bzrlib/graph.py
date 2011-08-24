@@ -2005,6 +2005,9 @@ def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
     :param tip_keys: the revision_ids that we are searching
     :param depth: How far back to walk.
     """
+    if not parent_map:
+        # No search to send, because we haven't done any searching yet.
+        return [], [], 0
     heads = _find_possible_heads(parent_map, tip_keys, depth)
     s, found_heads = _run_search(parent_map, heads, set(tip_keys))
     _, start_keys, exclude_keys, key_count = s.get_result().get_recipe()

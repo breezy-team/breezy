@@ -1796,6 +1796,9 @@ class TestLimitedSearchResultFromParentMap(TestGraphBase):
         self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
                          (sorted(start), sorted(stop), count))
 
+    def test_empty_ancestry(self):
+        self.assertSearchResult([], [], 0, {}, (), ['tip-rev-id'], 10)
+
     def test_ancestry_1(self):
         self.assertSearchResult(['rev4'], ['rev1'], 4,
                                 ancestry_1, (), ['rev1'], 10)
