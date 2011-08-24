@@ -100,6 +100,10 @@ Improvements
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
 
+* ``bzr uncommit`` will now remove tags that refer to removed revisions.
+  The ``--keep-tags`` option can be used to prevent this behaviour.
+  (Jelmer Vernooij, #605814)
+
 * Locations printed by ``bzr upgrade`` are now formatted before display.
   (Jelmer Vernooij)
 

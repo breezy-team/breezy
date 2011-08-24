@@ -18,9 +18,9 @@
 
 import os
 
-from bzrlib import uncommit, workingtree
+from bzrlib import uncommit
 from bzrlib.bzrdir import BzrDirMetaFormat1
-from bzrlib.errors import BzrError, BoundBranchOutOfDate
+from bzrlib.errors import BoundBranchOutOfDate
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.script import (
     run_script,
@@ -280,3 +280,17 @@ You can restore the old tip by running:
         tree.commit(u'\u1234 message')
         out, err = self.run_bzr('uncommit --force tree', encoding='ascii')
         self.assertContainsRe(out, r'\? message')
+
+    def test_uncommit_removes_tags(self):
+        tree = self.make_branch_and_tree('tree')
+        revid = tree.commit('message')
+        tree.branch.tags.set_tag("atag", revid)
+        out, err = self.run_bzr('uncommit --force tree')
+        self.assertEquals({}, tree.branch.tags.get_tag_dict())
+
+    def test_uncommit_keep_tags(self):
+        tree = self.make_branch_and_tree('tree')
+        revid = tree.commit('message')
+        tree.branch.tags.set_tag("atag", revid)
+        out, err = self.run_bzr('uncommit --keep-tags --force tree')
+        self.assertEquals({"atag": revid}, tree.branch.tags.get_tag_dict())
