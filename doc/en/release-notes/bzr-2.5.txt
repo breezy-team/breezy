@@ -89,6 +89,8 @@ New Features
   option. A value of 0 disables skipping. Named items passed to add are
   never skipped. (Shannon Weyrick, #54624)
 
+* bzr now ships with translations for command help.  (Jonathan
+  Riddell, INADA Naoki, #83941)
 
 Improvements
 ************
