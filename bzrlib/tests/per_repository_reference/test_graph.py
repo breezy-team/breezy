@@ -20,6 +20,7 @@
 
 from bzrlib import (
     remote,
+    repository,
     tests,
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository
@@ -74,15 +75,38 @@ class TestGraph(TestCaseWithRepository):
         # bug #388269
         master_b, stacked_b = self.make_stacked_branch_with_long_history()
         self.addCleanup(stacked_b.lock_read().unlock)
-        rpc = stacked_b.repository._get_parent_map_rpc
-        calls = []
-        def logging_rpc(keys):
-            import pdb; pdb.set_trace()
-            calls.append(keys)
-            return rpc(keys)
-        stacked_b.repository._get_parent_map_rpc = logging_rpc
         self.make_repository('target_repo', shared=True)
         target_b = self.make_branch('target_repo/branch')
-        target_b.pull(stacked_b)
-        self.assertEqual([], calls)
-        self.fail("test isn't working yet.")
+        self.addCleanup(target_b.lock_write().unlock)
+        self.setup_smart_server_with_call_log()
+        res = target_b.repository.search_missing_revision_ids(
+                stacked_b.repository, revision_ids=['F'],
+                find_ghosts=False)
+        # The hook format is a bit raw, so lets clean it up a bit for the
+        # assertion
+        get_parent_map_calls = []
+        for c in self.hpss_calls:
+            # Right now, the only RPCs that get called are get_parent_map. If
+            # this changes in the future, we could change this to:
+            # if c.call.method != 'Repository.get_parent_map':
+            #    continue
+            self.assertEqual('Repository.get_parent_map', c.call.method)
+            args = c.call.args
+            location = args[0]
+            self.assertEqual('include-missing:', args[1])
+            revisions = sorted(args[2:])
+            get_parent_map_calls.append((location, revisions))
+        self.assertEqual([
+            # One call to stacked to start, which returns F=>E, and that E
+            # itself is missing, so when we step, we won't look for it.
+            ('extra/stacked/', ['F']),
+            # One fallback call to extra/master, which will return the rest of
+            # the history.
+            ('extra/master/', ['E']),
+            # And then one get_parent_map call to the target, to see if it
+            # already has any of these revisions.
+            ('extra/target_repo/branch/', ['A', 'B', 'C', 'D', 'E', 'F']),
+            ], get_parent_map_calls)
+        # Before bug #388269 was fixed, there would be a bunch of extra calls
+        # to 'extra/stacked', ['D'] then ['C'], then ['B'], then ['A'].
+        # One-at-a-time for the rest of the ancestry.
