@@ -1744,3 +1744,74 @@ class TestSearchResultRefine(TestGraphBase):
         self.assertEqual(set([NULL_REVISION, 'tip', 'tag', 'mid']), recipe[2])
         self.assertEqual(0, recipe[3])
         self.assertTrue(result.is_empty())
+
+
+class TestSearchResultFromParentMap(TestGraphBase):
+
+    def assertSearchResult(self, start_keys, stop_keys, key_count, parent_map,
+                           missing_keys=()):
+        (start, stop, count) = _mod_graph.search_result_from_parent_map(
+            parent_map, missing_keys)
+        self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
+                         (sorted(start), sorted(stop), count))
+
+    def test_no_parents(self):
+        self.assertSearchResult([], [], 0, {})
+        self.assertSearchResult([], [], 0, None)
+
+    def test_ancestry_1(self):
+        self.assertSearchResult(['rev4'], [NULL_REVISION], len(ancestry_1),
+                                ancestry_1)
+
+    def test_ancestry_2(self):
+        self.assertSearchResult(['rev1b', 'rev4a'], [NULL_REVISION],
+                                len(ancestry_2), ancestry_2)
+        self.assertSearchResult(['rev1b', 'rev4a'], [],
+                                len(ancestry_2)+1, ancestry_2,
+                                missing_keys=[NULL_REVISION])
+
+    def test_partial_search(self):
+        parent_map = dict((k,extended_history_shortcut[k])
+                          for k in ['e', 'f'])
+        self.assertSearchResult(['e', 'f'], ['d', 'a'], 2,
+                                parent_map)
+        parent_map.update((k,extended_history_shortcut[k])
+                          for k in ['d', 'a'])
+        self.assertSearchResult(['e', 'f'], ['c', NULL_REVISION], 4,
+                                parent_map)
+        parent_map['c'] = extended_history_shortcut['c']
+        self.assertSearchResult(['e', 'f'], ['b'], 6,
+                                parent_map, missing_keys=[NULL_REVISION])
+        parent_map['b'] = extended_history_shortcut['b']
+        self.assertSearchResult(['e', 'f'], [], 7,
+                                parent_map, missing_keys=[NULL_REVISION])
+
+
+class TestLimitedSearchResultFromParentMap(TestGraphBase):
+
+    def assertSearchResult(self, start_keys, stop_keys, key_count, parent_map,
+                           missing_keys, tip_keys, depth):
+        (start, stop, count) = _mod_graph.limited_search_result_from_parent_map(
+            parent_map, missing_keys, tip_keys, depth)
+        self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
+                         (sorted(start), sorted(stop), count))
+
+    def test_empty_ancestry(self):
+        self.assertSearchResult([], [], 0, {}, (), ['tip-rev-id'], 10)
+
+    def test_ancestry_1(self):
+        self.assertSearchResult(['rev4'], ['rev1'], 4,
+                                ancestry_1, (), ['rev1'], 10)
+        self.assertSearchResult(['rev2a', 'rev2b'], ['rev1'], 2,
+                                ancestry_1, (), ['rev1'], 1)
+
+
+    def test_multiple_heads(self):
+        self.assertSearchResult(['e', 'f'], ['a'], 5,
+                                extended_history_shortcut, (), ['a'], 10)
+        # Note that even though we only take 1 step back, we find 'f', which
+        # means the described search will still find d and c.
+        self.assertSearchResult(['f'], ['a'], 4,
+                                extended_history_shortcut, (), ['a'], 1)
+        self.assertSearchResult(['f'], ['a'], 4,
+                                extended_history_shortcut, (), ['a'], 2)

@@ -61,7 +61,7 @@ class DictParentsProvider(object):
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
-        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+        return dict([(k, ancestry[k]) for k in keys if k in ancestry])
 
 
 class StackedParentsProvider(object):
@@ -1419,13 +1419,14 @@ class _BreadthFirstSearcher(object):
         parents_of_found = set()
         # revisions may contain nodes that point to other nodes in revisions:
         # we want to filter them out.
-        self.seen.update(revisions)
+        seen = self.seen
+        seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
             if parents is None:
                 continue
-            new_found_parents = [p for p in parents if p not in self.seen]
+            new_found_parents = [p for p in parents if p not in seen]
             if new_found_parents:
                 # Calling set.update() with an empty generator is actually
                 # rather expensive.
@@ -1889,6 +1890,160 @@ class NotInOtherForRevs(AbstractSearch):
             self.from_repo, revision_ids=self.required_ids,
             if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts,
             limit=self.limit)
+
+
+def invert_parent_map(parent_map):
+    """Given a map from child => parents, create a map of parent=>children"""
+    child_map = {}
+    for child, parents in parent_map.iteritems():
+        for p in parents:
+            # Any given parent is likely to have only a small handful
+            # of children, many will have only one. So we avoid mem overhead of
+            # a list, in exchange for extra copying of tuples
+            if p not in child_map:
+                child_map[p] = (child,)
+            else:
+                child_map[p] = child_map[p] + (child,)
+    return child_map
+
+
+def _find_possible_heads(parent_map, tip_keys, depth):
+    """Walk backwards (towards children) through the parent_map.
+
+    This finds 'heads' that will hopefully succinctly describe our search
+    graph.
+    """
+    child_map = invert_parent_map(parent_map)
+    heads = set()
+    current_roots = tip_keys
+    walked = set(current_roots)
+    while current_roots and depth > 0:
+        depth -= 1
+        children = set()
+        children_update = children.update
+        for p in current_roots:
+            # Is it better to pre- or post- filter the children?
+            try:
+                children_update(child_map[p])
+            except KeyError:
+                heads.add(p)
+        # If we've seen a key before, we don't want to walk it again. Note that
+        # 'children' stays relatively small while 'walked' grows large. So
+        # don't use 'difference_update' here which has to walk all of 'walked'.
+        # '.difference' is smart enough to walk only children and compare it to
+        # walked.
+        children = children.difference(walked)
+        walked.update(children)
+        current_roots = children
+    if current_roots:
+        # We walked to the end of depth, so these are the new tips.
+        heads.update(current_roots)
+    return heads
+
+
+def _run_search(parent_map, heads, exclude_keys):
+    """Given a parent map, run a _BreadthFirstSearcher on it.
+
+    Start at heads, walk until you hit exclude_keys. As a further improvement,
+    watch for any heads that you encounter while walking, which means they were
+    not heads of the search.
+
+    This is mostly used to generate a succinct recipe for how to walk through
+    most of parent_map.
+
+    :return: (_BreadthFirstSearcher, set(heads_encountered_by_walking))
+    """
+    g = Graph(DictParentsProvider(parent_map))
+    s = g._make_breadth_first_searcher(heads)
+    found_heads = set()
+    while True:
+        try:
+            next_revs = s.next()
+        except StopIteration:
+            break
+        for parents in s._current_parents.itervalues():
+            f_heads = heads.intersection(parents)
+            if f_heads:
+                found_heads.update(f_heads)
+        stop_keys = exclude_keys.intersection(next_revs)
+        if stop_keys:
+            s.stop_searching_any(stop_keys)
+    for parents in s._current_parents.itervalues():
+        f_heads = heads.intersection(parents)
+        if f_heads:
+            found_heads.update(f_heads)
+    return s, found_heads
+
+
+def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
+                                          depth):
+    """Transform a parent_map that is searching 'tip_keys' into an
+    approximate SearchResult.
+
+    We should be able to generate a SearchResult from a given set of starting
+    keys, that covers a subset of parent_map that has the last step pointing at
+    tip_keys. This is to handle the case that really-long-searches shouldn't be
+    started from scratch on each get_parent_map request, but we *do* want to
+    filter out some of the keys that we've already seen, so we don't get
+    information that we already know about on every request.
+
+    The server will validate the search (that starting at start_keys and
+    stopping at stop_keys yields the exact key_count), so we have to be careful
+    to give an exact recipe.
+
+    Basic algorithm is:
+        1) Invert parent_map to get child_map (todo: have it cached and pass it
+           in)
+        2) Starting at tip_keys, walk towards children for 'depth' steps.
+        3) At that point, we have the 'start' keys.
+        4) Start walking parent_map from 'start' keys, counting how many keys
+           are seen, and generating stop_keys for anything that would walk
+           outside of the parent_map.
+
+    :param parent_map: A map from {child_id: (parent_ids,)}
+    :param missing_keys: parent_ids that we know are unavailable
+    :param tip_keys: the revision_ids that we are searching
+    :param depth: How far back to walk.
+    """
+    if not parent_map:
+        # No search to send, because we haven't done any searching yet.
+        return [], [], 0
+    heads = _find_possible_heads(parent_map, tip_keys, depth)
+    s, found_heads = _run_search(parent_map, heads, set(tip_keys))
+    _, start_keys, exclude_keys, key_count = s.get_result().get_recipe()
+    if found_heads:
+        # Anything in found_heads are redundant start_keys, we hit them while
+        # walking, so we can exclude them from the start list.
+        start_keys = set(start_keys).difference(found_heads)
+    return start_keys, exclude_keys, key_count
+
+
+def search_result_from_parent_map(parent_map, missing_keys):
+    """Transform a parent_map into SearchResult information."""
+    if not parent_map:
+        # parent_map is empty or None, simple search result
+        return [], [], 0
+    # start_set is all the keys in the cache
+    start_set = set(parent_map)
+    # result set is all the references to keys in the cache
+    result_parents = set()
+    for parents in parent_map.itervalues():
+        result_parents.update(parents)
+    stop_keys = result_parents.difference(start_set)
+    # We don't need to send ghosts back to the server as a position to
+    # stop either.
+    stop_keys.difference_update(missing_keys)
+    key_count = len(parent_map)
+    if (revision.NULL_REVISION in result_parents
+        and revision.NULL_REVISION in missing_keys):
+        # If we pruned NULL_REVISION from the stop_keys because it's also
+        # in our cache of "missing" keys we need to increment our key count
+        # by 1, because the reconsitituted SearchResult on the server will
+        # still consider NULL_REVISION to be an included key.
+        key_count += 1
+    included_keys = start_set.intersection(result_parents)
+    start_set.difference_update(included_keys)
+    return start_set, stop_keys, key_count
 
 
 def collapse_linear_regions(parent_map):
