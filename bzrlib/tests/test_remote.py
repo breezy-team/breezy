@@ -2287,6 +2287,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(encoded_body, 'ok')
         repo.lock_read()
+        # get_cached_parent_map should *not* trigger an RPC
+        self.assertEqual({}, repo.get_cached_parent_map([r1]))
+        self.assertEqual([], client._calls)
         self.assertEqual({r2: (r1,)}, repo.get_parent_map([r2]))
         self.assertEqual({r1: (NULL_REVISION,)},
             repo.get_cached_parent_map([r1]))
