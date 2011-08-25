@@ -75,8 +75,8 @@ PKG_DATA = {# install files from selftest suite
            }
 I18N_FILES = []
 for filepath in glob.glob("bzrlib/locale/*/LC_MESSAGES/*.mo"):
-    lang = filepath[len("bzrlib/locale/"):]
-    targetpath = os.path.dirname(os.path.join("share/locale",lang))
+    langfile = filepath[len("bzrlib/locale/"):]
+    targetpath = os.path.dirname(os.path.join("share/locale", langfile))
     I18N_FILES.append((targetpath, [filepath]))
 
 def get_bzrlib_packages():
