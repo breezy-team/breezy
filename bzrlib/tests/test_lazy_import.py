@@ -16,7 +16,9 @@
 
 """Test the lazy_import functionality."""
 
+import linecache
 import os
+import re
 import sys
 
 from bzrlib import (
@@ -1167,3 +1169,79 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                           ('_import', 'root8'),
                           ('import', self.root_name, []),
                          ], self.actions)
+
+
+class TestScopeReplacerReentrance(TestCase):
+    """The ScopeReplacer should be reentrant.
+
+    Invoking a replacer while an invocation was already on-going leads to a
+    race to see which invocation will be the first to delete the _factory and
+    _scope attributes.  The loosing caller used to see AttributeErrors (bug
+    702914).
+
+    These tests set up a tracer that stops at the moment just before one of
+    the attributes is being deleted and starts another call to the
+    functionality in question (__call__, __getattribute__, __setattr_) in
+    order win the race, setting up the originall caller to loose.
+    """
+
+    def tracer(self, frame, event, arg):
+        # Grab the name of the file that contains the code being executed.
+        filename = frame.f_globals["__file__"]
+        # Convert ".pyc" and ".pyo" file names to their ".py" equivalent.
+        filename = re.sub(r'\.py[co]$', '.py', filename)
+        # If we're executing a line of code from the right module...
+        if event == 'line' and 'lazy_import.py' in filename:
+            line = linecache.getline(filename, frame.f_lineno)
+            # ...and the line of code is the one we're looking for...
+            if 'del self._factory' in line:
+                # We don't need to trace any more.
+                sys.settrace(None)
+                # Run another racer.  This one will "win" the race, deleting
+                # the attributes.  When the first racer resumes it will loose
+                # the race, generating an AttributeError.
+                self.racer()
+        return self.tracer
+
+    def run_race(self, racer):
+        self.racer = racer
+        sys.settrace(self.tracer)
+        self.racer() # Should not raise an AttributeError
+        # Make sure the tracer actually found the code it was looking for.  If
+        # not, maybe the code was refactored in such a way that these tests
+        # aren't needed any more.
+        self.assertEqual(None, sys.gettrace())
+
+    def test_call(self):
+        def factory(*args):
+            return factory
+        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
+        self.run_race(replacer)
+
+    def test_setattr(self):
+        class Replaced:
+            pass
+
+        def factory(*args):
+            return Replaced()
+
+        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
+
+        def racer():
+            replacer.foo = 42
+
+        self.run_race(racer)
+
+    def test_getattribute(self):
+        class Replaced:
+            foo = 'bar'
+
+        def factory(*args):
+            return Replaced()
+
+        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
+
+        def racer():
+            replacer.foo
+
+        self.run_race(racer)
