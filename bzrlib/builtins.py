@@ -4667,10 +4667,10 @@ class cmd_missing(Command):
 
         if mine_only and not local_extra:
             # We checked local, and found nothing extra
-            message('This branch is up to date.\n')
+            message('This branch has no new revisions.\n')
         elif theirs_only and not remote_extra:
             # We checked remote, and found nothing extra
-            message('Other branch is up to date.\n')
+            message('Other branch has no new revisions.\n')
         elif not (mine_only or theirs_only or local_extra or
                   remote_extra):
             # We checked both branches, and neither one had extra
