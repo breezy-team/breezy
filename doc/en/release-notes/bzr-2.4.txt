@@ -35,6 +35,8 @@ Bug Fixes
 * ``config.LocationMatcher`` properly excludes unrelated sections.
   (Vincent Ladeuil, #829237)
 
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
 Documentation
 *************
 
