@@ -63,13 +63,18 @@ class DictParentsProvider(object):
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
+    # The data is clearly cached in memory already, so treat this as a priority
+    # source for data, on the other hand DictParentsProvider is pretty much a
+    # test-only source, and doesn't really matter.
+    # get_cached_parent_map = get_parent_map
+
 
 class StackedParentsProvider(object):
     """A parents provider which stacks (or unions) multiple providers.
-    
+
     The providers are queries in the order of the provided parent_providers.
     """
-    
+
     def __init__(self, parent_providers):
         self._parent_providers = parent_providers
 
@@ -91,6 +96,20 @@ class StackedParentsProvider(object):
         """
         found = {}
         remaining = set(keys)
+        # TODO: This adds a getattr() call to each get_parent_map call.
+        #       Performance test it.
+        for parents_provider in self._parent_providers:
+            get_cached = getattr(parents_provider, 'get_cached_parent_map',
+                                 None)
+            if get_cached is None:
+                continue
+            new_found = get_cached(remaining)
+            found.update(new_found)
+            remaining.difference_update(new_found)
+            if not remaining:
+                break
+        if not remaining:
+            return found
         for parents_provider in self._parent_providers:
             new_found = parents_provider.get_parent_map(remaining)
             found.update(new_found)
@@ -149,6 +168,12 @@ class CachingParentsProvider(object):
         if self._cache is None:
             return None
         return dict(self._cache)
+
+    def get_cached_parent_map(self, keys):
+        cache = self._cache
+        if cache is None:
+            return {}
+        return dict([(key, cache[key]) for key in keys if key in cache])
 
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map."""
