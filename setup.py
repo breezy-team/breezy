@@ -509,14 +509,15 @@ if 'bdist_wininst' in sys.argv:
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
-            # help pages and translations
-            'data_files': find_docs() + I18N_FILES,
+            # help pages
+            'data_files': find_docs(),
             # for building pyrex extensions
             'cmdclass': command_classes,
            }
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
+    PKG_DATA['package_data']['bzrlib'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
 
     setup(**ARGS)
