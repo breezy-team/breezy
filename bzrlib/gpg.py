@@ -31,7 +31,10 @@ from bzrlib import (
     trace,
     ui,
     )
-from bzrlib.i18n import gettext,ngettext
+from bzrlib.i18n import (
+    gettext, 
+    ngettext,
+    )
 """)
 
 #verification results
