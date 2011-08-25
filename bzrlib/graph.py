@@ -63,10 +63,10 @@ class DictParentsProvider(object):
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
-    # The data is clearly cached in memory already, so treat this as a priority
-    # source for data, on the other hand DictParentsProvider is pretty much a
-    # test-only source, and doesn't really matter.
-    # get_cached_parent_map = get_parent_map
+    # Note: DictParentsProvider does not implement get_cached_parent_map
+    #       Argubly, the data is clearly cached in memory. However, this class
+    #       is mostly used for testing, and it keeps the tests clean to not
+    #       change it.
 
 
 class StackedParentsProvider(object):
@@ -170,6 +170,11 @@ class CachingParentsProvider(object):
         return dict(self._cache)
 
     def get_cached_parent_map(self, keys):
+        """Return items from the cache.
+
+        This returns the same info as get_parent_map, but explicitly does not
+        invoke the supplied ParentsProvider to search for uncached values.
+        """
         cache = self._cache
         if cache is None:
             return {}
