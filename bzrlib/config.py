@@ -2322,8 +2322,9 @@ class Option(object):
         :param name: the name used to refer to the option.
 
         :param default: the default value to use when none exist in the config
-            stores. This must be a unicode string as provided by the config
-            stores.
+            stores. This is either a string that ``from_unicode`` will convert
+            into the proper type or a python object that can be stringified (so
+            only the empty list is supported for example).
 
         :param default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
@@ -2345,7 +2346,23 @@ class Option(object):
         if default_from_env is None:
             default_from_env = []
         self.name = name
-        self.default = default
+        # Convert the default value to a unicode string so all values are
+        # strings internally before conversion (via from_unicode) is attempted.
+        if default is None:
+            self.default = None
+        elif isinstance(default, list):
+            # Only the empty list is supported
+            if default:
+                raise AssertionError(
+                    'Only empty lists are supported as default values')
+            self.default = u','
+        elif isinstance(default, (str, unicode, bool, int)):
+            # Rely on python to convert strings, booleans and integers
+            self.default = u'%s' % (default,)
+        else:
+            # other python objects are not expected
+            raise AssertionError('%r is not supported as a default value'
+                                 % (default,))
         self.default_from_env = default_from_env
         self.help = help
         self.from_unicode = from_unicode
@@ -2464,7 +2481,7 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
-    Option('bzr.workingtree.worth_saving_limit', default=u'10',
+    Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
            help='''\
 How many changes before saving the dirstate.
@@ -2476,7 +2493,7 @@ affects the behavior of updating the dirstate file after we notice that
 a file has been touched.
 '''))
 option_registry.register(
-    Option('dirstate.fdatasync', default=u'True',
+    Option('dirstate.fdatasync', default=True,
            from_unicode=bool_from_store,
            help='''\
 Flush dirstate changes onto physical disk?
@@ -2486,16 +2503,16 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 '''))
 option_registry.register(
-    Option('debug_flags', default=u'', from_unicode=list_from_store,
+    Option('debug_flags', default=[], from_unicode=list_from_store,
            help='Debug flags to activate.'))
 option_registry.register(
-    Option('default_format', default=u'2a',
+    Option('default_format', default='2a',
            help='Format used when creating branches.'))
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('ignore_missing_extensions', default=u'False',
+    Option('ignore_missing_extensions', default=False,
            from_unicode=bool_from_store,
            help='''\
 Control the missing extensions warning display.
@@ -2506,7 +2523,7 @@ option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
-    Option('locks.steal_dead', default=u'False', from_unicode=bool_from_store,
+    Option('locks.steal_dead', default=False, from_unicode=bool_from_store,
            help='''\
 Steal locks that appears to be dead.
 
@@ -2522,7 +2539,7 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
-    Option('repository.fdatasync', default=u'True',
+    Option('repository.fdatasync', default=True,
            from_unicode=bool_from_store,
            help='''\
 Flush repository changes onto physical disk?

@@ -2247,6 +2247,13 @@ class TestOption(tests.TestCase):
         # The first env var set wins
         self.assertEquals('foo', opt.get_default())
 
+    def test_not_supported_list_default_value(self):
+        self.assertRaises(AssertionError, config.Option, 'foo', default=[1])
+
+    def test_not_supported_object_default_value(self):
+        self.assertRaises(AssertionError, config.Option, 'foo',
+                          default=object())
+
 
 class TestOptionConverterMixin(object):
 
@@ -3132,10 +3139,10 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertEquals(True, self.conf.get('foo'))
 
     def test_get_default_bool_False(self):
-        self.register_bool_option('foo', u'False')
+        self.register_bool_option('foo', False)
         self.assertEquals(False, self.conf.get('foo'))
 
-    def test_get_default_bool_False(self):
+    def test_get_default_bool_False_as_string(self):
         self.register_bool_option('foo', u'False')
         self.assertEquals(False, self.conf.get('foo'))
 
@@ -3161,6 +3168,10 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertEquals(None, self.conf.get('foo'))
 
     def test_get_default_integer(self):
+        self.register_integer_option('foo', 42)
+        self.assertEquals(42, self.conf.get('foo'))
+
+    def test_get_default_integer_as_string(self):
         self.register_integer_option('foo', u'42')
         self.assertEquals(42, self.conf.get('foo'))
 
@@ -3194,12 +3205,12 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertEquals([], self.conf.get('foo'))
 
     def test_get_with_list_converter_no_item(self):
-        self.register_list_option('foo', [1])
+        self.register_list_option('foo', None)
         self.conf.store._load_from_string('foo=,')
         self.assertEquals([], self.conf.get('foo'))
 
     def test_get_with_list_converter_many_items(self):
-        self.register_list_option('foo', [1])
+        self.register_list_option('foo', None)
         self.conf.store._load_from_string('foo=m,o,r,e')
         self.assertEquals(['m', 'o', 'r', 'e'], self.conf.get('foo'))
 
