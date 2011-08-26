@@ -22,9 +22,7 @@ The tags are actually in the Branch.tags namespace, but these are
 
 from bzrlib import (
     branch,
-    bzrdir,
     errors,
-    repository,
     tests,
     )
 from bzrlib.tests import per_branch
