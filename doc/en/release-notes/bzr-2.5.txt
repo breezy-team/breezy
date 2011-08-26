@@ -109,6 +109,8 @@ Improvements
 * Locations printed by ``bzr upgrade`` are now formatted before display.
   (Jelmer Vernooij)
 
+* Install translation .mo files. (Jonathan Riddell)
+
 Bug Fixes
 *********
 
