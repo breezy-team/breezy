@@ -1685,6 +1685,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
 
+    def get_cached_parent_map(self, revision_ids):
+        """See bzrlib.CachingParentsProvider.get_cached_parent_map"""
+        return self._unstacked_provider.get_cached_parent_map(revision_ids)
+
     def get_parent_map(self, revision_ids):
         """See bzrlib.Graph.get_parent_map()."""
         return self._make_parents_provider().get_parent_map(revision_ids)

@@ -122,6 +122,12 @@ Bug Fixes
   that subfolder.
   (Bastian Bowe, #809901)
 
+* Branching from a stacked branch no longer does a ``get_parent_map``
+  request for each revisions that is in the stacked-on repository while
+  determining what revisions need to be fetched. This mostly impacts
+  branching initialy into an empty shared repository when the source is
+  not the development focus.  (John Arbash Meinel, #388269)
+
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
 
