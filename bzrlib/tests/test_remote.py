@@ -2274,6 +2274,32 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({}, repo.get_parent_map(['non-existant']))
         self.assertLength(0, self.hpss_calls)
 
+    def test_exposes_get_cached_parent_map(self):
+        """RemoteRepository exposes get_cached_parent_map from
+        _unstacked_provider
+        """
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = bz2.compress('\n'.join(lines))
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(encoded_body, 'ok')
+        repo.lock_read()
+        # get_cached_parent_map should *not* trigger an RPC
+        self.assertEqual({}, repo.get_cached_parent_map([r1]))
+        self.assertEqual([], client._calls)
+        self.assertEqual({r2: (r1,)}, repo.get_parent_map([r2]))
+        self.assertEqual({r1: (NULL_REVISION,)},
+            repo.get_cached_parent_map([r1]))
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
+            client._calls)
+        repo.unlock()
+
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
 
