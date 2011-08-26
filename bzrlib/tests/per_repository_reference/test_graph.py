@@ -68,6 +68,22 @@ class TestGraph(TestCaseWithRepository):
         builder.finish_series()
         return master_b, stacked_b
 
+    def assertParentMapCalls(self, expected):
+        """Check that self.hpss_calls has the expected get_parent_map calls."""
+        get_parent_map_calls = []
+        for c in self.hpss_calls:
+            # Right now, the only RPCs that get called are get_parent_map. If
+            # this changes in the future, we can change this to:
+            # if c.call.method != 'Repository.get_parent_map':
+            #    continue
+            self.assertEqual('Repository.get_parent_map', c.call.method)
+            args = c.call.args
+            location = args[0]
+            self.assertEqual('include-missing:', args[1])
+            revisions = sorted(args[2:])
+            get_parent_map_calls.append((location, revisions))
+        self.assertEqual(expected, get_parent_map_calls)
+
     def test_doesnt_call_get_parent_map_on_all_fallback_revs(self):
         if not isinstance(self.repository_format,
                           remote.RemoteRepositoryFormat):
@@ -82,21 +98,7 @@ class TestGraph(TestCaseWithRepository):
         res = target_b.repository.search_missing_revision_ids(
                 stacked_b.repository, revision_ids=['F'],
                 find_ghosts=False)
-        # The hook format is a bit raw, so lets clean it up a bit for the
-        # assertion
-        get_parent_map_calls = []
-        for c in self.hpss_calls:
-            # Right now, the only RPCs that get called are get_parent_map. If
-            # this changes in the future, we could change this to:
-            # if c.call.method != 'Repository.get_parent_map':
-            #    continue
-            self.assertEqual('Repository.get_parent_map', c.call.method)
-            args = c.call.args
-            location = args[0]
-            self.assertEqual('include-missing:', args[1])
-            revisions = sorted(args[2:])
-            get_parent_map_calls.append((location, revisions))
-        self.assertEqual([
+        self.assertParentMapCalls([
             # One call to stacked to start, which returns F=>E, and that E
             # itself is missing, so when we step, we won't look for it.
             ('extra/stacked/', ['F']),
@@ -106,7 +108,7 @@ class TestGraph(TestCaseWithRepository):
             # And then one get_parent_map call to the target, to see if it
             # already has any of these revisions.
             ('extra/target_repo/branch/', ['A', 'B', 'C', 'D', 'E', 'F']),
-            ], get_parent_map_calls)
+            ])
         # Before bug #388269 was fixed, there would be a bunch of extra calls
         # to 'extra/stacked', ['D'] then ['C'], then ['B'], then ['A'].
         # One-at-a-time for the rest of the ancestry.

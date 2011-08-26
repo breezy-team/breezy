@@ -58,15 +58,15 @@ class DictParentsProvider(object):
     def __repr__(self):
         return 'DictParentsProvider(%r)' % self.ancestry
 
+    # Note: DictParentsProvider does not implement get_cached_parent_map
+    #       Arguably, the data is clearly cached in memory. However, this class
+    #       is mostly used for testing, and it keeps the tests clean to not
+    #       change it.
+
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
-
-    # Note: DictParentsProvider does not implement get_cached_parent_map
-    #       Argubly, the data is clearly cached in memory. However, this class
-    #       is mostly used for testing, and it keeps the tests clean to not
-    #       change it.
 
 
 class StackedParentsProvider(object):
@@ -96,8 +96,8 @@ class StackedParentsProvider(object):
         """
         found = {}
         remaining = set(keys)
-        # TODO: This adds a getattr() call to each get_parent_map call.
-        #       Performance test it.
+        # TODO: jam 20110826 This adds a getattr() call to each get_parent_map
+        #       call.  Performance test it.
         for parents_provider in self._parent_providers:
             get_cached = getattr(parents_provider, 'get_cached_parent_map',
                                  None)
