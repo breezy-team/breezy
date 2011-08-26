@@ -96,8 +96,10 @@ class StackedParentsProvider(object):
         """
         found = {}
         remaining = set(keys)
-        # TODO: jam 20110826 This adds a getattr() call to each get_parent_map
-        #       call.  Performance test it.
+        # This adds getattr() overhead to each get_parent_map call. However,
+        # this is StackedParentsProvider, which means we're dealing with I/O
+        # (either local indexes, or remote RPCs), so CPU overhead should be
+        # minimal.
         for parents_provider in self._parent_providers:
             get_cached = getattr(parents_provider, 'get_cached_parent_map',
                                  None)
