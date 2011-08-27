@@ -1076,7 +1076,7 @@ class cmd_pull(Command):
                 view_info=view_info)
             result = tree_to.pull(
                 branch_from, overwrite, revision_id, change_reporter,
-                possible_transports=possible_transports, local=local,
+                local=local,
                 show_base=show_base)
         else:
             result = branch_to.pull(
