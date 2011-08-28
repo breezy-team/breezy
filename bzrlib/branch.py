@@ -19,7 +19,7 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from itertools import chain
+import itertools
 from bzrlib import (
         bzrdir,
         cache_utf8,
@@ -35,15 +35,11 @@ from bzrlib import (
         repository,
         revision as _mod_revision,
         rio,
+        tag as _mod_tag,
         transport,
         ui,
         urlutils,
         )
-from bzrlib.config import BranchConfig, TransportConfig
-from bzrlib.tag import (
-    BasicTags,
-    DisabledTags,
-    )
 """)
 
 from bzrlib import (
@@ -216,7 +212,7 @@ class Branch(controldir.ControlComponent):
 
         :return: A bzrlib.config.BranchConfig.
         """
-        return BranchConfig(self)
+        return _mod_config.BranchConfig(self)
 
     def _get_config(self):
         """Get the concrete config for just the config in this branch.
@@ -514,7 +510,7 @@ class Branch(controldir.ControlComponent):
                     # The decision to include the start or not
                     # depends on the stop_rule if a stop is provided
                     # so pop this node back into the iterator
-                    rev_iter = chain(iter([node]), rev_iter)
+                    rev_iter = itertools.chain(iter([node]), rev_iter)
                     break
         if stop_revision_id is None:
             # Yield everything
@@ -1679,7 +1675,7 @@ class BranchFormat(controldir.ControlComponentFormat):
         Note that it is normal for branch to be a RemoteBranch when using tags
         on a RemoteBranch.
         """
-        return DisabledTags(branch)
+        return _mod_tag.DisabledTags(branch)
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
@@ -2125,7 +2121,7 @@ class BzrBranchFormat6(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
-        return BasicTags(branch)
+        return _mod_tag.BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -2156,7 +2152,7 @@ class BzrBranchFormat8(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
-        return BasicTags(branch)
+        return _mod_tag.BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -2203,7 +2199,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
-        return BasicTags(branch)
+        return _mod_tag.BasicTags(branch)
 
     supports_reference_locations = False
 
@@ -2421,7 +2417,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
     base = property(_get_base, doc="The URL for the root of this branch.")
 
     def _get_config(self):
-        return TransportConfig(self._transport, 'branch.conf')
+        return _mod_config.TransportConfig(self._transport, 'branch.conf')
 
     def is_locked(self):
         return self.control_files.is_locked()
