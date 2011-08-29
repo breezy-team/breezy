@@ -15,7 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
 from unittest import TestLoader
 
 from bzrlib import (
@@ -24,7 +23,6 @@ from bzrlib import (
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.plugins.email import post_commit
 from bzrlib.plugins.email.emailer import EmailSender
 
 
@@ -50,6 +48,13 @@ multiple_to_configured_config=("[DEFAULT]\n"
               "post_commit_sender=Sender <from@example.com>\n"
               "post_commit_to=Sample <foo@example.com>, Other <baz@bar.com>\n")
 
+customized_mail_config=("[DEFAULT]\n"
+                        "post_commit_to=demo@example.com\n"
+                        "post_commit_sender=Sample <foo@example.com>\n"
+                        "post_commit_subject=[commit] $message\n"
+                        "post_commit_body='''$committer has committed "
+                            "revision 1 at $url.\n\n'''\n")
+
 push_config=("[DEFAULT]\n"
     "post_commit_to=demo@example.com\n"
     "post_commit_push_pull=True\n")
@@ -59,16 +64,8 @@ with_url_config=("[DEFAULT]\n"
                  "post_commit_to=demo@example.com\n"
                  "post_commit_sender=Sample <foo@example.com>\n")
 
-
-class TestGetTo(TestCaseInTempDir):
-
-    def test_body(self):
-        sender = self.get_sender()
-        # FIXME: this should not use a literal log, rather grab one from bzrlib.log
-        self.assertEqual(
-            'At %s\n'
-            '\n'
-            '------------------------------------------------------------\n'
+# FIXME: this should not use a literal log, rather grab one from bzrlib.log
+sample_log=('------------------------------------------------------------\n'
             'revno: 1\n'
             'revision-id: A\n'
             'committer: Sample <john@example.com>\n'
@@ -77,7 +74,21 @@ class TestGetTo(TestCaseInTempDir):
             'message:\n'
             '  foo bar baz\n'
             '  fuzzy\n'
-            '  wuzzy\n' % sender.url(), sender.body())
+            '  wuzzy\n')
+
+
+class TestGetTo(TestCaseInTempDir):
+
+    def test_body(self):
+        sender = self.get_sender()        
+        self.assertEqual('At %s\n\n%s' % (sender.url(), sample_log), 
+                         sender.body())
+
+    def test_custom_body(self):        
+        sender = self.get_sender(customized_mail_config)
+        self.assertEqual('%s has committed revision 1 at %s.\n\n%s' % 
+                            (sender.committer, sender.url(), sample_log),
+                         sender.body())
 
     def test_command_line(self):
         sender = self.get_sender()
@@ -145,6 +156,12 @@ class TestGetTo(TestCaseInTempDir):
         sender = self.get_sender()
         self.assertEqual("Rev 1: foo bar baz in %s" %
                             sender.branch.base,
+                         sender.subject())
+
+    def test_custom_subject(self):
+        sender = self.get_sender(customized_mail_config)
+        self.assertEqual("[commit] %s" %
+                            sender.revision.get_summary(),
                          sender.subject())
 
     def test_diff_filename(self):
