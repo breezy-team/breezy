@@ -42,6 +42,10 @@ class TestBranches(TestCaseWithTransport):
         out, err = self.run_bzr('branches', working_dir='a')
         self.assertEquals(out, "")
 
+    def test_scan_current(self):
+        self.run_bzr('init .')
+        self.assertEquals(".\n", self.run_bzr('branches --scan')[0])
+
     def test_scan(self):
         self.run_bzr('init source')
         self.run_bzr('init source/subsource')
