@@ -1341,18 +1341,34 @@ class cmd_branch(Command):
 class cmd_branches(Command):
     __doc__ = """List the branches available at the current location.
 
-    This command will print the names of all the branches at the current location.
+    This command will print the names of all the branches at the current
+    location.
     """
 
     takes_args = ['location?']
+    takes_options = [
+                  Option('scan', help='Recursively scan for for branches '
+                                      'rather than just looking in the '
+                                      'specified location.')]
 
-    def run(self, location="."):
-        dir = bzrdir.BzrDir.open_containing(location)[0]
-        for branch in dir.list_branches():
-            if branch.name is None:
-                self.outf.write(" (default)\n")
-            else:
-                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
+    def run(self, location=".", scan=False):
+        if scan:
+            t = transport.get_transport(location)
+            if not t.listable():
+                raise errors.BzrCommandError(
+                    "Can't scan this type of location.")
+            for b in bzrdir.BzrDir.find_branches(t):
+                self.outf.write("%s\n" % urlutils.unescape_for_display(
+                    urlutils.relative_url(t.base, b.base),
+                    self.outf.encoding).rstrip("/"))
+        else:
+            dir = bzrdir.BzrDir.open_containing(location)[0]
+            for branch in dir.list_branches():
+                if branch.name is None:
+                    self.outf.write(" (default)\n")
+                else:
+                    self.outf.write(" %s\n" % branch.name.encode(
+                        self.outf.encoding))
 
 
 class cmd_checkout(Command):
