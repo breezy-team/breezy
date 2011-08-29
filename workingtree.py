@@ -135,7 +135,8 @@ class GitWorkingTree(workingtree.WorkingTree):
                 # old index
                 from posix import stat_result
                 stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            blob.set_raw_string(self.get_symlink_target(file_id).encode("utf-8"))
+            blob.set_raw_string(
+                self.get_symlink_target(file_id, path).encode("utf-8"))
         else:
             raise AssertionError("unknown kind '%s'" % kind)
         # Add object to the repository if it didn't exist yet
@@ -513,7 +514,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         ret.append((path, ie))
         return ret
 
-    def _get_file_ie(self, path, value, parent_id):
+    def _get_file_ie(self, name, path, value, parent_id):
+        assert isinstance(name, unicode)
         assert isinstance(path, unicode)
         assert isinstance(value, tuple) and len(value) == 10
         (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
@@ -521,8 +523,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         if type(file_id) != str:
             raise AssertionError
         kind = mode_kind(mode)
-        ie = inventory.entry_factory[kind](file_id,
-            posixpath.basename(path), parent_id)
+        ie = inventory.entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(file_id)
         else:
@@ -566,8 +567,8 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # FIXME: Yield non-versioned files
-        # FIXME: support from_dir
-        # FIXME: Support recursive
+        if from_dir is None:
+            from_dir = ""
         dir_ids = {}
         root_ie = self._get_dir_ie(u"", None)
         if include_root and not from_dir:
@@ -575,10 +576,14 @@ class GitWorkingTree(workingtree.WorkingTree):
         dir_ids[u""] = root_ie.file_id
         for path, value in self.index.iteritems():
             path = path.decode("utf-8")
-            parent = posixpath.dirname(path).strip("/")
+            parent, name = posixpath.split(path)
+            if (from_dir is not None and
+                (recursive and not osutils.is_inside(from_dir, path)) or
+                (not recursive and from_dir != parent)):
+                continue
             for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
                 yield dir_path, "V", dir_ie.kind, dir_ie.file_id, dir_ie
-            ie = self._get_file_ie(path, value, dir_ids[parent])
+            ie = self._get_file_ie(name, path, value, dir_ids[parent])
             yield path, "V", ie.kind, ie.file_id, ie
 
     def all_file_ids(self):
@@ -611,11 +616,11 @@ class GitWorkingTree(workingtree.WorkingTree):
             path = path.decode("utf-8")
             if specific_paths is not None and not path in specific_paths:
                 continue
+            (parent, name) = posixpath.split(path)
             try:
-                file_ie = self._get_file_ie(path, value, None)
+                file_ie = self._get_file_ie(name, path, value, None)
             except IOError:
                 continue
-            parent = posixpath.dirname(path).strip("/")
             for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
                     dir_ids):
                 yield dir_path, dir_ie
