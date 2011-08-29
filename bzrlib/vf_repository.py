@@ -70,7 +70,7 @@ from bzrlib.repository import (
     )
 
 from bzrlib.trace import (
-    mutter,
+    mutter
     )
 
 

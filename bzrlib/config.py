@@ -2322,8 +2322,9 @@ class Option(object):
         :param name: the name used to refer to the option.
 
         :param default: the default value to use when none exist in the config
-            stores. This must be a unicode string as provided by the config
-            stores.
+            stores. This is either a string that ``from_unicode`` will convert
+            into the proper type or a python object that can be stringified (so
+            only the empty list is supported for example).
 
         :param default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
@@ -2345,7 +2346,23 @@ class Option(object):
         if default_from_env is None:
             default_from_env = []
         self.name = name
-        self.default = default
+        # Convert the default value to a unicode string so all values are
+        # strings internally before conversion (via from_unicode) is attempted.
+        if default is None:
+            self.default = None
+        elif isinstance(default, list):
+            # Only the empty list is supported
+            if default:
+                raise AssertionError(
+                    'Only empty lists are supported as default values')
+            self.default = u','
+        elif isinstance(default, (str, unicode, bool, int)):
+            # Rely on python to convert strings, booleans and integers
+            self.default = u'%s' % (default,)
+        else:
+            # other python objects are not expected
+            raise AssertionError('%r is not supported as a default value'
+                                 % (default,))
         self.default_from_env = default_from_env
         self.help = help
         self.from_unicode = from_unicode
@@ -2522,7 +2539,7 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
-    Option('repository.fdatasync', default=u'True',
+    Option('repository.fdatasync', default=True,
            from_unicode=bool_from_store,
            help='''\
 Flush repository changes onto physical disk?

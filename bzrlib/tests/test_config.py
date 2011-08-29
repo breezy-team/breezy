@@ -2268,6 +2268,106 @@ class TestOption(tests.TestCase):
         # The first env var set wins
         self.assertEquals('foo', opt.get_default())
 
+    def test_not_supported_list_default_value(self):
+        self.assertRaises(AssertionError, config.Option, 'foo', default=[1])
+
+    def test_not_supported_object_default_value(self):
+        self.assertRaises(AssertionError, config.Option, 'foo',
+                          default=object())
+
+
+class TestOptionConverterMixin(object):
+
+    def assertConverted(self, expected, opt, value):
+        self.assertEquals(expected, opt.convert_from_unicode(value))
+
+    def assertWarns(self, opt, value):
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.assertEquals(None, opt.convert_from_unicode(value))
+        self.assertLength(1, warnings)
+        self.assertEquals(
+            'Value "%s" is not valid for "%s"' % (value, opt.name),
+            warnings[0])
+
+    def assertErrors(self, opt, value):
+        self.assertRaises(errors.ConfigOptionValueError,
+                          opt.convert_from_unicode, value)
+
+    def assertConvertInvalid(self, opt, invalid_value):
+        opt.invalid = None
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        opt.invalid = 'warning'
+        self.assertWarns(opt, invalid_value)
+        opt.invalid = 'error'
+        self.assertErrors(opt, invalid_value)
+
+
+class TestOptionWithBooleanConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A boolean.',
+                             from_unicode=config.bool_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as a boolean
+        self.assertConvertInvalid(opt, u'invalid-boolean')
+        # A list of strings is never recognized as a boolean
+        self.assertConvertInvalid(opt, [u'not', u'a', u'boolean'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(True, opt, u'True')
+        self.assertConverted(True, opt, u'1')
+        self.assertConverted(False, opt, u'False')
+
+
+class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer.',
+                             from_unicode=config.int_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as an integer
+        self.assertConvertInvalid(opt, u'forty-two')
+        # A list of strings is never recognized as an integer
+        self.assertConvertInvalid(opt, [u'a', u'list'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(16, opt, u'16')
+
+class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A list.',
+                             from_unicode=config.list_from_store)
+
+    def test_convert_invalid(self):
+        # No string is invalid as all forms can be converted to a list
+        pass
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        # An empty string is an empty list
+        self.assertConverted([], opt, '') # Using a bare str() just in case
+        self.assertConverted([], opt, u'')
+        # A boolean
+        self.assertConverted([u'True'], opt, u'True')
+        # An integer
+        self.assertConverted([u'42'], opt, u'42')
+        # A single string
+        self.assertConverted([u'bar'], opt, u'bar')
+        # A list remains a list (configObj will turn a string containing commas
+        # into a list, but that's not what we're testing here)
+        self.assertConverted([u'foo', u'1', u'True'],
+                             opt, [u'foo', u'1', u'True'])
+
 
 class TestOptionConverterMixin(object):
 
@@ -3153,10 +3253,10 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertEquals(True, self.conf.get('foo'))
 
     def test_get_default_bool_False(self):
-        self.register_bool_option('foo', u'False')
+        self.register_bool_option('foo', False)
         self.assertEquals(False, self.conf.get('foo'))
 
-    def test_get_default_bool_False(self):
+    def test_get_default_bool_False_as_string(self):
         self.register_bool_option('foo', u'False')
         self.assertEquals(False, self.conf.get('foo'))
 
@@ -3182,6 +3282,10 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertEquals(None, self.conf.get('foo'))
 
     def test_get_default_integer(self):
+        self.register_integer_option('foo', 42)
+        self.assertEquals(42, self.conf.get('foo'))
+
+    def test_get_default_integer_as_string(self):
         self.register_integer_option('foo', u'42')
         self.assertEquals(42, self.conf.get('foo'))
 
@@ -3215,12 +3319,12 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertEquals([], self.conf.get('foo'))
 
     def test_get_with_list_converter_no_item(self):
-        self.register_list_option('foo', [1])
+        self.register_list_option('foo', None)
         self.conf.store._load_from_string('foo=,')
         self.assertEquals([], self.conf.get('foo'))
 
     def test_get_with_list_converter_many_items(self):
-        self.register_list_option('foo', [1])
+        self.register_list_option('foo', None)
         self.conf.store._load_from_string('foo=m,o,r,e')
         self.assertEquals(['m', 'o', 'r', 'e'], self.conf.get('foo'))
 
