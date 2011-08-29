@@ -194,27 +194,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.basedir = realpath(basedir)
         self._control_files = _control_files
         self._transport = self._control_files._transport
-        # update the whole cache up front and write to disk if anything changed;
-        # in the future we might want to do this more selectively
-        # two possible ways offer themselves : in self._unlock, write the cache
-        # if needed, or, when the cache sees a change, append it to the hash
-        # cache file, and have the parser take the most recent entry for a
-        # given path only.
-        wt_trans = self.bzrdir.get_workingtree_transport(None)
-        cache_filename = wt_trans.local_abspath('stat-cache')
-        self._hashcache = hashcache.HashCache(basedir, cache_filename,
-            self.bzrdir._get_file_mode(),
-            self._content_filter_stack_provider())
-        hc = self._hashcache
-        hc.read()
-        # is this scan needed ? it makes things kinda slow.
-        #hc.scan()
-
-        if hc.needs_write:
-            mutter("write hc")
-            hc.write()
-
-        self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
 
@@ -237,17 +216,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         on disk will not be a control file for this tree.
         """
         return self.bzrdir.is_control_filename(filename)
-
-    def _detect_case_handling(self):
-        wt_trans = self.bzrdir.get_workingtree_transport(None)
-        try:
-            wt_trans.stat(self._format.case_sensitive_filename)
-        except errors.NoSuchFile:
-            self.case_sensitive = True
-        else:
-            self.case_sensitive = False
-
-        self._setup_directory_is_tree_reference()
 
     branch = property(
         fget=lambda self: self._branch,
@@ -1576,20 +1544,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             last_rev = parent_trees[0][0]
         return nb_conflicts
 
-    def _write_hashcache_if_dirty(self):
-        """Write out the hashcache if it is dirty."""
-        if self._hashcache.needs_write:
-            try:
-                self._hashcache.write()
-            except OSError, e:
-                if e.errno not in (errno.EPERM, errno.EACCES):
-                    raise
-                # TODO: jam 20061219 Should this be a warning? A single line
-                #       warning might be sufficient to let the user know what
-                #       is going on.
-                mutter('Could not write hashcache for %s\nError: %s',
-                              self._hashcache.cache_file_name(), e)
-
     def set_conflicts(self, arg):
         raise errors.UnsupportedOperation(self.set_conflicts, self)
 
@@ -1827,6 +1781,27 @@ class InventoryWorkingTree(WorkingTree,
             branch=branch, _control_files=_control_files, _internal=_internal,
             _format=_format, _bzrdir=_bzrdir)
 
+        # update the whole cache up front and write to disk if anything changed;
+        # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        cache_filename = wt_trans.local_abspath('stat-cache')
+        self._hashcache = hashcache.HashCache(basedir, cache_filename,
+            self.bzrdir._get_file_mode(),
+            self._content_filter_stack_provider())
+        hc = self._hashcache
+        hc.read()
+        # is this scan needed ? it makes things kinda slow.
+        #hc.scan()
+
+        if hc.needs_write:
+            mutter("write hc")
+            hc.write()
+        self._detect_case_handling()
+
         if _inventory is None:
             # This will be acquired on lock_read() or lock_write()
             self._inventory_is_modified = False
@@ -1850,6 +1825,31 @@ class InventoryWorkingTree(WorkingTree,
         """
         self._inventory = inv
         self._inventory_is_modified = dirty
+
+    def _detect_case_handling(self):
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        try:
+            wt_trans.stat(self._format.case_sensitive_filename)
+        except errors.NoSuchFile:
+            self.case_sensitive = True
+        else:
+            self.case_sensitive = False
+
+        self._setup_directory_is_tree_reference()
+
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                mutter('Could not write hashcache for %s\nError: %s',
+                              self._hashcache.cache_file_name(), e)
 
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(self._inventory, out_file,
