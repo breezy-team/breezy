@@ -104,6 +104,14 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._reset_data()
         self._fileid_map = self._basis_fileid_map.copy()
 
+    def _detect_case_handling(self):
+        try:
+            self._transport.stat(".git/cOnFiG")
+        except errors.NoSuchFile:
+            self.case_sensitive = True
+        else:
+            self.case_sensitive = False
+
     def merge_modified(self):
         return {}
 
