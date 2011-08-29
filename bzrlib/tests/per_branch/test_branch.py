@@ -622,7 +622,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
 class TestChildSubmitFormats(per_branch.TestCaseWithBranch):
 
     def test_get_child_submit_format_default(self):
-        self.assertEqual(None, self.get_branch().get_child_submit_format())
+        submit_format = self.get_branch().get_child_submit_format()
+        self.assertTrue(submit_format is None or
+                        isinstance(submit_format, str))
 
     def test_get_child_submit_format(self):
         branch = self.get_branch()
