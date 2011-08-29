@@ -1250,12 +1250,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         #
+        # Make the check before we lock: this raises an exception.
+        self._check_fallback_repository(repository)
         if self.is_locked():
             # We will call fallback.unlock() when we transition to the unlocked
             # state, so always add a lock here. If a caller passes us a locked
             # repository, they are responsible for unlocking it later.
             repository.lock_read()
-        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the

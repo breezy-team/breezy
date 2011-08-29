@@ -66,18 +66,37 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
 
 class TestIncompatibleStacking(TestCaseWithRepository):
 
-    def test_add_fallback_repository_rejects_incompatible(self):
-        # Repository.add_fallback_repository raises IncompatibleRepositories if
-        # you take two repositories in different serializations and try to
-        # stack them.
-        if self.make_repository('test')._format.supports_chks:
+    def make_repo_and_incompatible_fallback(self):
+        referring = self.make_repository('referring')
+        if referring._format.supports_chks:
             different_fmt = '1.9'
         else:
             different_fmt = '2a'
-        repo = self.make_repository('repo', format=different_fmt)
-        referring = self.make_repository('referring')
+        fallback = self.make_repository('fallback', format=different_fmt)
+        return referring, fallback
+
+    def test_add_fallback_repository_rejects_incompatible(self):
+        # Repository.add_fallback_repository raises IncompatibleRepositories
+        # if you take two repositories in different serializations and try to
+        # stack them.
+        referring, fallback = self.make_repo_and_incompatible_fallback()
         self.assertRaises(errors.IncompatibleRepositories,
-                referring.add_fallback_repository, repo)
+                referring.add_fallback_repository, fallback)
+
+    def test_add_fallback_doesnt_leave_fallback_locked(self):
+        # Bug #835035. If the referring repository is locked, it wants to lock
+        # the fallback repository. But if they are incompatible, the referring
+        # repository won't take ownership of the fallback, and thus should not
+        # leave the repository in a locked state.
+        referring, fallback = self.make_repo_and_incompatible_fallback()
+        self.addCleanup(referring.lock_read().unlock)
+        # Assert precondition.
+        self.assertFalse(fallback.is_locked())
+        # Assert action.
+        self.assertRaises(errors.IncompatibleRepositories,
+                referring.add_fallback_repository, fallback)
+        # Assert postcondition.
+        self.assertFalse(fallback.is_locked())
 
 
 def external_reference_test_scenarios():
