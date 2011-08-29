@@ -58,23 +58,3 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         self.addCleanup(other.unlock)
         self.assertEqual({revision_id: (NULL_REVISION,)},
             repo.get_graph(other).get_parent_map([revision_id]))
-
-    def test_add_incompatible_fallback_repository(self):
-        # Adding an incompatible repository should fail, without the
-        # repository locking (lp bug 835035).
-        # XXX This is run for every repository format, but we need to
-        # carefully specify formats.  OTOH, it is good that this is tested
-        # both for local and remote repositories, because the code
-        # path is different.
-        repo = self.make_repository('repo', format='1.9')
-        tree = self.make_branch_and_tree('branch', format='2a')
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        # Assert precondition.
-        self.assertFalse(tree.branch.repository.is_locked())
-        # Assert action.
-        self.assertRaises(
-            errors.IncompatibleRepositories,
-            repo.add_fallback_repository, tree.branch.repository)
-        # Assert postcondition.
-        self.assertFalse(tree.branch.repository.is_locked())

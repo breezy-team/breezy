@@ -67,17 +67,25 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
 class TestIncompatibleStacking(TestCaseWithRepository):
 
     def test_add_fallback_repository_rejects_incompatible(self):
-        # Repository.add_fallback_repository raises IncompatibleRepositories if
-        # you take two repositories in different serializations and try to
-        # stack them.
+        # Repository.add_fallback_repository raises IncompatibleRepositories
+        # if you take two repositories in different serializations and try to
+        # stack them.  If the referring repo is locked, the repo on which
+        # it is stacked should not be after the check fails.
         if self.make_repository('test')._format.supports_chks:
             different_fmt = '1.9'
         else:
             different_fmt = '2a'
-        repo = self.make_repository('repo', format=different_fmt)
         referring = self.make_repository('referring')
+        referring.lock_read()
+        self.addCleanup(referring.unlock)
+        repo = self.make_repository('repo', format=different_fmt)
+        # Assert precondition.
+        self.assertFalse(repo.is_locked())
+        # Assert action.
         self.assertRaises(errors.IncompatibleRepositories,
                 referring.add_fallback_repository, repo)
+        # Assert postcondition.
+        self.assertFalse(repo.is_locked())
 
 
 def external_reference_test_scenarios():
