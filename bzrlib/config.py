@@ -2695,10 +2695,19 @@ class IniFileStore(Store):
         """Load the store from the associated file."""
         if self.is_loaded():
             return
-        content = self.transport.get_bytes(self.file_name)
-        self._load_from_string(content)
-        for hook in ConfigHooks['load']:
-            hook(self)
+        try:
+            content = self.transport.get_bytes(self.file_name)
+        except errors.PermissionDenied:
+            trace.warning("Permission denied while trying to open "
+                "configuration file %s.", urlutils.unescape_for_display(
+                urlutils.join(self.transport.base, self.file_name),
+                "utf-8"))
+            # Ignore this file
+            self._load_from_string("")
+        else:
+            self._load_from_string(content)
+            for hook in ConfigHooks['load']:
+                hook(self)
 
     def _load_from_string(self, bytes):
         """Create a config store from a string.
