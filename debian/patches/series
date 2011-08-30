@@ -2,4 +2,5 @@
 02_external_configobj
 03_external_elementtree
 04_fix_i18n
+05_config_file_permdenied
 10_testtools_compatibility
