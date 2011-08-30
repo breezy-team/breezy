@@ -1,4 +1,4 @@
-bzr (2.4.0-2) UNRELEASED; urgency=medium
+bzr (2.4.0-2) unstable; urgency=medium
 
   * Ignore permission denied errors when opening configuration files.
     LP: #837324, Closes: #639004
