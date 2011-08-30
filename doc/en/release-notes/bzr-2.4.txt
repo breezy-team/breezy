@@ -35,6 +35,14 @@ Bug Fixes
 * ``config.LocationMatcher`` properly excludes unrelated sections.
   (Vincent Ladeuil, #829237)
 
+* ``dirstate.fdatasync`` and ``repository.fdatasync`` can now properly be
+  disabled. (Vincent Ladeuil, #824513)
+
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
+* Avoid UnicodeDecode error when reporting EINVAL from transports.
+  (IWATA Hidetaka, #829237)
+
 Documentation
 *************
 

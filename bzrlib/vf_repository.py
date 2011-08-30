@@ -70,7 +70,7 @@ from bzrlib.repository import (
     )
 
 from bzrlib.trace import (
-    mutter,
+    mutter
     )
 
 
@@ -419,8 +419,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 return None, False, None
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
-        parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._heads(ie.file_id, parent_candiate_entries.keys())
+        parent_candidate_entries = ie.parent_candidates(parent_invs)
+        head_set = self._heads(ie.file_id, parent_candidate_entries.keys())
         heads = []
         for inv in parent_invs:
             if inv.has_id(ie.file_id):
@@ -441,7 +441,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             store = True
         if not store:
             # There is a single head, look it up for comparison
-            parent_entry = parent_candiate_entries[heads[0]]
+            parent_entry = parent_candidate_entries[heads[0]]
             # if the non-content specific data has changed, we'll be writing a
             # node:
             if (parent_entry.parent_id != ie.parent_id or
@@ -559,7 +559,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         :param iter_changes: An iter_changes iterator with the changes to apply
             to basis_revision_id. The iterator must not include any items with
             a current kind of None - missing items must be either filtered out
-            or errored-on beefore record_iter_changes sees the item.
+            or errored-on before record_iter_changes sees the item.
         :param _entry_factory: Private method to bind entry_factory locally for
             performance.
         :return: A generator of (file_id, relpath, fs_hash) tuples for use with

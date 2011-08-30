@@ -26,8 +26,29 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BoundBranchOutOfDate
 
 
+def remove_tags(branch, graph, old_tip, new_tip):
+    """Remove tags on revisions between old_tip and new_tip.
+
+    :param branch: Branch to remove tags from
+    :param graph: Graph object for branch repository
+    :param old_tip: Old branch tip
+    :param new_tip: New branch tip
+    :return: Names of the removed tags
+    """
+    reverse_tags = branch.tags.get_reverse_tag_dict()
+    ancestors = graph.find_unique_ancestors(old_tip, [new_tip])
+    removed_tags = []
+    for revid, tags in reverse_tags.iteritems():
+        if not revid in ancestors:
+            continue
+        for tag in tags:
+            branch.tags.delete_tag(tag)
+            removed_tags.append(tag)
+    return removed_tags
+
+
 def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
-             local=False):
+             local=False, keep_tags=False):
     """Remove the last revision from the supplied branch.
 
     :param dry_run: Don't actually change anything
@@ -36,6 +57,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
     :param local: If this branch is bound, only remove the revisions from the
         local branch. If this branch is not bound, it is an error to pass
         local=True.
+    :param keep_tags: Whether to keep tags pointing at the removed revisions
+        around.
     """
     unlockable = []
     try:
@@ -105,6 +128,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
                     hook_new_tip = None
                 hook(hook_local, hook_master, old_revno, old_tip, new_revno,
                      hook_new_tip)
+            if branch.supports_tags() and not keep_tags:
+                remove_tags(branch, graph, old_tip, new_revision_id)
             if tree is not None:
                 if not _mod_revision.is_null(new_revision_id):
                     parents = [new_revision_id]

@@ -81,10 +81,16 @@ New Features
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
 
+* Report commits signed with expired keys in "verify-signatures".
+  (Jonathan Riddell, #804254)
+
 * bzr add now skips large files in recursive mode. The default "large"
   size is 20MB, and is configurable via the add.maximum_file_size
   option. A value of 0 disables skipping. Named items passed to add are
   never skipped. (Shannon Weyrick, #54624)
+
+* bzr now ships with translations for command help.  (Jonathan
+  Riddell, INADA Naoki, #83941)
 
 Improvements
 ************
@@ -96,11 +102,17 @@ Improvements
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
 
+* ``bzr uncommit`` will now remove tags that refer to removed revisions.
+  The ``--keep-tags`` option can be used to prevent this behaviour.
+  (Jelmer Vernooij, #605814)
+
 * Locations printed by ``bzr upgrade`` are now formatted before display.
   (Jelmer Vernooij)
 
 * Use gettext.NullTranslations in i18n to allow use of i18n even when
   translations are not turned on. (Jonathan Riddell)
+
+* Install translation .mo files. (Jonathan Riddell)
 
 Bug Fixes
 *********
@@ -113,10 +125,14 @@ Bug Fixes
   that subfolder.
   (Bastian Bowe, #809901)
 
+* Branching from a stacked branch no longer does a ``get_parent_map``
+  request for each revisions that is in the stacked-on repository while
+  determining what revisions need to be fetched. This mostly impacts
+  branching initialy into an empty shared repository when the source is
+  not the development focus.  (John Arbash Meinel, #388269)
+
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
-
-* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
@@ -198,6 +214,10 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* A new debug flags ``hpss_client_no_vfs`` will now cause the HPSS client
+  to raise a ``HpssVfsRequestNotAllowed`` exception when a VFS request
+  is attempted. (Jelmer Vernooij)
 
 * New method ``ControlDir._get_selected_branch`` which returns the
   colocated branch selected using path segment parameters.

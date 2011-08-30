@@ -2255,7 +2255,7 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-if sys.platform == 'linux2':
+if sys.platform.startswith('linux'):
     def _local_concurrency():
         try:
             return os.sysconf('SC_NPROCESSORS_ONLN')
