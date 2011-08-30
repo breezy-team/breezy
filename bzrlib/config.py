@@ -1397,7 +1397,7 @@ class BranchConfig(Config):
             return (self.branch._transport.get_bytes("email")
                     .decode(osutils.get_user_encoding())
                     .rstrip("\r\n"))
-        except errors.NoSuchFile, e:
+        except (errors.NoSuchFile, errors.PermissionDenied), e:
             pass
 
         return self._get_best_value('_get_user_id')
@@ -2277,6 +2277,11 @@ class TransportConfig(object):
                 hook(self)
             return f
         except errors.NoSuchFile:
+            return StringIO()
+        except errors.PermissionDenied, e:
+            trace.warning("Permission denied while trying to open "
+                "configuration file %s.", urlutils.unescape_for_display(
+                urlutils.join(self._transport.base, self._filename), "utf-8"))
             return StringIO()
 
     def _external_url(self):

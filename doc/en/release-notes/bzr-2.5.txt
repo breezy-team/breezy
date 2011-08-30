@@ -135,6 +135,10 @@ Bug Fixes
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
 
+* Rather than an error being raised, a warning is now printed when the
+  current user does not have permission to read a configuration file.
+  (Jelmer Vernooij)
+
 Documentation
 *************
 
