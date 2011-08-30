@@ -1,3 +1,10 @@
+bzr (2.4.0-2) UNRELEASED; urgency=medium
+
+  * Ignore permission denied errors when opening configuration files.
+    LP: #837324
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 30 Aug 2011 14:12:41 +0200
+
 bzr (2.4.0-1) unstable; urgency=low
 
   * New upstream release.
