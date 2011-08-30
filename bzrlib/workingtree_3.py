@@ -18,11 +18,15 @@
 
 """
 
+import errno
+
 from bzrlib import (
     bzrdir,
     errors,
+    hashcache,
     inventory,
     revision as _mod_revision,
+    trace,
     transform,
     )
 from bzrlib.decorators import (
@@ -45,6 +49,29 @@ class WorkingTree3(InventoryWorkingTree):
 
     This is new in bzr 0.8
     """
+
+    def __init__(self, basedir='.', *args, **kwargs):
+        super(WorkingTree3, self).__init__(basedir, *args, **kwargs)
+
+        # update the whole cache up front and write to disk if anything changed;
+        # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        cache_filename = wt_trans.local_abspath('stat-cache')
+        self._hashcache = hashcache.HashCache(basedir, cache_filename,
+            self.bzrdir._get_file_mode(),
+            self._content_filter_stack_provider())
+        hc = self._hashcache
+        hc.read()
+        # is this scan needed ? it makes things kinda slow.
+        #hc.scan()
+
+        if hc.needs_write:
+            trace.mutter("write hc")
+            hc.write()
 
     @needs_read_lock
     def _last_revision(self):
@@ -84,6 +111,26 @@ class WorkingTree3(InventoryWorkingTree):
             return self._control_files.unlock()
         finally:
             self.branch.unlock()
+
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                trace.mutter('Could not write hashcache for %s\nError: %s',
+                              self._hashcache.cache_file_name(), e)
+
+    @needs_read_lock
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+        return self._hashcache.get_sha1(path, stat_value)
 
 
 class WorkingTreeFormat3(WorkingTreeFormat):

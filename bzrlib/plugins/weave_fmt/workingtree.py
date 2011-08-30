@@ -17,13 +17,16 @@
 """Weave-era working tree objects."""
 
 from cStringIO import StringIO
+import errno
 
 from bzrlib import (
     conflicts as _mod_conflicts,
     errors,
+    hashcache,
     inventory,
     osutils,
     revision as _mod_revision,
+    trace,
     transform,
     xml5,
     )
@@ -143,8 +146,29 @@ class WorkingTree2(InventoryWorkingTree):
      - uses the branch last-revision.
     """
 
-    def __init__(self, *args, **kwargs):
-        super(WorkingTree2, self).__init__(*args, **kwargs)
+    def __init__(self, basedir, *args, **kwargs):
+        super(WorkingTree2, self).__init__(basedir, *args, **kwargs)
+
+        # update the whole cache up front and write to disk if anything changed;
+        # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        cache_filename = wt_trans.local_abspath('stat-cache')
+        self._hashcache = hashcache.HashCache(basedir, cache_filename,
+            self.bzrdir._get_file_mode(),
+            self._content_filter_stack_provider())
+        hc = self._hashcache
+        hc.read()
+        # is this scan needed ? it makes things kinda slow.
+        #hc.scan()
+
+        if hc.needs_write:
+            trace.mutter("write hc")
+            hc.write()
+
         # WorkingTree2 has more of a constraint that self._inventory must
         # exist. Because this is an older format, we don't mind the overhead
         # caused by the extra computation here.
@@ -157,6 +181,13 @@ class WorkingTree2(InventoryWorkingTree):
     def _get_check_refs(self):
         """Return the references needed to perform a check of this tree."""
         return [('trees', self.last_revision())]
+
+
+    @needs_read_lock
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+        return self._hashcache.get_sha1(path, stat_value)
 
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
@@ -174,6 +205,20 @@ class WorkingTree2(InventoryWorkingTree):
         except:
             self.branch.unlock()
             raise
+
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                trace.mutter('Could not write hashcache for %s\nError: %s',
+                              self._hashcache.cache_file_name(), e)
 
     def unlock(self):
         # we share control files:

@@ -54,7 +54,6 @@ from bzrlib import (
     generate_ids,
     globbing,
     graph as _mod_graph,
-    hashcache,
     ignores,
     inventory,
     merge,
@@ -1030,7 +1029,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             stream.write(bytes)
         finally:
             stream.close()
-        # TODO: update the hashcache here ?
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -1781,25 +1779,6 @@ class InventoryWorkingTree(WorkingTree,
             branch=branch, _control_files=_control_files, _internal=_internal,
             _format=_format, _bzrdir=_bzrdir)
 
-        # update the whole cache up front and write to disk if anything changed;
-        # in the future we might want to do this more selectively
-        # two possible ways offer themselves : in self._unlock, write the cache
-        # if needed, or, when the cache sees a change, append it to the hash
-        # cache file, and have the parser take the most recent entry for a
-        # given path only.
-        wt_trans = self.bzrdir.get_workingtree_transport(None)
-        cache_filename = wt_trans.local_abspath('stat-cache')
-        self._hashcache = hashcache.HashCache(basedir, cache_filename,
-            self.bzrdir._get_file_mode(),
-            self._content_filter_stack_provider())
-        hc = self._hashcache
-        hc.read()
-        # is this scan needed ? it makes things kinda slow.
-        #hc.scan()
-
-        if hc.needs_write:
-            mutter("write hc")
-            hc.write()
         self._detect_case_handling()
 
         if _inventory is None:
@@ -1836,20 +1815,6 @@ class InventoryWorkingTree(WorkingTree,
             self.case_sensitive = False
 
         self._setup_directory_is_tree_reference()
-
-    def _write_hashcache_if_dirty(self):
-        """Write out the hashcache if it is dirty."""
-        if self._hashcache.needs_write:
-            try:
-                self._hashcache.write()
-            except OSError, e:
-                if e.errno not in (errno.EPERM, errno.EACCES):
-                    raise
-                # TODO: jam 20061219 Should this be a warning? A single line
-                #       warning might be sufficient to let the user know what
-                #       is going on.
-                mutter('Could not write hashcache for %s\nError: %s',
-                              self._hashcache.cache_file_name(), e)
 
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(self._inventory, out_file,
@@ -2159,12 +2124,6 @@ class InventoryWorkingTree(WorkingTree,
         self._transport.put_file('inventory', sio,
             mode=self.bzrdir._get_file_mode())
         self._inventory_is_modified = False
-
-    @needs_read_lock
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        if not path:
-            path = self._inventory.id2path(file_id)
-        return self._hashcache.get_sha1(path, stat_value)
 
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime."""
