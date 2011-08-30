@@ -977,7 +977,7 @@ class cmd_pull(Command):
     branches have diverged.
 
     If there is no default location set, the first pull will set it (use
-    --no-remember to avoid settting it). After that, you can omit the
+    --no-remember to avoid setting it). After that, you can omit the
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
 
@@ -1076,8 +1076,7 @@ class cmd_pull(Command):
                 view_info=view_info)
             result = tree_to.pull(
                 branch_from, overwrite, revision_id, change_reporter,
-                possible_transports=possible_transports, local=local,
-                show_base=show_base)
+                local=local, show_base=show_base)
         else:
             result = branch_to.pull(
                 branch_from, overwrite, revision_id, local=local)
@@ -1114,7 +1113,7 @@ class cmd_push(Command):
     After that you will be able to do a push without '--overwrite'.
 
     If there is no default push location set, the first push will set it (use
-    --no-remember to avoid settting it).  After that, you can omit the
+    --no-remember to avoid setting it).  After that, you can omit the
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
     """
@@ -3950,7 +3949,7 @@ class cmd_merge(Command):
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
     If there is no default branch set, the first merge will set it (use
-    --no-remember to avoid settting it). After that, you can omit the branch
+    --no-remember to avoid setting it). After that, you can omit the branch
     to use the default.  To change the default, use --remember. The value will
     only be saved if the remote location can be accessed.
 
@@ -5397,7 +5396,7 @@ class cmd_send(Command):
 
     Both the submit branch and the public branch follow the usual behavior with
     respect to --remember: If there is no default location set, the first send
-    will set it (use --no-remember to avoid settting it). After that, you can
+    will set it (use --no-remember to avoid setting it). After that, you can
     omit the location to use the default.  To change the default, use
     --remember. The value will only be saved if the location can be accessed.
 
