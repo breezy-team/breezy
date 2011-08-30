@@ -70,6 +70,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* The test suite should now be able to run under weird environments where
+  ``/etc/passwd`` doesn't contain the ``uid`` for the user running selftest
+  or where ``fakeroot`` is used but ``/root`` is inacessible.
+  (Vincent Ladeuil, #825027)
 
 bzr 2.4.0
 #########
