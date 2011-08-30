@@ -41,7 +41,7 @@ Bug Fixes
 * Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
 
 * Avoid UnicodeDecode error when reporting EINVAL from transports.
- (IWATA Hidetaka, #829237)
+  (IWATA Hidetaka, #829237)
 
 Documentation
 *************
