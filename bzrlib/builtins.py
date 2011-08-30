@@ -1347,12 +1347,12 @@ class cmd_branches(Command):
 
     takes_args = ['location?']
     takes_options = [
-                  Option('scan', help='Recursively scan for for branches '
-                                      'rather than just looking in the '
-                                      'specified location.')]
+                  Option('recursive', short_name='R',
+                         help='Recursively scan for branches rather than '
+                              'just looking in the specified location.')]
 
-    def run(self, location=".", scan=False):
-        if scan:
+    def run(self, location=".", recursive=False):
+        if recursive:
             t = transport.get_transport(location)
             if not t.listable():
                 raise errors.BzrCommandError(
