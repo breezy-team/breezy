@@ -40,19 +40,11 @@ from bzrlib.workingtree import (
     WorkingTreeFormat,
     )
 
-class WorkingTree3(InventoryWorkingTree):
-    """This is the Format 3 working tree.
 
-    This differs from the base WorkingTree by:
-     - having its own file lock
-     - having its own last-revision property.
-
-    This is new in bzr 0.8
-    """
+class PreDirStateWorkingTree(InventoryWorkingTree):
 
     def __init__(self, basedir='.', *args, **kwargs):
-        super(WorkingTree3, self).__init__(basedir, *args, **kwargs)
-
+        super(PreDirStateWorkingTree, self).__init__(basedir, *args, **kwargs)
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache
@@ -72,6 +64,37 @@ class WorkingTree3(InventoryWorkingTree):
         if hc.needs_write:
             trace.mutter("write hc")
             hc.write()
+
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                trace.mutter('Could not write hashcache for %s\nError: %s',
+                              self._hashcache.cache_file_name(), e)
+
+    @needs_read_lock
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+        return self._hashcache.get_sha1(path, stat_value)
+
+
+class WorkingTree3(PreDirStateWorkingTree):
+    """This is the Format 3 working tree.
+
+    This differs from the base WorkingTree by:
+     - having its own file lock
+     - having its own last-revision property.
+
+    This is new in bzr 0.8
+    """
 
     @needs_read_lock
     def _last_revision(self):
@@ -111,26 +134,6 @@ class WorkingTree3(InventoryWorkingTree):
             return self._control_files.unlock()
         finally:
             self.branch.unlock()
-
-    def _write_hashcache_if_dirty(self):
-        """Write out the hashcache if it is dirty."""
-        if self._hashcache.needs_write:
-            try:
-                self._hashcache.write()
-            except OSError, e:
-                if e.errno not in (errno.EPERM, errno.EACCES):
-                    raise
-                # TODO: jam 20061219 Should this be a warning? A single line
-                #       warning might be sufficient to let the user know what
-                #       is going on.
-                trace.mutter('Could not write hashcache for %s\nError: %s',
-                              self._hashcache.cache_file_name(), e)
-
-    @needs_read_lock
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        if not path:
-            path = self._inventory.id2path(file_id)
-        return self._hashcache.get_sha1(path, stat_value)
 
 
 class WorkingTreeFormat3(WorkingTreeFormat):
