@@ -2698,16 +2698,12 @@ class IniFileStore(Store):
         try:
             content = self.transport.get_bytes(self.file_name)
         except errors.PermissionDenied:
-            trace.warning("Permission denied while trying to open "
-                "configuration file %s.", urlutils.unescape_for_display(
-                urlutils.join(self.transport.base, self.file_name),
-                "utf-8"))
-            # Ignore this file
-            self._load_from_string("")
-        else:
-            self._load_from_string(content)
-            for hook in ConfigHooks['load']:
-                hook(self)
+            trace.warning("Permission denied while trying to load "
+                          "configuration store %s.", self.external_url())
+            raise
+        self._load_from_string(content)
+        for hook in ConfigHooks['load']:
+            hook(self)
 
     def _load_from_string(self, bytes):
         """Create a config store from a string.
@@ -2752,8 +2748,8 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except errors.NoSuchFile:
-            # If the file doesn't exist, there is no sections
+        except (errors.NoSuchFile, errors.PermissionDenied):
+            # If the file can't be read, there is no sections
             return
         cobj = self._config_obj
         if cobj.scalars:

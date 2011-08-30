@@ -2604,27 +2604,23 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertRaises(errors.ParseConfigError, store.load)
 
     def test_load_permission_denied(self):
-        """Ensure we get an empty config file if the file is inaccessible."""
+        """Ensure we get warned when trying to load an inaccessible file."""
         warnings = []
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
 
-        class DenyingTransport(object):
+        t = self.get_transport()
 
-            def __init__(self, base):
-                self.base = base
-
-            def get_bytes(self, relpath):
-                raise errors.PermissionDenied(relpath, "")
-
-        store = config.IniFileStore(
-            DenyingTransport("nonexisting://"), 'control.conf')
-        store.load()
+        def get_bytes(relpath):
+            raise errors.PermissionDenied(relpath, "")
+        t.get_bytes = get_bytes
+        store = config.IniFileStore(t, 'foo.conf')
+        self.assertRaises(errors.PermissionDenied, store.load)
         self.assertEquals(
             warnings,
-            [u'Permission denied while trying to open configuration file '
-             u'nonexisting:///control.conf.'])
+            [u'Permission denied while trying to load configuration store %s.'
+             % store.external_url()])
 
 
 class TestIniConfigContent(tests.TestCaseWithTransport):
