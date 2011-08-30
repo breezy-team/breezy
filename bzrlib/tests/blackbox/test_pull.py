@@ -384,6 +384,15 @@ class TestPull(TestCaseWithTransport):
         self.assertNotContainsRe(
             out, r'revno: 1\ncommitter: .*\nbranch nick: source')
 
+    def test_pull_smart_bound_branch(self):
+        self.setup_smart_server_with_call_log()
+        parent = self.make_branch_and_tree('parent')
+        parent.commit(message='first commit')
+        child = parent.bzrdir.sprout('child').open_workingtree()
+        child.commit(message='second commit')
+        checkout = parent.branch.create_checkout('checkout')
+        self.run_bzr(['pull', self.get_url('child')], working_dir='checkout')
+
     def test_pull_smart_stacked_streaming_acceptance(self):
         """'bzr pull -r 123' works on stacked, smart branches, even when the
         revision specified by the revno is only present in the fallback
