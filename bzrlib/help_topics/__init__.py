@@ -43,6 +43,7 @@ from bzrlib import (
     i18n,
     )
 
+
 # Section identifiers (map topics to the right place in the manual)
 SECT_COMMAND = "command"
 SECT_CONCEPT = "concept"
