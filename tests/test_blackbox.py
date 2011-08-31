@@ -32,7 +32,6 @@ from bzrlib.bzrdir import (
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import KnownFailure
 
-from bzrlib.plugins.git.mapping import mapping_registry
 from bzrlib.plugins.git import (
     tests,
     )
@@ -110,11 +109,8 @@ class TestGitBlackBox(ExternalBase):
         self.assertTrue("branch: Git Branch" in output)
         self.assertTrue("repository: Git Repository" in output)
 
-    def with_roundtripping(self):
-        self.addCleanup(mapping_registry.set_default, mapping_registry.get().revid_prefix)
-        mapping_registry.set_default('git-experimental')
-
     def test_push_roundtripping(self):
+        raise KnownFailure("roundtripping is not yet supported")
         self.with_roundtripping()
         os.mkdir("bla")
         GitRepo.init(os.path.join(self.test_dir, "bla"))
