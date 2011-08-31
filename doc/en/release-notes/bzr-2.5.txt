@@ -120,6 +120,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* The pull command will now always use separate connections for the
+  case where the destination is a heavyweight checkout of some remote
+  branch on the same host as the source branch.
+  (Martin von Gagern, #483661)
+
 * A call to CHKInventory's filter-method will not result in a
   DuplicateFileId error, if you move a subfolder and change a file in
   that subfolder.
