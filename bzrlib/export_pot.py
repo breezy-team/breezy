@@ -251,5 +251,4 @@ def export_pot(outf):
     _standard_options(outf)
     _command_helps(outf)
     _error_messages(outf)
-    # disable exporting help topics until we decide  how to translate it.
     _help_topics(outf)
