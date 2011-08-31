@@ -208,6 +208,9 @@ API Changes
   value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
   (Shannon Weyrick)
 
+* ``Tags.merge_to`` now returns a dictionary with the updated tags
+  and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
+
 * ``Transport`` now has a ``_parsed_url`` attribute instead of
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
   and ``_path`` attributes. Proxies are provided for the moment but

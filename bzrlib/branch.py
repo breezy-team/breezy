@@ -3097,11 +3097,16 @@ class BranchPushResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
-        """Write a human-readable description of the result."""
-        if self.old_revid == self.new_revid:
-            note('No new revisions to push.')
-        else:
-            note('Pushed up to revision %d.' % self.new_revno)
+        if not is_quiet():
+            if self.old_revid != self.new_revid:
+                to_file.write('Pushed up to revision %d.\n' % self.new_revno)
+            if self.tag_updates:
+                to_file.write('%d tag(s) updated.\n' % len(self.tag_updates))
+            if self.old_revid == self.new_revid and not self.tag_updates:
+                if not self.tag_conflicts:
+                    to_file.write('No revisions or tags to push.\n')
+                else:
+                    to_file.write('No revisions to push.\n')
         self._show_tag_conficts(to_file)
 
 
@@ -3415,8 +3420,8 @@ class GenericInterBranch(InterBranch):
             self._update_revisions(stop_revision, overwrite=overwrite,
                     graph=graph)
         if self.source._push_should_merge_tags():
-            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite)
+            result.tag_updates, result.tag_conflicts = self.source.tags.merge_to(
+                self.target.tags, overwrite)
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
