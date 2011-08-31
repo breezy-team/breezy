@@ -24,7 +24,6 @@ from bzrlib.repository import (
     InterRepository,
     )
 from bzrlib.tests import (
-    KnownFailure,
     TestCaseWithTransport,
     )
 
@@ -48,13 +47,14 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         self.assertIsInstance(self.interrepo, InterToGitRepository)
 
     def test_pointless_fetch_refs(self):
-        raise KnownFailure("roundtripping not yet supported")
-        old_refs, new_refs = self.interrepo.fetch_refs(lambda x: x)
-        self.assertEquals(old_refs, new_refs)
+        revidmap, old_refs, new_refs = self.interrepo.fetch_refs(lambda x: {}, lossy=False)
+        self.assertEquals(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
+        self.assertEquals(new_refs, {})
 
     def test_pointless_dfetch_refs(self):
-        revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(lambda x: x)
-        self.assertEquals(old_refs, new_refs)
+        revidmap, old_refs, new_refs = self.interrepo.fetch_refs(lambda x: {}, lossy=True)
+        self.assertEquals(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
+        self.assertEquals(new_refs, {})
         self.assertEquals(revidmap, {})
 
     def test_pointless_missing_revisions(self):

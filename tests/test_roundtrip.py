@@ -22,7 +22,7 @@
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.git.roundtrip import (
-    BzrGitRevisionMetadata,
+    CommitSupplement,
     deserialize_fileid_map,
     extract_bzr_metadata,
     generate_roundtripping_metadata,
@@ -50,25 +50,25 @@ class RoundtripTests(TestCase):
 class FormatTests(TestCase):
 
     def test_revid(self):
-        metadata = BzrGitRevisionMetadata()
+        metadata = CommitSupplement()
         metadata.revision_id = "bla"
         self.assertEquals("revision-id: bla\n",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_parent_ids(self):
-        metadata = BzrGitRevisionMetadata()
+        metadata = CommitSupplement()
         metadata.explicit_parent_ids = ("foo", "bar")
         self.assertEquals("parent-ids: foo bar\n",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_properties(self):
-        metadata = BzrGitRevisionMetadata()
+        metadata = CommitSupplement()
         metadata.properties = {"foo": "bar"}
         self.assertEquals("property-foo: bar\n",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_empty(self):
-        metadata = BzrGitRevisionMetadata()
+        metadata = CommitSupplement()
         self.assertEquals("",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
@@ -87,7 +87,7 @@ revision-id: foo
 class GenerateMetadataTests(TestCase):
 
     def test_roundtrip(self):
-        metadata = BzrGitRevisionMetadata()
+        metadata = CommitSupplement()
         metadata.revision_id = "myrevid"
         msg = inject_bzr_metadata("Foo", metadata, "utf-8")
         self.assertEquals("""Foo
@@ -96,7 +96,7 @@ revision-id: myrevid
 """, msg)
 
     def test_no_metadata(self):
-        metadata = BzrGitRevisionMetadata()
+        metadata = CommitSupplement()
         msg = inject_bzr_metadata("Foo", metadata, "utf-8")
         self.assertEquals("Foo", msg)
 

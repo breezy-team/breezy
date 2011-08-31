@@ -43,6 +43,10 @@ from dulwich.objects import (
 from bzrlib.plugins.git.mapping import (
     entry_mode,
     )
+from bzrlib.plugins.git.roundtrip import (
+    CommitSupplement,
+    inject_bzr_metadata,
+    )
 
 
 class GitCommitBuilder(CommitBuilder):
@@ -165,15 +169,26 @@ class GitCommitBuilder(CommitBuilder):
         c.tree = commit_tree(self.store, self._iterblobs())
         c.committer = self._committer
         c.author = self._revprops.get('author', self._committer)
+        if c.author != c.committer:
+            self._revprops.remove("author")
         c.commit_time = int(self._timestamp)
         c.author_time = int(self._timestamp)
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.encoding = 'utf-8'
         c.message = message.encode("utf-8")
-        self.store.add_object(c)
+        if not self._lossy:
+            commit_supplement = CommitSupplement()
+            commit_supplement.revision_id = self._new_revision_id
+            commit_supplement.properties = self._revprops
+            commit_supplement.explicit_parent_ids = self.parents
+            if commit_supplement:
+                c.message = inject_bzr_metadata(c.message, commit_supplement, "utf-8")
+
         assert len(c.id) == 40
-        self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
+        if self._new_revision_id is None:
+            self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
+        self.store.add_object(c)
         self.repository.commit_write_group()
         return self._new_revision_id
 

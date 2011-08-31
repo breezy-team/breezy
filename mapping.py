@@ -45,7 +45,7 @@ from bzrlib.plugins.git.hg import (
 from bzrlib.plugins.git.roundtrip import (
     extract_bzr_metadata,
     inject_bzr_metadata,
-    BzrGitRevisionMetadata,
+    CommitSupplement,
     deserialize_fileid_map,
     serialize_fileid_map,
     )
@@ -211,7 +211,7 @@ class BzrGitMapping(foreign.VcsMapping):
         return message, metadata
 
     def _decode_commit_message(self, rev, message, encoding):
-        return message.decode(encoding), BzrGitRevisionMetadata()
+        return message.decode(encoding), CommitSupplement()
 
     def _encode_commit_message(self, rev, message, encoding):
         return message.encode(encoding)
@@ -242,7 +242,7 @@ class BzrGitMapping(foreign.VcsMapping):
         commit = Commit()
         commit.tree = tree_sha
         if roundtrip:
-            metadata = BzrGitRevisionMetadata()
+            metadata = CommitSupplement()
             metadata.verifiers = verifiers
         else:
             metadata = None
@@ -435,6 +435,7 @@ mapping_registry.register_lazy('git-v1', "bzrlib.plugins.git.mapping",
     "BzrGitMappingv1")
 mapping_registry.register_lazy('git-experimental',
     "bzrlib.plugins.git.mapping", "BzrGitMappingExperimental")
+# mapping_registry.set_default('git-experimental')
 mapping_registry.set_default('git-v1')
 
 

@@ -370,12 +370,12 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
-    fileid_map = mapping.get_fileid_map(lookup_object, o.tree)
+    tree_supplement = mapping.get_fileid_map(lookup_object, o.tree)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", "", (base_tree, o.tree), base_inv,
             None, rev.revision_id, [p.inventory for p in parent_trees],
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
-            fileid_map.lookup_file_id,
+            tree_supplement.lookup_file_id,
             allow_submodules=getattr(repo._format, "supports_tree_reference",
                 False))
     if unusual_modes != {}:
@@ -394,16 +394,19 @@ def import_git_commit(repo, mapping, head, lookup_object,
         original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
         # Check verifiers
-        if getattr(StrictTestament3, "from_revision_tree", None):
-            testament = StrictTestament3(rev, ret_tree)
-        else: # bzr < 2.4
-            testament = StrictTestament3(rev, inv)
-        calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
-        if calculated_verifiers != verifiers:
-            trace.mutter("Testament SHA1 %r for %r did not match %r.",
-                         calculated_verifiers["testament3-sha1"],
-                         rev.revision_id, verifiers["testament3-sha1"])
-            rev.revision_id = original_revid
+        if verifiers:
+            if getattr(StrictTestament3, "from_revision_tree", None):
+                testament = StrictTestament3(rev, ret_tree)
+            else: # bzr < 2.4
+                testament = StrictTestament3(rev, inv)
+            calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
+            if calculated_verifiers != verifiers:
+                trace.mutter("Testament SHA1 %r for %r did not match %r.",
+                             calculated_verifiers["testament3-sha1"],
+                             rev.revision_id, verifiers["testament3-sha1"])
+                rev.revision_id = original_revid
+        else:
+            calculated_verifiers = {}
     else:
         calculated_verifiers = {}
     store_updater.add_object(o, calculated_verifiers, None)
@@ -741,7 +744,7 @@ class InterGitGitRepository(InterGitRepository):
             mapping = self.source.get_mapping()
         r = self.target._git
         if revision_id is not None:
-            args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
+            args = [self.source.lookup_bzr_revision_id(revision_id)[0]]
         elif fetch_spec is not None:
             recipe = fetch_spec.get_recipe()
             if recipe[0] in ("search", "proxy-search"):

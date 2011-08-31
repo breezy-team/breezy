@@ -14,14 +14,44 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Roundtripping support."""
+"""Roundtripping support.
 
+Bazaar stores more data than Git, which means that in order to preserve
+a commit when it is pushed from Bazaar into Git we have to stash
+that extra metadata somewhere.
+
+There are two kinds of metadata relevant here:
+ * per-file metadata (stored by revision+path)
+  - usually stored per tree
+ * per-revision metadata (stored by git commit id)
+
+Bazaar revisions have the following information that is not
+present in Git commits:
+ * revision ids
+ * revision properties
+ * ghost parents
+
+Tree content:
+ * empty directories
+ * path file ids
+ * path last changed revisions [1]
+
+ [1] path last changed revision information can usually
+     be induced from the existing history, unless
+     ghost revisions are involved.
+
+This extra metadata is stored in so-called "supplements":
+  * CommitSupplement
+  * TreeSupplement
+"""
+
+from bzrlib import osutils
 
 from cStringIO import StringIO
 
 
-class BzrGitRevisionMetadata(object):
-    """Metadata for a Bazaar revision roundtripped into Git.
+class CommitSupplement(object):
+    """Supplement for a Bazaar revision roundtripped into Git.
 
     :ivar revision_id: Revision id, as string
     :ivar properties: Revision properties, as dictionary
@@ -39,12 +69,21 @@ class BzrGitRevisionMetadata(object):
         self.properties = {}
 
     def __nonzero__(self):
-        return bool(self.revision_id or self.properties)
+        return bool(self.revision_id or self.properties or self.explicit_parent_ids)
+
+
+class TreeSupplement(object):
+    """Supplement for a Bazaar tree roundtripped into Git.
+
+    This provides file ids (if they are different from the mapping default)
+    and can provide text revisions.
+    """
+
 
 
 def parse_roundtripping_metadata(text):
     """Parse Bazaar roundtripping metadata."""
-    ret = BzrGitRevisionMetadata()
+    ret = CommitSupplement()
     f = StringIO(text)
     for l in f.readlines():
         (key, value) = l.split(":", 1)
@@ -55,7 +94,11 @@ def parse_roundtripping_metadata(text):
         elif key == "testament3-sha1":
             ret.verifiers["testament3-sha1"] = value.strip()
         elif key.startswith("property-"):
-            ret.properties[key[len("property-"):]] = value[1:].rstrip("\n")
+            name = key[len("property-"):]
+            if not name in ret.properties:
+                ret.properties[name] = value[1:].rstrip("\n")
+            else:
+                ret.properties[name] += "\n" + value[1:].rstrip("\n")
         else:
             raise ValueError
     return ret
@@ -73,7 +116,8 @@ def generate_roundtripping_metadata(metadata, encoding):
     if metadata.explicit_parent_ids:
         lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
-        lines.append("property-%s: %s\n" % (key.encode(encoding), metadata.properties[key].encode(encoding)))
+        for l in metadata.properties[key].split("\n"):
+            lines.append("property-%s: %s\n" % (key.encode(encoding), osutils.safe_utf8(l)))
     if "testament3-sha1" in metadata.verifiers:
         lines.append("testament3-sha1: %s\n" %
                      metadata.verifiers["testament3-sha1"])
@@ -92,10 +136,10 @@ def extract_bzr_metadata(message):
     return split[0], parse_roundtripping_metadata(split[1])
 
 
-def inject_bzr_metadata(message, metadata, encoding):
-    if not metadata:
+def inject_bzr_metadata(message, commit_supplement, encoding):
+    if not commit_supplement:
         return message
-    rt_data = generate_roundtripping_metadata(metadata, encoding)
+    rt_data = generate_roundtripping_metadata(commit_supplement, encoding)
     if not rt_data:
         return message
     assert type(rt_data) == str

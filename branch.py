@@ -349,7 +349,7 @@ class GitBranch(ForeignBranch):
             newhead = ZERO_SHA
         else:
             # FIXME: Check that old_revid is in the ancestry of revid
-            newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
+            newhead, self.mapping = self.repository.lookup_bzr_revision_id(revid)
             if self.mapping is None:
                 raise AssertionError
         self._set_head(newhead)

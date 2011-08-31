@@ -260,11 +260,15 @@ class LocalGitRepository(GitRepository):
     def get_parent_map(self, revids):
         parent_map = {}
         for revision_id in revids:
-            assert isinstance(revision_id, str)
+            if type(revision_id) != str:
+                raise ValueError
             if revision_id == revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
-            hexsha, mapping = self.lookup_bzr_revision_id(revision_id)
+            try:
+                hexsha, mapping = self.lookup_bzr_revision_id(revision_id)
+            except errors.NoSuchRevision:
+                continue
             try:
                 commit = self._git[hexsha]
             except KeyError:
@@ -272,7 +276,7 @@ class LocalGitRepository(GitRepository):
             parents = [
                 self.lookup_foreign_revision_id(p, mapping)
                 for p in commit.parents]
-            if parents == []:
+            if len(parents) == 0:
                 parents = [revision.NULL_REVISION]
             parent_map[revision_id] = tuple(parents)
         return parent_map

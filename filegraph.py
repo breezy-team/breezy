@@ -69,9 +69,9 @@ class GitFileParentProvider(object):
             (_, text_parent) = self.change_scanner.find_last_change_revision(path, commit_parent)
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
-        return [(file_id,
+        return tuple([(file_id,
             self.change_scanner.repository.lookup_foreign_revision_id(p)) for p
-            in text_parents]
+            in text_parents])
 
     def get_parent_map(self, keys):
         ret = {}
