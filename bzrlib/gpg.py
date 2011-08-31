@@ -135,9 +135,9 @@ class LoopbackGPGStrategy(object):
                                         count[SIGNATURE_NOT_SIGNED])
 
     def expired_commit_message(self, count):
-        return i18n.ngettext(u"{0} commit with key now expired",
-                             u"{0} commits with key now expired",
-                             count[SIGNATURE_EXPIRED]).format(
+        return ngettext(u"{0} commit with key now expired",
+                        u"{0} commits with key now expired",
+                        count[SIGNATURE_EXPIRED]).format(
                                         count[SIGNATURE_EXPIRED])
 
 
@@ -441,11 +441,11 @@ class GPGStrategy(object):
                 fingerprint_to_authors[fingerprint] = authors
         result = []
         for fingerprint, number in signers.items():
-            result.append( i18n.ngettext(u"{0} commit by author {1} with "\
-                                          "key {2} now expired", 
-                                 u"{0} commits by author {1} with key {2} now "\
-                                  "expired",
-                                 number).format(number,
+            result.append(ngettext(u"{0} commit by author {1} with "\
+                                    "key {2} now expired", 
+                                   u"{0} commits by author {1} with key {2} now "\
+                                    "expired",
+                                    number).format(number,
                             fingerprint_to_authors[fingerprint], fingerprint) )
         return result
 
@@ -477,7 +477,7 @@ class GPGStrategy(object):
 
     def expired_commit_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit with key now expired",
-                             u"{0} commits with key now expired",
-                             count[SIGNATURE_EXPIRED]).format(
-                                        count[SIGNATURE_EXPIRED])
+        return ngettext(u"{0} commit with key now expired",
+                        u"{0} commits with key now expired",
+                        count[SIGNATURE_EXPIRED]).format(
+                                    count[SIGNATURE_EXPIRED])
