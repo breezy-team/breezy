@@ -51,10 +51,14 @@ class ScopeReplacer(object):
 
     __slots__ = ('_scope', '_factory', '_name', '_real_obj')
 
+    # This will record the last duplicate replacement. It is used
+    # during selftests where duplicate replacements are forbidden.
+    _last_duplicate_replacement = None
+
     # Setting this to True will allow you to do x = y, and still access members
     # from both variables. This should not normally be enabled, but is useful
     # when building documentation.
-    _should_proxy = False
+    _should_proxy = True
 
     def __init__(self, scope, factory, name):
         """Create a temporary object in the specified scope.
@@ -71,73 +75,82 @@ class ScopeReplacer(object):
         object.__setattr__(self, '_real_obj', None)
         scope[name] = self
 
+    def _resolve(self):
+        """Return the real object for which this is a placeholder"""
+        real_obj = object.__getattribute__(self, '_real_obj')
+        if real_obj is not None:
+            object.__getattribute__(self, '_duplicate_replacement')()
+            return real_obj
+        replace = object.__getattribute__(self, '_replace')
+        return replace()
+
     def _replace(self):
         """Actually replace self with other in the given scope"""
         name = object.__getattribute__(self, '_name')
-        try:
-            factory = object.__getattribute__(self, '_factory')
-            scope = object.__getattribute__(self, '_scope')
-        except AttributeError, e:
-            # Because ScopeReplacer objects only replace a single
-            # item, passing them to another variable before they are
-            # replaced would cause them to keep getting replaced
-            # (only they are replacing the wrong variable). So we
-            # make it forbidden, and try to give a good error.
-            raise errors.IllegalUseOfScopeReplacer(
-                name, msg="Object already cleaned up, did you assign it"
-                          " to another variable?",
-                extra=e)
+        factory = object.__getattribute__(self, '_factory')
+        scope = object.__getattribute__(self, '_scope')
         obj = factory(self, scope, name)
         if obj is self:
             raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
                 " to replace itself, check it's not using its own scope.")
-        if ScopeReplacer._should_proxy:
+
+        # The same object might be replaced repeatedly due to a race
+        # condition. We want to detect this fact for possible reporting.
+        prev_obj = object.__getattribute__(self, '_real_obj')
+        if prev_obj is None:
             object.__setattr__(self, '_real_obj', obj)
-        scope[name] = obj
+            scope[name] = obj
+        else:
+            # This indicates a duplicate replacement and should never
+            # happen except under rare race conditions. See lp:396819.
+            # Note: the above check is not thread-safe, so there is a
+            # slight chance that concurrent duplicate replacements are
+            # missed. Not worth the cost of a lock, though.
+            object.__getattribute__(self, '_duplicate_replacement')()
         return obj
 
-    def _cleanup(self):
-        """Stop holding on to all the extra stuff"""
-        try:
-            del self._factory
-        except AttributeError:
-            # Oops, we just lost a race with another caller of _cleanup.  Just
-            # ignore it.
-            pass
-
-        try:
-            del self._scope
-        except AttributeError:
-            # Another race loss.  See above.
-            pass
-
-        # We keep _name, so that we can report errors
-        # del self._name
-
     def __getattribute__(self, attr):
-        obj = object.__getattribute__(self, '_real_obj')
-        if obj is None:
-            _replace = object.__getattribute__(self, '_replace')
-            obj = _replace()
-            _cleanup = object.__getattribute__(self, '_cleanup')
-            _cleanup()
+        obj = object.__getattribute__(self, '_resolve')()
         return getattr(obj, attr)
 
     def __setattr__(self, attr, value):
-        obj = object.__getattribute__(self, '_real_obj')
-        if obj is None:
-            _replace = object.__getattribute__(self, '_replace')
-            obj = _replace()
-            _cleanup = object.__getattribute__(self, '_cleanup')
-            _cleanup()
+        obj = object.__getattribute__(self, '_resolve')()
         return setattr(obj, attr, value)
 
     def __call__(self, *args, **kwargs):
-        _replace = object.__getattribute__(self, '_replace')
-        obj = _replace()
-        _cleanup = object.__getattribute__(self, '_cleanup')
-        _cleanup()
+        obj = object.__getattribute__(self, '_resolve')()
         return obj(*args, **kwargs)
+
+    def _duplicate_replacement(self):
+        if ScopeReplacer._should_proxy:
+            # Do not report now, but remember in case we want to
+            # report this later.
+            ScopeReplacer._last_duplicate_replacement = self
+        else:
+            name = object.__getattribute__(self, '_name')
+            raise errors.IllegalUseOfScopeReplacer(
+                name, msg="Object already replaced, did you assign it"
+                          " to another variable?")
+
+
+def disallow_proxying():
+    """Disallow lazily imported modules to be used as proxies.
+
+    Calling this function might cause problems with concurrent imports
+    in multithreaded environments, but will help detecting wasteful
+    indirection, so it should be called when executing unit tests.
+
+    Calling this function will even act for the most recent past case
+    of proxying, reporting the name of the proxied object. So a
+    successful call to this function will ensure that scope replacer
+    objects were never misused as proxies in the past and will never
+    be misused in the future."""
+
+    ScopeReplacer._should_proxy = False
+    last = ScopeReplacer._last_duplicate_replacement
+    if last is not None:
+        ScopeReplacer._last_duplicate_replacement = None
+        object.__getattribute__(last, '_duplicate_replacement')()
 
 
 class ImportReplacer(ScopeReplacer):

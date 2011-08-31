@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib.lazy_import import lazy_import
+from bzrlib.lazy_import import lazy_import, disallow_proxying
 lazy_import(globals(), """
 import cStringIO
 import sys
@@ -3800,6 +3800,8 @@ class cmd_selftest(Command):
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
+
+        disallow_proxying()
         from bzrlib import tests
 
         if testspecs_list is not None:

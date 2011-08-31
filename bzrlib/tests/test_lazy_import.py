@@ -375,7 +375,6 @@ class TestScopeReplacer(TestCase):
                           ('foo', 2),
                           ('foo', 3),
                           ('__getattribute__', 'foo'),
-                          '_replace',
                          ], actions)
 
     def test_enable_proxying(self):
@@ -1175,42 +1174,51 @@ class TestScopeReplacerReentrance(TestCase):
     """The ScopeReplacer should be reentrant.
 
     Invoking a replacer while an invocation was already on-going leads to a
-    race to see which invocation will be the first to delete the _factory and
-    _scope attributes.  The loosing caller used to see AttributeErrors (bug
-    702914).
+    race to see which invocation will be the first to call _replace.
+    The loosing caller used to see an exception (bugs 396819 and 702914).
 
-    These tests set up a tracer that stops at the moment just before one of
-    the attributes is being deleted and starts another call to the
-    functionality in question (__call__, __getattribute__, __setattr_) in
-    order win the race, setting up the originall caller to loose.
+    These tests set up a tracer that stops at a suitable moment (upon
+    entry of a specified method) and starts another call to the
+    functionality in question (__call__, __getattribute__, __setattr_)
+    in order win the race, setting up the original caller to loose.
     """
 
     def tracer(self, frame, event, arg):
+        if event != 'call':
+            return self.tracer
         # Grab the name of the file that contains the code being executed.
-        filename = frame.f_globals["__file__"]
+        code = frame.f_code
+        filename = code.co_filename
         # Convert ".pyc" and ".pyo" file names to their ".py" equivalent.
         filename = re.sub(r'\.py[co]$', '.py', filename)
+        function_name = code.co_name
         # If we're executing a line of code from the right module...
-        if event == 'line' and 'lazy_import.py' in filename:
-            line = linecache.getline(filename, frame.f_lineno)
-            # ...and the line of code is the one we're looking for...
-            if 'del self._factory' in line:
-                # We don't need to trace any more.
-                sys.settrace(None)
-                # Run another racer.  This one will "win" the race, deleting
-                # the attributes.  When the first racer resumes it will loose
-                # the race, generating an AttributeError.
-                self.racer()
+        if (filename.endswith('lazy_import.py') and
+            function_name == self.method_to_trace):
+            # We don't need to trace any more.
+            sys.settrace(None)
+            # Run another racer.  This one will "win" the race.
+            self.racer()
         return self.tracer
 
-    def run_race(self, racer):
-        self.racer = racer
-        sys.settrace(self.tracer)
-        self.racer() # Should not raise an AttributeError
-        # Make sure the tracer actually found the code it was looking for.  If
-        # not, maybe the code was refactored in such a way that these tests
-        # aren't needed any more.
-        self.assertEqual(None, sys.gettrace())
+    def run_race(self, racer, method_to_trace='_resolve'):
+        # We must temporarily disable detection of duplicate replacements,
+        # as concurrent replacement requires duplicate replacements.
+        old_value = lazy_import.ScopeReplacer._should_proxy
+        old_last = lazy_import.ScopeReplacer._last_duplicate_replacement
+        try:
+            lazy_import.ScopeReplacer._should_proxy = True
+            self.racer = racer
+            self.method_to_trace = method_to_trace
+            sys.settrace(self.tracer)
+            self.racer() # Should not raise any exception
+            # Make sure the tracer actually found the code it was
+            # looking for.  If not, maybe the code was refactored in
+            # such a way that these tests aren't needed any more.
+            self.assertEqual(None, sys.gettrace())
+        finally:
+            lazy_import.ScopeReplacer._should_proxy = old_value
+            lazy_import.ScopeReplacer._last_duplicate_replacement = old_last
 
     def test_call(self):
         def factory(*args):
