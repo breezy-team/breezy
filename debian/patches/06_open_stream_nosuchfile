@@ -1,0 +1,36 @@
+Origin: commit, revision id: jelmer@samba.org-20110831101644-wapdg0atc496moap
+Author: Jelmer Vernooij <jelmer@samba.org>
+Last-Update: 2011-08-31
+X-Bzr-Revision-Id: jelmer@samba.org-20110831101644-wapdg0atc496moap
+
+=== modified file 'bzrlib/tests/test_transport.py'
+--- old/bzrlib/tests/test_transport.py	2011-08-15 14:31:55 +0000
++++ new/bzrlib/tests/test_transport.py	2011-08-31 10:16:44 +0000
+@@ -760,6 +760,10 @@
+             self.assertEquals(f.read(), 'foo')
+         self.assertEquals(len(calls), 1, calls)
+ 
++    def test_missing_directory(self):
++        t = self.get_transport('.')
++        self.assertRaises(errors.NoSuchFile, t.open_write_stream, 'dir/foo')
++
+ 
+ class TestWin32LocalTransport(tests.TestCase):
+ 
+
+=== modified file 'bzrlib/transport/local.py'
+--- old/bzrlib/transport/local.py	2011-08-15 14:31:55 +0000
++++ new/bzrlib/transport/local.py	2011-08-31 01:35:15 +0000
+@@ -330,7 +330,10 @@
+     def open_write_stream(self, relpath, mode=None):
+         """See Transport.open_write_stream."""
+         abspath = self._abspath(relpath)
+-        handle = osutils.open_file(abspath, 'wb')
++        try:
++            handle = osutils.open_file(abspath, 'wb')
++        except (IOError, OSError),e:
++            self._translate_error(e, abspath)
+         handle.truncate()
+         if mode is not None:
+             self._check_mode_and_size(abspath, handle.fileno(), mode)
+

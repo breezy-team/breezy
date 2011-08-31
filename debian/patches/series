@@ -3,4 +3,5 @@
 03_external_elementtree
 04_fix_i18n
 05_config_file_permdenied
+06_open_stream_nosuchfile
 10_testtools_compatibility
