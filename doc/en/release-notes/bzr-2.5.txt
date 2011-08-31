@@ -111,6 +111,8 @@ Improvements
 
 * Install translation .mo files. (Jonathan Riddell)
 
+* Do not run i18n initialisation twice. (Jonathan Riddell)
+
 Bug Fixes
 *********
 
