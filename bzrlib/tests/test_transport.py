@@ -762,7 +762,6 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
 
     def test_missing_directory(self):
         t = self.get_transport('.')
-        calls = self.recordCalls(os, 'fdatasync')
         self.assertRaises(errors.NoSuchFile, t.open_write_stream, 'dir/foo')
 
 
