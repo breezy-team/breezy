@@ -130,7 +130,7 @@ class TestHasLayout(TestCaseWithTransport):
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEquals(
-            "[u'', u'a', u'b/', u'b/c'] != ['a']",
+            "['a'] != [u'', u'a', u'b/', u'b/c']",
             mismatch.describe())
 
     def test_no_dirs(self):
@@ -144,5 +144,5 @@ class TestHasLayout(TestCaseWithTransport):
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEquals(
-            "[u'', u'a', u'b/', u'b/c'] != [u'', u'a']",
+            "[u'', u'a'] != [u'', u'a', u'b/', u'b/c']",
             mismatch.describe())

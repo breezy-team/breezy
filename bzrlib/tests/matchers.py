@@ -142,13 +142,17 @@ class HasLayout(Matcher):
 
     @staticmethod
     def _strip_unreferenced_directories(entries):
+        """Strip all directories that don't (in)directly contain any files.
+
+        :param entries: List of path strings or (path, ie) tuples to process
+        """
         directories = []
         for entry in entries:
             if isinstance(entry, basestring):
                 path = entry
             else:
                 path = entry[0]
-            if path == u"" or path[-1] == "/":
+            if not path or path[-1] == "/":
                 # directory
                 directories.append((path, entry))
             else:
@@ -170,4 +174,4 @@ class HasLayout(Matcher):
             entries = list(self._strip_unreferenced_directories(self.entries))
         else:
             entries = self.entries
-        return Equals(actual).match(entries)
+        return Equals(entries).match(actual)
