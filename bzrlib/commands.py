@@ -465,7 +465,7 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
-        if self.l10n and not i18n.installed():
+        if self.l10n:
             i18n.install()  # Install i18n only for get_help_text for now.
         doc = self.help()
         if doc:
