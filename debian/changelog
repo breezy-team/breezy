@@ -1,4 +1,4 @@
-bzr (2.4.0-3) UNRELEASED; urgency=low
+bzr (2.4.0-3) unstable; urgency=medium
 
   * Fix regression in open_write_stream, which breaks the bzr-builddeb
     testsuite. Closes: #638219, LP: #831351
