@@ -254,6 +254,9 @@ Testing
   allowing it to be used for modules with side-effects.
   (Vincent Ladeuil, #712474)
 
+* Output time stamps while running ``make check`` to get better timings from
+  pqm.  (Vincent Ladeuil, #837926)
+
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,
   rather than opening the WorkingTree and calling ``last_revision()``.
