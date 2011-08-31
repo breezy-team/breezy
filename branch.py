@@ -790,7 +790,7 @@ class InterGitLocalGitBranch(InterGitBranch):
                 isinstance(target, LocalGitBranch))
 
     def _basic_push(self, overwrite=False, stop_revision=None):
-        result = branch.BranchPushResult()
+        result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()

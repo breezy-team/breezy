@@ -252,9 +252,10 @@ class LocalGitRepository(GitRepository):
     def all_revision_ids(self):
         ret = set([])
         for git_sha, revid, roundtrip_revid in self._iter_revision_ids():
-            ret.add(revid)
             if roundtrip_revid:
                 ret.add(roundtrip_revid)
+            else:
+                ret.add(revid)
         return ret
 
     def get_parent_map(self, revids):
