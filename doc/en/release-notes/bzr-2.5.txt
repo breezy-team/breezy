@@ -92,6 +92,9 @@ New Features
 * bzr now ships with translations for command help.  (Jonathan
   Riddell, INADA Naoki, #83941)
 
+* bzr now ships with translations for command errors. (Jonathan
+  Riddell, INADA Naoki)
+
 Improvements
 ************
 
