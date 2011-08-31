@@ -474,6 +474,7 @@ class Command(object):
             # translate the usage string.
             # Though, bzr export-pot don't exports :Usage: section and it must
             # not be translated.
+            print "running gettext on doc >>>" + doc + "<<<"
             doc = self.gettext(doc)
         else:
             doc = gettext("No help for this command.")

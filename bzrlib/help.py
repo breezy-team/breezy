@@ -48,6 +48,7 @@ def help(topic=None, outfile=None):
             shadowed_terms.append('%s%s' % (index.prefix,
                 topic_obj.get_help_topic()))
         source = topics[0][1]
+        print "XXXabout to get_help_text" + str(type(source))
         outfile.write(source.get_help_text(shadowed_terms))
     except errors.NoHelpTopic:
         if alias is None:

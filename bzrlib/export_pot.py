@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     help_topics,
     plugin,
+    help,
     )
 from bzrlib.trace import (
     mutter,
@@ -234,7 +235,11 @@ def _help_topics(outf):
                     outf,
                     'dummy/help_topics/'+key+'/detail.txt',
                     1, doc)
-
+        else: # help topics from files
+            _poentry_per_paragraph(
+                    outf,
+                    'en/help_topics/'+key+'.txt',
+                    1, doc(key))
         summary = topic_registry.get_summary(key)
         if summary is not None:
             _poentry(outf, 'dummy/help_topics/'+key+'/summary.txt',
@@ -247,4 +252,4 @@ def export_pot(outf):
     _command_helps(outf)
     _error_messages(outf)
     # disable exporting help topics until we decide  how to translate it.
-    #_help_topics(outf)
+    _help_topics(outf)

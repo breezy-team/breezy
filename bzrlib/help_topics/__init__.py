@@ -40,8 +40,9 @@ from bzrlib import (
     config,
     osutils,
     registry,
+    i18n,
     )
-
+from bzrlib.i18n import gettext
 
 # Section identifiers (map topics to the right place in the manual)
 SECT_COMMAND = "command"
@@ -875,10 +876,15 @@ class RegisteredTopic(object):
         :param plain: if False, raw help (reStructuredText) is
             returned instead of plain text.
         """
+        print "XXXget_help_text"
         result = topic_registry.get_detail(self.topic)
         result += _format_see_also(additional_see_also)
         if plain:
             result = help_as_plain_text(result)
+        i18n.install()
+        print "RESULT BEFORE>>>" + result[:10] + "<<<"
+        result = i18n.gettext_per_paragraph(result)
+        print "RESULT AFTER>>>" + result[:10] + "<<<"
         return result
 
     def get_help_topic(self):
