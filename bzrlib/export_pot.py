@@ -235,7 +235,7 @@ def _help_topics(outf):
                     outf,
                     'dummy/help_topics/'+key+'/detail.txt',
                     1, doc)
-        else: # help topics from files
+        elif callable(doc): # help topics from files
             _poentry_per_paragraph(
                     outf,
                     'en/help_topics/'+key+'.txt',
