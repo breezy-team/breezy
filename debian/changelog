@@ -2,8 +2,10 @@ bzr-builddeb (2.7.8) UNRELEASED; urgency=low
 
   * Improve error message when tag for upstream version can not be
     found. LP: #783882
+  * Cope with newer versions of bzr raising IOError rather than
+    NoSuchFile error. LP: #831351, Closes: #638219
 
- -- Jelmer Vernooij <jelmer@debian.org>  Thu, 11 Aug 2011 17:54:41 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 31 Aug 2011 03:40:12 +0200
 
 bzr-builddeb (2.7.7) unstable; urgency=low
 

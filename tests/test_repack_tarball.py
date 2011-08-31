@@ -129,12 +129,9 @@ class TestRepackTarball(TestCaseInTempDir):
         target_dir = 'tarballs'
         touch(target_dir)
         # transport gives NoSuchFile rather than NotADirectory for this
-        self.assertRaises(NoSuchFile, repack_tarball, self.old_tarball,
-                          self.new_tarball, target_dir=target_dir)
+        self.assertRaises((IOError, NoSuchFile), repack_tarball,
+                self.old_tarball, self.new_tarball, target_dir=target_dir)
         self.assertPathExists(self.old_tarball)
         self.assertPathDoesNotExist(self.new_tarball)
         self.assertPathDoesNotExist(os.path.join(target_dir, self.new_tarball))
         self.assertPathExists(target_dir)
-
-
-
