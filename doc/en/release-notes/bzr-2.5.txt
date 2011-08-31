@@ -102,6 +102,9 @@ Improvements
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
 
+* ``bzr pull`` will now mention how many tags it has updated.
+  (Jelmer Vernooij, #164450)
+
 * ``bzr uncommit`` will now remove tags that refer to removed revisions.
   The ``--keep-tags`` option can be used to prevent this behaviour.
   (Jelmer Vernooij, #605814)
