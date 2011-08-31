@@ -35,9 +35,15 @@ from bzrlib import (
     tests,
     )
 try:
-    from bzrlib.tests.features import Feature
+    from bzrlib.tests.features import (
+        Feature,
+        SymlinkFeature,
+        )
 except ImportError: # bzr < 2.5
-    from bzrlib.tests import Feature
+    from bzrlib.tests import (
+        Feature,
+        SymlinkFeature,
+        )
 
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
@@ -1833,7 +1839,7 @@ class DistributionBranchTests(BuilddebTestCase):
     def test_import_symlink(self):
         version = Version("1.0-1")
         self.requireFeature(PristineTarFeature)
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(SymlinkFeature)
         builder = SourcePackageBuilder("package", version)
         builder.add_default_control()
         builder.add_upstream_symlink("a", "b")

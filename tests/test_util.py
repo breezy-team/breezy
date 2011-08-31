@@ -79,9 +79,12 @@ from bzrlib.plugins.builddeb.util import (
 
 from bzrlib import errors as bzr_errors
 from bzrlib.tests import (
-    SymlinkFeature,
     TestCase,
     )
+try:
+    from bzrlib.tests.features import SymlinkFeature
+except ImportError: # bzr < 2.5
+    from bzrlib.tests import SymlinkFeature
 
 
 class RecursiveCopyTests(TestCaseInTempDir):
