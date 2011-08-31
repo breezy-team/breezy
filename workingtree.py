@@ -362,18 +362,18 @@ class GitWorkingTree(workingtree.WorkingTree):
             return self._fileid_map.lookup_file_id(encoded_path)
         return None
 
-    def extras(self):
-        """Yield all unversioned files in this WorkingTree.
-        """
-        present_files = set()
+    def _iter_all_files(self):
         for (dirpath, dirnames, filenames) in os.walk(self.basedir):
             dir_relpath = dirpath[len(self.basedir):].strip("/")
             if self.bzrdir.is_control_filename(dir_relpath):
                 continue
             for filename in filenames:
-                relpath = os.path.join(dir_relpath, filename)
-                present_files.add(relpath)
-        return present_files - set(self.index)
+                yield os.path.join(dir_relpath, filename)
+
+    def extras(self):
+        """Yield all unversioned files in this WorkingTree.
+        """
+        return set(self._iter_all_files()) - set(self.index)
 
     def unlock(self):
         # non-implementation specific cleanup
