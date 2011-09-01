@@ -26,8 +26,8 @@ import threading
 from bzrlib import (
     bencode,
     commands,
-    entropy,
     errors,
+    estimate_compressed_size,
     graph,
     osutils,
     pack,
@@ -188,7 +188,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                                include_missing, max_size=65536):
         result = {}
         queried_revs = set()
-        estimator = entropy.ZLibEstimator(max_size)
+        estimator = estimate_compressed_size.ZLibEstimator(max_size)
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
