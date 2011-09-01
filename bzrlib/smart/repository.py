@@ -22,6 +22,7 @@ import Queue
 import sys
 import tempfile
 import threading
+import zlib
 
 from bzrlib import (
     bencode,
@@ -29,6 +30,7 @@ from bzrlib import (
     graph,
     osutils,
     pack,
+    trace,
     ui,
     )
 from bzrlib.bzrdir import BzrDir
@@ -180,27 +182,13 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
-    def _do_repository_request(self, body_bytes):
-        repository = self._repository
-        revision_ids = set(self._revision_ids)
-        include_missing = 'include-missing:' in revision_ids
-        if include_missing:
-            revision_ids.remove('include-missing:')
-        body_lines = body_bytes.split('\n')
-        search_result, error = self.recreate_search_from_recipe(
-            repository, body_lines)
-        if error is not None:
-            return error
-        # TODO might be nice to start up the search again; but thats not
-        # written or tested yet.
-        client_seen_revs = set(search_result.get_keys())
-        # Always include the requested ids.
-        client_seen_revs.difference_update(revision_ids)
-        lines = []
-        repo_graph = repository.get_graph()
+    def _expand_requested_revs(self, repo_graph, revision_ids, client_seen_revs,
+                               include_missing, max_size=65536):
         result = {}
+        compressor = zlib.compressobj()
         queried_revs = set()
         size_so_far = 0
+        z_size_so_far = 0
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
@@ -228,21 +216,49 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     # add parents to the result
                     result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
-                    size_so_far += 2 + len(encoded_id) + sum(map(len, parents))
+                    line = '%s %s\n' % (encoded_id, ' '.join(parents))
+                    size_so_far += len(line)
+                    z_size_so_far += len(compressor.compress(line))
+            z_size_so_far += len(compressor.flush(zlib.Z_SYNC_FLUSH))
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
             if self.no_extra_results or (
-                first_loop_done and size_so_far > 250000):
+                first_loop_done and z_size_so_far > max_size):
+                trace.mutter('size: %d, z_size: %d'
+                             % (size_so_far, z_size_so_far))
                 next_revs = set()
                 break
             # don't query things we've already queried
             next_revs.difference_update(queried_revs)
             first_loop_done = True
+        return result
+
+    def _do_repository_request(self, body_bytes):
+        repository = self._repository
+        revision_ids = set(self._revision_ids)
+        include_missing = 'include-missing:' in revision_ids
+        if include_missing:
+            revision_ids.remove('include-missing:')
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
+        if error is not None:
+            return error
+        # TODO might be nice to start up the search again; but thats not
+        # written or tested yet.
+        client_seen_revs = set(search_result.get_keys())
+        # Always include the requested ids.
+        client_seen_revs.difference_update(revision_ids)
+
+        repo_graph = repository.get_graph()
+        result = self._expand_requested_revs(repo_graph, revision_ids,
+                                             client_seen_revs, include_missing)
 
         # sorting trivially puts lexographically similar revision ids together.
         # Compression FTW.
+        lines = []
         for revision, parents in sorted(result.items()):
             lines.append(' '.join((revision, ) + tuple(parents)))
 
