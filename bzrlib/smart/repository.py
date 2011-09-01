@@ -25,6 +25,7 @@ import threading
 
 from bzrlib import (
     bencode,
+    commands,
     entropy,
     errors,
     graph,
@@ -143,6 +144,7 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
+_lsprof_count = 0
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     """Bzr 1.2+ - get parent data for revisions during a graph search."""
@@ -217,7 +219,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     # Approximate the serialized cost of this revision_id.
                     line = '%s %s\n' % (encoded_id, ' '.join(parents))
                     estimator.add_content(line)
-                    hest.add_content(line)
+                    # hest.add_content(line)
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
@@ -230,11 +232,17 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                 next_revs = set()
                 break
             # don't query things we've already queried
-            next_revs.difference_update(queried_revs)
+            next_revs = next_revs.difference(queried_revs)
             first_loop_done = True
         return result
 
     def _do_repository_request(self, body_bytes):
+        global _lsprof_count
+        _lsprof_count += 1
+        return commands.apply_lsprofiled('prof-%d.txt' % _lsprof_count,
+            self._real_do, body_bytes)
+
+    def _real_do(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
         include_missing = 'include-missing:' in revision_ids
