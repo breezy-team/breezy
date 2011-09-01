@@ -1170,6 +1170,16 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                          ], self.actions)
 
 
+class ProxyingReplacer(lazy_import.ScopeReplacer):
+    """Replacer class that will do proxying even during selftest.
+    
+    This is useful to check that the lazy import code is sufficiently
+    thread-safe.
+    """
+
+    _should_proxy = True
+
+
 class TestScopeReplacerReentrance(TestCase):
     """The ScopeReplacer should be reentrant.
 
@@ -1202,28 +1212,20 @@ class TestScopeReplacerReentrance(TestCase):
         return self.tracer
 
     def run_race(self, racer, method_to_trace='_resolve'):
-        # We must temporarily disable detection of duplicate replacements,
-        # as concurrent replacement requires duplicate replacements.
-        old_value = lazy_import.ScopeReplacer._should_proxy
-        old_last = lazy_import.ScopeReplacer._last_duplicate_replacement
-        try:
-            lazy_import.ScopeReplacer._should_proxy = True
-            self.racer = racer
-            self.method_to_trace = method_to_trace
-            sys.settrace(self.tracer)
-            self.racer() # Should not raise any exception
-            # Make sure the tracer actually found the code it was
-            # looking for.  If not, maybe the code was refactored in
-            # such a way that these tests aren't needed any more.
-            self.assertEqual(None, sys.gettrace())
-        finally:
-            lazy_import.ScopeReplacer._should_proxy = old_value
-            lazy_import.ScopeReplacer._last_duplicate_replacement = old_last
+        lazy_import.ScopeReplacer._should_proxy = True
+        self.racer = racer
+        self.method_to_trace = method_to_trace
+        sys.settrace(self.tracer)
+        self.racer() # Should not raise any exception
+        # Make sure the tracer actually found the code it was
+        # looking for.  If not, maybe the code was refactored in
+        # such a way that these tests aren't needed any more.
+        self.assertEqual(None, sys.gettrace())
 
     def test_call(self):
         def factory(*args):
             return factory
-        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
+        replacer = ProxyingReplacer({}, factory, 'name')
         self.run_race(replacer)
 
     def test_setattr(self):
@@ -1233,7 +1235,7 @@ class TestScopeReplacerReentrance(TestCase):
         def factory(*args):
             return Replaced()
 
-        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
+        replacer = ProxyingReplacer({}, factory, 'name')
 
         def racer():
             replacer.foo = 42
@@ -1247,7 +1249,7 @@ class TestScopeReplacerReentrance(TestCase):
         def factory(*args):
             return Replaced()
 
-        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
+        replacer = ProxyingReplacer({}, factory, 'name')
 
         def racer():
             replacer.foo

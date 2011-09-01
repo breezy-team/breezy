@@ -55,9 +55,10 @@ class ScopeReplacer(object):
     # during selftests where duplicate replacements are forbidden.
     _last_duplicate_replacement = None
 
-    # Setting this to True will allow you to do x = y, and still access members
-    # from both variables. This should not normally be enabled, but is useful
-    # when building documentation.
+    # If you to do x = y, setting this to False will disallow access to
+    # members from the second variable (i.e. x). This should normally
+    # be enabled for reasons of thread safety and documentation, but
+    # will be disabled during the selftest command to check for abuse.
     _should_proxy = True
 
     def __init__(self, scope, factory, name):
@@ -122,7 +123,7 @@ class ScopeReplacer(object):
         return obj(*args, **kwargs)
 
     def _duplicate_replacement(self):
-        if ScopeReplacer._should_proxy:
+        if object.__getattribute__(self, '_should_proxy'):
             # Do not report now, but remember in case we want to
             # report this later.
             ScopeReplacer._last_duplicate_replacement = self
