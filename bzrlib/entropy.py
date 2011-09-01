@@ -16,62 +16,53 @@
 
 """Code to estimate the entropy of content"""
 
-import math
 import zlib
+
 
 class ZLibEstimator(object):
     """Uses zlib.compressobj to estimate compressed size."""
 
-    def __init__(self, target_size):
+    def __init__(self, target_size, min_compression=2.0):
+        """Create a new estimator.
+
+        :param target_size: The desired size of the compressed content.
+        :param min_compression: Estimated minimum compression. By default we
+            assume that the content is 'text', which means a min compression of
+            about 2:1.
+        """
         self._target_size = target_size
         self._compressor = zlib.compressobj()
         self._uncompressed_size_added = 0
         self._compressed_size_added = 0
         self._unflushed_size_added = 0
+        self._estimated_compression = 2.0
 
     def add_content(self, content):
         self._uncompressed_size_added += len(content)
         self._unflushed_size_added += len(content)
         z_size = len(self._compressor.compress(content))
         if z_size > 0:
-            self._compressed_size_added += z_size
-            self._unflushed_size_added = 0
+            self._record_z_len(z_size)
+
+    def _record_z_len(self, count):
+        # We got some compressed bytes, update the counters
+        self._compressed_size_added += count
+        self._unflushed_size_added = 0
+        # So far we've read X uncompressed bytes, and written Y compressed
+        # bytes. We should have a decent estimate of the final compression.
+        self._estimated_compression = (float(self._uncompressed_size_added)
+            / self._compressed_size_added)
 
     def full(self):
         """Have we reached the target size?"""
-        if self._unflushed_size_added > self._target_size:
-            z_size = len(self._compressor.flush(zlib.Z_SYNC_FLUSH))
-            self._compressed_size_added += z_size
-            self._unflushed_size_added = 0
+        if self._unflushed_size_added:
+            remaining_size = self._target_size - self._compressed_size_added
+            # Estimate how much compressed content the unflushed data will
+            # consume
+            est_z_size = (self._unflushed_size_added /
+                          self._estimated_compression)
+            if est_z_size >= remaining_size:
+                # We estimate we are close to remaining
+                z_size = len(self._compressor.flush(zlib.Z_SYNC_FLUSH))
+                self._record_z_len(z_size)
         return self._compressed_size_added >= self._target_size
-
-
-_il2 = 1.0/math.log(2.0)
-
-class HistogramEstimator(object):
-    """Uses a histogram to determine ~entropy"""
-
-    def __init__(self, target_size):
-        self._target_size = target_size
-        self._counts = [0]*256
-        self._bytes_added = 0
-
-    def add_content(self, content):
-        for c in content:
-            self._counts[ord(c)] += 1
-        self._bytes_added += len(content)
-
-    def _compute_entropy(self):
-        entropy = 0.0
-        if self._bytes_added == 0:
-            return 0
-        iba = 1.0 / self._bytes_added
-        for count in self._counts:
-            if count == 0:
-                continue
-            p = float(count) * iba
-            lp = math.log(p) * _il2
-            entropy += p * lp
-        # entropy *should* be a measurement of the number of bits it will take
-        # to encode each byte of the input. So we use:
-        return (-entropy)

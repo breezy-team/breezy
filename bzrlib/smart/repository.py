@@ -188,8 +188,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                                include_missing, max_size=65536):
         result = {}
         queried_revs = set()
-        estimator = entropy.ZLibEstimator(max_size)
-        hest = entropy.HistogramEstimator(max_size)
+        estimator = entropy.ZLibEstimator(int(max_size*1.1))
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
@@ -219,16 +218,14 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     # Approximate the serialized cost of this revision_id.
                     line = '%s %s\n' % (encoded_id, ' '.join(parents))
                     estimator.add_content(line)
-                    # hest.add_content(line)
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
             if self.no_extra_results or (first_loop_done and estimator.full()):
-                trace.mutter('size: %d, z_size: %d, entropy: %.3f'
+                trace.mutter('size: %d, z_size: %d'
                              % (estimator._uncompressed_size_added,
-                                estimator._compressed_size_added,
-                                hest._compute_entropy()))
+                                estimator._compressed_size_added))
                 next_revs = set()
                 break
             # don't query things we've already queried
