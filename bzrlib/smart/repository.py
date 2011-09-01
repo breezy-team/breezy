@@ -237,10 +237,11 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         return result
 
     def _do_repository_request(self, body_bytes):
-        global _lsprof_count
-        _lsprof_count += 1
-        return commands.apply_lsprofiled('prof-%d.txt' % _lsprof_count,
-            self._real_do, body_bytes)
+        # global _lsprof_count
+        # _lsprof_count += 1
+        # return commands.apply_lsprofiled('prof-%d.txt' % _lsprof_count,
+        #     self._real_do, body_bytes)
+        return self._real_do(body_bytes)
 
     def _real_do(self, body_bytes):
         repository = self._repository
