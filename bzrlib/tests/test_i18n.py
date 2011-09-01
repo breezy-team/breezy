@@ -16,7 +16,7 @@
 
 """Tests for bzrlib.i18n"""
 
-from bzrlib import i18n, tests
+from bzrlib import i18n, tests, errors, workingtree
 
 
 class ZzzTranslations(object):
@@ -112,11 +112,7 @@ class TestTranslate(tests.TestCaseWithTransport):
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_error_message_translation(self):
-        import bzrlib
-        #bzrlib.initialize()
-        from bzrlib import workingtree
-        from bzrlib import errors
-        i18n.install()
+        """do errors get translated?"""
         err = None
         tree = self.make_branch_and_tree('.')
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
@@ -124,4 +120,4 @@ class TestTranslate(tests.TestCaseWithTransport):
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError,e:
             err = str(e)
-        self.assertEqual("Not a branch: \"/tmp/\".", err)
+        self.assertContainsRe(err, "zz{{Not a branch: .*}}")
