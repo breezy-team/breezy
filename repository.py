@@ -258,25 +258,29 @@ class LocalGitRepository(GitRepository):
                 ret.add(revid)
         return ret
 
+    def _get_parents(self, revid):
+        if type(revid) != str:
+            raise ValueError
+        if revid == revision.NULL_REVISION:
+            return ()
+        try:
+            hexsha, mapping = self.lookup_bzr_revision_id(revid)
+        except errors.NoSuchRevision:
+            return None
+        try:
+            commit = self._git[hexsha]
+        except KeyError:
+            return None
+        return [
+            self.lookup_foreign_revision_id(p, mapping)
+            for p in commit.parents]
+
     def get_parent_map(self, revids):
         parent_map = {}
         for revision_id in revids:
-            if type(revision_id) != str:
-                raise ValueError
-            if revision_id == revision.NULL_REVISION:
-                parent_map[revision_id] = ()
+            parents = self._get_parents(revision_id)
+            if parents is None:
                 continue
-            try:
-                hexsha, mapping = self.lookup_bzr_revision_id(revision_id)
-            except errors.NoSuchRevision:
-                continue
-            try:
-                commit = self._git[hexsha]
-            except KeyError:
-                continue
-            parents = [
-                self.lookup_foreign_revision_id(p, mapping)
-                for p in commit.parents]
             if len(parents) == 0:
                 parents = [revision.NULL_REVISION]
             parent_map[revision_id] = tuple(parents)
@@ -288,7 +292,13 @@ class LocalGitRepository(GitRepository):
         pending = set(revision_ids)
         parent_map = {}
         while pending:
-            this_parent_map = self.get_parent_map(pending)
+            this_parent_map = {}
+            for revid in pending:
+                if revid == revision.NULL_REVISION:
+                    continue
+                parents = self._get_parents(revid)
+                if parents is not None:
+                    this_parent_map[revid] = parents
             parent_map.update(this_parent_map)
             pending = set()
             map(pending.update, this_parent_map.itervalues())

@@ -61,6 +61,8 @@ class GitCommitBuilder(CommitBuilder):
         self._blobs = {}
         self._any_changes = False
         self._will_record_deletes = False
+        self._override_fileids = {}
+        self._mapping = self.repository.get_mapping()
 
     def any_changes(self):
         return self._any_changes
@@ -70,6 +72,7 @@ class GitCommitBuilder(CommitBuilder):
         raise NotImplementedError(self.record_entry_contents)
 
     def record_delete(self, path, file_id):
+        self._override_fileids[path] = None
         self._blobs[path] = None
         self._any_changes = True
 
@@ -123,6 +126,7 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             _, st = workingtree.get_file_with_stat(file_id, path[1])
             yield file_id, path[1], (file_sha1, st)
+            self._override_fileids[path[1]] = file_id
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):
@@ -145,6 +149,18 @@ class GitCommitBuilder(CommitBuilder):
                 else:
                     blob.data = basis_tree.get_file_text(entry.file_id, path)
                 self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
+        if not self._lossy:
+            try:
+                fileid_map = dict(basis_tree._fileid_map.file_ids)
+            except AttributeError:
+                fileid_map = {}
+            fileid_map.update(self._override_fileids)
+            if fileid_map:
+                fileid_blob = self._mapping.export_fileid_map(fileid_map)
+                self.store.add_object(fileid_blob)
+                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (stat.S_IFREG | 0644, fileid_blob.id)
+            else:
+                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = None
         self.new_inventory = None
 
     def get_basis_delta(self):
@@ -187,7 +203,7 @@ class GitCommitBuilder(CommitBuilder):
 
         assert len(c.id) == 40
         if self._new_revision_id is None:
-            self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
+            self._new_revision_id = self.mapping.revision_id_foreign_to_bzr(c.id)
         self.store.add_object(c)
         self.repository.commit_write_group()
         return self._new_revision_id

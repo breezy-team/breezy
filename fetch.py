@@ -292,10 +292,13 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
                 file_id, revision_id, parent_invs, lookup_object,
                 (child_base_mode, child_mode), store_updater, lookup_file_id)
         else:
-            subinvdelta = import_git_blob(texts, mapping, child_path, name,
-                (child_base_hexsha, child_hexsha), base_inv, file_id,
-                revision_id, parent_invs, lookup_object,
-                (child_base_mode, child_mode), store_updater, lookup_file_id)
+            if not mapping.is_special_file(name):
+                subinvdelta = import_git_blob(texts, mapping, child_path, name,
+                    (child_base_hexsha, child_hexsha), base_inv, file_id,
+                    revision_id, parent_invs, lookup_object,
+                    (child_base_mode, child_mode), store_updater, lookup_file_id)
+            else:
+                subinvdelta = []
             grandchildmodes = {}
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)

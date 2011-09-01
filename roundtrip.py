@@ -63,10 +63,9 @@ class CommitSupplement(object):
 
     explicit_parent_ids = None
 
-    verifiers = {}
-
     def __init__(self):
         self.properties = {}
+        self.verifiers = {}
 
     def __nonzero__(self):
         return bool(self.revision_id or self.properties or self.explicit_parent_ids)
@@ -107,7 +106,7 @@ def parse_roundtripping_metadata(text):
 def generate_roundtripping_metadata(metadata, encoding):
     """Serialize the roundtripping metadata.
 
-    :param metadata: A `BzrGitRevisionMetadata` instance
+    :param metadata: A `CommitSupplement` instance
     :return: String with revision metadata
     """
     lines = []

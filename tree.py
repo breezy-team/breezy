@@ -50,7 +50,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
         self.tree = commit.tree
-        self.fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
+        self._fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
 
     def get_file_revision(self, file_id, path=None):
         if path is None:
@@ -69,10 +69,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return rev.timestamp
 
     def id2path(self, file_id):
-        return self.fileid_map.lookup_path(file_id)
+        return self._fileid_map.lookup_path(file_id)
 
     def path2id(self, path):
-        return self.fileid_map.lookup_file_id(path.encode('utf-8'))
+        if self.mapping.is_special_file(path):
+            return None
+        return self._fileid_map.lookup_file_id(path.encode('utf-8'))
 
     def get_root_id(self):
         return self.path2id("")
@@ -118,7 +120,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             root_ie = self._get_dir_ie("", None)
         else:
             parent_path = posixpath.dirname(from_dir.encode("utf-8"))
-            parent_id = self.fileid_map.lookup_file_id(parent_path)
+            parent_id = self._fileid_map.lookup_file_id(parent_path)
             if mode_kind(mode) == 'directory':
                 root_ie = self._get_dir_ie(from_dir.encode("utf-8"), parent_id)
             else:
@@ -133,6 +135,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
             (path, hexsha, parent_id) = todo.pop()
             tree = self.store[hexsha]
             for name, mode, hexsha in tree.iteritems():
+                if self.mapping.is_special_file(name):
+                    continue
                 child_path = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
                     ie = self._get_dir_ie(child_path, parent_id)
@@ -144,7 +148,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _get_file_ie(self, path, name, mode, hexsha, parent_id):
         kind = mode_kind(mode)
-        file_id = self.fileid_map.lookup_file_id(path)
+        file_id = self._fileid_map.lookup_file_id(path)
         ie = inventory.entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.store[hexsha].data
@@ -156,7 +160,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return ie
 
     def _get_dir_ie(self, path, parent_id):
-        file_id = self.fileid_map.lookup_file_id(path)
+        file_id = self._fileid_map.lookup_file_id(path)
         return inventory.InventoryDirectory(file_id,
             posixpath.basename(path).decode("utf-8"), parent_id)
 
@@ -178,6 +182,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield path, ie
             tree = self.store[tree_sha]
             for name, mode, hexsha  in tree.iteritems():
+                if self.mapping.is_special_file(name):
+                    continue
                 child_path = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
                     if (specific_paths is None or
@@ -258,6 +264,8 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
     """
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         path = (oldpath, newpath)
+        if mapping.is_special_file(oldpath) or mapping.is_special_file(newpath):
+            continue
         if oldpath is None:
             fileid = mapping.generate_file_id(newpath)
             oldexe = None

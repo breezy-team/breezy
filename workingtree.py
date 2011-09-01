@@ -183,15 +183,18 @@ class GitWorkingTree(workingtree.WorkingTree):
                     del self.index[p]
         # FIXME: remove empty directories
 
+    @needs_tree_write_lock
     def unversion(self, file_ids):
         for file_id in file_ids:
             path = self.id2path(file_id)
             self._unversion_path(path)
+        self.flush()
 
     def check_state(self):
         """Check that the working state is/isn't valid."""
         pass
 
+    @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
         """Remove nominated files from the working tree metadata.
@@ -259,6 +262,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             # print only one message (if any) per file.
             if message is not None:
                 trace.note(message)
+        self.flush()
 
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
@@ -293,7 +297,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             abs_user_dir = self.abspath(user_dir)
             for name in os.listdir(abs_user_dir):
                 subp = os.path.join(user_dir, name)
-                if self.is_control_filename(subp):
+                if self.is_control_filename(subp) or self.mapping.is_special_file(subp):
                     continue
                 ignore_glob = self.is_ignored(subp)
                 if ignore_glob is not None:
@@ -330,6 +334,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             to_rel = os.path.join(to_dir, from_tail)
             self.rename_one(from_rel, to_rel, after=after)
             rename_tuples.append((from_rel, to_rel))
+        self.flush()
         return rename_tuples
 
     @needs_tree_write_lock
@@ -346,6 +351,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 errors.NotVersionedError(path=from_rel))
         self.index[to_path] = self.index[from_path]
         del self.index[from_path]
+        self.flush()
 
     def get_root_id(self):
         return self.path2id("")
@@ -362,18 +368,21 @@ class GitWorkingTree(workingtree.WorkingTree):
             return self._fileid_map.lookup_file_id(encoded_path)
         return None
 
-    def _iter_all_files(self):
-        for (dirpath, dirnames, filenames) in os.walk(self.basedir):
+    def _iter_files_recursive(self, from_dir=None):
+        if from_dir is None:
+            from_dir = ""
+        for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir)):
             dir_relpath = dirpath[len(self.basedir):].strip("/")
             if self.bzrdir.is_control_filename(dir_relpath):
                 continue
             for filename in filenames:
-                yield os.path.join(dir_relpath, filename)
+                if not self.mapping.is_special_file(filename):
+                    yield os.path.join(dir_relpath, filename)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
-        return set(self._iter_all_files()) - set(self.index)
+        return set(self._iter_files_recursive()) - set(self.index)
 
     def unlock(self):
         # non-implementation specific cleanup
@@ -549,12 +558,13 @@ class GitWorkingTree(workingtree.WorkingTree):
     def stored_kind(self, file_id, path=None):
         if path is None:
             path = self.id2path(file_id)
-        head = self.repository._git.head()
-        if head == ZERO_SHA:
+        try:
+            return mode_kind(self.index[path.encode("utf-8")][4])
+        except KeyError:
+            # Maybe it's a directory?
+            if self._has_dir(path):
+                return "directory"
             raise errors.NoSuchId(self, file_id)
-        root_tree = self.store[head].tree
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, root_tree, path)
-        return mode_kind(mode)
 
     if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
@@ -578,25 +588,43 @@ class GitWorkingTree(workingtree.WorkingTree):
         if from_dir is None:
             from_dir = ""
         dir_ids = {}
+        fk_entries = {'directory': workingtree.TreeDirectory, 'file': workingtree.TreeFile, 'symlink': workingtree.TreeLink}
         root_ie = self._get_dir_ie(u"", None)
         if include_root and not from_dir:
             yield "", "V", root_ie.kind, root_ie.file_id, root_ie
         dir_ids[u""] = root_ie.file_id
-        for path, value in self.index.iteritems():
+        if recursive:
+            path_iterator = self._iter_files_recursive(from_dir)
+        else:
+            if from_dir is None:
+                start = self.basedir
+            else:
+                start = os.path.join(self.basedir, from_dir)
+            path_iterator = sorted([os.path.join(from_dir, name) for name in
+                os.listdir(start) if not self.bzrdir.is_control_filename(name)
+                and not self.mapping.is_special_file(name)])
+        for path in path_iterator:
+            try:
+                value = self.index[path]
+            except KeyError:
+                value = None
             path = path.decode("utf-8")
             parent, name = posixpath.split(path)
-            if (from_dir is not None and
-                (recursive and not osutils.is_inside(from_dir, path)) or
-                (not recursive and from_dir != parent)):
-                continue
             for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
                 yield dir_path, "V", dir_ie.kind, dir_ie.file_id, dir_ie
-            ie = self._get_file_ie(name, path, value, dir_ids[parent])
-            yield path, "V", ie.kind, ie.file_id, ie
+            if value is not None:
+                ie = self._get_file_ie(name, path, value, dir_ids[parent])
+                yield path, "V", ie.kind, ie.file_id, ie
+            else:
+                kind = osutils.file_kind(self.abspath(path))
+                ie = fk_entries[kind]()
+                yield path, "?", kind, None, ie
 
     def all_file_ids(self):
         ids = {u"": self.path2id("")}
         for path in self.index:
+            if self.mapping.is_special_file(path):
+                continue
             path = path.decode("utf-8")
             parent = posixpath.dirname(path).strip("/")
             for e in self._add_missing_parent_ids(parent, ids):
@@ -621,6 +649,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             yield u"", root_ie
         dir_ids = {u"": root_ie.file_id}
         for path, value in self.index.iteritems():
+            if self.mapping.is_special_file(path):
+                continue
             path = path.decode("utf-8")
             if specific_paths is not None and not path in specific_paths:
                 continue
@@ -644,11 +674,20 @@ class GitWorkingTree(workingtree.WorkingTree):
         # The index just contains content, which won't have changed.
         self._reset_data()
 
+    def get_canonical_inventory_path(self, path):
+        for p in self.index:
+            if p.lower() == path.lower():
+                return p
+        else:
+            return path
+
     def _walkdirs(self, prefix=""):
         if prefix != "":
             prefix += "/"
         per_dir = defaultdict(list)
         for path, value in self.index.iteritems():
+            if self.mapping.is_special_file(path):
+                continue
             if not path.startswith(prefix):
                 continue
             (dirname, child_name) = posixpath.split(path)

@@ -100,6 +100,9 @@ class BzrGitMapping(foreign.VcsMapping):
 
     BZR_DUMMY_FILE = None
 
+    def is_special_file(self, filename):
+        return (filename in (self.BZR_FILE_IDS_FILE, self.BZR_DUMMY_FILE))
+
     def __init__(self):
         super(BzrGitMapping, self).__init__(foreign_vcs_git)
 
