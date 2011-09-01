@@ -92,6 +92,9 @@ New Features
 * bzr now ships with translations for command help.  (Jonathan
   Riddell, INADA Naoki, #83941)
 
+* bzr now ships with translations for command errors. (Jonathan
+  Riddell, INADA Naoki)
+
 Improvements
 ************
 
@@ -111,11 +114,18 @@ Improvements
 
 * Install translation .mo files. (Jonathan Riddell)
 
+* Do not run i18n initialisation twice. (Jonathan Riddell)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* The pull command will now always use separate connections for the
+  case where the destination is a heavyweight checkout of some remote
+  branch on the same host as the source branch.
+  (Martin von Gagern, #483661)
 
 * A call to CHKInventory's filter-method will not result in a
   DuplicateFileId error, if you move a subfolder and change a file in
@@ -130,6 +140,10 @@ Bug Fixes
 
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
+
+* Rather than an error being raised, a warning is now printed when the
+  current user does not have permission to read a configuration file.
+  (Jelmer Vernooij, #837324)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.

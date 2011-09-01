@@ -33,18 +33,14 @@ from bzrlib import (
     errors,
     osutils,
     mail_client,
-    mergetools,
     ui,
     urlutils,
-    registry,
     remote,
     tests,
     trace,
-    transport,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
-    deprecated_method,
     )
 from bzrlib.transport import remote as transport_remote
 from bzrlib.tests import (
@@ -1968,6 +1964,29 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         conf = config.TransportConfig(t, 'foo.conf')
         self.assertRaises(errors.ParseConfigError, conf._get_configobj)
 
+    def test_load_permission_denied(self):
+        """Ensure we get an empty config file if the file is inaccessible."""
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+        class DenyingTransport(object):
+
+            def __init__(self, base):
+                self.base = base
+
+            def get_bytes(self, relpath):
+                raise errors.PermissionDenied(relpath, "")
+
+        cfg = config.TransportConfig(
+            DenyingTransport("nonexisting://"), 'control.conf')
+        self.assertIs(None, cfg.get_option('non-existant', 'SECTION'))
+        self.assertEquals(
+            warnings,
+            [u'Permission denied while trying to open configuration file '
+             u'nonexisting:///control.conf.'])
+
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
         bzrdir_config = config.TransportConfig(self.get_transport('.'),
@@ -2583,6 +2602,25 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t.put_bytes('foo.conf', '[open_section\n')
         store = config.IniFileStore(t, 'foo.conf')
         self.assertRaises(errors.ParseConfigError, store.load)
+
+    def test_load_permission_denied(self):
+        """Ensure we get warned when trying to load an inaccessible file."""
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+        t = self.get_transport()
+
+        def get_bytes(relpath):
+            raise errors.PermissionDenied(relpath, "")
+        t.get_bytes = get_bytes
+        store = config.IniFileStore(t, 'foo.conf')
+        self.assertRaises(errors.PermissionDenied, store.load)
+        self.assertEquals(
+            warnings,
+            [u'Permission denied while trying to load configuration store %s.'
+             % store.external_url()])
 
 
 class TestIniConfigContent(tests.TestCaseWithTransport):

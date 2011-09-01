@@ -20,7 +20,9 @@
 from bzrlib import (
     osutils,
     symbol_versioning,
+    i18n,
     )
+from bzrlib.i18n import gettext
 from bzrlib.patches import (
     MalformedHunkHeader,
     MalformedLine,
@@ -140,7 +142,8 @@ class BzrError(StandardError):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
-            return fmt
+            i18n.install()
+            return gettext(fmt)
         fmt = getattr(self, '__doc__', None)
         if fmt is not None:
             symbol_versioning.warn("%s uses its docstring as a format, "
