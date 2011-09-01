@@ -113,7 +113,9 @@ Improvements
 
 * Do not run i18n initialisation twice. (Jonathan Riddell)
 
-* Support a ``default_bugtracker`` option. (Jelmer Vernooij, #334860)
+* Support a ``bugtracker`` option which is used by ``bzr commit --fixes``
+  if no bug tracker was specified on the command line.
+  (Jelmer Vernooij, #334860)
 
 Bug Fixes
 *********

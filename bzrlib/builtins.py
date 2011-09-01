@@ -3244,12 +3244,12 @@ class cmd_commit(Command):
                 if default_bugtracker is None:
                     branch_config = branch.get_config()
                     default_bugtracker = branch_config.get_user_option(
-                        "default_bugtracker")
+                        "bugtracker")
                 if default_bugtracker is None:
                     raise errors.BzrCommandError(
                         "No tracker specified for bug %s. Use the form "
                         "'tracker:id' or specify a default bug tracker "
-                        "using the `default_bugtracker` option.\nSee "
+                        "using the `bugtracker` option.\nSee "
                         "\"bzr help bugs\" for more information on this "
                         "feature. Commit refused." % fixed_bug)
                 tag = default_bugtracker

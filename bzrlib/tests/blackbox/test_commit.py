@@ -604,12 +604,12 @@ altered in u2
         self.run_bzr_error(
             ["bzr: ERROR: No tracker specified for bug 123. Use the form "
             "'tracker:id' or specify a default bug tracker using the "
-            "`default_bugtracker` option.\n"
+            "`bugtracker` option.\n"
             "See \"bzr help bugs\" for more information on this feature. "
             "Commit refused."],
             'commit -m add-b --fixes=123',
             working_dir='tree')
-        tree.branch.get_config().set_user_option("default_bugtracker", "lp")
+        tree.branch.get_config().set_user_option("bugtracker", "lp")
         self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.
