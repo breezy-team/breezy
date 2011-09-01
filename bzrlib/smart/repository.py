@@ -22,10 +22,10 @@ import Queue
 import sys
 import tempfile
 import threading
-import zlib
 
 from bzrlib import (
     bencode,
+    entropy,
     errors,
     graph,
     osutils,
@@ -185,11 +185,9 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _expand_requested_revs(self, repo_graph, revision_ids, client_seen_revs,
                                include_missing, max_size=65536):
         result = {}
-        compressor = zlib.compressobj()
         queried_revs = set()
-        size_so_far = 0
-        unflushed_size_so_far = 0
-        z_size_so_far = 0
+        estimator = entropy.ZLibEstimator(max_size)
+        hest = entropy.HistogramEstimator(max_size)
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
@@ -218,24 +216,17 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
                     line = '%s %s\n' % (encoded_id, ' '.join(parents))
-                    size_so_far += len(line)
-                    unflushed_size_so_far += len(line)
-                    z_size = len(compressor.compress(line))
-                    if z_size > 0:
-                        z_size_so_far += z_size
-                        unflushed_size_so_far = 0
-            if unflushed_size_so_far > 70000:
-                unflushed_size_so_far = 0
-                z_size = len(compressor.flush(zlib.Z_SYNC_FLUSH))
-                z_size_so_far += z_size
+                    estimator.add_content(line)
+                    hest.add_content(line)
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
-            if self.no_extra_results or (
-                first_loop_done and z_size_so_far > max_size):
-                trace.mutter('size: %d, z_size: %d'
-                             % (size_so_far, z_size_so_far))
+            if self.no_extra_results or (first_loop_done and estimator.full()):
+                trace.mutter('size: %d, z_size: %d, entropy: %.3f'
+                             % (estimator._uncompressed_size_added,
+                                estimator._compressed_size_added,
+                                hest._compute_entropy()))
                 next_revs = set()
                 break
             # don't query things we've already queried
