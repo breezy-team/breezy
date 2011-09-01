@@ -113,6 +113,12 @@ Improvements
 
 * Do not run i18n initialisation twice. (Jonathan Riddell)
 
+* ``Repository.get_parent_map`` now estimates the size of the returned
+  content more accurately. This means that we get closer to the desired
+  64kB/request. For repositories converted from svn, this can be an
+  improvement of approx 5:1 in round trips to discover the whole history.
+  (John Arbash Meinel)
+
 Bug Fixes
 *********
 
