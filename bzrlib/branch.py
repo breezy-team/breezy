@@ -3099,6 +3099,10 @@ class BranchPushResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
+        # TODO: This function gets passed a to_file, but then
+        # ignores it and calls note() instead. This is also
+        # inconsistent with PullResult(), which writes to stdout.
+        # -- JRV20110901, bug #838853
         tag_conflicts = getattr(self, "tag_conflicts", None)
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
