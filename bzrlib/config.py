@@ -1397,7 +1397,7 @@ class BranchConfig(Config):
             return (self.branch._transport.get_bytes("email")
                     .decode(osutils.get_user_encoding())
                     .rstrip("\r\n"))
-        except errors.NoSuchFile, e:
+        except (errors.NoSuchFile, errors.PermissionDenied), e:
             pass
 
         return self._get_best_value('_get_user_id')
@@ -2278,6 +2278,11 @@ class TransportConfig(object):
             return f
         except errors.NoSuchFile:
             return StringIO()
+        except errors.PermissionDenied, e:
+            trace.warning("Permission denied while trying to open "
+                "configuration file %s.", urlutils.unescape_for_display(
+                urlutils.join(self._transport.base, self._filename), "utf-8"))
+            return StringIO()
 
     def _external_url(self):
         return urlutils.join(self._transport.external_url(), self._filename)
@@ -2690,7 +2695,12 @@ class IniFileStore(Store):
         """Load the store from the associated file."""
         if self.is_loaded():
             return
-        content = self.transport.get_bytes(self.file_name)
+        try:
+            content = self.transport.get_bytes(self.file_name)
+        except errors.PermissionDenied:
+            trace.warning("Permission denied while trying to load "
+                          "configuration store %s.", self.external_url())
+            raise
         self._load_from_string(content)
         for hook in ConfigHooks['load']:
             hook(self)
@@ -2738,8 +2748,8 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except errors.NoSuchFile:
-            # If the file doesn't exist, there is no sections
+        except (errors.NoSuchFile, errors.PermissionDenied):
+            # If the file can't be read, there is no sections
             return
         cobj = self._config_obj
         if cobj.scalars:
