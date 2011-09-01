@@ -70,7 +70,7 @@ from bzrlib.repository import (
     )
 
 from bzrlib.trace import (
-    mutter,
+    mutter
     )
 
 
@@ -419,8 +419,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 return None, False, None
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
-        parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._heads(ie.file_id, parent_candiate_entries.keys())
+        parent_candidate_entries = ie.parent_candidates(parent_invs)
+        head_set = self._heads(ie.file_id, parent_candidate_entries.keys())
         heads = []
         for inv in parent_invs:
             if inv.has_id(ie.file_id):
@@ -441,7 +441,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             store = True
         if not store:
             # There is a single head, look it up for comparison
-            parent_entry = parent_candiate_entries[heads[0]]
+            parent_entry = parent_candidate_entries[heads[0]]
             # if the non-content specific data has changed, we'll be writing a
             # node:
             if (parent_entry.parent_id != ie.parent_id or
@@ -559,7 +559,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         :param iter_changes: An iter_changes iterator with the changes to apply
             to basis_revision_id. The iterator must not include any items with
             a current kind of None - missing items must be either filtered out
-            or errored-on beefore record_iter_changes sees the item.
+            or errored-on before record_iter_changes sees the item.
         :param _entry_factory: Private method to bind entry_factory locally for
             performance.
         :return: A generator of (file_id, relpath, fs_hash) tuples for use with
@@ -1179,6 +1179,18 @@ class VersionedFileRepository(Repository):
             checker._report_items.append(
                 'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
                 (record.key, sha1, item_data[1], item_data[2]))
+
+    @needs_read_lock
+    def _eliminate_revisions_not_present(self, revision_ids):
+        """Check every revision id in revision_ids to see if we have it.
+
+        Returns a set of the present revisions.
+        """
+        result = []
+        graph = self.get_graph()
+        parent_map = graph.get_parent_map(revision_ids)
+        # The old API returned a list, should this actually be a set?
+        return parent_map.keys()
 
     def __init__(self, _format, a_bzrdir, control_files):
         """Instantiate a VersionedFileRepository.
@@ -2483,7 +2495,10 @@ class InterVersionedFileRepository(InterRepository):
                             content is copied.
         :return: None.
         """
-        ui.ui_factory.warn_experimental_format_fetch(self)
+        if self.target._format.experimental:
+            ui.ui_factory.show_user_warning('experimental_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         from bzrlib.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
@@ -2928,7 +2943,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             revision_ids = fetch_spec.get_keys()
         else:
             revision_ids = None
-        ui.ui_factory.warn_experimental_format_fetch(self)
+        if self.source._format.experimental:
+            ui.ui_factory.show_user_warning('experimental_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True

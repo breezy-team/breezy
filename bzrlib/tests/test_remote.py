@@ -2147,8 +2147,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', 'include-missing:',
-              rev_id), '\n\n0'),
+              'Repository.get_parent_map',
+              ('quack/', 'include-missing:', rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
@@ -2273,6 +2273,32 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         # Now asking for rev_id's ghost parent should not make calls
         self.assertEqual({}, repo.get_parent_map(['non-existant']))
         self.assertLength(0, self.hpss_calls)
+
+    def test_exposes_get_cached_parent_map(self):
+        """RemoteRepository exposes get_cached_parent_map from
+        _unstacked_provider
+        """
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = bz2.compress('\n'.join(lines))
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(encoded_body, 'ok')
+        repo.lock_read()
+        # get_cached_parent_map should *not* trigger an RPC
+        self.assertEqual({}, repo.get_cached_parent_map([r1]))
+        self.assertEqual([], client._calls)
+        self.assertEqual({r2: (r1,)}, repo.get_parent_map([r2]))
+        self.assertEqual({r1: (NULL_REVISION,)},
+            repo.get_cached_parent_map([r1]))
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
+            client._calls)
+        repo.unlock()
 
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
@@ -3452,21 +3478,46 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.assertTrue(len(self.hpss_calls) > 1)
 
 
-class TestUpdateBoundBranch(tests.TestCaseWithTransport):
+class TestUpdateBoundBranchWithModifiedBoundLocation(
+    tests.TestCaseWithTransport):
+    """Ensure correct handling of bound_location modifications.
 
-    def test_bug_786980(self):
+    This is tested against a smart server as http://pad.lv/786980 was about a
+    ReadOnlyError (write attempt during a read-only transaction) which can only
+    happen in this context.
+    """
+
+    def setUp(self):
+        super(TestUpdateBoundBranchWithModifiedBoundLocation, self).setUp()
         self.transport_server = test_server.SmartTCPServer_for_testing
-        wt = self.make_branch_and_tree('master')
-        checkout = wt.branch.create_checkout('checkout')
-        wt.commit('add stuff')
-        last_revid = wt.commit('even more stuff')
-        bound_location = checkout.branch.get_bound_location()
+
+    def make_master_and_checkout(self, master_name, checkout_name):
+        # Create the master branch and its associated checkout
+        self.master = self.make_branch_and_tree(master_name)
+        self.checkout = self.master.branch.create_checkout(checkout_name)
+        # Modify the master branch so there is something to update
+        self.master.commit('add stuff')
+        self.last_revid = self.master.commit('even more stuff')
+        self.bound_location = self.checkout.branch.get_bound_location()
+
+    def assertUpdateSucceeds(self, new_location):
+        self.checkout.branch.set_bound_location(new_location)
+        self.checkout.update()
+        self.assertEquals(self.last_revid, self.checkout.last_revision())
+
+    def test_without_final_slash(self):
+        self.make_master_and_checkout('master', 'checkout')
         # For unclear reasons some users have a bound_location without a final
         # '/', simulate that by forcing such a value
-        self.assertEndsWith(bound_location, '/')
-        new_location = bound_location.rstrip('/')
-        checkout.branch.set_bound_location(new_location)
-        # bug 786980 was raising ReadOnlyError: A write attempt was made in a
-        # read only transaction during the update()
-        checkout.update()
-        self.assertEquals(last_revid, checkout.last_revision())
+        self.assertEndsWith(self.bound_location, '/')
+        self.assertUpdateSucceeds(self.bound_location.rstrip('/'))
+
+    def test_plus_sign(self):
+        self.make_master_and_checkout('+master', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2B', '+', 1))
+
+    def test_tilda(self):
+        # Embed ~ in the middle of the path just to avoid any $HOME
+        # interpretation
+        self.make_master_and_checkout('mas~ter', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2E', '~', 1))

@@ -34,12 +34,12 @@
 from cStringIO import StringIO
 import httplib
 
+import bzrlib
 from bzrlib import (
     debug,
     errors,
     trace,
     )
-import bzrlib
 from bzrlib.transport.http import (
     ca_bundle,
     HttpTransportBase,
@@ -327,14 +327,12 @@ class PyCurlTransport(HttpTransportBase):
                 % (code, msg, plaintext_body))
 
     def _debug_cb(self, kind, text):
-        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN,
-                    pycurl.INFOTYPE_SSL_DATA_IN):
+        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN):
             self._report_activity(len(text), 'read')
             if (kind == pycurl.INFOTYPE_HEADER_IN
                 and 'http' in debug.debug_flags):
                 trace.mutter('< %s' % (text.rstrip(),))
-        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT,
-                      pycurl.INFOTYPE_SSL_DATA_OUT):
+        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT):
             self._report_activity(len(text), 'write')
             if (kind == pycurl.INFOTYPE_HEADER_OUT
                 and 'http' in debug.debug_flags):
@@ -352,6 +350,10 @@ class PyCurlTransport(HttpTransportBase):
                 trace.mutter('> ' + '\n> '.join(lines))
         elif kind == pycurl.INFOTYPE_TEXT and 'http' in debug.debug_flags:
             trace.mutter('* %s' % text.rstrip())
+        elif (kind in (pycurl.INFOTYPE_TEXT, pycurl.INFOTYPE_SSL_DATA_IN,
+                       pycurl.INFOTYPE_SSL_DATA_OUT)
+              and 'http' in debug.debug_flags):
+            trace.mutter('* %s' % text)
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
@@ -423,10 +425,10 @@ class PyCurlTransport(HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
+    from bzrlib.tests import features
     from bzrlib.tests import http_server
     permutations = [(PyCurlTransport, http_server.HttpServer_PyCurl),]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         from bzrlib.tests import (
             https_server,
             ssl_certs,

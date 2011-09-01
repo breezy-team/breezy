@@ -389,7 +389,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         stream = builder.finish()
-        trans = transport.get_transport('trace+' + self.get_url())
+        trans = transport.get_transport_from_url('trace+' + self.get_url())
         size = trans.put_file('index', stream)
         return index.GraphIndex(trans, 'index', size)
 

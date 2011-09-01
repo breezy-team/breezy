@@ -24,24 +24,18 @@ from bzrlib import (
     tests,
     )
 
+from bzrlib.tests.matchers import HasLayout
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestMove(TestCaseWithWorkingTree):
 
-    def get_tree_layout(self, tree):
-        """Get the (path, file_id) pairs for the current tree."""
-        tree.lock_read()
-        try:
-            return [(path, ie.file_id) for path, ie
-                    in tree.iter_entries_by_dir()]
-        finally:
-            tree.unlock()
-
     def assertTreeLayout(self, expected, tree):
         """Check that the tree has the correct layout."""
-        actual = self.get_tree_layout(tree)
-        self.assertEqual(expected, actual)
+        self.assertThat(tree, HasLayout(expected))
 
     def test_move_via_rm_and_add(self):
         """Move by remove and add-with-id"""
@@ -132,12 +126,12 @@ class TestMove(TestCaseWithWorkingTree):
                           tree.move, ['d', 'c', 'b'], 'a')
         if osutils.lexists('a/c'):
             # If 'c' was actually moved, then 'd' should have also been moved
-            self.assertTreeLayout([('', root_id), ('a', 'a-id'),
+            self.assertTreeLayout([('', root_id), ('a/', 'a-id'),
                                    ('a/c', 'c-id'),  ('a/d', 'd-id')], tree)
         else:
-            self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
+            self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c', 'c-id'),
                                    ('d', 'd-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
+        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c', 'c-id'),
                                ('d', 'd-id')], tree.basis_tree())
         tree._validate()
 
@@ -151,7 +145,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.remove(['a/b'], keep_files=False)
         self.assertEqual([('b', 'a/b')], tree.move(['b'], 'a'))
         self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
+                               ('a/', 'a-id'),
                                ('a/b', 'b-id'),
                               ], tree)
         tree._validate()
@@ -162,16 +156,16 @@ class TestMove(TestCaseWithWorkingTree):
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('b/c', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
         a_contents = tree.get_file_text('a-id')
         self.assertEqual([('a', 'b/a')],
             tree.move(['a'], 'b'))
-        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id'),
+        self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('b/a', 'a-id'),
                                ('b/c', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
         self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/a')
@@ -186,9 +180,9 @@ class TestMove(TestCaseWithWorkingTree):
         c_contents = tree.get_file_text('c-id')
         self.assertEqual([('b/c', 'c')],
             tree.move(['b/c'], ''))
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('c', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
         self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'c')
@@ -206,13 +200,13 @@ class TestMove(TestCaseWithWorkingTree):
         # 'c' may or may not have been moved, but either way the tree should
         # maintain a consistent state.
         if osutils.lexists('c'):
-            self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+            self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                    ('c', 'c-id')], tree)
         else:
             self.assertPathExists('b/c')
-            self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+            self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                    ('b/c', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id'),
                                ('c', 'c-id')], tree.basis_tree())
         tree._validate()
 
@@ -244,15 +238,15 @@ class TestMove(TestCaseWithWorkingTree):
         root_id = tree.get_root_id()
         os.rename('a', 'b/a')
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree)
         # We don't need after=True as long as source is missing and target
         # exists.
         self.assertEqual([('a', 'b/a')],
             tree.move(['a'], 'b'))
-        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
+        self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('b/a', 'a-id')],
                               tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree.basis_tree())
         tree._validate()
 
@@ -264,14 +258,14 @@ class TestMove(TestCaseWithWorkingTree):
         root_id = tree.get_root_id()
         os.rename('a', 'b/a')
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree)
         # Passing after=True should work as well
         self.assertEqual([('a', 'b/a')],
             tree.move(['a'], 'b', after=True))
-        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
+        self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('b/a', 'a-id')],
                               tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree.basis_tree())
         tree._validate()
 
@@ -285,7 +279,7 @@ class TestMove(TestCaseWithWorkingTree):
         # Passing after when the file hasn't been move raises an exception
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['a'], 'b', after=True)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree.basis_tree())
         tree._validate()
 
@@ -309,20 +303,20 @@ class TestMove(TestCaseWithWorkingTree):
         finally:
             ba_file.close()
 
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree)
         self.assertRaises(errors.RenameFailedFilesExist,
                           tree.move, ['a'], 'b', after=False)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree)
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(ba_text, 'b/a')
         # But you can pass after=True
         self.assertEqual([('a', 'b/a')],
             tree.move(['a'], 'b', after=True))
-        self.assertTreeLayout([('', root_id), ('b', 'b-id'), ('b/a', 'a-id')],
+        self.assertTreeLayout([('', root_id), ('b/', 'b-id'), ('b/a', 'a-id')],
                               tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b/', 'b-id')],
                               tree.basis_tree())
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
@@ -339,15 +333,18 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertEqual([('a', 'e/a')],
             tree.move(['a'], 'e'))
-        self.assertTreeLayout([('', root_id), ('e', 'e-id'), ('e/a', 'a-id'),
-                               ('e/a/b', 'b-id'), ('e/a/c', 'c-id'),
+        self.assertTreeLayout([('', root_id), ('e/', 'e-id'), ('e/a/', 'a-id'),
+                               ('e/a/b', 'b-id'), ('e/a/c/', 'c-id'),
                                ('e/a/c/d', 'd-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('e', 'e-id'),
-                               ('a/b', 'b-id'), ('a/c', 'c-id'),
+        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('e/', 'e-id'),
+                               ('a/b', 'b-id'), ('a/c/', 'c-id'),
                                ('a/c/d', 'd-id')], tree.basis_tree())
         tree._validate()
 
     def test_move_directory_into_parent(self):
+        if not self.workingtree_format.supports_versioned_directories:
+            raise tests.TestNotApplicable(
+                "test requires versioned directories")
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c/', 'c/b/', 'c/b/d/'])
         tree.add(['c', 'c/b', 'c/b/d'],
@@ -358,9 +355,9 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('c/b', 'b')],
                          tree.move(['c/b'], ''))
         self.assertTreeLayout([('', root_id),
-                               ('b', 'b-id'),
-                               ('c', 'c-id'),
-                               ('b/d', 'd-id'),
+                               ('b/', 'b-id'),
+                               ('c/', 'c-id'),
+                               ('b/d/', 'd-id'),
                               ], tree)
         tree._validate()
 
@@ -372,20 +369,19 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial', rev_id='rev-1')
         root_id = tree.get_root_id()
 
-
         tree.rename_one('a/b', 'a/c/b')
         self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
-                               ('d', 'd-id'),
-                               ('a/c', 'c-id'),
+                               ('a/', 'a-id'),
+                               ('d/', 'd-id'),
+                               ('a/c/', 'c-id'),
                                ('a/c/b', 'b-id'),
                               ], tree)
         self.assertEqual([('a', 'd/a')],
                          tree.move(['a'], 'd'))
         self.assertTreeLayout([('', root_id),
-                               ('d', 'd-id'),
-                               ('d/a', 'a-id'),
-                               ('d/a/c', 'c-id'),
+                               ('d/', 'd-id'),
+                               ('d/a/', 'a-id'),
+                               ('d/a/c/', 'c-id'),
                                ('d/a/c/b', 'b-id'),
                               ], tree)
         tree._validate()
@@ -403,8 +399,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('a', 'b/a')],
                          tree.move(['a'], 'b'))
         self.assertTreeLayout([('', root_id),
-                               ('b', 'b-id'),
-                               ('b/a', 'a-id'),
+                               ('b/', 'b-id'),
+                               ('b/a/', 'a-id'),
                                ('b/a/c', 'ac-id'),
                               ], tree)
         tree._validate()
@@ -422,8 +418,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('a', 'b/a')],
                          tree.move(['a'], 'b'))
         self.assertTreeLayout([('', root_id),
-                               ('b', 'b-id'),
-                               ('b/a', 'a-id'),
+                               ('b/', 'b-id'),
+                               ('b/a/', 'a-id'),
                                ('b/a/b', 'ab-id'),
                                ('b/a/c', 'ac-id'),
                                ('b/a/d', 'ad-id'),
@@ -441,18 +437,18 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('a/b', 'b')],
                          tree.move(['a/b'], ''))
         self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
+                               ('a/', 'a-id'),
                                ('b', 'b-id'),
                                ('d', 'd-id'),
-                               ('e', 'e-id'),
+                               ('e/', 'e-id'),
                                ('a/c', 'c-id'),
                               ], tree)
         self.assertEqual([('d', 'a/d')],
                          tree.move(['d'], 'a'))
         self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
+                               ('a/', 'a-id'),
                                ('b', 'b-id'),
-                               ('e', 'e-id'),
+                               ('e/', 'e-id'),
                                ('a/c', 'c-id'),
                                ('a/d', 'd-id'),
                               ], tree)
@@ -460,8 +456,8 @@ class TestMove(TestCaseWithWorkingTree):
                          tree.move(['a'], 'e'))
         self.assertTreeLayout([('', root_id),
                                ('b', 'b-id'),
-                               ('e', 'e-id'),
-                               ('e/a', 'a-id'),
+                               ('e/', 'e-id'),
+                               ('e/a/', 'a-id'),
                                ('e/a/c', 'c-id'),
                                ('e/a/d', 'd-id'),
                               ], tree)
@@ -477,16 +473,16 @@ class TestMove(TestCaseWithWorkingTree):
 
         tree.rename_one('a/b', 'a/d')
         self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
-                               ('d', 'd-id'),
+                               ('a/', 'a-id'),
+                               ('d/', 'd-id'),
                                ('a/c', 'c-id'),
                                ('a/d', 'b-id'),
                               ], tree)
         self.assertEqual([('a', 'd/a')],
                          tree.move(['a'], 'd'))
         self.assertTreeLayout([('', root_id),
-                               ('d', 'd-id'),
-                               ('d/a', 'a-id'),
+                               ('d/', 'd-id'),
+                               ('d/a/', 'a-id'),
                                ('d/a/c', 'c-id'),
                                ('d/a/d', 'b-id'),
                               ], tree)
@@ -504,8 +500,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.rename_one('a/d', 'a/b')
         tree.rename_one('a/bb', 'a/d')
         self.assertTreeLayout([('', root_id),
-                               ('a', 'a-id'),
-                               ('e', 'e-id'),
+                               ('a/', 'a-id'),
+                               ('e/', 'e-id'),
                                ('a/b', 'd-id'),
                                ('a/c', 'c-id'),
                                ('a/d', 'b-id'),
@@ -513,8 +509,8 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('a', 'e/a')],
                          tree.move(['a'], 'e'))
         self.assertTreeLayout([('', root_id),
-                               ('e', 'e-id'),
-                               ('e/a', 'a-id'),
+                               ('e/', 'e-id'),
+                               ('e/a/', 'a-id'),
                                ('e/a/b', 'd-id'),
                                ('e/a/c', 'c-id'),
                                ('e/a/d', 'b-id'),
@@ -531,22 +527,22 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertEqual([('a/b', 'c/b')],
             tree.move(['a/b'], 'c'))
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
+        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c/', 'c-id'),
                                ('c/b', 'b-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
+        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c/', 'c-id'),
                                ('a/b', 'b-id')], tree.basis_tree())
 
         self.assertEqual([('c/b', 'b')],
             tree.move(['c/b'], ''))
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
-                               ('c', 'c-id')], tree)
-        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
+        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('b', 'b-id'),
+                               ('c/', 'c-id')], tree)
+        self.assertTreeLayout([('', root_id), ('a/', 'a-id'), ('c/', 'c-id'),
                                ('a/b', 'b-id')], tree.basis_tree())
         tree._validate()
 
     def test_move_to_unversioned_non_ascii_dir(self):
         """Check error when moving to unversioned non-ascii directory"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", u"\xA7/"])
         tree.add(["a"])
@@ -557,7 +553,7 @@ class TestMove(TestCaseWithWorkingTree):
 
     def test_move_unversioned_non_ascii(self):
         """Check error when moving an unversioned non-ascii file"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7", "dir/"])
         tree.add("dir")

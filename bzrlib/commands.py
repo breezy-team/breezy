@@ -164,16 +164,6 @@ def _unsquish_command_name(cmd):
     return cmd[4:].replace('_','-')
 
 
-@deprecated_function(deprecated_in((2, 2, 0)))
-def _builtin_commands():
-    """Return a dict of {name: cmd_class} for builtin commands.
-
-    :deprecated: Use the builtin_command_registry registry instead
-    """
-    # return dict(name: cmd_class)
-    return dict(builtin_command_registry.items())
-
-
 def _register_builtin_commands():
     if builtin_command_registry.keys():
         # only load once
@@ -442,19 +432,6 @@ class Command(object):
         """
         self._operation.cleanup_now()
 
-    @deprecated_method(deprecated_in((2, 1, 0)))
-    def _maybe_expand_globs(self, file_list):
-        """Glob expand file_list if the platform does not do that itself.
-
-        Not used anymore, now that the bzr command-line parser globs on
-        Windows.
-
-        :return: A possibly empty list of unicode paths.
-
-        Introduced in bzrlib 0.18.
-        """
-        return file_list
-
     def _usage(self):
         """Return single-line grammar for this command.
 
@@ -488,7 +465,7 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
-        if self.l10n and not i18n.installed():
+        if self.l10n:
             i18n.install()  # Install i18n only for get_help_text for now.
         doc = self.help()
         if doc:
@@ -722,11 +699,6 @@ class Command(object):
             finally:
                 del self._operation
         self.run = run
-
-    @deprecated_method(deprecated_in((2, 2, 0)))
-    def run_direct(self, *args, **kwargs):
-        """Deprecated thunk from bzrlib 2.1."""
-        return self.run(*args, **kwargs)
 
     def run(self):
         """Actually run the command.
@@ -978,7 +950,8 @@ def exception_to_return_code(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    ret, stats = profile(exception_to_return_code, the_callable, *args, **kwargs)
+    ret, stats = profile(exception_to_return_code, the_callable,
+                         *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
@@ -986,11 +959,6 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
         stats.save(filename)
         trace.note('Profile data written to "%s".', filename)
     return ret
-
-
-@deprecated_function(deprecated_in((2, 2, 0)))
-def shlex_split_unicode(unsplit):
-    return cmdline.split(unsplit)
 
 
 def get_alias(cmd, config=None):

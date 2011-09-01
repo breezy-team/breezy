@@ -172,6 +172,11 @@ class cmd_verify_signatures(Command):
             if verbose:
                for message in gpg_strategy.verbose_valid_message(result):
                    write_verbose(message)
+            write(gpg_strategy.expired_commit_message(count))
+            if verbose:
+               for message in gpg_strategy.verbose_expired_key_message(result,
+                                                                          repo):
+                   write_verbose(message)
             write(gpg_strategy.unknown_key_message(count))
             if verbose:
                 for message in gpg_strategy.verbose_missing_key_message(result):

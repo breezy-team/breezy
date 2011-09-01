@@ -101,7 +101,7 @@ class UIFactoryTestMixin(object):
     def test_transport_activity(self):
         # It doesn't matter what the implementation does, we just want to make
         # sure the interface is there
-        t = transport.get_transport('memory:///')
+        t = transport.get_transport_from_url('memory:///')
         self.factory.report_transport_activity(t, 1000, 'write')
         self.factory.report_transport_activity(t, 2000, 'read')
         self.factory.report_transport_activity(t, 4000, None)
@@ -112,7 +112,7 @@ class UIFactoryTestMixin(object):
 
     def test_no_transport_activity(self):
         # No activity to report
-        t = transport.get_transport('memory:///')
+        t = transport.get_transport_from_url('memory:///')
         self.factory.log_transport_activity(display=True)
         self._check_log_transport_activity_display_no_bytes()
 

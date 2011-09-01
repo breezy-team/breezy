@@ -62,11 +62,13 @@ from bzrlib.osutils import (
 from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
     features,
-    HardlinkFeature,
-    SymlinkFeature,
     TestCaseInTempDir,
     TestSkipped,
-)
+    )
+from bzrlib.tests.features import (
+    HardlinkFeature,
+    SymlinkFeature,
+    )
 from bzrlib.transform import (
     build_tree,
     create_from_tree,
@@ -321,6 +323,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
         self.assertRaises(ValueError, transform.fixup_new_roots)
 
+    def test_fixup_new_roots_permits_empty_tree(self):
+        transform, root = self.get_transform()
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots()
+        self.assertIs(None, transform.final_kind(root))
+        self.assertIs(None, transform.final_file_id(root))
+
     def test_apply_retains_root_directory(self):
         # Do not attempt to delete the physical root directory, because that
         # is impossible.
@@ -331,6 +341,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                                   errors.TransformRenameFailed,
                                   transform.apply)
         self.assertContainsRe('TransformRenameFailed not raised', str(e))
+
+    def test_apply_retains_file_id(self):
+        transform, root = self.get_transform()
+        old_root_id = transform.tree_file_id(root)
+        transform.unversion_file(root)
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
 
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -764,7 +781,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                             'wizard2', 'behind_curtain')
 
     def test_symlinks_unicode(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_symlinks(u'\N{Euro Sign}wizard',
                             u'wizard-targ\N{Euro Sign}t',
                             u'\N{Euro Sign}wizard2',
@@ -2209,8 +2226,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqualStat(source_stat, target_stat)
 
     def test_case_insensitive_build_tree_inventory(self):
-        if (tests.CaseInsensitiveFilesystemFeature.available()
-            or tests.CaseInsCasePresFilenameFeature.available()):
+        if (features.CaseInsensitiveFilesystemFeature.available()
+            or features.CaseInsCasePresFilenameFeature.available()):
             raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
@@ -3329,7 +3346,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
 
     def test_ascii_limbo_paths(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         branch = self.make_branch('any')
         tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
         tt = TransformPreview(tree)
@@ -3352,7 +3369,7 @@ class FakeSerializer(object):
 
 class TestSerializeTransform(tests.TestCaseWithTransport):
 
-    _test_needs_features = [tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def get_preview(self, tree=None):
         if tree is None:
@@ -3433,13 +3450,13 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         return self.make_records(attribs, contents)
 
     def test_serialize_symlink_creation(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tt = self.get_preview()
         tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
         abspath = tt._limbo_name('new-1')

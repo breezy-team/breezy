@@ -33,6 +33,9 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     scenarios,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 load_tests = scenarios.load_tests_apply_scenarios
@@ -47,7 +50,7 @@ def btreeparser_scenarios():
     return scenarios
 
 
-compiled_btreeparser_feature = tests.ModuleAvailableFeature(
+compiled_btreeparser_feature = features.ModuleAvailableFeature(
     'bzrlib._btree_serializer_pyx')
 
 
@@ -278,7 +281,7 @@ class TestBTreeBuilder(BTreeTestCase):
 
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', self.time(builder.finish))
         del builder
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -605,7 +608,7 @@ class TestBTreeIndex(BTreeTestCase):
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         stream = builder.finish()
-        trans = transport.get_transport('trace+' + self.get_url())
+        trans = transport.get_transport_from_url('trace+' + self.get_url())
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
 
@@ -646,20 +649,20 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(0, len(index._leaf_node_cache))
 
     def test_trivial_constructor(self):
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(t, 'index', None)
         # Checks the page size at load, but that isn't logged yet.
         self.assertEqual([], t._activity)
 
     def test_with_size_constructor(self):
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(t, 'index', 1)
         # Checks the page size at load, but that isn't logged yet.
         self.assertEqual([], t._activity)
 
     def test_empty_key_count_no_size(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         t.put_file('index', builder.finish())
         index = btree_index.BTreeGraphIndex(t, 'index', None)
         del t._activity[:]
@@ -672,7 +675,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_empty_key_count(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         self.assertEqual(72, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -688,7 +691,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(35, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
@@ -720,7 +723,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test__read_nodes_no_size_one_page_reads_once(self):
         self.make_index(nodes=[(('key',), 'value', ())])
-        trans = transport.get_transport('trace+' + self.get_url())
+        trans = transport.get_transport_from_url('trace+' + self.get_url())
         index = btree_index.BTreeGraphIndex(trans, 'index', None)
         del trans._activity[:]
         nodes = dict(index._read_nodes([0]))
@@ -734,7 +737,7 @@ class TestBTreeIndex(BTreeTestCase):
         index.key_count()
         num_pages = index._row_offsets[-1]
         # Reopen with a traced transport and no size
-        trans = transport.get_transport('trace+' + self.get_url())
+        trans = transport.get_transport_from_url('trace+' + self.get_url())
         index = btree_index.BTreeGraphIndex(trans, 'index', None)
         del trans._activity[:]
         nodes = dict(index._read_nodes([0]))
@@ -745,7 +748,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(160, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         self.assertEqual(17692, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -761,7 +764,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(45, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
@@ -777,7 +780,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(80, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         # Root page, 2 leaf pages
         self.assertEqual(9339, size)
@@ -795,7 +798,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_eq_ne(self):
         # two indices are equal when constructed with the same parameters:
-        t1 = transport.get_transport('trace+' + self.get_url(''))
+        t1 = transport.get_transport_from_url('trace+' + self.get_url(''))
         t2 = self.get_transport()
         self.assertTrue(
             btree_index.BTreeGraphIndex(t1, 'index', None) ==
@@ -830,7 +833,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_iter_all_only_root_no_size(self):
         self.make_index(nodes=[(('key',), 'value', ())])
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(t, 'index', None)
         del t._activity[:]
         self.assertEqual([(('key',), 'value')],
@@ -847,7 +850,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(10000, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         self.assertEqual(1303220, size, 'number of expected bytes in the'
                                         ' output changed')
@@ -902,7 +905,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(160, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         del builder
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -1351,7 +1354,8 @@ class TestExpandOffsets(tests.TestCase):
         BTreeGraphIndex with the recommended information.
         """
         index = btree_index.BTreeGraphIndex(
-            transport.get_transport('memory:///'), 'test-index', size=size)
+            transport.get_transport_from_url('memory:///'),
+            'test-index', size=size)
         if recommended_pages is not None:
             index._recommended_pages = recommended_pages
         return index

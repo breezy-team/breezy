@@ -621,7 +621,7 @@ class UnsupportedProtocol(PathError):
 
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
 
-    def __init__(self, url, extra):
+    def __init__(self, url, extra=""):
         PathError.__init__(self, url, extra=extra)
 
 
@@ -1800,6 +1800,14 @@ class ParseConfigError(BzrError):
         BzrError.__init__(self)
         self.filename = filename
         self.errors = '\n'.join(e.msg for e in errors)
+
+
+class ConfigOptionValueError(BzrError):
+
+    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
 
 
 class NoEmailInUsername(BzrError):
@@ -3316,3 +3324,13 @@ class NoCompatibleInter(BzrError):
     def __init__(self, source, target):
         self.source = source
         self.target = target
+
+
+class HpssVfsRequestNotAllowed(BzrError):
+
+    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
+            "%(method)s, %(arguments)s.")
+
+    def __init__(self, method, arguments):
+        self.method = method
+        self.arguments = arguments

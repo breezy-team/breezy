@@ -582,8 +582,9 @@ class _SmartAddHelper(object):
         :param parent_ie: Parent inventory entry if known, or None.  If
             None, the parent is looked up by name and used if present, otherwise it
             is recursively added.
+        :param path: 
         :param kind: Kind of new entry (file, directory, etc)
-        :param action: callback(tree, parent_ie, path, kind); can return file_id
+        :param inv_path:
         :return: Inventory entry for path and a list of paths which have been added.
         """
         # Nothing to do if path is already versioned.
@@ -628,7 +629,7 @@ class _SmartAddHelper(object):
             if (prev_dir is None or not is_inside([prev_dir], path)):
                 yield (path, inv_path, this_ie, None)
             prev_dir = path
-
+        
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
         if action is None:
@@ -695,12 +696,18 @@ class _SmartAddHelper(object):
 
             # get the contents of this directory.
 
-            # find the kind of the path being added.
+            # find the kind of the path being added, and save stat_value
+            # for reuse
+            stat_value = None
             if this_ie is None:
-                kind = osutils.file_kind(abspath)
+                stat_value = osutils.file_stat(abspath)
+                kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
             else:
                 kind = this_ie.kind
-
+            
+            # allow AddAction to skip this file
+            if self.action.skip_file(self.tree,  abspath,  kind,  stat_value):
+                continue
             if not InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",
                               abspath, kind)
@@ -718,7 +725,7 @@ class _SmartAddHelper(object):
 
             if kind == 'directory' and directory != '':
                 try:
-                    transport = _mod_transport.get_transport(abspath)
+                    transport = _mod_transport.get_transport_from_path(abspath)
                     controldir.ControlDirFormat.find_format(transport)
                     sub_tree = True
                 except errors.NotBranchError:
@@ -769,7 +776,7 @@ class _SmartAddHelper(object):
                         # recurse into this already versioned subdir.
                         things_to_add.append((subp, sub_invp, sub_ie, this_ie))
                     else:
-                        # user selection overrides ignoes
+                        # user selection overrides ignores
                         # ignore while selecting files - if we globbed in the
                         # outer loop we would ignore user files.
                         ignore_glob = self.tree.is_ignored(subp)

@@ -16,11 +16,10 @@
 
 
 from cStringIO import StringIO
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from itertools import chain
+import itertools
 from bzrlib import (
         bzrdir,
         cache_utf8,
@@ -36,15 +35,11 @@ from bzrlib import (
         repository,
         revision as _mod_revision,
         rio,
+        tag as _mod_tag,
         transport,
         ui,
         urlutils,
         )
-from bzrlib.config import BranchConfig, TransportConfig
-from bzrlib.tag import (
-    BasicTags,
-    DisabledTags,
-    )
 """)
 
 from bzrlib import (
@@ -64,11 +59,6 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     )
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
-
-
-BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
-BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
-BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
 class Branch(controldir.ControlComponent):
@@ -222,7 +212,7 @@ class Branch(controldir.ControlComponent):
 
         :return: A bzrlib.config.BranchConfig.
         """
-        return BranchConfig(self)
+        return _mod_config.BranchConfig(self)
 
     def _get_config(self):
         """Get the concrete config for just the config in this branch.
@@ -520,7 +510,7 @@ class Branch(controldir.ControlComponent):
                     # The decision to include the start or not
                     # depends on the stop_rule if a stop is provided
                     # so pop this node back into the iterator
-                    rev_iter = chain(iter([node]), rev_iter)
+                    rev_iter = itertools.chain(iter([node]), rev_iter)
                     break
         if stop_revision_id is None:
             # Yield everything
@@ -785,8 +775,9 @@ class Branch(controldir.ControlComponent):
                                   other_branch=None):
         """See Branch.generate_revision_history"""
         graph = self.repository.get_graph()
+        (last_revno, last_revid) = self.last_revision_info()
         known_revision_ids = [
-            self.last_revision_info(),
+            (last_revid, last_revno),
             (_mod_revision.NULL_REVISION, 0),
             ]
         if last_rev is not None:
@@ -1684,7 +1675,7 @@ class BranchFormat(controldir.ControlComponentFormat):
         Note that it is normal for branch to be a RemoteBranch when using tags
         on a RemoteBranch.
         """
-        return DisabledTags(branch)
+        return _mod_tag.DisabledTags(branch)
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
@@ -2130,7 +2121,7 @@ class BzrBranchFormat6(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
-        return BasicTags(branch)
+        return _mod_tag.BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -2161,7 +2152,7 @@ class BzrBranchFormat8(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
-        return BasicTags(branch)
+        return _mod_tag.BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -2208,7 +2199,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
-        return BasicTags(branch)
+        return _mod_tag.BasicTags(branch)
 
     supports_reference_locations = False
 
@@ -2250,6 +2241,8 @@ class BranchReferenceFormat(BranchFormat):
             # creation contract must see it as uninitializable
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.user_url)
+        if a_bzrdir._format.fixed_components:
+            raise errors.IncompatibleFormat(self, a_bzrdir._format)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.bzrdir.user_url)
@@ -2424,7 +2417,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
     base = property(_get_base, doc="The URL for the root of this branch.")
 
     def _get_config(self):
-        return TransportConfig(self._transport, 'branch.conf')
+        return _mod_config.TransportConfig(self._transport, 'branch.conf')
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -3170,7 +3163,7 @@ class Converter6to7(object):
 
 
 class Converter7to8(object):
-    """Perform an in-place upgrade of format 6 to format 7"""
+    """Perform an in-place upgrade of format 7 to format 8"""
 
     def convert(self, branch):
         format = BzrBranchFormat8()

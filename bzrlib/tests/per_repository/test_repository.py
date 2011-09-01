@@ -347,7 +347,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         try:
             made_repo.set_make_working_trees(False)
-        except NotImplementedError:
+        except errors.UnsupportedOperation:
             # the repository does not support having its tree-making flag
             # toggled.
             return
@@ -604,7 +604,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository(path, shared=shared)
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
-        remote_transport = transport.get_transport(
+        remote_transport = transport.get_transport_from_url(
             smart_server.get_url()).clone(path)
         remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
         remote_repo = remote_bzrdir.open_repository()
@@ -691,7 +691,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
         if repo.bzrdir._format.fixed_components:
-            raise tests.KnownFailure(
+            self.knownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")
         if isinstance(repo._format,
@@ -811,7 +811,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(True)
-        except errors.RepositoryUpgradeRequired, e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertTrue(repo.make_working_trees())
 
@@ -819,7 +819,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(False)
-        except errors.RepositoryUpgradeRequired, e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertFalse(repo.make_working_trees())
 

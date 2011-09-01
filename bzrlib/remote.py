@@ -48,6 +48,9 @@ from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
 
 
+_DEFAULT_SEARCH_DEPTH = 100
+
+
 class _RpcHelper(object):
     """Mixin class that helps with issuing RPCs."""
 
@@ -669,7 +672,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
-        return client.remote_path_from_transport(self.root_transport)
+        return urlutils.split_segment_parameters_raw(
+            client.remote_path_from_transport(self.root_transport))[0]
 
     def get_branch_transport(self, branch_format, name=None):
         self._ensure_real()
@@ -1681,6 +1685,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
 
+    def get_cached_parent_map(self, revision_ids):
+        """See bzrlib.CachingParentsProvider.get_cached_parent_map"""
+        return self._unstacked_provider.get_cached_parent_map(revision_ids)
+
     def get_parent_map(self, revision_ids):
         """See bzrlib.Graph.get_parent_map()."""
         return self._make_parents_provider().get_parent_map(revision_ids)
@@ -1744,26 +1752,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
-        # start_set is all the keys in the cache
-        start_set = set(parents_map)
-        # result set is all the references to keys in the cache
-        result_parents = set()
-        for parents in parents_map.itervalues():
-            result_parents.update(parents)
-        stop_keys = result_parents.difference(start_set)
-        # We don't need to send ghosts back to the server as a position to
-        # stop either.
-        stop_keys.difference_update(self._unstacked_provider.missing_keys)
-        key_count = len(parents_map)
-        if (NULL_REVISION in result_parents
-            and NULL_REVISION in self._unstacked_provider.missing_keys):
-            # If we pruned NULL_REVISION from the stop_keys because it's also
-            # in our cache of "missing" keys we need to increment our key count
-            # by 1, because the reconsitituted SearchResult on the server will
-            # still consider NULL_REVISION to be an included key.
-            key_count += 1
-        included_keys = start_set.intersection(result_parents)
-        start_set.difference_update(included_keys)
+        if _DEFAULT_SEARCH_DEPTH <= 0:
+            (start_set, stop_keys,
+             key_count) = graph.search_result_from_parent_map(
+                parents_map, self._unstacked_provider.missing_keys)
+        else:
+            (start_set, stop_keys,
+             key_count) = graph.limited_search_result_from_parent_map(
+                parents_map, self._unstacked_provider.missing_keys,
+                keys, depth=_DEFAULT_SEARCH_DEPTH)
         recipe = ('manual', start_set, stop_keys, key_count)
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)

@@ -29,14 +29,11 @@ from bzrlib import (
     osutils,
     ignores,
     msgeditor,
-    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
-    probe_bad_non_ascii,
     test_foreign,
-    TestSkipped,
-    UnicodeFilenameFeature,
+    features,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -138,7 +135,7 @@ bzr: ERROR: No changes to commit.\
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
         open(file_name, 'w').write('hello world')
@@ -332,7 +329,7 @@ bzr: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
-        self.run_bzr('commit -m ""', retcode=3)
+        self.run_bzr('commit -m ""')
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -741,6 +738,16 @@ altered in u2
         tree.add('hello.txt')
         return tree
 
+    def test_edit_empty_message(self):
+        tree = self.make_branch_and_tree('tree')
+        self.setup_editor()
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt", retcode=3,
+            stdin="y\n")
+        self.assertContainsRe(err,
+            "bzr: ERROR: Empty commit message specified")
+
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()
         out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
@@ -750,7 +757,10 @@ altered in u2
     def test_commit_hook_template_rejected(self):
         tree = self.setup_commit_with_template()
         expected = tree.last_revision()
-        out, err = self.run_bzr_error(["empty commit message"],
+        out, err = self.run_bzr_error(["Empty commit message specified."
+                  " Please specify a commit message with either"
+                  " --message or --file or leave a blank message"
+                  " with --message \"\"."],
             "commit tree/hello.txt", stdin="n\n")
         self.assertEqual(expected, tree.last_revision())
 

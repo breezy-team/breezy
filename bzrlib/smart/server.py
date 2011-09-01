@@ -330,14 +330,14 @@ class BzrServerFactory(object):
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.start_server()
         self.cleanups.append(chroot_server.stop_server)
-        transport = _mod_transport.get_transport(chroot_server.get_url())
+        transport = _mod_transport.get_transport_from_url(chroot_server.get_url())
         if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = self._make_expand_userdirs_filter(transport)
             expand_userdirs.start_server()
             self.cleanups.append(expand_userdirs.stop_server)
-            transport = _mod_transport.get_transport(expand_userdirs.get_url())
+            transport = _mod_transport.get_transport_from_url(expand_userdirs.get_url())
         self.transport = transport
 
     def _make_smart_server(self, host, port, inet):

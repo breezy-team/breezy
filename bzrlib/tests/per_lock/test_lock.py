@@ -21,7 +21,9 @@ from bzrlib import (
     osutils,
     )
 
-from bzrlib.tests import (features, UnicodeFilenameFeature)
+from bzrlib.tests import (
+    features,
+    )
 from bzrlib.tests.per_lock import TestCaseWithLock
 
 
@@ -166,7 +168,7 @@ class TestLock(TestCaseWithLock):
 
 class TestLockUnicodePath(TestCaseWithLock):
 
-    _test_needs_features = [UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def test_read_lock(self):
         self.build_tree([u'\u1234'])

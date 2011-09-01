@@ -128,7 +128,7 @@ def vary_by_http_activity():
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
                             _transport=_urllib.HttpTransport_urllib,)),
         ]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         activity_scenarios.append(
             ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
                                 _transport=_urllib.HttpTransport_urllib,)),)
@@ -136,7 +136,7 @@ def vary_by_http_activity():
         activity_scenarios.append(
             ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
                                 _transport=PyCurlTransport,)),)
-        if tests.HTTPSServerFeature.available():
+        if features.HTTPSServerFeature.available():
             from bzrlib.tests import (
                 ssl_certs,
                 )
@@ -533,7 +533,8 @@ class TestHttpTransportRegistration(tests.TestCase):
     scenarios = vary_by_http_client_implementation()
 
     def test_http_registered(self):
-        t = transport.get_transport('%s://foo.com/' % self._url_protocol)
+        t = transport.get_transport_from_url(
+            '%s://foo.com/' % self._url_protocol)
         self.assertIsInstance(t, transport.Transport)
         self.assertIsInstance(t, self._transport)
 
@@ -551,7 +552,7 @@ class TestPost(tests.TestCase):
         self.start_server(server)
         url = server.get_url()
         # FIXME: needs a cleanup -- vila 20100611
-        http_transport = transport.get_transport(url)
+        http_transport = transport.get_transport_from_url(url)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
             server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
@@ -1635,7 +1636,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         return url
 
     def get_user_transport(self, user, password):
-        t = transport.get_transport(self.get_user_url(user, password))
+        t = transport.get_transport_from_url(
+            self.get_user_url(user, password))
         return t
 
     def test_no_user(self):
@@ -1767,7 +1769,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                      http_utils.ProxyDigestAuthServer):
             raise tests.TestNotApplicable('HTTP/proxy auth digest only test')
         if self._testing_pycurl():
-            raise tests.KnownFailure(
+            self.knownFailure(
                 'pycurl does not handle a nonce change')
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', 'foo')
@@ -1855,7 +1857,7 @@ class TestProxyAuth(TestAuth):
         if self._testing_pycurl():
             import pycurl
             if pycurl.version_info()[1] < '7.16.0':
-                raise tests.KnownFailure(
+                self.knownFailure(
                     'pycurl < 7.16.0 does not handle empty proxy passwords')
         super(TestProxyAuth, self).test_empty_pass()
 
@@ -1915,7 +1917,8 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         # The 'readv' command in the smart protocol both sends and receives
         # bulk data, so we use that.
         self.build_tree(['data-file'])
-        http_transport = transport.get_transport(self.http_server.get_url())
+        http_transport = transport.get_transport_from_url(
+            self.http_server.get_url())
         medium = http_transport.get_smart_medium()
         # Since we provide the medium, the url below will be mostly ignored
         # during the test, as long as the path is '/'.
@@ -1929,7 +1932,8 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         post_body = 'hello\n'
         expected_reply_body = 'ok\x012\n'
 
-        http_transport = transport.get_transport(self.http_server.get_url())
+        http_transport = transport.get_transport_from_url(
+            self.http_server.get_url())
         medium = http_transport.get_smart_medium()
         response = medium.send_http_smart_request(post_body)
         reply_body = response.read()
@@ -2027,7 +2031,7 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
-        self.assertEqual(t._user, r._user)
+        self.assertEqual(t._parsed_url.user, r._parsed_url.user)
 
 
 class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -2086,7 +2090,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
     pass
 
 
-if tests.HTTPSServerFeature.available():
+if features.HTTPSServerFeature.available():
     from bzrlib.tests import https_server
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass

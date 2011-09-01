@@ -72,12 +72,18 @@ def installed():
 
 def install(lang=None):
     global _translations
+    if installed():
+        return
     if lang is None:
         lang = _get_current_locale()
+    if lang is not None:
+        languages = lang.split(':')
+    else:
+        languages = None
     _translations = _gettext.translation(
             'bzr',
             localedir=_get_locale_dir(),
-            languages=lang.split(':'),
+            languages=languages,
             fallback=True)
 
 
@@ -130,7 +136,7 @@ def _check_win32_locale():
 def _get_current_locale():
     if not os.environ.get('LANGUAGE'):
         from bzrlib import config
-        lang = config.GlobalConfig().get_user_option('language')
+        lang = config.GlobalStack().get('language')
         if lang:
             os.environ['LANGUAGE'] = lang
             return lang
