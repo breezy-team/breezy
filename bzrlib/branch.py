@@ -3424,8 +3424,8 @@ class GenericInterBranch(InterBranch):
             self._update_revisions(stop_revision, overwrite=overwrite,
                     graph=graph)
         if self.source._push_should_merge_tags():
-            result.tag_updates, result.tag_conflicts = self.source.tags.merge_to(
-                self.target.tags, overwrite)
+            result.tag_updates, result.tag_conflicts = (
+                self.source.tags.merge_to(self.target.tags, overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -3514,8 +3514,9 @@ class GenericInterBranch(InterBranch):
             # TODO: The old revid should be specified when merging tags, 
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
-            result.tag_updates, result.tag_conflicts = self.source.tags.merge_to(
-                self.target.tags, overwrite, ignore_master=not merge_tags_to_master)
+            result.tag_updates, result.tag_conflicts = (
+                self.source.tags.merge_to(self.target.tags, overwrite,
+                    ignore_master=not merge_tags_to_master))
             result.new_revno, result.new_revid = self.target.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master
