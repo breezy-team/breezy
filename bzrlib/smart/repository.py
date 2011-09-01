@@ -188,6 +188,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         compressor = zlib.compressobj()
         queried_revs = set()
         size_so_far = 0
+        unflushed_size_so_far = 0
         z_size_so_far = 0
         next_revs = revision_ids
         first_loop_done = False
@@ -218,8 +219,15 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     # Approximate the serialized cost of this revision_id.
                     line = '%s %s\n' % (encoded_id, ' '.join(parents))
                     size_so_far += len(line)
-                    z_size_so_far += len(compressor.compress(line))
-            z_size_so_far += len(compressor.flush(zlib.Z_SYNC_FLUSH))
+                    unflushed_size_so_far += len(line)
+                    z_size = len(compressor.compress(line))
+                    if z_size > 0:
+                        z_size_so_far += z_size
+                        unflushed_size_so_far = 0
+            if unflushed_size_so_far > 70000:
+                unflushed_size_so_far = 0
+                z_size = len(compressor.flush(zlib.Z_SYNC_FLUSH))
+                z_size_so_far += z_size
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
