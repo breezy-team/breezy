@@ -622,7 +622,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
 class TestChildSubmitFormats(per_branch.TestCaseWithBranch):
 
     def test_get_child_submit_format_default(self):
-        self.assertEqual(None, self.get_branch().get_child_submit_format())
+        submit_format = self.get_branch().get_child_submit_format()
+        self.assertTrue(submit_format is None or
+                        isinstance(submit_format, str))
 
     def test_get_child_submit_format(self):
         branch = self.get_branch()
@@ -673,7 +675,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             return
         # supported formats must be able to init and open
         t = self.get_transport()
-        readonly_t = transport.get_transport(self.get_readonly_url())
+        readonly_t = transport.get_transport_from_url(self.get_readonly_url())
         made_branch = self.make_branch('.')
         self.assertIsInstance(made_branch, _mod_branch.Branch)
 

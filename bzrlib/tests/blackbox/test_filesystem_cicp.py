@@ -23,9 +23,13 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests import CaseInsCasePresFilenameFeature, KnownFailure
+from bzrlib.tests import KnownFailure
 from bzrlib.osutils import canonical_relpath, pathjoin
 from bzrlib.tests.script import run_script
+from bzrlib.tests.features import (
+    CaseInsCasePresFilenameFeature,
+    )
+
 
 
 class TestCICPBase(tests.TestCaseWithTransport):

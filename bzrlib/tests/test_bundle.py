@@ -46,6 +46,9 @@ from bzrlib.tests import (
     test_commit,
     )
 from bzrlib.transform import TreeTransform
+from bzrlib.tests import (
+    features,
+    )
 
 
 def get_text(vf, key):
@@ -682,7 +685,7 @@ class BundleTester(object):
     def _test_symlink_bundle(self, link_name, link_target, new_link_target):
         link_id = 'link-1'
 
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
@@ -729,7 +732,7 @@ class BundleTester(object):
         self._test_symlink_bundle('link', 'bar/foo', 'mars')
 
     def test_unicode_symlink_bundle(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_symlink_bundle(u'\N{Euro Sign}link',
                                   u'bar/\N{Euro Sign}foo',
                                   u'mars\N{Euro Sign}')
@@ -836,7 +839,7 @@ class BundleTester(object):
         return bundle_file.getvalue()
 
     def test_unicode_bundle(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Handle international characters
         os.mkdir('b1')
         f = open(u'b1/with Dod\N{Euro Sign}', 'wb')

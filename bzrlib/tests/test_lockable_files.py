@@ -273,7 +273,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        t = transport.get_transport('.')
+        t = transport.get_transport_from_path('.')
         t.mkdir('.bzr')
         self.sub_transport = t.clone('.bzr')
         self.lockable = self.get_lockable()
@@ -298,7 +298,7 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        self.transport = transport.get_transport('.')
+        self.transport = transport.get_transport_from_path('.')
         self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch
         # tests that implicitly, but it might be a good idea to factor
@@ -341,7 +341,7 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         # in test_remote and test_smart as usual.
         b = self.make_branch('foo')
         self.addCleanup(b.bzrdir.transport.disconnect)
-        self.transport = transport.get_transport('.')
+        self.transport = transport.get_transport_from_path('.')
         self.lockable = self.get_lockable()
 
     def get_lockable(self):

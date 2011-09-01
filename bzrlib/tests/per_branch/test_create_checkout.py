@@ -16,9 +16,6 @@
 
 """Tests for the Branch.create_checkout"""
 
-from bzrlib import (
-    branch,
-    )
 from bzrlib.tests import per_branch
 
 

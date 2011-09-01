@@ -19,8 +19,6 @@
 from bzrlib import i18n, tests
 
 
-
-
 class ZzzTranslations(object):
     """Special Zzz translation for debugging i18n stuff.
 
@@ -91,3 +89,18 @@ class TestGetTextPerParagraph(tests.TestCase):
     def test_multiline(self):
         self.assertEqual(u"zz{{spam\nham}}\n\nzz{{eggs\n}}",
                          i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
+
+
+class TestInstall(tests.TestCase):
+
+    def test_custom_languages(self):
+        self.addCleanup(i18n.install)
+        i18n.install('nl:fy')
+
+    def test_no_env_variables(self):
+        self.addCleanup(i18n.install)
+        self.overrideEnv('LANGUAGE', None)
+        self.overrideEnv('LC_ALL', None)
+        self.overrideEnv('LC_MESSAGES', None)
+        self.overrideEnv('LANG', None)
+        i18n.install()

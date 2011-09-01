@@ -33,7 +33,7 @@ Installing from scratch
 If you wish to install Bazaar from scratch rather than using a
 pre-built package, the steps are:
 
-  1. If it is not installed already, install Python 2.4 or later.
+  1. If it is not installed already, install Python 2.6 or later.
 
   2. Download the ``bazaar-xxx.tar.gz`` file (where xxx is the version
      number) from http://wiki.bazaar.canonical.com/Download or from Launchpad

@@ -674,6 +674,10 @@ class cmd_add(Command):
     
     Any files matching patterns in the ignore list will not be added
     unless they are explicitly mentioned.
+    
+    In recursive mode, files larger than the configuration option 
+    add.maximum_file_size will be skipped. Named items are never skipped due
+    to file size.
     """
     takes_args = ['file*']
     takes_options = [
@@ -706,7 +710,7 @@ class cmd_add(Command):
             action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
                           to_file=self.outf, should_print=(not is_quiet()))
         else:
-            action = bzrlib.add.AddAction(to_file=self.outf,
+            action = bzrlib.add.AddWithSkipLargeAction(to_file=self.outf,
                 should_print=(not is_quiet()))
 
         if base_tree:
@@ -973,7 +977,7 @@ class cmd_pull(Command):
     branches have diverged.
 
     If there is no default location set, the first pull will set it (use
-    --no-remember to avoid settting it). After that, you can omit the
+    --no-remember to avoid setting it). After that, you can omit the
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
 
@@ -1072,8 +1076,7 @@ class cmd_pull(Command):
                 view_info=view_info)
             result = tree_to.pull(
                 branch_from, overwrite, revision_id, change_reporter,
-                possible_transports=possible_transports, local=local,
-                show_base=show_base)
+                local=local, show_base=show_base)
         else:
             result = branch_to.pull(
                 branch_from, overwrite, revision_id, local=local)
@@ -1110,7 +1113,7 @@ class cmd_push(Command):
     After that you will be able to do a push without '--overwrite'.
 
     If there is no default push location set, the first push will set it (use
-    --no-remember to avoid settting it).  After that, you can omit the
+    --no-remember to avoid setting it).  After that, you can omit the
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
     """
@@ -1195,7 +1198,7 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved push location: %s\n" % display_url)
+                note("Using saved push location: %s" % display_url)
                 location = stored_loc
 
         _show_push_branch(br_from, revision_id, location, self.outf,
@@ -1332,6 +1335,23 @@ class cmd_branch(Command):
             _mod_switch.switch(wt.bzrdir, branch)
             note('Switched to branch: %s',
                 urlutils.unescape_for_display(branch.base, 'utf-8'))
+
+
+class cmd_branches(Command):
+    __doc__ = """List the branches available at the current location.
+
+    This command will print the names of all the branches at the current location.
+    """
+
+    takes_args = ['location?']
+
+    def run(self, location="."):
+        dir = bzrdir.BzrDir.open_containing(location)[0]
+        for branch in dir.list_branches():
+            if branch.name is None:
+                self.outf.write(" (default)\n")
+            else:
+                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
 
 
 class cmd_checkout(Command):
@@ -2317,8 +2337,11 @@ class cmd_log(Command):
 
     :Other filtering:
 
-      The --message option can be used for finding revisions that match a
-      regular expression in a commit message.
+      The --match option can be used for finding revisions that match a
+      regular expression in a commit message, committer, author or bug.
+      Specifying the option several times will match any of the supplied
+      expressions. --match-author, --match-bugs, --match-committer and
+      --match-message can be used to only match a specific field.
 
     :Tips & tricks:
 
@@ -2384,10 +2407,10 @@ class cmd_log(Command):
                    argname='N',
                    type=_parse_levels),
             Option('message',
-                   short_name='m',
                    help='Show revisions whose message matches this '
                         'regular expression.',
-                   type=str),
+                   type=str,
+                   hidden=True),
             Option('limit',
                    short_name='l',
                    help='Limit the output to the first N revisions.',
@@ -2404,6 +2427,27 @@ class cmd_log(Command):
                    ),
             Option('signatures',
                    help='Show digital signature validity'),
+            ListOption('match',
+                short_name='m',
+                help='Show revisions whose properties match this '
+                'expression.',
+                type=str),
+            ListOption('match-message',
+                   help='Show revisions whose message matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-committer',
+                   help='Show revisions whose committer matches this '
+                   'expression.',
+                type=str),
+            ListOption('match-author',
+                   help='Show revisions whose authors match this '
+                   'expression.',
+                type=str),
+            ListOption('match-bugs',
+                   help='Show revisions whose bugs match this '
+                   'expression.',
+                type=str)
             ]
     encoding_type = 'replace'
 
@@ -2423,6 +2467,11 @@ class cmd_log(Command):
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
+            match=None,
+            match_message=None,
+            match_committer=None,
+            match_author=None,
+            match_bugs=None,
             ):
         from bzrlib.log import (
             Logger,
@@ -2531,6 +2580,18 @@ class cmd_log(Command):
         match_using_deltas = (len(file_ids) != 1 or filter_by_dir
             or delta_type or partial_history)
 
+        match_dict = {}
+        if match:
+            match_dict[''] = match
+        if match_message:
+            match_dict['message'] = match_message
+        if match_committer:
+            match_dict['committer'] = match_committer
+        if match_author:
+            match_dict['author'] = match_author
+        if match_bugs:
+            match_dict['bugs'] = match_bugs
+            
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -2539,7 +2600,7 @@ class cmd_log(Command):
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
-            exclude_common_ancestry=exclude_common_ancestry,
+            exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
             signature=signatures
             )
         Logger(b, rqst).show(lf)
@@ -3032,6 +3093,10 @@ class cmd_cat(Command):
 
         old_file_id = rev_tree.path2id(relpath)
 
+        # TODO: Split out this code to something that generically finds the
+        # best id for a path across one or more trees; it's like
+        # find_ids_across_trees but restricted to find just one. -- mbp
+        # 20110705.
         if name_from_revision:
             # Try in revision if requested
             if old_file_id is None:
@@ -3039,41 +3104,26 @@ class cmd_cat(Command):
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
             else:
-                content = rev_tree.get_file_text(old_file_id)
+                actual_file_id = old_file_id
         else:
             cur_file_id = tree.path2id(relpath)
-            found = False
-            if cur_file_id is not None:
-                # Then try with the actual file id
-                try:
-                    content = rev_tree.get_file_text(cur_file_id)
-                    found = True
-                except errors.NoSuchId:
-                    # The actual file id didn't exist at that time
-                    pass
-            if not found and old_file_id is not None:
-                # Finally try with the old file id
-                content = rev_tree.get_file_text(old_file_id)
-                found = True
-            if not found:
-                # Can't be found anywhere
+            if cur_file_id is not None and rev_tree.has_id(cur_file_id):
+                actual_file_id = cur_file_id
+            elif old_file_id is not None:
+                actual_file_id = old_file_id
+            else:
                 raise errors.BzrCommandError(
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
         if filtered:
-            from bzrlib.filters import (
-                ContentFilterContext,
-                filtered_output_bytes,
-                )
-            filters = rev_tree._content_filter_stack(relpath)
-            chunks = content.splitlines(True)
-            content = filtered_output_bytes(chunks, filters,
-                ContentFilterContext(relpath, rev_tree))
-            self.cleanup_now()
-            self.outf.writelines(content)
+            from bzrlib.filter_tree import ContentFilterTree
+            filter_tree = ContentFilterTree(rev_tree,
+                rev_tree._content_filter_stack)
+            content = filter_tree.get_file_text(actual_file_id)
         else:
-            self.cleanup_now()
-            self.outf.write(content)
+            content = rev_tree.get_file_text(actual_file_id)
+        self.cleanup_now()
+        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):
@@ -3297,8 +3347,11 @@ class cmd_commit(Command):
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            if my_message == "":
-                raise errors.BzrCommandError("empty commit message specified")
+                if my_message == "":
+                    raise errors.BzrCommandError("Empty commit message specified."
+                            " Please specify a commit message with either"
+                            " --message or --file or leave a blank message"
+                            " with --message \"\".")
             return my_message
 
         # The API permits a commit with a filter of [] to mean 'select nothing'
@@ -3896,7 +3949,7 @@ class cmd_merge(Command):
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
     If there is no default branch set, the first merge will set it (use
-    --no-remember to avoid settting it). After that, you can omit the branch
+    --no-remember to avoid setting it). After that, you can omit the branch
     to use the default.  To change the default, use --remember. The value will
     only be saved if the remote location can be accessed.
 
@@ -4613,10 +4666,10 @@ class cmd_missing(Command):
 
         if mine_only and not local_extra:
             # We checked local, and found nothing extra
-            message('This branch is up to date.\n')
+            message('This branch has no new revisions.\n')
         elif theirs_only and not remote_extra:
             # We checked remote, and found nothing extra
-            message('Other branch is up to date.\n')
+            message('Other branch has no new revisions.\n')
         elif not (mine_only or theirs_only or local_extra or
                   remote_extra):
             # We checked both branches, and neither one had extra
@@ -4925,6 +4978,8 @@ class cmd_uncommit(Command):
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes.'),
                     Option('force', help='Say yes to all questions.'),
+                    Option('keep-tags',
+                           help='Keep tags that point to removed revisions.'),
                     Option('local',
                            help="Only remove the commits from the local branch"
                                 " when in a checkout."
@@ -4934,9 +4989,8 @@ class cmd_uncommit(Command):
     aliases = []
     encoding_type = 'replace'
 
-    def run(self, location=None,
-            dry_run=False, verbose=False,
-            revision=None, force=False, local=False):
+    def run(self, location=None, dry_run=False, verbose=False,
+            revision=None, force=False, local=False, keep_tags=False):
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
@@ -4951,9 +5005,11 @@ class cmd_uncommit(Command):
             self.add_cleanup(tree.lock_write().unlock)
         else:
             self.add_cleanup(b.lock_write().unlock)
-        return self._run(b, tree, dry_run, verbose, revision, force, local=local)
+        return self._run(b, tree, dry_run, verbose, revision, force,
+                         local, keep_tags)
 
-    def _run(self, b, tree, dry_run, verbose, revision, force, local=False):
+    def _run(self, b, tree, dry_run, verbose, revision, force, local,
+             keep_tags):
         from bzrlib.log import log_formatter, show_log
         from bzrlib.uncommit import uncommit
 
@@ -5005,7 +5061,7 @@ class cmd_uncommit(Command):
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
-                 revno=revno, local=local)
+                 revno=revno, local=local, keep_tags=keep_tags)
         self.outf.write('You can restore the old tip by running:\n'
              '  bzr pull . -r revid:%s\n' % last_rev_id)
 
@@ -5340,7 +5396,7 @@ class cmd_send(Command):
 
     Both the submit branch and the public branch follow the usual behavior with
     respect to --remember: If there is no default location set, the first send
-    will set it (use --no-remember to avoid settting it). After that, you can
+    will set it (use --no-remember to avoid setting it). After that, you can
     omit the location to use the default.  To change the default, use
     --remember. The value will only be saved if the location can be accessed.
 

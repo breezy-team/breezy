@@ -24,6 +24,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import (
+    features,
     script,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
@@ -205,7 +206,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
 
     def test_add_via_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.make_branch_and_tree('source')
         self.build_tree(['source/top.txt'])
         os.symlink('source', 'link')
@@ -213,7 +214,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEquals(out, 'adding top.txt\n')
 
     def test_add_symlink_to_abspath(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.make_branch_and_tree('tree')
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]
@@ -232,9 +233,33 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def test_add_multiple_files_in_unicode_cwd(self):
         """Adding multiple files in a non-ascii cwd, see lp:686611"""
-        self.requireFeature(tests.UnicodeFilename)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self.make_branch_and_tree(u"\xA7")
         self.build_tree([u"\xA7/a", u"\xA7/b"])
         out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
         self.assertEquals(out, "adding a\n" "adding b\n")
         self.assertEquals(err, "")
+        
+    def test_add_skip_large_files(self):
+        """Test skipping files larger than add.maximum_file_size"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['small.txt', 'big.txt', 'big2.txt'])
+        self.build_tree_contents([('small.txt', '0\n')])
+        self.build_tree_contents([('big.txt', '01234567890123456789\n')])
+        self.build_tree_contents([('big2.txt', '01234567890123456789\n')])
+        tree.branch.get_config().set_user_option('add.maximum_file_size', 5)
+        out = self.run_bzr('add')[0]
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals(['adding small.txt'], 
+                          results)
+        # named items never skipped, even if over max
+        out, err = self.run_bzr(["add", "big2.txt"])
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals(['adding big2.txt'], 
+                          results)
+        self.assertEquals(err, "")
+        tree.branch.get_config().set_user_option('add.maximum_file_size', 30)
+        out = self.run_bzr('add')[0]
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals(['adding big.txt'], 
+                          results)

@@ -490,6 +490,25 @@ class SmartClientMediumRequest(object):
         return self._medium._get_line()
 
 
+class _VfsRefuser(object):
+    """An object that refuses all VFS requests.
+
+    """
+
+    def __init__(self):
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.check_vfs, 'vfs refuser')
+
+    def check_vfs(self, params):
+        try:
+            request_method = request.request_handlers.get(params.method)
+        except KeyError:
+            # A method we don't know about doesn't count as a VFS method.
+            return
+        if issubclass(request_method, vfs.VfsRequest):
+            raise errors.HpssVfsRequestNotAllowed(params.method, params.args)
+
+
 class _DebugCounter(object):
     """An object that counts the HPSS calls made to each client medium.
 
@@ -550,6 +569,7 @@ class _DebugCounter(object):
             self.done(ref)
 
 _debug_counter = None
+_vfs_refuser = None
 
 
 class SmartClientMedium(SmartMedium):
@@ -572,6 +592,10 @@ class SmartClientMedium(SmartMedium):
             if _debug_counter is None:
                 _debug_counter = _DebugCounter()
             _debug_counter.track(self)
+        if 'hpss_client_no_vfs' in debug.debug_flags:
+            global _vfs_refuser
+            if _vfs_refuser is None:
+                _vfs_refuser = _VfsRefuser()
 
     def _is_remote_before(self, version_tuple):
         """Is it possible the remote side supports RPCs for a given version?

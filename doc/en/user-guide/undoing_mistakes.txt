@@ -93,6 +93,9 @@ Another common reason for undoing a commit is because you forgot to add
 one or more files. Some users like to alias ``commit`` to ``commit --strict``
 so that commits fail if unknown files are found in the tree.
 
+Tags for uncommitted revisions are removed from the branch unless
+``--keep-tags`` was specified.
+
 Note: While the ``merge`` command is not introduced until the next
 chapter, it is worth noting now that ``uncommit`` restores any pending
 merges. (Running ``bzr status`` after ``uncommit`` will show these.)

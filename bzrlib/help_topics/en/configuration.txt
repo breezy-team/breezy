@@ -14,7 +14,7 @@ Override the email id used by Bazaar.  Typical format::
 
   "John Doe <jdoe@example.com>"
 
-See also the ``email`` configuration value.
+See also the ``email`` configuration option.
 
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ BZR_REMOTE_PATH
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
-See also the ``bzr_remote_path`` configuration value.
+See also the ``bzr_remote_path`` configuration option.
 
 BZR_EDITOR
 ~~~~~~~~~~
@@ -258,7 +258,7 @@ A section variable resides within a section. A section variable contains a
 variable name, an equals sign and a value.  For example::
 
     email            = John Doe <jdoe@isp.com>
-    check_signatures = require
+    gpg_signing_key  = Amy Pond <amy@example.com>
 
 A variable can reference other variables **in the same configuration file** by
 enclosing them in curly brackets::
@@ -311,7 +311,6 @@ A typical ``bazaar.conf`` section often looks like the following::
     [DEFAULT]
     email             = John Doe <jdoe@isp.com>
     editor            = /usr/bin/vim
-    check_signatures  = check-available
     create_signatures = when-required
 
 
@@ -329,10 +328,6 @@ for. The '?' and '*' wildcards are supported::
 
     [http://hypothetical.site.com/branches/devel-branch]
     create_signatures = always
-    check_signatures  = always
-
-    [http://example.com/bzr/*]
-    check_signatures  = require
 
 The authentication configuration file, authentication.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -359,6 +354,10 @@ can be used as with the -D command-line option (see `help global-options`).
 For example::
 
     debug_flags = hpss
+
+or::
+
+    debug_flags = hpss,evil
 
 email
 ~~~~~
@@ -427,6 +426,13 @@ If true (default), working tree metadata changes are flushed through the
 OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 
+gpg_signing_key
+~~~~~~~~~~~~~~~
+
+The GnuPG user identity to use when signing commits.  Can be an e-mail
+address, key fingerprint or full key ID.  When unset or when set to
+"default" Bazaar will use the user e-mail set with ``whoami``.
+
 recurse
 ~~~~~~~
 
@@ -447,6 +453,8 @@ gpg_signing_command
 For example::
 
     gpg_signing_command = /usr/bin/gnpg
+
+The specified command must accept the options "--clearsign" and "-u <email>".
 
 bzr_remote_path
 ~~~~~~~~~~~~~~~
@@ -620,6 +628,14 @@ send_strict
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before sending a merge directive.
 
+add.maximum_file_size
+~~~~~~~~~~~~~~~~~~~~~
+
+Defines the maximum file size the command line "add" operation will allow
+in recursive mode, with files larger than this value being skipped. You may 
+specify this value as an integer (in which case it is interpreted as bytes), 
+or you may specify the value using SI units, i.e. 10KB, 20MB, 1G. A value of 0 
+will disable skipping.
 
 External Merge Tools
 --------------------

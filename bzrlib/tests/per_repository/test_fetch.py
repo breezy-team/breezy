@@ -344,7 +344,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             # The code inside fetch() that tries to lock and then fails, also
             # causes weird problems with 'lock_not_held' later on...
             target.lock_read()
-            raise tests.KnownFailure('some repositories fail to fetch'
+            self.knownFailure('some repositories fail to fetch'
                 ' via the smart server because of locking issues.')
 
     def test_fetch_from_smart_with_ghost(self):

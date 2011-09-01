@@ -136,7 +136,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
-            t = transport.get_transport(url)
+            t = transport.get_transport_from_path(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
@@ -1660,3 +1660,11 @@ class TestCrossFormatPacks(TestCaseWithTransport):
     def test_IDS_format_same_no(self):
         # When the formats are the same, pack is not called.
         self.run_fetch('2a', '2a', False)
+
+
+class Test_LazyListJoin(tests.TestCase):
+
+    def test__repr__(self):
+        lazy = repository._LazyListJoin(['a'], ['b'])
+        self.assertEqual("bzrlib.repository._LazyListJoin((['a'], ['b']))",
+                         repr(lazy))

@@ -971,7 +971,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         if self._other['xfail']:
             # It's a bit hackish to raise from here relying on being called for
             # both tests but this avoid overriding test_resolve_taking_other
-            raise tests.KnownFailure(
+            self.knownFailure(
                 "ParentLoop doesn't carry enough info to resolve --take-other")
     _assert_conflict = assertParentLoop
 

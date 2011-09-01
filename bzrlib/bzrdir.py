@@ -634,8 +634,9 @@ class BzrDir(controldir.ControlDir):
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
-            ui.ui_factory.note('making backup of %s\n  to %s'
-                               % (old_path, new_path,))
+            ui.ui_factory.note('making backup of %s\n  to %s' % (
+                urlutils.unescape_for_display(old_path, 'utf-8'),
+                urlutils.unescape_for_display(new_path, 'utf-8')))
             self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
         finally:
@@ -2287,11 +2288,8 @@ register_metadir(controldir.format_registry, 'default-rich-root',
     help='Same as 2a.')
 
 # The current format that is made on 'bzr init'.
-format_name = config.GlobalConfig().get_user_option('default_format')
-if format_name is None:
-    controldir.format_registry.set_default('2a')
-else:
-    controldir.format_registry.set_default(format_name)
+format_name = config.GlobalStack().get('default_format')
+controldir.format_registry.set_default(format_name)
 
 # XXX 2010-08-20 JRV: There is still a lot of code relying on
 # bzrlib.bzrdir.format_registry existing. When BzrDir.create/BzrDir.open/etc
