@@ -188,7 +188,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                                include_missing, max_size=65536):
         result = {}
         queried_revs = set()
-        estimator = entropy.ZLibEstimator(int(max_size*1.1))
+        estimator = entropy.ZLibEstimator(max_size)
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
@@ -234,13 +234,6 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         return result
 
     def _do_repository_request(self, body_bytes):
-        # global _lsprof_count
-        # _lsprof_count += 1
-        # return commands.apply_lsprofiled('prof-%d.txt' % _lsprof_count,
-        #     self._real_do, body_bytes)
-        return self._real_do(body_bytes)
-
-    def _real_do(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
         include_missing = 'include-missing:' in revision_ids
