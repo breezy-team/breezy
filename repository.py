@@ -261,8 +261,6 @@ class LocalGitRepository(GitRepository):
     def _get_parents(self, revid):
         if type(revid) != str:
             raise ValueError
-        if revid == revision.NULL_REVISION:
-            return ()
         try:
             hexsha, mapping = self.lookup_bzr_revision_id(revid)
         except errors.NoSuchRevision:
@@ -279,6 +277,9 @@ class LocalGitRepository(GitRepository):
         parent_map = {}
         for revision_id in revids:
             parents = self._get_parents(revision_id)
+            if revision_id == revision.NULL_REVISION:
+                parent_map[revision_id] = ()
+                continue
             if parents is None:
                 continue
             if len(parents) == 0:

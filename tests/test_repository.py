@@ -162,8 +162,8 @@ class TestGitRepository(tests.TestCaseWithTransport):
         revid = default_mapping.revision_id_foreign_to_bzr(cid)
         g = self.git_repo.get_known_graph_ancestry([revid])
         self.assertEquals(frozenset([revid]),
-            g.heads([revision.NULL_REVISION, revid]))
-        self.assertEqual([(revid, 0, (2,), False), (revision.NULL_REVISION, 0, (1,), True)],
+            g.heads([revid]))
+        self.assertEqual([(revid, 0, (1,), True)],
             [(n.key, n.merge_depth, n.revno, n.end_of_merge)
                  for n in g.merge_sort(revid)])
 

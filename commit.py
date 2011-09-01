@@ -149,7 +149,7 @@ class GitCommitBuilder(CommitBuilder):
                 else:
                     blob.data = basis_tree.get_file_text(entry.file_id, path)
                 self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
-        if not self._lossy:
+        if not self._lossy and self._mapping.BZR_FILE_IDS_FILE is not None:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
             except AttributeError:

@@ -360,6 +360,9 @@ def import_git_commit(repo, mapping, head, lookup_object,
     # roundtrip data.
     rev, roundtrip_revid, verifiers = mapping.import_commit(
         o, mapping.revision_id_foreign_to_bzr)
+    if roundtrip_revid is not None:
+        original_revid = rev.revision_id
+        rev.revision_id = roundtrip_revid
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
@@ -393,23 +396,21 @@ def import_git_commit(repo, mapping, head, lookup_object,
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids, base_inv)
     ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
-    if roundtrip_revid is not None:
-        original_revid = rev.revision_id
-        rev.revision_id = roundtrip_revid
-        # Check verifiers
-        if verifiers:
-            if getattr(StrictTestament3, "from_revision_tree", None):
-                testament = StrictTestament3(rev, ret_tree)
-            else: # bzr < 2.4
-                testament = StrictTestament3(rev, inv)
-            calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
-            if calculated_verifiers != verifiers:
-                trace.mutter("Testament SHA1 %r for %r did not match %r.",
-                             calculated_verifiers["testament3-sha1"],
-                             rev.revision_id, verifiers["testament3-sha1"])
-                rev.revision_id = original_revid
-        else:
-            calculated_verifiers = {}
+    # Check verifiers
+    if verifiers and roundtrip_revid is not None:
+        if getattr(StrictTestament3, "from_revision_tree", None):
+            testament = StrictTestament3(rev, ret_tree)
+        else: # bzr < 2.4
+            testament = StrictTestament3(rev, inv)
+        calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
+        if calculated_verifiers != verifiers:
+            trace.mutter("Testament SHA1 %r for %r did not match %r.",
+                         calculated_verifiers["testament3-sha1"],
+                         rev.revision_id, verifiers["testament3-sha1"])
+            rev.revision_id = original_revid
+            rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
+              inv_delta, rev.revision_id, rev.parent_ids, base_inv)
+            ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
     else:
         calculated_verifiers = {}
     store_updater.add_object(o, calculated_verifiers, None)
