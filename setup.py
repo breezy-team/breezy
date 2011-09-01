@@ -2,6 +2,9 @@
 
 from info import *
 
+readme = file('README').read()
+
+
 if __name__ == '__main__':
     from distutils.core import setup
     version = bzr_plugin_version[:3]
@@ -15,12 +18,19 @@ if __name__ == '__main__':
           license='GPL',
           maintainer='Jelmer Vernooij',
           maintainer_email='jelmer@samba.org',
-          long_description="""
-          This plugin adds limited support for checking out and viewing
-          Git branches in Bazaar.
-          """,
+          long_description=readme,
           package_dir={'bzrlib.plugins.git':'.'},
           packages=['bzrlib.plugins.git',
                     'bzrlib.plugins.git.tests'],
           scripts=['bzr-receive-pack', 'bzr-upload-pack'],
+          classifiers=[
+              'Topic :: Software Development :: Version Control',
+              'Environment :: Plugins',
+              'Development Status :: 4 - Beta',
+              'License :: OSI Approved :: GNU General Public License (GPL)',
+              'Natural Language :: English',
+              'Operating System :: OS Independent',
+              'Programming Language :: Python',
+              'Programming Language :: Python :: 2',
+          ]
           )
