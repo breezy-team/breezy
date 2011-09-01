@@ -105,6 +105,9 @@ Improvements
 * ``bzr pull`` will now mention how many tags it has updated.
   (Jelmer Vernooij, #164450)
 
+* ``bzr tag`` no longer errors if a tag already exists but refers to the
+  same revision. (Jelmer Vernooij)
+
 * ``bzr uncommit`` will now remove tags that refer to removed revisions.
   The ``--keep-tags`` option can be used to prevent this behaviour.
   (Jelmer Vernooij, #605814)
@@ -113,6 +116,8 @@ Improvements
   (Jelmer Vernooij)
 
 * Install translation .mo files. (Jonathan Riddell)
+
+* Do not run i18n initialisation twice. (Jonathan Riddell)
 
 Bug Fixes
 *********
@@ -138,6 +143,10 @@ Bug Fixes
 
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
+
+* Rather than an error being raised, a warning is now printed when the
+  current user does not have permission to read a configuration file.
+  (Jelmer Vernooij, #837324)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
@@ -259,6 +268,9 @@ Testing
 * ``ModuleAvailableFeature`` won't try to import already imported modules,
   allowing it to be used for modules with side-effects.
   (Vincent Ladeuil, #712474)
+
+* Output time stamps while running ``make check`` to get better timings from
+  pqm.  (Vincent Ladeuil, #837926)
 
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,

@@ -36,6 +36,10 @@ class RevisionTree(tree.Tree):
         self._revision_id = revision_id
         self._rules_searcher = None
 
+    def has_versioned_directories(self):
+        """See `Tree.has_versioned_directories`."""
+        return self._repository._format.supports_versioned_directories
+
     def supports_tree_reference(self):
         return getattr(self._repository._format, "supports_tree_reference",
             False)
