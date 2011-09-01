@@ -104,3 +104,26 @@ class TestInstall(tests.TestCase):
         self.overrideEnv('LC_MESSAGES', None)
         self.overrideEnv('LANG', None)
         i18n.install()
+
+class TestTranslate(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTranslate, self).setUp()
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+
+    def test_error_message_translation(self):
+        import bzrlib
+        #bzrlib.initialize()
+        from bzrlib import workingtree
+        from bzrlib import errors
+        i18n.install()
+        err = None
+        tree = self.make_branch_and_tree('.')
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        i18n._translations = ZzzTranslations()
+        print "MMM about to open  "
+        try:
+            workingtree.WorkingTree.open('./foo')
+        except errors.NotBranchError,e:
+            err = str(e)
+        self.assertEqual("Not a branch: \"/tmp/\".", err)
