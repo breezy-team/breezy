@@ -114,6 +114,8 @@ Improvements
 
 * Install translation .mo files. (Jonathan Riddell)
 
+* Do not run i18n initialisation twice. (Jonathan Riddell)
+
 Bug Fixes
 *********
 
@@ -138,6 +140,10 @@ Bug Fixes
 
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
+
+* Rather than an error being raised, a warning is now printed when the
+  current user does not have permission to read a configuration file.
+  (Jelmer Vernooij, #837324)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.

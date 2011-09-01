@@ -71,8 +71,9 @@ def installed():
 
 
 def install(lang=None):
-    print "MMMinstall"
     global _translations
+    if installed():
+        return
     if lang is None:
         lang = _get_current_locale()
     if lang is not None:

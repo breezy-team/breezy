@@ -120,8 +120,6 @@ class TestTranslate(tests.TestCaseWithTransport):
         err = None
         tree = self.make_branch_and_tree('.')
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
-        i18n._translations = ZzzTranslations()
-        print "MMM about to open  "
         try:
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError,e:
