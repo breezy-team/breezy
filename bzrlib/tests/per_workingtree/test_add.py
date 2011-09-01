@@ -101,8 +101,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(['dir/subdir/foo'], ['foo-id'])
         root_id = tree.get_root_id()
 
-        self.assertTreeLayout([('', root_id), ('dir', 'dir-id'),
-                               ('dir/subdir', 'subdir-id'),
+        self.assertTreeLayout([('', root_id), ('dir/', 'dir-id'),
+                               ('dir/subdir/', 'subdir-id'),
                                ('dir/subdir/foo', 'foo-id')], tree)
 
     def test_add_multiple(self):
@@ -113,7 +113,7 @@ class TestAdd(TestCaseWithWorkingTree):
         root_id = tree.get_root_id()
 
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
-                               ('dir', 'dir-id'), ('dir/subdir', 'subdir-id'),
+                               ('dir/', 'dir-id'), ('dir/subdir/', 'subdir-id'),
                                ('dir/subdir/foo', 'foo-id')], tree)
 
     def test_add_invalid(self):
