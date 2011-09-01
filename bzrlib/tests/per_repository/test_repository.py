@@ -369,7 +369,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             self.assertFalse(repo._format.supports_revision_signatures)
-            raise TestNotApplicable("signatures not supported by repository format")
+            raise tests.TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text('A')
