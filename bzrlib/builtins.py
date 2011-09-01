@@ -18,8 +18,8 @@
 
 import os
 
-from bzrlib.lazy_import import lazy_import, disallow_proxying
-lazy_import(globals(), """
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
 import cStringIO
 import sys
 import time
@@ -3801,7 +3801,14 @@ class cmd_selftest(Command):
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
 
-        disallow_proxying()
+        # During selftest, disallow proxying, as it can cause severe
+        # performance penalties and is only needed for thread
+        # safety. The selftest command is assumed to not use threads
+        # too heavily. The call should be as early as possible, as
+        # error reporting for past duplicate imports won't have useful
+        # backtraces.
+        lazy_import.disallow_proxying()
+
         from bzrlib import tests
 
         if testspecs_list is not None:
