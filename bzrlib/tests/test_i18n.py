@@ -121,3 +121,13 @@ class TestTranslate(tests.TestCaseWithTransport):
         except errors.NotBranchError,e:
             err = str(e)
         self.assertContainsRe(err, "zz{{Not a branch: .*}}")
+
+    def test_topic_help_translation(self):
+        """does topic help get translated?"""
+        from bzrlib import help
+        i18n.install()
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        from StringIO import StringIO
+        out = StringIO()
+        help.help("authentication", out)
+        self.assertContainsRe(out.getvalue(), "zz{{Authentication Settings")
