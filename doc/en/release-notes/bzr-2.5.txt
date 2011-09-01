@@ -113,6 +113,8 @@ Improvements
 
 * Do not run i18n initialisation twice. (Jonathan Riddell)
 
+* Support a ``default_bugtracker`` option. (Jelmer Vernooij, #334860)
+
 Bug Fixes
 *********
 

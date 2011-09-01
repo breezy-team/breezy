@@ -3236,15 +3236,31 @@ class cmd_commit(Command):
     aliases = ['ci', 'checkin']
 
     def _iter_bug_fix_urls(self, fixes, branch):
+        default_bugtracker  = None
         # Configure the properties for bug fixing attributes.
         for fixed_bug in fixes:
             tokens = fixed_bug.split(':')
-            if len(tokens) != 2:
+            if len(tokens) == 1:
+                if default_bugtracker is None:
+                    branch_config = branch.get_config()
+                    default_bugtracker = branch_config.get_user_option(
+                        "default_bugtracker")
+                if default_bugtracker is None:
+                    raise errors.BzrCommandError(
+                        "No tracker specified for bug %s. Use the form "
+                        "'tracker:id' or specify a default bug tracker "
+                        "using the `default_bugtracker` option.\nSee "
+                        "\"bzr help bugs\" for more information on this "
+                        "feature. Commit refused." % fixed_bug)
+                tag = default_bugtracker
+                bug_id = tokens[0]
+            elif len(tokens) != 2:
                 raise errors.BzrCommandError(
                     "Invalid bug %s. Must be in the form of 'tracker:id'. "
                     "See \"bzr help bugs\" for more information on this "
                     "feature.\nCommit refused." % fixed_bug)
-            tag, bug_id = tokens
+            else:
+                tag, bug_id = tokens
             try:
                 yield bugtracker.get_bug_url(tag, branch, bug_id)
             except errors.UnknownBugTrackerAbbreviation:

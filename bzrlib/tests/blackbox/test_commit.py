@@ -596,6 +596,30 @@ altered in u2
             'commit -m add-b --fixes=xxx:123',
             working_dir='tree')
 
+    def test_fixes_bug_with_default_tracker(self):
+        """commit --fixes=234 uses the default bug tracker."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["bzr: ERROR: No tracker specified for bug 123. Use the form "
+            "'tracker:id' or specify a default bug tracker using the "
+            "`default_bugtracker` option.\n"
+            "See \"bzr help bugs\" for more information on this feature. "
+            "Commit refused."],
+            'commit -m add-b --fixes=123',
+            working_dir='tree')
+        tree.branch.get_config().set_user_option("default_bugtracker", "lp")
+        self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
+        # Get the revision properties, ignoring the branch-nick property, which
+        # we don't care about for this test.
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = dict(last_rev.properties)
+        del properties['branch-nick']
+
+        self.assertEqual({'bugs': 'https://launchpad.net/bugs/234 fixed'},
+                         properties)
+
     def test_fixes_invalid_bug_number(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
@@ -613,10 +637,10 @@ altered in u2
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            [r"Invalid bug orange. Must be in the form of 'tracker:id'\. "
-             r"See \"bzr help bugs\" for more information on this feature.\n"
-             r"Commit refused\."],
-            'commit -m add-b --fixes=orange',
+            [r"Invalid bug orange:apples:bananas. Must be in the form of "
+             r"'tracker:id'\. See \"bzr help bugs\" for more information on "
+             r"this feature.\nCommit refused\."],
+            'commit -m add-b --fixes=orange:apples:bananas',
             working_dir='tree')
 
     def test_no_author(self):
