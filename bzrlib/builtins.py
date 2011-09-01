@@ -5621,10 +5621,17 @@ class cmd_tag(Command):
                 if tag_name is None:
                     raise errors.BzrCommandError(
                         "Please specify a tag name.")
-            if (not force) and branch.tags.has_tag(tag_name):
+            try:
+                existing_target = branch.tags.lookup_tag(tag_name)
+            except errors.NoSuchTag:
+                existing_target = None
+            if not force and existing_target not in (None, revision_id):
                 raise errors.TagAlreadyExists(tag_name)
-            branch.tags.set_tag(tag_name, revision_id)
-            note('Created tag %s.' % tag_name)
+            if existing_target == revision_id:
+                note('Tag %s already exists for that revision.' % tag_name)
+            else:
+                branch.tags.set_tag(tag_name, revision_id)
+                note('Created tag %s.' % tag_name)
 
 
 class cmd_tags(Command):
