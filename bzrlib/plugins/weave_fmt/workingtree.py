@@ -30,8 +30,10 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
-    InventoryWorkingTree,
     WorkingTreeFormat,
+    )
+from bzrlib.workingtree_3 import (
+    PreDirStateWorkingTree,
     )
 
 
@@ -135,7 +137,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         return wt
 
 
-class WorkingTree2(InventoryWorkingTree):
+class WorkingTree2(PreDirStateWorkingTree):
     """This is the Format 2 working tree.
 
     This was the first weave based working tree.
@@ -143,8 +145,8 @@ class WorkingTree2(InventoryWorkingTree):
      - uses the branch last-revision.
     """
 
-    def __init__(self, *args, **kwargs):
-        super(WorkingTree2, self).__init__(*args, **kwargs)
+    def __init__(self, basedir, *args, **kwargs):
+        super(WorkingTree2, self).__init__(basedir, *args, **kwargs)
         # WorkingTree2 has more of a constraint that self._inventory must
         # exist. Because this is an older format, we don't mind the overhead
         # caused by the extra computation here.
@@ -157,6 +159,7 @@ class WorkingTree2(InventoryWorkingTree):
     def _get_check_refs(self):
         """Return the references needed to perform a check of this tree."""
         return [('trees', self.last_revision())]
+
 
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
