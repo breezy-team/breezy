@@ -2435,6 +2435,7 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
 
+
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
 
     def get_option(self):

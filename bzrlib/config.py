@@ -75,7 +75,6 @@ up=pull
 import os
 import string
 import sys
-import re
 
 
 from bzrlib.decorators import needs_write_lock
@@ -107,6 +106,7 @@ from bzrlib.util.configobj import configobj
 from bzrlib import (
     commands,
     hooks,
+    lazy_regex,
     registry,
     )
 from bzrlib.symbol_versioning import (
@@ -2968,6 +2968,15 @@ class LocationMatcher(SectionMatcher):
 class Stack(object):
     """A stack of configurations where an option can be defined"""
 
+    _option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+    """Describes an exandable option reference.
+
+    We want to match the most embedded reference first.
+
+    I.e. for '{{foo}}' we will get '{foo}',
+    for '{bar{baz}}' we will get '{baz}'
+    """
+
     def __init__(self, sections_def, store=None, mutable_section_name=None):
         """Creates a stack of sections with an optional store for changes.
 
@@ -2985,9 +2994,6 @@ class Stack(object):
         self.sections_def = sections_def
         self.store = store
         self.mutable_section_name = mutable_section_name
-        # Used to describe an expandable option reference (see
-        # _expand_options_in_string)
-        self._option_ref_re = None
 
     def get(self, name, expand=None):
         """Return the *first* option value found in the sections.
@@ -3039,7 +3045,7 @@ class Stack(object):
         if opt is not None and value is not None:
             value = opt.convert_from_unicode(value)
             if value is None:
-                # The conversion failed fallback to the default value
+                # The conversion failed, fallback to the default value
                 value = opt.get_default()
                 if expand:
                     value = self._expand_option_value(value)
@@ -3114,16 +3120,11 @@ class Stack(object):
         if _refs is None:
             # What references are currently resolved (to detect loops)
             _refs = []
-        if self._option_ref_re is None:
-            # We want to match the most embedded reference first (i.e. for
-            # '{{foo}}' we will get '{foo}',
-            # for '{bar{baz}}' we will get '{baz}'
-            self._option_ref_re = re.compile('({[^{}]+})')
         result = string
         # We need to iterate until no more refs appear ({{foo}} will need two
         # iterations for example).
         while True:
-            raw_chunks = self._option_ref_re.split(result)
+            raw_chunks = Stack._option_ref_re.split(result)
             if len(raw_chunks) == 1:
                 # Shorcut the trivial case: no refs
                 return result
