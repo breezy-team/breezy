@@ -3049,7 +3049,7 @@ class Stack(object):
             # Not registered
             opt = None
         def expand_and_convert(val):
-            # This may need to be called twice if the value is None and ends up
+            # This may need to be called twice if the value is None or ends up
             # being None during expansion or conversion.
             if val is not None:
                 if expand:

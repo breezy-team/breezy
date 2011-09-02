@@ -2640,7 +2640,7 @@ class TestReadonlyStore(TestStore):
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
-    """Simulate loading a config store without content of various encodings.
+    """Simulate loading a config store with content of various encodings.
 
     All files produced by bzr are in utf8 content.
 
@@ -2680,7 +2680,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
 
 
 class TestIniConfigContent(tests.TestCaseWithTransport):
-    """Simulate loading a IniBasedConfig without content of various encodings.
+    """Simulate loading a IniBasedConfig with content of various encodings.
 
     All files produced by bzr are in utf8 content.
 
@@ -3450,7 +3450,7 @@ middle=},{
 end=bar}
 hidden={start}{middle}{end}
 ''')
-        # What matters is what the registration says, the conversion happends
+        # What matters is what the registration says, the conversion happens
         # only after all expansions have been performed
         self.registry.register(
             config.Option('hidden', from_unicode=config.list_from_store))
