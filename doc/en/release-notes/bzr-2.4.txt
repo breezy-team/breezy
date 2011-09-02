@@ -38,6 +38,10 @@ Bug Fixes
 * ``dirstate.fdatasync`` and ``repository.fdatasync`` can now properly be
   disabled. (Vincent Ladeuil, #824513)
 
+* Disable ``os.fsync`` and ``os.fdatasync`` by default when running
+  ``bzr selftest``. You can use ``--sync`` to re-enable them.
+  (John Arbash Meinel, #837293)
+
 * Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
 
 * Avoid UnicodeDecode error when reporting EINVAL from transports.
