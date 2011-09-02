@@ -16,7 +16,7 @@
 
 """Tests for bzrlib.i18n"""
 
-from bzrlib import i18n, tests
+from bzrlib import i18n, tests, errors, workingtree
 
 
 class ZzzTranslations(object):
@@ -104,3 +104,30 @@ class TestInstall(tests.TestCase):
         self.overrideEnv('LC_MESSAGES', None)
         self.overrideEnv('LANG', None)
         i18n.install()
+
+class TestTranslate(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTranslate, self).setUp()
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+
+    def test_error_message_translation(self):
+        """do errors get translated?"""
+        err = None
+        tree = self.make_branch_and_tree('.')
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        try:
+            workingtree.WorkingTree.open('./foo')
+        except errors.NotBranchError,e:
+            err = str(e)
+        self.assertContainsRe(err, "zz{{Not a branch: .*}}")
+
+    def test_topic_help_translation(self):
+        """does topic help get translated?"""
+        from bzrlib import help
+        i18n.install()
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        from StringIO import StringIO
+        out = StringIO()
+        help.help("authentication", out)
+        self.assertContainsRe(out.getvalue(), "zz{{Authentication Settings")

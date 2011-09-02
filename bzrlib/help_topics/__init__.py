@@ -40,6 +40,7 @@ from bzrlib import (
     config,
     osutils,
     registry,
+    i18n,
     )
 
 
@@ -879,6 +880,8 @@ class RegisteredTopic(object):
         result += _format_see_also(additional_see_also)
         if plain:
             result = help_as_plain_text(result)
+        i18n.install()
+        result = i18n.gettext_per_paragraph(result)
         return result
 
     def get_help_topic(self):
