@@ -611,14 +611,9 @@ altered in u2
             working_dir='tree')
         tree.branch.get_config().set_user_option("bugtracker", "lp")
         self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
-        # Get the revision properties, ignoring the branch-nick property, which
-        # we don't care about for this test.
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
-        properties = dict(last_rev.properties)
-        del properties['branch-nick']
-
-        self.assertEqual({'bugs': 'https://launchpad.net/bugs/234 fixed'},
-                         properties)
+        self.assertEqual('https://launchpad.net/bugs/234 fixed',
+                         last_rev.properties['bugs'])
 
     def test_fixes_invalid_bug_number(self):
         tree = self.make_branch_and_tree('tree')
