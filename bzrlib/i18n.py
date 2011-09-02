@@ -67,7 +67,7 @@ def gettext_per_paragraph(message):
 
 
 def installed():
-    return isinstance(_translations, _gettext.NullTranslations)
+    return not isinstance(_translations, _gettext.NullTranslations)
 
 
 def install(lang=None):
