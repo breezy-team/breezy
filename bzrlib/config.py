@@ -2423,7 +2423,9 @@ def int_from_store(unicode_str):
 
 # Use a an empty dict to initialize an empty configobj avoiding all
 # parsing and encoding checks
-_list_converter_config = configobj.ConfigObj({}, encoding='utf-8')
+_list_converter_config = configobj.ConfigObj(
+    {}, encoding='utf-8', list_values=True, interpolation=False)
+
 
 def list_from_store(unicode_str):
     if not isinstance(unicode_str, basestring):
