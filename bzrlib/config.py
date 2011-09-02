@@ -2422,18 +2422,28 @@ def int_from_store(unicode_str):
 
 
 def list_from_store(unicode_str):
+    if not isinstance(unicode_str, basestring):
+        raise TypeError
+    # Use a an empty dict to initialize an empty configobj avoiding all
+    # parsing and encoding checks
+    c = ConfigObj({}, encoding='utf-8')
+    # Now inject our string directly as unicode All callers got their value
+    # from configobj, so values that need to be quoted are already properly
+    # quoted.
+    c._parse([u"list=%s" % (unicode_str,)])
+    co_list_or_not = c['list']
     # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
-    if isinstance(unicode_str, (str, unicode)):
-        if unicode_str:
+    if isinstance(co_list_or_not, basestring):
+        if co_list_or_not:
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
-            l = [unicode_str]
+            l = [co_list_or_not]
         else:
             # The empty string, convert to empty list
             l = []
     else:
         # We rely on ConfigObj providing us with a list already
-        l = unicode_str
+        l = co_list_or_not
     return l
 
 
@@ -2705,7 +2715,8 @@ class IniFileStore(Store):
         co_input = StringIO(bytes)
         try:
             # The config files are always stored utf8-encoded
-            self._config_obj = ConfigObj(co_input, encoding='utf-8')
+            self._config_obj = ConfigObj(co_input, encoding='utf-8',
+                                         list_values=False)
         except configobj.ConfigObjError, e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
