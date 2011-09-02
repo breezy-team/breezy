@@ -102,6 +102,9 @@ Improvements
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
 
+* ``bzr pull`` will now mention how many tags it has updated.
+  (Jelmer Vernooij, #164450)
+
 * ``bzr tag`` no longer errors if a tag already exists but refers to the
   same revision. (Jelmer Vernooij)
 
@@ -217,6 +220,9 @@ API Changes
 * New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
   value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
   (Shannon Weyrick)
+
+* ``Tags.merge_to`` now returns a dictionary with the updated tags
+  and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
 
 * ``Transport`` now has a ``_parsed_url`` attribute instead of
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
