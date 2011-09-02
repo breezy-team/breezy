@@ -102,6 +102,12 @@ Improvements
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
 
+* ``bzr pull`` will now mention how many tags it has updated.
+  (Jelmer Vernooij, #164450)
+
+* ``bzr tag`` no longer errors if a tag already exists but refers to the
+  same revision. (Jelmer Vernooij)
+
 * ``bzr uncommit`` will now remove tags that refer to removed revisions.
   The ``--keep-tags`` option can be used to prevent this behaviour.
   (Jelmer Vernooij, #605814)
@@ -112,6 +118,10 @@ Improvements
 * Install translation .mo files. (Jonathan Riddell)
 
 * Do not run i18n initialisation twice. (Jonathan Riddell)
+
+* Support a ``bugtracker`` option which is used by ``bzr commit --fixes``
+  if no bug tracker was specified on the command line.
+  (Jelmer Vernooij, #334860)
 
 Bug Fixes
 *********
@@ -211,6 +221,9 @@ API Changes
   value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
   (Shannon Weyrick)
 
+* ``Tags.merge_to`` now returns a dictionary with the updated tags
+  and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
+
 * ``Transport`` now has a ``_parsed_url`` attribute instead of
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
   and ``_path`` attributes. Proxies are provided for the moment but
@@ -259,6 +272,9 @@ Testing
 * ``ModuleAvailableFeature`` won't try to import already imported modules,
   allowing it to be used for modules with side-effects.
   (Vincent Ladeuil, #712474)
+
+* Output time stamps while running ``make check`` to get better timings from
+  pqm.  (Vincent Ladeuil, #837926)
 
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,

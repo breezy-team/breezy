@@ -3044,6 +3044,7 @@ class PullResult(_Result):
     :ivar local_branch: target branch if there is a Master, else None
     :ivar target_branch: Target/destination branch object. (write locked)
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
+    :ivar tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
     @deprecated_method(deprecated_in((2, 3, 0)))
@@ -3055,11 +3056,18 @@ class PullResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
+        tag_conflicts = getattr(self, "tag_conflicts", None)
+        tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
-            if self.old_revid == self.new_revid:
-                to_file.write('No revisions to pull.\n')
-            else:
+            if self.old_revid != self.new_revid:
                 to_file.write('Now on revision %d.\n' % self.new_revno)
+            if tag_updates:
+                to_file.write('%d tag(s) updated.\n' % len(tag_updates))
+            if self.old_revid == self.new_revid and not tag_updates:
+                if not tag_conflicts:
+                    to_file.write('No revisions or tags to pull.\n')
+                else:
+                    to_file.write('No revisions to pull.\n')
         self._show_tag_conficts(to_file)
 
 
@@ -3091,11 +3099,22 @@ class BranchPushResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
-        """Write a human-readable description of the result."""
-        if self.old_revid == self.new_revid:
-            note('No new revisions to push.')
-        else:
-            note('Pushed up to revision %d.' % self.new_revno)
+        # TODO: This function gets passed a to_file, but then
+        # ignores it and calls note() instead. This is also
+        # inconsistent with PullResult(), which writes to stdout.
+        # -- JRV20110901, bug #838853
+        tag_conflicts = getattr(self, "tag_conflicts", None)
+        tag_updates = getattr(self, "tag_updates", None)
+        if not is_quiet():
+            if self.old_revid != self.new_revid:
+                note('Pushed up to revision %d.' % self.new_revno)
+            if tag_updates:
+                note('%d tag(s) updated.' % len(tag_updates))
+            if self.old_revid == self.new_revid and not tag_updates:
+                if not tag_conflicts:
+                    note('No new revisions or tags to push.')
+                else:
+                    note('No new revisions to push.')
         self._show_tag_conficts(to_file)
 
 
@@ -3409,8 +3428,8 @@ class GenericInterBranch(InterBranch):
             self._update_revisions(stop_revision, overwrite=overwrite,
                     graph=graph)
         if self.source._push_should_merge_tags():
-            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite)
+            result.tag_updates, result.tag_conflicts = (
+                self.source.tags.merge_to(self.target.tags, overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -3499,8 +3518,9 @@ class GenericInterBranch(InterBranch):
             # TODO: The old revid should be specified when merging tags, 
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
-            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite, ignore_master=not merge_tags_to_master)
+            result.tag_updates, result.tag_conflicts = (
+                self.source.tags.merge_to(self.target.tags, overwrite,
+                    ignore_master=not merge_tags_to_master))
             result.new_revno, result.new_revid = self.target.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master

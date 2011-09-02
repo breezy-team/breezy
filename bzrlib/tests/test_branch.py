@@ -709,5 +709,5 @@ class TestPullResult(tests.TestCase):
         r.new_revid = "same-revid"
         f = StringIO()
         r.report(f)
-        self.assertEqual("No revisions to pull.\n", f.getvalue())
+        self.assertEqual("No revisions or tags to pull.\n", f.getvalue())
 

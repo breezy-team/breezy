@@ -251,7 +251,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.addCleanup(repo.lock_read().unlock)
         # We should have pushed 'C', but not 'B', since it isn't in the
         # ancestry
-        self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
+        self.assertEqual(['A', 'C'], sorted(repo.all_revision_ids()))
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
