@@ -126,7 +126,7 @@ class LocalGitProber(Prober):
 
     def probe_transport(self, transport):
         try:
-            if not transport.has_any(['info/refs', '.git/HEAD', 'HEAD', 'objects', '.git/objects']):
+            if not transport.has_any(['.git/HEAD', 'HEAD', 'objects', '.git/objects']):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
             raise bzr_errors.NotBranchError(path=transport.base)
@@ -161,20 +161,76 @@ class LocalGitProber(Prober):
 
 class RemoteGitProber(Prober):
 
+    def probe_http_transport(self, transport):
+        from bzrlib import urlutils
+        url = urlutils.join(transport.external_url(), "info/refs") + "?service=git-upload-pack"
+        from bzrlib.transport.http._urllib import HttpTransport_urllib, Request
+        if isinstance(transport, HttpTransport_urllib):
+            req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
+                          headers={"Content-Type": "application/x-git-upload-pack-request"})
+            req.follow_redirections = True
+            resp = transport._perform(req)
+            if resp.code == 404:
+                raise bzr_errors.NotBranchError(transport.base)
+            headers = resp.headers
+        else:
+            try:
+                from bzrlib.transport.http._pycurl import PyCurlTransport
+            except bzr_errors.DependencyNotPresent:
+                raise bzr_errors.NotBranchError(transport.base)
+            else:
+                import pycurl
+                from cStringIO import StringIO
+                if isinstance(transport, PyCurlTransport):
+                    conn = transport._get_curl()
+                    conn.setopt(pycurl.URL, url)
+                    transport._set_curl_options(conn)
+                    conn.setopt(pycurl.HTTPGET, 1)
+                    conn.setopt(pycurl.NOBODY, 1)
+                    header = StringIO()
+                    data = StringIO()
+                    conn.setopt(pycurl.HEADERFUNCTION, header.write)
+                    conn.setopt(pycurl.WRITEFUNCTION, data.write)
+                    transport._curl_perform(conn, header,
+                        ["Content-Type: application/x-git-upload-pack-request"])
+                    code = conn.getinfo(pycurl.HTTP_CODE)
+                    if code == 404:
+                        raise bzr_errors.NotBranchError(transport.base)
+                    headers = transport._parse_headers(header)
+                else:
+                    raise bzr_errors.NotBranchError(transport.base)
+        ct = headers.getheader("Content-Type")
+        if ct.startswith("application/x-git"):
+            from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
+            return RemoteGitControlDirFormat()
+        else:
+            from bzrlib.plugins.git.dir import (
+                BareLocalGitControlDirFormat,
+                )
+            return BareLocalGitControlDirFormat()
+
     def probe_transport(self, transport):
-        url = transport.base
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
-        if (not url.startswith("git://") and not url.startswith("git+")):
+        try:
+            external_url = transport.external_url()
+        except bzr_errors.InProcessTransport:
+            raise bzr_errors.NotBranchError(path=transport.base)
+
+        if (external_url.startswith("http:") or
+            external_url.startswith("https:")):
+            return self.probe_http_transport(transport)
+
+        if (not external_url.startswith("git://") and
+            not external_url.startswith("git+")):
             raise bzr_errors.NotBranchError(transport.base)
+
         # little ugly, but works
         from bzrlib.plugins.git.remote import (
             GitSmartTransport,
             RemoteGitControlDirFormat,
             )
-        if not isinstance(transport, GitSmartTransport):
-            raise bzr_errors.NotBranchError(transport.base)
-        return RemoteGitControlDirFormat()
+        if isinstance(transport, GitSmartTransport):
+            return RemoteGitControlDirFormat()
+        raise bzr_errors.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
@@ -198,7 +254,7 @@ if not getattr(Prober, "known_formats", None): # bzr < 2.4
     RevisionTree.get_file_revision = get_file_revision
 
 ControlDirFormat.register_prober(LocalGitProber)
-ControlDirFormat.register_prober(RemoteGitProber)
+ControlDirFormat._server_probers.insert(0, RemoteGitProber)
 
 register_transport_proto('git://',
         help="Access using the Git smart server protocol.")
