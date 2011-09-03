@@ -289,6 +289,21 @@ class TemporaryPackIterator(Pack):
             os.remove(self._data_path)
 
 
+class BzrGitHttpClient(dulwich.client.HttpGitClient):
+
+    def __init__(self, transport, *args, **kwargs):
+        self.transport = transport
+        super(BzrGitHttpClient, self).__init__(transport.external_url(), *args, **kwargs)
+        import urllib2
+        self._http_perform = getattr(self.transport, "_perform", urllib2.urlopen)
+
+    def _perform(self, req):
+        req.accepted_errors = (200, 404)
+        req.follow_redirections = True
+        req.redirected_to = None
+        return self._http_perform(req)
+
+
 class RemoteGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
 
@@ -311,8 +326,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
             client_path = transport._get_path()
         elif urlparse.urlsplit(transport.external_url())[0] in ("http", "https"):
             def get_client(thin_packs=False):
-                return dulwich.client.HttpGitClient(transport._host, transport._port,
-                    transport._user, transport._password, thin_packs=thin_packs)
+                return BzrGitHttpClient(transport, thin_packs=thin_packs)
             client_path = transport._path
         else:
             raise NotBranchError(transport.base)
