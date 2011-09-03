@@ -138,25 +138,6 @@ class GitSmartTransport(Transport):
     def _get_path(self):
         return urlutils.split_segment_parameters_raw(self._path)[0]
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
-        if progress is None:
-            def progress(text):
-                trace.info("git: %s" % text)
-        client = self._get_client(thin_packs=False)
-        try:
-            return client.fetch_pack(self._get_path(), determine_wants,
-                graph_walker, pack_data, progress)
-        except GitProtocolError, e:
-            raise parse_git_error(self.external_url(), e)
-
-    def send_pack(self, get_changed_refs, generate_pack_contents):
-        client = self._get_client(thin_packs=False)
-        try:
-            return client.send_pack(self._get_path(), get_changed_refs,
-                generate_pack_contents)
-        except GitProtocolError, e:
-            raise parse_git_error(self.external_url(), e)
-
     def get(self, path):
         raise NoSuchFile(path)
 
@@ -216,12 +197,32 @@ class SSHGitSmartTransport(GitSmartTransport):
 
 class RemoteGitDir(GitDir):
 
-    def __init__(self, transport, lockfiles, format):
+    def __init__(self, transport, lockfiles, format, get_client):
         self._format = format
         self.root_transport = transport
         self.transport = transport
         self._lockfiles = lockfiles
         self._mode_check_done = None
+        self._get_client = get_client
+
+    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+        if progress is None:
+            def progress(text):
+                trace.info("git: %s" % text)
+        client = self._get_client(thin_packs=False)
+        try:
+            return client.fetch_pack(self.transport._get_path(), determine_wants,
+                graph_walker, pack_data, progress)
+        except GitProtocolError, e:
+            raise parse_git_error(self.transport.external_url(), e)
+
+    def send_pack(self, get_changed_refs, generate_pack_contents):
+        client = self._get_client(thin_packs=False)
+        try:
+            return client.send_pack(self.transport._get_path(), get_changed_refs,
+                generate_pack_contents)
+        except GitProtocolError, e:
+            raise parse_git_error(self.transport.external_url(), e)
 
     @property
     def user_url(self):
@@ -308,7 +309,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         if not isinstance(transport, GitSmartTransport):
             raise NotBranchError(transport.base)
         lockfiles = GitLockableFiles(transport, GitLock())
-        return RemoteGitDir(transport, lockfiles, self)
+        return RemoteGitDir(transport, lockfiles, self, transport._get_client)
 
     def get_format_description(self):
         return "Remote Git Repository"
@@ -333,17 +334,17 @@ class RemoteGitRepository(GitRepository):
     def get_refs(self):
         if self._refs is not None:
             return self._refs
-        self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None,
+        self._refs = self.bzrdir.fetch_pack(lambda x: [], None,
             lambda x: None, lambda x: trace.mutter("git: %s" % x))
         return self._refs
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
-        return self._transport.fetch_pack(determine_wants, graph_walker,
+        return self.bzrdir.fetch_pack(determine_wants, graph_walker,
                                           pack_data, progress)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
-        return self._transport.send_pack(get_changed_refs, generate_pack_contents)
+        return self.bzrdir.send_pack(get_changed_refs, generate_pack_contents)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
                       progress=None):
