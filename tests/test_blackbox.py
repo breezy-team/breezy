@@ -161,3 +161,18 @@ class TestGitBlackBox(ExternalBase):
         self.assertEquals(error, '')
         self.assertEquals(output, 'Created a standalone tree (format: git)\n')
 
+    def test_diff_format(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add(['a'])
+        output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
+        self.assertEqual(error, '')
+        self.assertEqual(output,
+            'diff --git /dev/null b/a\n'
+            'old mode 0\n'
+            'new mode 100644\n'
+            'index 0000000..c197bd8 100644\n'
+            '--- /dev/null\n'
+            '+++ b/a\n'
+            '@@ -1,0 +1,1 @@\n'
+            '+contents of a\n')
