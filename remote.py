@@ -64,7 +64,8 @@ from bzrlib.plugins.git.refs import (
     branch_name_to_ref,
     )
 
-import dulwich as git
+import dulwich
+import dulwich.client
 from dulwich.errors import (
     GitProtocolError,
     )
@@ -163,7 +164,7 @@ class TCPGitSmartTransport(GitSmartTransport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port,
+        return dulwich.client.TCPGitClient(self._host, self._port,
             thin_packs=thin_packs, report_activity=self._report_activity)
 
 
@@ -183,7 +184,7 @@ class SSHGitSmartTransport(GitSmartTransport):
             self._client = None
             return ret
         location_config = config.LocationConfig(self.base)
-        client = git.client.SSHGitClient(self._host, self._port, self._username,
+        client = dulwich.client.SSHGitClient(self._host, self._port, self._username,
             thin_packs=thin_packs, report_activity=self._report_activity)
         # Set up alternate pack program paths
         upload_pack = location_config.get_user_option('git_upload_pack')
@@ -197,13 +198,14 @@ class SSHGitSmartTransport(GitSmartTransport):
 
 class RemoteGitDir(GitDir):
 
-    def __init__(self, transport, lockfiles, format, get_client):
+    def __init__(self, transport, lockfiles, format, get_client, client_path):
         self._format = format
         self.root_transport = transport
         self.transport = transport
         self._lockfiles = lockfiles
         self._mode_check_done = None
         self._get_client = get_client
+        self._client_path = client_path
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
@@ -211,7 +213,7 @@ class RemoteGitDir(GitDir):
                 trace.info("git: %s" % text)
         client = self._get_client(thin_packs=False)
         try:
-            return client.fetch_pack(self.transport._get_path(), determine_wants,
+            return client.fetch_pack(self._client_path, determine_wants,
                 graph_walker, pack_data, progress)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
@@ -219,7 +221,7 @@ class RemoteGitDir(GitDir):
     def send_pack(self, get_changed_refs, generate_pack_contents):
         client = self._get_client(thin_packs=False)
         try:
-            return client.send_pack(self.transport._get_path(), get_changed_refs,
+            return client.send_pack(self._client_path, get_changed_refs,
                 generate_pack_contents)
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
@@ -304,12 +306,18 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
-        if (not url.startswith("git://") and not url.startswith("git+")):
-            raise NotBranchError(transport.base)
-        if not isinstance(transport, GitSmartTransport):
+        if isinstance(transport, GitSmartTransport):
+            get_client = transport._get_client
+            client_path = transport._get_path()
+        elif urlparse.urlsplit(transport.external_url())[0] in ("http", "https"):
+            def get_client(thin_packs=False):
+                return dulwich.client.HttpGitClient(transport._host, transport._port,
+                    transport._user, transport._password, thin_packs=thin_packs)
+            client_path = transport._path
+        else:
             raise NotBranchError(transport.base)
         lockfiles = GitLockableFiles(transport, GitLock())
-        return RemoteGitDir(transport, lockfiles, self, transport._get_client)
+        return RemoteGitDir(transport, lockfiles, self, get_client, client_path)
 
     def get_format_description(self):
         return "Remote Git Repository"

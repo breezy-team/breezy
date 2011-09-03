@@ -5,6 +5,10 @@
   * Only actually fetch tags if "branch.fetch_tags" is set to true.
     (Jelmer Vernooij, #771184)
 
+ FEATURES
+
+  * Support the git http smart server protocol. (Jelmer Vernooij, #581933)
+
 0.6.2	2011-08-07
 
  FEATURES
