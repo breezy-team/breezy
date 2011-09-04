@@ -83,6 +83,9 @@ class GitLockableFiles(lockable_files.LockableFiles):
         else:
             self._lock_warner = LockWarner(repr(self))
 
+    def __str__(self):
+        return 'GitLockableFiles(%s)' % (self._transport.base)
+
 
 class GitDirConfig(object):
 
