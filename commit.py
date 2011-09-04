@@ -72,6 +72,7 @@ class GitCommitBuilder(CommitBuilder):
         raise NotImplementedError(self.record_entry_contents)
 
     def record_delete(self, path, file_id):
+        assert type(path) == str
         self._override_fileids[path] = None
         self._blobs[path] = None
         self._any_changes = True
@@ -96,12 +97,12 @@ class GitCommitBuilder(CommitBuilder):
              executable) in iter_changes:
             if kind[1] in ("directory",):
                 if kind[0] in ("file", "symlink"):
-                    self.record_delete(path[0], file_id)
+                    self.record_delete(path[0].encode("utf-8"), file_id)
                 if path[1] == "":
                     seen_root = True
                 continue
             if path[1] is None:
-                self.record_delete(path[0], file_id)
+                self.record_delete(path[0].encode("utf-8"), file_id)
                 continue
             if kind[1] == "file":
                 mode = stat.S_IFREG
@@ -123,7 +124,7 @@ class GitCommitBuilder(CommitBuilder):
             if file_sha1 is None:
                 # File no longer exists
                 if path[0] is not None:
-                    self.record_delete(path[0], file_id)
+                    self.record_delete(path[0].encode("utf-8"), file_id)
                 continue
             _, st = workingtree.get_file_with_stat(file_id, path[1])
             yield file_id, path[1], (file_sha1, st)
