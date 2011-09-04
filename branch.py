@@ -702,25 +702,29 @@ class InterFromGitBranch(branch.GenericInterBranch):
             result.target_branch = _override_hook_target
         self.source.lock_read()
         try:
-            # We assume that during 'pull' the target repository is closer than
-            # the source one.
-            (result.old_revno, result.old_revid) = \
-                self.target.last_revision_info()
-            result.new_git_head, remote_refs = self._update_revisions(
-                stop_revision, overwrite=overwrite)
-            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite)
-            (result.new_revno, result.new_revid) = \
-                self.target.last_revision_info()
-            if _hook_master:
-                result.master_branch = _hook_master
-                result.local_branch = result.target_branch
-            else:
-                result.master_branch = result.target_branch
-                result.local_branch = None
-            if run_hooks:
-                for hook in branch.Branch.hooks['post_pull']:
-                    hook(result)
+            self.target.lock_write()
+            try:
+                # We assume that during 'pull' the target repository is closer than
+                # the source one.
+                (result.old_revno, result.old_revid) = \
+                    self.target.last_revision_info()
+                result.new_git_head, remote_refs = self._update_revisions(
+                    stop_revision, overwrite=overwrite)
+                result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+                    overwrite)
+                (result.new_revno, result.new_revid) = \
+                    self.target.last_revision_info()
+                if _hook_master:
+                    result.master_branch = _hook_master
+                    result.local_branch = result.target_branch
+                else:
+                    result.master_branch = result.target_branch
+                    result.local_branch = None
+                if run_hooks:
+                    for hook in branch.Branch.hooks['post_pull']:
+                        hook(result)
+            finally:
+                self.target.unlock()
         finally:
             self.source.unlock()
         return result
@@ -819,17 +823,25 @@ class InterGitLocalGitBranch(InterGitBranch):
         result = GitPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        result.old_revid = self.target.last_revision()
-        refs, stop_revision = self.update_refs(stop_revision)
-        self.target.generate_revision_history(stop_revision, result.old_revid)
-        result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-            overwrite=overwrite, source_refs=refs)
-        result.new_revid = self.target.last_revision()
-        result.local_branch = None
-        result.master_branch = result.target
-        if run_hooks:
-            for hook in branch.Branch.hooks['post_pull']:
-                hook(result)
+        self.source.lock_read()
+        try:
+            self.target.lock_write()
+            try:
+                result.old_revid = self.target.last_revision()
+                refs, stop_revision = self.update_refs(stop_revision)
+                self.target.generate_revision_history(stop_revision, result.old_revid)
+                result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+                    overwrite=overwrite, source_refs=refs)
+                result.new_revid = self.target.last_revision()
+                result.local_branch = None
+                result.master_branch = result.target_branch
+                if run_hooks:
+                    for hook in branch.Branch.hooks['post_pull']:
+                        hook(result)
+            finally:
+                self.target.unlock()
+        finally:
+            self.source.unlock()
         return result
 
 
@@ -872,24 +884,32 @@ class InterToGitBranch(branch.GenericInterBranch):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
-        def update_refs(old_refs):
-            # FIXME: Check for diverged branches
-            return new_refs
+        self.source.lock_read()
         try:
-            result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                update_refs, lossy=False)
-        except NoPushSupport:
-            raise errors.NoRoundtrippingSupport(self.source, self.target)
-        (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
-        if result.old_revid is None:
-            result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
-        result.new_revid = new_refs[main_ref][1]
-        result.local_branch = None
-        result.master_branch = self.target
-        if run_hooks:
-            for hook in branch.Branch.hooks['post_pull']:
-                hook(result)
+            self.target.lock_write()
+            try:
+                new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
+                def update_refs(old_refs):
+                    # FIXME: Check for diverged branches
+                    return new_refs
+                try:
+                    result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
+                        update_refs, lossy=False)
+                except NoPushSupport:
+                    raise errors.NoRoundtrippingSupport(self.source, self.target)
+                (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
+                if result.old_revid is None:
+                    result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
+                result.new_revid = new_refs[main_ref][1]
+                result.local_branch = None
+                result.master_branch = self.target
+                if run_hooks:
+                    for hook in branch.Branch.hooks['post_pull']:
+                        hook(result)
+            finally:
+                self.target.unlock()
+        finally:
+            self.source.unlock()
         return result
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
@@ -911,6 +931,8 @@ class InterToGitBranch(branch.GenericInterBranch):
             result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
         result.new_revid = new_refs[main_ref][1]
         (result.new_original_revno, result.new_original_revid) = stop_revinfo
+        for hook in branch.Branch.hooks['post_push']:
+            hook(result)
         return result
 
     def lossy_push(self, stop_revision=None):
