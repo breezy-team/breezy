@@ -337,8 +337,6 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
-        if not after:
-            os.rename(self.abspath(from_rel), self.abspath(to_rel))
         from_path = from_rel.encode("utf-8")
         to_path = to_rel.encode("utf-8")
         if not self.has_filename(to_rel):
@@ -347,6 +345,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         if not from_path in self.index:
             raise errors.BzrMoveFailedError(from_rel, to_rel,
                 errors.NotVersionedError(path=from_rel))
+        if not after:
+            os.rename(self.abspath(from_rel), self.abspath(to_rel))
         self.index[to_path] = self.index[from_path]
         del self.index[from_path]
         self.flush()
@@ -695,7 +695,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             dir_file_id = self.path2id(dirname)
             assert isinstance(value, tuple) and len(value) == 10
             (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-            stat_result = posix.stat_result((mode, ino,
+            stat_result = stat_result((mode, ino,
                     dev, 1, uid, gid, size,
                     0, mtime, ctime))
             per_dir[(dirname, dir_file_id)].append(
