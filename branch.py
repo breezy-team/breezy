@@ -917,6 +917,8 @@ class InterToGitBranch(branch.GenericInterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
+        result.local_branch = None
+        result.master_branch = result.target_branch
         new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
             # FIXME: Check for diverged branches
