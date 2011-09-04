@@ -642,6 +642,9 @@ class BazaarObjectStore(BaseObjectStore):
                 try:
                     rev = self.repository.get_revision(revid)
                 except errors.NoSuchRevision:
+                    if revid == NULL_REVISION:
+                        raise AssertionError(
+                            "should not try to look up NULL_REVISION")
                     trace.mutter('entry for %s %s in shamap: %r, but not '
                                  'found in repository', kind, sha, type_data)
                     raise KeyError(sha)
