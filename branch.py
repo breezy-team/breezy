@@ -825,6 +825,11 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
             overwrite=overwrite, source_refs=refs)
         result.new_revid = self.target.last_revision()
+        result.local_branch = None
+        result.master_branch = result.target
+        if run_hooks:
+            for hook in branch.Branch.hooks['post_pull']:
+                hook(result)
         return result
 
 
@@ -880,6 +885,11 @@ class InterToGitBranch(branch.GenericInterBranch):
         if result.old_revid is None:
             result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
         result.new_revid = new_refs[main_ref][1]
+        result.local_branch = None
+        result.master_branch = self.target
+        if run_hooks:
+            for hook in branch.Branch.hooks['post_pull']:
+                hook(result)
         return result
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
