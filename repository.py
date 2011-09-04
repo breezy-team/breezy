@@ -238,7 +238,6 @@ class LocalGitRepository(GitRepository):
                     else:
                         raise AssertionError("file text resolved to %r" % obj)
 
-
     def _iter_revision_ids(self):
         mapping = self.get_mapping()
         for sha in self._git.object_store:
@@ -262,7 +261,7 @@ class LocalGitRepository(GitRepository):
         if type(revid) != str:
             raise ValueError
         try:
-            hexsha, mapping = self.lookup_bzr_revision_id(revid)
+            (hexsha, mapping) = self.lookup_bzr_revision_id(revid)
         except errors.NoSuchRevision:
             return None
         try:
@@ -338,11 +337,22 @@ class LocalGitRepository(GitRepository):
             return rev.revision_id
 
     def has_signature_for_revision_id(self, revision_id):
+        """Check whether a GPG signature is present for this revision.
+
+        This is never the case for Git repositories.
+        """
         return False
 
     def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
+        """Lookup a bzr revision id in a Git repository.
+
+        :param bzr_revid: Bazaar revision id
+        :param mapping: Optional mapping to use
+        :return: Tuple with git commit id, mapping that was used and supplement
+            details
+        """
         try:
-            return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
+            (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
             if mapping is None:
                 mapping = self.get_mapping()
@@ -360,6 +370,8 @@ class LocalGitRepository(GitRepository):
                     if roundtrip_revid == bzr_revid:
                         return git_sha, mapping
                 raise errors.NoSuchRevision(self, bzr_revid)
+        else:
+            return (git_sha, mapping)
 
     def get_revision(self, revision_id):
         if not isinstance(revision_id, str):
