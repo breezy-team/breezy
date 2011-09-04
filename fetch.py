@@ -128,7 +128,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
         blob = lookup_object(hexsha)
         if ie.kind == "symlink":
             ie.revision = None
-            ie.symlink_target = blob.data
+            ie.symlink_target = blob.data.decode("utf-8")
         else:
             ie.text_size = sum(imap(len, blob.chunked))
             ie.text_sha1 = osutils.sha_strings(blob.chunked)
