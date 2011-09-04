@@ -24,6 +24,7 @@ from dulwich.objects import (
 from dulwich.object_store import (
     tree_lookup_path,
     )
+from dulwich.walk import Walker
 from itertools import (
     imap,
     )
@@ -446,6 +447,8 @@ def import_git_objects(repo, mapping, object_iter,
         if pb is not None:
             pb.update("finding revisions to fetch", len(graph), None)
         head = heads.pop()
+        if head == ZERO_SHA:
+            continue
         assert isinstance(head, str)
         try:
             o = lookup_object(head)
@@ -502,7 +505,7 @@ def import_git_objects(repo, mapping, object_iter,
     return pack_hints, last_imported
 
 
-class InterGitRepository(InterRepository):
+class InterFromGitRepository(InterRepository):
 
     _matching_repo_format = GitRepositoryFormat()
 
@@ -532,8 +535,29 @@ class InterGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
+    def search_missing_revision_ids(self,
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
+        git_shas = []
+        todo = []
+        if revision_ids:
+            todo.extend(revision_ids)
+        if if_present_ids:
+            todo.extend(revision_ids)
+        for revid in revision_ids:
+            if revid == NULL_REVISION:
+                continue
+            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+            git_shas.append(git_sha)
+        walker = Walker(self.source._git.object_store,
+            include=git_shas, exclude=[sha for sha in self.target._git.get_refs().values() if sha != ZERO_SHA])
+        missing_revids = set()
+        for entry in walker:
+            missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
+        return self.source.revision_ids_to_search_result(missing_revids)
 
-class InterGitNonGitRepository(InterGitRepository):
+
+class InterGitNonGitRepository(InterFromGitRepository):
     """Base InterRepository that copies revisions from a Git into a non-Git
     repository."""
 
@@ -710,7 +734,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         return True
 
 
-class InterGitGitRepository(InterGitRepository):
+class InterGitGitRepository(InterFromGitRepository):
     """InterRepository that copies between Git repositories."""
 
     def fetch_objects(self, determine_wants, mapping, pb=None):
@@ -756,8 +780,7 @@ class InterGitGitRepository(InterGitRepository):
             else:
                 raise AssertionError(
                     "Unsupported search result type %s" % recipe[0])
-            args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in
-                    heads]
+            args = [self.source.lookup_bzr_revision_id(revid)[0] for revid in heads]
         if branches is not None:
             determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store and x[y] != ZERO_SHA]
         elif fetch_spec is None and revision_id is None:
