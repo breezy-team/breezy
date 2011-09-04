@@ -383,7 +383,7 @@ class TransportObjectStore(PackBasedObjectStore):
         self._alternates = []
         for path in self._read_alternate_paths():
             # FIXME: Check path
-            t = _mod_transport.get_transport_from_path(path)))
+            t = _mod_transport.get_transport_from_path(path)
             self._alternates.append(self.__class__(t))
         return self._alternates
 

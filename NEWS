@@ -5,6 +5,8 @@
   * Only actually fetch tags if "branch.fetch_tags" is set to true.
     (Jelmer Vernooij, #771184)
 
+  * Add basic support for alternates. (Jelmer Vernooij)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)
