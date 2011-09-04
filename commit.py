@@ -117,7 +117,8 @@ class GitCommitBuilder(CommitBuilder):
             if executable[1]:
                 mode |= 0111
             self._any_changes = True
-            self._blobs[path[1].encode("utf-8")] = (mode, sha)
+            encoded_new_path = path[1].encode("utf-8")
+            self._blobs[encoded_new_path] = (mode, sha)
             file_sha1 = workingtree.get_file_sha1(file_id, path[1])
             if file_sha1 is None:
                 # File no longer exists
@@ -126,7 +127,7 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             _, st = workingtree.get_file_with_stat(file_id, path[1])
             yield file_id, path[1], (file_sha1, st)
-            self._override_fileids[path[1]] = file_id
+            self._override_fileids[encoded_new_path] = file_id
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):
@@ -154,7 +155,13 @@ class GitCommitBuilder(CommitBuilder):
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
             except AttributeError:
                 fileid_map = {}
-            fileid_map.update(self._override_fileids)
+            for path, file_id in self._override_fileids.iteritems():
+                assert type(path) == str
+                if file_id is None:
+                    del fileid_map[path]
+                else:
+                    assert type(file_id) == str
+                    fileid_map[path] = file_id
             if fileid_map:
                 fileid_blob = self._mapping.export_fileid_map(fileid_map)
                 self.store.add_object(fileid_blob)
