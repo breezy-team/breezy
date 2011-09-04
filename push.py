@@ -16,6 +16,9 @@
 
 """Push implementation that simply prints message saying push is not supported."""
 
+from dulwich.objects import ZERO_SHA
+from dulwich.walk import Walker
+
 from bzrlib import (
     errors,
     ui,
@@ -124,6 +127,32 @@ class InterToGitRepository(InterRepository):
         :return: old refs, new refs
         """
         raise NotImplementedError(self.fetch_refs)
+
+    def search_missing_revision_ids(self,
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
+        git_shas = []
+        todo = []
+        if revision_ids:
+            todo.extend(revision_ids)
+        if if_present_ids:
+            todo.extend(revision_ids)
+        self.source_store.lock_read()
+        try:
+            for revid in revision_ids:
+                if revid == NULL_REVISION:
+                    continue
+                git_sha = self.source_store._lookup_revision_sha1(revid)
+                git_shas.append(git_sha)
+            walker = Walker(self.source_store,
+                include=git_shas, exclude=[sha for sha in self.target._git.get_refs().values() if sha != ZERO_SHA])
+            missing_revids = set()
+            for entry in walker:
+                # FIXME: This blindly takes the first revision
+                missing_revids.add(self.source_store.lookup_git_sha(entry.commit.id)[0])
+        finally:
+            self.source_store.unlock()
+        return self.source.revision_ids_to_search_result(missing_revids)
 
 
 class InterToLocalGitRepository(InterToGitRepository):
