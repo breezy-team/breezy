@@ -279,6 +279,7 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
             oldname = None
             oldparent = None
         else:
+            oldpath = oldpath.decode("utf-8")
             oldexe = mode_is_executable(oldmode)
             oldkind = mode_kind(oldmode)
             try:
@@ -295,6 +296,7 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
             newname = None
             newparent = None
         else:
+            newpath = newpath.decode("utf-8")
             newexe = mode_is_executable(newmode)
             newkind = mode_kind(newmode)
             try:
