@@ -18,6 +18,8 @@
 
 from cStringIO import StringIO
 
+import os
+
 from dulwich.errors import (
     NotGitRepository,
     NoIndexPresent,
@@ -52,6 +54,9 @@ from dulwich.repo import (
     write_packed_refs,
     )
 
+from bzrlib import (
+    transport as _mod_transport,
+    )
 from bzrlib.errors import (
     FileExists,
     NoSuchFile,
@@ -363,12 +368,42 @@ class TransportObjectStore(PackBasedObjectStore):
         super(TransportObjectStore, self).__init__()
         self.transport = transport
         self.pack_transport = self.transport.clone(PACKDIR)
+        self._alternates = None
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
     def _pack_cache_stale(self):
         return False # FIXME
+
+    @property
+    def alternates(self):
+        if self._alternates is not None:
+            return self._alternates
+        self._alternates = []
+        for path in self._read_alternate_paths():
+            # FIXME: Check path
+            t = _mod_transport.get_transport_from_path(path)))
+            self._alternates.append(self.__class__(t))
+        return self._alternates
+
+    def _read_alternate_paths(self):
+        try:
+            f = self.transport.get("info/alternates")
+        except NoSuchFile:
+            return []
+        ret = []
+        try:
+            for l in f.readlines():
+                l = l.rstrip("\n")
+                if l[0] == "#":
+                    continue
+                if os.path.isabs(l):
+                    continue
+                ret.append(l)
+            return ret
+        finally:
+            f.close()
 
     def _pack_names(self):
         try:
@@ -514,8 +549,6 @@ class TransportObjectStore(PackBasedObjectStore):
         final_pack = Pack("pack-%s" % pack_sha)
         self._add_known_pack(final_pack)
         return final_pack
-
-
 
     def add_pack(self):
         """Add a new pack to this object store. 
