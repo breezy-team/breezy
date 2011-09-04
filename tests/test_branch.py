@@ -32,6 +32,7 @@ import os
 from bzrlib import (
     errors,
     revision,
+    urlutils,
     )
 from bzrlib.branch import (
     Branch,
@@ -69,7 +70,9 @@ class TestGitBranch(tests.TestCaseInTempDir):
         d = BzrDir.open('.')
         thebranch = d.create_branch()
         self.assertEquals(
-            "<LocalGitBranch('file://%s/', 'master')>" % self.test_dir, repr(thebranch))
+            "<LocalGitBranch('%s/', 'master')>" % (
+                urlutils.local_path_to_url(self.test_dir),),
+            repr(thebranch))
 
     def test_last_revision_is_null(self):
         GitRepo.init('.')
