@@ -148,8 +148,9 @@ class InterToGitRepository(InterRepository):
                 include=git_shas, exclude=[sha for sha in self.target._git.get_refs().values() if sha != ZERO_SHA])
             missing_revids = set()
             for entry in walker:
-                # FIXME: This blindly takes the first revision
-                missing_revids.add(self.source_store.lookup_git_sha(entry.commit.id)[0])
+                for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
+                    if kind == "commit":
+                        missing_revids.add(type_data[0])
         finally:
             self.source_store.unlock()
         return self.source.revision_ids_to_search_result(missing_revids)
