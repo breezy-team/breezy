@@ -34,7 +34,7 @@ from dulwich.objects import (
     ZERO_SHA,
     )
 import os
-import posix
+from posix import stat_result
 import posixpath
 import stat
 import sys
@@ -131,7 +131,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             except (errors.NoSuchFile, IOError):
                 # TODO: Rather than come up with something here, use the old index
                 file = StringIO()
-                from posix import stat_result
                 stat_val = stat_result((stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(file.read())
         elif kind == "symlink":
@@ -141,7 +140,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             except (errors.NoSuchFile, OSError):
                 # TODO: Rather than come up with something here, use the 
                 # old index
-                from posix import stat_result
                 stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(
                 self.get_symlink_target(file_id, path).encode("utf-8"))
