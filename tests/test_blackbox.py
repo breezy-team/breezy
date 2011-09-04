@@ -30,7 +30,6 @@ from bzrlib.bzrdir import (
     )
 
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import KnownFailure
 
 from bzrlib.plugins.git import (
     tests,
@@ -100,7 +99,7 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
 
         if bzrlib_version < (2, 4):
-            raise KnownFailure("bzr info uses inventory on bzr < 2.4")
+            self.knownFailure("bzr info uses inventory on bzr < 2.4")
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
@@ -110,7 +109,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertTrue("repository: Git Repository" in output)
 
     def test_push_roundtripping(self):
-        raise KnownFailure("roundtripping is not yet supported")
+        self.knownFailure("roundtripping is not yet supported")
         self.with_roundtripping()
         os.mkdir("bla")
         GitRepo.init(os.path.join(self.test_dir, "bla"))
