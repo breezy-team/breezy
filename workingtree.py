@@ -34,7 +34,7 @@ from dulwich.objects import (
     ZERO_SHA,
     )
 import os
-import posix
+# GZ 2011-09-04: Should use os.path instead unless certain of posix format.
 import posixpath
 import stat
 import sys
@@ -131,8 +131,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             except (errors.NoSuchFile, IOError):
                 # TODO: Rather than come up with something here, use the old index
                 file = StringIO()
-                from posix import stat_result
-                stat_val = stat_result((stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+                stat_val = os.stat_result(
+                    (stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(file.read())
         elif kind == "symlink":
             blob = Blob()
@@ -141,8 +141,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             except (errors.NoSuchFile, OSError):
                 # TODO: Rather than come up with something here, use the 
                 # old index
-                from posix import stat_result
-                stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+                stat_val = os.stat_result(
+                    (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             blob.set_raw_string(
                 self.get_symlink_target(file_id, path).encode("utf-8"))
         else:
@@ -695,7 +695,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             dir_file_id = self.path2id(dirname)
             assert isinstance(value, tuple) and len(value) == 10
             (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-            stat_result = posix.stat_result((mode, ino,
+            stat_result = os.stat_result((mode, ino,
                     dev, 1, uid, gid, size,
                     0, mtime, ctime))
             per_dir[(dirname, dir_file_id)].append(
