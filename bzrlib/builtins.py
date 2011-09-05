@@ -3236,15 +3236,31 @@ class cmd_commit(Command):
     aliases = ['ci', 'checkin']
 
     def _iter_bug_fix_urls(self, fixes, branch):
+        default_bugtracker  = None
         # Configure the properties for bug fixing attributes.
         for fixed_bug in fixes:
             tokens = fixed_bug.split(':')
-            if len(tokens) != 2:
+            if len(tokens) == 1:
+                if default_bugtracker is None:
+                    branch_config = branch.get_config()
+                    default_bugtracker = branch_config.get_user_option(
+                        "bugtracker")
+                if default_bugtracker is None:
+                    raise errors.BzrCommandError(
+                        "No tracker specified for bug %s. Use the form "
+                        "'tracker:id' or specify a default bug tracker "
+                        "using the `bugtracker` option.\nSee "
+                        "\"bzr help bugs\" for more information on this "
+                        "feature. Commit refused." % fixed_bug)
+                tag = default_bugtracker
+                bug_id = tokens[0]
+            elif len(tokens) != 2:
                 raise errors.BzrCommandError(
                     "Invalid bug %s. Must be in the form of 'tracker:id'. "
                     "See \"bzr help bugs\" for more information on this "
                     "feature.\nCommit refused." % fixed_bug)
-            tag, bug_id = tokens
+            else:
+                tag, bug_id = tokens
             try:
                 yield bugtracker.get_bug_url(tag, branch, bug_id)
             except errors.UnknownBugTrackerAbbreviation:
@@ -5621,10 +5637,17 @@ class cmd_tag(Command):
                 if tag_name is None:
                     raise errors.BzrCommandError(
                         "Please specify a tag name.")
-            if (not force) and branch.tags.has_tag(tag_name):
+            try:
+                existing_target = branch.tags.lookup_tag(tag_name)
+            except errors.NoSuchTag:
+                existing_target = None
+            if not force and existing_target not in (None, revision_id):
                 raise errors.TagAlreadyExists(tag_name)
-            branch.tags.set_tag(tag_name, revision_id)
-            note('Created tag %s.' % tag_name)
+            if existing_target == revision_id:
+                note('Tag %s already exists for that revision.' % tag_name)
+            else:
+                branch.tags.set_tag(tag_name, revision_id)
+                note('Created tag %s.' % tag_name)
 
 
 class cmd_tags(Command):
