@@ -5646,7 +5646,12 @@ class cmd_tag(Command):
             if existing_target == revision_id:
                 note('Tag %s already exists for that revision.' % tag_name)
             else:
-                branch.tags.set_tag(tag_name, revision_id)
+                try:
+                    branch.tags.set_tag(tag_name, revision_id)
+                except errors.GhostTagsNotSupported:
+                    raise errors.BzrCommandError(
+                        "Branch format does not support tags on revisions "
+                        "not present in the branch.")
                 note('Created tag %s.' % tag_name)
 
 
