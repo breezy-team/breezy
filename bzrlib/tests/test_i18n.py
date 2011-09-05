@@ -16,7 +16,11 @@
 
 """Tests for bzrlib.i18n"""
 
-from bzrlib import i18n, tests, errors, workingtree
+from bzrlib import (i18n, 
+                    tests, 
+                    errors, 
+                    workingtree,
+                    )
 
 
 class ZzzTranslations(object):
