@@ -144,11 +144,9 @@ class BzrError(StandardError):
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
             i18n.install()
-            if type(fmt) == str:
-                unicode_fmt = unicode(fmt, 'utf-8')
-            elif type(fmt) == unicode:
+            unicode_fmt = osutils.safe_unicode(fmt)
+            if type(fmt) == unicode:
                 trace.mutter("Unicode strings in error.fmt are deprecated")
-                unicode_fmt = fmt
             return gettext(unicode_fmt).encode('utf-8')
         fmt = getattr(self, '__doc__', None)
         if fmt is not None:
