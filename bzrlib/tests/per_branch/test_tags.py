@@ -484,7 +484,7 @@ class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
             get_tag_name, 'get tag name foo')
         self.assertEquals("foo", self.branch.automatic_tag_name(
             self.branch.last_revision()))
-    
+
     def test_uses_first_return(self):
         get_tag_name_1 = lambda br, revid: "foo1"
         get_tag_name_2 = lambda br, revid: "foo2"
