@@ -357,6 +357,15 @@ Making the source tarball
    ``BZR_DISABLE_PLUGINS`` or ``BZR_PLUGIN_PATH=-site`` to disable one or
    all plugins.
 
+   Until <http://pad.lv/839461> is fixed, you may encounter issues if you
+   cut a release for old stable branches (<= 2.2) and use a more recent
+   OS/distro. If that's the case, check the bug status and use the following
+   workaround if no fix is available::
+
+     export TTPATH=<local branch of lp:testtools -r 0.9.2>
+     export SUPATH=<local branch of lp:subunit -r 0.0.6>
+     PYTHONPATH=$TTPATH:$SUPATH/python PATH=$SUPATH/filters:${PATH} BZR_PLUGIN_PATH=-site make check-dist-tarball PYTHON=python2.6 | subunit2pyunit
+
    Remember that PQM has just tested everything too, this step is
    particularly testing that the pyrex extensions, which are updated
    by your local pyrex version when you run make dist, are in good
@@ -486,7 +495,9 @@ Now that the release is publicly available, tell people about it.
 
       The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
-      Bazaar is part of the GNU system <http://gnu.org/>.
+
+       Bazaar <http://bazaar.canonical.com/> is part of the GNU project
+       <http://gnu.org/> to produce a free operating system.
 
       <<Summary paragraph from news>>
 
