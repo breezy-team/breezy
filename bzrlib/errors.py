@@ -21,6 +21,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     i18n,
+    trace,
     )
 from bzrlib.i18n import gettext
 from bzrlib.patches import (
@@ -143,7 +144,12 @@ class BzrError(StandardError):
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
             i18n.install()
-            return gettext(fmt)
+            if type(fmt) == str:
+                unicode_fmt = unicode(fmt, 'utf-8')
+            elif type(fmt) == unicode:
+                trace.mutter("Unicode strings in error.fmt are deprecated")
+                unicode_fmt = fmt
+            return gettext(unicode_fmt).encode('utf-8')
         fmt = getattr(self, '__doc__', None)
         if fmt is not None:
             symbol_versioning.warn("%s uses its docstring as a format, "
