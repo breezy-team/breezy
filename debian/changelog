@@ -1,4 +1,4 @@
-bzr (2.5.0~bzr6120-1) unstable; urgency=medium
+bzr (2.5.0~bzr6120-1) UNRELEASED; urgency=medium
 
   * Ignore permission denied errors when opening configuration files.
     LP: #837324
@@ -6,6 +6,20 @@ bzr (2.5.0~bzr6120-1) unstable; urgency=medium
   * Add python-gpgme-dbg to build dependencies.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Thu, 01 Sep 2011 16:43:32 +0200
+
+bzr (2.4.0-3) unstable; urgency=medium
+
+  * Fix regression in open_write_stream, which breaks the bzr-builddeb
+    testsuite. Closes: #638219, LP: #831351
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 31 Aug 2011 14:21:44 +0200
+
+bzr (2.4.0-2) unstable; urgency=medium
+
+  * Ignore permission denied errors when opening configuration files.
+    LP: #837324, Closes: #639004
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 30 Aug 2011 14:12:41 +0200
 
 bzr (2.4.0-1) unstable; urgency=low
 
