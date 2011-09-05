@@ -84,7 +84,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def test_ghost_tag(self):
         b = self.make_branch('b')
-        if not b.tags.supports_ghosts:
+        if not b._format.supports_tags_referencing_ghosts():
             self.assertRaises(errors.GhostTagsNotSupported,
                 b.tags.set_tag, "ghost", "idontexist")
         else:

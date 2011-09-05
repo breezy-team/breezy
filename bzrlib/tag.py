@@ -44,13 +44,6 @@ from bzrlib import (
 
 class _Tags(object):
 
-    # Whether this tag container versions tags
-    versioned = False
-
-    # Does this tag container support references to revisions
-    # that are not present in the branch repository?
-    supports_ghosts = True
-
     def __init__(self, branch):
         self.branch = branch
 
