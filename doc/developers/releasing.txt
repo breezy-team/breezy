@@ -444,9 +444,15 @@ Announcing the source freeze
    targeted at packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue
    for platform maintainers and plugin authors to update their code.  This
-   is done before the general public announcement of the release.
+   is done before the general public announcement of the release. 
 
-#. Pause for a few days.
+   The freeze announcement generally guess the date of the official public
+   announcement, for the most recent stable series (the one supported by the
+   installers and most of the distributions) it's generally a few days after
+   the freeze. For older series supported only via SRUs for Ubuntu, we don't
+   control the process as tightly so guessing the date is not appropriate.
+
+#. Pause for a few days. 
 
 
 Publishing the release
@@ -483,7 +489,8 @@ Now that the release is publicly available, tell people about it.
    Once the installers are available, the mail can be sent to the
    ``bazaar-announce`` list too.
 
-   For stable releases, it should also be cc'd to ``info-gnu@gnu.org``,
+   For stable releases (excluding SRUs which are for older stable releases),
+   it should also be cc'd to ``info-gnu@gnu.org``,
    ``python-announce-list@python.org``, ``bug-directory@gnu.org``.
 
    In all cases, it is good to set ``Reply-To: bazaar@lists.canonical.com``,
@@ -519,8 +526,9 @@ Now that the release is publicly available, tell people about it.
    This should be done for beta releases and stable releases. If you do not
    have a Freshmeat account yet, ask one of the existing admins.
 
-   The purpose here is to point users to the latest stable release while still
-   publishing announcements for beta releases.
+   The purpose here is to point users to the latest stable release
+   (i.e. SRUs are excluded) while still publishing announcements for beta
+   releases.
 
    There are several kinds of modifications that could be done there via the
    ``Administration`` box in the lower right area of the page:
@@ -553,7 +561,7 @@ Now that the release is publicly available, tell people about it.
        python setup.py register
 
    Remember to check the results afterward -- this should be done for
-   stable releases but not for beta releases.
+   stable releases but not for beta releases nor SRUs.
 
    To be able to register the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of
