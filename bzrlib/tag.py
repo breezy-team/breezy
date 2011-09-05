@@ -47,6 +47,61 @@ class _Tags(object):
     def __init__(self, branch):
         self.branch = branch
 
+    def get_tag_dict(self):
+        """Return a dictionary mapping tags to revision ids.
+        """
+        raise NotImplementedError(self.get_tag_dict)
+
+    def get_reverse_tag_dict(self):
+        """Return a dictionary mapping revision ids to list of tags.
+        """
+        raise NotImplementedError(self.get_reverse_tag_dict)
+
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
+        """Merge new tags from this tags container into another.
+
+        :param to_tags: Tags container to merge into
+        :param overwrite: Whether to overwrite existing, divergent, tags.
+        :param ignore_master: Do not modify the tags in the target's master
+            branch (if any).  Default is false (so the master will be updated).
+            New in bzr 2.3.
+        :return: Tuple with tag updates as dictionary and tag conflicts
+        """
+        raise NotImplementedError(self.merge_to)
+
+    def set_tag(self, tag_name, revision):
+        """Set a tag.
+
+        :param tag_name: Tag name
+        :param revision: Revision id
+        """
+        raise NotImplementedError(self.set_tag)
+
+    def lookup_tag(self, tag_name):
+        """Look up a tag.
+
+        :param tag_name: Tag to look up
+        :raise NoSuchTag: Raised when tag does not exist
+        :return: Matching revision id
+        """
+        raise NotImplementedError(self.lookup_tag)
+
+    def delete_tag(self, tag_name):
+        """Delete a tag.
+
+        :param tag_name: Tag to delete
+        :raise NoSuchTag: Raised when tag does not exist
+        """
+        raise NotImplementedError(self.delete_tag)
+
+    def rename_revisions(self, rename_map):
+        """Replace revision ids according to a rename map.
+
+        :param rename_map: Dictionary mapping old revision ids to
+            new revision ids.
+        """
+        raise NotImplementedError(self.rename_revisions)
+
     def has_tag(self, tag_name):
         return self.get_tag_dict().has_key(tag_name)
 
@@ -262,7 +317,7 @@ class BasicTags(_Tags):
 
     def rename_revisions(self, rename_map):
         """Rename revisions in this tags dictionary.
-        
+
         :param rename_map: Dictionary mapping old revids to new revids
         """
         reverse_tags = self.get_reverse_tag_dict()
