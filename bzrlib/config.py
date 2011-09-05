@@ -107,6 +107,7 @@ from bzrlib.util.configobj import configobj
 from bzrlib import (
     commands,
     hooks,
+    lazy_regex,
     registry,
     )
 from bzrlib.symbol_versioning import (
@@ -2978,6 +2979,15 @@ class LocationMatcher(SectionMatcher):
 class Stack(object):
     """A stack of configurations where an option can be defined"""
 
+    _option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+    """Describes an exandable option reference.
+
+    We want to match the most embedded reference first.
+
+    I.e. for '{{foo}}' we will get '{foo}',
+    for '{bar{baz}}' we will get '{baz}'
+    """
+
     def __init__(self, sections_def, store=None, mutable_section_name=None):
         """Creates a stack of sections with an optional store for changes.
 
@@ -2996,7 +3006,7 @@ class Stack(object):
         self.store = store
         self.mutable_section_name = mutable_section_name
 
-    def get(self, name):
+    def get(self, name, expand=None):
         """Return the *first* option value found in the sections.
 
         This is where we guarantee that sections coming from Store are loaded
@@ -3004,8 +3014,16 @@ class Stack(object):
         option exists or get its value, which in turn may require to discover
         in which sections it can be defined. Both of these (section and option
         existence) require loading the store (even partially).
+
+        :param name: The queried option.
+
+        :param expand: Whether options references should be expanded.
+
+        :returns: The value of the option.
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
+        if expand is None:
+            expand = _get_expand_default_value()
         value = None
         # Ensuring lazy loading is achieved by delaying section matching (which
         # implies querying the persistent storage) until it can't be avoided
@@ -3030,14 +3048,150 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
-        if opt is not None:
+        if opt is not None and value is None:
+            # If the option is registered, it may provide a default value
+            value = opt.get_default()
+        if expand:
+            value = self._expand_option_value(value)
+        if opt is not None and value is not None:
             value = opt.convert_from_unicode(value)
             if value is None:
-                # The conversion failed or there was no value to convert,
-                # fallback to the default value
-                value = opt.convert_from_unicode(opt.get_default())
+                # The conversion failed, fallback to the default value
+                value = opt.get_default()
+                if expand:
+                    value = self._expand_option_value(value)
+                value = opt.convert_from_unicode(value)
         for hook in ConfigHooks['get']:
             hook(self, name, value)
+        return value
+
+    def _expand_option_value(self, value):
+        """Expand the option value depending on its type."""
+        if isinstance(value, list):
+            value = self._expand_options_in_list(value)
+        elif isinstance(value, dict):
+            trace.warning('Cannot expand "%s":'
+                          ' Dicts do not support option expansion'
+                          % (name,))
+        elif isinstance(value, (str, unicode)):
+            value = self._expand_options_in_string(value)
+        return value
+
+    def expand_options(self, string, env=None):
+        """Expand option references in the string in the configuration context.
+
+        :param string: The string containing option(s) to expand.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :returns: The expanded string.
+        """
+        return self._expand_options_in_string(string, env)
+
+    def _expand_options_in_list(self, slist, env=None, _refs=None):
+        """Expand options in  a list of strings in the configuration context.
+
+        :param slist: A list of strings.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _refs: Private list (FIFO) containing the options being
+            expanded to detect loops.
+
+        :returns: The flatten list of expanded strings.
+        """
+        # expand options in each value separately flattening lists
+        result = []
+        for s in slist:
+            value = self._expand_options_in_string(s, env, _refs)
+            if isinstance(value, list):
+                result.extend(value)
+            else:
+                result.append(value)
+        return result
+
+    def _expand_options_in_string(self, string, env=None, _refs=None):
+        """Expand options in the string in the configuration context.
+
+        :param string: The string to be expanded.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _refs: Private list (FIFO) containing the options being expanded
+            to detect loops.
+
+        :returns: The expanded string.
+        """
+        if string is None:
+            # Not much to expand there
+            return None
+        if _refs is None:
+            # What references are currently resolved (to detect loops)
+            _refs = []
+        result = string
+        # We need to iterate until no more refs appear ({{foo}} will need two
+        # iterations for example).
+        while True:
+            raw_chunks = Stack._option_ref_re.split(result)
+            if len(raw_chunks) == 1:
+                # Shorcut the trivial case: no refs
+                return result
+            chunks = []
+            list_value = False
+            # Split will isolate refs so that every other chunk is a ref
+            chunk_is_ref = False
+            for chunk in raw_chunks:
+                if not chunk_is_ref:
+                    if chunk:
+                        # Keep only non-empty strings (or we get bogus empty
+                        # slots when a list value is involved).
+                        chunks.append(chunk)
+                    chunk_is_ref = True
+                else:
+                    name = chunk[1:-1]
+                    if name in _refs:
+                        raise errors.OptionExpansionLoop(string, _refs)
+                    _refs.append(name)
+                    value = self._expand_option(name, env, _refs)
+                    if value is None:
+                        raise errors.ExpandingUnknownOption(name, string)
+                    if isinstance(value, list):
+                        list_value = True
+                        chunks.extend(value)
+                    else:
+                        chunks.append(value)
+                    _refs.pop()
+                    chunk_is_ref = False
+            if list_value:
+                # Once a list appears as the result of an expansion, all
+                # callers will get a list result. This allows a consistent
+                # behavior even when some options in the expansion chain
+                # defined as strings (no comma in their value) but their
+                # expanded value is a list.
+                return self._expand_options_in_list(chunks, env, _refs)
+            else:
+                result = ''.join(chunks)
+        return result
+
+    def _expand_option(self, name, env, _refs):
+        if env is not None and name in env:
+            # Special case, values provided in env takes precedence over
+            # anything else
+            value = env[name]
+        else:
+            # FIXME: This is a limited implementation, what we really need is a
+            # way to query the bzr config for the value of an option,
+            # respecting the scope rules (That is, once we implement fallback
+            # configs, getting the option value should restart from the top
+            # config, not the current one) -- vila 20101222
+            value = self.get(name, expand=False)
+            if isinstance(value, list):
+                value = self._expand_options_in_list(value, env, _refs)
+            else:
+                value = self._expand_options_in_string(value, env, _refs)
         return value
 
     def _get_mutable_section(self):
