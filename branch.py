@@ -315,7 +315,7 @@ class GitBranch(ForeignBranch):
         self.name = ref_to_branch_name(ref)
         self._head = None
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
@@ -441,7 +441,7 @@ class LocalGitBranch(GitBranch):
         if lightweight:
             t = transport.get_transport(to_location)
             t.ensure_base()
-            format = self._get_checkout_format()
+            format = self._get_checkout_format(lightweight=True)
             checkout = format.initialize_on_transport(t)
             from_branch = branch.BranchReferenceFormat().initialize(checkout,
                 self)
@@ -462,7 +462,8 @@ class LocalGitBranch(GitBranch):
         :return: WorkingTree object of checkout.
         """
         checkout_branch = bzrdir.BzrDir.create_branch_convenience(
-            to_location, force_new_tree=False)
+            to_location, force_new_tree=False,
+            format=self._get_checkout_format(lightweight=False))
         checkout = checkout_branch.bzrdir
         checkout_branch.bind(self)
         # pull up to the specified revision_id to set the initial
