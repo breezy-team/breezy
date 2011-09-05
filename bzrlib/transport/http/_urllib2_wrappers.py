@@ -70,7 +70,6 @@ from bzrlib import (
     osutils,
     trace,
     transport,
-    ui,
     urlutils,
     )
 

@@ -218,7 +218,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # on deserialisation, but thats all the current contract guarantees
         # anyway.
         self.assertEqual(revision_id,
-            tree.branch.repository.get_inventory(revision_id).revision_id)
+            tree.branch.repository.revision_tree(revision_id).get_revision_id())
 
     def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")

@@ -224,6 +224,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             the working tree has been constructed from.
             """)
 
+    def has_versioned_directories(self):
+        """See `Tree.has_versioned_directories`."""
+        return self._format.supports_versioned_directories
+
     def break_lock(self):
         """Break a lock if one is present from another instance.
 
