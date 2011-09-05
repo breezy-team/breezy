@@ -148,6 +148,10 @@ Bug Fixes
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
 
+* Fix fallout from URL handling changes in 2.5 that caused an IndexError to be
+  raised whenever a transport at the drive root was opened on windows.
+  (Martin [gz], #841322)
+
 * Rather than an error being raised, a warning is now printed when the
   current user does not have permission to read a configuration file.
   (Jelmer Vernooij, #837324)
