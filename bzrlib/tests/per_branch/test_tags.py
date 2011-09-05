@@ -39,18 +39,22 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
             raise tests.TestSkipped(
                 "format %s doesn't support tags" % branch._format)
 
+    def make_branch_with_revisions(self, relpath, revisions):
+        builder = self.make_branch_builder(relpath)
+        builder.start_series()
+        for revid in revisions:
+            builder.build_commit(rev_id=revid)
+        builder.finish_series()
+        return builder.get_branch()
+
     def test_tags_initially_empty(self):
         b = self.make_branch('b')
         tags = b.tags.get_tag_dict()
         self.assertEqual(tags, {})
 
     def test_make_and_lookup_tag(self):
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id='target-revid-1')
-        builder.build_commit(rev_id='target-revid-2')
-        builder.finish_series()
-        b = builder.get_branch()
+        b = self.make_branch_with_revisions('b',
+            ['target-revid-1', 'target-revid-2'])
         b.tags.set_tag('tag-name', 'target-revid-1')
         b.tags.set_tag('other-name', 'target-revid-2')
         # then reopen the branch and see they're still there
@@ -67,12 +71,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertFalse(b.tags.has_tag('imaginary'))
 
     def test_reverse_tag_dict(self):
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id='target-revid-1')
-        builder.build_commit(rev_id='target-revid-2')
-        builder.finish_series()
-        b = builder.get_branch()
+        b = self.make_branch_with_revisions('b',
+            ['target-revid-1', 'target-revid-2'])
         b.tags.set_tag('tag-name', 'target-revid-1')
         b.tags.set_tag('other-name', 'target-revid-2')
         # then reopen the branch and check reverse map id->tags list
@@ -102,17 +102,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
             self.fail("didn't get expected exception")
 
     def test_merge_tags(self):
-        builder = self.make_branch_builder('b1')
-        builder.start_series()
-        builder.build_commit(rev_id='revid')
-        builder.build_commit(rev_id='revid-1')
-        builder.finish_series()
-        b1 = builder.get_branch()
-        builder = self.make_branch_builder('b2')
-        builder.start_series()
-        builder.build_commit(rev_id='revid-2')
-        builder.finish_series()
-        b2 = builder.get_branch()
+        b1 = self.make_branch_with_revisions('b1', ['revid', 'revid-1'])
+        b2 = self.make_branch_with_revisions('b2', ['revid-2'])
         # if there are tags in the source and not the destination, then they
         # just go across
         b1.tags.set_tag('tagname', 'revid')
@@ -141,22 +132,14 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # in anticipation of the planned change to treating revision ids as
         # just 8bit strings
         revid = ('revid' + tag_name).encode('utf-8')
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id=revid)
-        builder.finish_series()
-        b1 = builder.get_branch()
+        b1 = self.make_branch_with_revisions('b', [revid])
         b1.tags.set_tag(tag_name, revid)
         self.assertEquals(b1.tags.lookup_tag(tag_name), revid)
 
     def test_delete_tag(self):
         tag_name = u'\N{GREEK SMALL LETTER ALPHA}'
         revid = ('revid' + tag_name).encode('utf-8')
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id=revid)
-        builder.finish_series()
-        b = builder.get_branch()
+        b = self.make_branch_with_revisions('b', [revid])
         b.tags.set_tag(tag_name, revid)
         # now try to delete it
         b.tags.delete_tag(tag_name)
@@ -183,13 +166,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # Open the same branch twice.  Read-lock one, and then mutate the tags
         # in the second.  The read-locked branch never re-reads the tags, so it
         # never observes the changed/new tags.
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id='rev-1')
-        builder.build_commit(rev_id='rev-1-changed')
-        builder.build_commit(rev_id='rev-2')
-        builder.finish_series()
-        b1 = builder.get_branch()
+        b1 = self.make_branch_with_revisions('b',
+            ['rev-1', 'rev-1-changed', 'rev-2'])
         b1.tags.set_tag('one', 'rev-1')
         b2 = b1.bzrdir.open_branch()
         b1.lock_read()
@@ -208,13 +186,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
     def test_unlocked_does_not_cache_tags(self):
         """Unlocked branches do not cache tags."""
         # Open the same branch twice.
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id='rev-1')
-        builder.build_commit(rev_id='rev-1-changed')
-        builder.build_commit(rev_id='rev-2')
-        builder.finish_series()
-        b1 = builder.get_branch()
+        b1 = self.make_branch_with_revisions('b',
+            ['rev-1', 'rev-1-changed', 'rev-2'])
         b1.tags.set_tag('one', 'rev-1')
         b2 = b1.bzrdir.open_branch()
         self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
@@ -230,13 +203,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         returns a copy of the cached data so that callers cannot accidentally
         corrupt the cache.
         """
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id='rev-1')
-        builder.build_commit(rev_id='rev-2')
-        builder.build_commit(rev_id='rev-3')
-        builder.finish_series()
-        b = builder.get_branch()
+        b = self.make_branch_with_revisions('b',
+            ['rev-1', 'rev-2', 'rev-3'])
         b.tags.set_tag('one', 'rev-1')
         self.addCleanup(b.lock_read().unlock)
         # The first time the data returned will not be in the cache
@@ -250,11 +218,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertEqual({'one': 'rev-1'}, b.tags.get_tag_dict())
 
     def make_write_locked_branch_with_one_tag(self):
-        builder = self.make_branch_builder('b')
-        builder.start_series()
-        builder.build_commit(rev_id='rev-1')
-        builder.finish_series()
-        b = builder.get_branch()
+        b = self.make_branch_with_revisions('b', ['rev-1'])
         b.tags.set_tag('one', 'rev-1')
         self.addCleanup(b.lock_write().unlock)
         # Populate the cache
