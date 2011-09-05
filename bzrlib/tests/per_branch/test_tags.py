@@ -22,6 +22,7 @@ The tags are actually in the Branch.tags namespace, but these are
 
 from bzrlib import (
     branch,
+    bzrdir as _mod_bzrdir,
     errors,
     tests,
     )
@@ -169,7 +170,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b1 = self.make_branch_with_revisions('b',
             ['rev-1', 'rev-1-changed', 'rev-2'])
         b1.tags.set_tag('one', 'rev-1')
-        b2 = b1.bzrdir.open_branch()
+        b2 = _mod_bzrdir.BzrDir.open('b').open_branch()
         b1.lock_read()
         self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
         # Add a tag and modify a tag in b2.  b1 is read-locked and has already
