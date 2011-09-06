@@ -106,7 +106,8 @@ Improvements
   (Jelmer Vernooij, #164450)
 
 * ``bzr tag`` no longer errors if a tag already exists but refers to the
-  same revision. (Jelmer Vernooij)
+  same revision, and will mention when a tag has been updated
+  rather than created. (Jelmer Vernooij, #381203)
 
 * ``bzr uncommit`` will now remove tags that refer to removed revisions.
   The ``--keep-tags`` option can be used to prevent this behaviour.
@@ -147,6 +148,10 @@ Bug Fixes
 
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
+
+* Fix fallout from URL handling changes in 2.5 that caused an IndexError to be
+  raised whenever a transport at the drive root was opened on windows.
+  (Martin [gz], #841322)
 
 * Rather than an error being raised, a warning is now printed when the
   current user does not have permission to read a configuration file.
@@ -220,6 +225,10 @@ API Changes
 * New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
   value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
   (Shannon Weyrick)
+
+* ``Tags`` containers can now declare whether they support versioned
+  tags and whether tags can refer to ghost tags.
+  (Jelmer Vernooij)
 
 * ``Tags.merge_to`` now returns a dictionary with the updated tags
   and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
