@@ -5738,18 +5738,30 @@ class cmd_reconfigure(Command):
     takes_args = ['location?']
     takes_options = [
         RegistryOption.from_kwargs(
-            'target_type',
-            title='Target type',
-            help='The type to reconfigure the directory to.',
+            'tree_type',
+            title='Tree type',
+            help='The relation between branch and tree.',
             value_switches=True, enum_switch=False,
             branch='Reconfigure to be an unbound branch with no working tree.',
             tree='Reconfigure to be an unbound branch with a working tree.',
             checkout='Reconfigure to be a bound branch with a working tree.',
             lightweight_checkout='Reconfigure to be a lightweight'
                 ' checkout (with no local history).',
+            ),
+        RegistryOption.from_kwargs(
+            'repository_type',
+            title='Repository type',
+            help='Location fo the repository.',
+            value_switches=True, enum_switch=False,
             standalone='Reconfigure to be a standalone branch '
                 '(i.e. stop using shared repository).',
             use_shared='Reconfigure to use a shared repository.',
+            ),
+        RegistryOption.from_kwargs(
+            'repository_trees',
+            title='Trees in Repository',
+            help='Whether new branches in the repository have trees.',
+            value_switches=True, enum_switch=False,
             with_trees='Reconfigure repository to create '
                 'working trees on branches by default.',
             with_no_trees='Reconfigure repository to not create '
@@ -5769,9 +5781,9 @@ class cmd_reconfigure(Command):
             ),
         ]
 
-    def run(self, location=None, target_type=None, bind_to=None, force=False,
-            stacked_on=None,
-            unstacked=None):
+    def run(self, location=None, bind_to=None, force=False,
+            tree_type=None, repository_type=None, repository_trees=None,
+            stacked_on=None, unstacked=None):
         directory = bzrdir.BzrDir.open(location)
         if stacked_on and unstacked:
             raise errors.BzrCommandError("Can't use both --stacked-on and --unstacked")
@@ -5782,33 +5794,44 @@ class cmd_reconfigure(Command):
         # At the moment you can use --stacked-on and a different
         # reconfiguration shape at the same time; there seems no good reason
         # to ban it.
-        if target_type is None:
+        if (tree_type is None and
+            repository_type is None and
+            repository_trees is None):
             if stacked_on or unstacked:
                 return
             else:
                 raise errors.BzrCommandError('No target configuration '
                     'specified')
-        elif target_type == 'branch':
+        reconfiguration = None
+        if tree_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
-        elif target_type == 'tree':
+        elif tree_type == 'tree':
             reconfiguration = reconfigure.Reconfigure.to_tree(directory)
-        elif target_type == 'checkout':
+        elif tree_type == 'checkout':
             reconfiguration = reconfigure.Reconfigure.to_checkout(
                 directory, bind_to)
-        elif target_type == 'lightweight-checkout':
+        elif tree_type == 'lightweight-checkout':
             reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
                 directory, bind_to)
-        elif target_type == 'use-shared':
+        if reconfiguration:
+            reconfiguration.apply(force)
+            reconfiguration = None
+        if repository_type == 'use-shared':
             reconfiguration = reconfigure.Reconfigure.to_use_shared(directory)
-        elif target_type == 'standalone':
+        elif repository_type == 'standalone':
             reconfiguration = reconfigure.Reconfigure.to_standalone(directory)
-        elif target_type == 'with-trees':
+        if reconfiguration:
+            reconfiguration.apply(force)
+            reconfiguration = None
+        if repository_trees == 'with-trees':
             reconfiguration = reconfigure.Reconfigure.set_repository_trees(
                 directory, True)
-        elif target_type == 'with-no-trees':
+        elif repository_trees == 'with-no-trees':
             reconfiguration = reconfigure.Reconfigure.set_repository_trees(
                 directory, False)
-        reconfiguration.apply(force)
+        if reconfiguration:
+            reconfiguration.apply(force)
+            reconfiguration = None
 
 
 class cmd_switch(Command):
