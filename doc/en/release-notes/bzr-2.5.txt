@@ -98,6 +98,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr add`` will now warn about nested subtrees that are skipped.
+  (Jelmer Vernooij, #187342)
+
 * ``bzr commit -m ''`` can now be used to force an empty commit message.
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
