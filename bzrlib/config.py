@@ -3063,7 +3063,7 @@ class Stack(object):
                         trace.warning('Cannot expand "%s":'
                                       ' %s does not support option expansion'
                                       % (name, type(val)))
-                if opt is not None and val is not None:
+                if opt is not None:
                     val = opt.convert_from_unicode(val)
             return val
         value = expand_and_convert(value)
