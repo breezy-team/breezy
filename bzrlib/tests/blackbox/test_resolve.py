@@ -72,6 +72,51 @@ $ bzr resolve -d branch --all
 $ bzr conflicts -d branch
 """)
 
+    def test_bug_842575_manual_rm(self):
+        self.run_script("""\
+$ bzr init -q trunk
+$ echo original > trunk/foo
+$ bzr add -q trunk/foo
+$ bzr commit -q -m first trunk
+$ bzr checkout -q trunk tree
+$ bzr rm -q trunk/foo
+$ bzr ignore -d trunk foo
+$ bzr commit -q -m second trunk
+$ echo modified > tree/foo
+$ bzr update tree
+2>+N  .bzrignore
+2>RM  foo => foo.THIS
+2>Contents conflict in foo
+2>1 conflicts encountered.
+2>Updated to revision 2 of branch ...
+$ rm tree/foo.BASE tree/foo.THIS
+$ bzr resolve --all -d tree
+2>1 conflict(s) resolved, 0 remaining
+$ bzr status tree
+""")
+
+    def test_bug_842575_take_other(self):
+        self.run_script("""\
+$ bzr init -q trunk
+$ echo original > trunk/foo
+$ bzr add -q trunk/foo
+$ bzr commit -q -m first trunk
+$ bzr checkout -q trunk tree
+$ bzr rm -q trunk/foo
+$ bzr ignore -d trunk foo
+$ bzr commit -q -m second trunk
+$ echo modified > tree/foo
+$ bzr update tree
+2>+N  .bzrignore
+2>RM  foo => foo.THIS
+2>Contents conflict in foo
+2>1 conflicts encountered.
+2>Updated to revision 2 of branch ...
+$ bzr resolve --take-other --all -d tree
+2>1 conflict(s) resolved, 0 remaining
+$ bzr status tree
+""")
+
 
 class TestBug788000(script.TestCaseWithTransportAndScript):
 
