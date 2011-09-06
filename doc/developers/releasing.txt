@@ -503,8 +503,8 @@ Now that the release is publicly available, tell people about it.
       The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
 
-       Bazaar <http://bazaar.canonical.com/> is part of the GNU project
-       <http://gnu.org/> to produce a free operating system.
+      Bazaar <http://bazaar.canonical.com/> is part of the GNU project
+      <http://gnu.org/> to produce a free operating system.
 
       <<Summary paragraph from news>>
 
