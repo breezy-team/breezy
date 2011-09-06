@@ -2462,8 +2462,11 @@ class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
                              from_unicode=config.list_from_store)
 
     def test_convert_invalid(self):
+        opt = self.get_option()
+        # We don't even try to convert a list into a list, we only expect
+        # strings
+        self.assertConvertInvalid(opt, [1])
         # No string is invalid as all forms can be converted to a list
-        pass
 
     def test_convert_valid(self):
         opt = self.get_option()
@@ -2476,10 +2479,6 @@ class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted([u'42'], opt, u'42')
         # A single string
         self.assertConverted([u'bar'], opt, u'bar')
-        # A list remains a list (configObj will turn a string containing commas
-        # into a list, but that's not what we're testing here)
-        self.assertConverted([u'foo', u'1', u'True'],
-                             opt, [u'foo', u'1', u'True'])
 
 
 class TestOptionRegistry(tests.TestCase):
@@ -2660,7 +2659,7 @@ class TestReadonlyStore(TestStore):
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
-    """Simulate loading a config store without content of various encodings.
+    """Simulate loading a config store with content of various encodings.
 
     All files produced by bzr are in utf8 content.
 
@@ -2719,7 +2718,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
 
 
 class TestIniConfigContent(tests.TestCaseWithTransport):
-    """Simulate loading a IniBasedConfig without content of various encodings.
+    """Simulate loading a IniBasedConfig with content of various encodings.
 
     All files produced by bzr are in utf8 content.
 
@@ -2907,8 +2906,10 @@ foo_in_qux=quux
         sections = list(store.get_sections())
         self.assertLength(4, sections)
         # The default section has no name.
-        # List values are provided as lists
-        self.assertSectionContent((None, {'foo': 'bar', 'l': ['1', '2']}),
+        # List values are provided as strings and need to be explicitly
+        # converted by specifying from_unicode=list_from_store at option
+        # registration
+        self.assertSectionContent((None, {'foo': 'bar', 'l': u'1,2'}),
                                   sections[0])
         self.assertSectionContent(
             ('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}), sections[1])
@@ -3367,6 +3368,16 @@ class TestStackGetWithConverter(TestStackGet):
         self.conf.store._load_from_string('foo=m,o,r,e')
         self.assertEquals(['m', 'o', 'r', 'e'], self.conf.get('foo'))
 
+    def test_get_with_list_converter_embedded_spaces_many_items(self):
+        self.register_list_option('foo', None)
+        self.conf.store._load_from_string('foo=" bar", "baz "')
+        self.assertEquals([' bar', 'baz '], self.conf.get('foo'))
+
+    def test_get_with_list_converter_stripped_spaces_many_items(self):
+        self.register_list_option('foo', None)
+        self.conf.store._load_from_string('foo= bar ,  baz ')
+        self.assertEquals(['bar', 'baz'], self.conf.get('foo'))
+
 
 class TestStackExpandOptions(tests.TestCaseWithTransport):
 
@@ -3451,6 +3462,8 @@ bar=middle
 baz=end
 list={foo},{bar},{baz}
 ''')
+        self.registry.register(
+            config.Option('list', from_unicode=config.list_from_store))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 
@@ -3461,6 +3474,8 @@ bar=middle,{baz}
 baz=end
 list={foo}
 ''')
+        self.registry.register(
+            config.Option('list', from_unicode=config.list_from_store))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 
@@ -3473,9 +3488,11 @@ middle=},{
 end=bar}
 hidden={start}{middle}{end}
 ''')
-        # Nope, it's either a string or a list, and the list wins as soon as a
-        # ',' appears, so the string concatenation never occur.
-        self.assertEquals(['{foo', '}', '{', 'bar}'],
+        # What matters is what the registration says, the conversion happens
+        # only after all expansions have been performed
+        self.registry.register(
+            config.Option('hidden', from_unicode=config.list_from_store))
+        self.assertEquals(['bin', 'go'],
                           self.conf.get('hidden', expand=True))
 
 
