@@ -883,7 +883,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         return (not isinstance(source, GitBranch) and
                 isinstance(target, GitBranch))
 
-    def _get_new_refs(self, stop_revision=None):
+    def _get_new_refs(self, stop_revision=None, fetch_tags=None):
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
         else:
@@ -891,9 +891,13 @@ class InterToGitBranch(branch.GenericInterBranch):
         assert type(stop_revision) is str
         main_ref = self.target.ref or "refs/heads/master"
         refs = { main_ref: (None, stop_revision) }
-        for name, revid in self.source.tags.get_tag_dict().iteritems():
-            if self.source.repository.has_revision(revid):
-                refs[tag_name_to_ref(name)] = (None, revid)
+        if fetch_tags is None:
+            c = self.source.get_config()
+            fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
+        if fetch_tags:
+            for name, revid in self.source.tags.get_tag_dict().iteritems():
+                if self.source.repository.has_revision(revid):
+                    refs[tag_name_to_ref(name)] = (None, revid)
         return refs, main_ref, (stop_revno, stop_revision)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
