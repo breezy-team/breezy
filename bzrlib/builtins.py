@@ -5662,7 +5662,10 @@ class cmd_tag(Command):
                 note('Tag %s already exists for that revision.' % tag_name)
             else:
                 branch.tags.set_tag(tag_name, revision_id)
-                note('Created tag %s.' % tag_name)
+                if existing_target is None:
+                    note('Created tag %s.' % tag_name)
+                else:
+                    note('Updated tag %s.' % tag_name)
 
 
 class cmd_tags(Command):

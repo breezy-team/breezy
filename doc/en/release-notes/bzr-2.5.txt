@@ -106,7 +106,8 @@ Improvements
   (Jelmer Vernooij, #164450)
 
 * ``bzr tag`` no longer errors if a tag already exists but refers to the
-  same revision. (Jelmer Vernooij)
+  same revision, and will mention when a tag has been updated
+  rather than created. (Jelmer Vernooij, #381203)
 
 * ``bzr uncommit`` will now remove tags that refer to removed revisions.
   The ``--keep-tags`` option can be used to prevent this behaviour.
