@@ -2426,19 +2426,33 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
+# Use a an empty dict to initialize an empty configobj avoiding all
+# parsing and encoding checks
+_list_converter_config = configobj.ConfigObj(
+    {}, encoding='utf-8', list_values=True, interpolation=False)
+
+
 def list_from_store(unicode_str):
+    if not isinstance(unicode_str, basestring):
+        raise TypeError
+    # Now inject our string directly as unicode. All callers got their value
+    # from configobj, so values that need to be quoted are already properly
+    # quoted.
+    _list_converter_config.reset()
+    _list_converter_config._parse([u"list=%s" % (unicode_str,)])
+    maybe_list = _list_converter_config['list']
     # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
-    if isinstance(unicode_str, (str, unicode)):
-        if unicode_str:
+    if isinstance(maybe_list, basestring):
+        if maybe_list:
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
-            l = [unicode_str]
+            l = [maybe_list]
         else:
             # The empty string, convert to empty list
             l = []
     else:
         # We rely on ConfigObj providing us with a list already
-        l = unicode_str
+        l = maybe_list
     return l
 
 
@@ -2715,7 +2729,8 @@ class IniFileStore(Store):
         co_input = StringIO(bytes)
         try:
             # The config files are always stored utf8-encoded
-            self._config_obj = ConfigObj(co_input, encoding='utf-8')
+            self._config_obj = ConfigObj(co_input, encoding='utf-8',
+                                         list_values=False)
         except configobj.ConfigObjError, e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
@@ -3047,33 +3062,27 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
+        def expand_and_convert(val):
+            # This may need to be called twice if the value is None or ends up
+            # being None during expansion or conversion.
+            if val is not None:
+                if expand:
+                    if isinstance(val, basestring):
+                        val = self._expand_options_in_string(val)
+                    else:
+                        trace.warning('Cannot expand "%s":'
+                                      ' %s does not support option expansion'
+                                      % (name, type(val)))
+                if opt is not None:
+                    val = opt.convert_from_unicode(val)
+            return val
+        value = expand_and_convert(value)
         if opt is not None and value is None:
             # If the option is registered, it may provide a default value
             value = opt.get_default()
-        if expand:
-            value = self._expand_option_value(value)
-        if opt is not None and value is not None:
-            value = opt.convert_from_unicode(value)
-            if value is None:
-                # The conversion failed, fallback to the default value
-                value = opt.get_default()
-                if expand:
-                    value = self._expand_option_value(value)
-                value = opt.convert_from_unicode(value)
+            value = expand_and_convert(value)
         for hook in ConfigHooks['get']:
             hook(self, name, value)
-        return value
-
-    def _expand_option_value(self, value):
-        """Expand the option value depending on its type."""
-        if isinstance(value, list):
-            value = self._expand_options_in_list(value)
-        elif isinstance(value, dict):
-            trace.warning('Cannot expand "%s":'
-                          ' Dicts do not support option expansion'
-                          % (name,))
-        elif isinstance(value, (str, unicode)):
-            value = self._expand_options_in_string(value)
         return value
 
     def expand_options(self, string, env=None):
@@ -3087,29 +3096,6 @@ class Stack(object):
         :returns: The expanded string.
         """
         return self._expand_options_in_string(string, env)
-
-    def _expand_options_in_list(self, slist, env=None, _refs=None):
-        """Expand options in  a list of strings in the configuration context.
-
-        :param slist: A list of strings.
-
-        :param env: An option dict defining additional configuration options or
-            overriding existing ones.
-
-        :param _refs: Private list (FIFO) containing the options being
-            expanded to detect loops.
-
-        :returns: The flatten list of expanded strings.
-        """
-        # expand options in each value separately flattening lists
-        result = []
-        for s in slist:
-            value = self._expand_options_in_string(s, env, _refs)
-            if isinstance(value, list):
-                result.extend(value)
-            else:
-                result.append(value)
-        return result
 
     def _expand_options_in_string(self, string, env=None, _refs=None):
         """Expand options in the string in the configuration context.
@@ -3139,15 +3125,11 @@ class Stack(object):
                 # Shorcut the trivial case: no refs
                 return result
             chunks = []
-            list_value = False
             # Split will isolate refs so that every other chunk is a ref
             chunk_is_ref = False
             for chunk in raw_chunks:
                 if not chunk_is_ref:
-                    if chunk:
-                        # Keep only non-empty strings (or we get bogus empty
-                        # slots when a list value is involved).
-                        chunks.append(chunk)
+                    chunks.append(chunk)
                     chunk_is_ref = True
                 else:
                     name = chunk[1:-1]
@@ -3157,22 +3139,10 @@ class Stack(object):
                     value = self._expand_option(name, env, _refs)
                     if value is None:
                         raise errors.ExpandingUnknownOption(name, string)
-                    if isinstance(value, list):
-                        list_value = True
-                        chunks.extend(value)
-                    else:
-                        chunks.append(value)
+                    chunks.append(value)
                     _refs.pop()
                     chunk_is_ref = False
-            if list_value:
-                # Once a list appears as the result of an expansion, all
-                # callers will get a list result. This allows a consistent
-                # behavior even when some options in the expansion chain
-                # defined as strings (no comma in their value) but their
-                # expanded value is a list.
-                return self._expand_options_in_list(chunks, env, _refs)
-            else:
-                result = ''.join(chunks)
+            result = ''.join(chunks)
         return result
 
     def _expand_option(self, name, env, _refs):
@@ -3187,10 +3157,7 @@ class Stack(object):
             # configs, getting the option value should restart from the top
             # config, not the current one) -- vila 20101222
             value = self.get(name, expand=False)
-            if isinstance(value, list):
-                value = self._expand_options_in_list(value, env, _refs)
-            else:
-                value = self._expand_options_in_string(value, env, _refs)
+            value = self._expand_options_in_string(value, env, _refs)
         return value
 
     def _get_mutable_section(self):
