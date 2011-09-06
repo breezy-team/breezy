@@ -238,7 +238,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                 next_revs = set()
                 break
             # don't query things we've already queried
-            next_revs.difference_update(queried_revs)
+            next_revs = next_revs.difference(queried_revs)
             first_loop_done = True
 
         # sorting trivially puts lexographically similar revision ids together.
