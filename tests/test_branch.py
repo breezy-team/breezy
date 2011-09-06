@@ -28,6 +28,7 @@ from dulwich.repo import (
     )
 
 import os
+import urllib
 
 from bzrlib import (
     errors,
@@ -58,6 +59,15 @@ from bzrlib.plugins.git.mapping import (
 
 
 class TestGitBranch(tests.TestCaseInTempDir):
+
+    def test_open_by_ref(self):
+        GitRepo.init('.')
+        d = BzrDir.open("%s,ref=%s" % (
+            urlutils.local_path_to_url(self.test_dir),
+            urllib.quote("refs/remotes/origin/unstable", safe='')
+            ))
+        b = d.create_branch()
+        self.assertEquals(b.ref, "refs/remotes/origin/unstable")
 
     def test_open_existing(self):
         GitRepo.init('.')

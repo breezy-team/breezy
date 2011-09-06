@@ -7,6 +7,9 @@
 
   * Add basic support for alternates. (Jelmer Vernooij)
 
+  * Support addressing branches by ref where the name can't be mapped back to
+    a branch. (Jelmer Vernooij, #829481)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)

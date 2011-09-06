@@ -312,7 +312,10 @@ class GitBranch(ForeignBranch):
         if tagsdict is not None:
             self.tags = DictTagDict(self, tagsdict)
         self.ref = ref
-        self.name = ref_to_branch_name(ref)
+        try:
+            self.name = ref_to_branch_name(ref)
+        except ValueError:
+            self.name = None
         self._head = None
 
     def _get_checkout_format(self, lightweight=False):
