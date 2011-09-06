@@ -74,7 +74,11 @@ class GitPullResult(branch.PullResult):
     def _lookup_revno(self, revid):
         assert isinstance(revid, str), "was %r" % revid
         # Try in source branch first, it'll be faster
-        return self.target_branch.revision_id_to_revno(revid)
+        self.target_branch.lock_read()
+        try:
+            return self.target_branch.revision_id_to_revno(revid)
+        finally:
+            self.target.unlock()
 
     @property
     def old_revno(self):
@@ -538,15 +542,24 @@ class LocalGitBranch(GitBranch):
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     assert isinstance(revid, str), "was %r" % revid
     # Try in source branch first, it'll be faster
+    local_branch.lock_read()
     try:
-        return local_branch.revision_id_to_revno(revid)
-    except errors.NoSuchRevision:
-        graph = local_branch.repository.get_graph()
         try:
-            return graph.find_distance_to_null(revid, [])
-        except errors.GhostRevisionsHaveNoRevno:
-            # FIXME: Check using graph.find_distance_to_null() ?
-            return remote_branch.revision_id_to_revno(revid)
+            return local_branch.revision_id_to_revno(revid)
+        except errors.NoSuchRevision:
+            graph = local_branch.repository.get_graph()
+            try:
+                return graph.find_distance_to_null(revid,
+                    [(revision.NULL_REVISION, 0)])
+            except errors.GhostRevisionsHaveNoRevno:
+                # FIXME: Check using graph.find_distance_to_null() ?
+                remote_branch.lock_read()
+                try:
+                    return remote_branch.revision_id_to_revno(revid)
+                finally:
+                    remote_branch.unlock()
+    finally:
+        local_branch.unlock()
 
 
 class GitBranchPullResult(branch.PullResult):
@@ -932,7 +945,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 update_refs, lossy=lossy)
         except NoPushSupport:
             raise errors.NoRoundtrippingSupport(self.source, self.target)
-        (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
+        (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
         if result.old_revid is None:
             result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
         result.new_revid = new_refs[main_ref][1]
