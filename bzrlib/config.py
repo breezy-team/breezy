@@ -2430,24 +2430,24 @@ _list_converter_config = configobj.ConfigObj(
 def list_from_store(unicode_str):
     if not isinstance(unicode_str, basestring):
         raise TypeError
-    # Now inject our string directly as unicode All callers got their value
+    # Now inject our string directly as unicode. All callers got their value
     # from configobj, so values that need to be quoted are already properly
     # quoted.
     _list_converter_config.reset()
     _list_converter_config._parse([u"list=%s" % (unicode_str,)])
-    co_list_or_not = _list_converter_config['list']
+    maybe_list = _list_converter_config['list']
     # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
-    if isinstance(co_list_or_not, basestring):
-        if co_list_or_not:
+    if isinstance(maybe_list, basestring):
+        if maybe_list:
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
-            l = [co_list_or_not]
+            l = [maybe_list]
         else:
             # The empty string, convert to empty list
             l = []
     else:
         # We rely on ConfigObj providing us with a list already
-        l = co_list_or_not
+        l = maybe_list
     return l
 
 
@@ -3063,7 +3063,7 @@ class Stack(object):
                         trace.warning('Cannot expand "%s":'
                                       ' %s does not support option expansion'
                                       % (name, type(val)))
-                if opt is not None and value is not None:
+                if opt is not None and val is not None:
                     val = opt.convert_from_unicode(val)
             return val
         value = expand_and_convert(value)
