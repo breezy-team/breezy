@@ -225,6 +225,10 @@ API Changes
   value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
   (Shannon Weyrick)
 
+* ``Tags`` containers can now declare whether they support versioned
+  tags and whether tags can refer to ghost tags.
+  (Jelmer Vernooij)
+
 * ``Tags.merge_to`` now returns a dictionary with the updated tags
   and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
 
