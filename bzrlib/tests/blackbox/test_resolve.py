@@ -80,9 +80,11 @@ $ bzr add -q trunk/foo
 $ bzr commit -q -m first trunk
 $ bzr checkout -q trunk tree
 $ bzr rm -q trunk/foo
+$ bzr ignore -d trunk foo
 $ bzr commit -q -m second trunk
 $ echo modified > tree/foo
 $ bzr update tree
+2>+N  .bzrignore
 2>RM  foo => foo.THIS
 2>Contents conflict in foo
 2>1 conflicts encountered.
@@ -99,7 +101,7 @@ $ bzr init -q trunk
 $ echo original > trunk/foo
 $ bzr add -q trunk/foo
 $ bzr commit -q -m first trunk
-$ bzr checkout -q trunk tree
+$ bzr checkout -q --lightweight trunk tree
 $ bzr rm -q trunk/foo
 $ bzr commit -q -m second trunk
 $ echo modified > tree/foo
