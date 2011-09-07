@@ -641,6 +641,12 @@ class Branch(controldir.ControlComponent):
         """
         raise errors.UpgradeRequired(self.user_url)
 
+
+    def get_append_revisions_only(self):
+        """Whether it is only possible to append revisions to the history.
+        """
+        return False
+
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
@@ -2512,7 +2518,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         old_revno, old_revid = self.last_revision_info()
-        if self._get_append_revisions_only():
+        if self.get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._run_pre_change_branch_tip_hooks(revno, revision_id)
         self._write_last_revision_info(revno, revision_id)
@@ -2957,7 +2963,7 @@ class BzrBranch8(BzrBranch):
             raise errors.NotStacked(self)
         return stacked_url
 
-    def _get_append_revisions_only(self):
+    def get_append_revisions_only(self):
         return self.get_config(
             ).get_user_option_as_bool('append_revisions_only')
 

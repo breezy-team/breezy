@@ -652,7 +652,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         if value is not None:
             self.config.set_user_option('append_revisions_only', value)
         self.assertEqual(expected_value,
-                         self.branch._get_append_revisions_only())
+                         self.branch.get_append_revisions_only())
 
     def test_valid_append_revisions_only(self):
         self.assertEquals(None,

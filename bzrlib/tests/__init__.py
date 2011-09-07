@@ -2628,7 +2628,8 @@ class TestCaseWithMemoryTransport(TestCase):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
         branch = repo.bzrdir.create_branch()
-        if branch._format.supports_set_append_revisions_only():
+        if (branch._format.supports_set_append_revisions_only() and
+            branch.get_append_revisions_only()):
             # Make sure append revisions only is disabled, for
             # formats that have it default to true.
             branch.set_append_revisions_only(False)

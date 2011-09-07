@@ -80,7 +80,8 @@ class TestCaseWithBranch(TestCaseWithControlDir):
             branch = self.branch_format.initialize(repo.bzrdir)
         except errors.UninitializableFormat:
             raise tests.TestSkipped('Uninitializable branch format')
-        if branch._format.supports_set_append_revisions_only():
+        if (branch._format.supports_set_append_revisions_only() and
+            branch.get_append_revisions_only()):
             branch.set_append_revisions_only(False)
         return branch
 
