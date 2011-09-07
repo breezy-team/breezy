@@ -32,7 +32,7 @@ class ZzzTranslations(object):
     _null_translation = i18n._gettext.NullTranslations()
 
     def zzz(self, s):
-        return u'zz{{%s}}' % s
+        return u'zz\xe5{{%s}}' % s
 
     def ugettext(self, s):
         return self.zzz(self._null_translation.ugettext(s))
@@ -51,18 +51,18 @@ class TestZzzTranslation(tests.TestCase):
         trans = ZzzTranslations()
 
         t = trans.zzz('msg')
-        self._check_exact(u'zz{{msg}}', t)
+        self._check_exact(u'zz\xe5{{msg}}', t)
 
         t = trans.ugettext('msg')
-        self._check_exact(u'zz{{msg}}', t)
+        self._check_exact(u'zz\xe5{{msg}}', t)
 
         t = trans.ungettext('msg1', 'msg2', 0)
-        self._check_exact(u'zz{{msg2}}', t)
+        self._check_exact(u'zz\xe5{{msg2}}', t)
         t = trans.ungettext('msg1', 'msg2', 2)
-        self._check_exact(u'zz{{msg2}}', t)
+        self._check_exact(u'zz\xe5{{msg2}}', t)
 
         t = trans.ungettext('msg1', 'msg2', 1)
-        self._check_exact(u'zz{{msg1}}', t)
+        self._check_exact(u'zz\xe5{{msg1}}', t)
 
 
 class TestGetText(tests.TestCase):
@@ -72,11 +72,11 @@ class TestGetText(tests.TestCase):
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_oneline(self):
-        self.assertEqual(u"zz{{spam ham eggs}}",
+        self.assertEqual(u"zz\xe5{{spam ham eggs}}",
                          i18n.gettext("spam ham eggs"))
 
     def test_multiline(self):
-        self.assertEqual(u"zz{{spam\nham\n\neggs\n}}",
+        self.assertEqual(u"zz\xe5{{spam\nham\n\neggs\n}}",
                          i18n.gettext("spam\nham\n\neggs\n"))
 
 
@@ -87,11 +87,11 @@ class TestGetTextPerParagraph(tests.TestCase):
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_oneline(self):
-        self.assertEqual(u"zz{{spam ham eggs}}",
+        self.assertEqual(u"zz\xe5{{spam ham eggs}}",
                          i18n.gettext_per_paragraph("spam ham eggs"))
 
     def test_multiline(self):
-        self.assertEqual(u"zz{{spam\nham}}\n\nzz{{eggs\n}}",
+        self.assertEqual(u"zz\xe5{{spam\nham}}\n\nzz\xe5{{eggs\n}}",
                          i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
 
 
@@ -124,4 +124,4 @@ class TestTranslate(tests.TestCaseWithTransport):
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError,e:
             err = str(e)
-        self.assertContainsRe(err, "zz{{Not a branch: .*}}")
+        self.assertContainsRe(err, u"zz\xe5{{Not a branch: .*}}".encode("utf-8"))
