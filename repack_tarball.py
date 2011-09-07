@@ -187,6 +187,7 @@ def _error_if_exists(target_transport, new_name, source_name):
 
 
 def _repack_directory(target_transport, new_name, source_name):
+    import pdb; pdb.set_trace()
     target_transport.ensure_base()
     target_f = target_transport.open_write_stream(new_name)
     try:

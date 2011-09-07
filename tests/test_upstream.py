@@ -60,6 +60,7 @@ from bzrlib.plugins.builddeb.upstream import (
     UpstreamSource,
     UScanSource,
     extract_tarball_version,
+    gather_orig_files,
     new_tarball_name,
     )
 from bzrlib.plugins.builddeb.util import (
@@ -921,3 +922,19 @@ class NewTarballNameTests(TestCase):
     def test_zip(self):
         self.assertEquals("foo_1.0.orig.tar.gz",
             new_tarball_name("foo", "1.0", "bla.zip"))
+
+
+class TestGatherOrigTarballs(TestCaseWithTransport):
+
+    def test_no_dir(self):
+        self.assertIs(None, gather_orig_files("mypkg", "1.0", "idontexist"))
+
+    def test_empty(self):
+        self.build_tree(["empty/"])
+        self.assertIs(None, gather_orig_files("mypkg", "1.0", "empty"))
+
+    def test_single(self):
+        self.build_tree(["mypkg_1.0.orig.tar.gz"])
+        self.assertEquals(
+            [os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz")],
+            gather_orig_files("mypkg", "1.0", "."))
