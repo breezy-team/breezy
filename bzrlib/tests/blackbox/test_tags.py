@@ -77,7 +77,8 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tag -d branch NEWTAG -r0', retcode=3)
         self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
-        out, err = self.run_bzr('tag -d branch NEWTAG --force')
+        out, err = self.run_bzr('tag -d branch NEWTAG --force -r0')
+        self.assertEquals("Updated tag NEWTAG.\n", err)
 
     def test_tag_same_revision(self):
         t = self.make_branch_and_tree('branch')

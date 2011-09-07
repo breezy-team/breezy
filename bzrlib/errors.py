@@ -21,6 +21,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     i18n,
+    trace,
     )
 from bzrlib.i18n import gettext
 from bzrlib.patches import (
@@ -143,7 +144,10 @@ class BzrError(StandardError):
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
             i18n.install()
-            return gettext(fmt)
+            unicode_fmt = unicode(fmt) #_fmt strings should be ascii
+            if type(fmt) == unicode:
+                trace.mutter("Unicode strings in error.fmt are deprecated")
+            return gettext(unicode_fmt)
         fmt = getattr(self, '__doc__', None)
         if fmt is not None:
             symbol_versioning.warn("%s uses its docstring as a format, "
@@ -2352,6 +2356,14 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """
 
 
+class GhostTagsNotSupported(BzrError):
+
+    _fmt = "Ghost tags not supported by format %(format)r."
+
+    def __init__(self, format):
+        self.format = format
+
+
 class BinaryFile(BzrError):
 
     _fmt = "File is binary but should be text."
@@ -2787,7 +2799,7 @@ class DuplicateRecordNameError(ContainerError):
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
-        self.name = name
+        self.name = name.decode("utf-8")
 
 
 class NoDestinationAddress(InternalBzrError):
