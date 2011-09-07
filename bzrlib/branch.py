@@ -1739,6 +1739,14 @@ class BranchFormat(controldir.ControlComponentFormat):
         """True if this format supports tags stored in the branch"""
         return False  # by default
 
+    def tags_are_versioned(self):
+        """Whether the tag container for this branch versions tags."""
+        return False
+
+    def supports_tags_referencing_ghosts(self):
+        """True if tags can reference ghost revisions."""
+        return True
+
 
 class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
     """A factory for a BranchFormat object, permitting simple lazy registration.
