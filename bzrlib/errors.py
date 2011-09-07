@@ -2356,6 +2356,14 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """
 
 
+class GhostTagsNotSupported(BzrError):
+
+    _fmt = "Ghost tags not supported by format %(format)r."
+
+    def __init__(self, format):
+        self.format = format
+
+
 class BinaryFile(BzrError):
 
     _fmt = "File is binary but should be text."

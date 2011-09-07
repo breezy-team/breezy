@@ -918,11 +918,13 @@ class VersionedFileRepository(Repository):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        # This can raise an exception, so should be done before we lock the
+        # fallback repository.
+        self._check_fallback_repository(repository)
         if self.is_locked():
             # This repository will call fallback.unlock() when we transition to
             # the unlocked state, so we make sure to increment the lock count
             repository.lock_read()
-        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         self.texts.add_fallback_versioned_files(repository.texts)
         self.inventories.add_fallback_versioned_files(repository.inventories)
