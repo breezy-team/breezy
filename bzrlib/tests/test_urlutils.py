@@ -457,6 +457,12 @@ class TestUrlToPath(TestCase):
         self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
         self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
         self.assertRaises(InvalidURL, extract, 'file://', '/path')
+        # Root drives without slash treated as invalid, see bug #841322
+        self.assertEqual(('file:///C:', '/'), extract('file://', '/C:/'))
+        self.assertRaises(InvalidURL, extract, 'file://', '/C:')
+        # Invalid without drive separator or following forward slash
+        self.assertRaises(InvalidURL, extract, 'file://', '/C')
+        self.assertRaises(InvalidURL, extract, 'file://', '/C:ool')
 
     def test_split(self):
         # Test bzrlib.urlutils.split()

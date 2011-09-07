@@ -38,6 +38,10 @@ Bug Fixes
 * ``dirstate.fdatasync`` and ``repository.fdatasync`` can now properly be
   disabled. (Vincent Ladeuil, #824513)
 
+* Disable ``os.fsync`` and ``os.fdatasync`` by default when running
+  ``bzr selftest``. You can use ``--sync`` to re-enable them.
+  (John Arbash Meinel, #837293)
+
 * Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
 
 * Avoid UnicodeDecode error when reporting EINVAL from transports.
@@ -70,6 +74,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* The test suite should now be able to run under weird environments where
+  ``/etc/passwd`` doesn't contain the ``uid`` for the user running selftest
+  or where ``fakeroot`` is used but ``/root`` is inacessible.
+  (Vincent Ladeuil, #825027)
 
 bzr 2.4.0
 #########
