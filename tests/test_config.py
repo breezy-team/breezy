@@ -98,36 +98,41 @@ else:
 
   class DebuildSvnBpTests(SubversionTestCase):
 
-    def test_from_properties(self):
-      repos_url = self.make_repository("d")
+    if not getattr(SubversionTestCase, "make_svn_branch", None):
+      def make_svn_branch(self, relpath):
+        repos_url = self.make_repository(relpath)
+        return Branch.open(repos_url)
 
-      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+    def test_from_properties(self):
+      branch = self.make_svn_branch("d")
+
+      cfg = DebBuildConfig([], tree=branch.basis_tree())
       self.assertEquals(False, cfg.merge)
 
-      dc = self.get_commit_editor(repos_url)
+      dc = self.get_commit_editor(branch.base)
       d = dc.add_dir("debian")
       d.change_prop("mergeWithUpstream", "1")
       d.change_prop("svn-bp:origDir", "someorigdir")
       dc.close()
 
-      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+      cfg = DebBuildConfig([], tree=branch.basis_tree())
       self.assertEquals(True, cfg.merge)
       self.assertEquals(BUILD_TYPE_MERGE, cfg.build_type)
       self.assertEquals("someorigdir", cfg.orig_dir)
 
     def test_from_svn_layout_file(self):
-      repos_url = self.make_repository("d")
+      branch = self.make_svn_branch("d")
 
-      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+      cfg = DebBuildConfig([], tree=branch.basis_tree())
       self.assertEquals(False, cfg.merge)
 
-      dc = self.get_commit_editor(repos_url)
+      dc = self.get_commit_editor(branch.base)
       d = dc.add_dir("debian")
       f = d.add_file("debian/svn-layout")
       f.modify("origDir = someorigdir\n")
       dc.close()
 
-      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+      cfg = DebBuildConfig([], tree=branch.basis_tree())
       self.assertEquals("someorigdir", cfg.orig_dir)
 
 # vim: ts=2 sts=2 sw=2
