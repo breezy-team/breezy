@@ -75,7 +75,7 @@ New Features
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
 
-* ``config.IdMatcher`` can be used to implement config stores and stacks
+* ``config.NameMatcher`` can be used to implement config stores and stacks
   that need to provide specific option values for arbitrary unique IDs (svn
   repository UUIDs, etc).  (Vincent Ladeuil, #843638)
 

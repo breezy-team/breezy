@@ -3064,7 +3064,7 @@ class TestConcurrentStoreUpdates(TestStore):
 class TestSectionMatcher(TestStore):
 
     scenarios = [('location', {'matcher': config.LocationMatcher}),
-                 ('id', {'matcher': config.IdMatcher}),]
+                 ('id', {'matcher': config.NameMatcher}),]
 
     def get_store(self, file_name):
         return config.IniFileStore(self.get_readonly_transport(), file_name)
@@ -3179,10 +3179,10 @@ foo:policy = appendpath
         self.assertEquals(expected_location, matcher.location)
 
 
-class TestIdMatcher(TestStore):
+class TestNameMatcher(TestStore):
 
     def setUp(self):
-        super(TestIdMatcher, self).setUp()
+        super(TestNameMatcher, self).setUp()
         self.store = config.IniFileStore(self.get_readonly_transport(),
                                          'foo.conf')
         self.store._load_from_string('''
@@ -3194,15 +3194,17 @@ option=foo/baz
 option=bar
 ''')
 
+    def get_matching_sections(self, name):
+        matcher = config.NameMatcher(self.store, name)
+        return list(matcher.get_sections())
+
     def test_matching(self):
-        matcher = config.IdMatcher(self.store, 'foo')
-        sections = list(matcher.get_sections())
+        sections = self.get_matching_sections('foo')
         self.assertLength(1, sections)
         self.assertSectionContent(('foo', {'option': 'foo'}), sections[0])
 
     def test_not_matching(self):
-        matcher = config.IdMatcher(self.store, 'baz')
-        sections = list(matcher.get_sections())
+        sections = self.get_matching_sections('baz')
         self.assertLength(0, sections)
 
 

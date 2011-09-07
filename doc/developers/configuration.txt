@@ -102,7 +102,7 @@ or just ``match``.
 * ``LocationMatcher(store, location)``: To select all sections that match
   ``location``.
 
-* ``IdMatcher(store, unique_id)``: To select a single section matching
+* ``NameMatcher(store, unique_id)``: To select a single section matching
   ``unique_id``.
 
 Stacks

@@ -2917,10 +2917,10 @@ class SectionMatcher(object):
         raise NotImplementedError(self.match)
 
 
-class IdMatcher(SectionMatcher):
+class NameMatcher(SectionMatcher):
 
     def __init__(self, store, section_id):
-        super(IdMatcher, self).__init__(store)
+        super(NameMatcher, self).__init__(store)
         self.section_id = section_id
 
     def match(self, section):
