@@ -134,4 +134,4 @@ class TestTranslate(tests.TestCaseWithTransport):
         from StringIO import StringIO
         out = StringIO()
         help.help("authentication", out)
-        self.assertContainsRe(out.getvalue(), "zz{{Authentication Settings")
+        self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")
