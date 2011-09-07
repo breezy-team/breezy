@@ -4,8 +4,10 @@ bzr-builddeb (2.7.8) unstable; urgency=low
     found. LP: #783882
   * Cope with newer versions of bzr raising IOError rather than
     NoSuchFile error. LP: #831351, Closes: #638219
+  * Print proper error if uscan doesn't create the expected orig
+    tarball. LP: #818093.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 31 Aug 2011 03:40:12 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 07 Sep 2011 22:11:47 +0200
 
 bzr-builddeb (2.7.7) unstable; urgency=low
 
