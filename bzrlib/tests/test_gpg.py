@@ -391,6 +391,7 @@ JFA6kUIJU2w9LU/b88Y=
 
     def test_verify_invalid(self):
         self.requireFeature(features.gpgme)
+        self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -415,6 +416,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 
     def test_verify_expired_but_valid(self):
         self.requireFeature(features.gpgme)
+        self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
  
@@ -441,6 +443,7 @@ sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
 
     def test_verify_unknown_key(self):
         self.requireFeature(features.gpgme)
+        self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
