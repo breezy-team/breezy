@@ -2624,9 +2624,6 @@ class TestReadonlyStore(TestStore):
     scenarios = [(key, {'get_store': builder}) for key, builder
                  in config.test_store_builder_registry.iteritems()]
 
-    def setUp(self):
-        super(TestReadonlyStore, self).setUp()
-
     def test_building_delays_load(self):
         store = self.get_store(self)
         self.assertEquals(False, store.is_loaded())
@@ -3061,12 +3058,13 @@ class TestConcurrentStoreUpdates(TestStore):
     # FIXME: It may be worth looking into removing the lock dir when it's not
     # needed anymore and look at possible fallouts for concurrent lockers. This
     # will matter if/when we use config files outside of bazaar directories
-    # (.bazaar or .bzr) -- vila 20110-04-11
+    # (.bazaar or .bzr) -- vila 20110-04-111
 
 
 class TestSectionMatcher(TestStore):
 
-    scenarios = [('location', {'matcher': config.LocationMatcher})]
+    scenarios = [('location', {'matcher': config.LocationMatcher}),
+                 ('id', {'matcher': config.IdMatcher}),]
 
     def get_store(self, file_name):
         return config.IniFileStore(self.get_readonly_transport(), file_name)
@@ -3179,6 +3177,33 @@ foo:policy = appendpath
             expected_location = '/dir/subdir'
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
+
+
+class TestIdMatcher(TestStore):
+
+    def setUp(self):
+        super(TestIdMatcher, self).setUp()
+        self.store = config.IniFileStore(self.get_readonly_transport(),
+                                         'foo.conf')
+        self.store._load_from_string('''
+[foo]
+option=foo
+[foo/baz]
+option=foo/baz
+[bar]
+option=bar
+''')
+
+    def test_matching(self):
+        matcher = config.IdMatcher(self.store, 'foo')
+        sections = list(matcher.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent(('foo', {'option': 'foo'}), sections[0])
+
+    def test_not_matching(self):
+        matcher = config.IdMatcher(self.store, 'baz')
+        sections = list(matcher.get_sections())
+        self.assertLength(0, sections)
 
 
 class TestStackGet(tests.TestCase):
