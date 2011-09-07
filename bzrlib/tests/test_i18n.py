@@ -124,7 +124,9 @@ class TestTranslate(tests.TestCaseWithTransport):
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError,e:
             err = str(e)
-        self.assertContainsRe(err, u"zz\xe5{{Not a branch: .*}}".encode("utf-8"))
+        self.assertContainsRe(err, 
+                              u"zz\xe5{{Not a branch: .*}}".encode("utf-8"))
+
     def test_topic_help_translation(self):
         """does topic help get translated?"""
         from bzrlib import help
