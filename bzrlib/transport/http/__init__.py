@@ -20,7 +20,6 @@ There are separate implementation modules for each http client implementation.
 """
 
 from cStringIO import StringIO
-import mimetools
 import re
 import urlparse
 import urllib
@@ -35,14 +34,9 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.smart import medium
-from bzrlib.symbol_versioning import (
-        deprecated_method,
-        )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     ConnectedTransport,
-    _CoalescedOffset,
-    Transport,
     )
 
 # TODO: This is not used anymore by HttpTransport_urllib
@@ -612,7 +606,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             t = self._http_transport_ref()
             code, body_filelike = t._post(bytes)
             if code != 200:
-                raise InvalidHttpResponse(
+                raise errors.InvalidHttpResponse(
                     t._remote_path('.bzr/smart'),
                     'Expected 200 response code, got %r' % (code,))
         except (errors.InvalidHttpResponse, errors.ConnectionReset), e:

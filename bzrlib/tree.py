@@ -58,6 +58,14 @@ class Tree(object):
     trees or versioned trees.
     """
 
+    def has_versioned_directories(self):
+        """Whether this tree can contain explicitly versioned directories.
+
+        This defaults to True, but some implementations may want to override
+        it.
+        """
+        return True
+
     def changes_from(self, other, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False, include_root=False,
         want_unversioned=False):

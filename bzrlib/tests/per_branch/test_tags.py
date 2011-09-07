@@ -22,6 +22,7 @@ The tags are actually in the Branch.tags namespace, but these are
 
 from bzrlib import (
     branch,
+    bzrdir as _mod_bzrdir,
     errors,
     tests,
     )
@@ -39,13 +40,22 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
             raise tests.TestSkipped(
                 "format %s doesn't support tags" % branch._format)
 
+    def make_branch_with_revisions(self, relpath, revisions):
+        builder = self.make_branch_builder(relpath)
+        builder.start_series()
+        for revid in revisions:
+            builder.build_commit(rev_id=revid)
+        builder.finish_series()
+        return builder.get_branch()
+
     def test_tags_initially_empty(self):
         b = self.make_branch('b')
         tags = b.tags.get_tag_dict()
         self.assertEqual(tags, {})
 
     def test_make_and_lookup_tag(self):
-        b = self.make_branch('b')
+        b = self.make_branch_with_revisions('b',
+            ['target-revid-1', 'target-revid-2'])
         b.tags.set_tag('tag-name', 'target-revid-1')
         b.tags.set_tag('other-name', 'target-revid-2')
         # then reopen the branch and see they're still there
@@ -62,15 +72,25 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertFalse(b.tags.has_tag('imaginary'))
 
     def test_reverse_tag_dict(self):
-        b = self.make_branch('b')
+        b = self.make_branch_with_revisions('b',
+            ['target-revid-1', 'target-revid-2'])
         b.tags.set_tag('tag-name', 'target-revid-1')
         b.tags.set_tag('other-name', 'target-revid-2')
         # then reopen the branch and check reverse map id->tags list
         b = branch.Branch.open('b')
-        self.assertEqual(b.tags.get_reverse_tag_dict(),
+        self.assertEqual(dict(b.tags.get_reverse_tag_dict()),
             {'target-revid-1': ['tag-name'],
              'target-revid-2': ['other-name'],
             })
+
+    def test_ghost_tag(self):
+        b = self.make_branch('b')
+        if not b._format.supports_tags_referencing_ghosts():
+            self.assertRaises(errors.GhostTagsNotSupported,
+                b.tags.set_tag, "ghost", "idontexist")
+        else:
+            b.tags.set_tag("ghost", "idontexist")
+            self.assertEquals("idontexist", b.tags.lookup_tag("ghost"))
 
     def test_no_such_tag(self):
         b = self.make_branch('b')
@@ -83,8 +103,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
             self.fail("didn't get expected exception")
 
     def test_merge_tags(self):
-        b1 = self.make_branch('b1')
-        b2 = self.make_branch('b2')
+        b1 = self.make_branch_with_revisions('b1', ['revid', 'revid-1'])
+        b2 = self.make_branch_with_revisions('b2', ['revid-2'])
         # if there are tags in the source and not the destination, then they
         # just go across
         b1.tags.set_tag('tagname', 'revid')
@@ -93,32 +113,34 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # if a tag is in the destination and not in the source, it is not
         # removed when we merge them
         b2.tags.set_tag('in-destination', 'revid')
-        result = b1.tags.merge_to(b2.tags)
-        self.assertEquals(list(result), [])
+        updates, conflicts = b1.tags.merge_to(b2.tags)
+        self.assertEquals(list(conflicts), [])
+        self.assertEquals(updates, {})
         self.assertEquals(b2.tags.lookup_tag('in-destination'), 'revid')
         # if there's a conflicting tag, it's reported -- the command line
         # interface will say "these tags couldn't be copied"
         b1.tags.set_tag('conflicts', 'revid-1')
         b2.tags.set_tag('conflicts', 'revid-2')
-        result = b1.tags.merge_to(b2.tags)
-        self.assertEquals(list(result),
+        updates, conflicts = b1.tags.merge_to(b2.tags)
+        self.assertEquals(list(conflicts),
             [('conflicts', 'revid-1', 'revid-2')])
         # and it keeps the same value
+        self.assertEquals(updates, {})
         self.assertEquals(b2.tags.lookup_tag('conflicts'), 'revid-2')
 
     def test_unicode_tag(self):
-        b1 = self.make_branch('b')
         tag_name = u'\u3070'
         # in anticipation of the planned change to treating revision ids as
         # just 8bit strings
         revid = ('revid' + tag_name).encode('utf-8')
+        b1 = self.make_branch_with_revisions('b', [revid])
         b1.tags.set_tag(tag_name, revid)
         self.assertEquals(b1.tags.lookup_tag(tag_name), revid)
 
     def test_delete_tag(self):
-        b = self.make_branch('b')
         tag_name = u'\N{GREEK SMALL LETTER ALPHA}'
         revid = ('revid' + tag_name).encode('utf-8')
+        b = self.make_branch_with_revisions('b', [revid])
         b.tags.set_tag(tag_name, revid)
         # now try to delete it
         b.tags.delete_tag(tag_name)
@@ -145,9 +167,10 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # Open the same branch twice.  Read-lock one, and then mutate the tags
         # in the second.  The read-locked branch never re-reads the tags, so it
         # never observes the changed/new tags.
-        b1 = self.make_branch('b')
+        b1 = self.make_branch_with_revisions('b',
+            ['rev-1', 'rev-1-changed', 'rev-2'])
         b1.tags.set_tag('one', 'rev-1')
-        b2 = b1.bzrdir.open_branch()
+        b2 = _mod_bzrdir.BzrDir.open('b').open_branch()
         b1.lock_read()
         self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
         # Add a tag and modify a tag in b2.  b1 is read-locked and has already
@@ -164,7 +187,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
     def test_unlocked_does_not_cache_tags(self):
         """Unlocked branches do not cache tags."""
         # Open the same branch twice.
-        b1 = self.make_branch('b')
+        b1 = self.make_branch_with_revisions('b',
+            ['rev-1', 'rev-1-changed', 'rev-2'])
         b1.tags.set_tag('one', 'rev-1')
         b2 = b1.bzrdir.open_branch()
         self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
@@ -180,7 +204,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         returns a copy of the cached data so that callers cannot accidentally
         corrupt the cache.
         """
-        b = self.make_branch('b')
+        b = self.make_branch_with_revisions('b',
+            ['rev-1', 'rev-2', 'rev-3'])
         b.tags.set_tag('one', 'rev-1')
         self.addCleanup(b.lock_read().unlock)
         # The first time the data returned will not be in the cache
@@ -194,7 +219,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertEqual({'one': 'rev-1'}, b.tags.get_tag_dict())
 
     def make_write_locked_branch_with_one_tag(self):
-        b = self.make_branch('b')
+        b = self.make_branch_with_revisions('b', ['rev-1'])
         b.tags.set_tag('one', 'rev-1')
         self.addCleanup(b.lock_write().unlock)
         # Populate the cache
@@ -292,9 +317,10 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         child.bind(master)
         child.update()
         master.tags.set_tag('foo', 'rev-2')
-        tag_conflicts = other.tags.merge_to(child.tags, overwrite=True)
+        tag_updates, tag_conflicts = other.tags.merge_to(child.tags, overwrite=True)
         self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
         self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
+        self.assertEquals({"foo": "rev-1"}, tag_updates)
         self.assertLength(0, tag_conflicts)
 
     def test_merge_to_overwrite_conflict_in_child_and_master(self):
@@ -308,9 +334,11 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         child = self.make_branch('child')
         child.bind(master)
         child.update()
-        tag_conflicts = other.tags.merge_to(child.tags, overwrite=True)
+        tag_updates, tag_conflicts = other.tags.merge_to(
+            child.tags, overwrite=True)
         self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
         self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
+        self.assertEquals({u'foo': 'rev-1'}, tag_updates)
         self.assertLength(0, tag_conflicts)
 
     def test_merge_to_conflict_in_child_only(self):
@@ -325,13 +353,14 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         child.bind(master)
         child.update()
         master.tags.delete_tag('foo')
-        tag_conflicts = other.tags.merge_to(child.tags)
+        tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # Conflict in child, so it is unchanged.
         self.assertEquals('rev-2', child.tags.lookup_tag('foo'))
         # No conflict in the master, so the 'foo' tag equals other's value here.
         self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
         # The conflict is reported.
         self.assertEquals([(u'foo', 'rev-1', 'rev-2')], list(tag_conflicts))
+        self.assertEquals({u'foo': 'rev-1'}, tag_updates)
 
     def test_merge_to_conflict_in_master_only(self):
         """When new_tags.merge_to(child.tags) conflicts with the master but not
@@ -344,12 +373,13 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         child.bind(master)
         child.update()
         master.tags.set_tag('foo', 'rev-2')
-        tag_conflicts = other.tags.merge_to(child.tags)
+        tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # No conflict in the child, so the 'foo' tag equals other's value here.
         self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
         # Conflict in master, so it is unchanged.
         self.assertEquals('rev-2', master.tags.lookup_tag('foo'))
         # The conflict is reported.
+        self.assertEquals({u'foo': 'rev-1'}, tag_updates)
         self.assertEquals([(u'foo', 'rev-1', 'rev-2')], list(tag_conflicts))
 
     def test_merge_to_same_conflict_in_master_and_child(self):
@@ -363,12 +393,13 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         child = self.make_branch('child')
         child.bind(master)
         child.update()
-        tag_conflicts = other.tags.merge_to(child.tags)
+        tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # Both master and child conflict, so both stay as rev-2
         self.assertEquals('rev-2', child.tags.lookup_tag('foo'))
         self.assertEquals('rev-2', master.tags.lookup_tag('foo'))
         # The conflict is reported exactly once, even though it occurs in both
         # master and child.
+        self.assertEquals({}, tag_updates)
         self.assertEquals([(u'foo', 'rev-1', 'rev-2')], list(tag_conflicts))
 
     def test_merge_to_different_conflict_in_master_and_child(self):
@@ -385,11 +416,12 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         # We use the private method _set_tag_dict because normally bzr tries to
         # avoid this scenario.
         child.tags._set_tag_dict({'foo': 'rev-3'})
-        tag_conflicts = other.tags.merge_to(child.tags)
+        tag_updates, tag_conflicts = other.tags.merge_to(child.tags)
         # Both master and child conflict, so both stay as they were.
         self.assertEquals('rev-3', child.tags.lookup_tag('foo'))
         self.assertEquals('rev-2', master.tags.lookup_tag('foo'))
         # Both conflicts are reported.
+        self.assertEquals({}, tag_updates)
         self.assertEquals(
             [(u'foo', 'rev-1', 'rev-2'), (u'foo', 'rev-1', 'rev-3')],
             sorted(tag_conflicts))
@@ -453,7 +485,7 @@ class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
             get_tag_name, 'get tag name foo')
         self.assertEquals("foo", self.branch.automatic_tag_name(
             self.branch.last_revision()))
-    
+
     def test_uses_first_return(self):
         get_tag_name_1 = lambda br, revid: "foo1"
         get_tag_name_2 = lambda br, revid: "foo2"

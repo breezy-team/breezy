@@ -835,6 +835,7 @@ hidden={start}{middle}{end}
         self.assertEquals(['{foo', '}', '{', 'bar}'],
                           conf.get_user_option('hidden', expand=True))
 
+
 class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
 
     def get_config(self, location, string=None):
@@ -2387,6 +2388,99 @@ class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
                              opt, [u'foo', u'1', u'True'])
 
 
+class TestOptionConverterMixin(object):
+
+    def assertConverted(self, expected, opt, value):
+        self.assertEquals(expected, opt.convert_from_unicode(value))
+
+    def assertWarns(self, opt, value):
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.assertEquals(None, opt.convert_from_unicode(value))
+        self.assertLength(1, warnings)
+        self.assertEquals(
+            'Value "%s" is not valid for "%s"' % (value, opt.name),
+            warnings[0])
+
+    def assertErrors(self, opt, value):
+        self.assertRaises(errors.ConfigOptionValueError,
+                          opt.convert_from_unicode, value)
+
+    def assertConvertInvalid(self, opt, invalid_value):
+        opt.invalid = None
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        opt.invalid = 'warning'
+        self.assertWarns(opt, invalid_value)
+        opt.invalid = 'error'
+        self.assertErrors(opt, invalid_value)
+
+
+class TestOptionWithBooleanConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A boolean.',
+                             from_unicode=config.bool_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as a boolean
+        self.assertConvertInvalid(opt, u'invalid-boolean')
+        # A list of strings is never recognized as a boolean
+        self.assertConvertInvalid(opt, [u'not', u'a', u'boolean'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(True, opt, u'True')
+        self.assertConverted(True, opt, u'1')
+        self.assertConverted(False, opt, u'False')
+
+
+class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer.',
+                             from_unicode=config.int_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # A string that is not recognized as an integer
+        self.assertConvertInvalid(opt, u'forty-two')
+        # A list of strings is never recognized as an integer
+        self.assertConvertInvalid(opt, [u'a', u'list'])
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(16, opt, u'16')
+
+
+class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='A list.',
+                             from_unicode=config.list_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        # We don't even try to convert a list into a list, we only expect
+        # strings
+        self.assertConvertInvalid(opt, [1])
+        # No string is invalid as all forms can be converted to a list
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        # An empty string is an empty list
+        self.assertConverted([], opt, '') # Using a bare str() just in case
+        self.assertConverted([], opt, u'')
+        # A boolean
+        self.assertConverted([u'True'], opt, u'True')
+        # An integer
+        self.assertConverted([u'42'], opt, u'42')
+        # A single string
+        self.assertConverted([u'bar'], opt, u'bar')
+
+
 class TestOptionRegistry(tests.TestCase):
 
     def setUp(self):
@@ -2565,7 +2659,7 @@ class TestReadonlyStore(TestStore):
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
-    """Simulate loading a config store without content of various encodings.
+    """Simulate loading a config store with content of various encodings.
 
     All files produced by bzr are in utf8 content.
 
@@ -2624,7 +2718,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
 
 
 class TestIniConfigContent(tests.TestCaseWithTransport):
-    """Simulate loading a IniBasedConfig without content of various encodings.
+    """Simulate loading a IniBasedConfig with content of various encodings.
 
     All files produced by bzr are in utf8 content.
 
@@ -2812,8 +2906,10 @@ foo_in_qux=quux
         sections = list(store.get_sections())
         self.assertLength(4, sections)
         # The default section has no name.
-        # List values are provided as lists
-        self.assertSectionContent((None, {'foo': 'bar', 'l': ['1', '2']}),
+        # List values are provided as strings and need to be explicitly
+        # converted by specifying from_unicode=list_from_store at option
+        # registration
+        self.assertSectionContent((None, {'foo': 'bar', 'l': u'1,2'}),
                                   sections[0])
         self.assertSectionContent(
             ('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}), sections[1])
@@ -3271,6 +3367,170 @@ class TestStackGetWithConverter(TestStackGet):
         self.register_list_option('foo', None)
         self.conf.store._load_from_string('foo=m,o,r,e')
         self.assertEquals(['m', 'o', 'r', 'e'], self.conf.get('foo'))
+
+    def test_get_with_list_converter_embedded_spaces_many_items(self):
+        self.register_list_option('foo', None)
+        self.conf.store._load_from_string('foo=" bar", "baz "')
+        self.assertEquals([' bar', 'baz '], self.conf.get('foo'))
+
+    def test_get_with_list_converter_stripped_spaces_many_items(self):
+        self.register_list_option('foo', None)
+        self.conf.store._load_from_string('foo= bar ,  baz ')
+        self.assertEquals(['bar', 'baz'], self.conf.get('foo'))
+
+
+class TestStackExpandOptions(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestStackExpandOptions, self).setUp()
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
+        self.registry = config.option_registry
+        self.conf = build_branch_stack(self)
+
+    def assertExpansion(self, expected, string, env=None):
+        self.assertEquals(expected, self.conf.expand_options(string, env))
+
+    def test_no_expansion(self):
+        self.assertExpansion('foo', 'foo')
+
+    def test_expand_default_value(self):
+        self.conf.store._load_from_string('bar=baz')
+        self.registry.register(config.Option('foo', default=u'{bar}'))
+        self.assertEquals('baz', self.conf.get('foo', expand=True))
+
+    def test_expand_default_from_env(self):
+        self.conf.store._load_from_string('bar=baz')
+        self.registry.register(config.Option('foo', default_from_env=['FOO']))
+        self.overrideEnv('FOO', '{bar}')
+        self.assertEquals('baz', self.conf.get('foo', expand=True))
+
+    def test_expand_default_on_failed_conversion(self):
+        self.conf.store._load_from_string('baz=bogus\nbar=42\nfoo={baz}')
+        self.registry.register(
+            config.Option('foo', default=u'{bar}',
+                          from_unicode=config.int_from_store))
+        self.assertEquals(42, self.conf.get('foo', expand=True))
+
+    def test_env_adding_options(self):
+        self.assertExpansion('bar', '{foo}', {'foo': 'bar'})
+
+    def test_env_overriding_options(self):
+        self.conf.store._load_from_string('foo=baz')
+        self.assertExpansion('bar', '{foo}', {'foo': 'bar'})
+
+    def test_simple_ref(self):
+        self.conf.store._load_from_string('foo=xxx')
+        self.assertExpansion('xxx', '{foo}')
+
+    def test_unknown_ref(self):
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          self.conf.expand_options, '{foo}')
+
+    def test_indirect_ref(self):
+        self.conf.store._load_from_string('''
+foo=xxx
+bar={foo}
+''')
+        self.assertExpansion('xxx', '{bar}')
+
+    def test_embedded_ref(self):
+        self.conf.store._load_from_string('''
+foo=xxx
+bar=foo
+''')
+        self.assertExpansion('xxx', '{{bar}}')
+
+    def test_simple_loop(self):
+        self.conf.store._load_from_string('foo={foo}')
+        self.assertRaises(errors.OptionExpansionLoop,
+                          self.conf.expand_options, '{foo}')
+
+    def test_indirect_loop(self):
+        self.conf.store._load_from_string('''
+foo={bar}
+bar={baz}
+baz={foo}''')
+        e = self.assertRaises(errors.OptionExpansionLoop,
+                              self.conf.expand_options, '{foo}')
+        self.assertEquals('foo->bar->baz', e.refs)
+        self.assertEquals('{foo}', e.string)
+
+    def test_list(self):
+        self.conf.store._load_from_string('''
+foo=start
+bar=middle
+baz=end
+list={foo},{bar},{baz}
+''')
+        self.registry.register(
+            config.Option('list', from_unicode=config.list_from_store))
+        self.assertEquals(['start', 'middle', 'end'],
+                           self.conf.get('list', expand=True))
+
+    def test_cascading_list(self):
+        self.conf.store._load_from_string('''
+foo=start,{bar}
+bar=middle,{baz}
+baz=end
+list={foo}
+''')
+        self.registry.register(
+            config.Option('list', from_unicode=config.list_from_store))
+        self.assertEquals(['start', 'middle', 'end'],
+                           self.conf.get('list', expand=True))
+
+    def test_pathologically_hidden_list(self):
+        self.conf.store._load_from_string('''
+foo=bin
+bar=go
+start={foo
+middle=},{
+end=bar}
+hidden={start}{middle}{end}
+''')
+        # What matters is what the registration says, the conversion happens
+        # only after all expansions have been performed
+        self.registry.register(
+            config.Option('hidden', from_unicode=config.list_from_store))
+        self.assertEquals(['bin', 'go'],
+                          self.conf.get('hidden', expand=True))
+
+
+class TestStackCrossSectionsExpand(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestStackCrossSectionsExpand, self).setUp()
+
+    def get_config(self, location, string):
+        if string is None:
+            string = ''
+        # Since we don't save the config we won't strictly require to inherit
+        # from TestCaseInTempDir, but an error occurs so quickly...
+        c = config.LocationStack(location)
+        c.store._load_from_string(string)
+        return c
+
+    def test_dont_cross_unrelated_section(self):
+        c = self.get_config('/another/branch/path','''
+[/one/branch/path]
+foo = hello
+bar = {foo}/2
+
+[/another/branch/path]
+bar = {foo}/2
+''')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.get, 'bar', expand=True)
+
+    def test_cross_related_sections(self):
+        c = self.get_config('/project/branch/path','''
+[/project]
+foo = qu
+
+[/project/branch/path]
+bar = {foo}ux
+''')
+        self.assertEquals('quux', c.get('bar', expand=True))
 
 
 class TestStackSet(TestStackWithTransport):
