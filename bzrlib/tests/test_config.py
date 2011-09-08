@@ -33,18 +33,14 @@ from bzrlib import (
     errors,
     osutils,
     mail_client,
-    mergetools,
     ui,
     urlutils,
-    registry,
     remote,
     tests,
     trace,
-    transport,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
-    deprecated_method,
     )
 from bzrlib.transport import remote as transport_remote
 from bzrlib.tests import (
@@ -1969,6 +1965,29 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         conf = config.TransportConfig(t, 'foo.conf')
         self.assertRaises(errors.ParseConfigError, conf._get_configobj)
 
+    def test_load_permission_denied(self):
+        """Ensure we get an empty config file if the file is inaccessible."""
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+        class DenyingTransport(object):
+
+            def __init__(self, base):
+                self.base = base
+
+            def get_bytes(self, relpath):
+                raise errors.PermissionDenied(relpath, "")
+
+        cfg = config.TransportConfig(
+            DenyingTransport("nonexisting://"), 'control.conf')
+        self.assertIs(None, cfg.get_option('non-existant', 'SECTION'))
+        self.assertEquals(
+            warnings,
+            [u'Permission denied while trying to open configuration file '
+             u'nonexisting:///control.conf.'])
+
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
         bzrdir_config = config.TransportConfig(self.get_transport('.'),
@@ -2605,9 +2624,6 @@ class TestReadonlyStore(TestStore):
     scenarios = [(key, {'get_store': builder}) for key, builder
                  in config.test_store_builder_registry.iteritems()]
 
-    def setUp(self):
-        super(TestReadonlyStore, self).setUp()
-
     def test_building_delays_load(self):
         store = self.get_store(self)
         self.assertEquals(False, store.is_loaded())
@@ -2677,6 +2693,25 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t.put_bytes('foo.conf', '[open_section\n')
         store = config.IniFileStore(t, 'foo.conf')
         self.assertRaises(errors.ParseConfigError, store.load)
+
+    def test_load_permission_denied(self):
+        """Ensure we get warned when trying to load an inaccessible file."""
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+        t = self.get_transport()
+
+        def get_bytes(relpath):
+            raise errors.PermissionDenied(relpath, "")
+        t.get_bytes = get_bytes
+        store = config.IniFileStore(t, 'foo.conf')
+        self.assertRaises(errors.PermissionDenied, store.load)
+        self.assertEquals(
+            warnings,
+            [u'Permission denied while trying to load configuration store %s.'
+             % store.external_url()])
 
 
 class TestIniConfigContent(tests.TestCaseWithTransport):
@@ -3023,12 +3058,13 @@ class TestConcurrentStoreUpdates(TestStore):
     # FIXME: It may be worth looking into removing the lock dir when it's not
     # needed anymore and look at possible fallouts for concurrent lockers. This
     # will matter if/when we use config files outside of bazaar directories
-    # (.bazaar or .bzr) -- vila 20110-04-11
+    # (.bazaar or .bzr) -- vila 20110-04-111
 
 
 class TestSectionMatcher(TestStore):
 
-    scenarios = [('location', {'matcher': config.LocationMatcher})]
+    scenarios = [('location', {'matcher': config.LocationMatcher}),
+                 ('id', {'matcher': config.NameMatcher}),]
 
     def get_store(self, file_name):
         return config.IniFileStore(self.get_readonly_transport(), file_name)
@@ -3141,6 +3177,35 @@ foo:policy = appendpath
             expected_location = '/dir/subdir'
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
+
+
+class TestNameMatcher(TestStore):
+
+    def setUp(self):
+        super(TestNameMatcher, self).setUp()
+        self.store = config.IniFileStore(self.get_readonly_transport(),
+                                         'foo.conf')
+        self.store._load_from_string('''
+[foo]
+option=foo
+[foo/baz]
+option=foo/baz
+[bar]
+option=bar
+''')
+
+    def get_matching_sections(self, name):
+        matcher = config.NameMatcher(self.store, name)
+        return list(matcher.get_sections())
+
+    def test_matching(self):
+        sections = self.get_matching_sections('foo')
+        self.assertLength(1, sections)
+        self.assertSectionContent(('foo', {'option': 'foo'}), sections[0])
+
+    def test_not_matching(self):
+        sections = self.get_matching_sections('baz')
+        self.assertLength(0, sections)
 
 
 class TestStackGet(tests.TestCase):

@@ -310,8 +310,7 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-        self._segment_parameters = urlutils.split_segment_parameters(
-            base.rstrip("/"))[1]
+        self._segment_parameters = urlutils.split_segment_parameters(base)[1]
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.

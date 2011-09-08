@@ -347,7 +347,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         try:
             made_repo.set_make_working_trees(False)
-        except NotImplementedError:
+        except errors.UnsupportedOperation:
             # the repository does not support having its tree-making flag
             # toggled.
             return
@@ -369,7 +369,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             self.assertFalse(repo._format.supports_revision_signatures)
-            raise TestNotApplicable("signatures not supported by repository format")
+            raise tests.TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text('A')
@@ -811,7 +811,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(True)
-        except errors.RepositoryUpgradeRequired, e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertTrue(repo.make_working_trees())
 
@@ -819,7 +819,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(False)
-        except errors.RepositoryUpgradeRequired, e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertFalse(repo.make_working_trees())
 
