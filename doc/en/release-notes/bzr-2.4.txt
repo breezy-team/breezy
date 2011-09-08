@@ -8,7 +8,14 @@ Bazaar Release Notes
 bzr 2.4.1
 #########
 
-:2.4.1: NOT RELEASED YET
+:2.4.1: 2011-09-08
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.4 releases.
+
+It includes fixes from previous stable releases and address some issues with
+the test suite.
+
 
 External Compatibility Breaks
 *****************************
@@ -37,6 +44,10 @@ Bug Fixes
 
 * ``dirstate.fdatasync`` and ``repository.fdatasync`` can now properly be
   disabled. (Vincent Ladeuil, #824513)
+
+* Disable ``os.fsync`` and ``os.fdatasync`` by default when running
+  ``bzr selftest``. You can use ``--sync`` to re-enable them.
+  (John Arbash Meinel, #837293)
 
 * Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
 
