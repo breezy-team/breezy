@@ -2627,13 +2627,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        branch = repo.bzrdir.create_branch()
-        if (branch._format.supports_set_append_revisions_only() and
-            branch.get_append_revisions_only()):
-            # Make sure append revisions only is disabled, for
-            # formats that have it default to true.
-            branch.set_append_revisions_only(False)
-        return branch
+        return repo.bzrdir.create_branch(append_revisions_only=False)
 
     def resolve_format(self, format):
         """Resolve an object to a ControlDir format object.

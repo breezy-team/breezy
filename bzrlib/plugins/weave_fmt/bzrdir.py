@@ -747,12 +747,14 @@ class BzrDirPreSplitOut(BzrDir):
             tree.clone(result)
         return result
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+                      append_revisions_only=None):
         """See BzrDir.create_branch."""
         if repository is not None:
             raise NotImplementedError(
                 "create_branch(repository=<not None>) on %r" % (self,))
-        return self._format.get_branch_format().initialize(self, name=name)
+        return self._format.get_branch_format().initialize(self, name=name,
+            append_revisions_only=append_revisions_only)
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch."""

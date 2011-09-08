@@ -70,13 +70,16 @@ class BzrBranchFormat4(BranchFormat):
     It does not support binding.
     """
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir.
 
         :param a_bzrdir: The bzrdir to initialize the branch in
         :param name: Name of colocated branch to create, if any
         :param repository: Repository for this branch (unused)
         """
+        if append_revisions_only:
+            raise errors.UpgradeRequired(a_bzrdir.user_url)
         if repository is not None:
             raise NotImplementedError(
                 "initialize(repository=<not None>) on %r" % (self,))
