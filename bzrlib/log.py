@@ -1405,7 +1405,7 @@ class LogFormatter(object):
             if advice_sep:
                 self.to_file.write(advice_sep)
             self.to_file.write(
-                "Use --include-merges or -n0 to see merged revisions.\n")
+                "Use --include-sidelines or -n0 to see merged revisions.\n")
 
     def get_advice_separator(self):
         """Get the text separating the log from the closing advice."""
