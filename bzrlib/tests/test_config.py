@@ -167,6 +167,7 @@ acceptable_keys=amy
 user_global_option=something
 bzr.mergetool.sometool=sometool {base} {this} {other} -o {result}
 bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
+bzr.mergetool.newtool='"newtool with spaces" {this_temp}'
 bzr.default_mergetool=sometool
 [ALIASES]
 h=help
@@ -1322,7 +1323,8 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         self.log(repr(tools))
         self.assertEqual(
             {u'funkytool' : u'funkytool "arg with spaces" {this_temp}',
-            u'sometool' : u'sometool {base} {this} {other} -o {result}'},
+            u'sometool' : u'sometool {base} {this} {other} -o {result}',
+            u'newtool' : u'"newtool with spaces" {this_temp}'},
             tools)
 
     def test_get_merge_tools_empty(self):
