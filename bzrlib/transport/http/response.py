@@ -28,7 +28,6 @@ import rfc822
 
 from bzrlib import (
     errors,
-    trace,
     osutils,
     )
 
