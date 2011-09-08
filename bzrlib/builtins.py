@@ -2419,8 +2419,10 @@ class cmd_log(Command):
             Option('show-diff',
                    short_name='p',
                    help='Show changes made in each revision as a patch.'),
-            Option('include-merges',
+            Option('include-sidelines',
                    help='Show merged revisions like --levels 0 does.'),
+            Option('include-merges', hidden=True,
+                   help='Historical alias for --include-sidelines.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
@@ -2464,6 +2466,7 @@ class cmd_log(Command):
             limit=None,
             show_diff=False,
             include_merges=False,
+            include_sidelines=None,
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
@@ -2479,16 +2482,18 @@ class cmd_log(Command):
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if include_sidelines is None:
+            include_sidelines = include_merges
         if (exclude_common_ancestry
             and (revision is None or len(revision) != 2)):
             raise errors.BzrCommandError(
                 '--exclude-common-ancestry requires -r with two revisions')
-        if include_merges:
+        if include_sidelines:
             if levels is None:
                 levels = 0
             else:
                 raise errors.BzrCommandError(
-                    '--levels and --include-merges are mutually exclusive')
+                    '--levels and --include-sidelines are mutually exclusive')
 
         if change is not None:
             if len(change) > 1:
@@ -4599,8 +4604,10 @@ class cmd_missing(Command):
             type=_parse_revision_str,
             help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-        Option('include-merges',
+        Option('include-sidelines',
                'Show all revisions in addition to the mainline ones.'),
+        Option('include-merges', hidden=True,
+               help='Historical alias for --include-sidelines.'),
         ]
     encoding_type = 'replace'
 
@@ -4609,13 +4616,16 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, revision=None, my_revision=None,
+            include_merges=False, include_sidelines=None,
+            revision=None, my_revision=None,
             directory=u'.'):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
                 self.outf.write(s)
 
+        if include_sidelines is None:
+            include_sidelines = include_merges
         if this:
             mine_only = this
         if other:
@@ -4660,7 +4670,7 @@ class cmd_missing(Command):
         local_extra, remote_extra = find_unmerged(
             local_branch, remote_branch, restrict,
             backward=not reverse,
-            include_merges=include_merges,
+            include_merges=include_sidelines,
             local_revid_range=local_revid_range,
             remote_revid_range=remote_revid_range)
 
