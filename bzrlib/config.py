@@ -2891,8 +2891,8 @@ class ControlStore(LockableIniFileStore):
 class SectionMatcher(object):
     """Select sections into a given Store.
 
-    This intended to be used to postpone getting an iterable of sections from a
-    store.
+    This is intended to be used to postpone getting an iterable of sections
+    from a store.
     """
 
     def __init__(self, store):
@@ -2907,8 +2907,24 @@ class SectionMatcher(object):
             if self.match(s):
                 yield s
 
-    def match(self, secion):
+    def match(self, section):
+        """Does the proposed section match.
+
+        :param section: A Section object.
+
+        :returns: True if the section matches, False otherwise.
+        """
         raise NotImplementedError(self.match)
+
+
+class NameMatcher(SectionMatcher):
+
+    def __init__(self, store, section_id):
+        super(NameMatcher, self).__init__(store)
+        self.section_id = section_id
+
+    def match(self, section):
+        return section.id == self.section_id
 
 
 class LocationSection(Section):
