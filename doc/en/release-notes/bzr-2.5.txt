@@ -129,6 +129,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr reconfigure`` will now allow multiple non-conflicting requests
+  in a single invocation, e.g. ``--branch`` and ``--use-shared``.
+  (Martin von Gagern, #842993)
+
 * The pull command will now always use separate connections for the
   case where the destination is a heavyweight checkout of some remote
   branch on the same host as the source branch.
