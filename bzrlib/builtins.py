@@ -2423,6 +2423,8 @@ class cmd_log(Command):
                    help='Show merged revisions like --levels 0 does.'),
             Option('include-merges', hidden=True,
                    help='Historical alias for --include-sidelines.'),
+            Option('omit-merges',
+                   help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
@@ -2467,6 +2469,7 @@ class cmd_log(Command):
             show_diff=False,
             include_merges=False,
             include_sidelines=None,
+            omit_merges=False,
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
@@ -2606,7 +2609,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
-            signature=signatures
+            signature=signatures, omit_merges=omit_merges,
             )
         Logger(b, rqst).show(lf)
 

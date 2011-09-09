@@ -215,7 +215,7 @@ def show_log(branch,
     Logger(branch, rqst).show(lf)
 
 
-# Note: This needs to be kept this in sync with the defaults in
+# Note: This needs to be kept in sync with the defaults in
 # make_log_request_dict() below
 _DEFAULT_REQUEST_PARAMS = {
     'direction': 'reverse',
@@ -232,7 +232,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
                           delta_type=None,
                           diff_type=None, _match_using_deltas=True,
                           exclude_common_ancestry=False, match=None,
-                          signature=False,
+                          signature=False, omit_merges=False,
                           ):
     """Convenience function for making a logging request dictionary.
 
@@ -288,6 +288,9 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
       revisions. Keys can be 'message', 'author', 'committer', 'bugs' or
       the empty string to match any of the preceding properties.
 
+    :param omit_merges: If True, commits with mor than one parent are
+      omitted.
+
     """
     # Take care of old style message_search parameter
     if message_search:
@@ -311,6 +314,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
         'exclude_common_ancestry': exclude_common_ancestry,
         'signature': signature,
         'match': match,
+        'omit_merges': omit_merges,
         # Add 'private' attributes for features that may be deprecated
         '_match_using_deltas': _match_using_deltas,
     }
@@ -447,12 +451,15 @@ class _DefaultLogGenerator(LogGenerator):
         limit = rqst.get('limit')
         diff_type = rqst.get('diff_type')
         show_signature = rqst.get('signature')
+        omit_merges = rqst.get('omit_merges')
         log_count = 0
         revision_iterator = self._create_log_revision_iterator()
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
                 if levels != 0 and merge_depth >= levels:
+                    continue
+                if omit_merges and len(rev.parent_ids) > 1:
                     continue
                 if diff_type is None:
                     diff = None

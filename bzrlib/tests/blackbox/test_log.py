@@ -587,6 +587,14 @@ class TestLogMerges(TestLogWithLogCatcher):
                 [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
                 working_dir='level0')
 
+    def test_omit_merges_with_sidelines(self):
+        self.assertLogRevnos(['--omit-merges', '-n0'], ['1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
+
+    def test_omit_merges_without_sidelines(self):
+        self.assertLogRevnos(['--omit-merges', '-n1'], ['1'],
+                             working_dir='level0')
+
 
 class TestLogDiff(TestLogWithLogCatcher):
 
