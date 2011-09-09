@@ -356,6 +356,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         return self.path2id("")
 
     def _has_dir(self, path):
+        if path == "":
+            return True
         if self._versioned_dirs is None:
             self._load_dirs()
         return path in self._versioned_dirs
