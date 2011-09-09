@@ -137,6 +137,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr commit`` now correctly reports missing files as "removed", not
+  "modified". (Jelmer Vernooij, #553955)
+
 * The pull command will now always use separate connections for the
   case where the destination is a heavyweight checkout of some remote
   branch on the same host as the source branch.

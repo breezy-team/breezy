@@ -161,7 +161,11 @@ class TestCommit(TestCaseWithTransport):
         wt.commit(message='add hello')
 
         os.remove('hello')
-        wt.commit('removed hello', rev_id='rev2')
+        reporter = CapturingReporter()
+        wt.commit('removed hello', rev_id='rev2', reporter=reporter)
+        self.assertEquals(
+            [('missing', u'hello'), ('deleted', u'hello')],
+            reporter.calls)
 
         tree = b.repository.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
