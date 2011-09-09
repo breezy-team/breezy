@@ -2468,8 +2468,6 @@ class cmd_log(Command):
             limit=None,
             show_diff=False,
             include_merges=False,
-            include_sidelines=None,
-            omit_merges=False,
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
@@ -2478,6 +2476,8 @@ class cmd_log(Command):
             match_committer=None,
             match_author=None,
             match_bugs=None,
+            include_sidelines=None,
+            omit_merges=False,
             ):
         from bzrlib.log import (
             Logger,
@@ -4619,9 +4619,8 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, include_sidelines=None,
-            revision=None, my_revision=None,
-            directory=u'.'):
+            include_merges=False, revision=None, my_revision=None,
+            directory=u'.', include_sidelines=None):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():

@@ -90,7 +90,9 @@ class TestLogWithLogCatcher(TestLog):
         return self.log_catcher.revisions
 
     def assertLogRevnos(self, args, expected_revnos, working_dir='.'):
-        self.run_bzr(['log'] + args, working_dir=working_dir)
+        err, out = self.run_bzr(['log'] + args, working_dir=working_dir)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
         self.assertEqual(expected_revnos,
                          [r.revno for r in self.get_captured_revisions()])
 
@@ -551,18 +553,11 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def test_include_sidelines(self):
         # Confirm --include-sidelines gives the same output as -n0
+        expected = ['2', '1.1.2', '1.2.1', '1.1.1', '1']
         self.assertLogRevnos(['--include-sidelines'],
-                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
+                             expected, working_dir='level0')
         self.assertLogRevnos(['--include-sidelines'],
-                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
-        out_im, err_im = self.run_bzr('log --include-sidelines',
-                                      working_dir='level0')
-        out_n0, err_n0 = self.run_bzr('log -n0', working_dir='level0')
-        self.assertEqual('', err_im)
-        self.assertEqual('', err_n0)
-        self.assertEqual(out_im, out_n0)
+                             expected, working_dir='level0')
 
     def test_force_merge_revisions_N(self):
         self.assertLogRevnos(['-n2'],

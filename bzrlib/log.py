@@ -288,7 +288,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
       revisions. Keys can be 'message', 'author', 'committer', 'bugs' or
       the empty string to match any of the preceding properties.
 
-    :param omit_merges: If True, commits with mor than one parent are
+    :param omit_merges: If True, commits with more than one parent are
       omitted.
 
     """
