@@ -78,7 +78,7 @@ class GitPullResult(branch.PullResult):
         try:
             return self.target_branch.revision_id_to_revno(revid)
         finally:
-            self.target.unlock()
+            self.target_branch.unlock()
 
     @property
     def old_revno(self):
