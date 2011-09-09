@@ -214,8 +214,11 @@ class LocalGitTagDict(GitTags):
                 del self.repository._git[name]
 
     def set_tag(self, name, revid):
-        self.refs[tag_name_to_ref(name)], _ = \
-            self.branch.lookup_bzr_revision_id(revid)
+        try:
+            git_sha, mapping = self.branch.lookup_bzr_revision_id(revid)
+        except errors.NoSuchRevision:
+            raise errors.GhostTagsNotSupported(self)
+        self.refs[tag_name_to_ref(name)] = git_sha
 
 
 class DictTagDict(tag.BasicTags):
@@ -255,6 +258,12 @@ class GitBranchFormat(branch.BranchFormat):
         return True
 
     def supports_leaving_lock(self):
+        return False
+
+    def supports_tags_referencing_ghosts(self):
+        return False
+
+    def tags_are_versioned(self):
         return False
 
     @property
@@ -365,7 +374,8 @@ class GitBranch(ForeignBranch):
         if token is not None:
             raise errors.TokenLockingNotSupported(self)
         if self._lock_mode:
-            assert self._lock_mode == 'w'
+            if self._lock_mode == 'r':
+                raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock_mode = 'w'
