@@ -162,7 +162,7 @@ class GitDir(ControlDir):
         cloning_format = self.cloning_metadir()
         # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
-        source_branch = self.open_branch()
+        source_branch = self.create_branch()
         source_repository = self.find_repository()
         try:
             result_repo = result.find_repository()
@@ -419,10 +419,13 @@ class LocalGitDir(GitDir):
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
-        if not refname in self._git.refs:
+        if refname is None:
+            refname = "refs/heads/master"
+        try:
+            del self._git.refs[refname]
+        except KeyError:
             raise bzr_errors.NotBranchError(self.root_transport.base,
                     bzrdir=self)
-        del self._git.refs[refname]
 
     def destroy_repository(self):
         raise bzr_errors.UnsupportedOperation(self.destroy_repository, self)
