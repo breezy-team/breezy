@@ -573,7 +573,7 @@ class Config(object):
         for (oname, value, section, conf_id, parser) in self._get_options():
             if oname.startswith('bzr.mergetool.'):
                 tool_name = oname[len('bzr.mergetool.'):]
-                tools[tool_name] = value
+                tools[tool_name] = self.get_user_option(oname)
         trace.mutter('loaded merge tools: %r' % tools)
         return tools
 
