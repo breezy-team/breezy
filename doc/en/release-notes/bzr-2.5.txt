@@ -185,6 +185,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch._get_checkout_format`` now takes a ``lightweight`` argument
+  which indicates if the format should be for a lightweight or a
+  heavyweight checkout. (Jelmer Vernooij)
+
 * New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
   (Jelmer Vernooij)
 

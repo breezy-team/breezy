@@ -159,6 +159,9 @@ class TestPush(TestCaseWithInterBranch):
             return
         try:
             tree = a_branch.bzrdir.create_workingtree()
+        except errors.UnsupportedOperation:
+            self.assertFalse(a_branch.bzrdir._format.supports_workingtrees)
+            tree = a_branch.create_checkout('repo/tree', lightweight=True)
         except errors.NotLocalUrl:
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
