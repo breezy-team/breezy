@@ -298,7 +298,11 @@ class InterToLocalGitRepository(InterToGitRepository):
             elif revision_id is not None:
                 stop_revisions = [(None, revision_id)]
             elif fetch_spec is not None:
-                stop_revisions = [(None, revid) for revid in fetch_spec.heads]
+                recipe = fetch_spec.get_recipe()
+                if recipe[0] in ("search", "proxy-search"):
+                    stop_revisions = [(None, revid) for revid in recipe[1]]
+                else:
+                    raise AssertionError("Unsupported search result type %s" % recipe[0])
             else:
                 stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
             self.fetch_objects(stop_revisions, roundtrip=True)
