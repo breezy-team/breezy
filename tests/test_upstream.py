@@ -224,17 +224,17 @@ class AptSourceTests(TestCase):
             _apt_pkg=apt_pkg)
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.bz2"])
 
-    def test_apt_provider_right_version_lzma(self):
+    def test_apt_provider_right_version_xz(self):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"],
             [[("checksum", 0L, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0L, "apackage_0.2.orig.tar.lzma", "tar")]])
+             [("checksum", 0L, "apackage_0.2.orig.tar.xz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
         paths = src.fetch_tarballs("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
-        self.assertEquals(paths, ["target/apackage_0.2.orig.tar.lzma"])
+        self.assertEquals(paths, ["target/apackage_0.2.orig.tar.xz"])
 
     def test_apt_provider_right_version(self):
         caller = MockAptCaller(work=True)
@@ -746,10 +746,10 @@ class PristineTarSourceTests(TestCaseWithTransport):
         rev.properties["deb-pristine-delta-bz2"] = "1"
         self.assertEquals("bz2", self.source.pristine_tar_format(rev))
 
-    def test_pristine_tar_format_lzma(self):
+    def test_pristine_tar_format_xz(self):
         rev = Revision("myrevid")
-        rev.properties["deb-pristine-delta-lzma"] = "1"
-        self.assertEquals("lzma", self.source.pristine_tar_format(rev))
+        rev.properties["deb-pristine-delta-xz"] = "1"
+        self.assertEquals("xz", self.source.pristine_tar_format(rev))
 
     def test_pristine_tar_format_unknown(self):
         rev = Revision("myrevid")
@@ -836,21 +836,21 @@ class TarfileSourceTests(TestCaseWithTransport):
         self.assertPathExists("bar/foo_1.0.orig.tar.bz2")
         tarfile.open("bar/foo_1.0.orig.tar.bz2", "r:bz2").close()
 
-    def test_fetch_tarball_lzma(self):
+    def test_fetch_tarball_xz(self):
         self.requireFeature(LzmaFeature)
         import lzma
-        lzma_f = lzma.LZMAFile("foo-1.0.tar.lzma", 'w')
+        lzma_f = lzma.LZMAFile("foo-1.0.tar.xz", 'w')
         try:
             tar = tarfile.open("foo-1.0.tar", "w", lzma_f)
             tar.close()
         finally:
             lzma_f.close()
-        source = TarfileSource("foo-1.0.tar.lzma", "1.0")
+        source = TarfileSource("foo-1.0.tar.xz", "1.0")
         os.mkdir("bar")
-        self.assertEquals(["bar/foo_1.0.orig.tar.gz"],
+        self.assertEquals(["bar/foo_1.0.orig.tar.xz"],
             source.fetch_tarballs("foo", "1.0", "bar"))
-        self.assertPathExists("bar/foo_1.0.orig.tar.gz")
-        gzip.open("bar/foo_1.0.orig.tar.gz").close()
+        self.assertPathExists("bar/foo_1.0.orig.tar.xz")
+        lzma.LZMAFile("bar/foo_1.0.orig.tar.xz").close()
 
 
 class _MissingUpstreamProvider(UpstreamProvider):

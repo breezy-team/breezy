@@ -195,8 +195,8 @@ class PristineTarSource(UpstreamSource):
             uuencoded = standard_b64encode(delta)
             if tarball.endswith(".tar.bz2"):
                 revprops["deb-pristine-delta-bz2"] = uuencoded
-            elif tarball.endswith(".tar.lzma"):
-                revprops["deb-pristine-delta-lzma"] = uuencoded
+            elif tarball.endswith(".tar.xz"):
+                revprops["deb-pristine-delta-xz"] = uuencoded
             else:
                 revprops["deb-pristine-delta"] = uuencoded
         if author is not None:
@@ -316,15 +316,15 @@ class PristineTarSource(UpstreamSource):
     def has_pristine_tar_delta(self, rev):
         return ('deb-pristine-delta' in rev.properties
                 or 'deb-pristine-delta-bz2' in rev.properties
-                or 'deb-pristine-delta-lzma' in rev.properties)
+                or 'deb-pristine-delta-xz' in rev.properties)
 
     def pristine_tar_format(self, rev):
         if 'deb-pristine-delta' in rev.properties:
             return 'gz'
         elif 'deb-pristine-delta-bz2' in rev.properties:
             return 'bz2'
-        elif 'deb-pristine-delta-lzma' in rev.properties:
-            return 'lzma'
+        elif 'deb-pristine-delta-xz' in rev.properties:
+            return 'xz'
         assert self.has_pristine_tar_delta(rev)
         raise AssertionError("Not handled new delta type in "
                 "pristine_tar_format")
@@ -334,8 +334,8 @@ class PristineTarSource(UpstreamSource):
             uuencoded = rev.properties['deb-pristine-delta']
         elif 'deb-pristine-delta-bz2' in rev.properties:
             uuencoded = rev.properties['deb-pristine-delta-bz2']
-        elif 'deb-pristine-delta-lzma' in rev.properties:
-            uuencoded = rev.properties['deb-pristine-delta-lzma']
+        elif 'deb-pristine-delta-xz' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta-xz']
         else:
             assert self.has_pristine_tar_delta(rev)
             raise AssertionError("Not handled new delta type in "

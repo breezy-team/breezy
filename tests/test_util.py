@@ -284,9 +284,9 @@ class TarballNameTests(TestCase):
         self.assertEqual(tarball_name("package", Version("0.1"), None,
                     format='bz2'), "package_0.1.orig.tar.bz2")
         self.assertEqual(tarball_name("package", Version("0.1"), None,
-                    format='lzma'), "package_0.1.orig.tar.lzma")
+                    format='xz'), "package_0.1.orig.tar.xz")
         self.assertEqual(tarball_name("package", Version("0.1"), "la",
-                    format='lzma'), "package_0.1.orig-la.tar.lzma")
+                    format='xz'), "package_0.1.orig-la.tar.xz")
 
 
 class SuiteToDistributionTests(TestCase):
@@ -883,7 +883,7 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
                 f = gzip.GzipFile(tar_path, "w")
             elif compression == "bz2":
                 f = bz2.BZ2File(tar_path, "w")
-            elif compression == "lzma":
+            elif compression == "xz":
                 import lzma
                 f = lzma.LZMAFile(tar_path, "w")
             else:
@@ -915,9 +915,9 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
             strip_components=1)
         self.assertEquals(os.listdir("target"), ["README"])
 
-    def test_single_orig_tar_lzma(self):
+    def test_single_orig_tar_xz(self):
         self.requireFeature(LzmaFeature)
-        tar_path = self.create_tarball("package", "0.1", "lzma")
+        tar_path = self.create_tarball("package", "0.1", "xz")
         os.mkdir("target")
         extract_orig_tarballs([(tar_path, None)], "target",
             strip_components=1)
