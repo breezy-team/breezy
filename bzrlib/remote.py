@@ -2624,9 +2624,16 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self.bzrdir, self._client)
         return self._control_files
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         self._ensure_real()
-        return self._real_branch._get_checkout_format()
+        if lightweight:
+            format = RemoteBzrDirFormat()
+            self.bzrdir._format._supply_sub_formats_to(format)
+            format.workingtree_format = self._real_branch._get_checkout_format(
+                lightweight=lightweight).workingtree_format
+            return format
+        else:
+            return self._real_branch._get_checkout_format(lightweight=False)
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""
