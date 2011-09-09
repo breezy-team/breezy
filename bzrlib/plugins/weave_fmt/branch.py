@@ -38,7 +38,11 @@ class BzrBranch4(FullHistoryBzrBranch):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
         from bzrlib.bzrdir import BzrDirMetaFormat1
         format = BzrDirMetaFormat1()
-        format.repository_format = RepositoryFormat7()
+        if lightweight:
+            format.set_branch_format(self._format)
+            format.repository_format = self.bzrdir._format.repository_format
+        else:
+            format.repository_format = RepositoryFormat7()
         return format
 
     def unbind(self):
