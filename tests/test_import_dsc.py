@@ -925,7 +925,7 @@ class DistributionBranchTests(BuilddebTestCase):
                 "esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
                 "occaecat cupidatat non proident, sunt in culpa qui officia "
                 "deserunt mollit anim id est laborum.")
-        tar_path = "package_0.1.orig.tar.lzma"
+        tar_path = "package_0.1.orig.tar.xz"
         f = lzma.LZMAFile(tar_path, 'w')
         try:
             tf = tarfile.open(None, 'w', f)
@@ -947,7 +947,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
-        self.assertTrue('deb-pristine-delta-lzma' in rev.properties)
+        self.assertTrue('deb-pristine-delta-xz' in rev.properties)
 
     def test_import_package_init_from_other(self):
         self.requireFeature(PristineTarFeature)

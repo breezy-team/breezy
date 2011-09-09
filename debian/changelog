@@ -1,3 +1,9 @@
+bzr-builddeb (2.7.9) UNRELEASED; urgency=low
+
+  * Support .tar.xz Debian files rather than .tar.lzma.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 09 Sep 2011 15:21:22 +0200
+
 bzr-builddeb (2.7.8) unstable; urgency=low
 
   * Improve error message when tag for upstream version can not be

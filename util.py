@@ -216,7 +216,7 @@ def tarball_name(package, version, component=None, format=None):
     :param version: the upstream version of the package.
     :param component: Component name (None for base)
     :param format: the format for the tarball. If None then 'gz' will be
-         used. You probably want on of 'gz', 'bz2', or 'lzma'.
+         used. You probably want on of 'gz', 'bz2', 'lzma' or 'xz'.
     :return: a string that is the name of the upstream tarball to use.
     """
     if format is None:
@@ -698,7 +698,7 @@ def component_from_orig_tarball(tarball_filename, package, version):
             "invalid orig tarball file %s does not have expected prefix %s" % (
                 tarball_filename, prefix))
     base = tarball_filename[len(prefix):]
-    for ext in (".tar.gz", ".tar.bz2", ".tar.lzma"):
+    for ext in (".tar.gz", ".tar.bz2", ".tar.lzma", ".tar.xz"):
         if tarball_filename.endswith(ext):
             base = base[:-len(ext)]
             break
@@ -726,7 +726,8 @@ def extract_orig_tarball(tarball_filename, component, target, strip_components=N
     tar_args = ["tar"]
     if tarball_filename.endswith(".tar.bz2"):
         tar_args.append('xjf')
-    elif tarball_filename.endswith(".tar.lzma"):
+    elif (tarball_filename.endswith(".tar.lzma") or
+          tarball_filename.endswith(".tar.xz")):
         tar_args.append('xJf')
     else:
         tar_args.append('xzf')
