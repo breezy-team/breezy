@@ -172,6 +172,9 @@ Bug Fixes
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
 
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
 Documentation
 *************
 
