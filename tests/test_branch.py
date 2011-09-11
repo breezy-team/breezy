@@ -80,7 +80,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         d = BzrDir.open('.')
         thebranch = d.create_branch()
         self.assertEquals(
-            "<LocalGitBranch('%s/', 'master')>" % (
+            "<LocalGitBranch('%s/', u'master')>" % (
                 urlutils.local_path_to_url(self.test_dir),),
             repr(thebranch))
 
