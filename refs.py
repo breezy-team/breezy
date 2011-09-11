@@ -22,6 +22,7 @@ from dulwich.repo import (
 
 from bzrlib import (
     errors,
+    osutils,
     )
 
 is_tag = lambda x: x.startswith("refs/tags/")
@@ -61,11 +62,11 @@ def branch_name_to_ref(name, default=None):
     if name is None:
         return default
     if name == "HEAD":
-        return name
+        return osutils.safe_utf8(name)
     if not name.startswith("refs/"):
-        return "refs/heads/%s" % name
+        return "refs/heads/%s" % osutils.safe_utf8(name)
     else:
-        return name
+        return osutils.safe_utf8(name)
 
 
 def tag_name_to_ref(name):
@@ -74,7 +75,7 @@ def tag_name_to_ref(name):
     :param name: Tag name
     :return: ref string
     """
-    return "refs/tags/%s" % name
+    return "refs/tags/%s" % osutils.safe_utf8(name)
 
 
 def ref_to_branch_name(ref):
@@ -86,7 +87,7 @@ def ref_to_branch_name(ref):
     if ref in (None, "HEAD"):
         return ref
     if ref.startswith("refs/heads/"):
-        return ref[len("refs/heads/"):]
+        return osutils.safe_unicode(ref[len("refs/heads/"):])
     raise ValueError("unable to map ref %s back to branch name" % ref)
 
 
