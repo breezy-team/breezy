@@ -184,7 +184,8 @@ class GitDir(ControlDir):
             mapping=source_branch.mapping)
         result_branch = source_branch.sprout(result,
             revision_id=revision_id, repository=result_repo)
-        if (create_tree_if_local and isinstance(target_transport, LocalTransport)
+        if (create_tree_if_local
+            and isinstance(target_transport, LocalTransport)
             and (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
