@@ -635,6 +635,10 @@ class GitWorkingTree(workingtree.WorkingTree):
             ids[path] = self.path2id(path)
         return set(ids.values())
 
+    def _directory_is_tree_reference(self, path):
+        # FIXME: Check .gitsubmodules for path
+        return False
+
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Is return order correct?
         if yield_parents:
