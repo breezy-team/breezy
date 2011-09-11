@@ -187,7 +187,7 @@ class BranchTests(tests.TestCaseInTempDir):
         mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
-        return "d", gitsha
+        return os.path.abspath("d"), gitsha
 
     def make_tworev_branch(self):
         os.mkdir("d")
@@ -210,6 +210,7 @@ class BranchTests(tests.TestCaseInTempDir):
         path, gitsha = self.make_onerev_branch()
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        self.assertEquals(gitsha, oldrepo._git.get_refs()["refs/heads/master"])
         newbranch = self.clone_git_branch(path, "f")
         self.assertEquals([revid], newbranch.repository.all_revision_ids())
 
@@ -275,6 +276,3 @@ class ForeignTestsBranchFactory(object):
         return d.create_branch()
 
     make_branch = make_empty_branch
-
-
-

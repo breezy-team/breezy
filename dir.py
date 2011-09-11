@@ -162,7 +162,7 @@ class GitDir(ControlDir):
         cloning_format = self.cloning_metadir()
         # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
-        source_branch = self.create_branch()
+        source_branch = self.open_branch()
         source_repository = self.find_repository()
         try:
             result_repo = result.find_repository()
@@ -480,8 +480,15 @@ class LocalGitDir(GitDir):
         # a separate method for changing the default branch?
         if refname is None:
             refname = "refs/heads/master"
-            self._git.refs.set_symbolic_ref("HEAD", refname)
+            set_head = True
+        else:
+            set_head = False
+
+        if refname in self._git.refs:
+            raise bzr_errors.AlreadyBranchError(self.base)
         self._git.refs[refname] = ZERO_SHA
+        if set_head:
+            self._git.refs.set_symbolic_ref("HEAD", refname)
         return self.open_branch(name)
 
     def backup_bzrdir(self):
