@@ -34,6 +34,7 @@ def gettext(message):
     
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ugettext(message)
 
 
@@ -46,6 +47,7 @@ def ngettext(singular, plural, number):
 
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ungettext(singular, plural, number)
 
 
