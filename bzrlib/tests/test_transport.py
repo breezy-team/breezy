@@ -53,6 +53,8 @@ class TestTransport(tests.TestCase):
     """Test the non transport-concrete class functionality."""
 
     def ignore_i18n(self):
+        """Some tests end up using i18n when that will break things
+        (e.g. if config can no longer be read)"""
         from bzrlib import i18n
         i18n.install = lambda: None
 
