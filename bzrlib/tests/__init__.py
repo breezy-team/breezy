@@ -61,6 +61,7 @@ from bzrlib import (
     chk_map,
     commands as _mod_commands,
     config,
+    i18n,
     debug,
     errors,
     hooks,
@@ -1005,6 +1006,8 @@ class TestCase(testtools.TestCase):
         self._counters = {}
         if 'config_stats' in selftest_debug_flags:
             self._install_config_stats_hooks()
+        # Do not use i18n for tests (unless the test reverses this)
+        self.overrideAttr(i18n, 'installed', lambda: True)
 
     def debug(self):
         # debug a frame up.
@@ -2561,7 +2564,16 @@ class TestCaseWithMemoryTransport(TestCase):
         real branch.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        try:
+            # Make sure we get a readable and accessible home for .bzr.log
+            # and/or config files, and not fallback to weird defaults (see
+            # http://pad.lv/825027).
+            self.assertIs(None, os.environ.get('BZR_HOME', None))
+            os.environ['BZR_HOME'] = root
+            wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+            del os.environ['BZR_HOME']
+        except Exception, e:
+            self.fail("Fail to initialize the safety net: %r\nExiting\n" % (e,))
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
@@ -2618,7 +2630,39 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch()
+        return repo.bzrdir.create_branch(append_revisions_only=False)
+
+    def resolve_format(self, format):
+        """Resolve an object to a ControlDir format object.
+
+        The initial format object can either already be
+        a ControlDirFormat, None (for the default format),
+        or a string with the name of the control dir format.
+
+        :param format: Object to resolve
+        :return A ControlDirFormat instance
+        """
+        if format is None:
+            format = 'default'
+        if isinstance(format, basestring):
+            format = bzrdir.format_registry.make_bzrdir(format)
+        return format
+
+    def resolve_format(self, format):
+        """Resolve an object to a ControlDir format object.
+
+        The initial format object can either already be
+        a ControlDirFormat, None (for the default format),
+        or a string with the name of the control dir format.
+
+        :param format: Object to resolve
+        :return A ControlDirFormat instance
+        """
+        if format is None:
+            format = 'default'
+        if isinstance(format, basestring):
+            format = bzrdir.format_registry.make_bzrdir(format)
+        return format
 
     def make_bzrdir(self, relpath, format=None):
         try:
@@ -2628,10 +2672,7 @@ class TestCaseWithMemoryTransport(TestCase):
             t = _mod_transport.get_transport(maybe_a_url)
             if len(segments) > 1 and segments[-1] not in ('', '.'):
                 t.ensure_base()
-            if format is None:
-                format = 'default'
-            if isinstance(format, basestring):
-                format = bzrdir.format_registry.make_bzrdir(format)
+            format = self.resolve_format(format)
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)

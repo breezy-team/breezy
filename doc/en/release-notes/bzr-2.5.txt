@@ -75,6 +75,10 @@ New Features
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
 
+* ``config.NameMatcher`` can be used to implement config stores and stacks
+  that need to provide specific option values for arbitrary unique IDs (svn
+  repository UUIDs, etc).  (Vincent Ladeuil, #843638)
+
 * New builtin ``bzr branches`` command, which lists all colocated branches
   in a directory. (Jelmer Vernooij, #826820)
 
@@ -92,6 +96,9 @@ New Features
 * bzr now ships with translations for command help.  (Jonathan
   Riddell, INADA Naoki, #83941)
 
+* bzr now ships with translations for command errors. (Jonathan
+  Riddell, INADA Naoki)
+
 Improvements
 ************
 
@@ -102,16 +109,23 @@ Improvements
   Entering an empty commit message in the message editor still triggers
   an error. (Jelmer Vernooij)
 
+* ``bzr pull`` will now mention how many tags it has updated.
+  (Jelmer Vernooij, #164450)
+
+* ``bzr tag`` no longer errors if a tag already exists but refers to the
+  same revision, and will mention when a tag has been updated
+  rather than created. (Jelmer Vernooij, #381203)
+
 * ``bzr uncommit`` will now remove tags that refer to removed revisions.
   The ``--keep-tags`` option can be used to prevent this behaviour.
   (Jelmer Vernooij, #605814)
 
-* Locations printed by ``bzr upgrade`` are now formatted before display.
-  (Jelmer Vernooij)
+* Do not run i18n initialisation twice. (Jonathan Riddell)
 
 * Install translation .mo files. (Jonathan Riddell)
 
-* Do not run i18n initialisation twice. (Jonathan Riddell)
+* Locations printed by ``bzr upgrade`` are now formatted before display.
+  (Jelmer Vernooij)
 
 * ``Repository.get_parent_map`` now estimates the size of the returned
   content more accurately. This means that we get closer to the desired
@@ -119,11 +133,22 @@ Improvements
   improvement of approx 5:1 in round trips to discover the whole history.
   (John Arbash Meinel)
 
+* Support a ``bugtracker`` option which is used by ``bzr commit --fixes``
+  if no bug tracker was specified on the command line.
+  (Jelmer Vernooij, #334860)
+
+* Use gettext.NullTranslations in i18n to allow use of i18n even when
+  translations are not turned on. (Jonathan Riddell)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr reconfigure`` will now allow multiple non-conflicting requests
+  in a single invocation, e.g. ``--branch`` and ``--use-shared``.
+  (Martin von Gagern, #842993)
 
 * The pull command will now always use separate connections for the
   case where the destination is a heavyweight checkout of some remote
@@ -144,6 +169,10 @@ Bug Fixes
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
 
+* Fix fallout from URL handling changes in 2.5 that caused an IndexError to be
+  raised whenever a transport at the drive root was opened on windows.
+  (Martin [gz], #841322)
+
 * Rather than an error being raised, a warning is now printed when the
   current user does not have permission to read a configuration file.
   (Jelmer Vernooij, #837324)
@@ -151,6 +180,9 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
+
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
 
 Documentation
 *************
@@ -164,6 +196,16 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``BranchFormat.initialize`` now takes a ``append_revisions_only``
+  argument. (Jelmer Vernooij)
+
+* ``Branch._get_checkout_format`` now takes a ``lightweight`` argument
+  which indicates if the format should be for a lightweight or a
+  heavyweight checkout. (Jelmer Vernooij)
+
+* ``ControlDir.create_branch`` now takes a ``append_revisions_only`` argument.
+  (Jelmer Vernooij)
 
 * New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
   (Jelmer Vernooij)
@@ -217,6 +259,13 @@ API Changes
   value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
   (Shannon Weyrick)
 
+* ``Tags`` containers can now declare whether they support versioned
+  tags and whether tags can refer to ghost tags.
+  (Jelmer Vernooij)
+
+* ``Tags.merge_to`` now returns a dictionary with the updated tags
+  and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
+
 * ``Transport`` now has a ``_parsed_url`` attribute instead of
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
   and ``_path`` attributes. Proxies are provided for the moment but
@@ -265,6 +314,9 @@ Testing
 * ``ModuleAvailableFeature`` won't try to import already imported modules,
   allowing it to be used for modules with side-effects.
   (Vincent Ladeuil, #712474)
+
+* Output time stamps while running ``make check`` to get better timings from
+  pqm.  (Vincent Ladeuil, #837926)
 
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,

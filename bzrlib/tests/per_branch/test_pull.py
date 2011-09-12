@@ -16,8 +16,6 @@
 
 """Tests for branch.pull behaviour."""
 
-import os
-
 from bzrlib import (
     branch,
     bzrdir,
@@ -117,7 +115,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         self.assertEqual('P1', result.old_revid)
         self.assertEqual(2, result.new_revno)
         self.assertEqual('M1', result.new_revid)
-        self.assertEqual(None, result.tag_conflicts)
+        self.assertEqual([], result.tag_conflicts)
 
     def test_pull_overwrite(self):
         tree_a = self.make_branch_and_tree('tree_a')

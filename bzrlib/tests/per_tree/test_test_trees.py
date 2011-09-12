@@ -16,7 +16,6 @@
 
 """Tests for the test trees used by the per_tree tests."""
 
-from bzrlib import tests
 from bzrlib.tests import per_tree
 from bzrlib.tests import (
     features,

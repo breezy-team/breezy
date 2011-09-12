@@ -16,7 +16,11 @@
 
 """Tests for bzrlib.i18n"""
 
-from bzrlib import i18n, tests
+from bzrlib import (i18n, 
+                    tests, 
+                    errors, 
+                    workingtree,
+                    )
 
 
 class ZzzTranslations(object):
@@ -28,7 +32,7 @@ class ZzzTranslations(object):
     _null_translation = i18n._gettext.NullTranslations()
 
     def zzz(self, s):
-        return u'zz{{%s}}' % s
+        return u'zz\xe5{{%s}}' % s
 
     def ugettext(self, s):
         return self.zzz(self._null_translation.ugettext(s))
@@ -47,18 +51,18 @@ class TestZzzTranslation(tests.TestCase):
         trans = ZzzTranslations()
 
         t = trans.zzz('msg')
-        self._check_exact(u'zz{{msg}}', t)
+        self._check_exact(u'zz\xe5{{msg}}', t)
 
         t = trans.ugettext('msg')
-        self._check_exact(u'zz{{msg}}', t)
+        self._check_exact(u'zz\xe5{{msg}}', t)
 
         t = trans.ungettext('msg1', 'msg2', 0)
-        self._check_exact(u'zz{{msg2}}', t)
+        self._check_exact(u'zz\xe5{{msg2}}', t)
         t = trans.ungettext('msg1', 'msg2', 2)
-        self._check_exact(u'zz{{msg2}}', t)
+        self._check_exact(u'zz\xe5{{msg2}}', t)
 
         t = trans.ungettext('msg1', 'msg2', 1)
-        self._check_exact(u'zz{{msg1}}', t)
+        self._check_exact(u'zz\xe5{{msg1}}', t)
 
 
 class TestGetText(tests.TestCase):
@@ -68,11 +72,11 @@ class TestGetText(tests.TestCase):
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_oneline(self):
-        self.assertEqual(u"zz{{spam ham eggs}}",
+        self.assertEqual(u"zz\xe5{{spam ham eggs}}",
                          i18n.gettext("spam ham eggs"))
 
     def test_multiline(self):
-        self.assertEqual(u"zz{{spam\nham\n\neggs\n}}",
+        self.assertEqual(u"zz\xe5{{spam\nham\n\neggs\n}}",
                          i18n.gettext("spam\nham\n\neggs\n"))
 
 
@@ -83,11 +87,11 @@ class TestGetTextPerParagraph(tests.TestCase):
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_oneline(self):
-        self.assertEqual(u"zz{{spam ham eggs}}",
+        self.assertEqual(u"zz\xe5{{spam ham eggs}}",
                          i18n.gettext_per_paragraph("spam ham eggs"))
 
     def test_multiline(self):
-        self.assertEqual(u"zz{{spam\nham}}\n\nzz{{eggs\n}}",
+        self.assertEqual(u"zz\xe5{{spam\nham}}\n\nzz\xe5{{eggs\n}}",
                          i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
 
 
@@ -104,3 +108,31 @@ class TestInstall(tests.TestCase):
         self.overrideEnv('LC_MESSAGES', None)
         self.overrideEnv('LANG', None)
         i18n.install()
+
+class TestTranslate(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTranslate, self).setUp()
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+
+    def test_error_message_translation(self):
+        """do errors get translated?"""
+        err = None
+        tree = self.make_branch_and_tree('.')
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        try:
+            workingtree.WorkingTree.open('./foo')
+        except errors.NotBranchError,e:
+            err = str(e)
+        self.assertContainsRe(err, 
+                              u"zz\xe5{{Not a branch: .*}}".encode("utf-8"))
+
+    def test_topic_help_translation(self):
+        """does topic help get translated?"""
+        from bzrlib import help
+        i18n.install()
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        from StringIO import StringIO
+        out = StringIO()
+        help.help("authentication", out)
+        self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")

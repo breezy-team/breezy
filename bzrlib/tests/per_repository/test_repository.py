@@ -369,7 +369,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             self.assertFalse(repo._format.supports_revision_signatures)
-            raise TestNotApplicable("signatures not supported by repository format")
+            raise tests.TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text('A')
@@ -797,8 +797,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                          [b.base for b in branches])
 
     def test_find_branches_using_empty_standalone_repo(self):
-        repo = self.make_repository('repo')
-        self.assertFalse(repo.is_shared())
+        repo = self.make_repository('repo', shared=False)
         try:
             repo.bzrdir.open_branch()
         except errors.NotBranchError:

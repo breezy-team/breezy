@@ -940,6 +940,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             case_sensitive = True
         tree = self.make_branch_and_tree('test')
         self.assertEqual(case_sensitive, tree.case_sensitive)
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("get_format_string is only available "
+                                    "on bzr working trees")
         # now we cheat, and make a file that matches the case-sensitive name
         t = tree.bzrdir.get_workingtree_transport(None)
         try:
@@ -1002,8 +1005,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             |
             W
          """
-        builder = branchbuilder.BranchBuilder(
-            self.get_transport(),
+        builder = self.make_branch_builder(".",
             format=self.workingtree_format._matchingbzrdir)
         builder.start_series()
         # mainline

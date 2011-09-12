@@ -91,8 +91,8 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_from_branch_and_tree(self, relpath):
         """Create a branch on the default transport and a working tree for it."""
-        b = self.make_from_branch(relpath)
-        return b.bzrdir.create_workingtree()
+        return self.make_branch_and_tree(relpath,
+            format=self.branch_format_from._matchingbzrdir)
 
     def make_from_branch_builder(self, relpath):
         default_format = BzrDirFormat.get_default_format()
@@ -114,8 +114,8 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_to_branch_and_tree(self, relpath):
         """Create a branch on the default transport and a working tree for it."""
-        b = self.make_to_branch(relpath)
-        return b.bzrdir.create_workingtree()
+        return self.make_branch_and_tree(relpath,
+            format=self.branch_format_to._matchingbzrdir)
 
     def sprout_to(self, origdir, to_url):
         """Sprout a bzrdir, using to_format for the new branch."""
