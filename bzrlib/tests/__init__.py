@@ -61,6 +61,7 @@ from bzrlib import (
     chk_map,
     commands as _mod_commands,
     config,
+    i18n,
     debug,
     errors,
     hooks,
@@ -1005,6 +1006,8 @@ class TestCase(testtools.TestCase):
         self._counters = {}
         if 'config_stats' in selftest_debug_flags:
             self._install_config_stats_hooks()
+        # Do not use i18n for tests (unless the test reverses this)
+        self.overrideAttr(i18n, 'installed', lambda: True)
 
     def debug(self):
         # debug a frame up.
