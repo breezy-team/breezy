@@ -641,11 +641,13 @@ class Branch(controldir.ControlComponent):
         """
         raise errors.UpgradeRequired(self.user_url)
 
-
     def get_append_revisions_only(self):
         """Whether it is only possible to append revisions to the history.
         """
-        return False
+        if not self._format.supports_set_append_revisions_only():
+            return False
+        return self.get_config(
+            ).get_user_option_as_bool('append_revisions_only')
 
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
@@ -1572,8 +1574,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     methods on the format class. Do not deprecate the object, as the
     object will be created every time regardless.
     """
-
-    can_set_append_revisions_only = True
 
     def __eq__(self, other):
         return self.__class__ is other.__class__
@@ -2979,10 +2979,6 @@ class BzrBranch8(BzrBranch):
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
-
-    def get_append_revisions_only(self):
-        return self.get_config(
-            ).get_user_option_as_bool('append_revisions_only')
 
     @needs_read_lock
     def get_rev_id(self, revno, history=None):
