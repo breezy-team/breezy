@@ -47,7 +47,7 @@ class TestCommandLine(TestCase):
 
     def test_signing_command_line(self):
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com', '--no-tty'],
                          my_gpg._command_line())
 
     def test_checks_return_code(self):

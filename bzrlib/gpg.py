@@ -185,7 +185,8 @@ class GPGStrategy(object):
     def _command_line(self):
         
         return [self._config.gpg_signing_command(), '--clearsign', '-u',
-                                                self._config.gpg_signing_key()]
+                                                self._config.gpg_signing_key(),
+                                                 '--no-tty']
 
     def __init__(self, config):
         self._config = config
