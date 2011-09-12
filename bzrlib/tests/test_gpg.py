@@ -20,10 +20,16 @@
 # import system imports here
 import sys
 
-from bzrlib import errors, ui
-import bzrlib.gpg as gpg
-from bzrlib.tests import TestCase
-from bzrlib.tests import features
+from bzrlib import (
+    errors,
+    gpg,
+    trace,
+    ui,
+    )
+from bzrlib.tests import (
+    TestCase,
+    features,
+    )
 
 class FakeConfig(object):
 
@@ -391,6 +397,7 @@ JFA6kUIJU2w9LU/b88Y=
 
     def test_verify_invalid(self):
         self.requireFeature(features.gpgme)
+        self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -415,6 +422,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 
     def test_verify_expired_but_valid(self):
         self.requireFeature(features.gpgme)
+        self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
  
@@ -441,6 +449,7 @@ sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
 
     def test_verify_unknown_key(self):
         self.requireFeature(features.gpgme)
+        self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -473,8 +482,14 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
     def test_set_acceptable_keys_unknown(self):
         self.requireFeature(features.gpgme)
         my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.notes = []
+        def note(*args):
+            self.notes.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'note', note)
         my_gpg.set_acceptable_keys("unknown")
         self.assertEqual(my_gpg.acceptable_keys, [])
+        self.assertEqual(self.notes,
+            ['No GnuPG key results for pattern: unknown'])
 
 
 class TestDisabled(TestCase):

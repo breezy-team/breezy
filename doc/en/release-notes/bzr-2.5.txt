@@ -75,6 +75,10 @@ New Features
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
 
+* ``config.NameMatcher`` can be used to implement config stores and stacks
+  that need to provide specific option values for arbitrary unique IDs (svn
+  repository UUIDs, etc).  (Vincent Ladeuil, #843638)
+
 * New builtin ``bzr branches`` command, which lists all colocated branches
   in a directory. (Jelmer Vernooij, #826820)
 
@@ -91,6 +95,9 @@ New Features
 
 * bzr now ships with translations for command help.  (Jonathan
   Riddell, INADA Naoki, #83941)
+
+* bzr now ships with translations for command errors. (Jonathan
+  Riddell, INADA Naoki)
 
 Improvements
 ************
@@ -130,6 +137,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr reconfigure`` will now allow multiple non-conflicting requests
+  in a single invocation, e.g. ``--branch`` and ``--use-shared``.
+  (Martin von Gagern, #842993)
+
 * The pull command will now always use separate connections for the
   case where the destination is a heavyweight checkout of some remote
   branch on the same host as the source branch.
@@ -161,6 +172,9 @@ Bug Fixes
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
 
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
 Documentation
 *************
 
@@ -176,6 +190,10 @@ API Changes
 
 * ``BranchFormat.initialize`` now takes a ``append_revisions_only``
   argument. (Jelmer Vernooij)
+
+* ``Branch._get_checkout_format`` now takes a ``lightweight`` argument
+  which indicates if the format should be for a lightweight or a
+  heavyweight checkout. (Jelmer Vernooij)
 
 * ``ControlDir.create_branch`` now takes a ``append_revisions_only`` argument.
   (Jelmer Vernooij)

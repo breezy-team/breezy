@@ -67,7 +67,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch('')
+            self.branch = self.make_branch('abranch')
         return self.branch
 
     def make_branch(self, relpath, format=None):

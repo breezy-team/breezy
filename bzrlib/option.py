@@ -25,6 +25,7 @@ lazy_import(globals(), """
 from bzrlib import (
     errors,
     revisionspec,
+    i18n,
     )
 """)
 
@@ -429,9 +430,23 @@ class OptionParser(optparse.OptionParser):
 
     DEFAULT_VALUE = object()
 
+    def __init__(self):
+        optparse.OptionParser.__init__(self)
+        self.formatter = GettextIndentedHelpFormatter()
+
     def error(self, message):
         raise errors.BzrCommandError(message)
 
+class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
+    """Adds gettext() call to format_option()"""
+    def __init__(self):
+        optparse.IndentedHelpFormatter.__init__(self)
+
+    def format_option(self, option):
+        """code taken from Python's optparse.py"""
+        if option.help:
+            option.help = i18n.gettext(option.help)
+        return optparse.IndentedHelpFormatter.format_option(self, option)
 
 def get_optparser(options):
     """Generate an optparse parser for bzrlib-style options"""
