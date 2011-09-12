@@ -43,6 +43,7 @@ def load_tests(basic_tests, module, loader):
         'test_find_text_key_references',
         'test__generate_text_key_index',
         'test_fetch',
+        'test_fileid_involved',
         'test_merge_directive',
         'test_reconcile',
         'test_refresh_data',
