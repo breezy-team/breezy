@@ -52,12 +52,6 @@ from bzrlib.tests import (
 class TestTransport(tests.TestCase):
     """Test the non transport-concrete class functionality."""
 
-    def ignore_i18n(self):
-        """Some tests end up using i18n when that will break things
-        (e.g. if config can no longer be read)"""
-        from bzrlib import i18n
-        i18n.install = lambda: None
-
     def test__get_set_protocol_handlers(self):
         handlers = transport._get_protocol_handlers()
         self.assertNotEqual([], handlers.keys())
@@ -89,7 +83,6 @@ class TestTransport(tests.TestCase):
 
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
-        self.ignore_i18n()
         saved_handlers = transport._get_protocol_handlers()
         self.addCleanup(transport._set_protocol_handlers, saved_handlers)
         # don't pollute the current handlers
