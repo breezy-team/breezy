@@ -921,6 +921,8 @@ class InterToGitBranch(branch.GenericInterBranch):
             try:
                 new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
                 def update_refs(old_refs):
+                    mutter("updating refs. old refs: %r, new refs: %r",
+                           old_refs, new_refs)
                     # FIXME: Check for diverged branches
                     return new_refs
                 try:
@@ -952,6 +954,8 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.master_branch = result.target_branch
         new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
+            mutter("updating refs. old refs: %r, new refs: %r",
+                   old_refs, new_refs)
             # FIXME: Check for diverged branches
             return new_refs
         try:
