@@ -3560,6 +3560,29 @@ bar = {foo}ux
         self.assertEquals('quux', c.get('bar', expand=True))
 
 
+class TestStackCrossStoresExpand(tests.TestCaseWithTransport):
+
+    def test_cross_global_locations(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/branch]
+lfoo = loc-foo
+lbar = {gbar}
+''')
+        l_store.save()
+        g_store = config.GlobalStore()
+        g_store._load_from_string('''
+[DEFAULT]
+gfoo = {lfoo}
+gbar = glob-bar
+''')
+        g_store.save()
+        stack = config.LocationStack('/branch')
+        self.debug()
+        self.assertEquals('glob-bar', stack.get('lbar', expand=True))
+        self.assertEquals('loc-foo', stack.get('gfoo', expand=True))
+
+
 class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):

@@ -3167,11 +3167,6 @@ class Stack(object):
             # anything else
             value = env[name]
         else:
-            # FIXME: This is a limited implementation, what we really need is a
-            # way to query the bzr config for the value of an option,
-            # respecting the scope rules (That is, once we implement fallback
-            # configs, getting the option value should restart from the top
-            # config, not the current one) -- vila 20101222
             value = self.get(name, expand=False)
             value = self._expand_options_in_string(value, env, _refs)
         return value
