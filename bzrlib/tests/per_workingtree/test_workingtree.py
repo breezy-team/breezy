@@ -1005,8 +1005,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             |
             W
          """
-        builder = branchbuilder.BranchBuilder(
-            self.get_transport(),
+        builder = self.make_branch_builder(".",
             format=self.workingtree_format._matchingbzrdir)
         builder.start_series()
         # mainline

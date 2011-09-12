@@ -121,7 +121,6 @@ def load_tests(standard_tests, module, loader):
         'test_has_revisions',
         'test_iter_reverse_revision_history',
         'test_locking',
-        'test_merge_directive',
         'test_pack',
         'test_reconcile',
         'test_refresh_data',

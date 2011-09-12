@@ -410,7 +410,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_sprout_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = dir.sprout(self.get_url('target'))
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.control_transport.base, target.control_transport.base)
         # creates a new repository branch and tree
         target.open_repository()
         target.open_branch()
@@ -462,7 +462,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             return
         target = dir.sprout(self.get_url('target/child'))
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.user_transport.base, target.user_transport.base)
         self.assertTrue(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_repository_branch_both_under_shared(self):
@@ -591,7 +591,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             return
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.control_transport.base, target.control_transport.base)
         self.assertFalse(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_branch_reference(self):
@@ -707,8 +707,9 @@ class TestControlDir(TestCaseWithControlDir):
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', 'missing-rev')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+            raise TestNotApplicable('Branch format does not support tags '
+                'or tags referencing ghost revisions.')
         # Now source has a tag pointing to an absent revision.  Sprout its
         # controldir.
         dir = source.bzrdir
@@ -725,8 +726,9 @@ class TestControlDir(TestCaseWithControlDir):
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', 'missing-rev')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+            raise TestNotApplicable('Branch format does not support tags '
+                'or tags referencing missing revisions.')
         # Now source has a tag pointing to an absent revision.  Sprout its
         # controldir.
         dir = source.bzrdir
@@ -759,18 +761,28 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             # Create a tag for B2, and for an absent rev
             source.tags.set_tag('tag-non-ancestry', 'rev-b2')
-            source.tags.set_tag('tag-absent', 'absent-rev')
         except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+            raise TestNotApplicable('Branch format does not support tags ')
+        try:
+            source.tags.set_tag('tag-absent', 'absent-rev')
+        except errors.GhostTagsNotSupported:
+            has_ghost_tag = False
+        else:
+            has_ghost_tag = True
         source.get_config().set_user_option('branch.fetch_tags', 'True')
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
         # The tags are present
         new_branch = target.open_branch()
-        self.assertEqual(
-            {'tag-absent': 'absent-rev', 'tag-non-ancestry': 'rev-b2'},
-            new_branch.tags.get_tag_dict())
+        if has_ghost_tag:
+            self.assertEqual(
+                {'tag-absent': 'absent-rev', 'tag-non-ancestry': 'rev-b2'},
+                new_branch.tags.get_tag_dict())
+        else:
+            self.assertEqual(
+                {'tag-non-ancestry': 'rev-b2'},
+                new_branch.tags.get_tag_dict())
         # And the revs for A2, B2 and C2's ancestries are present, but no
         # others.
         self.assertEqual(
@@ -1212,7 +1224,12 @@ class TestControlDir(TestCaseWithControlDir):
             return
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
-        made_repo = made_control.create_repository(shared=False)
+        try:
+            made_repo = made_control.create_repository(shared=False)
+        except errors.IncompatibleFormat:
+            # Some control dir formats don't support non-shared repositories
+            # and should raise IncompatibleFormat
+            return
         self.assertFalse(made_repo.is_shared())
 
     def test_open_repository(self):

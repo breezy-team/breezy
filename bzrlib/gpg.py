@@ -333,7 +333,7 @@ class GPGStrategy(object):
                     trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
                 if not found_key:
                     trace.note(gettext(
-                            "No GnuPG key results for pattern: {}"
+                            "No GnuPG key results for pattern: {0}"
                                 ).format(pattern))
 
     def do_verifications(self, revisions, repository,

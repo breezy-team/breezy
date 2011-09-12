@@ -543,8 +543,6 @@ class BzrDir(controldir.ControlDir):
                     stacked=stacked)
         return result
 
-
-
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
                                   force_new_tree=None, format=None,
