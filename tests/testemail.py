@@ -80,13 +80,13 @@ sample_log=('------------------------------------------------------------\n'
 class TestGetTo(TestCaseInTempDir):
 
     def test_body(self):
-        sender = self.get_sender()        
-        self.assertEqual('At %s\n\n%s' % (sender.url(), sample_log), 
+        sender = self.get_sender()
+        self.assertEqual('At %s\n\n%s' % (sender.url(), sample_log),
                          sender.body())
 
-    def test_custom_body(self):        
+    def test_custom_body(self):
         sender = self.get_sender(customized_mail_config)
-        self.assertEqual('%s has committed revision 1 at %s.\n\n%s' % 
+        self.assertEqual('%s has committed revision 1 at %s.\n\n%s' %
                             (sender.committer, sender.url(), sample_log),
                          sender.body())
 
