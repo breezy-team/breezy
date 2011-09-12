@@ -123,6 +123,9 @@ Improvements
 * Locations printed by ``bzr upgrade`` are now formatted before display.
   (Jelmer Vernooij)
 
+* Use gettext.NullTranslations in i18n to allow use of i18n even when
+  translations are not turned on. (Jonathan Riddell)
+
 * Install translation .mo files. (Jonathan Riddell)
 
 * Do not run i18n initialisation twice. (Jonathan Riddell)

@@ -26,7 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
-_translations = None
+_translations = _gettext.NullTranslations()
 
 
 def gettext(message):
@@ -67,7 +67,7 @@ def gettext_per_paragraph(message):
 
 
 def installed():
-    return _translations is not None
+    return not isinstance(_translations, _gettext.NullTranslations)
 
 
 def install(lang=None):
@@ -89,7 +89,7 @@ def install(lang=None):
 
 def uninstall():
     global _translations
-    _translations = None
+    _translations = _gettext.NullTranslations()
 
 
 def _get_locale_dir():
