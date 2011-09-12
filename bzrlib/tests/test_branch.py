@@ -112,7 +112,8 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Format 4 branches cannot be created."""
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
@@ -137,7 +138,7 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return SampleSupportedBranchFormatString
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, append_revisions_only=None):
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
         return 'A branch'

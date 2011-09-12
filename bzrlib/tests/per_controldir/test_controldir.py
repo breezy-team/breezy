@@ -1162,7 +1162,7 @@ class TestControlDir(TestCaseWithControlDir):
             made_branch = made_control.create_branch(
                 append_revisions_only=True)
         except errors.UpgradeRequired:
-            raise
+            return
         self.assertIsInstance(made_branch, bzrlib.branch.Branch)
         self.assertEquals(True, made_branch.get_append_revisions_only())
         self.assertEqual(made_control, made_branch.bzrdir)
