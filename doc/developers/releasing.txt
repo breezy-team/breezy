@@ -246,6 +246,18 @@ Update the source code
    this slow you down too much. This script accepts options you may find
    useful, use ``./tools/check-newsbugs.py`` to display its usage.
 
+#. For beta releases update the translation template::
+
+     make -f po/bzr.pot
+
+   This is especially important for the final beta release which is
+   when translations are frozen and translators are requested to make
+   the translations.
+
+#. For stable releases update the translations::
+
+     bzr merge lp:~bzr-core/bzr/bzr-translations-export-x.y
+
 #. Commit these changes to the release branch, using a command like::
 
      bzr commit -m "Release 2.3.1"
@@ -406,6 +418,9 @@ milestone for the next relase).
 You may also need to do `At the start of a series cycle`_ if you're starting
 a new series.
 
+The final beta - branching and translations
+-------------------------------------------
+
 A word of caution: the instructions above works well for all releases but
 there is one special case that requires a bit more care: when you release
 the *last* beta for a given ``x.y`` series (from trunk aka lp:bzr), you need
@@ -436,6 +451,26 @@ In a nutshell:
 
 #. Open ``lp:bzr/x.y`` for bug fixes
 
+You also need to ensure Launchpad is set up to import/export
+translations for the new branch and inform translators.
+
+#. Push a branch::
+
+     bzr push lp:~bzr-core/bzr/bzr-translations-export-x.y
+
+#. On the translations series synchronization settings page
+   <https://translations.launchpad.net/bzr/x.y/+translations-settings>
+   turn on ``Import template files`` then for exports click ``Choose a
+   target branch`` and point it at the branch you just pushed.
+
+#. E-mail translators to announce that the forthcoming stable release
+   of bzr is ready for translations.  Send to
+   translators(AT)lists.launchpad.net and
+   ubuntu-translators(AT)lists.ubuntu.com.
+
+#. The series is now frozen for strings and API, see below for adding
+   that to the announcement.
+
 Announcing the source freeze
 ----------------------------
 
@@ -451,6 +486,10 @@ Announcing the source freeze
    installers and most of the distributions) it's generally a few days after
    the freeze. For older series supported only via SRUs for Ubuntu, we don't
    control the process as tightly so guessing the date is not appropriate.
+
+   For the final beta release include in your announcement a notice of
+   API and translation freezes nothing that public methods should not
+   be removed or changed and strings should not be added or changed.
 
 #. Pause for a few days. 
 
