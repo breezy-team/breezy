@@ -99,10 +99,12 @@ class TestInstall(tests.TestCase):
 
     def test_custom_languages(self):
         self.addCleanup(i18n.install)
+        self.enableI18n()
         i18n.install('nl:fy')
 
     def test_no_env_variables(self):
         self.addCleanup(i18n.install)
+        self.enableI18n()
         self.overrideEnv('LANGUAGE', None)
         self.overrideEnv('LC_ALL', None)
         self.overrideEnv('LC_MESSAGES', None)
@@ -129,6 +131,7 @@ class TestTranslate(tests.TestCaseWithTransport):
 
     def test_topic_help_translation(self):
         """does topic help get translated?"""
+        self.enableI18n()
         from bzrlib import help
         i18n.install()
         self.overrideAttr(i18n, '_translations', ZzzTranslations())

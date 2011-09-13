@@ -1007,7 +1007,7 @@ class TestCase(testtools.TestCase):
         if 'config_stats' in selftest_debug_flags:
             self._install_config_stats_hooks()
         # Do not use i18n for tests (unless the test reverses this)
-        self.overrideAttr(i18n, 'installed', lambda: True)
+        self.i18nInstalled = self.overrideAttr(i18n, 'installed', lambda: True)
 
     def debug(self):
         # debug a frame up.
@@ -1939,6 +1939,10 @@ class TestCase(testtools.TestCase):
         """
         if not feature.available():
             raise UnavailableFeature(feature)
+
+    def enableI18n(self):
+        """Call this in tests which require i18n."""
+        self.overrideAttr(i18n, 'installed', self.i18nInstalled)
 
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
