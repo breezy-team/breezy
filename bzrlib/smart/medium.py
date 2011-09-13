@@ -236,7 +236,7 @@ class SmartServerStreamMedium(SmartMedium):
             #       connecting for us to give a more useful message. :(
             #       (eg, who is on the other side that we are disconnecting
             #       from)
-            raise errors.BzrError('Timeout after %d seconds, disconnecting'
+            raise errors.BzrError('Timeout after %.1f seconds, disconnecting'
                                   % (self._stream_medium_timeout))
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
