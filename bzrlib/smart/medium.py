@@ -305,9 +305,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         :return: Did we timeout? (True if we timed out, False if there is data
             to be read)
         """
-        r, _, _ = select.select([self.socket], [], [],
-                                timeout_seconds)
-        if r:
+        rs, _, _ = select.select([self.socket], [], [], timeout_seconds)
+        if rs:
             # We have data, so we didn't timeout
             return False
         return True

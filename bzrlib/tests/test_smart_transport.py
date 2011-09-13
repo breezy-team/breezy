@@ -956,6 +956,21 @@ class TestSmartServerStreamMedium(tests.TestCase):
         data = server.read_bytes(1)
         self.assertEqual('', data)
 
+    def test_socket_wait_for_bytes_with_timeout_closed(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        self.addCleanup(server_sock.close)
+        server = medium.SmartServerSocketStreamMedium(
+            server_sock, None)
+        # With the socket closed, this should return right away.
+        # It seems select.select() returns that you *can* read on the socket,
+        # even though it closed. Presumably as a way to tell it is closed?
+        # Testing shows that without sock.close() this times-out failing the
+        # test, but with it, it returns False immediately.
+        client_sock.close()
+        self.assertFalse(server._wait_for_bytes_with_timeout(10))
+        data = server.read_bytes(1)
+        self.assertEqual('', data)
+
     def test_pipe_wait_for_bytes_with_timeout_with_data(self):
         # We intentionally use a real pipe here, so that we can 'select' on it.
         # You can't select() on a StringIO
