@@ -120,19 +120,25 @@ Improvements
   The ``--keep-tags`` option can be used to prevent this behaviour.
   (Jelmer Vernooij, #605814)
 
-* Locations printed by ``bzr upgrade`` are now formatted before display.
-  (Jelmer Vernooij)
-
-* Use gettext.NullTranslations in i18n to allow use of i18n even when
-  translations are not turned on. (Jonathan Riddell)
+* Do not run i18n initialisation twice. (Jonathan Riddell)
 
 * Install translation .mo files. (Jonathan Riddell)
 
-* Do not run i18n initialisation twice. (Jonathan Riddell)
+* Locations printed by ``bzr upgrade`` are now formatted before display.
+  (Jelmer Vernooij)
+
+* ``Repository.get_parent_map`` now estimates the size of the returned
+  content more accurately. This means that we get closer to the desired
+  64kB/request. For repositories converted from svn, this can be an
+  improvement of approx 5:1 in round trips to discover the whole history.
+  (John Arbash Meinel)
 
 * Support a ``bugtracker`` option which is used by ``bzr commit --fixes``
   if no bug tracker was specified on the command line.
   (Jelmer Vernooij, #334860)
+
+* Use gettext.NullTranslations in i18n to allow use of i18n even when
+  translations are not turned on. (Jonathan Riddell)
 
 Bug Fixes
 *********
