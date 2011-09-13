@@ -290,13 +290,16 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         This allows us to detect idle connections, and stop trying to read from
         them, without setting the socket itself to non-blocking. This also
         allows us to specify when we watch for idle timeouts.
+
+        :return: Did we timeout? (True if we timed out, False if there is data
+            to be read)
         """
-        r, _, _ = select.select([self.socket.fileno()], [], [],
+        r, _, _ = select.select([self.socket], [], [],
                                 timeout_seconds)
         if r:
-            # We have data
-            return True
-        return False
+            # We have data, so we didn't timeout
+            return False
+        return True
 
     def _read_bytes(self, desired_count):
         return osutils.read_bytes_from_socket(
@@ -355,6 +358,27 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 self._out.flush()
                 return
             protocol.accept_bytes(bytes)
+
+    def _wait_for_bytes_with_timeout(self, timeout_seconds):
+        """Wait for more bytes to be read, but timeout if none available.
+
+        This allows us to detect idle connections, and stop trying to read from
+        them, without setting the socket itself to non-blocking. This also
+        allows us to specify when we watch for idle timeouts.
+
+        :return: Did we timeout? (True if we timed out, False if there is data
+            to be read)
+        """
+        # TODO: I think on Windows, this has to always return 'False' as well,
+        #       because select.select only works on WinSock objects.
+        if getattr(self._in, 'fileno', None) is None:
+            return False
+        r, _, _ = select.select([self._in], [], [],
+                                timeout_seconds)
+        if r:
+            # We have data, so we didn't timeout
+            return False
+        return True
 
     def _read_bytes(self, desired_count):
         return self._in.read(desired_count)

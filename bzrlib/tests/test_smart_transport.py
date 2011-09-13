@@ -940,7 +940,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
             server_sock, None)
         client_sock.sendall('data\n')
         # This should not block or consume any actual content
-        self.assertTrue(server._wait_for_bytes_with_timeout(0.1))
+        self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
         data = server.read_bytes(5)
         self.assertEqual('data\n', data)
 
@@ -949,10 +949,44 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         # This should timeout quickly, reporting that there wasn't any data
-        # self.assertFalse(server._wait_for_bytes_with_timeout(0.01))
+        self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
         client_sock.close()
         data = server.read_bytes(1)
         self.assertEqual('', data)
+
+    def test_pipe_wait_for_bytes_with_timeout_with_data(self):
+        # We intentionally use a real pipe here, so that we can 'select' on it.
+        # You can't select() on a StringIO
+        (r_server, w_client) = os.pipe()
+        rf_server = os.fdopen(r_server, 'rb')
+        server = medium.SmartServerPipeStreamMedium(
+            rf_server, None, None)
+        os.write(w_client, 'data\n')
+        # This should not block or consume any actual content
+        self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
+        data = server.read_bytes(5)
+        self.assertEqual('data\n', data)
+
+    def test_pipe_wait_for_bytes_with_timeout_no_data(self):
+        # We intentionally use a real pipe here, so that we can 'select' on it.
+        # You can't select() on a StringIO
+        (r_server, w_client) = os.pipe()
+        rf_server = os.fdopen(r_server, 'rb')
+        server = medium.SmartServerPipeStreamMedium(
+            rf_server, None, None)
+        self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
+        os.close(w_client)
+        data = server.read_bytes(5)
+        self.assertEqual('', data)
+
+    def test_pipe_wait_for_bytes_no_fileno(self):
+        to_server = StringIO('')
+        from_server = StringIO()
+        server = medium.SmartServerPipeStreamMedium(
+            to_server, from_server, None)
+        # Our file doesn't support polling, so we should always just return
+        # 'you have data to consume.
+        self.assertFalse(server._wait_for_bytes_with_timeout(0.01))
 
 
 class TestGetProtocolFactoryForBytes(tests.TestCase):
