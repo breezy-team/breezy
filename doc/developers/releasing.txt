@@ -465,8 +465,8 @@ translations for the new branch and inform translators.
 
 #. E-mail translators to announce that the forthcoming stable release
    of bzr is ready for translations.  Send to
-   translators(AT)lists.launchpad.net and
-   ubuntu-translators(AT)lists.ubuntu.com.
+   ``translators@lists.launchpad.net`` and
+   ``ubuntu-translators@lists.ubuntu.com``.
 
 #. The series is now frozen for strings and API, see below for adding
    that to the announcement.
