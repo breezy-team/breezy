@@ -25,13 +25,14 @@ bzrlib/transport/smart/__init__.py.
 """
 
 import os
-import select
 import sys
 import urllib
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import errno
+import select
 import socket
 import thread
 import weakref
@@ -268,6 +269,7 @@ class SmartServerStreamMedium(SmartMedium):
         """
         raise NotImplementedError(self._read_bytes)
 
+_real_stderr = sys.stderr
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
@@ -305,7 +307,14 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         :return: Did we timeout? (True if we timed out, False if there is data
             to be read)
         """
-        rs, _, _ = select.select([self.socket], [], [], timeout_seconds)
+        try:
+            rs, _, xs = select.select([self.socket], [], [self.socket],
+                                      timeout_seconds)
+        except socket.error, e:
+            if e.errno in (errno.EBADF,):
+                # If we are told at this point that socket is no longer a valid
+                # socket, just return 'without timeout'
+                return False
         if rs:
             # We have data, so we didn't timeout
             return False
@@ -379,6 +388,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :return: Did we timeout? (True if we timed out, False if there is data
             to be read)
         """
+        return False
         # TODO: I think on Windows, this has to always return 'False' as well,
         #       because select.select only works on WinSock objects.
         if getattr(self._in, 'fileno', None) is None:
