@@ -54,7 +54,6 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 from bzrlib.plugins.git.refs import (
-    branch_name_to_ref,
     extract_tags,
     is_tag,
     ref_to_branch_name,
@@ -282,15 +281,13 @@ class GitBranchFormat(branch.BranchFormat):
         else:
             return LocalGitTagDict(branch)
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         from bzrlib.plugins.git.dir import LocalGitDir
         if not isinstance(a_bzrdir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
-        if repository is None:
-            repository = a_bzrdir.open_repository()
-        ref = branch_name_to_ref(name, "HEAD")
-        repository._git[ref] = ZERO_SHA
-        return LocalGitBranch(a_bzrdir, repository, ref, a_bzrdir._lockfiles)
+        return a_bzrdir.create_branch(repository=repository, name=name,
+            append_revisions_only=append_revisions_only)
 
 
 class GitReadLock(object):

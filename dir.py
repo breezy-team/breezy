@@ -492,7 +492,7 @@ class LocalGitDir(GitDir):
         if set_head:
             self._git.refs.set_symbolic_ref("HEAD", refname)
         branch = self.open_branch(name)
-        if append_revisions_only is not None:
+        if append_revisions_only:
             branch.set_append_revisions_only(append_revisions_only)
         return branch
 
