@@ -67,10 +67,12 @@ def gettext_per_paragraph(message):
 
 
 def installed():
+    """Returns whether translations are in use or not."""
     return not isinstance(_translations, _gettext.NullTranslations)
 
 
 def install(lang=None):
+    """Enables gettext translations."""
     global _translations
     if installed():
         return
@@ -88,6 +90,7 @@ def install(lang=None):
 
 
 def uninstall():
+    """Disables gettext translations."""
     global _translations
     _translations = _gettext.NullTranslations()
 
