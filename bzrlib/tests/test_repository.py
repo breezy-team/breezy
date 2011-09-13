@@ -1660,3 +1660,11 @@ class TestCrossFormatPacks(TestCaseWithTransport):
     def test_IDS_format_same_no(self):
         # When the formats are the same, pack is not called.
         self.run_fetch('2a', '2a', False)
+
+
+class Test_LazyListJoin(tests.TestCase):
+
+    def test__repr__(self):
+        lazy = repository._LazyListJoin(['a'], ['b'])
+        self.assertEqual("bzrlib.repository._LazyListJoin((['a'], ['b']))",
+                         repr(lazy))

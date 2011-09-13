@@ -3733,6 +3733,9 @@ class cmd_selftest(Command):
                                 param_name='starting_with', short_name='s',
                                 help=
                                 'Load only the tests starting with TESTID.'),
+                     Option('sync',
+                            help="By default we disable fsync and fdatasync"
+                                 " while running the test suite.")
                      ]
     encoding_type = 'replace'
 
@@ -3746,7 +3749,8 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
-            parallel=None, lsprof_tests=False):
+            parallel=None, lsprof_tests=False,
+            sync=False):
         from bzrlib import tests
 
         if testspecs_list is not None:
@@ -3781,6 +3785,8 @@ class cmd_selftest(Command):
             exclude_pattern = None
         else:
             exclude_pattern = '(' + '|'.join(exclude) + ')'
+        if not sync:
+            self._disable_fsync()
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3807,6 +3813,15 @@ class cmd_selftest(Command):
         finally:
             cleanup()
         return int(not result)
+
+    def _disable_fsync(self):
+        """Change the 'os' functionality to not synchronize."""
+        self._orig_fsync = getattr(os, 'fsync', None)
+        if self._orig_fsync is not None:
+            os.fsync = lambda filedes: None
+        self._orig_fdatasync = getattr(os, 'fdatasync', None)
+        if self._orig_fdatasync is not None:
+            os.fdatasync = lambda filedes: None
 
 
 class cmd_version(Command):

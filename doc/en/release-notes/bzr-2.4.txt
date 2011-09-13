@@ -5,6 +5,87 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.4.1
+#########
+
+:2.4.1: 2011-09-08
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.4 releases.
+
+It includes fixes from previous stable releases and address some issues with
+the test suite.
+
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* ``config.LocationMatcher`` properly excludes unrelated sections.
+  (Vincent Ladeuil, #829237)
+
+* ``dirstate.fdatasync`` and ``repository.fdatasync`` can now properly be
+  disabled. (Vincent Ladeuil, #824513)
+
+* Disable ``os.fsync`` and ``os.fdatasync`` by default when running
+  ``bzr selftest``. You can use ``--sync`` to re-enable them.
+  (John Arbash Meinel, #837293)
+
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
+* Avoid UnicodeDecode error when reporting EINVAL from transports.
+  (IWATA Hidetaka, #829237)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+* Corrected documentation for BZR_PROGRESS_BAR. 
+  (Dennis Benzinger, #735417)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* The test suite should now be able to run under weird environments where
+  ``/etc/passwd`` doesn't contain the ``uid`` for the user running selftest
+  or where ``fakeroot`` is used but ``/root`` is inacessible.
+  (Vincent Ladeuil, #825027)
+
 bzr 2.4.0
 #########
 

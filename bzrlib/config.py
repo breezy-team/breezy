@@ -2264,12 +2264,19 @@ class Option(object):
     value, in which config files it can be stored, etc (TBC).
     """
 
-    def __init__(self, name, default=None):
+    def __init__(self, name, default=None, from_unicode=None):
         self.name = name
         self.default = default
+        self.from_unicode = from_unicode
 
     def get_default(self):
         return self.default
+
+
+# Predefined converters to get proper values from store
+
+def bool_from_store(unicode_str):
+    return ui.bool_from_string(unicode_str)
 
 
 # Options registry
@@ -2282,12 +2289,13 @@ option_registry.register(
     help='The command called to launch an editor to enter a message.')
 
 option_registry.register(
-    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True),
+    'dirstate.fdatasync', Option('dirstate.fdatasync', default=True,
+                                 from_unicode=bool_from_store),
     help='Flush dirstate changes onto physical disk?')
 
 option_registry.register(
     'repository.fdatasync',
-    Option('repository.fdatasync', default=True),
+    Option('repository.fdatasync', default=True, from_unicode=bool_from_store),
     help='Flush repository changes onto physical disk?')
 
 
@@ -2649,30 +2657,34 @@ class LocationMatcher(SectionMatcher):
         # We slightly diverge from LocalConfig here by allowing the no-name
         # section as the most generic one and the lower priority.
         no_name_section = None
-        sections = []
+        all_sections = []
         # Filter out the no_name_section so _iter_for_location_by_parts can be
         # used (it assumes all sections have a name).
         for section in self.store.get_sections():
             if section.id is None:
                 no_name_section = section
             else:
-                sections.append(section)
+                all_sections.append(section)
         # Unfortunately _iter_for_location_by_parts deals with section names so
         # we have to resync.
         filtered_sections = _iter_for_location_by_parts(
-            [s.id for s in sections], self.location)
-        iter_sections = iter(sections)
+            [s.id for s in all_sections], self.location)
+        iter_all_sections = iter(all_sections)
         matching_sections = []
         if no_name_section is not None:
             matching_sections.append(
                 LocationSection(no_name_section, 0, self.location))
         for section_id, extra_path, length in filtered_sections:
-            # a section id is unique for a given store so it's safe to iterate
-            # again
-            section = iter_sections.next()
-            if section_id == section.id:
-                matching_sections.append(
-                    LocationSection(section, length, extra_path))
+            # a section id is unique for a given store so it's safe to take the
+            # first matching section while iterating. Also, all filtered
+            # sections are part of 'all_sections' and will always be found
+            # there.
+            while True:
+                section = iter_all_sections.next()
+                if section_id == section.id:
+                    matching_sections.append(
+                        LocationSection(section, length, extra_path))
+                    break
         return matching_sections
 
     def get_sections(self):
@@ -2742,15 +2754,28 @@ class Stack(object):
                     break
             if value is not None:
                 break
+        # If the option is registered, it may provide additional info about
+        # value handling
+        try:
+            opt = option_registry.get(name)
+        except KeyError:
+            # Not registered
+            opt = None
+        if (opt is not None and opt.from_unicode is not None
+            and value is not None):
+            # If a value exists and the option provides a converter, use it
+            try:
+                converted = opt.from_unicode(value)
+            except (ValueError, TypeError):
+                # Invalid values are ignored
+                converted = None
+            value = converted
         if value is None:
             # If the option is registered, it may provide a default value
-            try:
-                opt = option_registry.get(name)
-            except KeyError:
-                # Not registered
-                opt = None
             if opt is not None:
                 value = opt.get_default()
+        if opt is not None and value is None:
+            value = opt.get_default()
         for hook in ConfigHooks['get']:
             hook(self, name, value)
         return value
