@@ -26,6 +26,7 @@ bzrlib/transport/smart/__init__.py.
 
 import os
 import sys
+import time
 import urllib
 
 import bzrlib
@@ -195,8 +196,10 @@ class SmartServerStreamMedium(SmartMedium):
         the stream.  See also the _push_back method.
     """
 
-    # Default timeout is 300s, arguably this should be a config item
+    # Default timeout is 300s before closing the client connection
     _stream_medium_timeout = 300
+    # Poll every X seconds to see if anything new has happened.
+    _stream_medium_fast_timeout = 1.0
 
     def __init__(self, backing_transport, root_client_path='/'):
         """Construct new server.
@@ -245,6 +248,39 @@ class SmartServerStreamMedium(SmartMedium):
             self.backing_transport, self._write_out, self.root_client_path)
         protocol.accept_bytes(unused_bytes)
         return protocol
+
+    def _wait_on_descriptor(self, fd, timeout_seconds):
+        """select() on a file descriptor, waiting for nonblocking read()"""
+        # Use local variables to handle when the interpreter is shutting down
+        try:
+            if (timeout_seconds is None
+                or timeout_seconds <= self._stream_medium_fast_timeout):
+                rs, _, _ = select.select([fd], [], [], timeout_seconds)
+            else:
+                # For some reason select.select() during the test suite may
+                # sometimes pause until timeout triggers. However, if we call
+                # it again, it correctly determines that rs is no longer
+                # blocking. So we set a short select() timeout, but pause
+                # overall until the timeout finishes
+                t_end = time.time() + timeout_seconds
+                rs = []
+                while not rs and time.time() < t_end:
+                    rs, _, _ = select.select([fd], [], [],
+                                             self._stream_medium_fast_timeout)
+        except (select.error, socket.error) as e:
+            err = getattr(e, 'errno', None)
+            if err is None:
+                # select.error doesn't have 'errno', it just has args[0]
+                if getattr(e, 'args', None) is not None:
+                    err = e.args[0]
+            if err in (errno.EBADF,):
+                # If we are told at this point that socket is no longer a valid
+                # socket, just return 'without timeout'
+                return False
+        if rs:
+            # We can read without blocking, we did not timeout.
+            return False
+        return True
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
@@ -307,18 +343,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         :return: Did we timeout? (True if we timed out, False if there is data
             to be read)
         """
-        try:
-            rs, _, xs = select.select([self.socket], [], [self.socket],
-                                      timeout_seconds)
-        except socket.error, e:
-            if e.errno in (errno.EBADF,):
-                # If we are told at this point that socket is no longer a valid
-                # socket, just return 'without timeout'
-                return False
-        if rs:
-            # We have data, so we didn't timeout
-            return False
-        return True
+        return self._wait_on_descriptor(self.socket, timeout_seconds)
 
     def _read_bytes(self, desired_count):
         return osutils.read_bytes_from_socket(
@@ -388,17 +413,11 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :return: Did we timeout? (True if we timed out, False if there is data
             to be read)
         """
-        return False
         # TODO: I think on Windows, this has to always return 'False' as well,
         #       because select.select only works on WinSock objects.
         if getattr(self._in, 'fileno', None) is None:
             return False
-        r, _, _ = select.select([self._in], [], [],
-                                timeout_seconds)
-        if r:
-            # We have data, so we didn't timeout
-            return False
-        return True
+        return self._wait_on_descriptor(self._in, timeout_seconds)
 
     def _read_bytes(self, desired_count):
         return self._in.read(desired_count)
