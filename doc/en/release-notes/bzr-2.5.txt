@@ -93,11 +93,9 @@ New Features
   option. A value of 0 disables skipping. Named items passed to add are
   never skipped. (Shannon Weyrick, #54624)
 
-* bzr now ships with translations for command help.  (Jonathan
-  Riddell, INADA Naoki, #83941)
-
-* bzr now ships with translations for command errors. (Jonathan
-  Riddell, INADA Naoki)
+* Translations are now enabled for command help, errors and globally
+  for any message using gettext given on output.  (Jonathan Riddell,
+  INADA Naoki, #83941)
 
 Improvements
 ************
