@@ -934,6 +934,26 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server_protocol = self.build_protocol_socket('bzr request 2\n')
         self.assertProtocolTwo(server_protocol)
 
+    def test_socket_wait_for_bytes_with_timeout_with_data(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        server = medium.SmartServerSocketStreamMedium(
+            server_sock, None)
+        client_sock.sendall('data\n')
+        # This should not block or consume any actual content
+        self.assertTrue(server._wait_for_bytes_with_timeout(0.1))
+        data = server.read_bytes(5)
+        self.assertEqual('data\n', data)
+
+    def test_socket_wait_for_bytes_with_timeout_no_data(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        server = medium.SmartServerSocketStreamMedium(
+            server_sock, None)
+        # This should timeout quickly, reporting that there wasn't any data
+        # self.assertFalse(server._wait_for_bytes_with_timeout(0.01))
+        client_sock.close()
+        data = server.read_bytes(1)
+        self.assertEqual('', data)
+
 
 class TestGetProtocolFactoryForBytes(tests.TestCase):
     """_get_protocol_factory_for_bytes identifies the protocol factory a server

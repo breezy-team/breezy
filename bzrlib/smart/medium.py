@@ -25,6 +25,7 @@ bzrlib/transport/smart/__init__.py.
 """
 
 import os
+import select
 import sys
 import urllib
 
@@ -282,6 +283,20 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             protocol.accept_bytes(bytes)
 
         self._push_back(protocol.unused_data)
+
+    def _wait_for_bytes_with_timeout(self, timeout_seconds):
+        """Wait for more bytes to be read, but timeout if none available.
+
+        This allows us to detect idle connections, and stop trying to read from
+        them, without setting the socket itself to non-blocking. This also
+        allows us to specify when we watch for idle timeouts.
+        """
+        r, _, _ = select.select([self.socket.fileno()], [], [],
+                                timeout_seconds)
+        if r:
+            # We have data
+            return True
+        return False
 
     def _read_bytes(self, desired_count):
         return osutils.read_bytes_from_socket(
