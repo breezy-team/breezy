@@ -936,6 +936,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_wait_for_bytes_with_timeout_with_data(self):
         server_sock, client_sock = self.portable_socket_pair()
+        self.addCleanup(server_sock.close)
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         client_sock.sendall('data\n')
@@ -946,6 +947,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_wait_for_bytes_with_timeout_no_data(self):
         server_sock, client_sock = self.portable_socket_pair()
+        self.addCleanup(server_sock.close)
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         # This should timeout quickly, reporting that there wasn't any data

@@ -194,6 +194,9 @@ class SmartServerStreamMedium(SmartMedium):
         the stream.  See also the _push_back method.
     """
 
+    # Default timeout is 300s, arguably this should be a config item
+    _stream_medium_timeout = 300
+
     def __init__(self, backing_transport, root_client_path='/'):
         """Construct new server.
 
@@ -227,6 +230,14 @@ class SmartServerStreamMedium(SmartMedium):
 
         :returns: a SmartServerRequestProtocol.
         """
+        if self._wait_for_bytes_with_timeout(self._stream_medium_timeout):
+            # TODO: We would like to have a nicer message than this. However,
+            #       we don't have any context available to us about who is
+            #       connecting for us to give a more useful message. :(
+            #       (eg, who is on the other side that we are disconnecting
+            #       from)
+            raise errors.BzrError('Timeout after %d seconds, disconnecting'
+                                  % (self._stream_medium_timeout))
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(

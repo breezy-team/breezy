@@ -84,7 +84,7 @@ try:
 except ImportError:
     # lsprof not available
     pass
-from bzrlib.smart import client, request
+from bzrlib.smart import client, medium, request
 from bzrlib.transport import (
     memory,
     pathfilter,
@@ -2733,6 +2733,8 @@ class TestCaseWithMemoryTransport(TestCase):
         self.__readonly_server = None
         self.__server = None
         self.reduceLockdirTimeout()
+        self.overrideAttr(medium.SmartServerStreamMedium,
+                          '_stream_medium_timeout', 10.0)
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
