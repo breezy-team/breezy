@@ -958,26 +958,29 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # We intentionally use a real pipe here, so that we can 'select' on it.
         # You can't select() on a StringIO
         (r_server, w_client) = os.pipe()
-        rf_server = os.fdopen(r_server, 'rb')
-        server = medium.SmartServerPipeStreamMedium(
-            rf_server, None, None)
-        os.write(w_client, 'data\n')
-        # This should not block or consume any actual content
-        self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
-        data = server.read_bytes(5)
-        self.assertEqual('data\n', data)
+        self.addCleanup(os.close, w_client)
+        with os.fdopen(r_server, 'rb') as rf_server:
+            server = medium.SmartServerPipeStreamMedium(
+                rf_server, None, None)
+            os.write(w_client, 'data\n')
+            # This should not block or consume any actual content
+            self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
+            data = server.read_bytes(5)
+            self.assertEqual('data\n', data)
 
     def test_pipe_wait_for_bytes_with_timeout_no_data(self):
         # We intentionally use a real pipe here, so that we can 'select' on it.
         # You can't select() on a StringIO
         (r_server, w_client) = os.pipe()
-        rf_server = os.fdopen(r_server, 'rb')
-        server = medium.SmartServerPipeStreamMedium(
-            rf_server, None, None)
-        self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
-        os.close(w_client)
-        data = server.read_bytes(5)
-        self.assertEqual('', data)
+        # We can't add an os.close cleanup here, because we need to control
+        # when the file handle gets closed ourselves.
+        with os.fdopen(r_server, 'rb') as rf_server:
+            server = medium.SmartServerPipeStreamMedium(
+                rf_server, None, None)
+            self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
+            os.close(w_client)
+            data = server.read_bytes(5)
+            self.assertEqual('', data)
 
     def test_pipe_wait_for_bytes_no_fileno(self):
         to_server = StringIO('')
