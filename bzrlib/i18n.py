@@ -34,6 +34,7 @@ def gettext(message):
     
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ugettext(message)
 
 
@@ -46,6 +47,7 @@ def ngettext(singular, plural, number):
 
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ungettext(singular, plural, number)
 
 
@@ -64,6 +66,13 @@ def gettext_per_paragraph(message):
     # Be careful not to translate the empty string -- it holds the
     # meta data of the .po file.
     return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
+
+
+def disable_i18n():
+    """Do not allow i18n to be enabled.  Useful for third party users
+    of bzrlib."""
+    global installed
+    installed = lambda: True
 
 
 def installed():
