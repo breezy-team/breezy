@@ -40,7 +40,7 @@ class TestGitDir(tests.TestCaseInTempDir):
 
         gd = bzrdir.BzrDir.open('.')
         self.assertEquals(
-            "%s,ref=refs/heads/master" %
+            "%s,ref=refs%%2Fheads%%2Fmaster" %
                 urlutils.local_path_to_url(os.path.abspath(".")),
             gd.get_branch_reference())
 

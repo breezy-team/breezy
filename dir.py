@@ -83,9 +83,6 @@ class GitLockableFiles(lockable_files.LockableFiles):
         else:
             self._lock_warner = LockWarner(repr(self))
 
-    def __str__(self):
-        return 'GitLockableFiles(%s)' % (self._transport.base)
-
 
 class GitDirConfig(object):
 
@@ -369,7 +366,7 @@ class LocalGitDir(GitDir):
         target_ref = self._get_symref(ref)
         if target_ref is not None:
             return urlutils.join_segment_parameters(
-                self.user_url.rstrip("/"), {"ref": urllib.quote(target_ref)})
+                self.user_url.rstrip("/"), {"ref": urllib.quote(target_ref, '')})
         return None
 
     def find_branch_format(self, name=None):
