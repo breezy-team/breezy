@@ -745,6 +745,22 @@ new feature instance with::
         _test_needs_features = [features.apport]
 
 
+Testing translations
+-----------------------
+
+Translations are disabled by default in tests.  If you want to test
+that code is translated you can use the ``ZzzTranslations`` class from
+``test_i18n``::
+
+    self.overrideAttr(i18n, '_translations', ZzzTranslations())
+
+And check the output strings look like ``u"zz\xe5{{output}}"``.
+
+To test the gettext setup and usage you can run
+``TestCase.enableI18n()`` to temporarily reset ``i18n.install()`` back
+to using gettext.
+
+
 Testing deprecated code
 -----------------------
 
