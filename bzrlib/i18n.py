@@ -68,6 +68,13 @@ def gettext_per_paragraph(message):
     return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
 
 
+def disableI18n():
+    """Do not allow i18n to be enabled.  Useful for third party users
+    of bzrlib."""
+    global installed
+    installed = lambda: True
+
+
 def installed():
     return not isinstance(_translations, _gettext.NullTranslations)
 
