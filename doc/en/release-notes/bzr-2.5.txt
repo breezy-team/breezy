@@ -93,11 +93,9 @@ New Features
   option. A value of 0 disables skipping. Named items passed to add are
   never skipped. (Shannon Weyrick, #54624)
 
-* bzr now ships with translations for command help.  (Jonathan
-  Riddell, INADA Naoki, #83941)
-
-* bzr now ships with translations for command errors. (Jonathan
-  Riddell, INADA Naoki)
+* Translations are now enabled for command help, errors and globally
+  for any message using gettext given on output.  (Jonathan Riddell,
+  INADA Naoki, #83941)
 
 Improvements
 ************
@@ -120,16 +118,25 @@ Improvements
   The ``--keep-tags`` option can be used to prevent this behaviour.
   (Jelmer Vernooij, #605814)
 
-* Locations printed by ``bzr upgrade`` are now formatted before display.
-  (Jelmer Vernooij)
+* Do not run i18n initialisation twice. (Jonathan Riddell)
 
 * Install translation .mo files. (Jonathan Riddell)
 
-* Do not run i18n initialisation twice. (Jonathan Riddell)
+* Locations printed by ``bzr upgrade`` are now formatted before display.
+  (Jelmer Vernooij)
+
+* ``Repository.get_parent_map`` now estimates the size of the returned
+  content more accurately. This means that we get closer to the desired
+  64kB/request. For repositories converted from svn, this can be an
+  improvement of approx 5:1 in round trips to discover the whole history.
+  (John Arbash Meinel)
 
 * Support a ``bugtracker`` option which is used by ``bzr commit --fixes``
   if no bug tracker was specified on the command line.
   (Jelmer Vernooij, #334860)
+
+* Use gettext.NullTranslations in i18n to allow use of i18n even when
+  translations are not turned on. (Jonathan Riddell)
 
 Bug Fixes
 *********
@@ -139,6 +146,10 @@ Bug Fixes
 
 * ``bzr commit`` now correctly reports missing files as "removed", not
   "modified". (Jelmer Vernooij, #553955)
+
+* ``bzr reconfigure`` will now allow multiple non-conflicting requests
+  in a single invocation, e.g. ``--branch`` and ``--use-shared``.
+  (Martin von Gagern, #842993)
 
 * The pull command will now always use separate connections for the
   case where the destination is a heavyweight checkout of some remote
@@ -171,6 +182,9 @@ Bug Fixes
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
 
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
 Documentation
 *************
 
@@ -183,6 +197,16 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``BranchFormat.initialize`` now takes a ``append_revisions_only``
+  argument. (Jelmer Vernooij)
+
+* ``Branch._get_checkout_format`` now takes a ``lightweight`` argument
+  which indicates if the format should be for a lightweight or a
+  heavyweight checkout. (Jelmer Vernooij)
+
+* ``ControlDir.create_branch`` now takes a ``append_revisions_only`` argument.
+  (Jelmer Vernooij)
 
 * New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
   (Jelmer Vernooij)

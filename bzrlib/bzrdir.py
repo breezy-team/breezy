@@ -543,8 +543,6 @@ class BzrDir(controldir.ControlDir):
                     stacked=stacked)
         return result
 
-
-
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
                                   force_new_tree=None, format=None,
@@ -1147,10 +1145,12 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+            append_revisions_only=None):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self, name=name,
-                repository=repository)
+                repository=repository,
+                append_revisions_only=append_revisions_only)
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
