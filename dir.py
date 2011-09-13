@@ -368,7 +368,8 @@ class LocalGitDir(GitDir):
             ref = "HEAD"
         target_ref = self._get_symref(ref)
         if target_ref is not None:
-            return ",ref=%s" % urllib.quote(target_ref)
+            return urlutils.join_segment_parameters(
+                self.user_url.rstrip("/"), {"ref": urllib.quote(target_ref)})
         return None
 
     def find_branch_format(self, name=None):
@@ -473,7 +474,8 @@ class LocalGitDir(GitDir):
             raise bzr_errors.IncompatibleFormat(GitRepositoryFormat(), self._format)
         return self.open_repository()
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+                      append_revisions_only=None):
         refname = self._get_selected_ref(name)
         from dulwich.protocol import ZERO_SHA
         # FIXME: This is a bit awkward. Perhaps we should have a
@@ -489,7 +491,10 @@ class LocalGitDir(GitDir):
         self._git.refs[refname] = ZERO_SHA
         if set_head:
             self._git.refs.set_symbolic_ref("HEAD", refname)
-        return self.open_branch(name)
+        branch = self.open_branch(name)
+        if append_revisions_only is not None:
+            branch.set_append_revisions_only(append_revisions_only)
+        return branch
 
     def backup_bzrdir(self):
         if self._git.bare:

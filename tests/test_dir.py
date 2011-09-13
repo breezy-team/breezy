@@ -17,10 +17,12 @@
 """Test the GitDir class"""
 
 from dulwich.repo import Repo as GitRepo
+import os
 
 from bzrlib import (
     bzrdir,
     errors,
+    urlutils,
     )
 from bzrlib.tests import TestSkipped
 
@@ -32,6 +34,15 @@ from bzrlib.plugins.git import (
 
 
 class TestGitDir(tests.TestCaseInTempDir):
+
+    def test_get_head_branch_reference(self):
+        GitRepo.init(".")
+
+        gd = bzrdir.BzrDir.open('.')
+        self.assertEquals(
+            "%s,ref=refs/heads/master" %
+                urlutils.local_path_to_url(os.path.abspath(".")),
+            gd.get_branch_reference())
 
     def test_open_existing(self):
         GitRepo.init(".")
