@@ -756,9 +756,9 @@ that code is translated you can use the ``ZzzTranslations`` class from
 
 And check the output strings look like ``u"zz\xe5{{output}}"``.
 
-To test the gettext setup and usage you can run
-``TestCase.enableI18n()`` to temporarily reset ``i18n.install()`` back
-to using gettext.
+To test the gettext setup and usage you override i18n.installed back
+to self.i18nInstalled and _translations to None, see
+test_i18n.TestInstall.
 
 
 Testing deprecated code

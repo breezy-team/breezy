@@ -1940,10 +1940,6 @@ class TestCase(testtools.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
-    def enableI18n(self):
-        """Call this in tests which require i18n."""
-        self.overrideAttr(i18n, 'installed', self.i18nInstalled)
-
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
         """Run bazaar command line, splitting up a string command line."""

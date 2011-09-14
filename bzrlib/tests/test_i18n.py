@@ -97,15 +97,18 @@ class TestGetTextPerParagraph(tests.TestCase):
 
 class TestInstall(tests.TestCase):
 
-    def test_custom_languages(self):
+    def setUp(self):
+        super(TestInstall, self).setUp()
+        # Restore a proper env to test translation installation
+        self.overrideAttr(i18n, 'installed', self.i18nInstalled)
         self.overrideAttr(i18n, '_translations', None)
+
+    def test_custom_languages(self):
         self.enableI18n()
         i18n.install('nl:fy')
         self.assertIsInstance(i18n._translations, i18n._gettext.NullTranslations)
 
     def test_no_env_variables(self):
-        self.overrideAttr(i18n, '_translations', None)
-        self.enableI18n()
         self.overrideEnv('LANGUAGE', None)
         self.overrideEnv('LC_ALL', None)
         self.overrideEnv('LC_MESSAGES', None)
@@ -114,7 +117,6 @@ class TestInstall(tests.TestCase):
         self.assertIsInstance(i18n._translations, i18n._gettext.NullTranslations)
 
     def test_disable_i18n(self):
-        self.overrideAttr(i18n, '_translations', None)
         i18n.disable_i18n()
         i18n.install()
         self.assertTrue(i18n._translations is None)
