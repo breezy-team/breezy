@@ -57,6 +57,7 @@ from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.commands import (
@@ -723,7 +724,7 @@ class cmd_add(Command):
             if verbose:
                 for glob in sorted(ignored.keys()):
                     for path in ignored[glob]:
-                        self.outf.write("ignored %s matching \"%s\"\n"
+                        self.outf.write(gettext("ignored %s matching \"%s\"\n")
                                         % (path, glob))
 
 
@@ -744,7 +745,7 @@ class cmd_mkdir(Command):
             if id != None:
                 os.mkdir(d)
                 wt.add([dd])
-                self.outf.write('added %s\n' % d)
+                self.outf.write(gettext('added %s\n') % d)
             else:
                 raise errors.NotVersionedError(path=base)
 
@@ -1045,7 +1046,7 @@ class cmd_pull(Command):
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 if not is_quiet():
-                    self.outf.write("Using saved parent location: %s\n" % display_url)
+                    self.outf.write(gettext("Using saved parent location: %s\n") % display_url)
                 location = stored_loc
 
         revision = _get_one_revision('pull', revision)
@@ -1198,7 +1199,7 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                note("Using saved push location: %s" % display_url)
+                note(gettext("Using saved push location: %s") % display_url)
                 location = stored_loc
 
         _show_push_branch(br_from, revision_id, location, self.outf,
@@ -1349,7 +1350,7 @@ class cmd_branches(Command):
         dir = bzrdir.BzrDir.open_containing(location)[0]
         for branch in dir.list_branches():
             if branch.name is None:
-                self.outf.write(" (default)\n")
+                self.outf.write(gettext(" (default)\n"))
             else:
                 self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
 
@@ -1884,7 +1885,7 @@ class cmd_init(Command):
             repository = branch.repository
             layout = describe_layout(repository, branch, tree).lower()
             format = describe_format(a_bzrdir, repository, branch, tree)
-            self.outf.write("Created a %s (format: %s)\n" % (layout, format))
+            self.outf.write(gettext("Created a %s (format: %s)\n") % (layout, format))
             if repository.is_shared():
                 #XXX: maybe this can be refactored into transport.path_or_url()
                 url = repository.bzrdir.root_transport.external_url()
@@ -1892,7 +1893,7 @@ class cmd_init(Command):
                     url = urlutils.local_path_from_url(url)
                 except errors.InvalidURL:
                     pass
-                self.outf.write("Using shared repository: %s\n" % url)
+                self.outf.write(gettext("Using shared repository: %s\n") % url)
 
 
 class cmd_init_repository(Command):
@@ -2935,10 +2936,10 @@ class cmd_ignore(Command):
                 if ignored.match(filename):
                     matches.append(filename)
         if len(matches) > 0:
-            self.outf.write("Warning: the following files are version controlled and"
-                  " match your ignore pattern:\n%s"
+            self.outf.write(gettext("Warning: the following files are version "
+                  "controlled and match your ignore pattern:\n%s"
                   "\nThese files will continue to be version controlled"
-                  " unless you 'bzr remove' them.\n" % ("\n".join(matches),))
+                  " unless you 'bzr remove' them.\n") % ("\n".join(matches),))
 
 
 class cmd_ignored(Command):
@@ -3917,7 +3918,7 @@ class cmd_rocks(Command):
 
     @display_command
     def run(self):
-        self.outf.write("It sure does!\n")
+        self.outf.write(gettext("It sure does!\n"))
 
 
 class cmd_find_merge_base(Command):
@@ -3941,7 +3942,7 @@ class cmd_find_merge_base(Command):
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
 
-        self.outf.write('merge base is revision %s\n' % base_rev_id)
+        self.outf.write(gettext('merge base is revision %s\n') % base_rev_id)
 
 
 class cmd_merge(Command):
@@ -4640,8 +4641,8 @@ class cmd_missing(Command):
                                              " or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            message("Using saved parent location: "
-                    + display_url + "\n")
+            message(gettext("Using saved parent location: {0}\n").format(
+                    display_url))
 
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
@@ -4673,7 +4674,7 @@ class cmd_missing(Command):
 
         status_code = 0
         if local_extra and not theirs_only:
-            message("You have %d extra revision(s):\n" %
+            message(gettext("You have %d extra revision(s):\n") %
                 len(local_extra))
             for revision in iter_log_revisions(local_extra,
                                 local_branch.repository,
@@ -4687,7 +4688,7 @@ class cmd_missing(Command):
         if remote_extra and not mine_only:
             if printed_local is True:
                 message("\n\n\n")
-            message("You are missing %d revision(s):\n" %
+            message(gettext("You are missing %d revision(s):\n") %
                 len(remote_extra))
             for revision in iter_log_revisions(remote_extra,
                                 remote_branch.repository,
@@ -4697,15 +4698,15 @@ class cmd_missing(Command):
 
         if mine_only and not local_extra:
             # We checked local, and found nothing extra
-            message('This branch has no new revisions.\n')
+            message(gettext('This branch has no new revisions.\n'))
         elif theirs_only and not remote_extra:
             # We checked remote, and found nothing extra
-            message('Other branch has no new revisions.\n')
+            message(gettext('Other branch has no new revisions.\n'))
         elif not (mine_only or theirs_only or local_extra or
                   remote_extra):
             # We checked both branches, and neither one had extra
             # revisions
-            message("Branches are up to date.\n")
+            message(gettext("Branches are up to date.\n"))
         self.cleanup_now()
         if not status_code and parent is None and other_branch is not None:
             self.add_cleanup(local_branch.lock_write().unlock)
@@ -5061,7 +5062,7 @@ class cmd_uncommit(Command):
                 rev_id = b.get_rev_id(revno)
 
         if rev_id is None or _mod_revision.is_null(rev_id):
-            self.outf.write('No revisions to uncommit.\n')
+            self.outf.write(gettext('No revisions to uncommit.\n'))
             return 1
 
         lf = log_formatter('short',
@@ -5076,25 +5077,25 @@ class cmd_uncommit(Command):
                  end_revision=last_revno)
 
         if dry_run:
-            self.outf.write('Dry-run, pretending to remove'
-                            ' the above revisions.\n')
+            self.outf.write(gettext('Dry-run, pretending to remove'
+                            ' the above revisions.\n'))
         else:
-            self.outf.write('The above revision(s) will be removed.\n')
+            self.outf.write(gettext('The above revision(s) will be removed.\n'))
 
         if not force:
             if not ui.ui_factory.confirm_action(
-                    u'Uncommit these revisions',
+                    gettext(u'Uncommit these revisions'),
                     'bzrlib.builtins.uncommit',
                     {}):
-                self.outf.write('Canceled\n')
+                self.outf.write(gettext('Canceled\n'))
                 return 0
 
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
-        self.outf.write('You can restore the old tip by running:\n'
-             '  bzr pull . -r revid:%s\n' % last_rev_id)
+        self.outf.write(gettext('You can restore the old tip by running:\n'
+             '  bzr pull . -r revid:%s\n') % last_rev_id)
 
 
 class cmd_break_lock(Command):
@@ -6035,12 +6036,12 @@ class cmd_view(Command):
                     "Both --delete and --switch specified")
             elif all:
                 tree.views.set_view_info(None, {})
-                self.outf.write("Deleted all views.\n")
+                self.outf.write(gettext("Deleted all views.\n"))
             elif name is None:
                 raise errors.BzrCommandError("No current view to delete")
             else:
                 tree.views.delete_view(name)
-                self.outf.write("Deleted '%s' view.\n" % name)
+                self.outf.write(gettext("Deleted '%s' view.\n") % name)
         elif switch:
             if file_list:
                 raise errors.BzrCommandError(
@@ -6052,14 +6053,14 @@ class cmd_view(Command):
                 if current_view is None:
                     raise errors.BzrCommandError("No current view to disable")
                 tree.views.set_view_info(None, view_dict)
-                self.outf.write("Disabled '%s' view.\n" % (current_view))
+                self.outf.write(gettext("Disabled '%s' view.\n") % (current_view))
             else:
                 tree.views.set_view_info(switch, view_dict)
                 view_str = views.view_display_str(tree.views.lookup_view())
-                self.outf.write("Using '%s' view: %s\n" % (switch, view_str))
+                self.outf.write(gettext("Using '%s' view: %s\n") % (switch, view_str))
         elif all:
             if view_dict:
-                self.outf.write('Views defined:\n')
+                self.outf.write(gettext'Views defined:\n'))
                 for view in sorted(view_dict):
                     if view == current_view:
                         active = "=>"
@@ -6068,7 +6069,7 @@ class cmd_view(Command):
                     view_str = views.view_display_str(view_dict[view])
                     self.outf.write('%s %-20s %s\n' % (active, view, view_str))
             else:
-                self.outf.write('No views defined.\n')
+                self.outf.write(gettext('No views defined.\n'))
         elif file_list:
             if name is None:
                 # No name given and no current view set
@@ -6078,15 +6079,15 @@ class cmd_view(Command):
                     "Cannot change the 'off' pseudo view")
             tree.views.set_view(name, sorted(file_list))
             view_str = views.view_display_str(tree.views.lookup_view())
-            self.outf.write("Using '%s' view: %s\n" % (name, view_str))
+            self.outf.write(gettext("Using '%s' view: %s\n") % (name, view_str))
         else:
             # list the files
             if name is None:
                 # No name given and no current view set
-                self.outf.write('No current view.\n')
+                self.outf.write(gettext('No current view.\n'))
             else:
                 view_str = views.view_display_str(tree.views.lookup_view(name))
-                self.outf.write("'%s' view is: %s\n" % (name, view_str))
+                self.outf.write(gettext("'%s' view is: %s\n") % (name, view_str))
 
 
 class cmd_hooks(Command):
@@ -6106,7 +6107,7 @@ class cmd_hooks(Command):
                         self.outf.write("    %s\n" %
                                         (some_hooks.get_hook_name(hook),))
                 else:
-                    self.outf.write("    <no hooks installed>\n")
+                    self.outf.write(gettext("    <no hooks installed>\n"))
 
 
 class cmd_remove_branch(Command):
