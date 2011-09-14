@@ -123,7 +123,6 @@ class TestTranslate(tests.TestCaseWithTransport):
         """do errors get translated?"""
         err = None
         tree = self.make_branch_and_tree('.')
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
         try:
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError,e:
@@ -134,7 +133,6 @@ class TestTranslate(tests.TestCaseWithTransport):
     def test_topic_help_translation(self):
         """does topic help get translated?"""
         from bzrlib import help
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
         from StringIO import StringIO
         out = StringIO()
         help.help("authentication", out)
