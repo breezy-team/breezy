@@ -113,7 +113,7 @@ def tree_files_for_add(file_list):
             if view_files:
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
-                note("Ignoring files outside view. View is %s" % view_str)
+                note(gettext("Ignoring files outside view. View is %s") % view_str)
     return tree, file_list
 
 
@@ -1320,21 +1320,21 @@ class cmd_branch(Command):
         # be stacked whether we asked for that explicitly or not.
         # We therefore need a try/except here and not just 'if stacked:'
         try:
-            note('Created new stacked branch referring to %s.' %
+            note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
-            note('Branched %d revision(s).' % branch.revno())
+            note(gettext('Branched %d revision(s).') % branch.revno())
         if bind:
             # Bind to the parent
             parent_branch = Branch.open(from_location)
             branch.bind(parent_branch)
-            note('New branch bound to %s' % from_location)
+            note(gettext('New branch bound to %s') % from_location)
         if switch:
             # Switch to the new branch
             wt, _ = WorkingTree.open_containing('.')
             _mod_switch.switch(wt.bzrdir, branch)
-            note('Switched to branch: %s',
+            note(gettext('Switched to branch: %s'),
                 urlutils.unescape_for_display(branch.base, 'utf-8'))
 
 
@@ -1518,7 +1518,7 @@ class cmd_update(Command):
             revision_id = branch.last_revision()
         if revision_id == _mod_revision.ensure_null(tree.last_revision()):
             revno = branch.revision_id_to_dotted_revno(revision_id)
-            note("Tree is up to date at revision %s of branch %s" %
+            note(gettext("Tree is up to date at revision %s of branch %s") %
                 ('.'.join(map(str, revno)), branch_location))
             return 0
         view_info = _get_view_info_for_change_reporter(tree)
@@ -1540,12 +1540,12 @@ class cmd_update(Command):
                                   % (e.revision))
         revno = tree.branch.revision_id_to_dotted_revno(
             _mod_revision.ensure_null(tree.last_revision()))
-        note('Updated to revision %s of branch %s' %
+        note(gettext('Updated to revision %s of branch %s') %
              ('.'.join(map(str, revno)), branch_location))
         parent_ids = tree.get_parent_ids()
         if parent_ids[1:] and parent_ids[1:] != existing_pending_merges:
-            note('Your local commits will now show as pending merges with '
-                 "'bzr status', and can be committed with 'bzr commit'.")
+            note(gettext('Your local commits will now show as pending merges with '
+                 "'bzr status', and can be committed with 'bzr commit'."))
         if conflicts != 0:
             return 1
         else:
@@ -1623,8 +1623,8 @@ class cmd_remove(Command):
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
         if file_deletion_strategy == 'force':
-            note("(The --force option is deprecated, rather use --no-backup "
-                "in future.)")
+            note(gettext("(The --force option is deprecated, rather use --no-backup "
+                "in future.)"))
             file_deletion_strategy = 'no-backup'
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
@@ -2754,7 +2754,7 @@ class cmd_ls(Command):
             if view_files:
                 apply_view = True
                 view_str = views.view_display_str(view_files)
-                note("Ignoring files outside view. View is %s" % view_str)
+                note(gettext("Ignoring files outside view. View is %s") % view_str)
 
         self.add_cleanup(tree.lock_read().unlock)
         for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
@@ -4131,9 +4131,9 @@ class cmd_merge(Command):
             if merger.interesting_files:
                 if not merger.other_tree.has_filename(
                     merger.interesting_files[0]):
-                    note("merger: " + str(merger))
+                    note(gettext("merger: ") + str(merger))
                     raise errors.PathsDoNotExist([location])
-            note('Nothing to do.')
+            note(gettext('Nothing to do.'))
             return 0
         if pull and not preview:
             if merger.interesting_files is not None:
@@ -4329,7 +4329,7 @@ class cmd_merge(Command):
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
         display_url = urlutils.unescape_for_display(stored_location, 'utf-8')
-        note(u"%s remembered %s location %s", verb_string,
+        note(gettext(u"%s remembered %s location %s"), verb_string,
                 stored_location_type, display_url)
         return stored_location
 
@@ -5638,7 +5638,7 @@ class cmd_tag(Command):
             if tag_name is None:
                 raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
-            note('Deleted tag %s.' % tag_name)
+            note(gettext('Deleted tag %s.') % tag_name)
         else:
             if revision:
                 if len(revision) != 1:
@@ -5660,13 +5660,13 @@ class cmd_tag(Command):
             if not force and existing_target not in (None, revision_id):
                 raise errors.TagAlreadyExists(tag_name)
             if existing_target == revision_id:
-                note('Tag %s already exists for that revision.' % tag_name)
+                note(gettext('Tag %s already exists for that revision.') % tag_name)
             else:
                 branch.tags.set_tag(tag_name, revision_id)
                 if existing_target is None:
-                    note('Created tag %s.' % tag_name)
+                    note(gettext('Created tag %s.') % tag_name)
                 else:
-                    note('Updated tag %s.' % tag_name)
+                    note(gettext('Updated tag %s.') % tag_name)
 
 
 class cmd_tags(Command):
@@ -5914,7 +5914,7 @@ class cmd_switch(Command):
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
-        note('Switched to branch: %s',
+        note(gettext('Switched to branch: %s'),
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
     def _get_branch_location(self, control_dir):
@@ -6214,7 +6214,7 @@ class cmd_shelve(Command):
         manager = tree.get_shelf_manager()
         shelves = manager.active_shelves()
         if len(shelves) == 0:
-            note('No shelved changes.')
+            note(gettext('No shelved changes.'))
             return 0
         for shelf_id in reversed(shelves):
             message = manager.get_metadata(shelf_id).get('message')
