@@ -20,6 +20,7 @@
 from cStringIO import StringIO
 import os
 import socket
+import sys
 import threading
 
 import bzrlib
@@ -994,7 +995,12 @@ class TestSmartServerStreamMedium(tests.TestCase):
         with os.fdopen(r_server, 'rb') as rf_server:
             server = medium.SmartServerPipeStreamMedium(
                 rf_server, None, None)
-            self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
+            if sys.platform == 'win32':
+                # Windows cannot select() on a pipe, so we just always return
+                # False to indicate that we have to block.
+                self.assertFalse(server._wait_for_bytes_with_timeout(0.01))
+            else:
+                self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
             os.close(w_client)
             data = server.read_bytes(5)
             self.assertEqual('', data)

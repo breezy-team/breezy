@@ -24,6 +24,7 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+import errno
 import os
 import sys
 import time
@@ -32,7 +33,6 @@ import urllib
 import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
 import select
 import socket
 import thread
@@ -178,6 +178,14 @@ class SmartMedium(object):
         ui.ui_factory.report_transport_activity(self, bytes, direction)
 
 
+_bad_file_descriptor = (errno.EBADF,)
+if sys.platform == 'win32':
+    # Given on Windows if you pass a closed socket to select.select. Probably
+    # also given if you pass a file handle to select.
+    WSAENOTSOCK = 10038
+    _bad_file_descriptor += (WSAENOTSOCK,)
+
+
 class SmartServerStreamMedium(SmartMedium):
     """Handles smart commands coming over a stream.
 
@@ -273,7 +281,7 @@ class SmartServerStreamMedium(SmartMedium):
                 # select.error doesn't have 'errno', it just has args[0]
                 if getattr(e, 'args', None) is not None:
                     err = e.args[0]
-            if err in (errno.EBADF,):
+            if err in _bad_file_descriptor:
                 # If we are told at this point that socket is no longer a valid
                 # socket, just return 'without timeout'
                 return False
@@ -414,9 +422,9 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :return: Did we timeout? (True if we timed out, False if there is data
             to be read)
         """
-        # TODO: I think on Windows, this has to always return 'False' as well,
-        #       because select.select only works on WinSock objects.
-        if getattr(self._in, 'fileno', None) is None:
+        if (getattr(self._in, 'fileno', None) is None
+            or sys.platform == 'win32'):
+            # You can't select() file descriptors on Windows.
             return False
         return self._wait_on_descriptor(self._in, timeout_seconds)
 
