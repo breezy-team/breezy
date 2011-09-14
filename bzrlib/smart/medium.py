@@ -277,6 +277,7 @@ class SmartServerStreamMedium(SmartMedium):
                 # If we are told at this point that socket is no longer a valid
                 # socket, just return 'without timeout'
                 return False
+            raise
         if rs:
             # We can read without blocking, we did not timeout.
             return False
