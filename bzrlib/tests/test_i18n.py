@@ -131,9 +131,7 @@ class TestTranslate(tests.TestCaseWithTransport):
 
     def test_topic_help_translation(self):
         """does topic help get translated?"""
-        self.enableI18n()
         from bzrlib import help
-        i18n.install()
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
         from StringIO import StringIO
         out = StringIO()
