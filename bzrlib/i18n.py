@@ -26,7 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
-_translations = _gettext.NullTranslations()
+_translations = None
 
 
 def gettext(message):
@@ -73,13 +73,15 @@ def disable_i18n():
     of bzrlib."""
     global installed
     installed = lambda: True
-
+    _translations = _gettext.NullTranslations()
 
 def installed():
-    return not isinstance(_translations, _gettext.NullTranslations)
+    """Returns whether translations are in use or not."""
+    return _translations is not None
 
 
 def install(lang=None):
+    """Enables gettext translations."""
     global _translations
     if installed():
         return
@@ -97,8 +99,9 @@ def install(lang=None):
 
 
 def uninstall():
+    """Disables gettext translations."""
     global _translations
-    _translations = _gettext.NullTranslations()
+    _translations = None
 
 
 def _get_locale_dir():
