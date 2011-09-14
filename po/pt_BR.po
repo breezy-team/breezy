@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-07 15:32+0100\n"
-"PO-Revision-Date: 2011-09-09 22:30+0000\n"
+"PO-Revision-Date: 2011-09-13 23:01+0000\n"
 "Last-Translator: Rafael Neri <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2011-09-11 04:30+0000\n"
-"X-Generator: Launchpad (build 13900)\n"
+"X-Launchpad-Export-Date: 2011-09-14 04:30+0000\n"
+"X-Generator: Launchpad (build 13921)\n"
 
 #: bzrlib/builtins.py:209
 msgid "Display status summary."
@@ -10841,15 +10841,15 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:20
 msgid "  <protocol>://[user[:password]@]host[:port]/[path]"
-msgstr ""
+msgstr "  <protocolo>://[usuário[:senha]@]servidor[:porta]/[diretório]"
 
 #: en/help_topics/urlspec.txt:22
 msgid "allowing URLs such as::"
-msgstr ""
+msgstr "permitindo URLs, tais como::"
 
 #: en/help_topics/urlspec.txt:24
 msgid "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
-msgstr ""
+msgstr "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
 
 #: en/help_topics/urlspec.txt:26
 msgid ""
@@ -10862,11 +10862,11 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:32
 msgid "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
-msgstr ""
+msgstr "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
 
 #: en/help_topics/urlspec.txt:34
 msgid "would refer to ``/home/remote/myproject/trunk``."
-msgstr ""
+msgstr "refere-se a ``/home/remote/myproject/trunk``."
 
 #: en/help_topics/urlspec.txt:36
 msgid ""
