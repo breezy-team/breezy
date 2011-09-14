@@ -100,12 +100,14 @@ class TestInstall(tests.TestCase):
     def setUp(self):
         super(TestInstall, self).setUp()
         # Restore a proper env to test translation installation
-        self.overrideAttr(i18n, 'installed', self.i18nInstalled)
         self.overrideAttr(i18n, '_translations', None)
 
     def test_custom_languages(self):
         i18n.install('nl:fy')
-        self.assertIsInstance(i18n._translations, i18n._gettext.NullTranslations)
+        # Whether we found a valid tranlsation or not doesn't matter, we got
+        # one and _translations is not None anymore.
+        self.assertIsInstance(i18n._translations,
+                              i18n._gettext.NullTranslations)
 
     def test_no_env_variables(self):
         self.overrideEnv('LANGUAGE', None)
@@ -113,12 +115,17 @@ class TestInstall(tests.TestCase):
         self.overrideEnv('LC_MESSAGES', None)
         self.overrideEnv('LANG', None)
         i18n.install()
-        self.assertIsInstance(i18n._translations, i18n._gettext.NullTranslations)
+        # Whether we found a valid tranlsation or not doesn't matter, we got
+        # one and _translations is not None anymore.
+        self.assertIsInstance(i18n._translations,
+                              i18n._gettext.NullTranslations)
 
     def test_disable_i18n(self):
         i18n.disable_i18n()
         i18n.install()
-        self.assertTrue(i18n._translations is None)
+        # It's disabled, you can't install anything and we fallback to null
+        self.assertIsInstance(i18n._translations,
+                              i18n._gettext.NullTranslations)
 
 
 class TestTranslate(tests.TestCaseWithTransport):

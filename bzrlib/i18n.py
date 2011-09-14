@@ -71,9 +71,9 @@ def gettext_per_paragraph(message):
 def disable_i18n():
     """Do not allow i18n to be enabled.  Useful for third party users
     of bzrlib."""
-    global installed
-    installed = lambda: True
+    global _translations
     _translations = _gettext.NullTranslations()
+
 
 def installed():
     """Returns whether translations are in use or not."""
