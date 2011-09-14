@@ -53,7 +53,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         url, filename = urlutils.split(exception.target,
                                        exclude_trailing_slash=False)
         if not filename:
-            raise errors.NotABundle('A directory cannot be a bundle')
+            raise errors.NotABundle(gettext('A directory cannot be a bundle'))
         return _mod_transport.get_transport_from_url(url)
 
     try:

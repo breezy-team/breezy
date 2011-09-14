@@ -141,8 +141,8 @@ class cmd_verify_signatures(Command):
                 if to_revid is None:
                     to_revno = branch.revno()
                 if from_revno is None or to_revno is None:
-                    raise errors.BzrCommandError('Cannot verify a range of '\
-                                               'non-revision-history revisions')
+                    raise errors.BzrCommandError(gettext(
+                    'Cannot verify a range of non-revision-history revisions'))
                 for revno in range(from_revno, to_revno + 1):
                     revisions.append(branch.get_rev_id(revno))
         else:

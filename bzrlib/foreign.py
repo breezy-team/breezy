@@ -306,7 +306,8 @@ class cmd_dpush(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                self.outf.write(
+                       gettext("Using saved location: %s\n") % display_url)
                 location = stored_loc
 
         bzrdir = BzrDir.open(location)
