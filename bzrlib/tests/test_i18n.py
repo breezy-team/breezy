@@ -113,6 +113,11 @@ class TestInstall(tests.TestCase):
         i18n.install()
         self.assertIsInstance(i18n._translations, i18n._gettext.NullTranslations)
 
+    def test_disable_i18n(self):
+        i18n.disable_i18n()
+        i18n.install()
+        self.assertTrue(isinstance(i18n._translations, i18n._gettext.NullTranslations))
+
 class TestTranslate(tests.TestCaseWithTransport):
 
     def setUp(self):

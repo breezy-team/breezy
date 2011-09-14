@@ -93,17 +93,18 @@ New Features
   option. A value of 0 disables skipping. Named items passed to add are
   never skipped. (Shannon Weyrick, #54624)
 
-* bzr now ships with translations for command help.  (Jonathan
-  Riddell, INADA Naoki, #83941)
-
-* bzr now ships with translations for command errors. (Jonathan
-  Riddell, INADA Naoki)
+* Translations are now enabled for command help, errors and globally
+  for any message using gettext given on output.  (Jonathan Riddell,
+  INADA Naoki, #83941)
 
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+* ``bzr add`` will now warn about nested subtrees that are skipped.
+  (Jelmer Vernooij, #187342)
 
 * ``bzr commit -m ''`` can now be used to force an empty commit message.
   Entering an empty commit message in the message editor still triggers
@@ -145,6 +146,9 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr commit`` now correctly reports missing files as "removed", not
+  "modified". (Jelmer Vernooij, #553955)
 
 * ``bzr reconfigure`` will now allow multiple non-conflicting requests
   in a single invocation, e.g. ``--branch`` and ``--use-shared``.
