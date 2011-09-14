@@ -354,7 +354,7 @@ class cmd_cat_revision(Command):
                 try:
                     self.print_revision(revisions, revision_id)
                 except errors.NoSuchRevision:
-                    msg = gettext("The repository %s contains no revision %s.") % (
+                    msg = gettext("The repository {0} contains no revision {1}.").format(
                         b.repository.base, revision_id)
                     raise errors.BzrCommandError(msg)
             elif revision is not None:
@@ -723,8 +723,9 @@ class cmd_add(Command):
             if verbose:
                 for glob in sorted(ignored.keys()):
                     for path in ignored[glob]:
-                        self.outf.write(gettext("ignored %s matching \"%s\"\n")
-                                        % (path, glob))
+                        self.outf.write(
+                         gettext("ignored {0} matching \"{1}\"\n").format(
+                         path, glob))
 
 
 class cmd_mkdir(Command):
@@ -1311,8 +1312,8 @@ class cmd_branch(Command):
             branch = dir.open_branch()
         except errors.NoSuchRevision:
             to_transport.delete_tree('.')
-            msg = gettext("The branch %s has no revision %s.") % (from_location,
-                revision)
+            msg = gettext("The branch {0} has no revision {1}.").format(
+                from_location, revision)
             raise errors.BzrCommandError(msg)
         _merge_tags_if_possible(br_from, branch)
         # If the source branch is stacked, the new branch may
@@ -1517,8 +1518,8 @@ class cmd_update(Command):
             revision_id = branch.last_revision()
         if revision_id == _mod_revision.ensure_null(tree.last_revision()):
             revno = branch.revision_id_to_dotted_revno(revision_id)
-            note(gettext("Tree is up to date at revision %s of branch %s") %
-                ('.'.join(map(str, revno)), branch_location))
+            note(gettext("Tree is up to date at revision {0} of branch {1}"
+                        ).format('.'.join(map(str, revno)), branch_location))
             return 0
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
@@ -1539,8 +1540,8 @@ class cmd_update(Command):
                                   % (e.revision))
         revno = tree.branch.revision_id_to_dotted_revno(
             _mod_revision.ensure_null(tree.last_revision()))
-        note(gettext('Updated to revision %s of branch %s') %
-             ('.'.join(map(str, revno)), branch_location))
+        note(gettext('Updated to revision {0} of branch {1}').format(
+             '.'.join(map(str, revno)), branch_location))
         parent_ids = tree.get_parent_ids()
         if parent_ids[1:] and parent_ids[1:] != existing_pending_merges:
             note(gettext('Your local commits will now show as pending merges with '
@@ -1884,7 +1885,8 @@ class cmd_init(Command):
             repository = branch.repository
             layout = describe_layout(repository, branch, tree).lower()
             format = describe_format(a_bzrdir, repository, branch, tree)
-            self.outf.write(gettext("Created a %s (format: %s)\n") % (layout, format))
+            self.outf.write(gettext("Created a {0} (format: {1})\n").format(
+                  layout, format))
             if repository.is_shared():
                 #XXX: maybe this can be refactored into transport.path_or_url()
                 url = repository.bzrdir.root_transport.external_url()
@@ -3101,7 +3103,7 @@ class cmd_cat(Command):
             # Try in revision if requested
             if old_file_id is None:
                 raise errors.BzrCommandError(gettext(
-                    "%r is not present in revision %s") % (
+                    "{0!r} is not present in revision {1}").format(
                         filename, rev_tree.get_revision_id()))
             else:
                 actual_file_id = old_file_id
@@ -3113,7 +3115,7 @@ class cmd_cat(Command):
                 actual_file_id = old_file_id
             else:
                 raise errors.BzrCommandError(gettext(
-                    "%r is not present in revision %s") % (
+                    "{0!r} is not present in revision {1}").format(
                         filename, rev_tree.get_revision_id()))
         if filtered:
             from bzrlib.filter_tree import ContentFilterTree
@@ -4328,8 +4330,8 @@ class cmd_merge(Command):
         if stored_location is None:
             raise errors.BzrCommandError(gettext("No location specified or remembered"))
         display_url = urlutils.unescape_for_display(stored_location, 'utf-8')
-        note(gettext(u"%s remembered %s location %s"), verb_string,
-                stored_location_type, display_url)
+        note(gettext("{0} remembered {1} location {2}").format(verb_string,
+                stored_location_type, display_url))
         return stored_location
 
 
@@ -5256,14 +5258,14 @@ class cmd_join(Command):
             except errors.BadReferenceTarget, e:
                 # XXX: Would be better to just raise a nicely printable
                 # exception from the real origin.  Also below.  mbp 20070306
-                raise errors.BzrCommandError(gettext("Cannot join %s.  %s") %
-                                             (tree, e.reason))
+                raise errors.BzrCommandError(
+                       gettext("Cannot join {0}.  {1}").format(tree, e.reason))
         else:
             try:
                 containing_tree.subsume(sub_tree)
             except errors.BadSubsumeSource, e:
-                raise errors.BzrCommandError(gettext("Cannot join %s.  %s") %
-                                             (tree, e.reason))
+                raise errors.BzrCommandError(
+                       gettext("Cannot join {0}.  {1}").format(tree, e.reason))
 
 
 class cmd_split(Command):
@@ -6056,7 +6058,7 @@ class cmd_view(Command):
             else:
                 tree.views.set_view_info(switch, view_dict)
                 view_str = views.view_display_str(tree.views.lookup_view())
-                self.outf.write(gettext("Using '%s' view: %s\n") % (switch, view_str))
+                self.outf.write(gettext("Using '{0}' view: {1}\n").format(switch, view_str))
         elif all:
             if view_dict:
                 self.outf.write(gettext('Views defined:\n'))
@@ -6078,7 +6080,7 @@ class cmd_view(Command):
                     "Cannot change the 'off' pseudo view"))
             tree.views.set_view(name, sorted(file_list))
             view_str = views.view_display_str(tree.views.lookup_view())
-            self.outf.write(gettext("Using '%s' view: %s\n") % (name, view_str))
+            self.outf.write(gettext("Using '{0}' view: {1}\n").format(name, view_str))
         else:
             # list the files
             if name is None:
@@ -6086,7 +6088,7 @@ class cmd_view(Command):
                 self.outf.write(gettext('No current view.\n'))
             else:
                 view_str = views.view_display_str(tree.views.lookup_view(name))
-                self.outf.write(gettext("'%s' view is: %s\n") % (name, view_str))
+                self.outf.write(gettext("'{0}' view is: {1}\n").format(name, view_str))
 
 
 class cmd_hooks(Command):
