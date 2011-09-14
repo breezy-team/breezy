@@ -61,6 +61,7 @@ def gettext_per_paragraph(message):
 
     :returns: concatenated translated message as unicode.
     """
+    install()
     paragraphs = message.split(u'\n\n')
     ugettext = _translations.ugettext
     # Be careful not to translate the empty string -- it holds the
