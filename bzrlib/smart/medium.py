@@ -229,9 +229,31 @@ class SmartServerStreamMedium(SmartMedium):
             while not self.finished:
                 server_protocol = self._build_protocol()
                 self._serve_one_request(server_protocol)
+        except errors.ConnectionTimeout, e:
+            trace.note('%s' % (e,))
+            self._close()
+            raise
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
+
+    def _close(self):
+        """Close the current connection. We stopped due to a timeout/etc."""
+        # The default implementation is a no-op, because that is all we used to
+        # do when disconnecting from a client. I suppose we never had the
+        # *server* initiate a disconnect, before
+
+    def _wait_for_bytes_with_timeout(self, timeout_seconds):
+        """Wait for more bytes to be read, but timeout if none available.
+
+        This allows us to detect idle connections, and stop trying to read from
+        them, without setting the socket itself to non-blocking. This also
+        allows us to specify when we watch for idle timeouts.
+
+        :return: Did we timeout? (True if we timed out, False if there is data
+            to be read)
+        """
+        raise NotImplementedError(self._wait_for_bytes_with_timeout)
 
     def _build_protocol(self):
         """Identifies the version of the incoming request, and returns an
@@ -248,8 +270,9 @@ class SmartServerStreamMedium(SmartMedium):
             #       connecting for us to give a more useful message. :(
             #       (eg, who is on the other side that we are disconnecting
             #       from)
-            raise errors.BzrError('Timeout after %.1f seconds, disconnecting'
-                                  % (self._stream_medium_timeout))
+            raise errors.ConnectionTimeout(
+                'disconnecting client after %.1f seconds'
+                % (self._stream_medium_timeout))
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(
@@ -342,6 +365,10 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
         self._push_back(protocol.unused_data)
 
+    def _close(self):
+        """Close the current connection. We stopped due to a timeout/etc."""
+        self.socket.close()
+
     def _wait_for_bytes_with_timeout(self, timeout_seconds):
         """Wait for more bytes to be read, but timeout if none available.
 
@@ -411,6 +438,10 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 self._out.flush()
                 return
             protocol.accept_bytes(bytes)
+
+    def _close(self):
+        self._in.close()
+        self._out.close()
 
     def _wait_for_bytes_with_timeout(self, timeout_seconds):
         """Wait for more bytes to be read, but timeout if none available.

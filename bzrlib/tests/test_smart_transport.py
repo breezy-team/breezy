@@ -972,6 +972,16 @@ class TestSmartServerStreamMedium(tests.TestCase):
         data = server.read_bytes(1)
         self.assertEqual('', data)
 
+    def test_socket_serve_timeout_closes_socket(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        server = medium.SmartServerSocketStreamMedium(
+            server_sock, None)
+        # This should timeout quickly, and then close the connection so that
+        # client_sock recv doesn't block.
+        server._stream_medium_timeout = 0.1
+        self.assertRaises(errors.ConnectionTimeout, server.serve)
+        self.assertEqual('', client_sock.recv(1))
+
     def test_pipe_wait_for_bytes_with_timeout_with_data(self):
         # We intentionally use a real pipe here, so that we can 'select' on it.
         # You can't select() on a StringIO
