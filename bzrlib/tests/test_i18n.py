@@ -101,7 +101,7 @@ class TestInstall(tests.TestCase):
         self.addCleanup(i18n.install)
         self.enableI18n()
         i18n.install('nl:fy')
-        self.assertTrue(isinstance(i18n._translations, i18n._gettext.NullTranslations))
+        self.assertIsInstance(i18n._translations, i18n._gettext.NullTranslations)
 
     def test_no_env_variables(self):
         self.addCleanup(i18n.install)
@@ -111,7 +111,7 @@ class TestInstall(tests.TestCase):
         self.overrideEnv('LC_MESSAGES', None)
         self.overrideEnv('LANG', None)
         i18n.install()
-        self.assertTrue(isinstance(i18n._translations, i18n._gettext.NullTranslations))
+        self.assertIsInstance(i18n._translations, i18n._gettext.NullTranslations)
 
 class TestTranslate(tests.TestCaseWithTransport):
 
