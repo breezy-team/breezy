@@ -286,6 +286,22 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         self.assertServerFinishesCleanly(process)
 
+    def test_bzr_serve_supports_client_timeout(self):
+        process, url = self.start_server_port(['--client-timeout=0.1'])
+        self.build_tree_contents([('a_file', 'contents\n')])
+        # We can connect and issue a request
+        t = transport.get_transport_from_url(url)
+        self.assertEqual('contents\n', t.get_bytes())
+        # However, if we just wait for more content from the server, it will
+        # eventually disconnect us.
+        # TODO: Use something like signal.alarm() so that if the server doesn't
+        #       properly handle the timeout, we end up failing the test instead
+        #       of hanging forever.
+        m = t.get_smart_medium()
+        m.read_bytes()
+        # Now, we wait for timeout to trigger
+        self.assertServerFinishesCleanly(process)
+
 
 class TestCmdServeChrooting(TestBzrServeBase):
 

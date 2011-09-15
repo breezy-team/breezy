@@ -74,7 +74,9 @@ New Features
 
 * ``bzr serve`` will now disconnect clients if they have not issued an RPC
   request after 5minutes. On POSIX platforms, this will also happen for
-  ``bzr serve --inet``. (John Arbash Meinel, #824797)
+  ``bzr serve --inet``. This can be overridden with the configuration
+  variable ``serve.client_timeout`` or in the command line parameter
+  ``bzr serve --client-timeout=X``. (John Arbash Meinel, #824797)
 
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
@@ -232,6 +234,11 @@ API Changes
 
 * New registry ``OptionRegistry`` specialized for configuration options.
   (Vincent Ladeuil)
+
+* Plugins that implement custom protocols for ``bzr serve`` should now
+  also take an argument ``timeout``. This is used by the the bzr protocol
+  to close a connection if a client has been idle for more than X seconds.
+  (Default 5minutes). (John Arbash Meinel)
 
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)

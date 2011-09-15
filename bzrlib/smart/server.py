@@ -349,9 +349,10 @@ class BzrServerFactory(object):
             transport = _mod_transport.get_transport_from_url(expand_userdirs.get_url())
         self.transport = transport
 
-    def _make_smart_server(self, host, port, inet):
-        c = config.GlobalStack()
-        timeout = c.get('server.client_timeout')
+    def _make_smart_server(self, host, port, inet, timeout):
+        if timeout is None:
+            c = config.GlobalStack()
+            timeout = c.get('server.client_timeout')
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, self.transport)
@@ -381,16 +382,16 @@ class BzrServerFactory(object):
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
-    def set_up(self, transport, host, port, inet):
+    def set_up(self, transport, host, port, inet, timeout):
         self._make_backing_transport(transport)
-        self._make_smart_server(host, port, inet)
+        self._make_smart_server(host, port, inet, timeout)
         self._change_globals()
 
     def tear_down(self):
         for cleanup in reversed(self.cleanups):
             cleanup()
 
-def serve_bzr(transport, host=None, port=None, inet=False):
+def serve_bzr(transport, host=None, port=None, inet=False, timeout=None):
     """This is the default implementation of 'bzr serve'.
 
     It creates a TCP or pipe smart server on 'transport, and runs it.  The
@@ -399,7 +400,7 @@ def serve_bzr(transport, host=None, port=None, inet=False):
     """
     bzr_server = BzrServerFactory()
     try:
-        bzr_server.set_up(transport, host, port, inet)
+        bzr_server.set_up(transport, host, port, inet, timeout)
         bzr_server.smart_server.serve()
     except:
         hook_caught_exception = False

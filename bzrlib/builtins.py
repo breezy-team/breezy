@@ -5184,6 +5184,8 @@ class cmd_serve(Command):
                     'option leads to global uncontrolled write access to your '
                     'file system.'
                 ),
+        Option('client-timeout', type=float,
+               help='Override the default idle client timeout (5min).'),
         ]
 
     def get_host_and_port(self, port):
@@ -5206,7 +5208,7 @@ class cmd_serve(Command):
         return host, port
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
-            protocol=None):
+            protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
@@ -5217,7 +5219,10 @@ class cmd_serve(Command):
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport(url)
-        protocol(t, host, port, inet)
+        try:
+            protocol(t, host, port, inet, client_timeout)
+        except TypeError:
+            protocol(t, host, port, inet)
 
 
 class cmd_join(Command):
