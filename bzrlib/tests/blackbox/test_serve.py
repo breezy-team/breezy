@@ -276,9 +276,9 @@ class TestBzrServe(TestBzrServeBase):
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
         self.assertEqual('contents\n', t.get_bytes())
-        m = t.get_smart_medium()
         # However, if we just wait for more content from the server, it will
         # eventually disconnect us.
+        m = t.get_smart_medium()
         m.read_bytes()
         # Now, we wait for timeout to trigger
         self.assertServerFinishesCleanly(process)
