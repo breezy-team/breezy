@@ -97,22 +97,36 @@ class TestGetTextPerParagraph(tests.TestCase):
 
 class TestInstall(tests.TestCase):
 
+    def setUp(self):
+        super(TestInstall, self).setUp()
+        # Restore a proper env to test translation installation
+        self.overrideAttr(i18n, '_translations', None)
+
     def test_custom_languages(self):
-        self.addCleanup(i18n.install)
         i18n.install('nl:fy')
+        # Whether we found a valid tranlsation or not doesn't matter, we got
+        # one and _translations is not None anymore.
+        self.assertIsInstance(i18n._translations,
+                              i18n._gettext.NullTranslations)
 
     def test_no_env_variables(self):
-        self.addCleanup(i18n.install)
         self.overrideEnv('LANGUAGE', None)
         self.overrideEnv('LC_ALL', None)
         self.overrideEnv('LC_MESSAGES', None)
         self.overrideEnv('LANG', None)
         i18n.install()
+        # Whether we found a valid tranlsation or not doesn't matter, we got
+        # one and _translations is not None anymore.
+        self.assertIsInstance(i18n._translations,
+                              i18n._gettext.NullTranslations)
 
     def test_disable_i18n(self):
         i18n.disable_i18n()
         i18n.install()
-        self.assertTrue(isinstance(i18n._translations, i18n._gettext.NullTranslations))
+        # It's disabled, you can't install anything and we fallback to null
+        self.assertIsInstance(i18n._translations,
+                              i18n._gettext.NullTranslations)
+
 
 class TestTranslate(tests.TestCaseWithTransport):
 
@@ -124,7 +138,6 @@ class TestTranslate(tests.TestCaseWithTransport):
         """do errors get translated?"""
         err = None
         tree = self.make_branch_and_tree('.')
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
         try:
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError,e:
@@ -135,8 +148,6 @@ class TestTranslate(tests.TestCaseWithTransport):
     def test_topic_help_translation(self):
         """does topic help get translated?"""
         from bzrlib import help
-        i18n.install()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
         from StringIO import StringIO
         out = StringIO()
         help.help("authentication", out)
