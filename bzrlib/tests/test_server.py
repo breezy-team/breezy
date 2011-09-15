@@ -24,7 +24,6 @@ import threading
 from bzrlib import (
     cethread,
     osutils,
-    trace,
     transport,
     urlutils,
     )
@@ -444,15 +443,11 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             target = self.process_request_thread,
             args = (started, stopped, request, client_address))
         # Update the client description
-        old_r = self.clients.pop()
-        exp_r = (request, client_address, None)
-        if (old_r != exp_r):
-            raise Exception('self.clients didn\'t match expected: %s != %s'
-                            % (old_r, exp_r))
+        self.clients.pop()
         self.clients.append((request, client_address, t))
         # Propagate the exception handler since we must use the same one as
         # TestingTCPServer for connections running in their own threads.
-        # t.set_ignored_exceptions(self.ignored_exceptions)
+        t.set_ignored_exceptions(self.ignored_exceptions)
         t.start()
         started.wait()
         if debug_threads():
@@ -552,18 +547,17 @@ class TestingTCPServerInAThread(transport.Server):
                 # But ignore connection errors as the point is to unblock the
                 # server thread, it may happen that it's not blocked or even
                 # not started.
-                trace.note('failure connecting to socket: %s\n' % (e,))
-            if last_conn is not None:
-                # Close the last connection without trying to use it. The
-                # server will not process a single byte on that socket to avoid
-                # complications (SSL starts with a handshake for example).
-                last_conn.send('')
-                last_conn.close()
+                pass
             # We start shutting down the clients while the server itself is
             # shutting down.
             self.server.stop_client_connections()
             # Now we wait for the thread running self.server.serve() to finish
             self.server.stopped.wait()
+            if last_conn is not None:
+                # Close the last connection without trying to use it. The
+                # server will not process a single byte on that socket to avoid
+                # complications (SSL starts with a handshake for example).
+                last_conn.close()
             # Check for any exception that could have occurred in the server
             # thread
             try:
