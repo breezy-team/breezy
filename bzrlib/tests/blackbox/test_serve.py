@@ -278,6 +278,9 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual('contents\n', t.get_bytes())
         # However, if we just wait for more content from the server, it will
         # eventually disconnect us.
+        # TODO: Use something like signal.alarm() so that if the server doesn't
+        #       properly handle the timeout, we end up failing the test instead
+        #       of hanging forever.
         m = t.get_smart_medium()
         m.read_bytes()
         # Now, we wait for timeout to trigger
