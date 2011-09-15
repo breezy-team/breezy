@@ -51,7 +51,8 @@ class SmartTCPServer(object):
     hooks: An instance of SmartServerHooks.
     """
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path='/',
+                 client_timeout=None):
         """Construct a new server.
 
         To actually start it running, call either start_background_thread or
@@ -60,9 +61,12 @@ class SmartTCPServer(object):
         :param backing_transport: The transport to serve.
         :param root_client_path: The client path that will correspond to root
             of backing_transport.
+        :param client_timeout: See SmartServerSocketStreamMedium's timeout
+            parameter.
         """
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
+        self._client_timeout = client_timeout
 
     def start_server(self, host, port):
         """Create the server listening socket.
@@ -179,14 +183,18 @@ class SmartTCPServer(object):
         """Return the url of the server"""
         return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
 
+    def _create_handler(self, conn):
+        return medium.SmartServerSocketStreamMedium(
+            conn, self.backing_transport, self.root_client_path,
+            timeout=self._client_timeout)
+
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
         # propagates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        handler = medium.SmartServerSocketStreamMedium(
-            conn, self.backing_transport, self.root_client_path)
         thread_name = 'smart-server-child' + thread_name_suffix
+        handler = self._create_handler(conn)
         connection_thread = threading.Thread(
             None, handler.serve, name=thread_name)
         # FIXME: This thread is never joined, it should at least be collected

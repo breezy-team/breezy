@@ -1103,6 +1103,18 @@ class TestSmartTCPServer(tests.TestCase):
                                 t.get, 'something')
         self.assertContainsRe(str(err), 'some random exception')
 
+    def test_default_timeout(self):
+        server = _mod_server.SmartTCPServer(None)
+        server_socket = socket.socket()
+        handler = server._create_handler(server_socket)
+        self.assertEqual(handler._DEFAULT_CLIENT_TIMEOUT, handler._client_timeout)
+
+    def test_propagates_timeout(self):
+        server = _mod_server.SmartTCPServer(None, client_timeout=1.23)
+        server_socket = socket.socket()
+        handler = server._create_handler(server_socket)
+        self.assertEqual(1.23, handler._client_timeout)
+
 
 class SmartTCPTests(tests.TestCase):
     """Tests for connection/end to end behaviour using the TCP server.
