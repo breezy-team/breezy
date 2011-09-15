@@ -274,7 +274,7 @@ class TestBzrServe(TestBzrServeBase):
 
     def test_bzr_serve_supports_configurable_timeout(self):
         gs = config.GlobalStack()
-        gs.set('serve.client_timeout', 1)
+        gs.set('serve.client_timeout', 0.2)
         process, url = self.start_server_port()
         self.build_tree_contents([('a_file', 'contents\n')])
         # We can connect and issue a request
@@ -290,7 +290,7 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
         self.assertEqual(
-            'Connection Timeout: disconnecting client after 1.0 seconds\n',
+            'Connection Timeout: disconnecting client after 0.2 seconds\n',
             err)
         self.assertServerFinishesCleanly(process)
 
