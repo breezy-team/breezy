@@ -26,7 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
-_translations = _gettext.NullTranslations()
+_translations = None
 
 
 def gettext(message):
@@ -34,6 +34,7 @@ def gettext(message):
     
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ugettext(message)
 
 
@@ -46,6 +47,7 @@ def ngettext(singular, plural, number):
 
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ungettext(singular, plural, number)
 
 
@@ -59,6 +61,7 @@ def gettext_per_paragraph(message):
 
     :returns: concatenated translated message as unicode.
     """
+    install()
     paragraphs = message.split(u'\n\n')
     ugettext = _translations.ugettext
     # Be careful not to translate the empty string -- it holds the
@@ -66,11 +69,20 @@ def gettext_per_paragraph(message):
     return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
 
 
+def disable_i18n():
+    """Do not allow i18n to be enabled.  Useful for third party users
+    of bzrlib."""
+    global _translations
+    _translations = _gettext.NullTranslations()
+
+
 def installed():
-    return not isinstance(_translations, _gettext.NullTranslations)
+    """Returns whether translations are in use or not."""
+    return _translations is not None
 
 
 def install(lang=None):
+    """Enables gettext translations."""
     global _translations
     if installed():
         return
@@ -88,8 +100,9 @@ def install(lang=None):
 
 
 def uninstall():
+    """Disables gettext translations."""
     global _translations
-    _translations = _gettext.NullTranslations()
+    _translations = None
 
 
 def _get_locale_dir():

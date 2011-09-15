@@ -1007,7 +1007,7 @@ class TestCase(testtools.TestCase):
         if 'config_stats' in selftest_debug_flags:
             self._install_config_stats_hooks()
         # Do not use i18n for tests (unless the test reverses this)
-        self.overrideAttr(i18n, 'installed', lambda: True)
+        i18n.disable_i18n()
 
     def debug(self):
         # debug a frame up.

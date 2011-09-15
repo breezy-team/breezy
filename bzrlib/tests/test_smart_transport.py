@@ -29,7 +29,7 @@ from bzrlib import (
         errors,
         osutils,
         tests,
-        transport,
+        transport as _mod_transport,
         urlutils,
         )
 from bzrlib.smart import (
@@ -38,7 +38,7 @@ from bzrlib.smart import (
         message,
         protocol,
         request as _mod_request,
-        server,
+        server as _mod_server,
         vfs,
 )
 from bzrlib.tests import (
@@ -1126,15 +1126,15 @@ class SmartTCPTests(tests.TestCase):
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
             self.permit_url(mem_server.get_url())
-            self.backing_transport = transport.get_transport_from_url(
+            self.backing_transport = _mod_transport.get_transport_from_url(
                 mem_server.get_url())
         else:
             self.backing_transport = backing_transport
         if readonly:
             self.real_backing_transport = self.backing_transport
-            self.backing_transport = transport.get_transport_from_url(
+            self.backing_transport = _mod_transport.get_transport_from_url(
                 "readonly+" + self.backing_transport.abspath('.'))
-        self.server = server.SmartTCPServer(self.backing_transport)
+        self.server = _mod_server.SmartTCPServer(self.backing_transport)
         self.server.start_server('127.0.0.1', 0)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
@@ -1274,7 +1274,7 @@ class TestServerHooks(SmartTCPTests):
     def test_server_started_hook_memory(self):
         """The server_started hook fires when the server is started."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_started',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
         self.start_server()
         # at this point, the server will be starting a thread up.
@@ -1288,10 +1288,10 @@ class TestServerHooks(SmartTCPTests):
     def test_server_started_hook_file(self):
         """The server_started hook fires when the server is started."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_started',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
         self.start_server(
-            backing_transport=transport.get_transport_from_path("."))
+            backing_transport=_mod_transport.get_transport_from_path("."))
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1305,7 +1305,7 @@ class TestServerHooks(SmartTCPTests):
     def test_server_stopped_hook_simple_memory(self):
         """The server_stopped hook fires when the server is stopped."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
         self.start_server()
         result = [([self.backing_transport.base], self.transport.base)]
@@ -1322,10 +1322,10 @@ class TestServerHooks(SmartTCPTests):
     def test_server_stopped_hook_simple_file(self):
         """The server_stopped hook fires when the server is stopped."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
         self.start_server(
-            backing_transport=transport.get_transport_from_path("."))
+            backing_transport=_mod_transport.get_transport_from_path("."))
         result = [(
             [self.backing_transport.base, self.backing_transport.external_url()]
             , self.transport.base)]
@@ -1467,13 +1467,13 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
-        t = transport.get_transport_from_url('bzr+ssh://example.com/path')
+        t = _mod_transport.get_transport_from_url('bzr+ssh://example.com/path')
         self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._parsed_url.host)
 
     def test_bzr_https(self):
         # https://bugs.launchpad.net/bzr/+bug/128456
-        t = transport.get_transport_from_url('bzr+https://example.com/path')
+        t = _mod_transport.get_transport_from_url('bzr+https://example.com/path')
         self.assertIsInstance(t, remote.RemoteHTTPTransport)
         self.assertStartsWith(
             t._http_transport.base,

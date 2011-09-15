@@ -746,9 +746,10 @@ class _SmartAddHelper(object):
                 # which is perhaps reasonable: adding a new reference is a
                 # special operation and can have a special behaviour.  mbp
                 # 20070306
-                trace.mutter("%r is a nested bzr tree", abspath)
+                trace.warning("skipping nested tree %r", abspath)
             else:
-                this_ie = self._add_one_and_parent(parent_ie, directory, kind, inv_path)
+                this_ie = self._add_one_and_parent(parent_ie, directory, kind,
+                    inv_path)
 
             if kind == 'directory' and not sub_tree:
                 if this_ie.kind != 'directory':
