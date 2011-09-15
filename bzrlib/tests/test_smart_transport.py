@@ -652,16 +652,27 @@ class TestSmartServerStreamMedium(tests.TestCase):
         return m, from_server
 
     def create_stream_medium(self, server_sock, transport, timeout=4.0):
+        """Initialize a new medium.SmartServerSocketStreamMedium."""
         return medium.SmartServerSocketStreamMedium(server_sock, transport,
             timeout=timeout)
+
+    def create_stream_context(self, transport, timeout=4.0):
+        """Create a new SmartServerSocketStreamMedium with default context.
+
+        This will call portable_socket_pair and pass the server side to
+        create_stream_medium along with transport.
+        It then returns the client_sock and the server.
+        """
+        server_sock, client_sock = self.portable_socket_pair()
+        server = self.create_stream_medium(server_sock, transport,
+                                           timeout=timeout)
+        return server, client_sock
 
     def test_smart_query_version(self):
         """Feed a canned query version to a server"""
         # wire-to-wire, using the whole stack
-        to_server = StringIO('hello\n')
-        from_server = StringIO()
         transport = local.LocalTransport(urlutils.local_path_to_url('/'))
-        server = self.create_pipe_medium(to_server, from_server, transport)
+        server, from_server = self.create_pipe_context('hello\n', transport)
         smart_protocol = protocol.SmartServerRequestProtocolOne(transport,
                 from_server.write)
         server._serve_one_request(smart_protocol)
@@ -712,12 +723,11 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         client_sock.sendall(sample_request_bytes)
         server._serve_one_request(sample_protocol)
-        server_sock.close()
+        server.socket.close()
         self.assertEqual('', client_sock.recv(1))
         self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
         self.assertFalse(server.finished)
@@ -728,9 +738,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_socket_stream_shutdown_detection(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server, client_sock = self.create_stream_context(None)
         client_sock.close()
-        server = self.create_stream_medium(server_sock, None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
 
@@ -747,13 +756,12 @@ class TestSmartServerStreamMedium(tests.TestCase):
         rest_of_request_bytes = 'lo\n'
         expected_response = (
             protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n')
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         client_sock.sendall(incomplete_request_bytes)
         server_protocol = server._build_protocol()
         client_sock.sendall(rest_of_request_bytes)
         server._serve_one_request(server_protocol)
-        server_sock.close()
+        server.socket.close()
         self.assertEqual(expected_response, osutils.recv_all(client_sock, 50),
                          "Not a version 2 response to 'hello' request.")
         self.assertEqual('', client_sock.recv(1))
@@ -819,8 +827,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # _serve_one_request should still process both of them as if they had
         # been received separately.
         sample_request_bytes = 'command\n'
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         # Put two whole requests on the wire.
         client_sock.sendall(sample_request_bytes * 2)
@@ -833,7 +840,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         stream_still_open = server._serve_one_request(second_protocol)
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertFalse(server.finished)
-        server_sock.close()
+        server.socket.close()
         self.assertEqual('', client_sock.recv(1))
 
     def test_pipe_like_stream_error_handling(self):
@@ -855,8 +862,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_socket_stream_error_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
         server._serve_one_request(fake_protocol)
         # recv should not block, because the other end of the socket has been
@@ -872,12 +878,11 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', from_server.getvalue())
 
     def test_socket_stream_keyboard_interrupt_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
-        server_sock.close()
+        server.socket.close()
         self.assertEqual('', client_sock.recv(1))
 
     def build_protocol_pipe_like(self, bytes):
@@ -885,8 +890,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         return server._build_protocol()
 
     def build_protocol_socket(self, bytes):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         client_sock.sendall(bytes)
         client_sock.close()
         return server._build_protocol()
@@ -933,8 +937,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertProtocolTwo(server_protocol)
 
     def test_socket_set_timeout(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None, timeout=1.23)
+        server, _ = self.create_stream_context(None, timeout=1.23)
         self.assertEqual(1.23, server._client_timeout)
 
     def test_pipe_set_timeout(self):
@@ -943,9 +946,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual(1.23, server._client_timeout)
 
     def test_socket_wait_for_bytes_with_timeout_with_data(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        self.addCleanup(server_sock.close)
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         client_sock.sendall('data\n')
         # This should not block or consume any actual content
         self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
@@ -953,9 +954,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('data\n', data)
 
     def test_socket_wait_for_bytes_with_timeout_no_data(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        self.addCleanup(server_sock.close)
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         # This should timeout quickly, reporting that there wasn't any data
         self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
         client_sock.close()
@@ -963,9 +962,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', data)
 
     def test_socket_wait_for_bytes_with_timeout_closed(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        self.addCleanup(server_sock.close)
-        server = self.create_stream_medium(server_sock, None)
+        server, client_sock = self.create_stream_context(None)
         # With the socket closed, this should return right away.
         # It seems select.select() returns that you *can* read on the socket,
         # even though it closed. Presumably as a way to tell it is closed?
@@ -977,8 +974,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', data)
 
     def test_socket_serve_timeout_closes_socket(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = self.create_stream_medium(server_sock, None, timeout=0.1)
+        server, client_sock = self.create_stream_context(None, timeout=0.1)
         # This should timeout quickly, and then close the connection so that
         # client_sock recv doesn't block.
         server.serve()
