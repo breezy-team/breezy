@@ -126,6 +126,14 @@ class LocalGitProber(Prober):
 
     def probe_transport(self, transport):
         try:
+            external_url = transport.external_url()
+        except bzr_errors.InProcessTransport:
+            raise bzr_errors.NotBranchError(path=transport.base)
+        if (external_url.startswith("http:") or
+            external_url.startswith("https:")):
+            # Already handled by RemoteGitProber
+            raise bzr_errors.NotBranchError(path=transport.base)
+        try:
             if not transport.has_any(['.git/HEAD', 'HEAD', 'objects', '.git/objects']):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
@@ -186,7 +194,6 @@ class RemoteGitProber(Prober):
                     conn.setopt(pycurl.URL, url)
                     transport._set_curl_options(conn)
                     conn.setopt(pycurl.HTTPGET, 1)
-                    conn.setopt(pycurl.NOBODY, 1)
                     header = StringIO()
                     data = StringIO()
                     conn.setopt(pycurl.HEADERFUNCTION, header.write)
@@ -196,6 +203,9 @@ class RemoteGitProber(Prober):
                     code = conn.getinfo(pycurl.HTTP_CODE)
                     if code == 404:
                         raise bzr_errors.NotBranchError(transport.base)
+                    if code != 200:
+                        raise bzr_errors.InvalidHttpResponse(transport._path,
+                            str(code))
                     headers = transport._parse_headers(header)
                 else:
                     raise bzr_errors.NotBranchError(transport.base)
