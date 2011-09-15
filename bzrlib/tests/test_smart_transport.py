@@ -935,6 +935,28 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server_protocol = self.build_protocol_socket('bzr request 2\n')
         self.assertProtocolTwo(server_protocol)
 
+    def test_socket_default_timeout(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        server = medium.SmartServerSocketStreamMedium(server_sock, None)
+        self.assertEqual(server._DEFAULT_CLIENT_TIMEOUT,
+                         server._client_timeout)
+
+    def test_socket_set_timeout(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        server = medium.SmartServerSocketStreamMedium(server_sock, None,
+            timeout=1.23)
+        self.assertEqual(1.23, server._client_timeout)
+
+    def test_pipe_default_timeout(self):
+        server = medium.SmartServerPipeStreamMedium(None, None, None)
+        self.assertEqual(server._DEFAULT_CLIENT_TIMEOUT,
+                         server._client_timeout)
+
+    def test_pipe_set_timeout(self):
+        server = medium.SmartServerPipeStreamMedium(None, None, None,
+            timeout=1.23)
+        self.assertEqual(1.23, server._client_timeout)
+
     def test_socket_wait_for_bytes_with_timeout_with_data(self):
         server_sock, client_sock = self.portable_socket_pair()
         self.addCleanup(server_sock.close)
