@@ -5222,11 +5222,15 @@ class cmd_serve(Command):
         try:
             protocol(t, host, port, inet, client_timeout)
         except TypeError, e:
-            # TODO: This should really be a deprecation warning
-            warning('Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
-                    'Most likely it needs to be updated to support a'
-                    ' "timeout" parameter'
-                    % (e, protocol.__module__, protocol))
+            # We use symbol_versioning.deprecated_in just so that people
+            # grepping can find it here.
+            # symbol_versioning.deprecated_in((2, 5, 0))
+            symbol_versioning.warn(
+                'Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
+                'Most likely it needs to be updated to support a'
+                ' "timeout" parameter (added in bzr 2.5.0)'
+                % (e, protocol.__module__, protocol),
+                DeprecationWarning)
             protocol(t, host, port, inet)
 
 
