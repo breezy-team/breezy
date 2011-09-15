@@ -635,8 +635,21 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def create_pipe_medium(self, to_server, from_server, transport,
                            timeout=4.0):
+        """Create a new SmartServerPipeStreamMedium."""
         return medium.SmartServerPipeStreamMedium(to_server, from_server,
             transport, timeout=timeout)
+
+    def create_pipe_context(self, to_server_bytes, transport):
+        """Create a SmartServerSocketStreamMedium.
+
+        This differes from create_pipe_medium, in that we initialize the
+        request that is sent to the server, and return the StringIO class that
+        will hold the response.
+        """
+        to_server = StringIO(to_server_bytes)
+        from_server = StringIO()
+        m = self.create_pipe_medium(to_server, from_server, transport)
+        return m, from_server
 
     def create_stream_medium(self, server_sock, transport, timeout=4.0):
         return medium.SmartServerSocketStreamMedium(server_sock, transport,
@@ -658,9 +671,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_response_to_canned_get(self):
         transport = memory.MemoryTransport('memory:///')
         transport.put_bytes('testfile', 'contents\nof\nfile\n')
-        to_server = StringIO('get\001./testfile\n')
-        from_server = StringIO()
-        server = self.create_pipe_medium(to_server, from_server, transport)
+        server, from_server = self.create_pipe_context('get\001./testfile\n',
+            transport)
         smart_protocol = protocol.SmartServerRequestProtocolOne(transport,
                 from_server.write)
         server._serve_one_request(smart_protocol)
@@ -677,9 +689,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # VFS requests use filenames, not raw UTF-8.
         hpss_path = urlutils.escape(utf8_filename)
         transport.put_bytes(utf8_filename, 'contents\nof\nfile\n')
-        to_server = StringIO('get\001' + hpss_path + '\n')
-        from_server = StringIO()
-        server = self.create_pipe_medium(to_server, from_server, transport)
+        server, from_server = self.create_pipe_context(
+                'get\001' + hpss_path + '\n', transport)
         smart_protocol = protocol.SmartServerRequestProtocolOne(transport,
                 from_server.write)
         server._serve_one_request(smart_protocol)
@@ -691,10 +702,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_pipe_like_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
-        to_server = StringIO(sample_request_bytes)
-        from_server = StringIO()
-        server = self.create_pipe_medium(
-            to_server, from_server, None)
+        server, from_server = self.create_pipe_context(
+            sample_request_bytes, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         server._serve_one_request(sample_protocol)
         self.assertEqual('', from_server.getvalue())
@@ -714,9 +723,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertFalse(server.finished)
 
     def test_pipe_like_stream_shutdown_detection(self):
-        to_server = StringIO('')
-        from_server = StringIO()
-        server = self.create_pipe_medium(to_server, from_server, None)
+        server, _ = self.create_pipe_context('', None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
 
@@ -771,8 +778,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         to_server_w = os.fdopen(to_server_w, 'w', 0)
         from_server_r = os.fdopen(from_server_r, 'r', 0)
         from_server = os.fdopen(from_server, 'w', 0)
-        server = self.create_pipe_medium(
-            to_server, from_server, None)
+        server = self.create_pipe_medium(to_server, from_server, None)
         # Like test_socket_stream_incomplete_request, write an incomplete
         # request (that does not end in '\n') and build a protocol from it.
         to_server_w.write(incomplete_request_bytes)
@@ -793,10 +799,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # _serve_one_request should still process both of them as if they had
         # been received separately.
         sample_request_bytes = 'command\n'
-        to_server = StringIO(sample_request_bytes * 2)
-        from_server = StringIO()
-        server = self.create_pipe_medium(
-            to_server, from_server, None)
+        server, from_server = self.create_pipe_context(
+            sample_request_bytes * 2, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         server._serve_one_request(first_protocol)
         self.assertEqual(0, first_protocol.next_read_size())
@@ -861,10 +865,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
-        to_server = StringIO('')
-        from_server = StringIO()
-        server = self.create_pipe_medium(
-            to_server, from_server, None)
+        server, from_server = self.create_pipe_context('', None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
@@ -880,10 +881,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', client_sock.recv(1))
 
     def build_protocol_pipe_like(self, bytes):
-        to_server = StringIO(bytes)
-        from_server = StringIO()
-        server = self.create_pipe_medium(
-            to_server, from_server, None)
+        server, _ = self.create_pipe_context(bytes, None)
         return server._build_protocol()
 
     def build_protocol_socket(self, bytes):
@@ -1020,10 +1018,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
             self.assertEqual('', data)
 
     def test_pipe_wait_for_bytes_no_fileno(self):
-        to_server = StringIO('')
-        from_server = StringIO()
-        server = self.create_pipe_medium(
-            to_server, from_server, None)
+        server, _ = self.create_pipe_context('', None)
         # Our file doesn't support polling, so we should always just return
         # 'you have data to consume.
         self.assertFalse(server._wait_for_bytes_with_timeout(0.01))
