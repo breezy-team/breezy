@@ -8,22 +8,15 @@ Bazaar Release Notes
 bzr 2.5b1
 #########
 
-:2.5b1: NOT RELEASED YET
+:2.5b1: 2011-09-15
 
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
+None
 
 New Features
 ************
-
-.. New commands, options, etc that users may wish to try out.
-
-* A ``from_unicode`` parameter can be specified when registering a config
-  option. This implements boolean and integer config options when the
-  provided ``bool_from_store`` and ``int_from_store`` are used.
-  (Vincent Ladeuil)
 
 * A ``from_unicode`` parameter can be specified when registering a config
   option. This implements boolean, integer and list config options when the
@@ -56,21 +49,26 @@ New Features
 
 * Add a config option gpg_signing_key for setting which GPG key should
   be used to sign commits. Also default to using the gpg user identity
-  which matches user_email() as set by whoami. (Jonathan Riddell,
-  #68501)
+  which matches user_email() as set by whoami.
+  (Jonathan Riddell, #68501)
 
 * An ``invalid`` parameter can be specified when registering a config option
   to decide what should be done when invalid values are
-  encountered. 'warning' and 'eeror' will respectively emit a warning and
+  encountered. 'warning' and 'error' will respectively emit a warning and
   ignore the value or errors out. (Vincent Ladeuil)
+
+* bzr add now skips large files in recursive mode. The default "large"
+  size is 20MB, and is configurable via the add.maximum_file_size
+  option. A value of 0 disables skipping. Named items passed to add are
+  never skipped. (Shannon Weyrick, #54624)
 
 * ``bzr help configuration/<option>`` display the help for ``option`` for
   all registered configuration options. (Vincent Ladeuil, #747050)
 
-* bzr log -m now matches message, author, committer and bugs instead
-  of just matching the message.  --message keeps its original meaning,
-  while --match-message, --match-author, --match-committer and
-  --match-bugs match each of those fields.
+* ``bzr log -m`` now matches message, author, committer and bugs instead
+  of just matching the message.  ``--message`` keeps its original meaning,
+  while ``--match-message, --match-author, --match-committer`` and
+  ``--match-bugs`` match each of those fields. (Jacek Sieka)
 
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
@@ -85,13 +83,8 @@ New Features
 * Relative local paths can now be specified in URL syntax by using the
   "file:" prefix.  (Jelmer Vernooij)
 
-* Report commits signed with expired keys in "verify-signatures".
+* Report commits signed with expired keys in ``verify-signatures``.
   (Jonathan Riddell, #804254)
-
-* bzr add now skips large files in recursive mode. The default "large"
-  size is 20MB, and is configurable via the add.maximum_file_size
-  option. A value of 0 disables skipping. Named items passed to add are
-  never skipped. (Shannon Weyrick, #54624)
 
 * Translations are now enabled for command help, errors and globally
   for any message using gettext given on output.  (Jonathan Riddell,
@@ -99,9 +92,6 @@ New Features
 
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * ``bzr add`` will now warn about nested subtrees that are skipped.
   (Jelmer Vernooij, #187342)
@@ -144,20 +134,12 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
-
 * ``bzr commit`` now correctly reports missing files as "removed", not
   "modified". (Jelmer Vernooij, #553955)
 
 * ``bzr reconfigure`` will now allow multiple non-conflicting requests
   in a single invocation, e.g. ``--branch`` and ``--use-shared``.
   (Martin von Gagern, #842993)
-
-* The pull command will now always use separate connections for the
-  case where the destination is a heavyweight checkout of some remote
-  branch on the same host as the source branch.
-  (Martin von Gagern, #483661)
 
 * A call to CHKInventory's filter-method will not result in a
   DuplicateFileId error, if you move a subfolder and change a file in
@@ -177,29 +159,29 @@ Bug Fixes
   raised whenever a transport at the drive root was opened on windows.
   (Martin [gz], #841322)
 
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
 * Rather than an error being raised, a warning is now printed when the
   current user does not have permission to read a configuration file.
   (Jelmer Vernooij, #837324)
+
+* The pull command will now always use separate connections for the
+  case where the destination is a heavyweight checkout of some remote
+  branch on the same host as the source branch.
+  (Martin von Gagern, #483661)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
 
-* Fixed loading of external merge tools from config to properly decode
-  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
-
 Documentation
 *************
-
-.. Improved or updated documentation.
 
 * Release instructions refreshed. (Vincent Ladeuil)
 
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * ``BranchFormat.initialize`` now takes a ``append_revisions_only``
   argument. (Jelmer Vernooij)
@@ -214,17 +196,21 @@ API Changes
 * New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
   (Jelmer Vernooij)
 
-* New methods ``get_transport_from_path`` and ``get_transport_from_url``
-  have been added that only support opening from a path or a URL,
-  unlike ``get_transport``. (Jelmer Vernooij)
+* New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
+  value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
+  (Shannon Weyrick)
+
+* New method ``InterTree.file_content_matches`` which checks that
+  two files in different trees have the same contents.
+  (Jelmer Vernooij)
 
 * New method ``Tree.get_file_verifier`` which allows tree implementations
   to return non-sha1 checksums to verify files.
   (Jelmer Vernooij, #720831)
 
-* New method ``InterTree.file_content_matches`` which checks that
-  two files in different trees have the same contents.
-  (Jelmer Vernooij)
+* New methods ``get_transport_from_path`` and ``get_transport_from_url``
+  have been added that only support opening from a path or a URL,
+  unlike ``get_transport``. (Jelmer Vernooij)
 
 * New registry ``OptionRegistry`` specialized for configuration options.
   (Vincent Ladeuil)
@@ -253,22 +239,18 @@ API Changes
   ``UIFactory.warn_experimental_format_fetch`` in favor of
   ``UIFactory.show_user_warning``. (Jelmer Vernooij)
 
-* There is a new class `ContentFilterTree` that provides a facade for 
-  content filtering.  The `filtered` parameter to `export` is deprecated 
-  in favor of passing a filtered tree, and the specific exporter plugins
-  no longer support it.
-  (Martin Pool)
-
-* New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
-  value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
-  (Shannon Weyrick)
-
 * ``Tags`` containers can now declare whether they support versioned
   tags and whether tags can refer to ghost tags.
   (Jelmer Vernooij)
 
 * ``Tags.merge_to`` now returns a dictionary with the updated tags
   and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
+
+* There is a new class `ContentFilterTree` that provides a facade for 
+  content filtering.  The `filtered` parameter to `export` is deprecated 
+  in favor of passing a filtered tree, and the specific exporter plugins
+  no longer support it.
+  (Martin Pool)
 
 * ``Transport`` now has a ``_parsed_url`` attribute instead of
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
@@ -279,10 +261,7 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
-* A new debug flags ``hpss_client_no_vfs`` will now cause the HPSS client
+* A new debug flag ``hpss_client_no_vfs`` will now cause the HPSS client
   to raise a ``HpssVfsRequestNotAllowed`` exception when a VFS request
   is attempted. (Jelmer Vernooij)
 
@@ -293,12 +272,8 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
-* Blackbox tests can be debugged interactively (see bzrlib.debug.BzrPdb for
-  details). (Vincent Ladeuil)
+* Blackbox tests (including test scripts) can be debugged interactively (see
+  bzrlib.debug.BzrPdb for details). (Vincent Ladeuil)
 
 * `BranchBuilder.build_snapshot` now supports a "flush" action.  This
   cleanly and reliably allows tests using `BranchBuilder` to construct
