@@ -170,7 +170,6 @@ class SmartTCPServer(object):
                         self.serve_conn(conn, thread_name_suffix)
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
-                trace.mutter('^Ced')
                 raise
             except Exception, e:
                 trace.report_exception(sys.exc_info(), sys.stderr)
