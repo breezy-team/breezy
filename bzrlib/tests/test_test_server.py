@@ -228,6 +228,6 @@ class TestTestingSmartServer(tests.TestCase):
         self.assertEqual(test_server._DEFAULT_TESTING_CLIENT_TIMEOUT,
                          server._client_timeout)
         sock = socket.socket()
-        h = server._create_handler(sock)
+        h = server._make_handler(sock)
         self.assertEqual(test_server._DEFAULT_TESTING_CLIENT_TIMEOUT,
                          h._client_timeout)

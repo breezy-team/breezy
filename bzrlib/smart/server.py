@@ -183,7 +183,7 @@ class SmartTCPServer(object):
         """Return the url of the server"""
         return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
 
-    def _create_handler(self, conn):
+    def _make_handler(self, conn):
         return medium.SmartServerSocketStreamMedium(
             conn, self.backing_transport, self.root_client_path,
             timeout=self._client_timeout)
@@ -194,7 +194,7 @@ class SmartTCPServer(object):
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         thread_name = 'smart-server-child' + thread_name_suffix
-        handler = self._create_handler(conn)
+        handler = self._make_handler(conn)
         connection_thread = threading.Thread(
             None, handler.serve, name=thread_name)
         # FIXME: This thread is never joined, it should at least be collected
