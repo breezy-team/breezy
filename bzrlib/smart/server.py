@@ -32,11 +32,11 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import medium
 from bzrlib.transport import (
-    config,
     chroot,
     pathfilter,
     )
 from bzrlib import (
+    config,
     urlutils,
     )
 """)
