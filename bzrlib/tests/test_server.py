@@ -600,6 +600,8 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
             self._serve_one_request(server_protocol)
 
 
+_DEFAULT_TESTING_CLIENT_TIMEOUT = 4.0
+
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 
     def __init__(self, server_address, request_handler_class,
@@ -607,7 +609,8 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
         TestingThreadingTCPServer.__init__(self, server_address,
                                            request_handler_class)
         server.SmartTCPServer.__init__(self, backing_transport,
-                                       root_client_path)
+            root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
+
     def serve(self):
         self.run_server_started_hooks()
         try:

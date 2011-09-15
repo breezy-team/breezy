@@ -81,7 +81,7 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
 
 class TestTCPServerInAThread(tests.TestCase):
 
-    scenarios = [ 
+    scenarios = [
         (name, {'server_class': getattr(test_server, name)})
         for name in
         ('TestingTCPServer', 'TestingThreadingTCPServer')]
@@ -218,3 +218,16 @@ class TestTCPServerInAThread(tests.TestCase):
         # The connection wasn't served properly but the exception should have
         # been swallowed.
         server.pending_exception()
+
+
+class TestTestingSmartServer(tests.TestCase):
+
+    def test_sets_client_timeout(self):
+        server = test_server.TestingSmartServer(('localhost', 0), None, None,
+            root_client_path='/no-such-client/path')
+        self.assertEqual(test_server._DEFAULT_TESTING_CLIENT_TIMEOUT,
+                         server._client_timeout)
+        sock = socket.socket()
+        h = server._create_handler(sock)
+        self.assertEqual(test_server._DEFAULT_TESTING_CLIENT_TIMEOUT,
+                         h._client_timeout)
