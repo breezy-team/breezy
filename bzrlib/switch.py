@@ -18,8 +18,8 @@
 
 from bzrlib import errors, merge, revision
 from bzrlib.branch import Branch
+from bzrlib.i18n import gettext
 from bzrlib.trace import note
-
 
 def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
     from bzrlib.branch import SwitchHookParams
@@ -141,12 +141,12 @@ def _update(tree, source_repository, quiet=False, revision_id=None):
             revision_id = to_branch.last_revision()
         if tree.last_revision() == revision_id:
             if not quiet:
-                note("Tree is up to date at revision %d.", to_branch.revno())
+                note(gettext("Tree is up to date at revision %d."), to_branch.revno())
             return
         base_tree = source_repository.revision_tree(tree.last_revision())
         merge.Merge3Merger(tree, tree, base_tree, to_branch.repository.revision_tree(revision_id))
         tree.set_last_revision(to_branch.last_revision())
         if not quiet:
-            note('Updated to revision %d.' % to_branch.revno())
+            note(gettext('Updated to revision %d.') % to_branch.revno())
     finally:
         tree.unlock()

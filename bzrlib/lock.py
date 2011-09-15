@@ -46,7 +46,7 @@ from bzrlib import (
     trace,
     )
 from bzrlib.hooks import Hooks
-
+from bzrlib.i18n import gettext
 
 class LockHooks(Hooks):
 
@@ -544,6 +544,6 @@ class _RelockDebugMixin(object):
                 type_name = 'read'
             else:
                 type_name = 'write'
-            trace.note('%r was %s locked again', self, type_name)
+            trace.note(gettext('%r was %s locked again'), self, type_name)
         self._prev_lock = lock_type
 

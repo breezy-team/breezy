@@ -26,6 +26,7 @@ from bzrlib.trace import (
     note,
     warning,
     )
+from bzrlib.i18n import gettext
 
 
 class PushResult(object):
@@ -47,10 +48,10 @@ class PushResult(object):
         """Write a human-readable description of the result."""
         if self.branch_push_result is None:
             if self.stacked_on is not None:
-                note('Created new stacked branch referring to %s.' %
+                note(gettext('Created new stacked branch referring to %s.') %
                     self.stacked_on)
             else:
-                note('Created new branch.')
+                note(gettext('Created new branch.'))
         else:
             self.branch_push_result.report(to_file)
 

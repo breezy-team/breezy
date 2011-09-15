@@ -34,7 +34,7 @@ from bzrlib import (
     ui,
     workingtree,
 )
-
+from bzrlib.i18n import gettext
 
 class UseEditor(Exception):
     """Use an editor instead of selecting hunks."""
@@ -66,15 +66,15 @@ class ShelfReporter(object):
 
     def shelved_id(self, shelf_id):
         """Report the id changes were shelved to."""
-        trace.note('Changes shelved with id "%d".' % shelf_id)
+        trace.note(gettext('Changes shelved with id "%d".') % shelf_id)
 
     def changes_destroyed(self):
         """Report that changes were made without shelving."""
-        trace.note('Selected changes destroyed.')
+        trace.note(gettext('Selected changes destroyed.'))
 
     def selected_changes(self, transform):
         """Report the changes that were selected."""
-        trace.note("Selected changes:")
+        trace.note(gettext("Selected changes:"))
         changes = transform.iter_changes()
         delta.report_changes(changes, self.delta_reporter)
 
@@ -470,11 +470,11 @@ class Unshelver(object):
         cleanups = [self.tree.unlock]
         try:
             if self.read_shelf:
-                trace.note('Using changes with id "%d".' % self.shelf_id)
+                trace.note(gettext('Using changes with id "%d".') % self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
                 cleanups.append(unshelver.finalize)
                 if unshelver.message is not None:
-                    trace.note('Message: %s' % unshelver.message)
+                    trace.note(gettext('Message: %s') % unshelver.message)
                 change_reporter = delta._ChangeReporter()
                 merger = unshelver.make_merger(None)
                 merger.change_reporter = change_reporter
@@ -486,7 +486,7 @@ class Unshelver(object):
                     self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
-                trace.note('Deleted changes with id "%d".' % self.shelf_id)
+                trace.note(gettext('Deleted changes with id "%d".') % self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()

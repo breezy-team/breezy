@@ -38,6 +38,7 @@ from bzrlib import (
     versionedfile,
     workingtree,
     )
+from bzrlib.i18n import gettext
 """)
 from bzrlib import (
     decorators,
@@ -711,9 +712,9 @@ class Merger(object):
         merge = operation.run_simple()
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero and not trace.is_quiet():
-                trace.note("All changes applied successfully.")
+                trace.note(gettext("All changes applied successfully."))
         else:
-            trace.note("%d conflicts encountered."
+            trace.note(gettext("%d conflicts encountered.")
                        % len(merge.cooked_conflicts))
 
         return len(merge.cooked_conflicts)

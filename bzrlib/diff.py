@@ -39,6 +39,7 @@ from bzrlib import (
     )
 
 from bzrlib.workingtree import WorkingTree
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.registry import (
@@ -393,7 +394,7 @@ def get_trees_and_branches_to_diff_locked(
             if view_files:
                 specific_files = view_files
                 view_str = views.view_display_str(view_files)
-                note("*** Ignoring files outside view. View is %s" % view_str)
+                note(gettext("*** Ignoring files outside view. View is %s") % view_str)
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None

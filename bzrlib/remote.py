@@ -40,6 +40,7 @@ from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
+from bzrlib.i18n import gettext
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
@@ -1873,7 +1874,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         from bzrlib import osutils
         import tarfile
         # TODO: Maybe a progress bar while streaming the tarball?
-        note("Copying repository content as tarball...")
+        note(gettext("Copying repository content as tarball..."))
         tar_file = self._get_tarball('bz2')
         if tar_file is None:
             return None
