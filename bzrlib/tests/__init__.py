@@ -2733,8 +2733,6 @@ class TestCaseWithMemoryTransport(TestCase):
         self.__readonly_server = None
         self.__server = None
         self.reduceLockdirTimeout()
-        self.overrideAttr(medium.SmartServerStreamMedium,
-                          '_DEFAULT_CLIENT_TIMEOUT', 4.0)
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""

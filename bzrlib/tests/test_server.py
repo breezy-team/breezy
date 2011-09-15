@@ -589,7 +589,8 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
     def __init__(self, request, client_address, server):
         medium.SmartServerSocketStreamMedium.__init__(
             self, request, server.backing_transport,
-            server.root_client_path)
+            server.root_client_path,
+            timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
         request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         SocketServer.BaseRequestHandler.__init__(self, request, client_address,
                                                  server)

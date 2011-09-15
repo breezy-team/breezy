@@ -204,9 +204,6 @@ class SmartServerStreamMedium(SmartMedium):
         the stream.  See also the _push_back method.
     """
 
-    _DEFAULT_CLIENT_TIMEOUT = float(config.option_registry.get(
-        'serve.client_timeout').default)
-
     def __init__(self, backing_transport, root_client_path='/', timeout=None):
         """Construct new server.
 
@@ -217,7 +214,7 @@ class SmartServerStreamMedium(SmartMedium):
         self.root_client_path = root_client_path
         self.finished = False
         if timeout is None:
-            timeout = self._DEFAULT_CLIENT_TIMEOUT
+            raise AssertionError('You must supply a timeout.')
         self._client_timeout = timeout
         self._client_poll_timeout = min(timeout / 10.0, 1.0)
         SmartMedium.__init__(self)
