@@ -911,7 +911,7 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             location_type = 'parent branch'
         if submit_location is None:
             raise errors.NoSubmitBranch(branch)
-        trace.note(gettext('Using %s %s', location_type, submit_location))
+        trace.note(gettext('Using %s %s'), location_type, submit_location)
         return submit_location
 
     def _match_on(self, branch, revs):

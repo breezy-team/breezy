@@ -33,6 +33,7 @@ from bzrlib import (
     versionedfile as _mod_versionedfile,
     )
 from bzrlib.bundle import bundle_data, serializer as bundle_serializer
+from bzrlib.i18n import gettext
 from bzrlib import bencode
 
 

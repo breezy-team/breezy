@@ -141,7 +141,6 @@ from bzrlib.osutils import format_delta, rand_chars, get_host_name
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import rio
-from bzrlib.i18n import gettext
 """)
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
@@ -317,7 +316,7 @@ class LockDir(lock.Lock):
             self.transport.delete(tmpname + self.__INFO_NAME)
             self.transport.rmdir(tmpname)
         except PathError, e:
-            note(gettext("error removing pending lock: %s"), e)
+            note("error removing pending lock: %s", e)
 
     def _create_pending_dir(self):
         tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))

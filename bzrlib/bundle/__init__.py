@@ -25,6 +25,7 @@ from bzrlib import (
     )
 from bzrlib.bundle import serializer as _serializer
 from bzrlib.merge_directive import MergeDirective
+from bzrlib.i18n import gettext
 """)
 from bzrlib.trace import note
 

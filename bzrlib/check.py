@@ -249,8 +249,8 @@ class VersionedFileCheck(Check):
                     revision_id, index_parents, actual_parents = item
                     note(gettext(
                         '       {0} has wrong parents in index: '
-                        '{1!r} should be {2!r}'),
-                        revision_id, index_parents, actual_parents)
+                        '{1!r} should be {2!r}').format(
+                        revision_id, index_parents, actual_parents))
         for item in self._report_items:
             note(item)
 

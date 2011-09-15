@@ -468,8 +468,8 @@ class Commit(object):
                 self.master_branch.tags)
             if tag_conflicts:
                 warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note( gettext("Conflicting tags in bound branch:\n{0}\n".format(
-                    join(warning_lines))) )
+                note( gettext("Conflicting tags in bound branch:\n{0}".format(
+                    "\n".join(warning_lines))) )
 
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such

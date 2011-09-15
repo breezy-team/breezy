@@ -25,6 +25,7 @@ from bzrlib import (
     registry,
     trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib.branch import (
     Branch,
     )
