@@ -68,7 +68,7 @@ class TestBzrServeBase(TestCaseWithTransport):
             try:
                 # Run func if set
                 self.tcp_server = tcp_server
-                if not func is None:
+                if func is not None:
                     try:
                         func(*func_args, **func_kwargs)
                     except Exception, e:
@@ -89,6 +89,10 @@ class TestBzrServeBase(TestCaseWithTransport):
         SmartTCPServer.hooks.install_named_hook(
             'server_started_ex', on_server_start,
             'run_bzr_serve_then_func hook')
+        # It seesm thread.interrupt_main() will not raise KeyboardInterrupt
+        # until after socket.accept returns. So we set the timeout low to make
+        # the test faster.
+        self.overrideAttr(SmartTCPServer, '_ACCEPT_TIMEOUT', 0.1)
         # start a TCP server
         try:
             out, err = self.run_bzr(['serve'] + list(serve_args),
@@ -270,20 +274,24 @@ class TestBzrServe(TestBzrServeBase):
 
     def test_bzr_serve_supports_configurable_timeout(self):
         gs = config.GlobalStack()
-        gs.set('server.client_timeout', 1)
+        gs.set('serve.client_timeout', 1)
         process, url = self.start_server_port()
         self.build_tree_contents([('a_file', 'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
-        self.assertEqual('contents\n', t.get_bytes())
+        self.assertEqual('contents\n', t.get_bytes('a_file'))
         # However, if we just wait for more content from the server, it will
         # eventually disconnect us.
         # TODO: Use something like signal.alarm() so that if the server doesn't
         #       properly handle the timeout, we end up failing the test instead
         #       of hanging forever.
         m = t.get_smart_medium()
-        m.read_bytes()
+        m.read_bytes(1)
         # Now, we wait for timeout to trigger
+        err = process.stderr.readline()
+        self.assertEqual(
+            'Connection Timeout: disconnecting client after 1.0 seconds\n',
+            err)
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_supports_client_timeout(self):
@@ -291,15 +299,19 @@ class TestBzrServe(TestBzrServeBase):
         self.build_tree_contents([('a_file', 'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
-        self.assertEqual('contents\n', t.get_bytes())
+        self.assertEqual('contents\n', t.get_bytes('a_file'))
         # However, if we just wait for more content from the server, it will
         # eventually disconnect us.
         # TODO: Use something like signal.alarm() so that if the server doesn't
         #       properly handle the timeout, we end up failing the test instead
         #       of hanging forever.
         m = t.get_smart_medium()
-        m.read_bytes()
+        m.read_bytes(1)
         # Now, we wait for timeout to trigger
+        err = process.stderr.readline()
+        self.assertEqual(
+            'Connection Timeout: disconnecting client after 0.1 seconds\n',
+            err)
         self.assertServerFinishesCleanly(process)
 
 
@@ -363,7 +375,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
             self.fake_expanduser, lambda t: base_path)
         mem_transport = self.get_transport()
         mem_transport.mkdir_multi(['home', 'home/user'])
-        bzr_server.set_up(mem_transport, None, None, inet=True)
+        bzr_server.set_up(mem_transport, None, None, inet=True, timeout=4.0)
         self.addCleanup(bzr_server.tear_down)
         return bzr_server
 
@@ -385,7 +397,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         base_url = urlutils.local_path_to_url(base_dir) + '/'
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
-        def capture_transport(transport, host, port, inet):
+        def capture_transport(transport, host, port, inet, timeout):
             self.bzr_serve_transport = transport
         cmd = builtins.cmd_serve()
         # Read-only

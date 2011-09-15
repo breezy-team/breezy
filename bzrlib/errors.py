@@ -1712,7 +1712,7 @@ class ConnectionReset(TransportError):
 
 class ConnectionTimeout(ConnectionError):
 
-    _fmt = "Connection Timeout: %(msg)s %(orig_error)s"
+    _fmt = "Connection Timeout: %(msg)s%(orig_error)s"
 
 
 class InvalidRange(TransportError):

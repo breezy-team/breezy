@@ -51,6 +51,11 @@ class SmartTCPServer(object):
     hooks: An instance of SmartServerHooks.
     """
 
+    # This is the timeout on the socket we use .accept() on. It is exposed here
+    # so the test suite can set it faster. (It thread.interrupt_main() will not
+    # fire a KeyboardInterrupt during socket.accept)
+    _ACCEPT_TIMEOUT = 1.0
+
     def __init__(self, backing_transport, root_client_path='/',
                  client_timeout=None):
         """Construct a new server.
@@ -98,7 +103,7 @@ class SmartTCPServer(object):
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
         self._server_socket.listen(1)
-        self._server_socket.settimeout(1)
+        self._server_socket.settimeout(self._ACCEPT_TIMEOUT)
         self._started = threading.Event()
         self._stopped = threading.Event()
 
@@ -165,6 +170,7 @@ class SmartTCPServer(object):
                         self.serve_conn(conn, thread_name_suffix)
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
+                trace.mutter('^Ced')
                 raise
             except Exception, e:
                 trace.report_exception(sys.exc_info(), sys.stderr)
@@ -352,10 +358,10 @@ class BzrServerFactory(object):
     def _make_smart_server(self, host, port, inet, timeout):
         if timeout is None:
             c = config.GlobalStack()
-            timeout = c.get('server.client_timeout')
+            timeout = c.get('serve.client_timeout')
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, self.transport)
+                sys.stdin, sys.stdout, self.transport, timeout=timeout)
         else:
             if host is None:
                 host = medium.BZR_DEFAULT_INTERFACE
