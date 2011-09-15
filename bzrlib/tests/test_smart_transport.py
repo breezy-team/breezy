@@ -979,7 +979,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # This should timeout quickly, and then close the connection so that
         # client_sock recv doesn't block.
         server._stream_medium_timeout = 0.1
-        self.assertRaises(errors.ConnectionTimeout, server.serve)
+        server.serve()
         self.assertEqual('', client_sock.recv(1))
 
     def test_pipe_wait_for_bytes_with_timeout_with_data(self):
