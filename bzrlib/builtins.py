@@ -5221,7 +5221,12 @@ class cmd_serve(Command):
         t = transport.get_transport(url)
         try:
             protocol(t, host, port, inet, client_timeout)
-        except TypeError:
+        except TypeError, e:
+            # TODO: This should really be a deprecation warning
+            warning('Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
+                    'Most likely it needs to be updated to support a'
+                    ' "timeout" parameter'
+                    % (e, protocol.__module__, protocol))
             protocol(t, host, port, inet)
 
 
