@@ -360,7 +360,8 @@ class BzrServerFactory(object):
                 host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
                 port = medium.BZR_DEFAULT_PORT
-            smart_server = SmartTCPServer(self.transport)
+            smart_server = SmartTCPServer(self.transport,
+                                          client_timeout=timeout)
             smart_server.start_server(host, port)
             trace.note('listening on port: %s' % smart_server.port)
         self.smart_server = smart_server

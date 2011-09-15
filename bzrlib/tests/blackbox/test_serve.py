@@ -22,9 +22,11 @@ import signal
 import sys
 import thread
 import threading
+import time
 
 from bzrlib import (
     builtins,
+    config,
     errors,
     osutils,
     revision as _mod_revision,
@@ -265,6 +267,21 @@ class TestBzrServe(TestBzrServeBase):
         content = f.read()
         f.close()
         self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
+
+    def test_bzr_serve_supports_configurable_timeout(self):
+        gs = config.GlobalStack()
+        gs.set('server.client_timeout', 1)
+        process, url = self.start_server_port()
+        self.build_tree_contents([('a_file', 'contents\n')])
+        # We can connect and issue a request
+        t = transport.get_transport_from_url(url)
+        self.assertEqual('contents\n', t.get_bytes())
+        m = t.get_smart_medium()
+        # However, if we just wait for more content from the server, it will
+        # eventually disconnect us.
+        m.read_bytes()
+        # Now, we wait for timeout to trigger
+        self.assertServerFinishesCleanly(process)
 
 
 class TestCmdServeChrooting(TestBzrServeBase):
