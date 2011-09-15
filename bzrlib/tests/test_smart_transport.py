@@ -975,10 +975,9 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_socket_serve_timeout_closes_socket(self):
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
+            server_sock, None, timeout=0.1)
         # This should timeout quickly, and then close the connection so that
         # client_sock recv doesn't block.
-        server._stream_medium_timeout = 0.1
         server.serve()
         self.assertEqual('', client_sock.recv(1))
 

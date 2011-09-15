@@ -48,7 +48,7 @@ from bzrlib import (
 from bzrlib.smart import client, protocol, request, vfs
 from bzrlib.transport import ssh
 """)
-from bzrlib import osutils
+from bzrlib import config, osutils
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
@@ -204,12 +204,10 @@ class SmartServerStreamMedium(SmartMedium):
         the stream.  See also the _push_back method.
     """
 
-    # Default timeout is 300s before closing the client connection
-    _stream_medium_timeout = 300
-    # Poll every X seconds to see if anything new has happened.
-    _stream_medium_fast_timeout = 1.0
+    _DEFAULT_CLIENT_TIMEOUT = float(config.option_registry.get(
+        'serve.client_timeout').default)
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path='/', timeout=None):
         """Construct new server.
 
         :param backing_transport: Transport for the directory served.
@@ -218,6 +216,10 @@ class SmartServerStreamMedium(SmartMedium):
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
         self.finished = False
+        if timeout is None:
+            timeout = self._DEFAULT_CLIENT_TIMEOUT
+        self._client_timeout = timeout
+        self._client_poll_timeout = min(timeout / 10.0, 1.0)
         SmartMedium.__init__(self)
 
     def serve(self):
@@ -266,7 +268,7 @@ class SmartServerStreamMedium(SmartMedium):
 
         :returns: a SmartServerRequestProtocol.
         """
-        if self._wait_for_bytes_with_timeout(self._stream_medium_timeout):
+        if self._wait_for_bytes_with_timeout(self._client_timeout):
             # TODO: We would like to have a nicer message than this. However,
             #       we don't have any context available to us about who is
             #       connecting for us to give a more useful message. :(
@@ -274,7 +276,7 @@ class SmartServerStreamMedium(SmartMedium):
             #       from)
             raise errors.ConnectionTimeout(
                 'disconnecting client after %.1f seconds'
-                % (self._stream_medium_timeout))
+                % (self._client_timeout))
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(
@@ -287,7 +289,7 @@ class SmartServerStreamMedium(SmartMedium):
         # Use local variables to handle when the interpreter is shutting down
         try:
             if (timeout_seconds is None
-                or timeout_seconds <= self._stream_medium_fast_timeout):
+                or timeout_seconds <= self._client_poll_timeout):
                 rs, _, _ = select.select([fd], [], [], timeout_seconds)
             else:
                 # It looks like during the test suite, we close the server-side
@@ -303,7 +305,7 @@ class SmartServerStreamMedium(SmartMedium):
                 rs = []
                 while not rs and time.time() < t_end:
                     rs, _, _ = select.select([fd], [], [],
-                                             self._stream_medium_fast_timeout)
+                                             self._client_poll_timeout)
         except (select.error, socket.error) as e:
             err = getattr(e, 'errno', None)
             if err is None:
@@ -347,14 +349,16 @@ _real_stderr = sys.stderr
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
-    def __init__(self, sock, backing_transport, root_client_path='/'):
+    def __init__(self, sock, backing_transport, root_client_path='/',
+                 timeout=None):
         """Constructor.
 
         :param sock: the socket the server will read from.  It will be put
             into blocking mode.
         """
         SmartServerStreamMedium.__init__(
-            self, backing_transport, root_client_path=root_client_path)
+            self, backing_transport, root_client_path=root_client_path,
+            timeout=timeout)
         sock.setblocking(True)
         self.socket = sock
 
@@ -409,14 +413,15 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
 
-    def __init__(self, in_file, out_file, backing_transport):
+    def __init__(self, in_file, out_file, backing_transport, timeout=None):
         """Construct new server.
 
         :param in_file: Python file from which requests can be read.
         :param out_file: Python file to write responses.
         :param backing_transport: Transport for the directory served.
         """
-        SmartServerStreamMedium.__init__(self, backing_transport)
+        SmartServerStreamMedium.__init__(self, backing_transport,
+            timeout=timeout)
         if sys.platform == 'win32':
             # force binary mode for files
             import msvcrt

@@ -32,6 +32,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import medium
 from bzrlib.transport import (
+    config,
     chroot,
     pathfilter,
     )
@@ -341,6 +342,8 @@ class BzrServerFactory(object):
         self.transport = transport
 
     def _make_smart_server(self, host, port, inet):
+        c = config.GlobalStack()
+        timeout = c.get('server.client_timeout')
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, self.transport)
@@ -380,7 +383,7 @@ class BzrServerFactory(object):
 
 def serve_bzr(transport, host=None, port=None, inet=False):
     """This is the default implementation of 'bzr serve'.
-    
+
     It creates a TCP or pipe smart server on 'transport, and runs it.  The
     transport will be decorated with a chroot and pathfilter (using
     os.path.expanduser).

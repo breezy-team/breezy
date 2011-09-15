@@ -2568,6 +2568,12 @@ to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
 '''))
 
+option_registry.register(
+    Option('serve.client_timeout',
+           default=300, from_unicode=int_from_store,
+           help="If we wait for a new request from a client for more than"
+                " X seconds, consider the client idle, and hangup."))
+
 
 class Section(object):
     """A section defines a dict of option name => value.
