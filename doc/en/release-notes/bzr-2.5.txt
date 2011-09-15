@@ -62,6 +62,11 @@ bzr 2.5b1
 
 :2.5b1: 2011-09-15
 
+This is the first beta of the 2.5 series, leading up to a 2.5.0
+release in February 2012.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.5b1.
+
 External Compatibility Breaks
 *****************************
 
