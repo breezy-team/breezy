@@ -84,7 +84,7 @@ try:
 except ImportError:
     # lsprof not available
     pass
-from bzrlib.smart import client, medium, request
+from bzrlib.smart import client, request
 from bzrlib.transport import (
     memory,
     pathfilter,
