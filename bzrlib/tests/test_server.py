@@ -265,7 +265,7 @@ class TestThread(cethread.CatchingExceptionThread):
             #raise AssertionError('thread %s hung' % (self.name,))
 
 
-class TestingTCPServerMixin:
+class TestingTCPServerMixin(object):
     """Mixin to support running SocketServer.TCPServer in a thread.
 
     Tests are connecting from the main thread, the server has to be run in a

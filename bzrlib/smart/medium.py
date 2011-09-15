@@ -285,24 +285,20 @@ class SmartServerStreamMedium(SmartMedium):
         """select() on a file descriptor, waiting for nonblocking read()"""
         # Use local variables to handle when the interpreter is shutting down
         try:
-            if (timeout_seconds is None
-                or timeout_seconds <= self._client_poll_timeout):
-                rs, _, _ = select.select([fd], [], [], timeout_seconds)
-            else:
-                # It looks like during the test suite, we close the server-side
-                # socket as part of 'shut down this server'. Depending on how
-                # we race with select.select, that either
-                # 1) Raises socket.error(EBADF) immediately
-                # 2) Occasionally (1 in 1000 or so) raises select.error(EBADF)
-                # 3) 1-in-3 or so times out, calling select.select immediately
-                #    afterwards seems to raise EBADF.
-                # I think what happens is select.select is unable to see the
-                # status of a file that is closed after it starts 'sleeping'.
-                t_end = time.time() + timeout_seconds
-                rs = []
-                while not rs and time.time() < t_end:
-                    rs, _, _ = select.select([fd], [], [],
-                                             self._client_poll_timeout)
+            # It looks like during the test suite, we close the server-side
+            # socket as part of 'shut down this server'. Depending on how
+            # we race with select.select, that either
+            # 1) Raises socket.error(EBADF) immediately
+            # 2) Occasionally (1 in 1000 or so) raises select.error(EBADF)
+            # 3) 1-in-3 or so times out, calling select.select immediately
+            #    afterwards seems to raise EBADF.
+            # I think what happens is select.select is unable to see the
+            # status of a file that is closed after it starts 'sleeping'.
+            t_end = time.time() + timeout_seconds
+            poll_timeout = min(timeout_seconds, self._client_poll_timeout)
+            rs = []
+            while not rs and time.time() < t_end:
+                rs, _, _ = select.select([fd], [], [], poll_timeout)
         except (select.error, socket.error) as e:
             err = getattr(e, 'errno', None)
             if err is None:
