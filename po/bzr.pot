@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: <bazaar@canonical.com>\n"
-"POT-Creation-Date: 2011-09-16 10:14+0100\n"
+"POT-Creation-Date: 2011-09-16 10:15+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -6028,7 +6028,7 @@ msgstr ""
 
 #: dummy/help_topics/basic/detail.txt:1
 msgid ""
-"Bazaar 2.5.0dev1 -- a free distributed version-control tool\n"
+"Bazaar 2.5.0dev2 -- a free distributed version-control tool\n"
 "http://bazaar.canonical.com/"
 msgstr ""
 
