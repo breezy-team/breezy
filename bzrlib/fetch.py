@@ -37,6 +37,7 @@ from bzrlib import (
     errors,
     ui,
     )
+from bzrlib.i18n import gettext
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 

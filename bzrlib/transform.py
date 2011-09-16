@@ -42,6 +42,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.i18n import gettext
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot,
