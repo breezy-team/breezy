@@ -25,6 +25,7 @@ import struct
 import sys
 
 from bzrlib import cmdline
+from bzrlib.i18n import gettext
 
 # Windows version
 if sys.platform == 'win32':
@@ -128,7 +129,7 @@ def debug_memory_win32api(message='', short=True):
             ctypes.byref(mem_struct),
             ctypes.sizeof(mem_struct))
         if not ret:
-            trace.note('Failed to GetProcessMemoryInfo()')
+            trace.note(gettext('Failed to GetProcessMemoryInfo()'))
             return
         info = {'PageFaultCount': mem_struct.PageFaultCount,
                 'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
@@ -149,26 +150,26 @@ def debug_memory_win32api(message='', short=True):
         proc = win32process.GetCurrentProcess()
         info = win32process.GetProcessMemoryInfo(proc)
     else:
-        trace.note('Cannot debug memory on win32 without ctypes'
-                   ' or win32process')
+        trace.note(gettext('Cannot debug memory on win32 without ctypes'
+                   ' or win32process'))
         return
     if short:
         # using base-2 units (see HACKING.txt).
-        trace.note('WorkingSize %7dKiB'
-                   '\tPeakWorking %7dKiB\t%s',
+        trace.note(gettext('WorkingSize %7dKiB'
+                   '\tPeakWorking %7dKiB\t%s'),
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message)
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize       %8d KiB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d KiB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d KiB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d KiB',
+    trace.note(gettext('WorkingSize       %8d KiB'), info['WorkingSetSize'] / 1024)
+    trace.note(gettext('PeakWorking       %8d KiB'), info['PeakWorkingSetSize'] / 1024)
+    trace.note(gettext('PagefileUsage     %8d KiB'), info.get('PagefileUsage', 0) / 1024)
+    trace.note(gettext('PeakPagefileUsage %8d KiB'),
                info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d KiB', info.get('PrivateUsage', 0) / 1024)
-    trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
+    trace.note(gettext('PrivateUsage      %8d KiB'), info.get('PrivateUsage', 0) / 1024)
+    trace.note(gettext('PageFaultCount    %8d'), info.get('PageFaultCount', 0))
 
 
 def get_console_size(defaultx=80, defaulty=25):

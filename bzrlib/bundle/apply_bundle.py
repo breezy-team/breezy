@@ -64,7 +64,7 @@ def merge_bundle(reader, tree, check_clean, merge_type,
         merger.pp.next_phase()
         merger.find_base()
         if merger.base_rev_id == merger.other_rev_id:
-            note("Nothing to do.")
+            note(gettext("Nothing to do."))
             return 0
         merger.merge_type = merge_type
         merger.show_base = show_base

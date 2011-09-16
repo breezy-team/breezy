@@ -957,7 +957,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
         stats.pprint()
     else:
         stats.save(filename)
-        trace.note('Profile data written to "%s".', filename)
+        trace.note(gettext('Profile data written to "%s".'), filename)
     return ret
 
 

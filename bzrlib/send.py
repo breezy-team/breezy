@@ -25,6 +25,7 @@ from bzrlib import (
     registry,
     trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib.branch import (
     Branch,
     )
@@ -73,8 +74,8 @@ def send(submit_branch, revision, public_branch, remember, format,
             raise errors.BzrCommandError('No submit branch known or'
                                          ' specified')
         if remembered_submit_branch is not None:
-            trace.note('Using saved %s location "%s" to determine what '
-                       'changes to submit.', remembered_submit_branch,
+            trace.note(gettext('Using saved %s location "%s" to determine what '
+                       'changes to submit.'), remembered_submit_branch,
                        submit_branch)
 
         if mail_to is None or format is None:

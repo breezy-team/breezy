@@ -23,7 +23,7 @@ from bzrlib import (
     trace,
 )
 from bzrlib.ui import ui_factory
-
+from bzrlib.i18n import gettext
 
 class RenameMap(object):
     """Determine a mapping of renames."""
@@ -238,7 +238,7 @@ class RenameMap(object):
             pp.next_phase()
             delta = rn._make_inventory_delta(matches)
             for old, new, file_id, entry in delta:
-                trace.note("%s => %s", old, new)
+                trace.note( gettext("{0} => {1}").format(old, new) )
             if not dry_run:
                 tree.add(required_parents)
                 tree.apply_inventory_delta(delta)

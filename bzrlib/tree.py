@@ -35,6 +35,7 @@ from bzrlib import (
     rules,
     trace,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.decorators import needs_read_lock
@@ -631,7 +632,7 @@ class Tree(object):
         prefs = self.iter_search_rules([path], filter_pref_names).next()
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+            trace.note(gettext("*** {0} content-filter: {1} => {2!r}").format(path,prefs,stk))
         return stk
 
     def _content_filter_stack_provider(self):

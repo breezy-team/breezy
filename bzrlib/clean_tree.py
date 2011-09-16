@@ -27,7 +27,7 @@ from bzrlib import (
 from bzrlib.osutils import isdir
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
-
+from bzrlib.i18n import gettext
 
 def is_detritus(subp):
     """Return True if the supplied path is detritus, False otherwise"""
@@ -59,7 +59,7 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
             ignored=ignored, detritus=detritus))
         deletables = _filter_out_nested_bzrdirs(deletables)
         if len(deletables) == 0:
-            note('Nothing to delete.')
+            note(gettext('Nothing to delete.'))
             return 0
         if not no_prompt:
             for path, subp in deletables:
@@ -105,11 +105,11 @@ def delete_items(deletables, dry_run=False):
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        ui.ui_factory.show_warning('unable to remove %s' % path)
+        ui.ui_factory.show_warning(gettext('unable to remove %s') % path)
     has_deleted = False
     for path, subp in deletables:
         if not has_deleted:
-            note("deleting paths:")
+            note(gettext("deleting paths:"))
             has_deleted = True
         if not dry_run:
             if isdir(path):
@@ -122,9 +122,9 @@ def delete_items(deletables, dry_run=False):
                     # We handle only permission error here
                     if e.errno != errno.EACCES:
                         raise e
-                    ui.ui_factory.show_warning(
-                        'unable to remove "%s": %s.' % (path, e.strerror))
+                    ui.ui_factory.show_warning(gettext(
+                        'unable to remove "%s": %s.') % (path, e.strerror))
         else:
             note('  ' + subp)
     if not has_deleted:
-        note("No files deleted.")
+        note(gettext("No files deleted."))
