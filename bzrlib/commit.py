@@ -965,10 +965,10 @@ class Commit(object):
 
     def _emit_progress(self):
         if self.pb_entries_count is not None:
-            text = "%s [%d] - Stage" % (self.pb_stage_name,
+            text = gettext("{0} [{1}] - Stage").format(self.pb_stage_name,
                 self.pb_entries_count)
         else:
-            text = "%s - Stage" % (self.pb_stage_name, )
+            text = gettext("%s - Stage") % (self.pb_stage_name, )
         self.pb.update(text, self.pb_stage_count, self.pb_stage_total)
 
     def _set_specific_file_ids(self):
