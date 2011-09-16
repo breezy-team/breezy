@@ -29,6 +29,7 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     test_log,
+    features,
     )
 
 
@@ -442,6 +443,25 @@ class TestLogTags(TestLog):
         self.assertContainsRe(log, r'tags: tag1')
 
 
+class TestLogSignatures(TestLog):
+
+    def test_log_with_signatures(self):
+        self.requireFeature(features.gpgme)
+
+        tree = self.make_linear_branch(format='dirstate-tags')
+
+        log = self.run_bzr("log --signatures")[0]
+        self.assertTrue('signature: no signature' in log)
+
+    def test_log_without_signatures(self):
+        self.requireFeature(features.gpgme)
+
+        tree = self.make_linear_branch(format='dirstate-tags')
+
+        log = self.run_bzr("log")[0]
+        self.assertFalse('signature: no signature' in log)
+
+
 class TestLogVerbose(TestLog):
 
     def setUp(self):
@@ -462,6 +482,9 @@ class TestLogVerbose(TestLog):
 
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])
+
+    def test_log_s_verbose(self):
+        self.assertUseShortDeltaFormat(['log', '-S', '-v'])
 
     def test_log_short_verbose_verbose(self):
         self.assertUseLongDeltaFormat(['log', '--short', '-vv'])
@@ -943,7 +966,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertLogRevnos([], ["2", "1"])
 
     def test_log_range_open_begin(self):
-        raise tests.KnownFailure("log with ghosts fails. bug #726466")
+        self.knownFailure("log with ghosts fails. bug #726466")
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
@@ -951,3 +974,58 @@ class MainlineGhostTests(TestLogWithLogCatcher):
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])
+
+class TestLogMatch(TestLogWithLogCatcher):
+    def prepare_tree(self):
+        tree = self.make_branch_and_tree('')
+        self.build_tree(
+            ['/hello.txt', '/goodbye.txt'])
+        tree.add('hello.txt')
+        tree.commit(message='message1', committer='committer1', authors=['author1'])
+        tree.add('goodbye.txt')
+        tree.commit(message='message2', committer='committer2', authors=['author2'])
+    
+    def test_message(self):
+        self.prepare_tree()
+        self.assertLogRevnos(["-m", "message1"], ["1"])
+        self.assertLogRevnos(["-m", "message2"], ["2"])
+        self.assertLogRevnos(["-m", "message"], ["2", "1"])
+        self.assertLogRevnos(["-m", "message1", "-m", "message2"], ["2", "1"])
+        self.assertLogRevnos(["--match-message", "message1"], ["1"])
+        self.assertLogRevnos(["--match-message", "message2"], ["2"])
+        self.assertLogRevnos(["--match-message", "message"], ["2", "1"])
+        self.assertLogRevnos(["--match-message", "message1", 
+                              "--match-message", "message2"], ["2", "1"])
+        self.assertLogRevnos(["--message", "message1"], ["1"])
+        self.assertLogRevnos(["--message", "message2"], ["2"])
+        self.assertLogRevnos(["--message", "message"], ["2", "1"])
+        self.assertLogRevnos(["--match-message", "message1", 
+                              "--message", "message2"], ["2", "1"])
+        self.assertLogRevnos(["--message", "message1", 
+                              "--match-message", "message2"], ["2", "1"])
+
+    def test_committer(self):
+        self.prepare_tree()
+        self.assertLogRevnos(["-m", "committer1"], ["1"])
+        self.assertLogRevnos(["-m", "committer2"], ["2"])
+        self.assertLogRevnos(["-m", "committer"], ["2", "1"])
+        self.assertLogRevnos(["-m", "committer1", "-m", "committer2"], 
+                             ["2", "1"])
+        self.assertLogRevnos(["--match-committer", "committer1"], ["1"])
+        self.assertLogRevnos(["--match-committer", "committer2"], ["2"])
+        self.assertLogRevnos(["--match-committer", "committer"], ["2", "1"])
+        self.assertLogRevnos(["--match-committer", "committer1", 
+                              "--match-committer", "committer2"], ["2", "1"])
+
+    def test_author(self):
+        self.prepare_tree()
+        self.assertLogRevnos(["-m", "author1"], ["1"])
+        self.assertLogRevnos(["-m", "author2"], ["2"])
+        self.assertLogRevnos(["-m", "author"], ["2", "1"])
+        self.assertLogRevnos(["-m", "author1", "-m", "author2"], 
+                             ["2", "1"])
+        self.assertLogRevnos(["--match-author", "author1"], ["1"])
+        self.assertLogRevnos(["--match-author", "author2"], ["2"])
+        self.assertLogRevnos(["--match-author", "author"], ["2", "1"])
+        self.assertLogRevnos(["--match-author", "author1", 
+                              "--match-author", "author2"], ["2", "1"])

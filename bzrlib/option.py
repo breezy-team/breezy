@@ -25,6 +25,7 @@ lazy_import(globals(), """
 from bzrlib import (
     errors,
     revisionspec,
+    i18n,
     )
 """)
 
@@ -312,7 +313,7 @@ class RegistryOption(Option):
 
     def __init__(self, name, help, registry=None, converter=None,
         value_switches=False, title=None, enum_switch=True,
-        lazy_registry=None, short_name=None):
+        lazy_registry=None, short_name=None, short_value_switches=None):
         """
         Constructor.
 
@@ -328,6 +329,8 @@ class RegistryOption(Option):
             which takes a value.
         :param lazy_registry: A tuple of (module name, attribute name) for a
             registry to be lazily loaded.
+        :param short_name: The short name for the enum switch, if any
+        :param short_value_switches: A dict mapping values to short names
         """
         Option.__init__(self, name, help, type=self.convert, short_name=short_name)
         self._registry = registry
@@ -344,6 +347,7 @@ class RegistryOption(Option):
         self.converter = converter
         self.value_switches = value_switches
         self.enum_switch = enum_switch
+        self.short_value_switches = short_value_switches
         self.title = title
         if self.title is None:
             self.title = name
@@ -387,6 +391,10 @@ class RegistryOption(Option):
                     help = optparse.SUPPRESS_HELP
                 else:
                     help = self.registry.get_help(key)
+                if (self.short_value_switches and
+                    key in self.short_value_switches):
+                    option_strings.append('-%s' %
+                                          self.short_value_switches[key])
                 parser.add_option(action='callback',
                               callback=self._optparse_value_callback(key),
                                   help=help,
@@ -422,9 +430,23 @@ class OptionParser(optparse.OptionParser):
 
     DEFAULT_VALUE = object()
 
+    def __init__(self):
+        optparse.OptionParser.__init__(self)
+        self.formatter = GettextIndentedHelpFormatter()
+
     def error(self, message):
         raise errors.BzrCommandError(message)
 
+class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
+    """Adds gettext() call to format_option()"""
+    def __init__(self):
+        optparse.IndentedHelpFormatter.__init__(self)
+
+    def format_option(self, option):
+        """code taken from Python's optparse.py"""
+        if option.help:
+            option.help = i18n.gettext(option.help)
+        return optparse.IndentedHelpFormatter.format_option(self, option)
 
 def get_optparser(options):
     """Generate an optparse parser for bzrlib-style options"""
@@ -555,7 +577,8 @@ _global_option('email')
 _global_option('update')
 _global_registry_option('log-format', "Use specified log format.",
                         lazy_registry=('bzrlib.log', 'log_formatter_registry'),
-                        value_switches=True, title='Log format')
+                        value_switches=True, title='Log format',
+                        short_value_switches={'short': 'S'})
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')

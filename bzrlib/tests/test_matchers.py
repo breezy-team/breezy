@@ -18,7 +18,10 @@
 
 from testtools.matchers import *
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 from bzrlib.tests.matchers import *
 
 
@@ -62,3 +65,84 @@ class TestReturnsUnlockable(TestCase):
         self.assertNotEqual(None, mismatch)
         self.assertThat(mismatch.describe(), Equals("I am da tree is locked"))
 
+
+class TestMatchesAncestry(TestCaseWithTransport):
+
+    def test__str__(self):
+        matcher = MatchesAncestry("A repository", "arevid")
+        self.assertEqual(
+            "MatchesAncestry(repository='A repository', "
+            "revision_id='arevid')",
+            str(matcher))
+
+    def test_match(self):
+        b = self.make_branch_builder('.')
+        b.start_series()
+        revid1 = b.build_commit()
+        revid2 = b.build_commit()
+        b.finish_series()
+        branch = b.get_branch()
+        m = MatchesAncestry(branch.repository, revid2)
+        self.assertThat([revid2, revid1], m)
+        self.assertThat([revid1, revid2], m)
+        m = MatchesAncestry(branch.repository, revid1)
+        self.assertThat([revid1], m)
+        m = MatchesAncestry(branch.repository, "unknown")
+        self.assertThat(["unknown"], m)
+
+    def test_mismatch(self):
+        b = self.make_branch_builder('.')
+        b.start_series()
+        revid1 = b.build_commit()
+        revid2 = b.build_commit()
+        b.finish_series()
+        branch = b.get_branch()
+        m = MatchesAncestry(branch.repository, revid1)
+        mismatch = m.match([])
+        self.assertIsNot(None, mismatch)
+        self.assertEquals(
+            "mismatched ancestry for revision '%s' was ['%s'], expected []" % (
+                revid1, revid1),
+            mismatch.describe())
+
+
+class TestHasLayout(TestCaseWithTransport):
+
+    def test__str__(self):
+        matcher = HasLayout([("a", "a-id")])
+        self.assertEqual("HasLayout([('a', 'a-id')])", str(matcher))
+
+    def test_match(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        self.assertThat(t, HasLayout(['', 'a', 'b/', 'b/c']))
+        self.assertThat(t, HasLayout(
+            [('', t.get_root_id()),
+             ('a', 'a-id'),
+             ('b/', 'b-id'),
+             ('b/c', 'c-id')]))
+
+    def test_mismatch(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        mismatch = HasLayout(['a']).match(t)
+        self.assertIsNot(None, mismatch)
+        self.assertEquals(
+            "['a'] != [u'', u'a', u'b/', u'b/c']",
+            mismatch.describe())
+
+    def test_no_dirs(self):
+        # Some tree/repository formats do not support versioned directories
+        t = self.make_branch_and_tree('.')
+        t.has_versioned_directories = lambda: False
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c']).match(t))
+        self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
+        mismatch = HasLayout([u'', u'a', u'd/']).match(t)
+        self.assertIsNot(None, mismatch)
+        self.assertEquals(
+            "[u'', u'a'] != [u'', u'a', u'b/', u'b/c']",
+            mismatch.describe())

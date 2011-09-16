@@ -47,6 +47,7 @@ from bzrlib import (
     )
 """)
 from bzrlib import (
+    errors,
     lru_cache,
     osutils,
     registry,

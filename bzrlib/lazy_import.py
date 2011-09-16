@@ -98,8 +98,19 @@ class ScopeReplacer(object):
 
     def _cleanup(self):
         """Stop holding on to all the extra stuff"""
-        del self._factory
-        del self._scope
+        try:
+            del self._factory
+        except AttributeError:
+            # Oops, we just lost a race with another caller of _cleanup.  Just
+            # ignore it.
+            pass
+
+        try:
+            del self._scope
+        except AttributeError:
+            # Another race loss.  See above.
+            pass
+
         # We keep _name, so that we can report errors
         # del self._name
 

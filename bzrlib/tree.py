@@ -35,6 +35,7 @@ from bzrlib import (
     rules,
     trace,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.decorators import needs_read_lock
@@ -57,6 +58,14 @@ class Tree(object):
     Trees can be compared, etc, regardless of whether they are working
     trees or versioned trees.
     """
+
+    def has_versioned_directories(self):
+        """Whether this tree can contain explicitly versioned directories.
+
+        This defaults to True, but some implementations may want to override
+        it.
+        """
+        return True
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False, include_root=False,
@@ -127,6 +136,7 @@ class Tree(object):
     def has_id(self, file_id):
         raise NotImplementedError(self.has_id)
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def __contains__(self, file_id):
         return self.has_id(file_id)
 
@@ -276,8 +286,11 @@ class Tree(object):
 
         :param file_id: The file_id of the file.
         :param path: The path of the file.
+
         If both file_id and path are supplied, an implementation may use
         either one.
+
+        :returns: A single byte string for the whole file.
         """
         my_file = self.get_file(file_id, path)
         try:
@@ -296,8 +309,26 @@ class Tree(object):
         """
         return osutils.split_lines(self.get_file_text(file_id, path))
 
+    def get_file_verifier(self, file_id, path=None, stat_value=None):
+        """Return a verifier for a file.
+
+        The default implementation returns a sha1.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        :param stat_value: Optional stat value for the object
+        :return: Tuple with verifier name and verifier data
+        """
+        return ("SHA1", self.get_file_sha1(file_id, path=path,
+            stat_value=stat_value))
+
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         """Return the SHA1 file for a file.
+
+        :note: callers should use get_file_verifier instead
+            where possible, as the underlying repository implementation may
+            have quicker access to a non-sha1 verifier.
 
         :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
@@ -601,7 +632,7 @@ class Tree(object):
         prefs = self.iter_search_rules([path], filter_pref_names).next()
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+            trace.note(gettext("*** {0} content-filter: {1} => {2!r}").format(path,prefs,stk))
         return stk
 
     def _content_filter_stack_provider(self):
@@ -800,59 +831,6 @@ class InventoryTree(Tree):
         return self.get_file(self._inventory.path2id(path), path)
 
 
-######################################################################
-# diff
-
-# TODO: Merge these two functions into a single one that can operate
-# on either a whole tree or a set of files.
-
-# TODO: Return the diff in order by filename, not by category or in
-# random order.  Can probably be done by lock-stepping through the
-# filenames from both trees.
-
-
-def file_status(filename, old_tree, new_tree):
-    """Return single-letter status, old and new names for a file.
-
-    The complexity here is in deciding how to represent renames;
-    many complex cases are possible.
-    """
-    old_inv = old_tree.inventory
-    new_inv = new_tree.inventory
-    new_id = new_inv.path2id(filename)
-    old_id = old_inv.path2id(filename)
-
-    if not new_id and not old_id:
-        # easy: doesn't exist in either; not versioned at all
-        if new_tree.is_ignored(filename):
-            return 'I', None, None
-        else:
-            return '?', None, None
-    elif new_id:
-        # There is now a file of this name, great.
-        pass
-    else:
-        # There is no longer a file of this name, but we can describe
-        # what happened to the file that used to have
-        # this name.  There are two possibilities: either it was
-        # deleted entirely, or renamed.
-        if new_inv.has_id(old_id):
-            return 'X', old_inv.id2path(old_id), new_inv.id2path(old_id)
-        else:
-            return 'D', old_inv.id2path(old_id), None
-
-    # if the file_id is new in this revision, it is added
-    if new_id and not old_inv.has_id(new_id):
-        return 'A'
-
-    # if there used to be a file of this name, but that ID has now
-    # disappeared, it is deleted
-    if old_id and not new_inv.has_id(old_id):
-        return 'D'
-
-    return 'wtf?'
-
-
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.
 
@@ -1004,8 +982,8 @@ class InterTree(InterObject):
         if source_kind != target_kind:
             changed_content = True
         elif source_kind == 'file':
-            if (self.source.get_file_sha1(file_id, source_path, source_stat) !=
-                self.target.get_file_sha1(file_id, target_path, target_stat)):
+            if not self.file_content_matches(file_id, file_id, source_path,
+                    target_path, source_stat, target_stat):
                 changed_content = True
         elif source_kind == 'symlink':
             if (self.source.get_symlink_target(file_id) !=
@@ -1324,6 +1302,40 @@ class InterTree(InterObject):
                     changed_file_ids.add(result[0])
                     yield result
 
+    @needs_read_lock
+    def file_content_matches(self, source_file_id, target_file_id,
+            source_path=None, target_path=None, source_stat=None, target_stat=None):
+        """Check if two files are the same in the source and target trees.
+
+        This only checks that the contents of the files are the same,
+        it does not touch anything else.
+
+        :param source_file_id: File id of the file in the source tree
+        :param target_file_id: File id of the file in the target tree
+        :param source_path: Path of the file in the source tree
+        :param target_path: Path of the file in the target tree
+        :param source_stat: Optional stat value of the file in the source tree
+        :param target_stat: Optional stat value of the file in the target tree
+        :return: Boolean indicating whether the files have the same contents
+        """
+        source_verifier_kind, source_verifier_data = self.source.get_file_verifier(
+            source_file_id, source_path, source_stat)
+        target_verifier_kind, target_verifier_data = self.target.get_file_verifier(
+            target_file_id, target_path, target_stat)
+        if source_verifier_kind == target_verifier_kind:
+            return (source_verifier_data == target_verifier_data)
+        # Fall back to SHA1 for now
+        if source_verifier_kind != "SHA1":
+            source_sha1 = self.source.get_file_sha1(source_file_id,
+                    source_path, source_stat)
+        else:
+            source_sha1 = source_verifier_data
+        if target_verifier_kind != "SHA1":
+            target_sha1 = self.target.get_file_sha1(target_file_id,
+                    target_path, target_stat)
+        else:
+            target_sha1 = target_verifier_data
+        return (source_sha1 == target_sha1)
 
 InterTree.register_optimiser(InterTree)
 

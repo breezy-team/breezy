@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a non-versioned directory.
-"""
+"""Export a tree to a tarball."""
 
 import os
 import StringIO
@@ -27,66 +26,88 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.export import _export_iter_entries
-from bzrlib.filters import (
-    ContentFilterContext,
-    filtered_output_bytes,
-    )
 
 
-def export_tarball(tree, ball, root, subdir=None, filtered=False,
-                   force_mtime=None):
-    """Export tree contents to a tarball.
+def prepare_tarball_item(tree, root, final_path, entry, force_mtime=None):
+    """Prepare a tarball item for exporting
 
     :param tree: Tree to export
-    :param ball: Tarball to export to
-    :param filtered: Whether to apply filters
-    :param subdir: Sub directory to export
-    :param force_mtime: Option mtime to force, instead of using
-        tree timestamps.
+
+    :param final_path: Final path to place item
+
+    :param entry: Entry to export
+
+    :param force_mtime: Option mtime to force, instead of using tree
+        timestamps.
+
+    Returns a (tarinfo, fileobj) tuple
     """
-    for dp, ie in _export_iter_entries(tree, subdir):
-        filename = osutils.pathjoin(root, dp).encode('utf8')
-        item = tarfile.TarInfo(filename)
-        if force_mtime is not None:
-            item.mtime = force_mtime
-        else:
-            item.mtime = tree.get_file_mtime(ie.file_id, dp)
-        if ie.kind == "file":
-            item.type = tarfile.REGTYPE
-            if tree.is_executable(ie.file_id):
-                item.mode = 0755
-            else:
-                item.mode = 0644
-            if filtered:
-                chunks = tree.get_file_lines(ie.file_id)
-                filters = tree._content_filter_stack(dp)
-                context = ContentFilterContext(dp, tree, ie)
-                contents = filtered_output_bytes(chunks, filters, context)
-                content = ''.join(contents)
-                item.size = len(content)
-                fileobj = StringIO.StringIO(content)
-            else:
-                item.size = tree.get_file_size(ie.file_id)
-                fileobj = tree.get_file(ie.file_id)
-        elif ie.kind == "directory":
-            item.type = tarfile.DIRTYPE
-            item.name += '/'
-            item.size = 0
+    filename = osutils.pathjoin(root, final_path).encode('utf8')
+    item = tarfile.TarInfo(filename)
+    if force_mtime is not None:
+        item.mtime = force_mtime
+    else:
+        item.mtime = tree.get_file_mtime(entry.file_id, final_path)
+    if entry.kind == "file":
+        item.type = tarfile.REGTYPE
+        if tree.is_executable(entry.file_id):
             item.mode = 0755
-            fileobj = None
-        elif ie.kind == "symlink":
-            item.type = tarfile.SYMTYPE
-            item.size = 0
-            item.mode = 0755
-            item.linkname = tree.get_symlink_target(ie.file_id)
-            fileobj = None
         else:
-            raise errors.BzrError("don't know how to export {%s} of kind %r" %
-                           (ie.file_id, ie.kind))
-        ball.addfile(item, fileobj)
+            item.mode = 0644
+        # This brings the whole file into memory, but that's almost needed for
+        # the tarfile contract, which wants the size of the file up front.  We
+        # want to make sure it doesn't change, and we need to read it in one
+        # go for content filtering.
+        content = tree.get_file_text(entry.file_id)
+        item.size = len(content)
+        fileobj = StringIO.StringIO(content)
+    elif entry.kind == "directory":
+        item.type = tarfile.DIRTYPE
+        item.name += '/'
+        item.size = 0
+        item.mode = 0755
+        fileobj = None
+    elif entry.kind == "symlink":
+        item.type = tarfile.SYMTYPE
+        item.size = 0
+        item.mode = 0755
+        item.linkname = tree.get_symlink_target(entry.file_id)
+        fileobj = None
+    else:
+        raise errors.BzrError("don't know how to export {%s} of kind %r"
+                              % (entry.file_id, entry.kind))
+    return (item, fileobj)
 
 
-def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
+def export_tarball_generator(tree, ball, root, subdir=None, force_mtime=None):
+    """Export tree contents to a tarball.
+
+    :returns: A generator that will repeatedly produce None as each file is
+        emitted.  The entire generator must be consumed to complete writing
+        the file.
+
+    :param tree: Tree to export
+
+    :param ball: Tarball to export to; it will be closed when writing is
+        complete.
+
+    :param subdir: Sub directory to export
+
+    :param force_mtime: Option mtime to force, instead of using tree
+        timestamps.
+    """
+    try:
+        for final_path, entry in _export_iter_entries(tree, subdir):
+            (item, fileobj) = prepare_tarball_item(
+                tree, root, final_path, entry, force_mtime)
+            ball.addfile(item, fileobj)
+            yield
+    finally:
+        ball.close()
+
+
+def tgz_exporter_generator(tree, dest, root, subdir, force_mtime=None,
+    fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -106,8 +127,10 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         root_mtime = None
 
     is_stdout = False
-    if dest == '-':
-        basename = None
+    basename = None
+    if fileobj is not None:
+        stream = fileobj
+    elif dest == '-':
         stream = sys.stdout
         is_stdout = True
     else:
@@ -117,63 +140,71 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         # dest. (bug 102234)
         basename = os.path.basename(dest)
     try:
-        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream, mtime=root_mtime)
+        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream,
+                                  mtime=root_mtime)
     except TypeError:
         # Python < 2.7 doesn't support the mtime argument
         zipstream = gzip.GzipFile(basename, 'w', fileobj=stream)
     ball = tarfile.open(None, 'w|', fileobj=zipstream)
-    export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime)
-    ball.close()
+    for _ in export_tarball_generator(
+        tree, ball, root, subdir, force_mtime):
+        yield
+    # Closing zipstream may trigger writes to stream
     zipstream.close()
     if not is_stdout:
+        # Now we can safely close the stream
         stream.close()
 
 
-def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
+def tbz_exporter_generator(tree, dest, root, subdir,
+                           force_mtime=None, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    if dest == '-':
+    if fileobj is not None:
+        ball = tarfile.open(None, 'w|bz2', fileobj)
+    elif dest == '-':
         ball = tarfile.open(None, 'w|bz2', sys.stdout)
     else:
-        # tarfile.open goes on to do 'os.getcwd() + dest' for opening
-        # the tar file. With dest being unicode, this throws UnicodeDecodeError
+        # tarfile.open goes on to do 'os.getcwd() + dest' for opening the
+        # tar file. With dest being unicode, this throws UnicodeDecodeError
         # unless we encode dest before passing it on. This works around
-        # upstream python bug http://bugs.python.org/issue8396
-        # (fixed in Python 2.6.5 and 2.7b1)
+        # upstream python bug http://bugs.python.org/issue8396 (fixed in
+        # Python 2.6.5 and 2.7b1)
         ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:bz2')
-    export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime)
-    ball.close()
+    return export_tarball_generator(
+        tree, ball, root, subdir, force_mtime)
 
 
-def plain_tar_exporter(tree, dest, root, subdir, compression=None,
-                       filtered=False, force_mtime=None):
+def plain_tar_exporter_generator(tree, dest, root, subdir, compression=None,
+    force_mtime=None, fileobj=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    if dest == '-':
+    if fileobj is not None:
+        stream = fileobj
+    elif dest == '-':
         stream = sys.stdout
     else:
         stream = open(dest, 'wb')
     ball = tarfile.open(None, 'w|', stream)
-    export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime)
-    ball.close()
+    return export_tarball_generator(
+        tree, ball, root, subdir, force_mtime)
 
 
-def tar_xz_exporter(tree, dest, root, subdir, filtered=False,
-                    force_mtime=None):
-    return tar_lzma_exporter(tree, dest, root, subdir, filtered=filtered,
-        force_mtime=force_mtime, compression_format="xz")
+def tar_xz_exporter_generator(tree, dest, root, subdir,
+                              force_mtime=None, fileobj=None):
+    return tar_lzma_exporter_generator(tree, dest, root, subdir,
+                                       force_mtime, fileobj, "xz")
 
 
-def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, compression_format="alone"):
+def tar_lzma_exporter_generator(tree, dest, root, subdir,
+                      force_mtime=None, fileobj=None,
+                                compression_format="alone"):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -182,15 +213,16 @@ def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None
     if dest == '-':
         raise errors.BzrError("Writing to stdout not supported for .tar.lzma")
 
+    if fileobj is not None:
+        raise errors.BzrError(
+            "Writing to fileobject not supported for .tar.lzma")
     try:
         import lzma
     except ImportError, e:
         raise errors.DependencyNotPresent('lzma', e)
 
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',
-            options={"format": compression_format})
+        options={"format": compression_format})
     ball = tarfile.open(None, 'w:', fileobj=stream)
-    export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime)
-    ball.close()
-
+    return export_tarball_generator(
+        tree, ball, root, subdir, force_mtime=force_mtime)

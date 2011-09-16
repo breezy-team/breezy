@@ -336,16 +336,23 @@ class TestUrlToPath(TestCase):
 
     def test_function_type(self):
         if sys.platform == 'win32':
-            self.assertEqual(urlutils._win32_local_path_to_url, urlutils.local_path_to_url)
-            self.assertEqual(urlutils._win32_local_path_from_url, urlutils.local_path_from_url)
+            self.assertEqual(urlutils._win32_local_path_to_url,
+                urlutils.local_path_to_url)
+            self.assertEqual(urlutils._win32_local_path_from_url,
+                urlutils.local_path_from_url)
         else:
-            self.assertEqual(urlutils._posix_local_path_to_url, urlutils.local_path_to_url)
-            self.assertEqual(urlutils._posix_local_path_from_url, urlutils.local_path_from_url)
+            self.assertEqual(urlutils._posix_local_path_to_url,
+                urlutils.local_path_to_url)
+            self.assertEqual(urlutils._posix_local_path_from_url,
+                urlutils.local_path_from_url)
 
     def test_posix_local_path_to_url(self):
         to_url = urlutils._posix_local_path_to_url
         self.assertEqual('file:///path/to/foo',
             to_url('/path/to/foo'))
+
+        self.assertEqual('file:///path/to/foo%2Cbar',
+            to_url('/path/to/foo,bar'))
 
         try:
             result = to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s')
@@ -359,6 +366,8 @@ class TestUrlToPath(TestCase):
         from_url = urlutils._posix_local_path_from_url
         self.assertEqual('/path/to/foo',
             from_url('file:///path/to/foo'))
+        self.assertEqual('/path/to/foo',
+            from_url('file:///path/to/foo,branch=foo'))
         self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
@@ -386,6 +395,8 @@ class TestUrlToPath(TestCase):
 
         self.assertEqual('file:///', to_url('/'))
 
+        self.assertEqual('file:///C:/path/to/foo%2Cbar',
+            to_url('C:/path/to/foo,bar'))
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
@@ -418,6 +429,8 @@ class TestUrlToPath(TestCase):
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
         self.assertEqual('/', from_url('file:///'))
+        self.assertEqual('C:/path/to/foo',
+            from_url('file:///C|/path/to/foo,branch=foo'))
 
         self.assertRaises(InvalidURL, from_url, 'file:///C:')
         self.assertRaises(InvalidURL, from_url, 'file:///c')
@@ -428,6 +441,8 @@ class TestUrlToPath(TestCase):
     def test_win32_unc_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
         self.assertEqual('//HOST/path', from_url('file://HOST/path'))
+        self.assertEqual('//HOST/path',
+            from_url('file://HOST/path,branch=foo'))
         # despite IE allows 2, 4, 5 and 6 slashes in URL to another machine
         # we want to use only 2 slashes
         # Firefox understand only 5 slashes in URL, but it's ugly
@@ -442,6 +457,12 @@ class TestUrlToPath(TestCase):
         self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
         self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
         self.assertRaises(InvalidURL, extract, 'file://', '/path')
+        # Root drives without slash treated as invalid, see bug #841322
+        self.assertEqual(('file:///C:', '/'), extract('file://', '/C:/'))
+        self.assertRaises(InvalidURL, extract, 'file://', '/C:')
+        # Invalid without drive separator or following forward slash
+        self.assertRaises(InvalidURL, extract, 'file://', '/C')
+        self.assertRaises(InvalidURL, extract, 'file://', '/C:ool')
 
     def test_split(self):
         # Test bzrlib.urlutils.split()
@@ -494,6 +515,8 @@ class TestUrlToPath(TestCase):
             split_segment_parameters_raw(",key1=val1"))
         self.assertEquals(("foo/", ["key1=val1"]),
             split_segment_parameters_raw("foo/,key1=val1"))
+        self.assertEquals(("/foo", ["key1=val1"]),
+            split_segment_parameters_raw("foo,key1=val1"))
         self.assertEquals(("foo/base,la=bla/other/elements", []),
             split_segment_parameters_raw("foo/base,la=bla/other/elements"))
         self.assertEquals(("foo/base,la=bla/other/elements", ["a=b"]),
@@ -793,10 +816,98 @@ class TestRebaseURL(TestCase):
 
 class TestParseURL(TestCase):
 
-    def test_parse_url(self):
-        self.assertEqual(urlutils.parse_url('http://example.com:80/one'),
-            ('http', None, None, 'example.com', 80, '/one'))
-        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]/one'),
-                ('http', None, None, '1:2:3::40', None, '/one'))
-        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]:80/one'),
-                ('http', None, None, '1:2:3::40', 80, '/one'))
+    def test_parse_simple(self):
+        parsed = urlutils.parse_url('http://example.com:80/one')
+        self.assertEquals(('http', None, None, 'example.com', 80, '/one'),
+            parsed)
+
+    def test_ipv6(self):
+        parsed = urlutils.parse_url('http://[1:2:3::40]/one')
+        self.assertEquals(('http', None, None, '1:2:3::40', None, '/one'),
+            parsed)
+
+    def test_ipv6_port(self):
+        parsed = urlutils.parse_url('http://[1:2:3::40]:80/one')
+        self.assertEquals(('http', None, None, '1:2:3::40', 80, '/one'),
+            parsed)
+
+
+class TestURL(TestCase):
+
+    def test_parse_simple(self):
+        parsed = urlutils.URL.from_string('http://example.com:80/one')
+        self.assertEquals('http', parsed.scheme)
+        self.assertIs(None, parsed.user)
+        self.assertIs(None, parsed.password)
+        self.assertEquals('example.com', parsed.host)
+        self.assertEquals(80, parsed.port)
+        self.assertEquals('/one', parsed.path)
+
+    def test_ipv6(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]/one')
+        self.assertEquals('http', parsed.scheme)
+        self.assertIs(None, parsed.port)
+        self.assertIs(None, parsed.user)
+        self.assertIs(None, parsed.password)
+        self.assertEquals('1:2:3::40', parsed.host)
+        self.assertEquals('/one', parsed.path)
+
+    def test_ipv6_port(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals('http', parsed.scheme)
+        self.assertEquals('1:2:3::40', parsed.host)
+        self.assertIs(None, parsed.user)
+        self.assertIs(None, parsed.password)
+        self.assertEquals(80, parsed.port)
+        self.assertEquals('/one', parsed.path)
+
+    def test_quoted(self):
+        parsed = urlutils.URL.from_string(
+            'http://ro%62ey:h%40t@ex%41mple.com:2222/path')
+        self.assertEquals(parsed.quoted_host, 'ex%41mple.com')
+        self.assertEquals(parsed.host, 'exAmple.com')
+        self.assertEquals(parsed.port, 2222)
+        self.assertEquals(parsed.quoted_user, 'ro%62ey')
+        self.assertEquals(parsed.user, 'robey')
+        self.assertEquals(parsed.quoted_password, 'h%40t')
+        self.assertEquals(parsed.password, 'h@t')
+        self.assertEquals(parsed.path, '/path')
+
+    def test_eq(self):
+        parsed1 = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        parsed2 = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals(parsed1, parsed2)
+        self.assertEquals(parsed1, parsed1)
+        parsed2.path = '/two'
+        self.assertNotEquals(parsed1, parsed2)
+
+    def test_repr(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals(
+            "<URL('http', None, None, '1:2:3::40', 80, '/one')>",
+            repr(parsed))
+
+    def test_str(self):
+        parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        self.assertEquals('http://[1:2:3::40]:80/one', str(parsed))
+
+    def test__combine_paths(self):
+        combine = urlutils.URL._combine_paths
+        self.assertEqual('/home/sarah/project/foo',
+                         combine('/home/sarah', 'project/foo'))
+        self.assertEqual('/etc',
+                         combine('/home/sarah', '../../etc'))
+        self.assertEqual('/etc',
+                         combine('/home/sarah', '../../../etc'))
+        self.assertEqual('/etc',
+                         combine('/home/sarah', '/etc'))
+
+    def test_clone(self):
+        url = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
+        url1 = url.clone("two")
+        self.assertEquals("/one/two", url1.path)
+        url2 = url.clone("/two")
+        self.assertEquals("/two", url2.path)
+        url3 = url.clone()
+        self.assertIsNot(url, url3)
+        self.assertEquals(url, url3)

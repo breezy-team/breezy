@@ -70,7 +70,6 @@ from bzrlib import (
     osutils,
     trace,
     transport,
-    ui,
     urlutils,
     )
 
@@ -648,7 +647,13 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                                      headers)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
-                hdrs = ['%s: %s' % (k, v) for k,v in headers.items()]
+                hdrs = []
+                for k,v in headers.iteritems():
+                    # People are often told to paste -Dhttp output to help
+                    # debug. Don't compromise credentials.
+                    if k in ('Authorization', 'Proxy-Authorization'):
+                        v = '<masked>'
+                    hdrs.append('%s: %s' % (k, v))
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
                 print 'Request sent: [%r] from (%s)' \
@@ -990,9 +995,8 @@ class ProxyHandler(urllib2.ProxyHandler):
         # grok user:password@host:port as well as
         # http://user:password@host:port
 
-        (scheme, user, password,
-         host, port, path) = transport.ConnectedTransport._split_url(proxy)
-        if not host:
+        parsed_url = transport.ConnectedTransport._split_url(proxy)
+        if not parsed_url.host:
             raise errors.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
@@ -1000,15 +1004,17 @@ class ProxyHandler(urllib2.ProxyHandler):
             # proxied request, intialize.  scheme (the authentication scheme)
             # and realm will be set by the AuthHandler
             request.proxy_auth = {
-                                  'host': host, 'port': port,
-                                  'user': user, 'password': password,
-                                  'protocol': scheme,
+                                  'host': parsed_url.host,
+                                  'port': parsed_url.port,
+                                  'user': parsed_url.user,
+                                  'password': parsed_url.password,
+                                  'protocol': parsed_url.scheme,
                                    # We ignore path since we connect to a proxy
                                   'path': None}
-        if port is None:
-            phost = host
+        if parsed_url.port is None:
+            phost = parsed_url.host
         else:
-            phost = host + ':%d' % port
+            phost = parsed_url.host + ':%d' % parsed_url.port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
             print 'set_proxy: proxy set to %s://%s' % (type, phost)
@@ -1123,12 +1129,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         auth['modified'] = False
         # Put some common info in auth if the caller didn't
         if auth.get('path', None) is None:
-            (protocol, _, _,
-             host, port, path) = urlutils.parse_url(request.get_full_url())
-            self.update_auth(auth, 'protocol', protocol)
-            self.update_auth(auth, 'host', host)
-            self.update_auth(auth, 'port', port)
-            self.update_auth(auth, 'path', path)
+            parsed_url = urlutils.URL.from_string(request.get_full_url())
+            self.update_auth(auth, 'protocol', parsed_url.scheme)
+            self.update_auth(auth, 'host', parsed_url.host)
+            self.update_auth(auth, 'port', parsed_url.port)
+            self.update_auth(auth, 'path', parsed_url.path)
         # FIXME: the auth handler should be selected at a single place instead
         # of letting all handlers try to match all headers, but the current
         # design doesn't allow a simple implementation.
@@ -1260,11 +1265,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_password_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(user)s@%(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' password'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' password'
         return prompt
 
     def _build_username_prompt(self, auth):
@@ -1278,11 +1283,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_username_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' username'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' username'
         return prompt
 
     def http_request(self, request):
@@ -1552,12 +1557,12 @@ class ProxyAuthHandler(AbstractAuthHandler):
 
     def build_password_prompt(self, auth):
         prompt = self._build_password_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def build_username_prompt(self, auth):
         prompt = self._build_username_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def http_error_407(self, req, fp, code, msg, headers):

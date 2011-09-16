@@ -25,6 +25,7 @@ import struct
 import sys
 
 from bzrlib import cmdline
+from bzrlib.i18n import gettext
 
 # Windows version
 if sys.platform == 'win32':
@@ -128,7 +129,7 @@ def debug_memory_win32api(message='', short=True):
             ctypes.byref(mem_struct),
             ctypes.sizeof(mem_struct))
         if not ret:
-            trace.note('Failed to GetProcessMemoryInfo()')
+            trace.note(gettext('Failed to GetProcessMemoryInfo()'))
             return
         info = {'PageFaultCount': mem_struct.PageFaultCount,
                 'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
@@ -149,26 +150,26 @@ def debug_memory_win32api(message='', short=True):
         proc = win32process.GetCurrentProcess()
         info = win32process.GetProcessMemoryInfo(proc)
     else:
-        trace.note('Cannot debug memory on win32 without ctypes'
-                   ' or win32process')
+        trace.note(gettext('Cannot debug memory on win32 without ctypes'
+                   ' or win32process'))
         return
     if short:
         # using base-2 units (see HACKING.txt).
-        trace.note('WorkingSize %7dKiB'
-                   '\tPeakWorking %7dKiB\t%s',
+        trace.note(gettext('WorkingSize %7dKiB'
+                   '\tPeakWorking %7dKiB\t%s'),
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message)
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize       %8d KiB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d KiB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d KiB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d KiB',
+    trace.note(gettext('WorkingSize       %8d KiB'), info['WorkingSetSize'] / 1024)
+    trace.note(gettext('PeakWorking       %8d KiB'), info['PeakWorkingSetSize'] / 1024)
+    trace.note(gettext('PagefileUsage     %8d KiB'), info.get('PagefileUsage', 0) / 1024)
+    trace.note(gettext('PeakPagefileUsage %8d KiB'),
                info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d KiB', info.get('PrivateUsage', 0) / 1024)
-    trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
+    trace.note(gettext('PrivateUsage      %8d KiB'), info.get('PrivateUsage', 0) / 1024)
+    trace.note(gettext('PageFaultCount    %8d'), info.get('PageFaultCount', 0))
 
 
 def get_console_size(defaultx=80, defaulty=25):
@@ -576,3 +577,41 @@ if has_ctypes and winver != 'Windows 98':
         return argv
 else:
     get_unicode_argv = None
+
+
+if has_win32api:
+    def _pywin32_is_local_pid_dead(pid):
+        """True if pid doesn't correspond to live process on this machine"""
+        try:
+            handle = win32api.OpenProcess(1, False, pid) # PROCESS_TERMINATE
+        except pywintypes.error, e:
+            if e[0] == 5: # ERROR_ACCESS_DENIED
+                # Probably something alive we're not allowed to kill
+                return False
+            elif e[0] == 87: # ERROR_INVALID_PARAMETER
+                return True
+            raise
+        handle.close()
+        return False
+    is_local_pid_dead = _pywin32_is_local_pid_dead
+elif has_ctypes and sys.platform == 'win32':
+    from ctypes.wintypes import BOOL, DWORD, HANDLE
+    _kernel32 = ctypes.windll.kernel32
+    _CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
+        ("CloseHandle", _kernel32))
+    _OpenProcess = ctypes.WINFUNCTYPE(HANDLE, DWORD, BOOL, DWORD)(
+        ("OpenProcess", _kernel32))
+    def _ctypes_is_local_pid_dead(pid):
+        """True if pid doesn't correspond to live process on this machine"""
+        handle = _OpenProcess(1, False, pid) # PROCESS_TERMINATE
+        if not handle:
+            errorcode = ctypes.GetLastError()
+            if errorcode == 5: # ERROR_ACCESS_DENIED
+                # Probably something alive we're not allowed to kill
+                return False
+            elif errorcode == 87: # ERROR_INVALID_PARAMETER
+                return True
+            raise ctypes.WinError(errorcode)
+        _CloseHandle(handle)
+        return False
+    is_local_pid_dead = _ctypes_is_local_pid_dead

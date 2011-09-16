@@ -34,6 +34,7 @@ import stat
 from bzrlib import (
     bzrdir,
     cache_utf8,
+    config,
     conflicts as _mod_conflicts,
     debug,
     dirstate,
@@ -75,8 +76,6 @@ from bzrlib.workingtree import (
 
 
 class DirStateWorkingTree(InventoryWorkingTree):
-
-    _DEFAULT_WORTH_SAVING_LIMIT = 10
 
     def __init__(self, basedir,
                  branch,
@@ -251,20 +250,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
         :return: an integer. -1 means never save.
         """
-        config = self.branch.get_config()
-        val = config.get_user_option('bzr.workingtree.worth_saving_limit')
-        if val is None:
-            val = self._DEFAULT_WORTH_SAVING_LIMIT
-        else:
-            try:
-                val = int(val)
-            except ValueError, e:
-                trace.warning('Invalid config value for'
-                              ' "bzr.workingtree.worth_saving_limit"'
-                              ' value %r is not an integer.'
-                              % (val,))
-                val = self._DEFAULT_WORTH_SAVING_LIMIT
-        return val
+        # FIXME: We want a WorkingTreeStack here -- vila 20110812
+        conf = config.BranchStack(self.branch)
+        return conf.get('bzr.workingtree.worth_saving_limit')
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -1462,6 +1450,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat):
 
     missing_parent_conflicts = True
 
+    supports_versioned_directories = True
+
     _lock_class = LockDir
     _lock_file_name = 'lock'
 
@@ -1713,9 +1703,6 @@ class DirStateRevisionTree(InventoryTree):
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]
 
-    def _get_ancestors(self, default_revision):
-        return set(self._repository.get_ancestry(self._revision_id,
-                                                 topo_sorted=False))
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:

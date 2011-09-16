@@ -32,7 +32,6 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
     urlutils,
-    versionedfile,
     vf_repository,
     )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
@@ -41,12 +40,16 @@ from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
+from bzrlib.i18n import gettext
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
+
+
+_DEFAULT_SEARCH_DEPTH = 100
 
 
 class _RpcHelper(object):
@@ -484,11 +487,13 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+                      append_revisions_only=None):
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
-            name=name, repository=repository)
+            name=name, repository=repository,
+            append_revisions_only=append_revisions_only)
         if not isinstance(real_branch, RemoteBranch):
             if not isinstance(repository, RemoteRepository):
                 raise AssertionError(
@@ -670,7 +675,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
-        return client.remote_path_from_transport(self.root_transport)
+        return urlutils.split_segment_parameters_raw(
+            client.remote_path_from_transport(self.root_transport))[0]
 
     def get_branch_transport(self, branch_format, name=None):
         self._ensure_real()
@@ -1506,12 +1512,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         #
+        # Make the check before we lock: this raises an exception.
+        self._check_fallback_repository(repository)
         if self.is_locked():
             # We will call fallback.unlock() when we transition to the unlocked
             # state, so always add a lock here. If a caller passes us a locked
             # repository, they are responsible for unlocking it later.
             repository.lock_read()
-        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
@@ -1661,6 +1668,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._real_repository.create_bundle(target, base, fileobj, format)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_ancestry(self, revision_id, topo_sorted=True):
         self._ensure_real()
         return self._real_repository.get_ancestry(revision_id, topo_sorted)
@@ -1679,6 +1688,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         """
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
+
+    def get_cached_parent_map(self, revision_ids):
+        """See bzrlib.CachingParentsProvider.get_cached_parent_map"""
+        return self._unstacked_provider.get_cached_parent_map(revision_ids)
 
     def get_parent_map(self, revision_ids):
         """See bzrlib.Graph.get_parent_map()."""
@@ -1743,26 +1756,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
-        # start_set is all the keys in the cache
-        start_set = set(parents_map)
-        # result set is all the references to keys in the cache
-        result_parents = set()
-        for parents in parents_map.itervalues():
-            result_parents.update(parents)
-        stop_keys = result_parents.difference(start_set)
-        # We don't need to send ghosts back to the server as a position to
-        # stop either.
-        stop_keys.difference_update(self._unstacked_provider.missing_keys)
-        key_count = len(parents_map)
-        if (NULL_REVISION in result_parents
-            and NULL_REVISION in self._unstacked_provider.missing_keys):
-            # If we pruned NULL_REVISION from the stop_keys because it's also
-            # in our cache of "missing" keys we need to increment our key count
-            # by 1, because the reconsitituted SearchResult on the server will
-            # still consider NULL_REVISION to be an included key.
-            key_count += 1
-        included_keys = start_set.intersection(result_parents)
-        start_set.difference_update(included_keys)
+        if _DEFAULT_SEARCH_DEPTH <= 0:
+            (start_set, stop_keys,
+             key_count) = graph.search_result_from_parent_map(
+                parents_map, self._unstacked_provider.missing_keys)
+        else:
+            (start_set, stop_keys,
+             key_count) = graph.limited_search_result_from_parent_map(
+                parents_map, self._unstacked_provider.missing_keys,
+                keys, depth=_DEFAULT_SEARCH_DEPTH)
         recipe = ('manual', start_set, stop_keys, key_count)
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1872,7 +1874,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         from bzrlib import osutils
         import tarfile
         # TODO: Maybe a progress bar while streaming the tarball?
-        note("Copying repository content as tarball...")
+        note(gettext("Copying repository content as tarball..."))
         tar_file = self._get_tarball('bz2')
         if tar_file is None:
             return None
@@ -1974,6 +1976,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def supports_rich_root(self):
         return self._format.rich_root_data
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def iter_reverse_revision_history(self, revision_id):
         self._ensure_real()
         return self._real_repository.iter_reverse_revision_history(revision_id)
@@ -2351,7 +2354,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         return a_bzrdir.open_branch(name=name, 
             ignore_fallbacks=ignore_fallbacks)
 
-    def _vfs_initialize(self, a_bzrdir, name):
+    def _vfs_initialize(self, a_bzrdir, name, append_revisions_only):
         # Initialisation when using a local bzrdir object, or a non-vfs init
         # method is not available on the server.
         # self._custom_format is always set - the start of initialize ensures
@@ -2359,17 +2362,19 @@ class RemoteBranchFormat(branch.BranchFormat):
         if isinstance(a_bzrdir, RemoteBzrDir):
             a_bzrdir._ensure_real()
             result = self._custom_format.initialize(a_bzrdir._real_bzrdir,
-                name)
+                name, append_revisions_only=append_revisions_only)
         else:
             # We assume the bzrdir is parameterised; it may not be.
-            result = self._custom_format.initialize(a_bzrdir, name)
+            result = self._custom_format.initialize(a_bzrdir, name,
+                append_revisions_only=append_revisions_only)
         if (isinstance(a_bzrdir, RemoteBzrDir) and
             not isinstance(result, RemoteBranch)):
             result = RemoteBranch(a_bzrdir, a_bzrdir.find_repository(), result,
                                   name=name)
         return result
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -2381,10 +2386,12 @@ class RemoteBranchFormat(branch.BranchFormat):
             network_name = reference_format.network_name()
         # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            return self._vfs_initialize(a_bzrdir, name=name)
+            return self._vfs_initialize(a_bzrdir, name=name,
+                append_revisions_only=append_revisions_only)
         medium = a_bzrdir._client._medium
         if medium._is_remote_before((1, 13)):
-            return self._vfs_initialize(a_bzrdir, name=name)
+            return self._vfs_initialize(a_bzrdir, name=name,
+                append_revisions_only=append_revisions_only)
         # Creating on a remote bzr dir.
         # 2) try direct creation via RPC
         path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
@@ -2397,7 +2404,8 @@ class RemoteBranchFormat(branch.BranchFormat):
         except errors.UnknownSmartMethod:
             # Fallback - use vfs methods
             medium._remember_remote_is_before((1, 13))
-            return self._vfs_initialize(a_bzrdir, name=name)
+            return self._vfs_initialize(a_bzrdir, name=name,
+                    append_revisions_only=append_revisions_only)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         # Turn the response into a RemoteRepository object.
@@ -2424,6 +2432,8 @@ class RemoteBranchFormat(branch.BranchFormat):
             remote_repo = RemoteRepository(repo_bzrdir, repo_format)
         remote_branch = RemoteBranch(a_bzrdir, remote_repo,
             format=format, setup_stacking=False, name=name)
+        if append_revisions_only:
+            remote_branch.set_append_revisions_only(append_revisions_only)
         # XXX: We know this is a new branch, so it must have revno 0, revid
         # NULL_REVISION. Creating the branch locked would make this be unable
         # to be wrong; here its simply very unlikely to be wrong. RBC 20090225
@@ -2624,9 +2634,16 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self.bzrdir, self._client)
         return self._control_files
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         self._ensure_real()
-        return self._real_branch._get_checkout_format()
+        if lightweight:
+            format = RemoteBzrDirFormat()
+            self.bzrdir._format._supply_sub_formats_to(format)
+            format.workingtree_format = self._real_branch._get_checkout_format(
+                lightweight=lightweight).workingtree_format
+            return format
+        else:
+            return self._real_branch._get_checkout_format(lightweight=False)
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""
@@ -3101,22 +3118,32 @@ class RemoteConfig(object):
         """
         try:
             configobj = self._get_configobj()
+            section_obj = None
             if section is None:
                 section_obj = configobj
             else:
                 try:
                     section_obj = configobj[section]
                 except KeyError:
-                    return default
-            return section_obj.get(name, default)
+                    pass
+            if section_obj is None:
+                value = default
+            else:
+                value = section_obj.get(name, default)
         except errors.UnknownSmartMethod:
-            return self._vfs_get_option(name, section, default)
+            value = self._vfs_get_option(name, section, default)
+        for hook in config.OldConfigHooks['get']:
+            hook(self, name, value)
+        return value
 
     def _response_to_configobj(self, response):
         if len(response[0]) and response[0][0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
-        return config.ConfigObj(lines, encoding='utf-8')
+        conf = config.ConfigObj(lines, encoding='utf-8')
+        for hook in config.OldConfigHooks['load']:
+            hook(self)
+        return conf
 
 
 class RemoteBranchConfig(RemoteConfig):

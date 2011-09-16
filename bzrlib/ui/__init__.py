@@ -47,6 +47,7 @@ import warnings
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    config,
     osutils,
     progress,
     trace,
@@ -145,6 +146,10 @@ class UIFactory(object):
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
             ),
+        experimental_format_fetch=("Fetching into experimental format "
+            "%(to_format)s.\n"
+            "This format may be unreliable or change in the future "
+            "without an upgrade path.\n"),
         deprecated_command=(
             "The command 'bzr %(deprecated_name)s' "
             "has been deprecated in bzr %(deprecated_in_version)s. "
@@ -154,6 +159,8 @@ class UIFactory(object):
             "It is recommended that you upgrade by "
             "running the command\n"
             "  bzr upgrade %(basedir)s"),
+        locks_steal_dead=(
+            u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
         )
 
     def __init__(self):
@@ -204,10 +211,10 @@ class UIFactory(object):
         """
         return self.get_boolean(prompt % prompt_kwargs)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         """Prompt the user for a password.
 
-        :param prompt: The prompt to present the user
+        :param prompt: The prompt to present the user (must be unicode)
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
@@ -241,9 +248,7 @@ class UIFactory(object):
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            from bzrlib import config
-            encoding = config.GlobalConfig().get_user_option(
-                'output_encoding')
+            encoding = config.GlobalStack().get('output_encoding')
         if encoding is None:
             encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:
@@ -304,13 +309,13 @@ class UIFactory(object):
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
-            fail = "failed to format warning %r, %r" % (warning_id, message_args)
-            warnings.warn(fail)   # so tests will fail etc
+            fail = "bzr warning: %r, %r" % (warning_id, message_args)
+            warnings.warn("no template for warning: " + fail)   # so tests will fail etc
             return fail
         try:
             return template % message_args
         except ValueError, e:
-            fail = "failed to format warning %r, %r: %s" % (
+            fail = "bzr unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
             return fail
@@ -406,22 +411,6 @@ class UIFactory(object):
         """Show a warning to the user."""
         raise NotImplementedError(self.show_warning)
 
-    def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer.
-        
-        This is deprecated in favor of show_user_warning, but retained for api
-        compatibility in 2.0 and 2.1.
-        """
-        self.show_user_warning('cross_format_fetch', from_format=from_format,
-            to_format=to_format)
-
-    def warn_experimental_format_fetch(self, inter):
-        """Warn about fetching into experimental repository formats."""
-        if inter.target._format.experimental:
-            trace.warning("Fetching into experimental format %s.\n"
-                "This format may be unreliable or change in the future "
-                "without an upgrade path.\n" % (inter.target._format,))
-
 
 class NoninteractiveUIFactory(UIFactory):
     """Base class for UIs with no user."""
@@ -483,7 +472,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_integer(self, prompt):
         return self.responses.pop(0)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):

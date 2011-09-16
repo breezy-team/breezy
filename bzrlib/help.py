@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 # TODO: `help commands --all` should show hidden commands
 
 import sys
-import textwrap
 
 from bzrlib import (
     commands as _mod_commands,
@@ -30,6 +29,7 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
+    utextwrap,
     )
 
 
@@ -96,7 +96,7 @@ def _help_commands_to_text(topic):
         else:
             firstline = ''
         helpstring = '%-*s %s%s' % (max_name, cmd_name, firstline, plugin_name)
-        lines = textwrap.wrap(
+        lines = utextwrap.wrap(
             helpstring, subsequent_indent=indent,
             width=width,
             break_long_words=False)
@@ -135,6 +135,7 @@ class HelpIndices(object):
             help_topics.HelpTopicIndex(),
             _mod_commands.HelpCommandIndex(),
             plugin.PluginsHelpIndex(),
+            help_topics.ConfigOptionHelpIndex(),
             ]
 
     def _check_prefix_uniqueness(self):

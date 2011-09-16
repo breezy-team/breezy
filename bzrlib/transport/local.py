@@ -72,6 +72,8 @@ class LocalTransport(transport.Transport):
 
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
+        if self._local_base[-1] != '/':
+            self._local_base = self._local_base + '/'
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
@@ -327,10 +329,12 @@ class LocalTransport(transport.Transport):
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
-        # initialise the file
-        self.put_bytes_non_atomic(relpath, "", mode=mode)
         abspath = self._abspath(relpath)
-        handle = osutils.open_file(abspath, 'wb')
+        try:
+            handle = osutils.open_file(abspath, 'wb')
+        except (IOError, OSError),e:
+            self._translate_error(e, abspath)
+        handle.truncate()
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle

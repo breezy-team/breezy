@@ -212,10 +212,10 @@ class TestingPathFilteringServer(pathfilter.PathFilteringServer):
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
         if backing_server is not None:
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 backing_server.get_url())
         else:
-            self.backing_transport = transport.get_transport('.')
+            self.backing_transport = transport.get_transport_from_path('.')
         self.backing_transport.clone('added-by-filter').ensure_base()
         self.filter_func = lambda x: 'added-by-filter/' + x
         super(TestingPathFilteringServer, self).start_server()
@@ -233,10 +233,10 @@ class TestingChrootServer(chroot.ChrootServer):
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
         if backing_server is not None:
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 backing_server.get_url())
         else:
-            self.backing_transport = transport.get_transport('.')
+            self.backing_transport = transport.get_transport_from_path('.')
         super(TestingChrootServer, self).start_server()
 
     def get_bogus_url(self):
@@ -665,7 +665,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         self.chroot_server = ChrootServer(
             self.get_backing_transport(backing_transport_server))
         self.chroot_server.start_server()
-        self.backing_transport = transport.get_transport(
+        self.backing_transport = transport.get_transport_from_url(
             self.chroot_server.get_url())
         super(SmartTCPServer_for_testing, self).start_server()
 
@@ -677,7 +677,8 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
-        return transport.get_transport(backing_transport_server.get_url())
+        return transport.get_transport_from_url(
+            backing_transport_server.get_url())
 
     def get_url(self):
         url = self.server.get_url()
@@ -694,7 +695,7 @@ class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
+        return transport.get_transport_from_url(url)
 
 
 class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
@@ -715,4 +716,4 @@ class ReadonlySmartTCPServer_for_testing_v2_only(
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
+        return transport.get_transport_from_url(url)

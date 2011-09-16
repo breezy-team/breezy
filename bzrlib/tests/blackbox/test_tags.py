@@ -17,8 +17,8 @@
 """Tests for commands related to tags"""
 
 from bzrlib import (
-    branchbuilder,
     tag,
+    transform,
     )
 from bzrlib.branch import (
     Branch,
@@ -74,10 +74,25 @@ class TestTagging(TestCaseWithTransport):
         # can also delete an existing tag
         out, err = self.run_bzr('tag --delete -d branch tag2')
         # cannot replace an existing tag normally
-        out, err = self.run_bzr('tag -d branch NEWTAG', retcode=3)
+        out, err = self.run_bzr('tag -d branch NEWTAG -r0', retcode=3)
         self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
-        out, err = self.run_bzr('tag -d branch NEWTAG --force')
+        out, err = self.run_bzr('tag -d branch NEWTAG --force -r0')
+        self.assertEquals("Updated tag NEWTAG.\n", err)
+
+    def test_tag_same_revision(self):
+        t = self.make_branch_and_tree('branch')
+        t.commit(allow_pointless=True, message='initial commit',
+            rev_id='first-revid')
+        t.commit(allow_pointless=True, message='second commit',
+            rev_id='second-revid')
+        out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
+        out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
+        self.assertContainsRe(err,
+            'Tag NEWTAG already exists for that revision\\.')
+        out, err = self.run_bzr('tag -rrevid:second-revid -d branch NEWTAG',
+            retcode=3)
+        self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
 
     def test_tag_delete_requires_name(self):
         out, err = self.run_bzr('tag -d branch', retcode=3)
@@ -123,10 +138,11 @@ class TestTagging(TestCaseWithTransport):
 
     def make_fork(self, branch):
         fork = branch.create_clone_on_transport(self.get_transport('fork'))
-        builder = branchbuilder.BranchBuilder(branch=fork)
-        builder.build_commit(message='Commit in fork.', rev_id='fork-0')
-        fork.set_last_revision_info(1, 'rev-1')
-        builder.build_commit(message='Commit in fork.', rev_id='fork-1')
+        self.addCleanup(fork.lock_write().unlock)
+        with transform.TransformPreview(fork.basis_tree()) as tt:
+            tt.commit(fork, message='Commit in fork.', revision_id='fork-0')
+        with transform.TransformPreview(fork.basis_tree()) as tt:
+            tt.commit(fork, message='Commit in fork.', revision_id='fork-1')
         return fork
 
     def test_merge_without_commit_does_not_propagate_tags_to_master(self):

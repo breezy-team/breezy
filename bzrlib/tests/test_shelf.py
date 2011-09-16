@@ -25,6 +25,9 @@ from bzrlib import (
     transform,
     workingtree,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -214,7 +217,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -241,7 +244,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self._test_shelve_symlink_creation('foo', 'bar')
 
     def test_shelve_unicode_symlink_creation(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_shelve_symlink_creation(u'fo\N{Euro Sign}o',
                                            u'b\N{Euro Sign}ar')
 
@@ -251,7 +254,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def _test_shelve_symlink_target_change(self, link_name,
                                            old_target, new_target,
                                            shelve_change=False):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -282,7 +285,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
 
     def test_shelve_unicode_symlink_target_change(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_shelve_symlink_target_change(
             u'fo\N{Euro Sign}o', u'b\N{Euro Sign}ar', u'b\N{Euro Sign}az')
 
@@ -330,8 +333,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         return creator, tree
 
     def check_shelve_deletion(self, tree):
-        self.assertTrue('foo-id' in tree)
-        self.assertTrue('bar-id' in tree)
+        self.assertTrue(tree.has_id('foo-id'))
+        self.assertTrue(tree.has_id('bar-id'))
         self.assertFileEqual('baz', 'tree/foo/bar')
 
     def test_shelve_deletion(self):
@@ -568,21 +571,20 @@ class TestUnshelver(tests.TestCaseWithTransport):
         list(creator.iter_shelvable())
         creator.shelve_deletion('foo-id')
         creator.shelve_deletion('bar-id')
-        shelf_file = open('shelf', 'w+b')
-        self.addCleanup(shelf_file.close)
-        creator.write_shelf(shelf_file)
-        creator.transform()
-        creator.finalize()
+        with open('shelf', 'w+b') as shelf_file:
+            creator.write_shelf(shelf_file)
+            creator.transform()
+            creator.finalize()
         # validate the test setup
-        self.assertTrue('foo-id' in tree)
-        self.assertTrue('bar-id' in tree)
+        self.assertTrue(tree.has_id('foo-id'))
+        self.assertTrue(tree.has_id('bar-id'))
         self.assertFileEqual('baz', 'tree/foo/bar')
-        shelf_file.seek(0)
-        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
-        self.addCleanup(unshelver.finalize)
-        unshelver.make_merger().do_merge()
-        self.assertFalse('foo-id' in tree)
-        self.assertFalse('bar-id' in tree)
+        with open('shelf', 'r+b') as shelf_file:
+            unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+            self.addCleanup(unshelver.finalize)
+            unshelver.make_merger().do_merge()
+        self.assertFalse(tree.has_id('foo-id'))
+        self.assertFalse(tree.has_id('bar-id'))
 
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')

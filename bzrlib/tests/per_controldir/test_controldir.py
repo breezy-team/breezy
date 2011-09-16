@@ -410,7 +410,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_sprout_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = dir.sprout(self.get_url('target'))
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.control_transport.base, target.control_transport.base)
         # creates a new repository branch and tree
         target.open_repository()
         target.open_branch()
@@ -462,7 +462,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             return
         target = dir.sprout(self.get_url('target/child'))
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.user_transport.base, target.user_transport.base)
         self.assertTrue(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_repository_branch_both_under_shared(self):
@@ -591,7 +591,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             return
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.control_transport.base, target.control_transport.base)
         self.assertFalse(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_branch_reference(self):
@@ -690,6 +690,7 @@ class TestControlDir(TestCaseWithControlDir):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         # Now source has a tag not in its ancestry.  Sprout its controldir.
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
@@ -706,8 +707,9 @@ class TestControlDir(TestCaseWithControlDir):
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', 'missing-rev')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+            raise TestNotApplicable('Branch format does not support tags '
+                'or tags referencing ghost revisions.')
         # Now source has a tag pointing to an absent revision.  Sprout its
         # controldir.
         dir = source.bzrdir
@@ -724,8 +726,9 @@ class TestControlDir(TestCaseWithControlDir):
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', 'missing-rev')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+            raise TestNotApplicable('Branch format does not support tags '
+                'or tags referencing missing revisions.')
         # Now source has a tag pointing to an absent revision.  Sprout its
         # controldir.
         dir = source.bzrdir
@@ -758,17 +761,28 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             # Create a tag for B2, and for an absent rev
             source.tags.set_tag('tag-non-ancestry', 'rev-b2')
-            source.tags.set_tag('tag-absent', 'absent-rev')
         except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+            raise TestNotApplicable('Branch format does not support tags ')
+        try:
+            source.tags.set_tag('tag-absent', 'absent-rev')
+        except errors.GhostTagsNotSupported:
+            has_ghost_tag = False
+        else:
+            has_ghost_tag = True
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
         # The tags are present
         new_branch = target.open_branch()
-        self.assertEqual(
-            {'tag-absent': 'absent-rev', 'tag-non-ancestry': 'rev-b2'},
-            new_branch.tags.get_tag_dict())
+        if has_ghost_tag:
+            self.assertEqual(
+                {'tag-absent': 'absent-rev', 'tag-non-ancestry': 'rev-b2'},
+                new_branch.tags.get_tag_dict())
+        else:
+            self.assertEqual(
+                {'tag-non-ancestry': 'rev-b2'},
+                new_branch.tags.get_tag_dict())
         # And the revs for A2, B2 and C2's ancestries are present, but no
         # others.
         self.assertEqual(
@@ -996,7 +1010,8 @@ class TestControlDir(TestCaseWithControlDir):
         repo_name = old_fmt.repository_format.network_name()
         # Should end up with a 1.9 format (stackable)
         repo, control = self.assertInitializeEx(t, need_meta=True,
-            repo_format_name=repo_name, stacked_on='../trunk', stack_on_pwd=t.base)
+            repo_format_name=repo_name, stacked_on='../trunk',
+            stack_on_pwd=t.base)
         if control is None:
             # uninitialisable format
             return
@@ -1117,7 +1132,7 @@ class TestControlDir(TestCaseWithControlDir):
         # test the formats specific behaviour for no-content or similar dirs.
         self.assertRaises(errors.NotBranchError,
                           self.bzrdir_format.open,
-                          transport.get_transport(self.get_readonly_url()))
+                          transport.get_transport_from_url(self.get_readonly_url()))
 
     def test_create_branch(self):
         # a bzrdir can construct a branch and repository for itself.
@@ -1131,6 +1146,25 @@ class TestControlDir(TestCaseWithControlDir):
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
         self.assertIsInstance(made_branch, bzrlib.branch.Branch)
+        self.assertEqual(made_control, made_branch.bzrdir)
+
+    def test_create_branch_append_revisions_only(self):
+        # a bzrdir can construct a branch and repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        try:
+            made_branch = made_control.create_branch(
+                append_revisions_only=True)
+        except errors.UpgradeRequired:
+            return
+        self.assertIsInstance(made_branch, bzrlib.branch.Branch)
+        self.assertEquals(True, made_branch.get_append_revisions_only())
         self.assertEqual(made_control, made_branch.bzrdir)
 
     def test_open_branch(self):
@@ -1209,7 +1243,12 @@ class TestControlDir(TestCaseWithControlDir):
             return
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
-        made_repo = made_control.create_repository(shared=False)
+        try:
+            made_repo = made_control.create_repository(shared=False)
+        except errors.IncompatibleFormat:
+            # Some control dir formats don't support non-shared repositories
+            # and should raise IncompatibleFormat
+            return
         self.assertFalse(made_repo.is_shared())
 
     def test_open_repository(self):
@@ -1279,6 +1318,41 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.assertIsInstance(opened_tree, made_tree.__class__)
         self.assertIsInstance(opened_tree._format, made_tree._format.__class__)
+
+    def test_get_selected_branch(self):
+        # The segment parameters are accessible from the root transport
+        # if a URL with segment parameters is opened.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
+        dir = bzrdir.BzrDir.open(t.base+",branch=foo")
+        self.assertEquals({"branch": "foo"},
+            dir.user_transport.get_segment_parameters())
+        self.assertEquals("foo", dir._get_selected_branch())
+
+    def test_get_selected_branch_none_selected(self):
+        # _get_selected_branch defaults to None
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
+        dir = bzrdir.BzrDir.open(t.base)
+        self.assertIs(None, dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
@@ -1599,7 +1673,7 @@ class ChrootedControlDirTests(ChrootedTestCase):
         # - do the vfs initialisation over the basic vfs transport
         # XXX: TODO this should become a 'bzrdirlocation' api call.
         url = self.get_vfs_only_url('subdir')
-        transport.get_transport(self.get_vfs_only_url()).mkdir('subdir')
+        transport.get_transport_from_url(self.get_vfs_only_url()).mkdir('subdir')
         made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
         try:
             repo = made_control.open_repository()

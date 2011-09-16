@@ -28,11 +28,13 @@ from bzrlib import (
     errors,
     help_topics,
     plugin,
+    help,
     )
 from bzrlib.trace import (
     mutter,
     note,
     )
+from bzrlib.i18n import gettext
 
 
 def _escape(s):
@@ -76,10 +78,12 @@ def _poentry(outf, path, lineno, s, comment=None):
            'msgid %s\n' % _normalize(s) +
            'msgstr ""\n')
 
-def _poentry_per_paragraph(outf, path, lineno, msgid):
+def _poentry_per_paragraph(outf, path, lineno, msgid, filter=lambda x: False):
     # TODO: How to split long help?
     paragraphs = msgid.split('\n\n')
     for p in paragraphs:
+        if filter(p):
+            continue
         _poentry(outf, path, lineno, p)
         lineno += p.count('\n') + 2
 
@@ -116,13 +120,13 @@ def _standard_options(outf):
         if getattr(opt, 'title', None):
             lineno = offsets.get(opt.title, 9999)
             if lineno == 9999:
-                note("%r is not found in bzrlib/option.py" % opt.title)
+                note(gettext("%r is not found in bzrlib/option.py") % opt.title)
             _poentry(outf, path, lineno, opt.title,
                      'title of %r option' % name)
         if getattr(opt, 'help', None):
             lineno = offsets.get(opt.help, 9999)
             if lineno == 9999:
-                note("%r is not found in bzrlib/option.py" % opt.help)
+                note(gettext("%r is not found in bzrlib/option.py") % opt.help)
             _poentry(outf, path, lineno, opt.help,
                      'help of %r option' % name)
 
@@ -145,7 +149,7 @@ def _command_options(outf, path, cmd):
                      'help of %r option of %r command' % (name, cmd.name()))
 
 
-def _write_command_help(outf, cmd_name, cmd):
+def _write_command_help(outf, cmd):
     path = inspect.getfile(cmd.__class__)
     if path.endswith('.pyc'):
         path = path[:-1]
@@ -155,8 +159,15 @@ def _write_command_help(outf, cmd_name, cmd):
     lineno = offsets[cmd.__doc__]
     doc = inspect.getdoc(cmd)
 
-    _poentry_per_paragraph(outf, path, lineno, doc)
+    def filter(p):
+        # ':Usage:' has special meaning in help topics.
+        # This is usage example of command and should not be translated.
+        if p.splitlines()[0] == ':Usage:':
+            return True
+
+    _poentry_per_paragraph(outf, path, lineno, doc, filter)
     _command_options(outf, path, cmd)
+
 
 def _command_helps(outf):
     """Extract docstrings from path.
@@ -171,8 +182,8 @@ def _command_helps(outf):
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
-        note("Exporting messages from builtin command: %s", cmd_name)
-        _write_command_help(outf, cmd_name, command)
+        note(gettext("Exporting messages from builtin command: %s"), cmd_name)
+        _write_command_help(outf, command)
 
     plugin_path = plugin.get_core_plugin_path()
     core_plugins = glob(plugin_path + '/*/__init__.py')
@@ -187,9 +198,9 @@ def _command_helps(outf):
             # skip non-core plugins
             # TODO: Support extracting from third party plugins.
             continue
-        note("Exporting messages from plugin command: %s in %s",
-             cmd_name, command.plugin_name())
-        _write_command_help(outf, cmd_name, command)
+        note(gettext("Exporting messages from plugin command: {0} in {1}").format(
+             cmd_name, command.plugin_name() ))
+        _write_command_help(outf, command)
 
 
 def _error_messages(outf):
@@ -212,7 +223,7 @@ def _error_messages(outf):
             continue
         fmt = getattr(klass, "_fmt", None)
         if fmt:
-            note("Exporting message from error: %s", name)
+            note(gettext("Exporting message from error: %s"), name)
             _poentry(outf, 'bzrlib/errors.py',
                      offsets.get(fmt, 9999), fmt)
 
@@ -225,7 +236,11 @@ def _help_topics(outf):
                     outf,
                     'dummy/help_topics/'+key+'/detail.txt',
                     1, doc)
-
+        elif callable(doc): # help topics from files
+            _poentry_per_paragraph(
+                    outf,
+                    'en/help_topics/'+key+'.txt',
+                    1, doc(key))
         summary = topic_registry.get_summary(key)
         if summary is not None:
             _poentry(outf, 'dummy/help_topics/'+key+'/summary.txt',
@@ -237,5 +252,4 @@ def export_pot(outf):
     _standard_options(outf)
     _command_helps(outf)
     _error_messages(outf)
-    # disable exporting help topics until we decide  how to translate it.
-    #_help_topics(outf)
+    _help_topics(outf)

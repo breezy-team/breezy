@@ -16,8 +16,6 @@
 
 """Tests for branch.pull behaviour."""
 
-import os
-
 from bzrlib import (
     branch,
     bzrdir,
@@ -117,7 +115,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         self.assertEqual('P1', result.old_revid)
         self.assertEqual(2, result.new_revno)
         self.assertEqual('M1', result.new_revid)
-        self.assertEqual(None, result.tag_conflicts)
+        self.assertEqual([], result.tag_conflicts)
 
     def test_pull_overwrite(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -156,6 +154,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         except errors.TagsNotSupported:
             raise TestNotApplicable('format does not support tags.')
         source.tags.set_tag('tag-a', 'rev-2')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         target.pull(source)
         # The tag is present, and so is its revision.
         self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
@@ -177,6 +176,7 @@ class TestPull(per_branch.TestCaseWithBranch):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('format does not support tags.')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         target.pull(source, 'rev-2-again')
         # The tag is present, and so is its revision.
         self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))

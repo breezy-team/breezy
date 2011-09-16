@@ -15,16 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branchbuilder import BranchBuilder
+from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.tests.matchers import MatchesAncestry
 
 
 class TestAncestry(TestCaseWithMemoryTransport):
-
-    def assertAncestryEqual(self, expected, revision_id, branch):
-        """Assert that the ancestry of revision_id in branch is as expected."""
-        ancestry = branch.repository.get_ancestry(revision_id)
-        self.assertEqual(expected, ancestry)
 
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
@@ -32,8 +28,9 @@ class TestAncestry(TestCaseWithMemoryTransport):
         rev_id_one = builder.build_commit()
         rev_id_two = builder.build_commit()
         branch = builder.get_branch()
-        self.assertAncestryEqual([None, rev_id_one, rev_id_two],
-            rev_id_two, branch)
-        self.assertAncestryEqual([None, rev_id_one], rev_id_one, branch)
+        self.assertThat([rev_id_one, rev_id_two],
+            MatchesAncestry(branch.repository, rev_id_two))
+        self.assertThat([rev_id_one],
+            MatchesAncestry(branch.repository, rev_id_one))
 
 # TODO: check that ancestry is updated to include indirectly merged revisions

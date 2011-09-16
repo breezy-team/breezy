@@ -29,11 +29,13 @@ class TestDebugFlags(tests.TestCaseInTempDir):
     def test_set_debug_flags_from_config(self):
         # test both combinations because configobject automatically splits up
         # comma-separated lists
-        self.try_debug_flags(['hpss', 'error'], 'debug_flags = hpss, error\n')
-        self.try_debug_flags(['hpss'], 'debug_flags = hpss\n')
+        self.assertDebugFlags(['hpss', 'error'], 'debug_flags = hpss, error\n')
+        self.assertDebugFlags(['hpss'], 'debug_flags = hpss\n')
 
-    def try_debug_flags(self, expected_flags, conf_bytes):
-        conf = config.GlobalConfig.from_string(conf_bytes, save=True)
+    def assertDebugFlags(self, expected_flags, conf_bytes):
+        conf = config.GlobalStack()
+        conf.store._load_from_string(conf_bytes)
+        conf.store.save()
         self.overrideAttr(debug, 'debug_flags', set())
         debug.set_debug_flags_from_config()
         self.assertEqual(set(expected_flags), debug.debug_flags)

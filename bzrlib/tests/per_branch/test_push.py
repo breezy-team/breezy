@@ -251,7 +251,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.addCleanup(repo.lock_read().unlock)
         # We should have pushed 'C', but not 'B', since it isn't in the
         # ancestry
-        self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
+        self.assertEqual(['A', 'C'], sorted(repo.all_revision_ids()))
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -424,7 +424,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
     def test_empty_branch_api(self):
         """The branch_obj.push API should make a limited number of HPSS calls.
         """
-        t = transport.get_transport(self.smart_server.get_url()).clone('target')
+        t = transport.get_transport_from_url(self.smart_server.get_url()).clone('target')
         target = branch.Branch.open_from_transport(t)
         self.empty_branch.push(target)
         self.assertEqual(

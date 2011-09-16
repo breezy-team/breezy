@@ -152,6 +152,7 @@ class TestPull(TestCaseWithTransport):
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         target_bzrdir = source.bzrdir.sprout('target')
         source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
@@ -317,7 +318,7 @@ class TestPull(TestCaseWithTransport):
         # it is legal to attempt to pull an already-merged bundle
         out, err = self.run_bzr('pull ../bundle')
         self.assertEqual(err, '')
-        self.assertEqual(out, 'No revisions to pull.\n')
+        self.assertEqual(out, 'No revisions or tags to pull.\n')
 
     def test_pull_verbose_no_files(self):
         """Pull --verbose should not list modified files"""
@@ -383,6 +384,15 @@ class TestPull(TestCaseWithTransport):
         self.assertNotContainsRe(
             out, r'revno: 1\ncommitter: .*\nbranch nick: source')
 
+    def test_pull_smart_bound_branch(self):
+        self.setup_smart_server_with_call_log()
+        parent = self.make_branch_and_tree('parent')
+        parent.commit(message='first commit')
+        child = parent.bzrdir.sprout('child').open_workingtree()
+        child.commit(message='second commit')
+        checkout = parent.branch.create_checkout('checkout')
+        self.run_bzr(['pull', self.get_url('child')], working_dir='checkout')
+
     def test_pull_smart_stacked_streaming_acceptance(self):
         """'bzr pull -r 123' works on stacked, smart branches, even when the
         revision specified by the revno is only present in the fallback
@@ -410,7 +420,7 @@ class TestPull(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(18, self.hpss_calls)
+        self.assertLength(19, self.hpss_calls)
         remote = Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
     
@@ -523,3 +533,13 @@ class TestPull(TestCaseWithTransport):
         out = self.run_bzr(['pull','-d','to','from'],retcode=1)
         self.assertEqual(out,
             ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
+
+    def test_pull_tag_notification(self):
+        """pulling tags with conflicts will change the exit code"""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        out = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertEqual(out,
+            ('1 tag(s) updated.\n', ''))

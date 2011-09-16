@@ -29,9 +29,11 @@ from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     fixtures,
-    HardlinkFeature,
     script,
     test_server,
+    )
+from bzrlib.tests.features import (
+    HardlinkFeature,
     )
 from bzrlib.tests.blackbox import test_switch
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -60,6 +62,17 @@ class TestBranch(TestCaseWithTransport):
         # previously was erroneously created by branching
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
+
+    def test_branch_broken_pack(self):
+        """branching with a corrupted pack file."""
+        self.example_branch('a')
+        #now add some random corruption
+        fname = 'a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0]
+        with open(fname, 'rb+') as f:
+            f.seek(750)
+            f.write("\xff")
+        self.run_bzr_error(['Corruption while decompressing repository file'], 
+                            'branch a b', retcode=3)
 
     def test_branch_switch_no_branch(self):
         # No branch in the current directory:
@@ -276,6 +289,7 @@ class TestBranch(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.tags.set_tag('tag-a', 'rev-2')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')
@@ -427,7 +441,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(36, self.hpss_calls)
+        self.assertLength(37, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -442,7 +456,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(9, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -462,12 +476,13 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(14, self.hpss_calls)
+        self.assertLength(15, self.hpss_calls)
 
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         source.tags.set_tag('tag-a', 'rev-2')
         source.tags.set_tag('tag-missing', 'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
@@ -478,7 +493,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(9, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
 
     def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()

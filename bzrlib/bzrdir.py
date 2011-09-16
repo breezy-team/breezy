@@ -33,8 +33,6 @@ import bzrlib
 from bzrlib import (
     branch as _mod_branch,
     cleanup,
-    config,
-    controldir,
     errors,
     fetch,
     graph,
@@ -57,6 +55,7 @@ from bzrlib.transport import (
     do_catching_redirections,
     local,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.trace import (
@@ -65,6 +64,8 @@ from bzrlib.trace import (
     )
 
 from bzrlib import (
+    config,
+    controldir,
     hooks,
     registry,
     )
@@ -543,8 +544,6 @@ class BzrDir(controldir.ControlDir):
                     stacked=stacked)
         return result
 
-
-
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
                                   force_new_tree=None, format=None,
@@ -634,8 +633,9 @@ class BzrDir(controldir.ControlDir):
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
-            ui.ui_factory.note('making backup of %s\n  to %s'
-                               % (old_path, new_path,))
+            ui.ui_factory.note(gettext('making backup of %s\n  to %s') % (
+                urlutils.unescape_for_display(old_path, 'utf-8'),
+                urlutils.unescape_for_display(new_path, 'utf-8')))
             self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
         finally:
@@ -656,8 +656,8 @@ class BzrDir(controldir.ControlDir):
             try:
                 to_path = '.bzr.retired.%d' % i
                 self.root_transport.rename('.bzr', to_path)
-                note("renamed %s to %s"
-                    % (self.root_transport.abspath('.bzr'), to_path))
+                note(gettext("renamed {0} to {1}").format(
+                    self.root_transport.abspath('.bzr'), to_path))
                 return
             except (errors.TransportError, IOError, errors.PathError):
                 i += 1
@@ -848,8 +848,8 @@ class BzrDir(controldir.ControlDir):
             redirected_transport = transport._redirected_to(e.source, e.target)
             if redirected_transport is None:
                 raise errors.NotBranchError(base)
-            note('%s is%s redirected to %s',
-                 transport.base, e.permanently, redirected_transport.base)
+            note(gettext('{0} is{1} redirected to {2}').format(
+                 transport.base, e.permanently, redirected_transport.base))
             return redirected_transport
 
         try:
@@ -1146,10 +1146,12 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+            append_revisions_only=None):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self, name=name,
-                repository=repository)
+                repository=repository,
+                append_revisions_only=append_revisions_only)
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
@@ -1416,7 +1418,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     @classmethod
     def get_format_string(cls):
         """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(cls.get_format_string)
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -1722,8 +1724,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
                     new_repo_format = None
             if new_repo_format is not None:
                 self.repository_format = new_repo_format
-                note('Source repository format does not support stacking,'
-                     ' using format:\n  %s',
+                note(gettext('Source repository format does not support stacking,'
+                     ' using format:\n  %s'),
                      new_repo_format.get_format_description())
 
         if not self.get_branch_format().supports_stacking():
@@ -1742,8 +1744,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             if new_branch_format is not None:
                 # Does support stacking, use its format.
                 self.set_branch_format(new_branch_format)
-                note('Source branch format does not support stacking,'
-                     ' using format:\n  %s',
+                note(gettext('Source branch format does not support stacking,'
+                     ' using format:\n  %s'),
                      new_branch_format.get_format_description())
 
     def get_converter(self, format=None):
@@ -1853,7 +1855,7 @@ class ConvertMetaToMeta(controldir.Converter):
         else:
             if not isinstance(repo._format, self.target_format.repository_format.__class__):
                 from bzrlib.repository import CopyConverter
-                ui.ui_factory.note('starting repository conversion')
+                ui.ui_factory.note(gettext('starting repository conversion'))
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
         for branch in self.bzrdir.list_branches():
@@ -2287,11 +2289,8 @@ register_metadir(controldir.format_registry, 'default-rich-root',
     help='Same as 2a.')
 
 # The current format that is made on 'bzr init'.
-format_name = config.GlobalConfig().get_user_option('default_format')
-if format_name is None:
-    controldir.format_registry.set_default('2a')
-else:
-    controldir.format_registry.set_default(format_name)
+format_name = config.GlobalStack().get('default_format')
+controldir.format_registry.set_default(format_name)
 
 # XXX 2010-08-20 JRV: There is still a lot of code relying on
 # bzrlib.bzrdir.format_registry existing. When BzrDir.create/BzrDir.open/etc

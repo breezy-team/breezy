@@ -103,6 +103,7 @@ Miscellaneous topics
    server
    hooks
    version_info
+   gpg_signatures
 
 
 A brief tour of some popular plugins

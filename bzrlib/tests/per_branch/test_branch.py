@@ -365,6 +365,34 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.branch_format.initialize(repo.bzrdir, name='branch2')
         self.assertEquals(2, len(repo.bzrdir.list_branches()))
 
+    def test_create_append_revisions_only(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        for val in (True, False):
+            try:
+                branch = self.branch_format.initialize(repo.bzrdir,
+                    append_revisions_only=True)
+            except (errors.UninitializableFormat, errors.UpgradeRequired):
+                # branch references are not default init'able and
+                # not all branches support append_revisions_only
+                return
+            self.assertEquals(True, branch.get_append_revisions_only())
+            repo.bzrdir.destroy_branch()
+
+    def test_get_set_append_revisions_only(self):
+        branch = self.make_branch('.')
+        if branch._format.supports_set_append_revisions_only():
+            branch.set_append_revisions_only(True)
+            self.assertTrue(branch.get_append_revisions_only())
+            branch.set_append_revisions_only(False)
+            self.assertFalse(branch.get_append_revisions_only())
+        else:
+            self.assertRaises(errors.UpgradeRequired,
+                branch.set_append_revisions_only, True)
+            self.assertFalse(branch.get_append_revisions_only())
+
     def test_create_open_branch_uses_repository(self):
         try:
             repo = self.make_repository('.', shared=True)
@@ -622,7 +650,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
 class TestChildSubmitFormats(per_branch.TestCaseWithBranch):
 
     def test_get_child_submit_format_default(self):
-        self.assertEqual(None, self.get_branch().get_child_submit_format())
+        submit_format = self.get_branch().get_child_submit_format()
+        self.assertTrue(submit_format is None or
+                        isinstance(submit_format, str))
 
     def test_get_child_submit_format(self):
         branch = self.get_branch()
@@ -673,7 +703,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             return
         # supported formats must be able to init and open
         t = self.get_transport()
-        readonly_t = transport.get_transport(self.get_readonly_url())
+        readonly_t = transport.get_transport_from_url(self.get_readonly_url())
         made_branch = self.make_branch('.')
         self.assertIsInstance(made_branch, _mod_branch.Branch)
 

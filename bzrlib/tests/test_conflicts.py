@@ -446,6 +446,14 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
+            # File renamed-modified/deleted
+            (dict(_base_actions='create_file',
+                  _path='new-file', _file_id='file-id'),
+             ('file_renamed_and_modified',
+              dict(actions='modify_and_rename_file',
+                   check='file_renamed_and_more_content')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_doesnt_exist')),),
             # File modified/deleted in dir
             (dict(_base_actions='create_file_in_dir',
                   _path='dir/file', _file_id='file-id'),
@@ -463,8 +471,15 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     def do_modify_file(self):
         return [('modify', ('file-id', 'trunk content\nmore content\n'))]
 
+    def do_modify_and_rename_file(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n')),
+                ('rename', ('file', 'new-file'))]
+
     def check_file_has_more_content(self):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+
+    def check_file_renamed_and_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/new-file')
 
     def do_delete_file(self):
         return [('unversion', 'file-id')]
@@ -726,14 +741,14 @@ $ bzr merge ../trunk
         self.run_script("""
 $ bzr rm -q dir  --force
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -767,7 +782,7 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -776,7 +791,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr mv -q dir/file2 file2
 $ bzr rm -q dir --force
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -784,7 +799,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
         self.run_script("""
 $ bzr rm -q dir --force
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -831,7 +846,7 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -840,7 +855,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr mv -q dir/file2 file2
 $ bzr rm -q dir --force
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -848,14 +863,14 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
         self.run_script("""
 $ bzr rm -q dir --force
 $ bzr resolve dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -864,7 +879,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr resolve --take-other dir
 2>deleted dir/file2
 2>deleted dir
-2>2 conflict(s) resolved, 0 remaining
+2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -956,7 +971,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         if self._other['xfail']:
             # It's a bit hackish to raise from here relying on being called for
             # both tests but this avoid overriding test_resolve_taking_other
-            raise tests.KnownFailure(
+            self.knownFailure(
                 "ParentLoop doesn't carry enough info to resolve --take-other")
     _assert_conflict = assertParentLoop
 
@@ -994,7 +1009,7 @@ $ bzr rm -q foo.new --force
 # aside ? -- vila 090916
 $ bzr add -q foo
 $ bzr resolve foo.new
-2>1 conflict(s) resolved, 0 remaining
+2>1 conflict resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -1003,7 +1018,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr rm -q foo --force
 $ bzr mv -q foo.new foo
 $ bzr resolve foo
-2>1 conflict(s) resolved, 0 remaining
+2>1 conflict resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -1045,6 +1060,91 @@ $ bzr add -q foo/bar -q
 $ bzr commit -m 'Add foo/bar' -q
 $ bzr merge ../trunk
 2>bzr: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
+""")
+
+
+class TestNoFinalPath(script.TestCaseWithTransportAndScript):
+
+    def test_bug_805809(self):
+        self.run_script("""
+$ bzr init trunk
+Created a standalone tree (format: 2a)
+$ cd trunk
+$ echo trunk >file
+$ bzr add
+adding file
+$ bzr commit -m 'create file on trunk'
+2>Committing to: .../trunk/
+2>added file
+2>Committed revision 1.
+# Create a debian branch based on trunk
+$ cd ..
+$ bzr branch trunk -r 1 debian
+2>Branched 1 revision(s).
+$ cd debian
+$ mkdir dir
+$ bzr add
+adding dir
+$ bzr mv file dir
+file => dir/file
+$ bzr commit -m 'rename file to dir/file for debian'
+2>Committing to: .../debian/
+2>added dir
+2>renamed file => dir/file
+2>Committed revision 2.
+# Create an experimental branch with a new root-id
+$ cd ..
+$ bzr init experimental
+Created a standalone tree (format: 2a)
+$ cd experimental
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty
+$ bzr add
+adding not-empty
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../experimental/
+2>added not-empty
+2>Committed revision 1.
+# merge debian even without a common ancestor
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian into experimental'
+2>Committing to: .../experimental/
+2>added dir
+2>added dir/file
+2>Committed revision 2.
+# Create an ubuntu branch with yet another root-id
+$ cd ..
+$ bzr init ubuntu
+Created a standalone tree (format: 2a)
+$ cd ubuntu
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty-ubuntu
+$ bzr add
+adding not-empty-ubuntu
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../ubuntu/
+2>added not-empty-ubuntu
+2>Committed revision 1.
+# Also merge debian
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian'
+2>Committing to: .../ubuntu/
+2>added dir
+2>added dir/file
+2>Committed revision 2.
+# Now try to merge experimental
+$ bzr merge ../experimental
+2>+N  not-empty
+2>Path conflict: dir / dir
+2>1 conflicts encountered.
 """)
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,8 +37,10 @@ import sys
 
 import bzrlib
 from bzrlib import (
+    config,
     osutils,
     registry,
+    i18n,
     )
 
 
@@ -65,7 +67,7 @@ class HelpTopicRegistry(registry.Registry):
         :param section: Section in reference manual - see SECT_* identifiers.
         """
         # The detail is stored as the 'object' and the metadata as the info
-        info=(summary,section)
+        info = (summary, section)
         super(HelpTopicRegistry, self).register(topic, detail, info=info)
 
     def register_lazy(self, topic, module_name, member_name, summary,
@@ -79,7 +81,7 @@ class HelpTopicRegistry(registry.Registry):
         :param section: Section in reference manual - see SECT_* identifiers.
         """
         # The detail is stored as the 'object' and the metadata as the info
-        info=(summary,section)
+        info = (summary, section)
         super(HelpTopicRegistry, self).register_lazy(topic, module_name,
                                                      member_name, info=info)
 
@@ -270,8 +272,8 @@ shell.example.com, then::
 
 would refer to ``/home/remote/myproject/trunk``.
 
-Many commands that accept URLs also accept location aliases too.  See
-::doc:`location-alias-help`.
+Many commands that accept URLs also accept location aliases too.
+See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 """
 
     return out
@@ -316,6 +318,7 @@ command.  (e.g. ``bzr --profile help``).
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
+--no-l10n      Do not translate messages.
 --concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.
@@ -611,8 +614,7 @@ BZR_LOG             Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)     Location of .bzr.log (use 'NUL' to suppress log).
 BZR_COLUMNS         Override implicit terminal width.
 BZR_CONCURRENCY     Number of processes that can be run concurrently (selftest)
-BZR_PROGRESS_BAR    Override the progress display. Values are 'none', 'dots',
-                    or 'tty'.
+BZR_PROGRESS_BAR    Override the progress display. Values are 'none' or 'text'.
 BZR_PDB             Control whether to launch a debugger on error.
 BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a
                     breakin debugger.
@@ -777,6 +779,8 @@ topic_registry.register('location-alias', _load_from_file,
                         'Aliases for remembered locations')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
+topic_registry.register('url-special-chars', _load_from_file,
+                        'Special character handling in URLs')
 
 
 # Register concept topics.
@@ -841,6 +845,15 @@ class HelpTopicIndex(object):
             return []
 
 
+def _format_see_also(see_also):
+    result = ''
+    if see_also:
+        result += '\n:See also: '
+        result += ', '.join(sorted(set(see_also)))
+        result += '\n'
+    return result
+
+
 class RegisteredTopic(object):
     """A help topic which has been registered in the HelpTopicRegistry.
 
@@ -864,19 +877,11 @@ class RegisteredTopic(object):
             returned instead of plain text.
         """
         result = topic_registry.get_detail(self.topic)
-        # there is code duplicated here and in bzrlib/plugin.py's
-        # matching Topic code. This should probably be factored in
-        # to a helper function and a common base class.
-        if additional_see_also is not None:
-            see_also = sorted(set(additional_see_also))
-        else:
-            see_also = None
-        if see_also:
-            result += '\n:See also: '
-            result += ', '.join(see_also)
-            result += '\n'
+        result += _format_see_also(additional_see_also)
         if plain:
             result = help_as_plain_text(result)
+        i18n.install()
+        result = i18n.gettext_per_paragraph(result)
         return result
 
     def get_help_topic(self):
@@ -897,6 +902,31 @@ def help_as_plain_text(text):
         elif line.endswith('::'):
             line = line[:-1]
         # Map :doc:`xxx-help` to ``bzr help xxx``
-        line = re.sub(":doc:`(.+)-help`", r'``bzr help \1``', line)
+        line = re.sub(":doc:`(.+?)-help`", r'``bzr help \1``', line)
         result.append(line)
     return "\n".join(result) + "\n"
+
+
+class ConfigOptionHelpIndex(object):
+    """A help index that returns help topics for config options."""
+
+    def __init__(self):
+        self.prefix = 'configuration/'
+
+    def get_topics(self, topic):
+        """Search for topic in the registered config options.
+
+        :param topic: A topic to search for.
+        :return: A list which is either empty or contains a single
+            config.Option entry.
+        """
+        if topic is None:
+            return []
+        elif topic.startswith(self.prefix):
+            topic = topic[len(self.prefix):]
+        if topic in config.option_registry:
+            return [config.option_registry.get(topic)]
+        else:
+            return []
+
+

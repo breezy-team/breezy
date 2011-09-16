@@ -32,7 +32,7 @@ from bzrlib import (
     config,
     controldir,
     errors,
-    graph,
+    graph as _mod_graph,
     inventory,
     inventory_delta,
     remote,
@@ -1183,6 +1183,28 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         client.add_expected_call(
             'Branch.last_revision_info', ('quack/',),
             'success', ('ok', '1', 'rev-tip'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('quack/',),
+            'success', ('ok',), '')
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.heads_to_fetch()
+        self.assertFinished(client)
+        self.assertEqual((set(['rev-tip']), set()), result)
+
+    def test_uses_last_revision_info_and_tags_when_set(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info', ('quack/',),
+            'success', ('ok', '1', 'rev-tip'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('quack/',),
+            'success', ('ok',), 'branch.fetch_tags = True')
         # XXX: this will break if the default format's serialization of tags
         # changes, or if the RPC for fetching tags changes from get_tags_bytes.
         client.add_expected_call(
@@ -1213,7 +1235,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         self.assertFinished(client)
         self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
 
-    def test_backwards_compatible(self):
+    def make_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
@@ -1225,6 +1247,12 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         # Add two tags to that branch
         branch.tags.set_tag('tag-1', 'rev-1')
         branch.tags.set_tag('tag-2', 'rev-2')
+        return branch
+
+    def test_backwards_compatible(self):
+        branch = self.make_branch_with_tags()
+        c = branch.get_config()
+        c.set_user_option('branch.fetch_tags', 'True')
         self.addCleanup(branch.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
@@ -1233,7 +1261,23 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         result = branch.heads_to_fetch()
         self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
+            ['Branch.last_revision_info', 'Branch.get_config_file',
+             'Branch.get_tags_bytes'],
+            [call.call.method for call in self.hpss_calls])
+
+    def test_backwards_compatible_no_tags(self):
+        branch = self.make_branch_with_tags()
+        c = branch.get_config()
+        c.set_user_option('branch.fetch_tags', 'False')
+        self.addCleanup(branch.lock_read().unlock)
+        # Disable the heads_to_fetch verb
+        verb = 'Branch.heads_to_fetch'
+        self.disable_verb(verb)
+        self.reset_smart_call_log()
+        result = branch.heads_to_fetch()
+        self.assertEqual((set(['tip']), set()), result)
+        self.assertEqual(
+            ['Branch.last_revision_info', 'Branch.get_config_file'],
             [call.call.method for call in self.hpss_calls])
 
 
@@ -2103,8 +2147,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', 'include-missing:',
-              rev_id), '\n\n0'),
+              'Repository.get_parent_map',
+              ('quack/', 'include-missing:', rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
@@ -2229,6 +2273,32 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         # Now asking for rev_id's ghost parent should not make calls
         self.assertEqual({}, repo.get_parent_map(['non-existant']))
         self.assertLength(0, self.hpss_calls)
+
+    def test_exposes_get_cached_parent_map(self):
+        """RemoteRepository exposes get_cached_parent_map from
+        _unstacked_provider
+        """
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = bz2.compress('\n'.join(lines))
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(encoded_body, 'ok')
+        repo.lock_read()
+        # get_cached_parent_map should *not* trigger an RPC
+        self.assertEqual({}, repo.get_cached_parent_map([r1]))
+        self.assertEqual([], client._calls)
+        self.assertEqual({r2: (r1,)}, repo.get_parent_map([r2]))
+        self.assertEqual({r1: (NULL_REVISION,)},
+            repo.get_cached_parent_map([r1]))
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
+            client._calls)
+        repo.unlock()
 
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
@@ -3244,12 +3314,14 @@ class TestStacking(tests.TestCaseWithTransport):
         _, stacked = branch_factory()
         source = stacked.repository._get_source(target_repository_format)
         tip = stacked.last_revision()
-        revs = stacked.repository.get_ancestry(tip)
-        search = graph.PendingAncestryResult([tip], stacked.repository)
+        stacked.repository._ensure_real()
+        graph = stacked.repository.get_graph()
+        revs = [r for (r,ps) in graph.iter_ancestry([tip])
+                if r != NULL_REVISION]
+        revs.reverse()
+        search = _mod_graph.PendingAncestryResult([tip], stacked.repository)
         self.reset_smart_call_log()
         stream = source.get_stream(search)
-        if None in revs:
-            revs.remove(None)
         # We trust that if a revision is in the stream the rest of the new
         # content for it is too, as per our main fetch tests; here we are
         # checking that the revisions are actually included at all, and their
@@ -3294,7 +3366,7 @@ class TestStacking(tests.TestCaseWithTransport):
         self.assertEqual(expected_revs, rev_ord)
         # Getting topological sort requires VFS calls still - one of which is
         # pushing up from the bound branch.
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with
@@ -3357,8 +3429,9 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
-        local.repository.fetch(remote_branch.repository,
-                fetch_spec=graph.EverythingResult(remote_branch.repository))
+        local.repository.fetch(
+            remote_branch.repository,
+            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
 
     def override_verb(self, verb_name, verb):
@@ -3379,10 +3452,12 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
             """A version of the Repository.get_stream_1.19 verb patched to
             reject 'everything' searches the way 2.3 and earlier do.
             """
-            def recreate_search(self, repository, search_bytes, discard_excess=False):
+            def recreate_search(self, repository, search_bytes,
+                                discard_excess=False):
                 verb_log.append(search_bytes.split('\n', 1)[0])
                 if search_bytes == 'everything':
-                    return (None, request.FailedSmartServerResponse(('BadSearch',)))
+                    return (None,
+                            request.FailedSmartServerResponse(('BadSearch',)))
                 return super(OldGetStreamVerb,
                         self).recreate_search(repository, search_bytes,
                             discard_excess=discard_excess)
@@ -3393,11 +3468,56 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         self.hpss_calls = []
-        local.repository.fetch(remote_branch.repository,
-                fetch_spec=graph.EverythingResult(remote_branch.repository))
+        local.repository.fetch(
+            remote_branch.repository,
+            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
         # make sure the overridden verb was used
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback
         # its hard to predict exactly how many.
         self.assertTrue(len(self.hpss_calls) > 1)
 
+
+class TestUpdateBoundBranchWithModifiedBoundLocation(
+    tests.TestCaseWithTransport):
+    """Ensure correct handling of bound_location modifications.
+
+    This is tested against a smart server as http://pad.lv/786980 was about a
+    ReadOnlyError (write attempt during a read-only transaction) which can only
+    happen in this context.
+    """
+
+    def setUp(self):
+        super(TestUpdateBoundBranchWithModifiedBoundLocation, self).setUp()
+        self.transport_server = test_server.SmartTCPServer_for_testing
+
+    def make_master_and_checkout(self, master_name, checkout_name):
+        # Create the master branch and its associated checkout
+        self.master = self.make_branch_and_tree(master_name)
+        self.checkout = self.master.branch.create_checkout(checkout_name)
+        # Modify the master branch so there is something to update
+        self.master.commit('add stuff')
+        self.last_revid = self.master.commit('even more stuff')
+        self.bound_location = self.checkout.branch.get_bound_location()
+
+    def assertUpdateSucceeds(self, new_location):
+        self.checkout.branch.set_bound_location(new_location)
+        self.checkout.update()
+        self.assertEquals(self.last_revid, self.checkout.last_revision())
+
+    def test_without_final_slash(self):
+        self.make_master_and_checkout('master', 'checkout')
+        # For unclear reasons some users have a bound_location without a final
+        # '/', simulate that by forcing such a value
+        self.assertEndsWith(self.bound_location, '/')
+        self.assertUpdateSucceeds(self.bound_location.rstrip('/'))
+
+    def test_plus_sign(self):
+        self.make_master_and_checkout('+master', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2B', '+', 1))
+
+    def test_tilda(self):
+        # Embed ~ in the middle of the path just to avoid any $HOME
+        # interpretation
+        self.make_master_and_checkout('mas~ter', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2E', '~', 1))

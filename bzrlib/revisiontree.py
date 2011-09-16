@@ -36,6 +36,10 @@ class RevisionTree(tree.Tree):
         self._revision_id = revision_id
         self._rules_searcher = None
 
+    def has_versioned_directories(self):
+        """See `Tree.has_versioned_directories`."""
+        return self._repository._format.supports_versioned_directories
+
     def supports_tree_reference(self):
         return getattr(self._repository._format, "supports_tree_reference",
             False)
@@ -178,10 +182,6 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
 
     def _file_size(self, entry, stat_value):
         return entry.text_size
-
-    def _get_ancestors(self, default_revision):
-        return set(self._repository.get_ancestry(self._revision_id,
-                                                 topo_sorted=False))
 
     def walkdirs(self, prefix=""):
         _directory = 'directory'

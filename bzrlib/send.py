@@ -25,6 +25,7 @@ from bzrlib import (
     registry,
     trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib.branch import (
     Branch,
     )
@@ -51,12 +52,12 @@ def send(submit_branch, revision, public_branch, remember, format,
             mail_client = config.get_mail_client()
             if (not getattr(mail_client, 'supports_body', False)
                 and body is not None):
-                raise errors.BzrCommandError(
-                    'Mail client "%s" does not support specifying body' %
+                raise errors.BzrCommandError(gettext(
+                    'Mail client "%s" does not support specifying body') %
                     mail_client.__class__.__name__)
         if remember and submit_branch is None:
-            raise errors.BzrCommandError(
-                '--remember requires a branch to be specified.')
+            raise errors.BzrCommandError(gettext(
+                '--remember requires a branch to be specified.'))
         stored_submit_branch = branch.get_submit_branch()
         remembered_submit_branch = None
         if submit_branch is None:
@@ -70,11 +71,11 @@ def send(submit_branch, revision, public_branch, remember, format,
             submit_branch = branch.get_parent()
             remembered_submit_branch = "parent"
         if submit_branch is None:
-            raise errors.BzrCommandError('No submit branch known or'
-                                         ' specified')
+            raise errors.BzrCommandError(gettext('No submit branch known or'
+                                         ' specified'))
         if remembered_submit_branch is not None:
-            trace.note('Using saved %s location "%s" to determine what '
-                       'changes to submit.', remembered_submit_branch,
+            trace.note(gettext('Using saved %s location "%s" to determine what '
+                       'changes to submit.'), remembered_submit_branch,
                        submit_branch)
 
         if mail_to is None or format is None:
@@ -90,7 +91,7 @@ def send(submit_branch, revision, public_branch, remember, format,
                 try:
                     format = format_registry.get(formatname)
                 except KeyError:
-                    raise errors.BzrCommandError("No such send format '%s'." % 
+                    raise errors.BzrCommandError(gettext("No such send format '%s'.") % 
                                                  formatname)
 
         stored_public_branch = branch.get_public_branch()
@@ -101,14 +102,14 @@ def send(submit_branch, revision, public_branch, remember, format,
               or (remember is None and stored_public_branch is None)):
             branch.set_public_branch(public_branch)
         if no_bundle and public_branch is None:
-            raise errors.BzrCommandError('No public branch specified or'
-                                         ' known')
+            raise errors.BzrCommandError(gettext('No public branch specified or'
+                                         ' known'))
         base_revision_id = None
         revision_id = None
         if revision is not None:
             if len(revision) > 2:
-                raise errors.BzrCommandError('bzr send takes '
-                    'at most two one revision identifiers')
+                raise errors.BzrCommandError(gettext('bzr send takes '
+                    'at most two one revision identifiers'))
             revision_id = revision[-1].as_revision_id(branch)
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)
@@ -120,7 +121,7 @@ def send(submit_branch, revision, public_branch, remember, format,
                     more_warning='Uncommitted changes will not be sent.')
             revision_id = branch.last_revision()
         if revision_id == NULL_REVISION:
-            raise errors.BzrCommandError('No revisions to submit.')
+            raise errors.BzrCommandError(gettext('No revisions to submit.'))
         if format is None:
             format = format_registry.get()
         directive = format(branch, revision_id, submit_branch,
@@ -131,8 +132,8 @@ def send(submit_branch, revision, public_branch, remember, format,
         else:
             if directive.multiple_output_files:
                 if output == '-':
-                    raise errors.BzrCommandError('- not supported for '
-                        'merge directives that use more than one output file.')
+                    raise errors.BzrCommandError(gettext('- not supported for '
+                        'merge directives that use more than one output file.'))
                 if not os.path.exists(output):
                     os.mkdir(output, 0755)
                 for (filename, lines) in directive.to_files():
@@ -173,8 +174,8 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
         if not no_patch:
             patch_type = 'bundle'
         else:
-            raise errors.BzrCommandError('Format 0.9 does not'
-                ' permit bundle with no patch')
+            raise errors.BzrCommandError(gettext('Format 0.9 does not'
+                ' permit bundle with no patch'))
     else:
         if not no_patch:
             patch_type = 'diff'

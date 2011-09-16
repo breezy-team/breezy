@@ -54,7 +54,6 @@ from bzrlib import (
     generate_ids,
     globbing,
     graph as _mod_graph,
-    hashcache,
     ignores,
     inventory,
     merge,
@@ -72,6 +71,7 @@ from bzrlib import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.i18n import gettext
 from bzrlib.lock import LogicalLockResult
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -194,27 +194,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.basedir = realpath(basedir)
         self._control_files = _control_files
         self._transport = self._control_files._transport
-        # update the whole cache up front and write to disk if anything changed;
-        # in the future we might want to do this more selectively
-        # two possible ways offer themselves : in self._unlock, write the cache
-        # if needed, or, when the cache sees a change, append it to the hash
-        # cache file, and have the parser take the most recent entry for a
-        # given path only.
-        wt_trans = self.bzrdir.get_workingtree_transport(None)
-        cache_filename = wt_trans.local_abspath('stat-cache')
-        self._hashcache = hashcache.HashCache(basedir, cache_filename,
-            self.bzrdir._get_file_mode(),
-            self._content_filter_stack_provider())
-        hc = self._hashcache
-        hc.read()
-        # is this scan needed ? it makes things kinda slow.
-        #hc.scan()
-
-        if hc.needs_write:
-            mutter("write hc")
-            hc.write()
-
-        self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
 
@@ -238,17 +217,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         return self.bzrdir.is_control_filename(filename)
 
-    def _detect_case_handling(self):
-        wt_trans = self.bzrdir.get_workingtree_transport(None)
-        try:
-            wt_trans.stat(self._format.case_sensitive_filename)
-        except errors.NoSuchFile:
-            self.case_sensitive = True
-        else:
-            self.case_sensitive = False
-
-        self._setup_directory_is_tree_reference()
-
     branch = property(
         fget=lambda self: self._branch,
         doc="""The branch this WorkingTree is connected to.
@@ -256,6 +224,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             This cannot be set - it is reflective of the actual disk structure
             the working tree has been constructed from.
             """)
+
+    def has_versioned_directories(self):
+        """See `Tree.has_versioned_directories`."""
+        return self._format.supports_versioned_directories
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -331,7 +303,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 if view_files:
                     file_list = view_files
                     view_str = views.view_display_str(view_files)
-                    note("Ignoring files outside view. View is %s" % view_str)
+                    note(gettext("Ignoring files outside view. View is %s") % view_str)
             return tree, file_list
         if default_directory == u'.':
             seed = file_list[0]
@@ -496,13 +468,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         finally:
             file.close()
 
-    def _get_ancestors(self, default_revision):
-        ancestors = set([default_revision])
-        for parent_id in self.get_parent_ids():
-            ancestors.update(self.branch.repository.get_ancestry(
-                             parent_id, topo_sorted=False))
-        return ancestors
-
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
 
@@ -601,10 +566,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 raise
             else:
                 return None
-
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        # FIXME: Shouldn't this be in Tree?
-        raise NotImplementedError(self.get_file_sha1)
 
     @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
@@ -973,8 +934,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         file and change the file_id. That is the normal mode. Second, it can
         only change the file_id without touching any physical file.
 
-        rename_one uses the second mode if 'after == True' and 'to_rel' is not
-        versioned but present in the working tree.
+        rename_one uses the second mode if 'after == True' and 'to_rel' is
+        either not versioned or newly added, and present in the working tree.
 
         rename_one uses the second mode if 'after == False' and 'from_rel' is
         versioned but no longer in the working tree, and 'to_rel' is not
@@ -1073,7 +1034,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             stream.write(bytes)
         finally:
             stream.close()
-        # TODO: update the hashcache here ?
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -1385,11 +1345,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from bzrlib.conflicts import resolve
-        if filenames == []:
-            filenames = None
-            symbol_versioning.warn('Using [] to revert all files is deprecated'
-                ' as of bzr 0.91.  Please use None (the default) instead.',
-                DeprecationWarning, stacklevel=2)
         if old_tree is None:
             basis_tree = self.basis_tree()
             basis_tree.lock_read()
@@ -1544,7 +1499,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                              show_base=show_base)
             if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
-                note('Rerun update after fixing the conflicts.')
+                note(gettext('Rerun update after fixing the conflicts.'))
                 return nb_conflicts
 
         if last_rev != _mod_revision.ensure_null(revision):
@@ -1591,20 +1546,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             self.set_parent_trees(parent_trees)
             last_rev = parent_trees[0][0]
         return nb_conflicts
-
-    def _write_hashcache_if_dirty(self):
-        """Write out the hashcache if it is dirty."""
-        if self._hashcache.needs_write:
-            try:
-                self._hashcache.write()
-            except OSError, e:
-                if e.errno not in (errno.EPERM, errno.EACCES):
-                    raise
-                # TODO: jam 20061219 Should this be a warning? A single line
-                #       warning might be sufficient to let the user know what
-                #       is going on.
-                mutter('Could not write hashcache for %s\nError: %s',
-                              self._hashcache.cache_file_name(), e)
 
     def set_conflicts(self, arg):
         raise errors.UnsupportedOperation(self.set_conflicts, self)
@@ -1843,6 +1784,8 @@ class InventoryWorkingTree(WorkingTree,
             branch=branch, _control_files=_control_files, _internal=_internal,
             _format=_format, _bzrdir=_bzrdir)
 
+        self._detect_case_handling()
+
         if _inventory is None:
             # This will be acquired on lock_read() or lock_write()
             self._inventory_is_modified = False
@@ -1866,6 +1809,17 @@ class InventoryWorkingTree(WorkingTree,
         """
         self._inventory = inv
         self._inventory_is_modified = dirty
+
+    def _detect_case_handling(self):
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        try:
+            wt_trans.stat(self._format.case_sensitive_filename)
+        except errors.NoSuchFile:
+            self.case_sensitive = True
+        else:
+            self.case_sensitive = False
+
+        self._setup_directory_is_tree_reference()
 
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(self._inventory, out_file,
@@ -2089,8 +2043,6 @@ class InventoryWorkingTree(WorkingTree,
             return True
         return self.inventory.has_id(file_id)
 
-    __contains__ = has_id
-
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -2177,12 +2129,6 @@ class InventoryWorkingTree(WorkingTree,
         self._transport.put_file('inventory', sio,
             mode=self.bzrdir._get_file_mode())
         self._inventory_is_modified = False
-
-    @needs_read_lock
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        if not path:
-            path = self._inventory.id2path(file_id)
-        return self._hashcache.get_sha1(path, stat_value)
 
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime."""
@@ -2272,7 +2218,7 @@ class InventoryWorkingTree(WorkingTree,
                 parent_tree = self.branch.repository.revision_tree(parent_id)
             parent_tree.lock_read()
             try:
-                if file_id not in parent_tree:
+                if not parent_tree.has_id(file_id):
                     continue
                 ie = parent_tree.inventory[file_id]
                 if ie.kind != 'file':
@@ -2326,7 +2272,7 @@ class InventoryWorkingTree(WorkingTree,
             for s in _mod_rio.RioReader(hashfile):
                 # RioReader reads in Unicode, so convert file_ids back to utf8
                 file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
-                if file_id not in self.inventory:
+                if not self.inventory.has_id(file_id):
                     continue
                 text_hash = s.get("hash")
                 if text_hash == self.get_file_sha1(file_id):
@@ -2573,8 +2519,8 @@ class InventoryWorkingTree(WorkingTree,
         inventory. The second mode only updates the inventory without
         touching the file on the filesystem.
 
-        move uses the second mode if 'after == True' and the target is not
-        versioned but present in the working tree.
+        move uses the second mode if 'after == True' and the target is
+        either not versioned or newly added, and present in the working tree.
 
         move uses the second mode if 'after == False' and the source is
         versioned but no longer in the working tree, and the target is not
@@ -2727,7 +2673,8 @@ class InventoryWorkingTree(WorkingTree,
 
     class _RenameEntry(object):
         def __init__(self, from_rel, from_id, from_tail, from_parent_id,
-                     to_rel, to_tail, to_parent_id, only_change_inv=False):
+                     to_rel, to_tail, to_parent_id, only_change_inv=False,
+                     change_id=False):
             self.from_rel = from_rel
             self.from_id = from_id
             self.from_tail = from_tail
@@ -2735,6 +2682,7 @@ class InventoryWorkingTree(WorkingTree,
             self.to_rel = to_rel
             self.to_tail = to_tail
             self.to_parent_id = to_parent_id
+            self.change_id = change_id
             self.only_change_inv = only_change_inv
 
     def _determine_mv_mode(self, rename_entries, after=False):
@@ -2752,14 +2700,27 @@ class InventoryWorkingTree(WorkingTree,
             to_rel = rename_entry.to_rel
             to_id = inv.path2id(to_rel)
             only_change_inv = False
+            change_id = False
 
             # check the inventory for source and destination
             if from_id is None:
                 raise errors.BzrMoveFailedError(from_rel,to_rel,
                     errors.NotVersionedError(path=from_rel))
             if to_id is not None:
-                raise errors.BzrMoveFailedError(from_rel,to_rel,
-                    errors.AlreadyVersionedError(path=to_rel))
+                allowed = False
+                # allow it with --after but only if dest is newly added
+                if after:
+                    basis = self.basis_tree()
+                    basis.lock_read()
+                    try:
+                        if not basis.has_id(to_id):
+                            rename_entry.change_id = True
+                            allowed = True
+                    finally:
+                        basis.unlock()
+                if not allowed:
+                    raise errors.BzrMoveFailedError(from_rel,to_rel,
+                        errors.AlreadyVersionedError(path=to_rel))
 
             # try to determine the mode for rename (only change inv or change
             # inv and file system)
@@ -2836,6 +2797,9 @@ class InventoryWorkingTree(WorkingTree,
             except OSError, e:
                 raise errors.BzrMoveFailedError(entry.from_rel,
                     entry.to_rel, e[1])
+        if entry.change_id:
+            to_id = inv.path2id(entry.to_rel)
+            inv.remove_recursive_id(to_id)
         inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
     @needs_tree_write_lock
@@ -2849,7 +2813,7 @@ class InventoryWorkingTree(WorkingTree,
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         for file_id in file_ids:
-            if file_id not in self._inventory:
+            if not self._inventory.has_id(file_id):
                 raise errors.NoSuchId(self, file_id)
         for file_id in file_ids:
             if self._inventory.has_id(file_id):
@@ -3009,6 +2973,8 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
+
+    supports_versioned_directories = None
 
     @classmethod
     def find_format_string(klass, a_bzrdir):

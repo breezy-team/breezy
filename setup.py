@@ -10,6 +10,7 @@ import os
 import os.path
 import sys
 import copy
+import glob
 
 if sys.version_info < (2, 6):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
@@ -70,10 +71,13 @@ PKG_DATA = {# install files from selftest suite
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
                                         'tests/ssl_certs/server.crt',
-                                        'locale/*/LC_MESSAGES/*.mo',
                                        ]},
            }
-
+I18N_FILES = []
+for filepath in glob.glob("bzrlib/locale/*/LC_MESSAGES/*.mo"):
+    langfile = filepath[len("bzrlib/locale/"):]
+    targetpath = os.path.dirname(os.path.join("share/locale", langfile))
+    I18N_FILES.append((targetpath, [filepath]))
 
 def get_bzrlib_packages():
     """Recurse through the bzrlib directory, and extract the package names"""
@@ -198,7 +202,9 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
+    import re
+    _version = re.match("^[0-9.]+", pyrex_version).group(0)
+    pyrex_version_info = tuple(map(int, _version.split('.')))
 
 
 class build_ext_if_possible(build_ext):
@@ -478,6 +484,12 @@ def get_svn_py2exe_info(includes, excludes, packages):
     packages.append('sqlite3')
 
 
+def get_fastimport_py2exe_info(includes, excludes, packages):
+    # This is the python-fastimport package, not to be confused with the
+    # bzr-fastimport plugin.
+    packages.append('fastimport')
+
+
 if 'bdist_wininst' in sys.argv:
     def find_docs():
         docs = []
@@ -502,17 +514,17 @@ if 'bdist_wininst' in sys.argv:
             # help pages
             'data_files': find_docs(),
             # for building pyrex extensions
-            'cmdclass': {'build_ext': build_ext_if_possible},
+            'cmdclass': command_classes,
            }
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
+    PKG_DATA['package_data']['bzrlib'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
-    
+
     setup(**ARGS)
 
 elif 'py2exe' in sys.argv:
-    import glob
     # py2exe setup
     import py2exe
 
@@ -662,13 +674,16 @@ elif 'py2exe' in sys.argv:
                        'tools/win32/bzr_postinstall.py',
                        ]
     gui_targets = [gui_target]
-    data_files = topics_files + plugins_files
+    data_files = topics_files + plugins_files + I18N_FILES
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages, data_files)
 
     if 'svn' in plugins:
         get_svn_py2exe_info(includes, excludes, packages)
+
+    if 'fastimport' in plugins:
+        get_fastimport_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the
@@ -725,13 +740,14 @@ elif 'py2exe' in sys.argv:
             self.optimize = 2
 
     if __name__ == '__main__':
+        command_classes['install_data'] = install_data_with_bytecompile
+        command_classes['py2exe'] = py2exe_no_oo_exe
         setup(options=options_list,
               console=console_targets,
               windows=gui_targets,
               zipfile='lib/library.zip',
               data_files=data_files,
-              cmdclass={'install_data': install_data_with_bytecompile,
-                        'py2exe': py2exe_no_oo_exe},
+              cmdclass=command_classes,
               )
 
 else:
@@ -742,6 +758,7 @@ else:
         # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
 
+    DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
     ARGS = {'scripts': ['bzr'],
             'data_files': DATA_FILES,

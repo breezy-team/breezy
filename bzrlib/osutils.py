@@ -42,10 +42,12 @@ import unicodedata
 
 from bzrlib import (
     cache_utf8,
+    config,
     errors,
     trace,
     win32utils,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.symbol_versioning import (
@@ -88,8 +90,8 @@ def get_unicode_argv():
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
     except UnicodeDecodeError:
-        raise errors.BzrError("Parameter %r encoding is unsupported by %s "
-            "application locale." % (a, user_encoding))
+        raise errors.BzrError(gettext("Parameter {0!r} encoding is unsupported by {1} "
+            "application locale.").format(a, user_encoding))
 
 
 def make_readonly(filename):
@@ -189,7 +191,7 @@ if lexists is None:
             if e.errno == errno.ENOENT:
                 return False;
             else:
-                raise errors.BzrError("lstat/stat of (%r): %r" % (f, e))
+                raise errors.BzrError(gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -924,7 +926,7 @@ def splitpath(p):
     rps = []
     for f in ps:
         if f == '..':
-            raise errors.BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
         elif (f == '.') or (f == ''):
             pass
         else:
@@ -935,7 +937,7 @@ def splitpath(p):
 def joinpath(p):
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
-            raise errors.BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
     return pathjoin(*p)
 
 
@@ -985,8 +987,7 @@ def failed_to_load_extension(exception):
 def report_extension_load_failures():
     if not _extension_load_failures:
         return
-    from bzrlib.config import GlobalConfig
-    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+    if config.GlobalStack().get('ignore_missing_extensions'):
         return
     # the warnings framework should by default show this only once
     from bzrlib.trace import warning
@@ -1154,7 +1155,7 @@ def relpath(base, path):
 
     if len(base) < MIN_ABS_PATHLENGTH:
         # must have space for e.g. a drive letter
-        raise ValueError('%r is too short to calculate a relative path'
+        raise ValueError(gettext('%r is too short to calculate a relative path')
             % (base,))
 
     rp = abspath(path)
@@ -2178,15 +2179,18 @@ def file_kind_from_stat_mode_thunk(mode):
     return file_kind_from_stat_mode(mode)
 file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
 
-
-def file_kind(f, _lstat=os.lstat):
+def file_stat(f, _lstat=os.lstat):
     try:
-        return file_kind_from_stat_mode(_lstat(f).st_mode)
+        # XXX cache?
+        return _lstat(f)
     except OSError, e:
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
+def file_kind(f, _lstat=os.lstat):
+    stat_value = file_stat(f, _lstat)
+    return file_kind_from_stat_mode(stat_value.st_mode)
 
 def until_no_eintr(f, *a, **kw):
     """Run f(*a, **kw), retrying if an EINTR error occurs.
@@ -2252,7 +2256,7 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-if sys.platform == 'linux2':
+if sys.platform.startswith('linux'):
     def _local_concurrency():
         try:
             return os.sysconf('SC_NPROCESSORS_ONLN')
@@ -2381,6 +2385,18 @@ def getuser_unicode():
     except UnicodeDecodeError:
         raise errors.BzrError("Can't decode username as %s." % \
                 user_encoding)
+    except ImportError, e:
+        if sys.platform != 'win32':
+            raise
+        if str(e) != 'No module named pwd':
+            raise
+        # https://bugs.launchpad.net/bzr/+bug/660174
+        # getpass.getuser() is unable to return username on Windows
+        # if there is no USERNAME environment variable set.
+        # That could be true if bzr is running as a service,
+        # e.g. running `bzr serve` as a service on Windows.
+        # We should not fail with traceback in this case.
+        username = u'UNKNOWN'
     return username
 
 
@@ -2448,3 +2464,41 @@ def find_executable_on_path(name):
             if os.access(f, os.X_OK):
                 return f
     return None
+
+
+def _posix_is_local_pid_dead(pid):
+    """True if pid doesn't correspond to live process on this machine"""
+    try:
+        # Special meaning of unix kill: just check if it's there.
+        os.kill(pid, 0)
+    except OSError, e:
+        if e.errno == errno.ESRCH:
+            # On this machine, and really not found: as sure as we can be
+            # that it's dead.
+            return True
+        elif e.errno == errno.EPERM:
+            # exists, though not ours
+            return False
+        else:
+            mutter("os.kill(%d, 0) failed: %s" % (pid, e))
+            # Don't really know.
+            return False
+    else:
+        # Exists and our process: not dead.
+        return False
+
+if sys.platform == "win32":
+    is_local_pid_dead = win32utils.is_local_pid_dead
+else:
+    is_local_pid_dead = _posix_is_local_pid_dead
+
+
+def fdatasync(fileno):
+    """Flush file contents to disk if possible.
+    
+    :param fileno: Integer OS file handle.
+    :raises TransportNotPossible: If flushing to disk is not possible.
+    """
+    fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
+    if fn is not None:
+        fn(fileno)
