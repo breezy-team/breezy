@@ -40,7 +40,7 @@ from bzrlib import (
         ui,
         urlutils,
         )
-from bzrlib.i18n import gettext
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib import (

@@ -334,7 +334,7 @@ class TestBranchStacked(TestCaseWithTransport):
         # mainline.
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
         self.assertEqual('', out)
-        self.assertEqual('Branched 2 revision(s).\n',
+        self.assertEqual('Branched 2 revisions.\n',
             err)
         # it should have preserved the branch format, and so it should be
         # capable of supporting stacking, but not actually have a stacked_on
@@ -441,7 +441,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(37, self.hpss_calls)
+        self.assertLength(39, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -561,7 +561,7 @@ class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
                 $ bzr checkout %(option)s repo/trunk checkout
                 $ cd checkout
                 $ bzr branch --switch ../repo/trunk ../repo/branched
-                2>Branched 0 revision(s).
+                2>Branched 0 revisions.
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...branched...
                 $ cd ..

@@ -1080,7 +1080,7 @@ $ bzr commit -m 'create file on trunk'
 # Create a debian branch based on trunk
 $ cd ..
 $ bzr branch trunk -r 1 debian
-2>Branched 1 revision(s).
+2>Branched 1 revision.
 $ cd debian
 $ mkdir dir
 $ bzr add
