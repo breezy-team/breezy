@@ -91,9 +91,9 @@ class AddWithSkipLargeAction(AddAction):
         else:
             file_size = stat_value.st_size;
         if self._maxSize > 0 and file_size > self._maxSize:
-            ui.ui_factory.show_warning(
-                "skipping %s (larger than %s of %d bytes)" % 
-                (path, self._optionName,  self._maxSize))
+            ui.ui_factory.show_warning(gettext(
+                "skipping {0} (larger than {1} of {2} bytes)").format(
+                path, self._optionName,  self._maxSize))
             return True
         return False
 
