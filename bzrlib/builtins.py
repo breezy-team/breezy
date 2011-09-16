@@ -3052,7 +3052,7 @@ class cmd_export(Command):
             export(rev_tree, dest, format, root, subdir, filtered=filters,
                    per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat, e:
-            raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
+            raise errors.BzrCommandError(gettext('Unsupported export format: %s') % e.format)
 
 
 class cmd_cat(Command):

@@ -314,7 +314,7 @@ class GPGStrategy(object):
                 acceptable_keys_config = str(acceptable_keys_config)
         except UnicodeEncodeError:
             #gpg Context.keylist(pattern) does not like unicode
-            raise errors.BzrCommandError('Only ASCII permitted in option names')
+            raise errors.BzrCommandError(gettext('Only ASCII permitted in option names'))
 
         if acceptable_keys_config is not None:
             key_patterns = acceptable_keys_config

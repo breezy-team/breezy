@@ -47,6 +47,7 @@ from bzrlib import (
     trace,
     win32utils,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.symbol_versioning import (
@@ -89,8 +90,8 @@ def get_unicode_argv():
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
     except UnicodeDecodeError:
-        raise errors.BzrError("Parameter %r encoding is unsupported by %s "
-            "application locale." % (a, user_encoding))
+        raise errors.BzrError(gettext("Parameter {0!r} encoding is unsupported by {1} "
+            "application locale.").format(a, user_encoding))
 
 
 def make_readonly(filename):
@@ -190,7 +191,7 @@ if lexists is None:
             if e.errno == errno.ENOENT:
                 return False;
             else:
-                raise errors.BzrError("lstat/stat of (%r): %r" % (f, e))
+                raise errors.BzrError(gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -925,7 +926,7 @@ def splitpath(p):
     rps = []
     for f in ps:
         if f == '..':
-            raise errors.BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
         elif (f == '.') or (f == ''):
             pass
         else:
@@ -936,7 +937,7 @@ def splitpath(p):
 def joinpath(p):
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
-            raise errors.BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
     return pathjoin(*p)
 
 
@@ -1154,7 +1155,7 @@ def relpath(base, path):
 
     if len(base) < MIN_ABS_PATHLENGTH:
         # must have space for e.g. a drive letter
-        raise ValueError('%r is too short to calculate a relative path'
+        raise ValueError(gettext('%r is too short to calculate a relative path')
             % (base,))
 
     rp = abspath(path)

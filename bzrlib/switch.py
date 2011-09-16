@@ -64,8 +64,8 @@ def _check_pending_merges(control, force=False):
     # XXX: Should the tree be locked for get_parent_ids?
     existing_pending_merges = tree.get_parent_ids()[1:]
     if len(existing_pending_merges) > 0:
-        raise errors.BzrCommandError('Pending merges must be '
-            'committed or reverted before using switch.')
+        raise errors.BzrCommandError(gettext('Pending merges must be '
+            'committed or reverted before using switch.'))
 
 
 def _set_branch_location(control, to_branch, force=False):
@@ -90,14 +90,14 @@ def _set_branch_location(control, to_branch, force=False):
             possible_transports = []
             try:
                 if not force and _any_local_commits(b, possible_transports):
-                    raise errors.BzrCommandError(
+                    raise errors.BzrCommandError(gettext(
                         'Cannot switch as local commits found in the checkout. '
                         'Commit these to the bound branch or use --force to '
-                        'throw them away.')
+                        'throw them away.'))
             except errors.BoundBranchConnectionFailure, e:
-                raise errors.BzrCommandError(
+                raise errors.BzrCommandError(gettext(
                         'Unable to connect to current master branch %(target)s: '
-                        '%(error)s To switch anyway, use --force.' %
+                        '%(error)s To switch anyway, use --force.') %
                         e.__dict__)
             b.set_bound_location(None)
             b.pull(to_branch, overwrite=True,
@@ -105,8 +105,8 @@ def _set_branch_location(control, to_branch, force=False):
             b.set_bound_location(to_branch.base)
             b.set_parent(b.get_master_branch().get_parent())
         else:
-            raise errors.BzrCommandError('Cannot switch a branch, '
-                'only a checkout.')
+            raise errors.BzrCommandError(gettext('Cannot switch a branch, '
+                'only a checkout.'))
 
 
 def _any_local_commits(this_branch, possible_transports):
