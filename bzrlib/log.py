@@ -1074,8 +1074,8 @@ def _get_revision_limits(branch, start_revision, end_revision):
             or end_rev_id == _mod_revision.NULL_REVISION):
             raise errors.BzrCommandError(gettext('Logging revision 0 is invalid.'))
         if start_revno > end_revno:
-            raise errors.BzrCommandError(gettext("Start revision must be older than "
-                                         "the end revision."))
+            raise errors.BzrCommandError(gettext("Start revision must be "
+                                         "older than the end revision."))
     return (start_rev_id, end_rev_id)
 
 
@@ -1132,8 +1132,8 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         or (end_rev_id == _mod_revision.NULL_REVISION)):
         raise errors.BzrCommandError(gettext('Logging revision 0 is invalid.'))
     if start_revno > end_revno:
-        raise errors.BzrCommandError(gettext("Start revision must be older than "
-                                     "the end revision."))
+        raise errors.BzrCommandError(gettext("Start revision must be older "
+                                     "than the end revision."))
 
     if end_revno < start_revno:
         return None, None, None, None
