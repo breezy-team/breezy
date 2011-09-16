@@ -115,8 +115,8 @@ class TestSuite(unittest.TestSuite):
                 if stored_count == new_stored_count and notify:
                     # Testcase didn't fail, but somehow is still alive
                     FailedCollectionCase(case).run(result)
-                # Zombie the testcase but leave a working stub id method
-                case.__dict__ = {"id": lambda _id=case.id(): _id}
+                # GZ 2011-09-16: Previously zombied the case at this point by
+                #                clearing the dict as fallback, skip for now.
             stored_count = new_stored_count
         return result
 
