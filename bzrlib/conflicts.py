@@ -146,7 +146,9 @@ class cmd_resolve(commands.Command):
             if file_list is None:
                 un_resolved, resolved = tree.auto_resolve()
                 if len(un_resolved) > 0:
-                    trace.note(gettext('%d conflict(s) auto-resolved.'), len(resolved))
+                    trace.note(gettext('%d conflict auto-resolved.',
+                        '%d conflict auto-resolved.', len(resolved)),
+                        len(resolved))
                     trace.note(gettext('Remaining conflicts:'))
                     for conflict in un_resolved:
                         trace.note(unicode(conflict))
