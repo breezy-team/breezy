@@ -103,17 +103,17 @@ class VersionedFileCheck(Check):
         self.repository.lock_read()
         self.progress = ui.ui_factory.nested_progress_bar()
         try:
-            self.progress.update('check', 0, 4)
+            self.progress.update(gettext('check'), 0, 4)
             if self.check_repo:
-                self.progress.update('checking revisions', 0)
+                self.progress.update(gettext('checking revisions'), 0)
                 self.check_revisions()
-                self.progress.update('checking commit contents', 1)
+                self.progress.update(gettext('checking commit contents'), 1)
                 self.repository._check_inventories(self)
-                self.progress.update('checking file graphs', 2)
+                self.progress.update(gettext('checking file graphs'), 2)
                 # check_weaves is done after the revision scan so that
                 # revision index is known to be valid.
                 self.check_weaves()
-            self.progress.update('checking branches and trees', 3)
+            self.progress.update(gettext('checking branches and trees'), 3)
             if callback_refs:
                 repo = self.repository
                 # calculate all refs, and callback the objects requesting them.

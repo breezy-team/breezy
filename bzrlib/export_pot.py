@@ -34,6 +34,7 @@ from bzrlib.trace import (
     mutter,
     note,
     )
+from bzrlib.i18n import gettext
 
 
 def _escape(s):
