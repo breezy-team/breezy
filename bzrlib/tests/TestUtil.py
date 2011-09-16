@@ -67,6 +67,24 @@ def visitTests(suite, visitor):
                     test, test.__class__)
 
 
+class FailedCollectionCase(unittest.TestCase):
+    """Pseudo-test to run and report failure if given case was uncollected"""
+
+    def __init__(self, case):
+        super(FailedCollectionCase, self).__init__("fail_uncollected")
+        # GZ 2011-09-16: Maybe catch errors from id() method as cases may be
+        #                in a bit of a funny state by now.
+        self._problem_case_id = case.id()
+
+    def id(self):
+        if self._problem_case_id[-1:] == ")":
+            return self._problem_case_id[:-1] + ",uncollected)"
+        return self._problem_case_id + "(uncollected)"
+
+    def fail_uncollected(self):
+        self.fail("Uncollected test case: " + self._problem_case_id)
+
+
 class TestSuite(unittest.TestSuite):
     """I am an extended TestSuite with a visitor interface.
     This is primarily to allow filtering of tests - and suites or
@@ -83,11 +101,6 @@ class TestSuite(unittest.TestSuite):
         tests = list(self)
         tests.reverse()
         self._tests = []
-        stream = getattr(result, "stream", None)
-        # With subunit, not only is stream underscored, but the actual result
-        # object is hidden inside a wrapper decorator, get out the real stream
-        if stream is None:
-            stream = result.decorated._stream
         stored_count = 0
         count_stored_tests = getattr(result, "_count_stored_tests", int)
         from bzrlib.tests import selftest_debug_flags
@@ -101,7 +114,7 @@ class TestSuite(unittest.TestSuite):
             if case is not None and isinstance(case, unittest.TestCase):
                 if stored_count == new_stored_count and notify:
                     # Testcase didn't fail, but somehow is still alive
-                    stream.write("Uncollected test case: %s\n" % (case.id(),))
+                    FailedCollectionCase(case).run(result)
                 # Zombie the testcase but leave a working stub id method
                 case.__dict__ = {"id": lambda _id=case.id(): _id}
             stored_count = new_stored_count
