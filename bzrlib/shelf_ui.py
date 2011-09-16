@@ -262,7 +262,7 @@ class Shelver(object):
             # to prompt the user, better abort now.  See
             # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
             # for more context.
-            raise errors.BzrError("You need a controlling terminal.")
+            raise errors.BzrError(gettext("You need a controlling terminal."))
         sys.stdout.write(message)
         char = osutils.getchar()
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
@@ -412,7 +412,7 @@ class Unshelver(object):
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
-                    raise errors.BzrCommandError('No changes are shelved.')
+                    raise errors.BzrCommandError(gettext('No changes are shelved.'))
             apply_changes = True
             delete_shelf = True
             read_shelf = True

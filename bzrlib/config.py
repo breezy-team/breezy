@@ -445,9 +445,9 @@ class Config(object):
                         elif m.group(2).lower() == 'g':
                             val *= 10**9
                 else:
-                    ui.ui_factory.show_warning('Invalid config value for "%s" '
-                                               ' value %r is not an SI unit.'
-                                                % (option_name, val))
+                    ui.ui_factory.show_warning(gettext('Invalid config value for "{0}" '
+                                               ' value {1!r} is not an SI unit.').format(
+                                                option_name, val))
                     val = default
             except TypeError:
                 val = default
