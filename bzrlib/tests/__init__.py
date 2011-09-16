@@ -212,6 +212,27 @@ def restore_os_environ(test):
         osutils.set_or_unset_env(var, value)
 
 
+def _clear__type_equality_funcs(test):
+    """Cleanup bound methods stored on TestCase instances
+
+    Clear the dict breaking a few (mostly) harmless cycles in the affected
+    unittests released with Python 2.6 and initial Python 2.7 versions.
+
+    For a few revisions between Python 2.7.1 and Python 2.7.2 that annoyingly
+    shipped in Oneiric, an object with no clear method was used, hence the
+    extra complications, see bug 809048 for details.
+    """
+    type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+    if type_equality_funcs is not None:
+        tef_clear = getattr(type_equality_funcs, "clear", None)
+        if tef_clear is None:
+            tef_instance_dict = getattr(type_equality_funcs, "__dict__", None)
+            if tef_instance_dict is not None:
+                tef_clear = tef_instance_dict.clear
+        if tef_clear is not None:
+            tef_clear()
+
+
 class ExtendedTestResult(testtools.TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
@@ -385,18 +406,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         getDetails = getattr(test, "getDetails", None)
         if getDetails is not None:
             getDetails().clear()
-        # Clear _type_equality_funcs to try to stop TestCase instances
-        # from wasting memory. 'clear' is not available in all Python
-        # versions (bug 809048)
-        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
-        if type_equality_funcs is not None:
-            tef_clear = getattr(type_equality_funcs, "clear", None)
-            if tef_clear is None:
-                tef_instance_dict = getattr(type_equality_funcs, "__dict__", None)
-                if tef_instance_dict is not None:
-                    tef_clear = tef_instance_dict.clear
-            if tef_clear is not None:
-                tef_clear()
+        _clear__type_equality_funcs(test)
         self._traceback_from_test = None
 
     def startTests(self):
@@ -4436,13 +4446,9 @@ try:
     from subunit.test_results import AutoTimingTestResultDecorator
     class SubUnitBzrProtocolClient(TestProtocolClient):
 
-        # GZ 2011-05-26: This duplicates logic in ExtendedTestResult.stopTest
         def stopTest(self, test):
             super(SubUnitBzrProtocolClient, self).stopTest(test)
-            # Break bound method cycles added in Python 2.7 unittest rewrite
-            type_equality_funcs = getattr(test, "_type_equality_funcs", None)
-            if type_equality_funcs is not None:
-                type_equality_funcs.clear()
+            _clear__type_equality_funcs(test)
 
         def addSuccess(self, test, details=None):
             # The subunit client always includes the details in the subunit
