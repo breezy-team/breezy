@@ -3137,7 +3137,7 @@ class BranchPushResult(_Result):
             if self.old_revid != self.new_revid:
                 note(gettext('Pushed up to revision %d.') % self.new_revno)
             if tag_updates:
-                note(gettext('%d tag(s) updated.') % len(tag_updates))
+                note(ngettext('%d tag updated.', '%d tags updated.', len(tag_updates)) % len(tag_updates))
             if self.old_revid == self.new_revid and not tag_updates:
                 if not tag_conflicts:
                     note(gettext('No new revisions or tags to push.'))

@@ -57,7 +57,7 @@ from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
-from bzrlib.i18n import gettext
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib.commands import (
@@ -1324,7 +1324,7 @@ class cmd_branch(Command):
                 branch.get_stacked_on_url())
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
-            note(gettext('Branched %d revision(s).') % branch.revno())
+            note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
             # Bind to the parent
             parent_branch = Branch.open(from_location)
@@ -2913,11 +2913,15 @@ class cmd_ignore(Command):
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
         bad_patterns = ''
+        bad_patterns_count = 0
         for p in name_pattern_list:
             if not globbing.Globster.is_pattern_valid(p):
+                bad_patterns_count += 1
                 bad_patterns += ('\n  %s' % p)
         if bad_patterns:
-            msg = ('Invalid ignore pattern(s) found. %s' % bad_patterns)
+            msg = (ngettext('Invalid ignore pattern found. %s', 
+                            'Invalid ignore patterns found. %s',
+                            bad_patterns_count) % bad_patterns)
             ui.ui_factory.show_error(msg)
             raise errors.InvalidPattern('')
         for name_pattern in name_pattern_list:
@@ -4675,7 +4679,9 @@ class cmd_missing(Command):
 
         status_code = 0
         if local_extra and not theirs_only:
-            message(gettext("You have %d extra revision(s):\n") %
+            message(ngettext("You have %d extra revision:\n",
+                             "You have %d extra revisions:\n", 
+                             len(local_extra)) %
                 len(local_extra))
             for revision in iter_log_revisions(local_extra,
                                 local_branch.repository,
@@ -4689,7 +4695,9 @@ class cmd_missing(Command):
         if remote_extra and not mine_only:
             if printed_local is True:
                 message("\n\n\n")
-            message(gettext("You are missing %d revision(s):\n") %
+            message(ngettext("You are missing %d revision:\n",
+                             "You are missing %d revisions:\n",
+                             len(remote_extra)) %
                 len(remote_extra))
             for revision in iter_log_revisions(remote_extra,
                                 remote_branch.repository,
