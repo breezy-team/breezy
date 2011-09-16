@@ -23,7 +23,7 @@ from bzrlib import (
     osutils,
     ui, 
     )
-
+from bzrlib.i18n import gettext
 
 class AddAction(object):
     """A class which defines what action to take when adding a file."""
