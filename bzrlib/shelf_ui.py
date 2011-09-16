@@ -42,17 +42,17 @@ class UseEditor(Exception):
 
 class ShelfReporter(object):
 
-    vocab = {'add file': 'Shelve adding file "%(path)s"?',
-             'binary': 'Shelve binary changes?',
-             'change kind': 'Shelve changing "%s" from %(other)s'
-             ' to %(this)s?',
-             'delete file': 'Shelve removing file "%(path)s"?',
-             'final': 'Shelve %d change(s)?',
-             'hunk': 'Shelve?',
-             'modify target': 'Shelve changing target of'
-             ' "%(path)s" from "%(other)s" to "%(this)s"?',
-             'rename': 'Shelve renaming "%(other)s" =>'
-                        ' "%(this)s"?'
+    vocab = {'add file': gettext('Shelve adding file "%(path)s"?'),
+             'binary': gettext('Shelve binary changes?'),
+             'change kind': gettext('Shelve changing "%s" from %(other)s'
+             ' to %(this)s?'),
+             'delete file': gettext('Shelve removing file "%(path)s"?'),
+             'final': gettext('Shelve %d change(s)?'),
+             'hunk': gettext('Shelve?'),
+             'modify target': gettext('Shelve changing target of'
+             ' "%(path)s" from "%(other)s" to "%(this)s"?'),
+             'rename': gettext('Shelve renaming "%(other)s" =>'
+                        ' "%(this)s"?')
              }
 
     invert_diff = False
@@ -94,16 +94,16 @@ class ShelfReporter(object):
 
 class ApplyReporter(ShelfReporter):
 
-    vocab = {'add file': 'Delete file "%(path)s"?',
-             'binary': 'Apply binary changes?',
-             'change kind': 'Change "%(path)s" from %(this)s'
-             ' to %(other)s?',
-             'delete file': 'Add file "%(path)s"?',
-             'final': 'Apply %d change(s)?',
-             'hunk': 'Apply change?',
-             'modify target': 'Change target of'
-             ' "%(path)s" from "%(this)s" to "%(other)s"?',
-             'rename': 'Rename "%(this)s" => "%(other)s"?',
+    vocab = {'add file': gettext('Delete file "%(path)s"?'),
+             'binary': gettext('Apply binary changes?'),
+             'change kind': gettext('Change "%(path)s" from %(this)s'
+             ' to %(other)s?'),
+             'delete file': gettext('Add file "%(path)s"?'),
+             'final': gettext('Apply %d change(s)?'),
+             'hunk': gettext('Apply change?'),
+             'modify target': gettext('Change target of'
+             ' "%(path)s" from "%(this)s" to "%(other)s"?'),
+             'rename': gettext('Rename "%(this)s" => "%(other)s"?'),
              }
 
     invert_diff = True
