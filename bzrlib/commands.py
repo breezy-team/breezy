@@ -863,8 +863,9 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.BzrCommandError(gettext("extra argument to command {0}: {1}").format(
-                                       (cmd, args[0]))
+        raise errors.BzrCommandError( gettext(
+                              "extra argument to command {0}: {1}").format(
+                                       cmd, args[0]) )
 
     return argdict
 
