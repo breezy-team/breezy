@@ -31,6 +31,7 @@ from bzrlib import (
     registry,
     transform,
     )
+from bzrlib.i18n import gettext
 """)
 
 class VcsMapping(object):
