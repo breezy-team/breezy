@@ -121,8 +121,8 @@ class cmd_resolve(commands.Command):
     def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
-                raise errors.BzrCommandError("If --all is specified,"
-                                             " no FILE may be provided")
+                raise errors.BzrCommandError(gettext("If --all is specified,"
+                                             " no FILE may be provided"))
             if directory is None:
                 directory = u'.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]

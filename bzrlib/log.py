@@ -558,10 +558,10 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
              a list of the same tuples.
     """
     if (exclude_common_ancestry and start_rev_id == end_rev_id):
-        raise errors.BzrCommandError(
-            '--exclude-common-ancestry requires two different revisions')
+        raise errors.BzrCommandError(gettext(
+            '--exclude-common-ancestry requires two different revisions'))
     if direction not in ('reverse', 'forward'):
-        raise ValueError('invalid direction %r' % direction)
+        raise ValueError(gettext('invalid direction %r') % direction)
     br_revno, br_rev_id = branch.last_revision_info()
     if br_revno == 0:
         return []
@@ -608,8 +608,8 @@ def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction,
         try:
             result = list(result)
         except _StartNotLinearAncestor:
-            raise errors.BzrCommandError('Start revision not found in'
-                ' left-hand history of end revision.')
+            raise errors.BzrCommandError(gettext('Start revision not found in'
+                ' left-hand history of end revision.'))
     return result
 
 
@@ -654,8 +654,8 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
         except _StartNotLinearAncestor:
             # A merge was never detected so the lower revision limit can't
             # be nested down somewhere
-            raise errors.BzrCommandError('Start revision not found in'
-                ' history of end revision.')
+            raise errors.BzrCommandError(gettext('Start revision not found in'
+                ' history of end revision.'))
 
     # We exit the loop above because we encounter a revision with merges, from
     # this revision, we need to switch to _graph_view_revisions.
@@ -1072,10 +1072,10 @@ def _get_revision_limits(branch, start_revision, end_revision):
     if branch_revno != 0:
         if (start_rev_id == _mod_revision.NULL_REVISION
             or end_rev_id == _mod_revision.NULL_REVISION):
-            raise errors.BzrCommandError('Logging revision 0 is invalid.')
+            raise errors.BzrCommandError(gettext('Logging revision 0 is invalid.'))
         if start_revno > end_revno:
-            raise errors.BzrCommandError("Start revision must be older than "
-                                         "the end revision.")
+            raise errors.BzrCommandError(gettext("Start revision must be "
+                                         "older than the end revision."))
     return (start_rev_id, end_rev_id)
 
 
@@ -1130,10 +1130,10 @@ def _get_mainline_revs(branch, start_revision, end_revision):
 
     if ((start_rev_id == _mod_revision.NULL_REVISION)
         or (end_rev_id == _mod_revision.NULL_REVISION)):
-        raise errors.BzrCommandError('Logging revision 0 is invalid.')
+        raise errors.BzrCommandError(gettext('Logging revision 0 is invalid.'))
     if start_revno > end_revno:
-        raise errors.BzrCommandError("Start revision must be older than "
-                                     "the end revision.")
+        raise errors.BzrCommandError(gettext("Start revision must be older "
+                                     "than the end revision."))
 
     if end_revno < start_revno:
         return None, None, None, None
@@ -1818,7 +1818,7 @@ def log_formatter(name, *args, **kwargs):
     try:
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
     except KeyError:
-        raise errors.BzrCommandError("unknown log formatter: %r" % name)
+        raise errors.BzrCommandError(gettext("unknown log formatter: %r") % name)
 
 
 def author_list_all(rev):
