@@ -298,7 +298,7 @@ class SmartServerStreamMedium(SmartMedium):
             poll_timeout = min(timeout_seconds, self._client_poll_timeout)
             rs = []
             while not rs and time.time() < t_end:
-                rs, _, _ = select.select([fd], [], [], poll_timeout)
+                rs, _, xs = select.select([fd], [], [fd], poll_timeout)
         except (select.error, socket.error) as e:
             err = getattr(e, 'errno', None)
             if err is None:
@@ -310,6 +310,11 @@ class SmartServerStreamMedium(SmartMedium):
                 # socket, just return 'without timeout'
                 return False
             raise
+        if xs:
+            # I honestly don't know what to do here. Something is wrong with
+            # the file handle, but we don't know *what*.
+            raise errors.BzrError('select returned an error for fd: %s'
+                                  % (xs[0],))
         if rs:
             # We can read without blocking, we did not timeout.
             return False
