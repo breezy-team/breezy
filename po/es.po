@@ -1,4 +1,4 @@
-# Russian translation for bzr
+# Spanish translation for bzr
 # Copyright (c) 2011 Rosetta Contributors and Canonical Ltd 2011
 # This file is distributed under the same license as the bzr package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011.
@@ -8,14 +8,13 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-16 16:33+0100\n"
-"PO-Revision-Date: 2011-09-17 03:41+0000\n"
-"Last-Translator: AsstZD <eskaer_spamsink@ngs.ru>\n"
-"Language-Team: Russian <ru@li.org>\n"
+"PO-Revision-Date: 2011-09-17 13:34+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Spanish <es@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
 "X-Launchpad-Export-Date: 2011-09-18 04:31+0000\n"
 "X-Generator: Launchpad (build 13955)\n"
 
@@ -340,7 +339,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:727
 msgid "ignored {0} matching \"{1}\"\n"
-msgstr "пропускается {0} (из-за условия \"{1}\")\n"
+msgstr ""
 
 #: bzrlib/builtins.py:732
 msgid "Create a new versioned directory."
@@ -386,7 +385,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:843
 msgid "Files cannot be moved between branches."
-msgstr "Файлы нельзя перемещать между ветвями."
+msgstr ""
 
 #: bzrlib/builtins.py:850
 msgid ""
@@ -866,7 +865,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1612
 msgid "The file deletion mode to be used."
-msgstr "Используемый способ удаления файлов."
+msgstr ""
 
 #: bzrlib/builtins.py:1613
 msgid "Deletion Strategy"
@@ -954,7 +953,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1812
 msgid "Specify a format for this branch. See \"help formats\"."
-msgstr "Указать формат данной ветви. См. \"help formats\"."
+msgstr ""
 
 #: bzrlib/builtins.py:1820
 msgid ""
@@ -979,7 +978,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1888
 msgid "Created a {0} (format: {1})\n"
-msgstr "Создана {0} в формате {1}\n"
+msgstr ""
 
 #: bzrlib/builtins.py:1897
 #, python-format
@@ -1038,7 +1037,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1935
 msgid "Repository format"
-msgstr "Формат хранилища"
+msgstr ""
 
 #: bzrlib/builtins.py:1937
 msgid "Branches in the repository will default to not having a working tree."
@@ -1119,7 +1118,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2003
 msgid "    The changes introduced by revision 2 (equivalent to -r1..2)::"
-msgstr "    Изменения в версии 2 (аналог -r1..2)::"
+msgstr ""
 
 #: bzrlib/builtins.py:2005
 msgid "        bzr diff -c2"
@@ -1148,8 +1147,6 @@ msgid ""
 "    The changes between the current revision and the previous revision\n"
 "    (equivalent to -c-1 and -r-2..-1)"
 msgstr ""
-"    Изменения в текущей версии по сравнению с предыдущей\n"
-"    (аналог -c-1 или -r-2..-1)"
 
 #: bzrlib/builtins.py:2020
 msgid "        bzr diff -r-2.."
@@ -1157,7 +1154,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2022
 msgid "    Show just the differences for file NEWS::"
-msgstr "    Вывести изменения лишь для файла NEWS::"
+msgstr ""
 
 #: bzrlib/builtins.py:2024
 msgid "        bzr diff NEWS"
@@ -1181,7 +1178,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2034
 msgid "    Show the differences between two branches for file NEWS::"
-msgstr "    Показать различия в файле NEWS между двумя ветвями::"
+msgstr ""
 
 #: bzrlib/builtins.py:2036
 msgid "        bzr diff --old xxx --new yyy NEWS"
@@ -1224,11 +1221,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:2071
 msgid "Diff format to use."
-msgstr "Используемый формат для вывода различий."
+msgstr ""
 
 #: bzrlib/builtins.py:2073
 msgid "Diff format"
-msgstr "Формат различий"
+msgstr ""
 
 #: bzrlib/builtins.py:2095
 msgid "--prefix expects two values separated by a colon (eg \"old/:new/\")"
@@ -1240,7 +1237,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2103
 msgid "--using and --format are mutually exclusive."
-msgstr "параметры --using и --format несовместимы."
+msgstr ""
 
 #: bzrlib/builtins.py:2123
 msgid ""
@@ -1549,7 +1546,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2403
 msgid "Authors"
-msgstr "Авторы"
+msgstr ""
 
 #: bzrlib/builtins.py:2408
 msgid "Number of levels to display - 0 for all, 1 for flat."
@@ -1557,7 +1554,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2418
 msgid "Limit the output to the first N revisions."
-msgstr "Выводить лишь первые N версий."
+msgstr ""
 
 #: bzrlib/builtins.py:2423
 msgid "Show changes made in each revision as a patch."
@@ -1832,7 +1829,7 @@ msgstr ""
 #: bzrlib/builtins.py:2988
 #, python-format
 msgid "not a valid revision-number: %r"
-msgstr "неверный номер версии: %r"
+msgstr ""
 
 #: bzrlib/builtins.py:2995
 msgid ""
@@ -2110,7 +2107,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3337
 msgid "please specify either --message or --file"
-msgstr "укажите либо --message, либо --file"
+msgstr ""
 
 #: bzrlib/builtins.py:3366
 msgid "please specify a commit message with either --message or --file"
@@ -2301,7 +2298,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3518
 msgid "Branch format"
-msgstr "Формат ветви"
+msgstr ""
 
 #: bzrlib/builtins.py:3520
 msgid "Remove the backup.bzr directory if successful."

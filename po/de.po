@@ -8,19 +8,19 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-16 16:33+0100\n"
-"PO-Revision-Date: 2011-09-08 12:45+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"PO-Revision-Date: 2011-09-17 16:35+0000\n"
+"Last-Translator: Steven Beer <Unknown>\n"
 "Language-Team: German <de@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2011-09-17 04:30+0000\n"
+"X-Launchpad-Export-Date: 2011-09-18 04:30+0000\n"
 "X-Generator: Launchpad (build 13955)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
-msgstr ""
+msgstr "Überspringe {0} (Größer als {1} von {2} Bytes)"
 
 #: bzrlib/branch.py:852
 msgid "Unstacking"
@@ -34,7 +34,7 @@ msgstr ""
 #: bzrlib/branch.py:3140
 #, python-format
 msgid "%d tag(s) updated."
-msgstr ""
+msgstr "%d Tag(s) aktualisiert."
 
 #: bzrlib/branch.py:3143
 msgid "No new revisions or tags to push."
@@ -52,12 +52,12 @@ msgstr ""
 #: bzrlib/branch.py:3168
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "Fehler gefunden: %s"
 
 #: bzrlib/builtins.py:116 bzrlib/builtins.py:2758 bzrlib/workingtree.py:306
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr ""
+msgstr "Ignoriere Dateien außerhalb der Ansicht. Die Ansicht ist %s"
 
 #: bzrlib/builtins.py:125
 #, python-format
@@ -66,26 +66,28 @@ msgstr ""
 
 #: bzrlib/builtins.py:210
 msgid "Display status summary."
-msgstr ""
+msgstr "Zeige Status-Zusammenfassung an."
 
 #: bzrlib/builtins.py:212
 msgid ""
 "This reports on versioned and unknown files, reporting them\n"
 "grouped by state.  Possible states are:"
 msgstr ""
+"Zeigt versionierte und unbekannte Dateien an, Gruppiert nach Zustand.\n"
+"Mögliche Zustände:"
 
 #: bzrlib/builtins.py:215
 msgid ""
 "added\n"
 "    Versioned in the working copy but not in the previous revision."
-msgstr ""
+msgstr "hinzugefügt"
 
 #: bzrlib/builtins.py:218
 msgid ""
 "removed\n"
 "    Versioned in the previous revision but removed or deleted\n"
 "    in the working copy."
-msgstr ""
+msgstr "entfernt"
 
 #: bzrlib/builtins.py:222
 msgid ""
@@ -93,13 +95,13 @@ msgid ""
 "    Path of this file changed from the previous revision;\n"
 "    the text may also have changed.  This includes files whose\n"
 "    parent directory was renamed."
-msgstr ""
+msgstr "umbenannt"
 
 #: bzrlib/builtins.py:227
 msgid ""
 "modified\n"
 "    Text has changed since the previous revision."
-msgstr ""
+msgstr "verändert"
 
 #: bzrlib/builtins.py:230
 msgid ""
