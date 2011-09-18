@@ -750,6 +750,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def make_repository_and_foo_bar(self, shared):
         made_control = self.make_bzrdir('repository')
         repo = made_control.create_repository(shared=shared)
+        if not repo._format.supports_nesting_repositories:
+            raise tests.TestNotApplicable("repository does not support "
+                "nesting repositories")
         bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
                                                 force_new_repo=False)
         bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
@@ -789,6 +792,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_find_branches_using_standalone(self):
         branch = self.make_branch('branch')
+        if not branch.repository._format.supports_nesting_repositories:
+            raise tests.TestNotApplicable("format does not support nesting "
+                "repositories")
         contained = self.make_branch('branch/contained')
         branches = branch.repository.find_branches(using=True)
         self.assertEqual([branch.base], [b.base for b in branches])
