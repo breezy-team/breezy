@@ -1552,6 +1552,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_external_lookups = False
     supports_leaving_lock = True
+    supports_nesting_repositories = True
 
     @property
     def _matchingbzrdir(self):

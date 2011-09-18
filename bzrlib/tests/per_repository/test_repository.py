@@ -68,6 +68,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """Test the format.fast_deltas attribute."""
         self.assertFormatAttribute('fast_deltas', (True, False))
 
+    def test_attribute_supports_nesting_repositories(self):
+        """Test the format.supports_nesting_repositories."""
+        self.assertFormatAttribute('supports_nesting_repositories',
+            (True, False))
+
     def test_attribute__fetch_reconcile(self):
         """Test the _fetch_reconcile attribute."""
         self.assertFormatAttribute('_fetch_reconcile', (True, False))
