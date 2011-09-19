@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: <bazaar@canonical.com>\n"
-"POT-Creation-Date: 2011-09-16 10:15+0100\n"
+"POT-Creation-Date: 2011-09-16 16:33+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,43 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: bzrlib/builtins.py:116 bzrlib/builtins.py:2758
+#: bzrlib/add.py:95
+msgid "skipping {0} (larger than {1} of {2} bytes)"
+msgstr ""
+
+#: bzrlib/branch.py:852
+msgid "Unstacking"
+msgstr ""
+
+#: bzrlib/branch.py:3138
+#, python-format
+msgid "Pushed up to revision %d."
+msgstr ""
+
+#: bzrlib/branch.py:3140
+#, python-format
+msgid "%d tag(s) updated."
+msgstr ""
+
+#: bzrlib/branch.py:3143
+msgid "No new revisions or tags to push."
+msgstr ""
+
+#: bzrlib/branch.py:3145
+msgid "No new revisions to push."
+msgstr ""
+
+#: bzrlib/branch.py:3165
+#, python-format
+msgid "checked branch %s format %s"
+msgstr ""
+
+#: bzrlib/branch.py:3168
+#, python-format
+msgid "found error:%s"
+msgstr ""
+
+#: bzrlib/builtins.py:116 bzrlib/builtins.py:2758 bzrlib/workingtree.py:306
 #, python-format
 msgid "Ignoring files outside view. View is %s"
 msgstr ""
@@ -559,7 +595,7 @@ msgstr ""
 msgid "Could not determine branch to refer to."
 msgstr ""
 
-#: bzrlib/builtins.py:1198
+#: bzrlib/builtins.py:1198 bzrlib/foreign.py:306
 msgid "No push location known or specified."
 msgstr ""
 
@@ -641,7 +677,7 @@ msgstr ""
 msgid "The branch {0} has no revision {1}."
 msgstr ""
 
-#: bzrlib/builtins.py:1323
+#: bzrlib/builtins.py:1323 bzrlib/push.py:51
 #, python-format
 msgid "Created new stacked branch referring to %s."
 msgstr ""
@@ -961,7 +997,7 @@ msgstr ""
 msgid "Create a branch without a working tree."
 msgstr ""
 
-#: bzrlib/builtins.py:1843
+#: bzrlib/builtins.py:1843 bzrlib/push.py:108
 #, python-format
 msgid ""
 "Parent directory of %s does not exist.\n"
@@ -1926,6 +1962,11 @@ msgid ""
 "changed."
 msgstr ""
 
+#: bzrlib/builtins.py:3055
+#, python-format
+msgid "Unsupported export format: %s"
+msgstr ""
+
 #: bzrlib/builtins.py:3059
 msgid "Write the contents of a file as of a given revision to standard output."
 msgstr ""
@@ -2656,7 +2697,7 @@ msgstr ""
 msgid "merger: "
 msgstr ""
 
-#: bzrlib/builtins.py:4137
+#: bzrlib/builtins.py:4137 bzrlib/bundle/apply_bundle.py:67
 msgid "Nothing to do."
 msgstr ""
 
@@ -3331,7 +3372,7 @@ msgstr ""
 msgid "No submit branch specified or known"
 msgstr ""
 
-#: bzrlib/builtins.py:5366
+#: bzrlib/builtins.py:5366 bzrlib/send.py:105
 msgid "No public branch specified or known"
 msgstr ""
 
@@ -4144,34 +4185,225 @@ msgstr ""
 msgid "Do not prompt before deleting."
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:50
+#: bzrlib/bundle/__init__.py:57
+msgid "A directory cannot be a bundle"
+msgstr ""
+
+#: bzrlib/bundle/serializer/v4.py:326
+#, python-format
+msgid "Bundling %d revision(s)."
+msgstr ""
+
+#: bzrlib/bzrdir.py:636
+#, python-format
+msgid ""
+"making backup of %s\n"
+"  to %s"
+msgstr ""
+
+#: bzrlib/bzrdir.py:659
+msgid "renamed {0} to {1}"
+msgstr ""
+
+#: bzrlib/bzrdir.py:851
+msgid "{0} is{1} redirected to {2}"
+msgstr ""
+
+#: bzrlib/bzrdir.py:1727
+#, python-format
+msgid ""
+"Source repository format does not support stacking, using format:\n"
+"  %s"
+msgstr ""
+
+#: bzrlib/bzrdir.py:1747
+#, python-format
+msgid ""
+"Source branch format does not support stacking, using format:\n"
+"  %s"
+msgstr ""
+
+#: bzrlib/bzrdir.py:1858
+msgid "starting repository conversion"
+msgstr ""
+
+#: bzrlib/check.py:106
+msgid "check"
+msgstr ""
+
+#: bzrlib/check.py:108
+msgid "checking revisions"
+msgstr ""
+
+#: bzrlib/check.py:110
+msgid "checking commit contents"
+msgstr ""
+
+#: bzrlib/check.py:112
+msgid "checking file graphs"
+msgstr ""
+
+#: bzrlib/check.py:116
+msgid "checking branches and trees"
+msgstr ""
+
+#: bzrlib/check.py:203
+msgid "checked repository {0} format {1}"
+msgstr ""
+
+#: bzrlib/check.py:206
+#, python-format
+msgid "%6d revisions"
+msgstr ""
+
+#: bzrlib/check.py:207
+#, python-format
+msgid "%6d file-ids"
+msgstr ""
+
+#: bzrlib/check.py:209
+#, python-format
+msgid "%6d unreferenced text versions"
+msgstr ""
+
+#: bzrlib/check.py:213
+msgid "unreferenced version: {{{0}}} in {1}"
+msgstr ""
+
+#: bzrlib/check.py:216
+#, python-format
+msgid "%6d revisions are missing inventory_sha1"
+msgstr ""
+
+#: bzrlib/check.py:219
+#, python-format
+msgid "%6d revisions are mentioned but not present"
+msgstr ""
+
+#: bzrlib/check.py:222
+#, python-format
+msgid "%6d ghost revisions"
+msgstr ""
+
+#: bzrlib/check.py:227
+#, python-format
+msgid "%6d revisions missing parents in ancestry"
+msgstr ""
+
+#: bzrlib/check.py:231
+#, python-format
+msgid "      %s should be in the ancestry for:"
+msgstr ""
+
+#: bzrlib/check.py:235
+#, python-format
+msgid "%6d inconsistent parents"
+msgstr ""
+
+#: bzrlib/check.py:239
+msgid "      * {0} version {1} has parents {2!r} but should have {3!r}"
+msgstr ""
+
+#: bzrlib/check.py:245
+#, python-format
+msgid "%6d revisions have incorrect parents in the revision index"
+msgstr ""
+
+#: bzrlib/check.py:251
+msgid "       {0} has wrong parents in index: {1!r} should be {2!r}"
+msgstr ""
+
+#: bzrlib/check.py:265
+msgid "Mismatched internal revid {{{0}}} and index revid {{{1}}}"
+msgstr ""
+
+#: bzrlib/check.py:294
+msgid ""
+"Multiple expected sha1s for {0}. {{{1}}} expects {{{2}}}, {{{3}}} expects "
+"{{{4}}}"
+msgstr ""
+
+#: bzrlib/check.py:352
+#, python-format
+msgid "Checking branch at '%s'."
+msgstr ""
+
+#: bzrlib/check.py:372
+#, python-format
+msgid "Checking working tree at '%s'."
+msgstr ""
+
+#: bzrlib/check.py:425 bzrlib/check.py:439
+msgid "No branch found at specified location."
+msgstr ""
+
+#: bzrlib/check.py:427 bzrlib/check.py:437
+msgid "No working tree found at specified location."
+msgstr ""
+
+#: bzrlib/check.py:430
+#, python-format
+msgid "Checking repository at '%s'."
+msgstr ""
+
+#: bzrlib/check.py:441
+msgid "No repository found at specified location."
+msgstr ""
+
+#: bzrlib/clean_tree.py:62
+msgid "Nothing to delete."
+msgstr ""
+
+#: bzrlib/clean_tree.py:108
+#, python-format
+msgid "unable to remove %s"
+msgstr ""
+
+#: bzrlib/clean_tree.py:112
+msgid "deleting paths:"
+msgstr ""
+
+#: bzrlib/clean_tree.py:126
+#, python-format
+msgid "unable to remove \"%s\": %s."
+msgstr ""
+
+#: bzrlib/clean_tree.py:130
+msgid "No files deleted."
+msgstr ""
+
+#: bzrlib/cmd_version_info.py:45
+msgid "No known version info format {0}. Supported types are: {1}"
+msgstr ""
+
+#: bzrlib/cmd_version_info.py:51
 msgid "Show version information about this tree."
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:52
+#: bzrlib/cmd_version_info.py:53
 msgid ""
 "You can use this command to add information about version into\n"
 "source code of an application. The output can be in one of the\n"
 "supported formats or in a custom format based on a template."
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:56
+#: bzrlib/cmd_version_info.py:57
 msgid "For example::"
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:58
+#: bzrlib/cmd_version_info.py:59
 msgid ""
 "  bzr version-info --custom \\\n"
 "    --template=\"#define VERSION_INFO \\\"Project 1.2.3 (r{revno})\\\"\\n\""
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:61
+#: bzrlib/cmd_version_info.py:62
 msgid ""
 "will produce a C header file with formatted string containing the\n"
 "current revision number. Other supported variables in templates are:"
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:64
+#: bzrlib/cmd_version_info.py:65
 msgid ""
 "  * {date} - date of the last revision\n"
 "  * {build_date} - current date\n"
@@ -4183,33 +4415,38 @@ msgid ""
 msgstr ""
 
 # help of 'format' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:74
+#: bzrlib/cmd_version_info.py:75
 msgid "Select the output format."
 msgstr ""
 
 # help of 'all' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:78
+#: bzrlib/cmd_version_info.py:79
 msgid "Include all possible information."
 msgstr ""
 
 # help of 'check-clean' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:79
+#: bzrlib/cmd_version_info.py:80
 msgid "Check if tree is clean."
 msgstr ""
 
 # help of 'include-history' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:81
+#: bzrlib/cmd_version_info.py:82
 msgid "Include the revision-history."
 msgstr ""
 
 # help of 'include-file-revisions' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:83
+#: bzrlib/cmd_version_info.py:84
 msgid "Include the last revision for each file."
 msgstr ""
 
 # help of 'template' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:84
+#: bzrlib/cmd_version_info.py:85
 msgid "Template for the output."
+msgstr ""
+
+#: bzrlib/commands.py:232
+#, python-format
+msgid "unknown command \"%s\""
 msgstr ""
 
 #: bzrlib/commands.py:479
@@ -4272,6 +4509,78 @@ msgstr ""
 msgid ":See also: %s"
 msgstr ""
 
+#: bzrlib/commands.py:818 bzrlib/gpg.py:317
+msgid "Only ASCII permitted in option names"
+msgstr ""
+
+#: bzrlib/commands.py:843 bzrlib/commands.py:851
+msgid "command {0!r} needs one or more {1}"
+msgstr ""
+
+#: bzrlib/commands.py:860
+msgid "command {0!r} requires argument {1}"
+msgstr ""
+
+#: bzrlib/commands.py:867
+msgid "extra argument to command {0}: {1}"
+msgstr ""
+
+#: bzrlib/commands.py:964
+#, python-format
+msgid "Profile data written to \"%s\"."
+msgstr ""
+
+#: bzrlib/commit.py:116 bzrlib/commit.py:709
+msgid "added"
+msgstr ""
+
+#: bzrlib/commit.py:116 bzrlib/commit.py:717
+msgid "modified"
+msgstr ""
+
+#: bzrlib/commit.py:130
+#, python-format
+msgid "Committing%s"
+msgstr ""
+
+#: bzrlib/commit.py:133
+#, python-format
+msgid "Committed revision %d."
+msgstr ""
+
+#: bzrlib/commit.py:142
+#, python-format
+msgid "deleted %s"
+msgstr ""
+
+#: bzrlib/commit.py:145
+#, python-format
+msgid "missing %s"
+msgstr ""
+
+#: bzrlib/commit.py:471
+msgid ""
+"Conflicting tags in bound branch:\n"
+"{0}"
+msgstr ""
+
+#: bzrlib/commit.py:711
+msgid "renamed"
+msgstr ""
+
+#: bzrlib/commit.py:946
+msgid "unchanged"
+msgstr ""
+
+#: bzrlib/commit.py:968
+msgid "{0} [{1}] - Stage"
+msgstr ""
+
+#: bzrlib/commit.py:971
+#, python-format
+msgid "%s - Stage"
+msgstr ""
+
 #: bzrlib/commit_signature_commands.py:34
 msgid "Sign all commits by a given committer."
 msgstr ""
@@ -4307,8 +4616,16 @@ msgid ""
 "verification."
 msgstr ""
 
+#: bzrlib/commit_signature_commands.py:145
+msgid "Cannot verify a range of non-revision-history revisions"
+msgstr ""
+
 #: bzrlib/commit_signature_commands.py:166
 msgid "All commits signed with verifiable keys"
+msgstr ""
+
+#: bzrlib/config.py:448
+msgid "Invalid config value for \"{0}\"  value {1!r} is not an SI unit."
 msgstr ""
 
 #: bzrlib/config.py:3293
@@ -4352,11 +4669,11 @@ msgstr ""
 msgid "Remove the option from the configuration file"
 msgstr ""
 
-#: bzrlib/conflicts.py:47
+#: bzrlib/conflicts.py:48
 msgid "List files with conflicts."
 msgstr ""
 
-#: bzrlib/conflicts.py:49
+#: bzrlib/conflicts.py:50
 msgid ""
 "Merge will do its best to combine the changes in two branches, but there\n"
 "are some kinds of problems only a human can fix.  When it encounters those,\n"
@@ -4364,32 +4681,32 @@ msgid ""
 "before you should commit."
 msgstr ""
 
-#: bzrlib/conflicts.py:54
+#: bzrlib/conflicts.py:55
 msgid ""
 "Conflicts normally are listed as short, human-readable messages.  If --text\n"
 "is supplied, the pathnames of files with text conflicts are listed,\n"
 "instead.  (This is useful for editing all files with text conflicts.)"
 msgstr ""
 
-#: bzrlib/conflicts.py:58
+#: bzrlib/conflicts.py:59
 msgid "Use bzr resolve when you have fixed a problem."
 msgstr ""
 
 # help of 'text' option of 'conflicts' command
-#: bzrlib/conflicts.py:63
+#: bzrlib/conflicts.py:64
 msgid "List paths of files with text conflicts."
 msgstr ""
 
 # help of 'action' option of 'resolve' command
-#: bzrlib/conflicts.py:95
+#: bzrlib/conflicts.py:96
 msgid "How to resolve the conflict."
 msgstr ""
 
-#: bzrlib/conflicts.py:101
+#: bzrlib/conflicts.py:102
 msgid "Mark a conflict as resolved."
 msgstr ""
 
-#: bzrlib/conflicts.py:108
+#: bzrlib/conflicts.py:109
 msgid ""
 "Once you have fixed a problem, use \"bzr resolve\" to automatically mark\n"
 "text conflicts as fixed, \"bzr resolve FILE\" to mark a specific conflict "
@@ -4398,13 +4715,41 @@ msgid ""
 msgstr ""
 
 # help of 'all' option of 'resolve' command
-#: bzrlib/conflicts.py:116
+#: bzrlib/conflicts.py:117
 msgid "Resolve all conflicts in this tree."
 msgstr ""
 
+#: bzrlib/conflicts.py:124
+msgid "If --all is specified, no FILE may be provided"
+msgstr ""
+
+#: bzrlib/conflicts.py:149
+#, python-format
+msgid "%d conflict(s) auto-resolved."
+msgstr ""
+
+#: bzrlib/conflicts.py:150
+msgid "Remaining conflicts:"
+msgstr ""
+
+#: bzrlib/conflicts.py:155
+msgid "All conflicts resolved."
+msgstr ""
+
+#: bzrlib/conflicts.py:164
+msgid "{0} conflict resolved, {1} remaining"
+msgid_plural "{0} conflicts resolved, {1} remaining"
+msgstr[0] ""
+msgstr[1] ""
+
 # title of 'action' option of 'resolve' command
-#: bzrlib/conflicts.py:688
+#: bzrlib/conflicts.py:690
 msgid "action"
+msgstr ""
+
+#: bzrlib/diff.py:397
+#, python-format
+msgid "*** Ignoring files outside view. View is %s"
 msgstr ""
 
 #: bzrlib/errors.py:215
@@ -5611,6 +5956,44 @@ msgid ""
 "%(arguments)s."
 msgstr ""
 
+#: bzrlib/export_pot.py:123 bzrlib/export_pot.py:129
+#, python-format
+msgid "%r is not found in bzrlib/option.py"
+msgstr ""
+
+#: bzrlib/export_pot.py:185
+#, python-format
+msgid "Exporting messages from builtin command: %s"
+msgstr ""
+
+#: bzrlib/export_pot.py:201
+msgid "Exporting messages from plugin command: {0} in {1}"
+msgstr ""
+
+#: bzrlib/export_pot.py:226
+#, python-format
+msgid "Exporting message from error: %s"
+msgstr ""
+
+#: bzrlib/fetch.py:97
+msgid "Finding revisions"
+msgstr ""
+
+#: bzrlib/fetch.py:102
+msgid "Fetching revisions"
+msgstr ""
+
+#: bzrlib/foreign.py:311
+#, python-format
+msgid "Using saved location: %s\n"
+msgstr ""
+
+#: bzrlib/foreign.py:321
+msgid ""
+"{0!r} and {1!r} are in the same VCS, lossy push not necessary. Please use "
+"regular push."
+msgstr ""
+
 #: bzrlib/gpg.py:116 bzrlib/gpg.py:454
 msgid "{0} commits with valid signatures"
 msgstr ""
@@ -5666,6 +6049,71 @@ msgid "{0} commit by author {1} with key {2} now expired"
 msgid_plural "{0} commits by author {1} with key {2} now expired"
 msgstr[0] ""
 msgstr[1] ""
+
+#: bzrlib/groupcompress.py:1758
+#, python-format
+msgid "Insert claimed random_id=True, but then inserted %r two times"
+msgstr ""
+
+#: bzrlib/knit.py:1764 bzrlib/knit.py:1800
+msgid "Walking content"
+msgstr ""
+
+#: bzrlib/knit.py:3467
+msgid "annotating"
+msgstr ""
+
+#: bzrlib/lock.py:547
+#, python-format
+msgid "%r was %s locked again"
+msgstr ""
+
+#: bzrlib/log.py:562
+msgid "--exclude-common-ancestry requires two different revisions"
+msgstr ""
+
+#: bzrlib/log.py:564
+#, python-format
+msgid "invalid direction %r"
+msgstr ""
+
+#: bzrlib/log.py:611
+msgid "Start revision not found in left-hand history of end revision."
+msgstr ""
+
+#: bzrlib/log.py:657
+msgid "Start revision not found in history of end revision."
+msgstr ""
+
+#: bzrlib/log.py:1075 bzrlib/log.py:1133
+msgid "Logging revision 0 is invalid."
+msgstr ""
+
+#: bzrlib/log.py:1077 bzrlib/log.py:1135
+msgid "Start revision must be older than the end revision."
+msgstr ""
+
+#: bzrlib/log.py:1821
+#, python-format
+msgid "unknown log formatter: %r"
+msgstr ""
+
+#: bzrlib/merge.py:715
+msgid "All changes applied successfully."
+msgstr ""
+
+#: bzrlib/merge.py:717
+#, python-format
+msgid "%d conflicts encountered."
+msgstr ""
+
+#: bzrlib/merge.py:862 bzrlib/merge.py:1910
+msgid "Preparing file merge"
+msgstr ""
+
+#: bzrlib/multiparent.py:424
+msgid "Importing revisions"
+msgstr ""
 
 # help of 'help' option
 #: bzrlib/option.py:530
@@ -5787,6 +6235,24 @@ msgstr ""
 # help of 'directory' option
 #: bzrlib/option.py:600
 msgid "Branch to operate on, instead of working directory"
+msgstr ""
+
+#: bzrlib/osutils.py:93
+msgid "Parameter {0!r} encoding is unsupported by {1} application locale."
+msgstr ""
+
+#: bzrlib/osutils.py:194
+msgid "lstat/stat of ({0!r}): {1!r}"
+msgstr ""
+
+#: bzrlib/osutils.py:929 bzrlib/osutils.py:940
+#, python-format
+msgid "sorry, %r not allowed in path"
+msgstr ""
+
+#: bzrlib/osutils.py:1158
+#, python-format
+msgid "%r is too short to calculate a relative path"
 msgstr ""
 
 # help of 'plugin' option of 'bash-completion' command
@@ -6020,6 +6486,459 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:388
 msgid "  bzr lp-find-proposal -r annotate:README:1"
+msgstr ""
+
+#: bzrlib/push.py:54
+msgid "Created new branch."
+msgstr ""
+
+#: bzrlib/push.py:96
+#, python-format
+msgid ""
+"Target directory %s already contains a .bzr directory, but it is not valid."
+msgstr ""
+
+#: bzrlib/push.py:99
+#, python-format
+msgid ""
+"Target directory %s already exists, but does not have a .bzr directory. "
+"Supply --use-existing-dir to push there anyway."
+msgstr ""
+
+#: bzrlib/push.py:120
+#, python-format
+msgid "Too many redirections trying to make %s."
+msgstr ""
+
+#: bzrlib/push.py:145
+msgid ""
+"These branches have diverged.  See \"bzr help diverged-branches\" for more "
+"information."
+msgstr ""
+
+#: bzrlib/push.py:149
+#, python-format
+msgid ""
+"It is not possible to losslessly push to %s. You may want to use dpush "
+"instead."
+msgstr ""
+
+#: bzrlib/push.py:155
+#, python-format
+msgid ""
+"At %s you have a valid .bzr control directory, but not a branch or "
+"repository. This is an unsupported configuration. Please move the target "
+"directory out of the way and try again."
+msgstr ""
+
+#: bzrlib/reconcile.py:96
+#, python-format
+msgid "Reconciling branch %s"
+msgstr ""
+
+#: bzrlib/reconcile.py:102
+#, python-format
+msgid "Reconciling repository %s"
+msgstr ""
+
+#: bzrlib/reconcile.py:104
+msgid "Reconciling repository"
+msgstr ""
+
+#: bzrlib/reconcile.py:110
+#, python-format
+msgid "%s cannot canonicalize CHKs."
+msgstr ""
+
+#: bzrlib/reconcile.py:118
+msgid "Reconcile aborted: revision index has inconsistent parents."
+msgstr ""
+
+#: bzrlib/reconcile.py:120
+msgid "Run \"bzr check\" for more details."
+msgstr ""
+
+#: bzrlib/reconcile.py:122
+msgid "Reconciliation complete."
+msgstr ""
+
+#: bzrlib/reconcile.py:165
+#, python-format
+msgid "Fixing last revision info %s => %s"
+msgstr ""
+
+#: bzrlib/reconcile.py:171
+msgid "revision_history ok."
+msgstr ""
+
+#: bzrlib/reconcile.py:232
+msgid "Reading inventory data"
+msgstr ""
+
+#: bzrlib/reconcile.py:252 bzrlib/reconcile.py:382
+msgid "Inventory ok."
+msgstr ""
+
+#: bzrlib/reconcile.py:254 bzrlib/reconcile.py:384
+msgid "Backing up inventory"
+msgstr ""
+
+#: bzrlib/reconcile.py:256
+msgid "Backup inventory created."
+msgstr ""
+
+#: bzrlib/reconcile.py:272 bzrlib/reconcile.py:403
+msgid "Writing weave"
+msgstr ""
+
+#: bzrlib/reconcile.py:275 bzrlib/reconcile.py:406
+msgid "Inventory regenerated."
+msgstr ""
+
+#: bzrlib/reconcile.py:369 bzrlib/reconcile.py:371 bzrlib/reconcile.py:374
+msgid "Reading indexes"
+msgstr ""
+
+#: bzrlib/reconcile.py:378 bzrlib/reconcile.py:380
+msgid "Checking unused inventories"
+msgstr ""
+
+#: bzrlib/reconcile.py:386
+msgid "Backup Inventory created"
+msgstr ""
+
+#: bzrlib/reconcile.py:444
+msgid "Fixing text parents"
+msgstr ""
+
+#: bzrlib/reconfigure.py:52
+msgid "{0} is now stacked on {1}\n"
+msgstr ""
+
+#: bzrlib/reconfigure.py:67
+#, python-format
+msgid "%s is now not stacked\n"
+msgstr ""
+
+#: bzrlib/remote.py:1877
+msgid "Copying repository content as tarball..."
+msgstr ""
+
+#: bzrlib/rename_map.py:68
+msgid "Calculating hashes"
+msgstr ""
+
+#: bzrlib/rename_map.py:106
+msgid "Determining hash hits"
+msgstr ""
+
+#: bzrlib/rename_map.py:241
+msgid "{0} => {1}"
+msgstr ""
+
+#: bzrlib/repository.py:284
+#, python-format
+msgid "bzr: ERROR (ignored): %s"
+msgstr ""
+
+#: bzrlib/repository.py:1803
+msgid "Moving repository to repository.backup"
+msgstr ""
+
+#: bzrlib/repository.py:1810
+msgid "Creating new repository"
+msgstr ""
+
+#: bzrlib/repository.py:1815
+msgid "Copying content"
+msgstr ""
+
+#: bzrlib/repository.py:1819
+msgid "Deleting old repository content"
+msgstr ""
+
+#: bzrlib/repository.py:1821
+msgid "repository converted"
+msgstr ""
+
+#: bzrlib/revisionspec.py:914
+#, python-format
+msgid "Using %s %s"
+msgstr ""
+
+#: bzrlib/send.py:56
+#, python-format
+msgid "Mail client \"%s\" does not support specifying body"
+msgstr ""
+
+#: bzrlib/send.py:60
+msgid "--remember requires a branch to be specified."
+msgstr ""
+
+#: bzrlib/send.py:74
+msgid "No submit branch known or specified"
+msgstr ""
+
+#: bzrlib/send.py:77
+#, python-format
+msgid "Using saved %s location \"%s\" to determine what changes to submit."
+msgstr ""
+
+#: bzrlib/send.py:94
+#, python-format
+msgid "No such send format '%s'."
+msgstr ""
+
+#: bzrlib/send.py:111
+msgid "bzr send takes at most two one revision identifiers"
+msgstr ""
+
+#: bzrlib/send.py:124
+msgid "No revisions to submit."
+msgstr ""
+
+#: bzrlib/send.py:135
+msgid ""
+"- not supported for merge directives that use more than one output file."
+msgstr ""
+
+#: bzrlib/send.py:177
+msgid "Format 0.9 does not permit bundle with no patch"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:69
+#, python-format
+msgid "Changes shelved with id \"%d\"."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:73
+msgid "Selected changes destroyed."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:77
+msgid "Selected changes:"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:265
+msgid "You need a controlling terminal."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:415
+msgid "No changes are shelved."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:473
+#, python-format
+msgid "Using changes with id \"%d\"."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:477
+#, python-format
+msgid "Message: %s"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:489
+#, python-format
+msgid "Deleted changes with id \"%d\"."
+msgstr ""
+
+#: bzrlib/smart/medium.py:565
+msgid "HPSS calls: {0} ({1} vfs) {2}"
+msgstr ""
+
+#: bzrlib/smart/server.py:355
+#, python-format
+msgid "listening on port: %s"
+msgstr ""
+
+#: bzrlib/switch.py:67
+msgid "Pending merges must be committed or reverted before using switch."
+msgstr ""
+
+#: bzrlib/switch.py:94
+msgid ""
+"Cannot switch as local commits found in the checkout. Commit these to the "
+"bound branch or use --force to throw them away."
+msgstr ""
+
+#: bzrlib/switch.py:99
+#, python-format
+msgid ""
+"Unable to connect to current master branch %(target)s: %(error)s To switch "
+"anyway, use --force."
+msgstr ""
+
+#: bzrlib/switch.py:108
+msgid "Cannot switch a branch, only a checkout."
+msgstr ""
+
+#: bzrlib/switch.py:144
+#, python-format
+msgid "Tree is up to date at revision %d."
+msgstr ""
+
+#: bzrlib/switch.py:150
+#, python-format
+msgid "Updated to revision %d."
+msgstr ""
+
+#: bzrlib/transform.py:1730 bzrlib/transform.py:1741 bzrlib/transform.py:1743
+msgid "Apply phase"
+msgstr ""
+
+#: bzrlib/transform.py:1769 bzrlib/transform.py:1837
+msgid "removing file"
+msgstr ""
+
+#: bzrlib/transform.py:1787 bzrlib/transform.py:1872
+msgid "adding file"
+msgstr ""
+
+#: bzrlib/transform.py:2587
+msgid "Building tree"
+msgstr ""
+
+#: bzrlib/transform.py:2677 bzrlib/transform.py:2704
+msgid "Adding file contents"
+msgstr ""
+
+#: bzrlib/transform.py:3051
+msgid "Resolution pass"
+msgstr ""
+
+#: bzrlib/tree.py:635
+msgid "*** {0} content-filter: {1} => {2!r}"
+msgstr ""
+
+#: bzrlib/upgrade.py:76
+#, python-format
+msgid "This is a checkout. The branch (%s) needs to be upgraded separately."
+msgstr ""
+
+#: bzrlib/upgrade.py:99
+#, python-format
+msgid "cannot upgrade from bzrdir format %s"
+msgstr ""
+
+#: bzrlib/upgrade.py:102
+#, python-format
+msgid "starting upgrade of %s"
+msgstr ""
+
+#: bzrlib/upgrade.py:109
+msgid "finished"
+msgstr ""
+
+#: bzrlib/upgrade.py:119
+msgid "Deleting backup.bzr"
+msgstr ""
+
+#: bzrlib/upgrade.py:150
+msgid ""
+"\n"
+"SUMMARY: {0} upgrades attempted, {1} succeeded, {2} failed"
+msgstr ""
+
+#: bzrlib/upgrade.py:207
+#, python-format
+msgid "Found %d dependent branches - upgrading ..."
+msgstr ""
+
+#: bzrlib/upgrade.py:275
+msgid "Upgrading bzrdirs"
+msgstr ""
+
+#: bzrlib/upgrade.py:281
+#, python-format
+msgid "Upgrading %s"
+msgstr ""
+
+#: bzrlib/upgrade.py:282
+msgid "Upgrading {0} {1} ..."
+msgstr ""
+
+#: bzrlib/upgrade.py:296
+msgid "Removing backup ..."
+msgstr ""
+
+#: bzrlib/upgrade.py:300
+msgid "failed to clean-up {0}: {1}"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1091
+msgid "inventories"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1117
+msgid "texts"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1572 bzrlib/vf_repository.py:1581
+msgid "Calculating text parents"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1657
+msgid "Fetch texts"
+msgstr ""
+
+#: bzrlib/vf_repository.py:2468
+msgid "loading text store"
+msgstr ""
+
+#: bzrlib/vf_repository.py:2474
+msgid "checking text graph"
+msgstr ""
+
+#: bzrlib/vf_repository.py:2924 bzrlib/vf_repository.py:2938
+#: bzrlib/vf_repository.py:3053
+msgid "Transferring revisions"
+msgstr ""
+
+#: bzrlib/win32utils.py:132
+msgid "Failed to GetProcessMemoryInfo()"
+msgstr ""
+
+#: bzrlib/win32utils.py:153
+msgid "Cannot debug memory on win32 without ctypes or win32process"
+msgstr ""
+
+#: bzrlib/win32utils.py:158
+#, python-format
+msgid "WorkingSize %7dKiB\tPeakWorking %7dKiB\t%s"
+msgstr ""
+
+#: bzrlib/win32utils.py:166
+#, python-format
+msgid "WorkingSize       %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:167
+#, python-format
+msgid "PeakWorking       %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:168
+#, python-format
+msgid "PagefileUsage     %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:169
+#, python-format
+msgid "PeakPagefileUsage %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:171
+#, python-format
+msgid "PrivateUsage      %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:172
+#, python-format
+msgid "PageFaultCount    %8d"
+msgstr ""
+
+#: bzrlib/workingtree.py:1502
+msgid "Rerun update after fixing the conflicts."
 msgstr ""
 
 #: dummy/help_topics/authentication/summary.txt:1
