@@ -18,6 +18,7 @@
 
 from bzrlib import (
     log,
+    symbol_versioning,
     )
 import bzrlib.revision as _mod_revision
 
@@ -44,7 +45,7 @@ def iter_log_revisions(revisions, revision_source, verbose):
 def find_unmerged(local_branch, remote_branch, restrict='all',
                   include_sidelines=None, backward=False,
                   local_revid_range=None, remote_revid_range=None,
-                  include_merges=False):
+                  include_merges=symbol_versioning.DEPRECATED_PARAMETER):
     """Find revisions from each side that have not been merged.
 
     :param local_branch: Compare the history of local_branch
@@ -67,8 +68,13 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
     """
-    if include_sidelines is None:
-        include_sidelines = include_merges
+    if symbol_versioning.deprecated_passed(include_merges):
+        symbol_versioning.warn(
+            'include_merges was deprecated in 2.5.'
+            ' Use include_sidelines instead.',
+            DeprecationWarning, stacklevel=2)
+        if include_sidelines is None:
+            include_sidelines = include_merges
     local_branch.lock_read()
     try:
         remote_branch.lock_read()

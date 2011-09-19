@@ -2477,7 +2477,7 @@ class cmd_log(Command):
             match_author=None,
             match_bugs=None,
             omit_merges=False,
-            include_merges=False,
+            include_merges=symbol_versioning.DEPRECATED_PARAMETER,
             ):
         from bzrlib.log import (
             Logger,
@@ -2485,8 +2485,21 @@ class cmd_log(Command):
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if symbol_versioning.deprecated_passed(include_merges):
+            ui.ui_factory.show_user_warning(
+                'deprecated_command_option',
+                deprecated_name='--include-merges',
+                recommended_name='--include-sidelines',
+                deprecated_in_version='2.5',
+                command=self.invoked_as)
+            if include_sidelines is None:
+                include_sidelines = include_merges
+            else:
+                raise errors.BzrCommandError(
+                    '--include-merges and --include-sidelines '
+                    'are mutually exclusive')
         if include_sidelines is None:
-            include_sidelines = include_merges
+            include_sidelines = False
         if (exclude_common_ancestry
             and (revision is None or len(revision) != 2)):
             raise errors.BzrCommandError(
@@ -4620,14 +4633,28 @@ class cmd_missing(Command):
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
             include_sidelines=None, revision=None, my_revision=None,
-            directory=u'.', include_merges=False):
+            directory=u'.',
+            include_merges=symbol_versioning.DEPRECATED_PARAMETER):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
                 self.outf.write(s)
 
+        if symbol_versioning.deprecated_passed(include_merges):
+            ui.ui_factory.show_user_warning(
+                'deprecated_command_option',
+                deprecated_name='--include-merges',
+                recommended_name='--include-sidelines',
+                deprecated_in_version='2.5',
+                command=self.invoked_as)
+            if include_sidelines is None:
+                include_sidelines = include_merges
+            else:
+                raise errors.BzrCommandError(
+                    '--include-merges and --include-sidelines '
+                    'are mutually exclusive')
         if include_sidelines is None:
-            include_sidelines = include_merges
+            include_sidelines = False
         if this:
             mine_only = this
         if other:

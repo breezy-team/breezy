@@ -89,10 +89,12 @@ class TestLogWithLogCatcher(TestLog):
     def get_captured_revisions(self):
         return self.log_catcher.revisions
 
-    def assertLogRevnos(self, args, expected_revnos, working_dir='.'):
-        err, out = self.run_bzr(['log'] + args, working_dir=working_dir)
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+    def assertLogRevnos(self, args, expected_revnos, working_dir='.',
+                        out='', err=''):
+        actual_out, actual_err = self.run_bzr(['log'] + args,
+                                              working_dir=working_dir)
+        self.assertEqual(out, actual_out)
+        self.assertEqual(err, actual_err)
         self.assertEqual(expected_revnos,
                          [r.revno for r in self.get_captured_revisions()])
 
@@ -538,16 +540,19 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def test_include_merges(self):
         # Confirm --include-merges gives the same output as -n0
+        msg = ("The option '--include-merges' to 'bzr log' "
+               "has been deprecated in bzr 2.5. "
+               "Please use '--include-sidelines' instead.\n")
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
+                             working_dir='level0', err=msg)
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
+                             working_dir='level0', err=msg)
         out_im, err_im = self.run_bzr('log --include-merges',
                                       working_dir='level0')
         out_n0, err_n0 = self.run_bzr('log -n0', working_dir='level0')
-        self.assertEqual('', err_im)
+        self.assertEqual(msg, err_im)
         self.assertEqual('', err_n0)
         self.assertEqual(out_im, out_n0)
 
