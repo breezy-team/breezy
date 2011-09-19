@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-16 16:33+0100\n"
-"PO-Revision-Date: 2011-09-17 14:10+0000\n"
-"Last-Translator: Nicolas Delvaux <Unknown>\n"
+"PO-Revision-Date: 2011-09-18 16:00+0000\n"
+"Last-Translator: Quentin Pagès <Unknown>\n"
 "Language-Team: French <fr@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2011-09-18 04:30+0000\n"
+"X-Launchpad-Export-Date: 2011-09-19 04:30+0000\n"
 "X-Generator: Launchpad (build 13955)\n"
 
 #: bzrlib/add.py:95
@@ -212,7 +212,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:357
 msgid "The repository {0} contains no revision {1}."
-msgstr ""
+msgstr "Le répertoire {0} ne contient aucune révision {1}."
 
 #: bzrlib/builtins.py:364
 msgid "You cannot specify a NULL revision."
@@ -267,7 +267,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:551
 msgid "Show current revision number."
-msgstr ""
+msgstr "Afficher le numéro de la révision actuelle."
 
 #: bzrlib/builtins.py:553
 msgid "This is equal to the number of revisions on this branch."
@@ -366,7 +366,7 @@ msgstr ""
 #: bzrlib/builtins.py:748
 #, python-format
 msgid "added %s\n"
-msgstr ""
+msgstr "ajouté %s\n"
 
 #: bzrlib/builtins.py:792
 #, python-format
@@ -375,7 +375,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:829
 msgid "Move or rename a file."
-msgstr ""
+msgstr "Déplacer ou renommer un fichier."
 
 #: bzrlib/builtins.py:831
 msgid "    bzr mv SOURCE... DESTINATION"
