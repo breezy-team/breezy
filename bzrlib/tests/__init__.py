@@ -2677,7 +2677,7 @@ class TestCaseWithMemoryTransport(TestCase):
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
-    def make_repository(self, relpath, shared=False, format=None):
+    def make_repository(self, relpath, shared=None, format=None):
         """Create a repository on our default transport at relpath.
 
         Note that relpath must be a relative path, not a full url.

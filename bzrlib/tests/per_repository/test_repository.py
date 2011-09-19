@@ -752,7 +752,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         repo._make_parents_provider().get_parent_map
 
-    def make_repository_and_foo_bar(self, shared):
+    def make_repository_and_foo_bar(self, shared=None):
         made_control = self.make_bzrdir('repository')
         repo = made_control.create_repository(shared=shared)
         if not repo._format.supports_nesting_repositories:
@@ -768,7 +768,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         return repo
 
     def test_find_branches(self):
-        repo = self.make_repository_and_foo_bar(shared=False)
+        repo = self.make_repository_and_foo_bar()
         branches = repo.find_branches()
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
         self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
