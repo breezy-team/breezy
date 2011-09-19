@@ -210,7 +210,7 @@ class PristineTarSource(UpstreamSource):
             message += ", component %s" % component
         revid = tree.commit(message, revprops=revprops, timestamp=timestamp,
             timezone=timezone)
-        tag_name, _ = self.tag_version(version, revid=revid)
+        tag_name, _ = self.tag_version(version, revid=revid, component=component)
         return tag_name, revid
 
     def fetch_component_tarball(self, package, version, component, target_dir):
