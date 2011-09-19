@@ -44,6 +44,7 @@ bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 from bzrlib import (
     errors as bzr_errors,
+    trace,
     )
 
 from bzrlib.controldir import (
@@ -396,9 +397,16 @@ def update_git_cache(repository, revid):
     if getattr(repository, "_git", None) is not None:
         return # No need to update cache for git repositories
 
-    from bzrlib.plugins.git.object_store import BazaarObjectStore
     if not repository.control_transport.has("git"):
         return # No existing cache, don't bother updating
+    try:
+        lazy_check_versions()
+    except bzr_errors.DependencyNotPresent, e:
+        # dulwich is probably missing. silently ignore
+        trace.mutter("not updating git map for %r: %s",
+            repository, e)
+
+    from bzrlib.plugins.git.object_store import BazaarObjectStore
     store = BazaarObjectStore(repository)
     store.lock_write()
     try:
