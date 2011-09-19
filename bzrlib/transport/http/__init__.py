@@ -512,18 +512,20 @@ class HttpTransportBase(ConnectedTransport):
         :returns: A transport or None.
         """
         parsed_source = self._split_url(source)
+        parsed_target = self._split_url(target)
         pl = len(self._parsed_url.path)
-        relpath = parsed_source.path[pl:].strip("/")
-        if not target.endswith(relpath):
+        excess_tail = parsed_source.path[pl:].strip("/")
+        if not target.endswith(excess_tail):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
             return None
-        new_transport = None
-        parsed_target = self._split_url(target)
-        # Recalculate base path. This is needed to ensure that when the
-        # redirected transport will be used to re-try whatever request was
-        # redirected, we end up with the same url
-        base_path = parsed_target.path[:-len(relpath)]
+
+        target_path = parsed_target.path
+        if excess_tail:
+            # Drop the tail that was in the redirect but not part of
+            # the path of this transport.
+            target_path = target_path[:-len(excess_tail)]
+
         if parsed_target.scheme in ('http', 'https'):
             # Same protocol family (i.e. http[s]), we will preserve the same
             # http client implementation when a redirection occurs from one to
@@ -537,7 +539,7 @@ class HttpTransportBase(ConnectedTransport):
                      parsed_target.user == self._parsed_url.user)):
                 # If a user is specified, it should match, we don't care about
                 # passwords, wrong passwords will be rejected anyway.
-                new_transport = self.clone(base_path)
+                return self.clone(target_path)
             else:
                 # Rebuild the url preserving the scheme qualification and the
                 # credentials (if they don't apply, the redirected to server
@@ -545,16 +547,19 @@ class HttpTransportBase(ConnectedTransport):
                 # user)
                 redir_scheme = parsed_target.scheme + '+' + self._impl_name
                 new_url = self._unsplit_url(redir_scheme,
-                                            self._parsed_url.user,
-                                            self._parsed_url.password,
-                                            parsed_target.host, parsed_target.port,
-                                            base_path)
-                new_transport = transport.get_transport_from_url(
-                    new_url)
+                    self._parsed_url.user,
+                    self._parsed_url.password,
+                    parsed_target.host, parsed_target.port,
+                    target_path)
+                return transport.get_transport_from_url(new_url)
         else:
             # Redirected to a different protocol
-            new_transport = transport.get_transport_from_url(target)
-        return new_transport
+            new_url = self._unsplit_url(parsed_target.scheme,
+                    parsed_target.user,
+                    parsed_target.password,
+                    parsed_target.host, parsed_target.port,
+                    target_path)
+            return transport.get_transport_from_url(new_url)
 
 
 # TODO: May be better located in smart/medium.py with the other
