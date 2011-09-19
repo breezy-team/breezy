@@ -2497,9 +2497,9 @@ class cmd_log(Command):
             if include_merged is None:
                 include_merged = include_merges
             else:
-                raise errors.BzrCommandError(
+                raise errors.BzrCommandError(gettext(
                     '--include-merges and --include-merged '
-                    'are mutually exclusive')
+                    'are mutually exclusive'))
         if include_merged is None:
             include_merged = False
         if (exclude_common_ancestry
@@ -4652,9 +4652,9 @@ class cmd_missing(Command):
             if include_merged is None:
                 include_merged = include_merges
             else:
-                raise errors.BzrCommandError(
+                raise errors.BzrCommandError(gettext(
                     '--include-merges and --include-merged '
-                    'are mutually exclusive')
+                    'are mutually exclusive'))
         if include_merged is None:
             include_merged = False
         if this:
