@@ -78,6 +78,7 @@ New Features
   In order to avoid confusion, the previous command line option
   ``--include-merges`` has been renamed to ``--include-sidelines``.
   The old name of the command line option will still be accepted.
+  The name change also affects ``bzr missing``.
   (Martin von Gagern)
 
 * ``config.Option`` can now declare ``default_from_env``, a list of
