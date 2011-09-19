@@ -310,13 +310,9 @@ class SmartServerStreamMedium(SmartMedium):
                 # socket, just return 'without timeout'
                 return False
             raise
-        if xs:
-            # I honestly don't know what to do here. Something is wrong with
-            # the file handle, but we don't know *what*.
-            raise errors.BzrError('select returned an error for fd: %s'
-                                  % (xs[0],))
-        if rs:
-            # We can read without blocking, we did not timeout.
+        if rs or xs:
+            # Either we can read without blocking, or there is a pending error.
+            # Either way, we didn't time out, so try to read from it.
             return False
         return True
 
