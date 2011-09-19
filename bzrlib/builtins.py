@@ -2100,8 +2100,9 @@ class cmd_diff(Command):
                                          ' one or two revision specifiers'))
 
         if using is not None and format is not None:
-            raise errors.BzrCommandError(gettext('--using and --format are mutually '
-                'exclusive.'))
+            raise errors.BzrCommandError(gettext(
+                '{0} and {1} are mutually exclusive').format(
+                '--using', '--format'))
 
         (old_tree, new_tree,
          old_branch, new_branch,
@@ -2421,8 +2422,12 @@ class cmd_log(Command):
             Option('show-diff',
                    short_name='p',
                    help='Show changes made in each revision as a patch.'),
-            Option('include-merges',
+            Option('include-merged',
                    help='Show merged revisions like --levels 0 does.'),
+            Option('include-merges', hidden=True,
+                   help='Historical alias for --include-merged.'),
+            Option('omit-merges',
+                   help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
@@ -2465,7 +2470,7 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False,
-            include_merges=False,
+            include_merged=None,
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
@@ -2474,6 +2479,8 @@ class cmd_log(Command):
             match_committer=None,
             match_author=None,
             match_bugs=None,
+            omit_merges=False,
+            include_merges=symbol_versioning.DEPRECATED_PARAMETER,
             ):
         from bzrlib.log import (
             Logger,
@@ -2481,23 +2488,40 @@ class cmd_log(Command):
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if symbol_versioning.deprecated_passed(include_merges):
+            ui.ui_factory.show_user_warning(
+                'deprecated_command_option',
+                deprecated_name='--include-merges',
+                recommended_name='--include-merged',
+                deprecated_in_version='2.5',
+                command=self.invoked_as)
+            if include_merged is None:
+                include_merged = include_merges
+            else:
+                raise errors.BzrCommandError(gettext(
+                    '{0} and {1} are mutually exclusive').format(
+                    '--include-merges', '--include-merged'))
+        if include_merged is None:
+            include_merged = False
         if (exclude_common_ancestry
             and (revision is None or len(revision) != 2)):
             raise errors.BzrCommandError(gettext(
                 '--exclude-common-ancestry requires -r with two revisions'))
-        if include_merges:
+        if include_merged:
             if levels is None:
                 levels = 0
             else:
                 raise errors.BzrCommandError(gettext(
-                    '--levels and --include-merges are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--levels', '--include-merged'))
 
         if change is not None:
             if len(change) > 1:
                 raise errors.RangeInChangeOption()
             if revision is not None:
                 raise errors.BzrCommandError(gettext(
-                    '--revision and --change are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--revision', '--change'))
             else:
                 revision = change
 
@@ -2603,7 +2627,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
-            signature=signatures
+            signature=signatures, omit_merges=omit_merges,
             )
         Logger(b, rqst).show(lf)
 
@@ -4605,8 +4629,10 @@ class cmd_missing(Command):
             type=_parse_revision_str,
             help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-        Option('include-merges',
+        Option('include-merged',
                'Show all revisions in addition to the mainline ones.'),
+        Option('include-merges', hidden=True,
+               help='Historical alias for --include-merged.'),
         ]
     encoding_type = 'replace'
 
@@ -4615,13 +4641,29 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, revision=None, my_revision=None,
-            directory=u'.'):
+            include_merged=None, revision=None, my_revision=None,
+            directory=u'.',
+            include_merges=symbol_versioning.DEPRECATED_PARAMETER):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
                 self.outf.write(s)
 
+        if symbol_versioning.deprecated_passed(include_merges):
+            ui.ui_factory.show_user_warning(
+                'deprecated_command_option',
+                deprecated_name='--include-merges',
+                recommended_name='--include-merged',
+                deprecated_in_version='2.5',
+                command=self.invoked_as)
+            if include_merged is None:
+                include_merged = include_merges
+            else:
+                raise errors.BzrCommandError(gettext(
+                    '{0} and {1} are mutually exclusive').format(
+                    '--include-merges', '--include-merged'))
+        if include_merged is None:
+            include_merged = False
         if this:
             mine_only = this
         if other:
@@ -4666,7 +4708,7 @@ class cmd_missing(Command):
         local_extra, remote_extra = find_unmerged(
             local_branch, remote_branch, restrict,
             backward=not reverse,
-            include_merges=include_merges,
+            include_merged=include_merged,
             local_revid_range=local_revid_range,
             remote_revid_range=remote_revid_range)
 

@@ -323,7 +323,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
     1 Joe Foo\t2005-11-22
       rev-1
 
-Use --include-merges or -n0 to see merged revisions.
+Use --include-merged or -n0 to see merged revisions.
 """,
             wt.branch, log.ShortLogFormatter,
             formatter_kwargs=dict(show_advice=True))

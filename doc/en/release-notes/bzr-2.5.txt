@@ -130,6 +130,15 @@ New Features
   while ``--match-message, --match-author, --match-committer`` and
   ``--match-bugs`` match each of those fields. (Jacek Sieka)
 
+* ``bzr log`` now has an option called ``--omit-merges`` to ommit
+  those commits that merged branches, i.e. those having more than one
+  parent.
+  In order to avoid confusion, the previous command line option
+  ``--include-merges`` has been renamed to ``--include-merged``.
+  The old name of the command line option will still be accepted.
+  The name change also affects ``bzr missing``.
+  (Martin von Gagern)
+
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
 
@@ -316,6 +325,10 @@ API Changes
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
   and ``_path`` attributes. Proxies are provided for the moment but
   may be removed in the future. (Jelmer Vernooij)
+
+* The argument ``include_merges`` to ``missing.find_unmerged`` has
+  been renamed to ``include_merged``. The old name is still supported
+  for now but will cause a deprecation warning. (Martin von Gagern)
 
 
 Internals
