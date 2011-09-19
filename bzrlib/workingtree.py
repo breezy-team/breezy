@@ -71,6 +71,7 @@ from bzrlib import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.i18n import gettext
 from bzrlib.lock import LogicalLockResult
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -302,7 +303,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 if view_files:
                     file_list = view_files
                     view_str = views.view_display_str(view_files)
-                    note("Ignoring files outside view. View is %s" % view_str)
+                    note(gettext("Ignoring files outside view. View is %s") % view_str)
             return tree, file_list
         if default_directory == u'.':
             seed = file_list[0]
@@ -1498,7 +1499,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                              show_base=show_base)
             if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
-                note('Rerun update after fixing the conflicts.')
+                note(gettext('Rerun update after fixing the conflicts.'))
                 return nb_conflicts
 
         if last_rev != _mod_revision.ensure_null(revision):

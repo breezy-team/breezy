@@ -27,6 +27,7 @@ from bzrlib.bzrdir import (
     BzrDir,
     format_registry,
     )
+from bzrlib.i18n import gettext
 from bzrlib.remote import RemoteBzrDir
 
 
@@ -71,9 +72,9 @@ class Convert(object):
         try:
             branch = self.bzrdir.open_branch()
             if branch.user_url != self.bzrdir.user_url:
-                ui.ui_factory.note(
+                ui.ui_factory.note(gettext(
                     'This is a checkout. The branch (%s) needs to be upgraded'
-                    ' separately.' % (urlutils.unescape_for_display(
+                    ' separately.') % (urlutils.unescape_for_display(
                         branch.user_url, 'utf-8')))
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
@@ -95,17 +96,17 @@ class Convert(object):
         if not self.bzrdir.needs_format_conversion(format):
             raise errors.UpToDateFormat(self.bzrdir._format)
         if not self.bzrdir.can_convert_format():
-            raise errors.BzrError("cannot upgrade from bzrdir format %s" %
+            raise errors.BzrError(gettext("cannot upgrade from bzrdir format %s") %
                            self.bzrdir._format)
         self.bzrdir.check_conversion_target(format)
-        ui.ui_factory.note('starting upgrade of %s' % 
+        ui.ui_factory.note(gettext('starting upgrade of %s') % 
             urlutils.unescape_for_display(self.transport.base, 'utf-8'))
 
         self.backup_oldpath, self.backup_newpath = self.bzrdir.backup_bzrdir()
         while self.bzrdir.needs_format_conversion(format):
             converter = self.bzrdir._format.get_converter(format)
             self.bzrdir = converter.convert(self.bzrdir, None)
-        ui.ui_factory.note('finished')
+        ui.ui_factory.note(gettext('finished'))
 
     def clean_up(self):
         """Clean-up after a conversion.
@@ -115,7 +116,7 @@ class Convert(object):
         transport = self.transport
         backup_relpath = transport.relpath(self.backup_newpath)
         child_pb = ui.ui_factory.nested_progress_bar()
-        child_pb.update('Deleting backup.bzr')
+        child_pb.update(gettext('Deleting backup.bzr'))
         try:
             transport.delete_tree(backup_relpath)
         finally:
@@ -146,8 +147,9 @@ def upgrade(url, format=None, clean_up=False, dry_run=False):
         succeeded_count = len(succeeded)
         failed_count = attempted_count - succeeded_count
         ui.ui_factory.note(
-            '\nSUMMARY: %d upgrades attempted, %d succeeded, %d failed'
-            % (attempted_count, succeeded_count, failed_count))
+            gettext('\nSUMMARY: {0} upgrades attempted, {1} succeeded,'\
+                    ' {2} failed').format(
+                     attempted_count, succeeded_count, failed_count))
     return exceptions
 
 
@@ -202,7 +204,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
     succeeded, exceptions = _convert_items([control_dir], format, clean_up,
                                            dry_run)
     if succeeded and dependents:
-        ui.ui_factory.note('Found %d dependent branches - upgrading ...'
+        ui.ui_factory.note(gettext('Found %d dependent branches - upgrading ...')
                            % (len(dependents),))
         # Convert dependent branches
         branch_cdirs = [b.bzrdir for b in dependents]
@@ -270,14 +272,14 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
     succeeded = []
     exceptions = []
     child_pb = ui.ui_factory.nested_progress_bar()
-    child_pb.update('Upgrading bzrdirs', 0, len(items))
+    child_pb.update(gettext('Upgrading bzrdirs'), 0, len(items))
     for i, control_dir in enumerate(items):
         # Do the conversion
         location = control_dir.root_transport.base
         bzr_object, bzr_label = _get_object_and_label(control_dir)
         type_label = label or bzr_label
-        child_pb.update("Upgrading %s" % (type_label), i+1, len(items))
-        ui.ui_factory.note('Upgrading %s %s ...' % (type_label, 
+        child_pb.update(gettext("Upgrading %s") % (type_label), i+1, len(items))
+        ui.ui_factory.note(gettext('Upgrading {0} {1} ...').format(type_label, 
             urlutils.unescape_for_display(location, 'utf-8'),))
         try:
             if not dry_run:
@@ -291,11 +293,11 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
         succeeded.append(control_dir)
         if clean_up:
             try:
-                ui.ui_factory.note('Removing backup ...')
+                ui.ui_factory.note(gettext('Removing backup ...'))
                 if not dry_run:
                     cv.clean_up()
             except Exception, ex:
-                trace.warning('failed to clean-up %s: %s' % (location, ex))
+                trace.warning(gettext('failed to clean-up {0}: {1}') % (location, ex))
                 exceptions.append(ex)
 
     child_pb.finished()

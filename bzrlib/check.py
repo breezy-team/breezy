@@ -56,7 +56,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
-
+from bzrlib.i18n import gettext
 
 class Check(object):
     """Check a repository"""
@@ -103,17 +103,17 @@ class VersionedFileCheck(Check):
         self.repository.lock_read()
         self.progress = ui.ui_factory.nested_progress_bar()
         try:
-            self.progress.update('check', 0, 4)
+            self.progress.update(gettext('check'), 0, 4)
             if self.check_repo:
-                self.progress.update('checking revisions', 0)
+                self.progress.update(gettext('checking revisions'), 0)
                 self.check_revisions()
-                self.progress.update('checking commit contents', 1)
+                self.progress.update(gettext('checking commit contents'), 1)
                 self.repository._check_inventories(self)
-                self.progress.update('checking file graphs', 2)
+                self.progress.update(gettext('checking file graphs'), 2)
                 # check_weaves is done after the revision scan so that
                 # revision index is known to be valid.
                 self.check_weaves()
-            self.progress.update('checking branches and trees', 3)
+            self.progress.update(gettext('checking branches and trees'), 3)
             if callback_refs:
                 repo = self.repository
                 # calculate all refs, and callback the objects requesting them.
@@ -200,56 +200,57 @@ class VersionedFileCheck(Check):
             result.report_results(verbose)
 
     def _report_repo_results(self, verbose):
-        note('checked repository %s format %s',
+        note(gettext('checked repository {0} format {1}').format(
             self.repository.user_url,
-            self.repository._format)
-        note('%6d revisions', self.checked_rev_cnt)
-        note('%6d file-ids', len(self.checked_weaves))
+            self.repository._format))
+        note(gettext('%6d revisions'), self.checked_rev_cnt)
+        note(gettext('%6d file-ids'), len(self.checked_weaves))
         if verbose:
-            note('%6d unreferenced text versions',
+            note(gettext('%6d unreferenced text versions'),
                 len(self.unreferenced_versions))
         if verbose and len(self.unreferenced_versions):
                 for file_id, revision_id in self.unreferenced_versions:
-                    note('unreferenced version: {%s} in %s', revision_id,
-                        file_id)
+                    note(gettext('unreferenced version: {{{0}}} in {1}').format(revision_id,
+                        file_id))
         if self.missing_inventory_sha_cnt:
-            note('%6d revisions are missing inventory_sha1',
+            note(gettext('%6d revisions are missing inventory_sha1'),
                  self.missing_inventory_sha_cnt)
         if self.missing_revision_cnt:
-            note('%6d revisions are mentioned but not present',
+            note(gettext('%6d revisions are mentioned but not present'),
                  self.missing_revision_cnt)
         if len(self.ghosts):
-            note('%6d ghost revisions', len(self.ghosts))
+            note(gettext('%6d ghost revisions'), len(self.ghosts))
             if verbose:
                 for ghost in self.ghosts:
                     note('      %s', ghost)
         if len(self.missing_parent_links):
-            note('%6d revisions missing parents in ancestry',
+            note(gettext('%6d revisions missing parents in ancestry'),
                  len(self.missing_parent_links))
             if verbose:
                 for link, linkers in self.missing_parent_links.items():
-                    note('      %s should be in the ancestry for:', link)
+                    note(gettext('      %s should be in the ancestry for:'), link)
                     for linker in linkers:
                         note('       * %s', linker)
         if len(self.inconsistent_parents):
-            note('%6d inconsistent parents', len(self.inconsistent_parents))
+            note(gettext('%6d inconsistent parents'), len(self.inconsistent_parents))
             if verbose:
                 for info in self.inconsistent_parents:
                     revision_id, file_id, found_parents, correct_parents = info
-                    note('      * %s version %s has parents %r '
-                         'but should have %r'
-                         % (file_id, revision_id, found_parents,
+                    note(gettext('      * {0} version {1} has parents {2!r} '
+                         'but should have {3!r}').format(
+                         file_id, revision_id, found_parents,
                              correct_parents))
         if self.revs_with_bad_parents_in_index:
-            note('%6d revisions have incorrect parents in the revision index',
+            note(gettext(
+                 '%6d revisions have incorrect parents in the revision index'),
                  len(self.revs_with_bad_parents_in_index))
             if verbose:
                 for item in self.revs_with_bad_parents_in_index:
                     revision_id, index_parents, actual_parents = item
-                    note(
-                        '       %s has wrong parents in index: '
-                        '%r should be %r',
-                        revision_id, index_parents, actual_parents)
+                    note(gettext(
+                        '       {0} has wrong parents in index: '
+                        '{1!r} should be {2!r}').format(
+                        revision_id, index_parents, actual_parents))
         for item in self._report_items:
             note(item)
 
@@ -260,8 +261,8 @@ class VersionedFileCheck(Check):
         :param rev: A revision or None to indicate a missing revision.
         """
         if rev.revision_id != rev_id:
-            self._report_items.append(
-                'Mismatched internal revid {%s} and index revid {%s}' % (
+            self._report_items.append(gettext(
+                'Mismatched internal revid {{{0}}} and index revid {{{1}}}').format(
                 rev.revision_id, rev_id))
             rev_id = rev.revision_id
         # Check this revision tree etc, and count as seen when we encounter a
@@ -290,8 +291,8 @@ class VersionedFileCheck(Check):
         existing = self.pending_keys.get(key)
         if existing:
             if sha1 != existing[1]:
-                self._report_items.append('Multiple expected sha1s for %s. {%s}'
-                    ' expects {%s}, {%s} expects {%s}', (
+                self._report_items.append(gettext('Multiple expected sha1s for {0}. {{{1}}}'
+                    ' expects {{{2}}}, {{{3}}} expects {{{4}}}').format(
                     key, referer, sha1, existing[1], existing[0]))
         else:
             self.pending_keys[key] = (kind, sha1, referer)
@@ -348,7 +349,7 @@ def scan_branch(branch, needed_refs, to_unlock):
     :param needed_refs: Refs we are accumulating.
     :param to_unlock: The unlock list accumulating.
     """
-    note("Checking branch at '%s'." % (branch.base,))
+    note(gettext("Checking branch at '%s'.") % (branch.base,))
     branch.lock_read()
     to_unlock.append(branch)
     branch_refs = branch._get_check_refs()
@@ -368,7 +369,7 @@ def scan_tree(base_tree, tree, needed_refs, to_unlock):
     """
     if base_tree is not None and tree.basedir == base_tree.basedir:
         return
-    note("Checking working tree at '%s'." % (tree.basedir,))
+    note(gettext("Checking working tree at '%s'.") % (tree.basedir,))
     tree.lock_read()
     to_unlock.append(tree)
     tree_refs = tree._get_check_refs()
@@ -421,23 +422,23 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                     if do_branch:
                         scan_branch(branch, needed_refs, to_unlock)
             if do_branch and not branches:
-                note("No branch found at specified location.")
+                note(gettext("No branch found at specified location."))
             if do_tree and base_tree is None and not saw_tree:
-                note("No working tree found at specified location.")
+                note(gettext("No working tree found at specified location."))
             if do_repo or do_branch or do_tree:
                 if do_repo:
-                    note("Checking repository at '%s'."
+                    note(gettext("Checking repository at '%s'.")
                          % (repo.user_url,))
                 result = repo.check(None, callback_refs=needed_refs,
                     check_repo=do_repo)
                 result.report_results(verbose)
         else:
             if do_tree:
-                note("No working tree found at specified location.")
+                note(gettext("No working tree found at specified location."))
             if do_branch:
-                note("No branch found at specified location.")
+                note(gettext("No branch found at specified location."))
             if do_repo:
-                note("No repository found at specified location.")
+                note(gettext("No repository found at specified location."))
     finally:
         for thing in to_unlock:
             thing.unlock()

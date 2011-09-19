@@ -32,6 +32,7 @@ from bzrlib import (
     transform,
     workingtree,
     )
+from bzrlib.i18n import gettext, ngettext
 """)
 from bzrlib import (
     commands,
@@ -120,8 +121,8 @@ class cmd_resolve(commands.Command):
     def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
-                raise errors.BzrCommandError("If --all is specified,"
-                                             " no FILE may be provided")
+                raise errors.BzrCommandError(gettext("If --all is specified,"
+                                             " no FILE may be provided"))
             if directory is None:
                 directory = u'.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
@@ -145,13 +146,13 @@ class cmd_resolve(commands.Command):
             if file_list is None:
                 un_resolved, resolved = tree.auto_resolve()
                 if len(un_resolved) > 0:
-                    trace.note('%d conflict(s) auto-resolved.', len(resolved))
-                    trace.note('Remaining conflicts:')
+                    trace.note(gettext('%d conflict(s) auto-resolved.'), len(resolved))
+                    trace.note(gettext('Remaining conflicts:'))
                     for conflict in un_resolved:
                         trace.note(unicode(conflict))
                     return 1
                 else:
-                    trace.note('All conflicts resolved.')
+                    trace.note(gettext('All conflicts resolved.'))
                     return 0
             else:
                 # FIXME: This can never occur but the block above needs some
@@ -160,8 +161,9 @@ class cmd_resolve(commands.Command):
                 pass
         else:
             before, after = resolve(tree, file_list, action=action)
-            trace.note('%d conflict(s) resolved, %d remaining'
-                       % (before - after, after))
+            trace.note(ngettext('{0} conflict resolved, {1} remaining',
+                                '{0} conflicts resolved, {1} remaining',
+                                before-after).format(before - after, after))
 
 
 def resolve(tree, paths=None, ignore_misses=False, recursive=False,

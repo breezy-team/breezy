@@ -40,6 +40,7 @@ from bzrlib import (
         ui,
         urlutils,
         )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
@@ -848,7 +849,7 @@ class Branch(controldir.ControlComponent):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            pb.update("Unstacking")
+            pb.update(gettext("Unstacking"))
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
             # repository into a new repository object without the fallbacks. 
@@ -3134,14 +3135,14 @@ class BranchPushResult(_Result):
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
             if self.old_revid != self.new_revid:
-                note('Pushed up to revision %d.' % self.new_revno)
+                note(gettext('Pushed up to revision %d.') % self.new_revno)
             if tag_updates:
-                note('%d tag(s) updated.' % len(tag_updates))
+                note(gettext('%d tag(s) updated.') % len(tag_updates))
             if self.old_revid == self.new_revid and not tag_updates:
                 if not tag_conflicts:
-                    note('No new revisions or tags to push.')
+                    note(gettext('No new revisions or tags to push.'))
                 else:
-                    note('No new revisions to push.')
+                    note(gettext('No new revisions to push.'))
         self._show_tag_conficts(to_file)
 
 
@@ -3161,10 +3162,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s', self.branch.user_url,
+        note(gettext('checked branch %s format %s'), self.branch.user_url,
             self.branch._format)
         for error in self.errors:
-            note('found error:%s', error)
+            note(gettext('found error:%s'), error)
 
 
 class Converter5to6(object):
