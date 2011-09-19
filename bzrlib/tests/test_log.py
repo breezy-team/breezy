@@ -1335,7 +1335,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2
-fixes bug(s): test://bug/id test://bug/2
+fixes bugs: test://bug/id test://bug/2
 author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: work
@@ -1346,7 +1346,7 @@ message:
   message
 ------------------------------------------------------------
 revno: 1
-fixes bug(s): test://bug/id
+fixes bug: test://bug/id
 committer: Joe Foo <joe@foo.com>
 branch nick: work
 timestamp: Tue 2005-11-22 00:00:00 +0000
@@ -1359,13 +1359,13 @@ message:
         tree = self.make_commits_with_bugs()
         self.assertFormatterResult("""\
     2 Joe Bar\t2005-11-22
-      fixes bug(s): test://bug/id test://bug/2
+      fixes bugs: test://bug/id test://bug/2
       multiline
       log
       message
 
     1 Joe Foo\t2005-11-22
-      fixes bug(s): test://bug/id
+      fixes bug: test://bug/id
       simple log message
 
 """,

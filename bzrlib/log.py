@@ -75,7 +75,7 @@ from bzrlib import (
     revisionspec,
     tsort,
     )
-from bzrlib.i18n import gettext
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib import (
@@ -2113,7 +2113,8 @@ def _bugs_properties_handler(revision):
                           len(row) > 1 and row[1] == 'fixed']
 
         if fixed_bug_urls:
-            return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
+            return {ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls)):\
+                    ' '.join(fixed_bug_urls)}
     return {}
 
 properties_handler_registry.register('bugs_properties_handler',

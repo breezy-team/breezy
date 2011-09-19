@@ -123,7 +123,7 @@ class TestResolveAuto(tests.TestCaseWithTransport):
         file_conflict = conflicts.TextConflict('file', file_id='file_id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         note = self.run_bzr('resolve', retcode=1, working_dir='tree')[1]
-        self.assertContainsRe(note, '0 conflict\\(s\\) auto-resolved.')
+        self.assertContainsRe(note, '0 conflicts auto-resolved.')
         self.assertContainsRe(note,
             'Remaining conflicts:\nText conflict in file')
         self.build_tree_contents([('tree/file', 'a\n')])
