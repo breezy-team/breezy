@@ -445,6 +445,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_external_lookups = False
     supports_full_versioned_files = False
     supports_revision_signatures = False
+    supports_nesting_repositories = False
     revision_graph_can_have_wrong_parents = False
 
     @property
