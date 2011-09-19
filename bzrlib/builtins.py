@@ -2419,10 +2419,10 @@ class cmd_log(Command):
             Option('show-diff',
                    short_name='p',
                    help='Show changes made in each revision as a patch.'),
-            Option('include-sidelines',
+            Option('include-merged',
                    help='Show merged revisions like --levels 0 does.'),
             Option('include-merges', hidden=True,
-                   help='Historical alias for --include-sidelines.'),
+                   help='Historical alias for --include-merged.'),
             Option('omit-merges',
                    help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
@@ -2467,7 +2467,7 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False,
-            include_sidelines=None,
+            include_merged=None,
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
@@ -2489,27 +2489,27 @@ class cmd_log(Command):
             ui.ui_factory.show_user_warning(
                 'deprecated_command_option',
                 deprecated_name='--include-merges',
-                recommended_name='--include-sidelines',
+                recommended_name='--include-merged',
                 deprecated_in_version='2.5',
                 command=self.invoked_as)
-            if include_sidelines is None:
-                include_sidelines = include_merges
+            if include_merged is None:
+                include_merged = include_merges
             else:
                 raise errors.BzrCommandError(
-                    '--include-merges and --include-sidelines '
+                    '--include-merges and --include-merged '
                     'are mutually exclusive')
-        if include_sidelines is None:
-            include_sidelines = False
+        if include_merged is None:
+            include_merged = False
         if (exclude_common_ancestry
             and (revision is None or len(revision) != 2)):
             raise errors.BzrCommandError(
                 '--exclude-common-ancestry requires -r with two revisions')
-        if include_sidelines:
+        if include_merged:
             if levels is None:
                 levels = 0
             else:
                 raise errors.BzrCommandError(
-                    '--levels and --include-sidelines are mutually exclusive')
+                    '--levels and --include-merged are mutually exclusive')
 
         if change is not None:
             if len(change) > 1:
@@ -4620,10 +4620,10 @@ class cmd_missing(Command):
             type=_parse_revision_str,
             help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-        Option('include-sidelines',
+        Option('include-merged',
                'Show all revisions in addition to the mainline ones.'),
         Option('include-merges', hidden=True,
-               help='Historical alias for --include-sidelines.'),
+               help='Historical alias for --include-merged.'),
         ]
     encoding_type = 'replace'
 
@@ -4632,7 +4632,7 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_sidelines=None, revision=None, my_revision=None,
+            include_merged=None, revision=None, my_revision=None,
             directory=u'.',
             include_merges=symbol_versioning.DEPRECATED_PARAMETER):
         from bzrlib.missing import find_unmerged, iter_log_revisions
@@ -4644,17 +4644,17 @@ class cmd_missing(Command):
             ui.ui_factory.show_user_warning(
                 'deprecated_command_option',
                 deprecated_name='--include-merges',
-                recommended_name='--include-sidelines',
+                recommended_name='--include-merged',
                 deprecated_in_version='2.5',
                 command=self.invoked_as)
-            if include_sidelines is None:
-                include_sidelines = include_merges
+            if include_merged is None:
+                include_merged = include_merges
             else:
                 raise errors.BzrCommandError(
-                    '--include-merges and --include-sidelines '
+                    '--include-merges and --include-merged '
                     'are mutually exclusive')
-        if include_sidelines is None:
-            include_sidelines = False
+        if include_merged is None:
+            include_merged = False
         if this:
             mine_only = this
         if other:
@@ -4699,7 +4699,7 @@ class cmd_missing(Command):
         local_extra, remote_extra = find_unmerged(
             local_branch, remote_branch, restrict,
             backward=not reverse,
-            include_sidelines=include_sidelines,
+            include_merged=include_merged,
             local_revid_range=local_revid_range,
             remote_revid_range=remote_revid_range)
 

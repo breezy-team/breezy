@@ -542,7 +542,7 @@ class TestLogMerges(TestLogWithLogCatcher):
         # Confirm --include-merges gives the same output as -n0
         msg = ("The option '--include-merges' to 'bzr log' "
                "has been deprecated in bzr 2.5. "
-               "Please use '--include-sidelines' instead.\n")
+               "Please use '--include-merged' instead.\n")
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
                              working_dir='level0', err=msg)
@@ -556,12 +556,12 @@ class TestLogMerges(TestLogWithLogCatcher):
         self.assertEqual('', err_n0)
         self.assertEqual(out_im, out_n0)
 
-    def test_include_sidelines(self):
-        # Confirm --include-sidelines gives the same output as -n0
+    def test_include_merged(self):
+        # Confirm --include-merged gives the same output as -n0
         expected = ['2', '1.1.2', '1.2.1', '1.1.1', '1']
-        self.assertLogRevnos(['--include-sidelines'],
+        self.assertLogRevnos(['--include-merged'],
                              expected, working_dir='level0')
-        self.assertLogRevnos(['--include-sidelines'],
+        self.assertLogRevnos(['--include-merged'],
                              expected, working_dir='level0')
 
     def test_force_merge_revisions_N(self):

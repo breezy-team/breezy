@@ -43,7 +43,7 @@ def iter_log_revisions(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all',
-                  include_sidelines=None, backward=False,
+                  include_merged=None, backward=False,
                   local_revid_range=None, remote_revid_range=None,
                   include_merges=symbol_versioning.DEPRECATED_PARAMETER):
     """Find revisions from each side that have not been merged.
@@ -55,7 +55,7 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         unique revisions from both sides. If 'local', we will return None
         for the remote revisions, similarly if 'remote' we will return None for
         the local revisions.
-    :param include_sidelines: Show mainline revisions only if False,
+    :param include_merged: Show mainline revisions only if False,
         all revisions otherwise.
     :param backward: Show oldest versions first when True, newest versions
         first when False.
@@ -63,7 +63,7 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         revisions (lower bound, upper bound)
     :param remote_revid_range: Revision-id range for filtering remote_branch
         revisions (lower bound, upper bound)
-    :param include_merges: Deprecated historical alias for include_sidelines
+    :param include_merges: Deprecated historical alias for include_merged
 
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
@@ -71,19 +71,19 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
     if symbol_versioning.deprecated_passed(include_merges):
         symbol_versioning.warn(
             'include_merges was deprecated in 2.5.'
-            ' Use include_sidelines instead.',
+            ' Use include_merged instead.',
             DeprecationWarning, stacklevel=2)
-        if include_sidelines is None:
-            include_sidelines = include_merges
-    if include_sidelines is None:
-        include_sidelines = False
+        if include_merged is None:
+            include_merged = include_merges
+    if include_merged is None:
+        include_merged = False
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
         try:
             return _find_unmerged(
                 local_branch, remote_branch, restrict=restrict,
-                include_sidelines=include_sidelines, backward=backward,
+                include_merged=include_merged, backward=backward,
                 local_revid_range=local_revid_range,
                 remote_revid_range=remote_revid_range)
         finally:
@@ -172,7 +172,7 @@ def _filter_revs(graph, revs, revid_range):
 
 
 def _find_unmerged(local_branch, remote_branch, restrict,
-                   include_sidelines, backward,
+                   include_merged, backward,
                    local_revid_range=None, remote_revid_range=None):
     """See find_unmerged.
 
@@ -198,7 +198,7 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                              ' "remote": %r' % (restrict,))
         local_extra, remote_extra = graph.find_difference(local_revision_id,
                                                           remote_revision_id)
-    if include_sidelines:
+    if include_merged:
         locals = _enumerate_with_merges(local_branch, local_extra,
                                         graph, local_revno,
                                         local_revision_id, backward)

@@ -131,7 +131,7 @@ New Features
   those commits that merged branches, i.e. those having more than one
   parent.
   In order to avoid confusion, the previous command line option
-  ``--include-merges`` has been renamed to ``--include-sidelines``.
+  ``--include-merges`` has been renamed to ``--include-merged``.
   The old name of the command line option will still be accepted.
   The name change also affects ``bzr missing``.
   (Martin von Gagern)
