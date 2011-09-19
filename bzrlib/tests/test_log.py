@@ -1335,7 +1335,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2
-fixes bug: test://bug/id test://bug/2
+fixes bugs: test://bug/id test://bug/2
 author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: work
