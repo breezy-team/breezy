@@ -146,11 +146,14 @@ class ControlDir(ControlComponent):
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+                      append_revisions_only=None):
         """Create a branch in this ControlDir.
 
         :param name: Name of the colocated branch to create, None for
             the default branch.
+        :param append_revisions_only: Whether this branch should only allow
+            appending new revisions to its history.
 
         The controldirs format will control what branch format is created.
         For more control see BranchFormatXX.create(a_controldir).

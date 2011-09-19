@@ -797,8 +797,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                          [b.base for b in branches])
 
     def test_find_branches_using_empty_standalone_repo(self):
-        repo = self.make_repository('repo')
-        self.assertFalse(repo.is_shared())
+        repo = self.make_repository('repo', shared=False)
         try:
             repo.bzrdir.open_branch()
         except errors.NotBranchError:

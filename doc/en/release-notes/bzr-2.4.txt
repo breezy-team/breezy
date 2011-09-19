@@ -5,10 +5,69 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.4.2
+#########
+
+:2.4.2: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
 bzr 2.4.1
 #########
 
-:2.4.1: NOT RELEASED YET
+:2.4.1: 2011-09-08
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.4 releases.
+
+It includes fixes from previous stable releases and address some issues with
+the test suite.
+
 
 External Compatibility Breaks
 *****************************

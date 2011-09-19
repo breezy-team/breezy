@@ -104,7 +104,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def test_merge_tags(self):
         b1 = self.make_branch_with_revisions('b1', ['revid', 'revid-1'])
-        b2 = self.make_branch_with_revisions('b2', ['revid-2'])
+        b2 = self.make_branch_with_revisions('b2', ['revid', 'revid-2'])
         # if there are tags in the source and not the destination, then they
         # just go across
         b1.tags.set_tag('tagname', 'revid')
@@ -219,7 +219,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertEqual({'one': 'rev-1'}, b.tags.get_tag_dict())
 
     def make_write_locked_branch_with_one_tag(self):
-        b = self.make_branch_with_revisions('b', ['rev-1'])
+        b = self.make_branch_with_revisions('b',
+            ['rev-1', 'rev-1-changed', 'rev-2'])
         b.tags.set_tag('one', 'rev-1')
         self.addCleanup(b.lock_write().unlock)
         # Populate the cache
@@ -238,7 +239,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def test_merge_to_invalides_cache(self):
         b1 = self.make_write_locked_branch_with_one_tag()
-        b2 = self.make_branch('b2')
+        b2 = self.make_branch_with_revisions('b2', ['rev-2', 'rev-1'])
         b2.tags.set_tag('two', 'rev-2')
         b2.tags.merge_to(b1.tags)
         self.assertEqual(

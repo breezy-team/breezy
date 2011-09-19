@@ -20,7 +20,10 @@
 from bzrlib import (
     osutils,
     symbol_versioning,
+    i18n,
+    trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib.patches import (
     MalformedHunkHeader,
     MalformedLine,
@@ -140,7 +143,11 @@ class BzrError(StandardError):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
-            return fmt
+            i18n.install()
+            unicode_fmt = unicode(fmt) #_fmt strings should be ascii
+            if type(fmt) == unicode:
+                trace.mutter("Unicode strings in error.fmt are deprecated")
+            return gettext(unicode_fmt)
         fmt = getattr(self, '__doc__', None)
         if fmt is not None:
             symbol_versioning.warn("%s uses its docstring as a format, "
@@ -2792,7 +2799,7 @@ class DuplicateRecordNameError(ContainerError):
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
-        self.name = name
+        self.name = name.decode("utf-8")
 
 
 class NoDestinationAddress(InternalBzrError):

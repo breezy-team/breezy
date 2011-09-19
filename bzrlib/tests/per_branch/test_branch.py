@@ -365,6 +365,34 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.branch_format.initialize(repo.bzrdir, name='branch2')
         self.assertEquals(2, len(repo.bzrdir.list_branches()))
 
+    def test_create_append_revisions_only(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        for val in (True, False):
+            try:
+                branch = self.branch_format.initialize(repo.bzrdir,
+                    append_revisions_only=True)
+            except (errors.UninitializableFormat, errors.UpgradeRequired):
+                # branch references are not default init'able and
+                # not all branches support append_revisions_only
+                return
+            self.assertEquals(True, branch.get_append_revisions_only())
+            repo.bzrdir.destroy_branch()
+
+    def test_get_set_append_revisions_only(self):
+        branch = self.make_branch('.')
+        if branch._format.supports_set_append_revisions_only():
+            branch.set_append_revisions_only(True)
+            self.assertTrue(branch.get_append_revisions_only())
+            branch.set_append_revisions_only(False)
+            self.assertFalse(branch.get_append_revisions_only())
+        else:
+            self.assertRaises(errors.UpgradeRequired,
+                branch.set_append_revisions_only, True)
+            self.assertFalse(branch.get_append_revisions_only())
+
     def test_create_open_branch_uses_repository(self):
         try:
             repo = self.make_repository('.', shared=True)
