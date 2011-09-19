@@ -695,6 +695,8 @@ class Commit(object):
                 # Reset the new path (None) and new versioned flag (False)
                 change = (change[0], (change[1][0], None), change[2],
                     (change[3][0], False)) + change[4:]
+                new_path = change[1][1]
+                versioned = False
             elif kind == 'tree-reference':
                 if self.recursive == 'down':
                     self._commit_nested_tree(change[0], change[1][1])
