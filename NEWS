@@ -16,6 +16,9 @@
   * Fix pushing from git repository to git repository.
     (Jelmer Vernooij, #731270)
 
+  * Friendlier error message when HEAD can not be found in remote repository.
+    (Jelmer Vernooij, #778920)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)

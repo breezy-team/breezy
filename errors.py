@@ -30,10 +30,11 @@ class BzrGitError(bzr_errors.BzrError):
 class NoSuchRef(BzrGitError):
     """Raised when a ref can not be found."""
 
-    _fmt = "The ref %(ref)s was not found."
+    _fmt = "The ref %(ref)s was not found in the repository at %(location)s."
 
-    def __init__(self, ref, present_refs=None):
+    def __init__(self, ref, location, present_refs=None):
         self.ref = ref
+        self.location = location
         self.present_refs = present_refs
 
 

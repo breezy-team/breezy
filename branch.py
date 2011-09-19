@@ -672,7 +672,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
         def determine_wants(heads):
             if self.source.ref is not None and not self.source.ref in heads:
-                raise NoSuchRef(self.source.ref, heads.keys())
+                raise NoSuchRef(self.source.ref, self.source.user_url, heads.keys())
 
             if stop_revision is None:
                 if self.source.ref is not None:
@@ -734,8 +734,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     self.target.last_revision_info()
                 result.new_git_head, remote_refs = self._update_revisions(
                     stop_revision, overwrite=overwrite)
-                result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                    overwrite)
+                result.tag_conflicts = self.source.tags.merge_to(
+                    self.target.tags, overwrite)
                 (result.new_revno, result.new_revid) = \
                     self.target.last_revision_info()
                 if _hook_master:

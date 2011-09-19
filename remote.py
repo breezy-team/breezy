@@ -448,12 +448,12 @@ class RemoteGitBranch(GitBranch):
     def head(self):
         if self._sha is not None:
             return self._sha
-        heads = self.repository.get_refs()
+        refs = self.repository.get_refs()
         name = branch_name_to_ref(self.name, "HEAD")
-        if name in heads:
-            self._sha = heads[name]
-        else:
-            raise NoSuchRef(self.name)
+        try:
+            self._sha = refs[name]
+        except KeyError:
+            raise NoSuchRef(name, self.repository.user_url, refs)
         return self._sha
 
     def _synchronize_history(self, destination, revision_id):
