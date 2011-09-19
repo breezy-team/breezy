@@ -742,6 +742,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         self._supports_external_lookups = None
         self._supports_tree_reference = None
         self._supports_funky_characters = None
+        self._supports_nesting_repositories = None
         self._rich_root_data = None
 
     def __repr__(self):
@@ -782,6 +783,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             self._supports_funky_characters = \
                 self._custom_format.supports_funky_characters
         return self._supports_funky_characters
+
+    @property
+    def supports_nesting_repositories(self):
+        if self._supports_nesting_repositories is None:
+            self._ensure_real()
+            self._supports_nesting_repositories = \
+                self._custom_format.supports_nesting_repositories
+        return self._supports_nesting_repositories
 
     @property
     def supports_tree_reference(self):

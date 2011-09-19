@@ -157,6 +157,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
             return
+        if not repo._format.supports_nesting_repositories:
+            return
         # This is a little bit trickier because make_branch_and_tree will not
         # re-use a shared repository.
         a_bzrdir = self.make_bzrdir('repo/tree')

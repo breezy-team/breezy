@@ -1419,6 +1419,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     rich_root_data = None
     # Does this format support explicitly versioned directories?
     supports_versioned_directories = None
+    # Can other repositories be nested into one of this format?
+    supports_nesting_repositories = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1550,6 +1552,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_external_lookups = False
     supports_leaving_lock = True
+    supports_nesting_repositories = True
 
     @property
     def _matchingbzrdir(self):
