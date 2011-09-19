@@ -155,11 +155,11 @@ def debug_memory_win32api(message='', short=True):
         return
     if short:
         # using base-2 units (see HACKING.txt).
-        trace.note(gettext('WorkingSize %7dKiB'
-                   '\tPeakWorking %7dKiB\t%s'),
+        trace.note(gettext('WorkingSize {0:>7}KiB'
+                   '\tPeakWorking {1:>7}KiB\t{2}').format(
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
-                   message)
+                   message))
         return
     if message:
         trace.note('%s', message)

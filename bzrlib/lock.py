@@ -544,6 +544,6 @@ class _RelockDebugMixin(object):
                 type_name = 'read'
             else:
                 type_name = 'write'
-            trace.note(gettext('%r was %s locked again'), self, type_name)
+            trace.note(gettext('{0!r} was {1} locked again'), self, type_name)
         self._prev_lock = lock_type
 

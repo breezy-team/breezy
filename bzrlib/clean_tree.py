@@ -123,7 +123,8 @@ def delete_items(deletables, dry_run=False):
                     if e.errno != errno.EACCES:
                         raise e
                     ui.ui_factory.show_warning(gettext(
-                        'unable to remove "%s": %s.') % (path, e.strerror))
+                        'unable to remove "{0}": {1}.').format(
+                                                    path, e.strerror))
         else:
             note('  ' + subp)
     if not has_deleted:

@@ -74,9 +74,9 @@ def send(submit_branch, revision, public_branch, remember, format,
             raise errors.BzrCommandError(gettext('No submit branch known or'
                                          ' specified'))
         if remembered_submit_branch is not None:
-            trace.note(gettext('Using saved %s location "%s" to determine what '
-                       'changes to submit.'), remembered_submit_branch,
-                       submit_branch)
+            trace.note(gettext('Using saved {0} location "{1}" to determine '
+                       'what changes to submit.').format(
+                                    remembered_submit_branch, submit_branch))
 
         if mail_to is None or format is None:
             # TODO: jam 20090716 we open the submit_branch here, but we *don't*
