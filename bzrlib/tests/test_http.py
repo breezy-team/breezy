@@ -2013,18 +2013,23 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'http://foo.example.com/foo/subdir')
         self.assertIsInstance(r, type(t))
+        self.assertEquals('http://foo.example.com/foo/subdir',
+            r.external_url())
 
     def test_redirected_to_same_host_sibling_protocol(self):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'https://www.example.com/foo')
         self.assertIsInstance(r, type(t))
+        self.assertEquals('https://www.example.com/',
+            r.external_url())
 
     def test_redirected_to_same_host_different_protocol(self):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'ftp://www.example.com/foo')
         self.assertNotEquals(type(r), type(t))
+        self.assertEquals('ftp://www.example.com/foo/', r.external_url())
 
     def test_redirected_to_different_host_same_user(self):
         t = self._transport('http://joe@www.example.com/foo')
@@ -2032,6 +2037,7 @@ class Test_redirected_to(tests.TestCase):
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
         self.assertEqual(t._parsed_url.user, r._parsed_url.user)
+        self.assertEquals('https://joe@foo.example.com/foo', r.external_url())
 
 
 class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
