@@ -10,6 +10,12 @@
   * Support addressing branches by ref where the name can't be mapped back to
     a branch. (Jelmer Vernooij, #829481)
 
+  * Skip post commit hook when dulwich is not available.
+    (Jelmer Vernooij, #853974)
+
+  * Fix pushing from git repository to git repository.
+    (Jelmer Vernooij, #731270)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)
