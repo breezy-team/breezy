@@ -16,8 +16,6 @@
 
 """Tests for branch.pull behaviour."""
 
-import os
-
 from bzrlib import (
     branch,
     bzrdir,
