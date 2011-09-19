@@ -2100,8 +2100,9 @@ class cmd_diff(Command):
                                          ' one or two revision specifiers'))
 
         if using is not None and format is not None:
-            raise errors.BzrCommandError(gettext('--using and --format are mutually '
-                'exclusive.'))
+            raise errors.BzrCommandError(gettext(
+                '{0} and {1} are mutually exclusive').format(
+                '--using', '--format'))
 
         (old_tree, new_tree,
          old_branch, new_branch,
@@ -2498,8 +2499,8 @@ class cmd_log(Command):
                 include_merged = include_merges
             else:
                 raise errors.BzrCommandError(gettext(
-                    '--include-merges and --include-merged '
-                    'are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--include-merges', '--include-merged'))
         if include_merged is None:
             include_merged = False
         if (exclude_common_ancestry
@@ -2511,14 +2512,16 @@ class cmd_log(Command):
                 levels = 0
             else:
                 raise errors.BzrCommandError(gettext(
-                    '--levels and --include-merged are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--levels', '--include-merged'))
 
         if change is not None:
             if len(change) > 1:
                 raise errors.RangeInChangeOption()
             if revision is not None:
                 raise errors.BzrCommandError(gettext(
-                    '--revision and --change are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--revision', '--change'))
             else:
                 revision = change
 
@@ -4653,8 +4656,8 @@ class cmd_missing(Command):
                 include_merged = include_merges
             else:
                 raise errors.BzrCommandError(gettext(
-                    '--include-merges and --include-merged '
-                    'are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--include-merges', '--include-merged'))
         if include_merged is None:
             include_merged = False
         if this:
