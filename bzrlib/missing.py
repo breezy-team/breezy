@@ -75,13 +75,15 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
             DeprecationWarning, stacklevel=2)
         if include_sidelines is None:
             include_sidelines = include_merges
+    if include_sidelines is None:
+        include_sidelines = False
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
         try:
             return _find_unmerged(
                 local_branch, remote_branch, restrict=restrict,
-                include_merges=include_merges, backward=backward,
+                include_sidelines=include_sidelines, backward=backward,
                 local_revid_range=local_revid_range,
                 remote_revid_range=remote_revid_range)
         finally:
@@ -170,7 +172,7 @@ def _filter_revs(graph, revs, revid_range):
 
 
 def _find_unmerged(local_branch, remote_branch, restrict,
-                   include_merges, backward,
+                   include_sidelines, backward,
                    local_revid_range=None, remote_revid_range=None):
     """See find_unmerged.
 
@@ -196,7 +198,7 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                              ' "remote": %r' % (restrict,))
         local_extra, remote_extra = graph.find_difference(local_revision_id,
                                                           remote_revision_id)
-    if include_merges:
+    if include_sidelines:
         locals = _enumerate_with_merges(local_branch, local_extra,
                                         graph, local_revno,
                                         local_revision_id, backward)
