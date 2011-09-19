@@ -42,8 +42,9 @@ def iter_log_revisions(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all',
-                  include_merges=False, backward=False,
-                  local_revid_range=None, remote_revid_range=None):
+                  include_sidelines=None, backward=False,
+                  local_revid_range=None, remote_revid_range=None,
+                  include_merges=False):
     """Find revisions from each side that have not been merged.
 
     :param local_branch: Compare the history of local_branch
@@ -53,7 +54,7 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         unique revisions from both sides. If 'local', we will return None
         for the remote revisions, similarly if 'remote' we will return None for
         the local revisions.
-    :param include_merges: Show mainline revisions only if False,
+    :param include_sidelines: Show mainline revisions only if False,
         all revisions otherwise.
     :param backward: Show oldest versions first when True, newest versions
         first when False.
@@ -61,10 +62,13 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         revisions (lower bound, upper bound)
     :param remote_revid_range: Revision-id range for filtering remote_branch
         revisions (lower bound, upper bound)
+    :param include_merges: Deprecated historical alias for include_sidelines
 
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
     """
+    if include_sidelines is None:
+        include_sidelines = include_merges
     local_branch.lock_read()
     try:
         remote_branch.lock_read()

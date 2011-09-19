@@ -4672,7 +4672,7 @@ class cmd_missing(Command):
         local_extra, remote_extra = find_unmerged(
             local_branch, remote_branch, restrict,
             backward=not reverse,
-            include_merges=include_sidelines,
+            include_sidelines=include_sidelines,
             local_revid_range=local_revid_range,
             remote_revid_range=remote_revid_range)
 
