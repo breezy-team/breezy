@@ -3162,8 +3162,8 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note(gettext('checked branch %s format %s'), self.branch.user_url,
-            self.branch._format)
+        note(gettext('checked branch {0} format {1}').format(
+                                self.branch.user_url, self.branch._format))
         for error in self.errors:
             note(gettext('found error:%s'), error)
 

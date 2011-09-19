@@ -633,7 +633,7 @@ class BzrDir(controldir.ControlDir):
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
-            ui.ui_factory.note(gettext('making backup of %s\n  to %s') % (
+            ui.ui_factory.note(gettext('making backup of {0}\n  to {1}').format(
                 urlutils.unescape_for_display(old_path, 'utf-8'),
                 urlutils.unescape_for_display(new_path, 'utf-8')))
             self.root_transport.copy_tree('.bzr', backup_dir)

@@ -162,8 +162,9 @@ class BranchReconciler(object):
             # set_revision_history, as this will regenerate it again.
             # Not really worth a whole BranchReconciler class just for this,
             # though.
-            ui.ui_factory.note(gettext('Fixing last revision info %s => %s') % (
-                 last_revno, len(real_history)))
+            ui.ui_factory.note(gettext('Fixing last revision info {0} '\
+                                       ' => {1}').format(
+                                       last_revno, len(real_history)))
             self.branch.set_last_revision_info(len(real_history),
                                                last_revision_id)
         else:

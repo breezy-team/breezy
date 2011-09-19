@@ -554,7 +554,8 @@ class Command(object):
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = gettext(":doc:`%s <%s-help>`") % (item, item)
+                        link_text = gettext(":doc:`{0} <{1}-help>`").format(
+                                                                    item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
             result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
