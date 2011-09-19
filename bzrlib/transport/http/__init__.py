@@ -514,6 +514,8 @@ class HttpTransportBase(ConnectedTransport):
         parsed_source = self._split_url(source)
         parsed_target = self._split_url(target)
         pl = len(self._parsed_url.path)
+        # determine the excess tail - the relative path that was in
+        # the original request but not part of this transports' URL.
         excess_tail = parsed_source.path[pl:].strip("/")
         if not target.endswith(excess_tail):
             # The final part of the url has been renamed, we can't handle the
