@@ -18,11 +18,11 @@ This contains functionality for installing bundles into repositories
 """
 
 from bzrlib import ui
-from bzrlib.progress import ProgressPhase
-from bzrlib.merge import Merger
-from bzrlib.vf_repository import install_revision
-from bzrlib.trace import note
 from bzrlib.i18n import gettext
+from bzrlib.merge import Merger
+from bzrlib.progress import ProgressPhase
+from bzrlib.trace import note
+from bzrlib.vf_repository import install_revision
 
 
 def install_bundle(repository, bundle_reader):
