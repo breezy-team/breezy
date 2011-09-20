@@ -85,6 +85,17 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.version_as_revision)
 
+    def version_as_revisions(self, package, version, tarballs=None):
+        """Lookup the revision ids for a particular version.
+
+        :param package: Package name
+        :package version: Version string
+        :raise PackageVersionNotPresent: When the specified version was not
+            found
+        :return: list with tuples with component names and revision ids
+        """
+        return { None: self.version_as_revision(package, version, tarballs) }
+
     def has_version(self, package, version, md5=None):
         """Check whether this upstream source contains a particular package.
 
