@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     pyutils,
     )
+from bzrlib.i18n import gettext
 """)
 
 
@@ -310,10 +311,10 @@ class HookPoint(object):
             introduced_string = _format_version_tuple(self.introduced)
         else:
             introduced_string = 'unknown'
-        strings.append('Introduced in: %s' % introduced_string)
+        strings.append(gettext('Introduced in: %s') % introduced_string)
         if self.deprecated:
             deprecated_string = _format_version_tuple(self.deprecated)
-            strings.append('Deprecated in: %s' % deprecated_string)
+            strings.append(gettext('Deprecated in: %s') % deprecated_string)
         strings.append('')
         strings.extend(textwrap.wrap(self.__doc__,
             break_long_words=False))

@@ -18,10 +18,11 @@ This contains functionality for installing bundles into repositories
 """
 
 from bzrlib import ui
-from bzrlib.progress import ProgressPhase
+from bzrlib.i18n import gettext
 from bzrlib.merge import Merger
-from bzrlib.vf_repository import install_revision
+from bzrlib.progress import ProgressPhase
 from bzrlib.trace import note
+from bzrlib.vf_repository import install_revision
 
 
 def install_bundle(repository, bundle_reader):
@@ -33,7 +34,7 @@ def install_bundle(repository, bundle_reader):
     try:
         real_revisions = bundle_reader.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
-            pb.update("Install revisions",i, len(real_revisions))
+            pb.update(gettext("Install revisions"),i, len(real_revisions))
             if repository.has_revision(revision.revision_id):
                 continue
             cset_tree = bundle_reader.revision_tree(repository,
