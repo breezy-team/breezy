@@ -256,7 +256,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
         """
         from bzrlib.plugins.git.transportgit import TransportRepo
-        gitrepo = TransportRepo(transport)
+        gitrepo = TransportRepo(transport, self.bare)
         lockfiles = GitLockableFiles(transport, GitLock())
         return LocalGitDir(transport, lockfiles, gitrepo, self)
 

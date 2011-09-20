@@ -98,7 +98,11 @@ class TransportRefsContainer(RefsContainer):
 
     def allkeys(self):
         keys = set()
-        if self.transport.has("HEAD"):
+        try:
+            self.transport.get_bytes("HEAD")
+        except NoSuchFile:
+            pass
+        else:
             keys.add("HEAD")
         try:
             iter_files = list(self.transport.clone("refs").iter_files_recursive())
@@ -284,19 +288,13 @@ class TransportRefsContainer(RefsContainer):
 
 class TransportRepo(BaseRepo):
 
-    def __init__(self, transport):
+    def __init__(self, transport, bare):
         self.transport = transport
-        try:
-            if self.transport.has(".git/%s" % OBJECTDIR):
-                self.bare = False
-                self._controltransport = self.transport.clone('.git')
-            elif self.transport.has_any(["info/refs", OBJECTDIR, REFSDIR]):
-                self.bare = True
-                self._controltransport = self.transport
-            else:
-                raise NotGitRepository(self.transport)
-        except NoSuchFile:
-            raise NotGitRepository(self.transport)
+        self.bare = bare
+        if self.bare:
+            self._controltransport = self.transport
+        else:
+            self._controltransport = self.transport.clone('.git')
         object_store = TransportObjectStore(
             self._controltransport.clone(OBJECTDIR))
         super(TransportRepo, self).__init__(object_store, 
@@ -351,7 +349,7 @@ class TransportRepo(BaseRepo):
             control_transport.mkdir("/".join(d))
         control_transport.mkdir(OBJECTDIR)
         TransportObjectStore.init(control_transport.clone(OBJECTDIR))
-        ret = cls(transport)
+        ret = cls(transport, bare)
         ret.refs.set_symbolic_ref("HEAD", "refs/heads/master")
         ret._init_files(bare)
         return ret

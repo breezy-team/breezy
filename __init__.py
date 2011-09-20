@@ -134,30 +134,20 @@ class LocalGitProber(Prober):
             external_url.startswith("https:")):
             # Already handled by RemoteGitProber
             raise bzr_errors.NotBranchError(path=transport.base)
-        try:
-            if not transport.has_any(['.git/HEAD', 'HEAD', 'objects', '.git/objects']):
-                raise bzr_errors.NotBranchError(path=transport.base)
-        except bzr_errors.NoSuchFile:
-            raise bzr_errors.NotBranchError(path=transport.base)
         from bzrlib import urlutils
         if urlutils.split(transport.base)[1] == ".git":
             raise bzr_errors.NotBranchError(path=transport.base)
-        lazy_check_versions()
-        import dulwich
-        from bzrlib.plugins.git.transportgit import TransportRepo
-        try:
-            gitrepo = TransportRepo(transport)
-        except dulwich.errors.NotGitRepository, e:
+        if not transport.has_any(['objects', '.git/objects']):
             raise bzr_errors.NotBranchError(path=transport.base)
-        else:
-            from bzrlib.plugins.git.dir import (
-                BareLocalGitControlDirFormat,
-                LocalGitControlDirFormat,
-                )
-            if gitrepo.bare:
-                return BareLocalGitControlDirFormat()
-            else:
-                return LocalGitControlDirFormat()
+        lazy_check_versions()
+        from bzrlib.plugins.git.dir import (
+            BareLocalGitControlDirFormat,
+            LocalGitControlDirFormat,
+            )
+        if transport.has_any(['.git/objects']):
+            return LocalGitControlDirFormat()
+        if transport.has('info') and transport.has('objects'):
+            return BareLocalGitControlDirFormat()
 
     @classmethod
     def known_formats(cls):
