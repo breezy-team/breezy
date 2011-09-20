@@ -348,7 +348,7 @@ class ConvertBzrDir4To5(Converter):
 
         Any parents not either loaded or abandoned get queued to be
         loaded."""
-        self.pb.update(gettext('loading revision',)
+        self.pb.update(gettext('loading revision'),
                        len(self.revisions),
                        len(self.known_revisions))
         if not self.branch.repository.has_revision(rev_id):

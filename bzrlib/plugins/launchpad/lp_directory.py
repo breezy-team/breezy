@@ -166,7 +166,7 @@ class LaunchpadDirectory(object):
                 result = self._resolve_via_xmlrpc(path, url, _request_factory)
                 trace.note(gettext(
                     'resolution for {0}\n  local: {1}\n remote: {2}').format(
-                           % (url, local_res['urls'], result['urls'])))
+                           url, local_res['urls'], result['urls']))
         else:
             result = self._resolve_via_xmlrpc(path, url, _request_factory)
 

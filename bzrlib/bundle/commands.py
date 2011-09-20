@@ -76,7 +76,7 @@ class cmd_bundle_info(Command):
             multiparent = sum(1 for b, m, k, r, f in records if
                               len(m.get('parents', [])) > 1)
             self.outf.write(gettext('{0}: {1} ({2} multiparent)\n').format(
-                (kind, len(records), multiparent)))
+                kind, len(records), multiparent))
         self.outf.write(gettext('unique files: %d\n') % len(file_ids))
         self.outf.write('\n')
         nicks = set()
