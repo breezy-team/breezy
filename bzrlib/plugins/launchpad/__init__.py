@@ -46,6 +46,7 @@ from bzrlib import (
     ui,
     trace,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
@@ -144,14 +145,16 @@ class cmd_register_branch(Command):
             try:
                 b = _mod_branch.Branch.open_containing('.')[0]
             except NotBranchError:
-                raise BzrCommandError('register-branch requires a public '
-                    'branch url - see bzr help register-branch.')
+                raise BzrCommandError(gettext(
+                            'register-branch requires a public '
+                            'branch url - see bzr help register-branch.'))
             public_url = b.get_public_branch()
             if public_url is None:
                 raise NoPublicBranch(b)
         if product is not None:
             project = product
-            trace.note('--product is deprecated; please use --project.')
+            trace.note(gettext(
+                '--product is deprecated; please use --project.'))
 
 
         rego = BranchRegistrationRequest(branch_url=public_url,
@@ -223,7 +226,7 @@ class cmd_launchpad_open(Command):
         if location is None:
             location = u'.'
         web_url = self._get_web_url(LaunchpadService(), location)
-        trace.note('Opening %s in web browser' % web_url)
+        trace.note(gettext('Opening %s in web browser') % web_url)
         if not dry_run:
             import webbrowser   # this import should not be lazy
                                 # otherwise bzr.exe lacks this module
@@ -267,22 +270,23 @@ class cmd_launchpad_login(Command):
                 if check_account:
                     account.check_lp_login(username)
                     if verbose:
-                        self.outf.write(
-                            "Launchpad user ID exists and has SSH keys.\n")
+                        self.outf.write(gettext(
+                            "Launchpad user ID exists and has SSH keys.\n"))
                 self.outf.write(username + '\n')
             else:
-                self.outf.write('No Launchpad user ID configured.\n')
+                self.outf.write(gettext('No Launchpad user ID configured.\n'))
                 return 1
         else:
             name = name.lower()
             if check_account:
                 account.check_lp_login(name)
                 if verbose:
-                    self.outf.write(
-                        "Launchpad user ID exists and has SSH keys.\n")
+                    self.outf.write(gettext(
+                        "Launchpad user ID exists and has SSH keys.\n"))
             account.set_lp_login(name)
             if verbose:
-                self.outf.write("Launchpad user ID set to '%s'.\n" % (name,))
+                self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
+                                                                        (name,))
 
 register_command(cmd_launchpad_login)
 
@@ -400,8 +404,8 @@ class cmd_lp_find_proposal(Command):
             revno = self._find_merged_revno(revision, b, pb)
             merged = self._find_proposals(revno, b, pb)
             if len(merged) == 0:
-                raise BzrCommandError('No review found.')
-            trace.note('%d proposals(s) found.' % len(merged))
+                raise BzrCommandError(gettext('No review found.'))
+            trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
                 webbrowser.open(lp_api.canonical_url(mp))
         finally:
@@ -411,27 +415,27 @@ class cmd_lp_find_proposal(Command):
     def _find_merged_revno(self, revision, b, pb):
         if revision is None:
             return b.revno()
-        pb.update('Finding revision-id')
+        pb.update(gettext('Finding revision-id'))
         revision_id = revision[0].as_revision_id(b)
         # a revno spec is necessarily on the mainline.
         if self._is_revno_spec(revision[0]):
             merging_revision = revision_id
         else:
             graph = b.repository.get_graph()
-            pb.update('Finding merge')
+            pb.update(gettext('Finding merge'))
             merging_revision = graph.find_lefthand_merger(
                 revision_id, b.last_revision())
             if merging_revision is None:
                 raise InvalidRevisionSpec(revision[0].user_spec, b)
-        pb.update('Finding revno')
+        pb.update(gettext('Finding revno'))
         return b.revision_id_to_revno(merging_revision)
 
     def _find_proposals(self, revno, b, pb):
         launchpad = lp_api.login(lp_registration.LaunchpadService())
-        pb.update('Finding Launchpad branch')
+        pb.update(gettext('Finding Launchpad branch'))
         lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b,
                                               create_missing=False)
-        pb.update('Finding proposals')
+        pb.update(gettext('Finding proposals'))
         return list(lpb.lp.getMergeProposals(status=['Merged'],
                                              merged_revnos=[revno]))
 
