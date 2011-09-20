@@ -1,3 +1,10 @@
+bzr (2.5.0~beta1-2) UNRELEASED; urgency=low
+
+  * Add Build-Conflicts to python-gpgme, to work around test suite
+    failures.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 20 Sep 2011 22:08:37 +0200
+
 bzr (2.5.0~beta1-1) experimental; urgency=medium
 
   * New upstream release.
