@@ -271,11 +271,11 @@ class ConvertBzrDir4To5(Converter):
         self._write_all_weaves()
         self._write_all_revs()
         ui.ui_factory.note(gettext('upgraded to weaves:'))
-        ui.ui_factory.note(gettext('  %6d revisions and inventories') %
+        ui.ui_factory.note('  ' + gettext('%6d revisions and inventories') %
                                                         len(self.revisions))
-        ui.ui_factory.note(gettext('  %6d revisions not present') %
+        ui.ui_factory.note('  ' + gettext('%6d revisions not present') %
                                                     len(self.absent_revisions))
-        ui.ui_factory.note(gettext('  %6d texts') % self.text_count)
+        ui.ui_factory.note('  ' + gettext('%6d texts') % self.text_count)
         self._cleanup_spare_files_after_format4()
         self.branch._transport.put_bytes(
             'branch-format',
@@ -566,7 +566,7 @@ class ConvertBzrDir6ToMeta(Converter):
         repository_names = [('inventory.weave', True),
                             ('revision-store', True),
                             ('weaves', True)]
-        self.step(gettext('Upgrading repository  '))
+        self.step(gettext('Upgrading repository') + '  ')
         self.bzrdir.transport.mkdir('repository', mode=self.dir_mode)
         self.make_lock('repository')
         # we hard code the formats here because we are converting into
@@ -576,7 +576,7 @@ class ConvertBzrDir6ToMeta(Converter):
         for entry in repository_names:
             self.move_entry('repository', entry)
 
-        self.step(gettext('Upgrading branch      '))
+        self.step(gettext('Upgrading branch') + '      ')
         self.bzrdir.transport.mkdir('branch', mode=self.dir_mode)
         self.make_lock('branch')
         self.put_format('branch', BzrBranchFormat5())
