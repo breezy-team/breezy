@@ -1,6 +1,7 @@
 bzr (2.5.0~beta1-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+  * Move bzrtools from Recommends to Suggests.
   * Add python-gpgme-dbg to build dependencies.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Sep 2011 17:05:06 +0200
