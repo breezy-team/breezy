@@ -50,6 +50,7 @@ from bzrlib.plugins.git.mapping import (
     directory_to_tree,
     extract_unusual_modes,
     mapping_registry,
+    object_mode,
     symlink_to_blob,
     )
 from bzrlib.plugins.git.unpeel_map import (
@@ -89,7 +90,6 @@ class LRUTreeCache(object):
         except KeyError:
             tree = self.repository.revision_tree(revid)
             self.add(tree)
-        assert tree.get_revision_id() == tree.inventory.revision_id
         return tree
 
     def iter_revision_trees(self, revids):
@@ -394,11 +394,11 @@ class BazaarObjectStore(BaseObjectStore):
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
             roundtrip, verifiers)
 
-    def _create_fileid_map_blob(self, inv):
+    def _create_fileid_map_blob(self, tree):
         # FIXME: This can probably be a lot more efficient, 
         # not all files necessarily have to be processed.
         file_ids = {}
-        for (path, ie) in inv.iter_entries():
+        for (path, ie) in tree.inventory.iter_entries():
             if self.mapping.generate_file_id(path) != ie.file_id:
                 file_ids[path] = ie.file_id
         return self.mapping.export_fileid_map(file_ids)
@@ -430,9 +430,9 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_ie = tree.inventory.root
+            root_ie = tree.get_root_id()
         if roundtrip and self.mapping.BZR_FILE_IDS_FILE is not None:
-            b = self._create_fileid_map_blob(tree.inventory)
+            b = self._create_fileid_map_blob(tree)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
                     (stat.S_IFREG | 0644), b.id)
@@ -496,7 +496,7 @@ class BazaarObjectStore(BaseObjectStore):
             _check_expected_sha(expected_sha, blob)
             yield blob
 
-    def _reconstruct_tree(self, fileid, revid, inv, unusual_modes,
+    def _reconstruct_tree(self, fileid, revid, bzr_tree, unusual_modes,
         expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
 
@@ -509,7 +509,7 @@ class BazaarObjectStore(BaseObjectStore):
                     return self._cache.idmap.lookup_tree_id(entry.file_id,
                         revid)
                 except (NotImplementedError, KeyError):
-                    obj = self._reconstruct_tree(entry.file_id, revid, inv,
+                    obj = self._reconstruct_tree(entry.file_id, revid, bzr_tree,
                         unusual_modes)
                     if obj is None:
                         return None
@@ -525,13 +525,13 @@ class BazaarObjectStore(BaseObjectStore):
                         [(entry.file_id, entry.revision, None)]).next().id
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes,
+        tree = directory_to_tree(bzr_tree.inventory[fileid], get_ie_sha1, unusual_modes,
             self.mapping.BZR_DUMMY_FILE)
-        if (inv.root.file_id == fileid and
+        if (bzr_tree.get_root_id() == fileid and
             self.mapping.BZR_FILE_IDS_FILE is not None):
             if tree is None:
                 tree = Tree()
-            b = self._create_fileid_map_blob(inv)
+            b = self._create_fileid_map_blob(bzr_tree)
             # If this is the root tree, add the file ids
             tree[self.mapping.BZR_FILE_IDS_FILE] = (
                 (stat.S_IFREG | 0644), b.id)
@@ -668,7 +668,7 @@ class BazaarObjectStore(BaseObjectStore):
                 unusual_modes = extract_unusual_modes(rev)
                 try:
                     return self._reconstruct_tree(fileid, revid,
-                        tree.inventory, unusual_modes, expected_sha=sha)
+                        tree, unusual_modes, expected_sha=sha)
                 except errors.NoSuchRevision:
                     raise KeyError(sha)
             else:
