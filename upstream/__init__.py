@@ -75,7 +75,7 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_latest_version)
 
-    def version_as_revision(self, package, version):
+    def version_as_revision(self, package, version, tarballs=None):
         """Lookup the revision id for a particular version.
 
         :param package: Package name

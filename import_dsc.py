@@ -860,6 +860,7 @@ class DistributionBranch(object):
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
                 package, version, self.pristine_upstream_tree, upstream_parents, component,
                 md5, tarball, author=author, timestamp=timestamp)
+            self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
             self.branch.tags.set_tag(tag, revid)
