@@ -2034,8 +2034,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
                                     possible_transports=[self._bzrdir.root_transport])
             if not self._require_stacking:
                 # We have picked up automatic stacking somewhere.
-                note('Using default stacking branch %s at %s', self._stack_on,
-                    self._stack_on_pwd)
+                note(gettext('Using default stacking branch {0} at {1}').format(
+                    self._stack_on, self._stack_on_pwd))
         repository = self._bzrdir.create_repository(shared=shared)
         self._add_fallback(repository,
                            possible_transports=[self._bzrdir.transport])
