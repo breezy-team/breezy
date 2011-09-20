@@ -26,6 +26,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.i18n import gettext
 
 from bzrlib.plugins.launchpad.lp_registration import (
     LaunchpadService, ResolveLaunchpadPathRequest)
