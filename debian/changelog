@@ -1,4 +1,4 @@
-bzr (2.5.0~beta1-1) UNRELEASED; urgency=medium
+bzr (2.5.0~beta1-1) experimental; urgency=medium
 
   * New upstream release.
   * Move bzrtools from Recommends to Suggests.
