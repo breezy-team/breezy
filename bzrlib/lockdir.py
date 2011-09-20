@@ -622,10 +622,11 @@ class LockDir(lock.Lock):
                     deadline_str = time.strftime('%H:%M:%S',
                                                     time.localtime(deadline))
                 if timeout > 0:
-                    msg += (gettext('\nWill continue to try until %s, unless '
-                        'you press Ctrl-C.')
-                        % deadline_str)
-                msg += gettext('\nSee "bzr help break-lock" for more.')
+                    msg += '\n' + gettext(
+                             'Will continue to try until %s, unless '
+                             'you press Ctrl-C.')
+                             % deadline_str
+                msg += '\n' + gettext('See "bzr help break-lock" for more.')
                 self._report_function(msg)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
