@@ -244,7 +244,8 @@ Update the source code
    Released' or setting a different milestone if the bug hasn't been
    fixed). A few false positives may remain in the older series, don't let
    this slow you down too much. This script accepts options you may find
-   useful, use ``./tools/check-newsbugs.py`` to display its usage.
+   useful, use ``./tools/check-newsbugs.py`` to display its usage (``-w``
+   will open each bug in your browser for example).
 
 #. Commit these changes to the release branch, using a command like::
 
@@ -439,12 +440,12 @@ In a nutshell:
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar`` list, saying that the source has been frozen
-   (gone gold). Be extra clear that this is only a *source* release
-   targeted at packagers and installer builders (see
-   <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue
-   for platform maintainers and plugin authors to update their code.  This
-   is done before the general public announcement of the release. 
+#. Post to the ``bazaar@lists.canonical.com`` list, saying that the source
+   has been frozen (gone gold). Be extra clear that this is only a *source*
+   release targeted at packagers and installer builders (see
+   <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
+   platform maintainers and plugin authors to update their code.  This is
+   done before the general public announcement of the release.
 
    The freeze announcement generally guess the date of the official public
    announcement, for the most recent stable series (the one supported by the
@@ -482,12 +483,8 @@ Now that the release is publicly available, tell people about it.
 
 #. Make an announcement mail.
 
-   For beta releases, this is sent to the ``bazaar@lists.canonical.com``
-   list only to inform plugin authors and people responsible for building
-   packages or installers.
-
-   Once the installers are available, the mail can be sent to the
-   ``bazaar-announce`` list too.
+   For beta releases, this is sent to the ``bazaar@lists.canonical.com`` and
+   ``bazaar-announce@lists.canonical.com`` lists.
 
    For stable releases (excluding SRUs which are for older stable releases),
    it should also be cc'd to ``info-gnu@gnu.org``,
@@ -503,8 +500,9 @@ Now that the release is publicly available, tell people about it.
       The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
 
-      Bazaar <http://bazaar.canonical.com/> is part of the GNU project
-      <http://gnu.org/> to produce a free operating system.
+      Bazaar <http://bazaar.canonical.com/> is a Canonical project and part
+      of the GNU project <http://gnu.org/> to produce a free operating
+      system.
 
       <<Summary paragraph from news>>
 
