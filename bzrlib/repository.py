@@ -361,8 +361,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
         self.control_files = control_files
-        self._transport = control_files._transport
-        self.base = self._transport.base
         # for tests
         self._write_group = None
         # Additional places to query for data.
@@ -406,7 +404,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         if self.__class__ is not other.__class__:
             return False
-        return (self._transport.base == other._transport.base)
+        return (self.control_url == other.control_url)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
