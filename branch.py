@@ -24,6 +24,7 @@ from dulwich.objects import (
     Tag,
     ZERO_SHA,
     )
+from dulwich.repo import check_ref_format
 
 from bzrlib import (
     branch,
@@ -44,6 +45,7 @@ from bzrlib.revision import (
 from bzrlib.trace import (
     is_quiet,
     mutter,
+    warning,
     )
 
 from bzrlib.plugins.git.config import (
@@ -905,16 +907,16 @@ class InterToGitBranch(branch.GenericInterBranch):
         if fetch_tags is None:
             c = self.source.get_config()
             fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
-        self.source.lock_read()
-        try:
-            graph = self.source.repository.get_graph()
-            for name, revid in self.source.tags.get_tag_dict().iteritems():
-                if self.source.repository.has_revision(revid):
-                    ref = tag_name_to_ref(name)
-                    if fetch_tags or graph.is_ancestor(revid, stop_revision):
-                        refs[ref] = (None, revid)
-        finally:
-            self.source.unlock()
+        graph = self.source.repository.get_graph()
+        for name, revid in self.source.tags.get_tag_dict().iteritems():
+            if self.source.repository.has_revision(revid):
+                ref = tag_name_to_ref(name)
+                if not check_ref_format(ref):
+                    warning("skipping tag with invalid characters %s (%s)",
+                        name, ref)
+                    continue
+                if fetch_tags or graph.is_ancestor(revid, stop_revision):
+                    refs[ref] = (None, revid)
         return refs, main_ref, (stop_revno, stop_revision)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
@@ -960,24 +962,28 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         result.local_branch = None
         result.master_branch = result.target_branch
-        new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
-        def update_refs(old_refs):
-            mutter("updating refs. old refs: %r, new refs: %r",
-                   old_refs, new_refs)
-            # FIXME: Check for diverged branches
-            return new_refs
+        self.source.lock_read()
         try:
-            result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                update_refs, lossy=lossy)
-        except NoPushSupport:
-            raise errors.NoRoundtrippingSupport(self.source, self.target)
-        (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
-        if result.old_revid is None:
-            result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
-        result.new_revid = new_refs[main_ref][1]
-        (result.new_original_revno, result.new_original_revid) = stop_revinfo
-        for hook in branch.Branch.hooks['post_push']:
-            hook(result)
+            new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
+            def update_refs(old_refs):
+                mutter("updating refs. old refs: %r, new refs: %r",
+                       old_refs, new_refs)
+                # FIXME: Check for diverged branches
+                return new_refs
+            try:
+                result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
+                    update_refs, lossy=lossy)
+            except NoPushSupport:
+                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
+            if result.old_revid is None:
+                result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
+            result.new_revid = new_refs[main_ref][1]
+            (result.new_original_revno, result.new_original_revid) = stop_revinfo
+            for hook in branch.Branch.hooks['post_push']:
+                hook(result)
+        finally:
+            self.source.unlock()
         return result
 
     def lossy_push(self, stop_revision=None):
