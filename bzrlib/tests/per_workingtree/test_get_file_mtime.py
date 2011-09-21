@@ -100,7 +100,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         finally:
             tree.unlock()
 
-    def test_gmissing(self):
+    def test_missing(self):
         tree = self.make_basic_tree()
 
         os.remove('tree/one')
@@ -110,3 +110,4 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
                 tree.get_file_mtime, file_id='one-id')
         finally:
             tree.unlock()
+
