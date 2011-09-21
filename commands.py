@@ -39,10 +39,12 @@ class cmd_git_import(Command):
     def run(self, src_location, dest_location=None):
         from collections import defaultdict
         import os
+        import urllib
         from bzrlib import (
             controldir,
             trace,
             ui,
+            urlutils,
             )
         from bzrlib.bzrdir import (
             BzrDir,
@@ -123,6 +125,9 @@ class cmd_git_import(Command):
                 if head_branch.last_revision() != revid:
                     head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
+                if not head_branch.get_parent():
+                    url = urlutils.join_segment_parameters(source_branch.base, {"ref": urllib.quote(name, '')})
+                    head_branch.set_parent(url)
         finally:
             pb.finished()
         trace.note("Use 'bzr checkout' to create a working tree in "

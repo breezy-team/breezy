@@ -137,7 +137,7 @@ class GitSmartTransport(Transport):
         raise NotImplementedError(self._get_client)
 
     def _get_path(self):
-        return urlutils.split_segment_parameters_raw(self._path)[0]
+        return self._path.rsplit(",", 1)[0]
 
     def get(self, path):
         raise NoSuchFile(path)
@@ -173,7 +173,7 @@ class SSHGitSmartTransport(GitSmartTransport):
     _scheme = 'git+ssh'
 
     def _get_path(self):
-        path = urlutils.split_segment_parameters_raw(self._path)[0]
+        path = self._path.rsplit(",", 1)[0]
         if path.startswith("/~/"):
             return path[3:]
         return path
