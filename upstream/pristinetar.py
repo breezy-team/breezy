@@ -191,7 +191,7 @@ class PristineTarSource(UpstreamSource):
 
     def import_component_tarball(self, package, version, tree, parent_ids,
             component=None, md5=None, tarball=None, author=None, timestamp=None,
-            exclude=None):
+            subdir=None, exclude=None):
         """Import a tarball.
 
         :param package: Package name
@@ -199,14 +199,14 @@ class PristineTarSource(UpstreamSource):
         :param component: Component name (None for base)
         :param exclude: Exclude directories
         """
-        if exclude is not None or component is not None:
+        if exclude is not None or subdir is not None:
             raise NotImplementedError
         if exclude is None:
             exclude = []
         revprops = {}
         if md5 is not None:
             revprops["deb-md5"] = md5
-            delta = self.make_pristine_tar_delta(tree, tarball, subdir=component)
+            delta = self.make_pristine_tar_delta(tree, tarball, subdir=subdir)
             uuencoded = standard_b64encode(delta)
             if tarball.endswith(".tar.bz2"):
                 revprops["deb-pristine-delta-bz2"] = uuencoded

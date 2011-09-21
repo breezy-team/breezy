@@ -1604,7 +1604,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.close()
         conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
-            upstream_revision=upstream_rev)
+            upstream_revisions={None: upstream_rev})
         self.assertEqual(0,  conflicts)
 
     def test_merge_upstream_initial_with_removed_debian(self):
@@ -1644,7 +1644,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.close()
         conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
-            upstream_revision=upstream_rev)
+            upstream_revisions={None: upstream_rev})
         # ./debian conflicts.
         self.assertEqual(3,  conflicts)
 
@@ -1686,7 +1686,7 @@ class DistributionBranchTests(BuilddebTestCase):
         db.merge_upstream([(builder.tar_name(), None)], "package", str(version2),
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
-            upstream_revision=upstream_rev)
+            upstream_revisions={None: upstream_rev})
         rh1 = tree.branch.revision_history()
         self.assertEqual(2, len(rh1))
         packaging_upstream_tip = tree.get_parent_ids()[1]
@@ -1765,7 +1765,7 @@ class DistributionBranchTests(BuilddebTestCase):
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
-            upstream_revision=upstream_rev2)
+            upstream_revisions={None: upstream_rev2})
         self.assertEqual("a-id", tree.path2id("b"))
 
     def test_merge_upstream_rename_on_top(self):
@@ -1802,7 +1802,7 @@ class DistributionBranchTests(BuilddebTestCase):
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
-            upstream_revision=upstream_rev2)
+            upstream_revisions={None:upstream_rev2})
         self.assertEqual("a-id", tree.path2id("b"))
 
     def test_merge_upstream_rename_in_packaging_branch(self):

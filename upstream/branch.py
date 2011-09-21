@@ -228,7 +228,7 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             self.upstream_revision_map = upstream_revision_map
 
-    def version_as_revision(self, package, version):
+    def version_as_revision(self, package, version, tarballs=None):
         assert isinstance(version, str)
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]

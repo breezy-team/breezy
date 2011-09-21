@@ -793,7 +793,7 @@ class DistributionBranch(object):
 
     def import_upstream(self, upstream_part, package, version, upstream_parents,
             upstream_tarballs, upstream_branch=None,
-            upstream_revision=None, timestamp=None, author=None,
+            upstream_revisions=None, timestamp=None, author=None,
             file_ids_from=None):
         """Import an upstream part on to the upstream branch.
 
@@ -821,18 +821,23 @@ class DistributionBranch(object):
         other_branches = self.get_other_branches()
         ret = []
         for (tarball, component, md5) in upstream_tarballs:
+            if upstream_revisions is not None:
+                revid = upstream_revisions[component]
+            else:
+                revid = None
             upstream_trees = [o.pristine_upstream_branch.basis_tree()
                 for o in other_branches]
             target_tree = None
             if upstream_branch is not None:
-                if upstream_revision is None:
-                    upstream_revision = upstream_branch.last_revision()
+                if revid is None:
+                    # FIXME: This is wrong for component tarballs
+                    revid = upstream_branch.last_revision()
                 self.pristine_upstream_branch.fetch(upstream_branch,
-                        last_revision=upstream_revision)
+                        last_revision=revid)
                 upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
-                upstream_parents.append(upstream_revision)
+                upstream_parents.append(revid)
                 target_tree = self.pristine_upstream_branch.repository.revision_tree(
-                            upstream_revision)
+                            revid)
             if file_ids_from is not None:
                 upstream_trees = file_ids_from + upstream_trees
             if self.tree:
@@ -858,8 +863,8 @@ class DistributionBranch(object):
             finally:
                 self_tree.unlock()
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
-                package, version, self.pristine_upstream_tree, upstream_parents, component,
-                md5, tarball, author=author, timestamp=timestamp)
+                package, version, self.pristine_upstream_tree, upstream_parents,
+                component, md5, tarball, author=author, timestamp=timestamp)
             self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
@@ -867,7 +872,7 @@ class DistributionBranch(object):
         return ret
 
     def import_upstream_tarballs(self, tarballs, package, version, parents,
-        upstream_branch=None, upstream_revision=None):
+        upstream_branch=None, upstream_revisions=None):
         """Import an upstream part to the upstream branch.
 
         :param tarballs: List of tarballs / components to extract
@@ -877,7 +882,7 @@ class DistributionBranch(object):
             parents.
         :param upstream_branch: An upstream branch to associate with the
             tarball.
-        :param upstream_revision: Upstream revision id
+        :param upstream_revisions: Upstream revision ids dictionary
         :param md5sum: hex digest of the md5sum of the tarball, if known.
         :return: list with (component, tag, revid) tuples
         """
@@ -886,7 +891,7 @@ class DistributionBranch(object):
             return self.import_upstream(tarball_dir, package, version, parents,
                 tarballs,
                 upstream_branch=upstream_branch,
-                upstream_revision=upstream_revision)
+                upstream_revisions=upstream_revisions)
         finally:
             shutil.rmtree(tarball_dir)
 
@@ -1325,8 +1330,15 @@ class DistributionBranch(object):
                 self.pristine_upstream_source.tag_name(previous_version)))
         self.extract_upstream_tree(upstream_tip, tempdir)
 
+    def has_merged_upstream_revisions(self, upstream_repository, upstream_revisions):
+        graph = self.branch.repository.get_graph(
+            other_repository=upstream_repository)
+        return all(graph.is_ancestor(upstream_revision,
+                   self.branch.last_revision()) for upstream_revision in
+                   upstream_revisions.values())
+
     def merge_upstream(self, tarball_filenames, package, version, previous_version,
-            upstream_branch=None, upstream_revision=None, merge_type=None,
+            upstream_branch=None, upstream_revisions=None, merge_type=None,
             force=False):
         assert isinstance(version, str), \
             "Should pass version as str not %s" % str(type(version))
@@ -1345,12 +1357,10 @@ class DistributionBranch(object):
                 upstream_branch.lock_read()
             try:
                 if upstream_branch is not None:
-                    if upstream_revision is None:
-                        upstream_revision = upstream_branch.last_revision()
-                    graph = self.branch.repository.get_graph(
-                            other_repository=upstream_branch.repository)
-                    if not force and graph.is_ancestor(upstream_revision,
-                            self.branch.last_revision()):
+                    if upstream_revisions is None:
+                        upstream_revisions = { None: upstream_branch.last_revision() }
+                    if (not force and
+                        self.has_merged_upstream_revisions(upstream_branch.repository, upstream_revisions)):
                         raise UpstreamBranchAlreadyMerged
                 upstream_tarballs = [
                     (os.path.abspath(fn), component, md5sum_filename(fn)) for
@@ -1365,7 +1375,7 @@ class DistributionBranch(object):
                     for (component, tag, revid) in self.import_upstream(tarball_dir,
                             package, version, parents, upstream_tarballs=upstream_tarballs,
                             upstream_branch=upstream_branch,
-                            upstream_revision=upstream_revision):
+                            upstream_revisions=upstream_revisions):
                         self._fetch_upstream_to_branch(revid)
                 finally:
                     shutil.rmtree(tarball_dir)
