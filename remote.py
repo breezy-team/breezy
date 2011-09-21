@@ -226,6 +226,18 @@ class RemoteGitDir(GitDir):
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
 
+    def destroy_branch(self, name=None):
+        refname = self._get_selected_ref(name)
+        if refname is None:
+            refname = "HEAD"
+        def get_changed_refs(old_refs):
+            ret = dict(old_refs)
+            if not refname in ret:
+                raise NotBranchError(self)
+            ret[refname] = "00" * 20
+            return ret
+        self.send_pack(get_changed_refs, lambda have, want: [])
+
     @property
     def user_url(self):
         return self.control_url
