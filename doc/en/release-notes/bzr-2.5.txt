@@ -35,6 +35,9 @@ Bug Fixes
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
 
+* ``WorkingTree.get_file_mtime`` now raises NoSuchId if a file id is
+  specified that is unknown. (Jelmer Vernooij, #847435)
+
 Documentation
 *************
 

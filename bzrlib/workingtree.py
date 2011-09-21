@@ -2134,7 +2134,12 @@ class InventoryWorkingTree(WorkingTree,
         """See Tree.get_file_mtime."""
         if not path:
             path = self.inventory.id2path(file_id)
-        return os.lstat(self.abspath(path)).st_mtime
+        try:
+            return os.lstat(self.abspath(path)).st_mtime
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.FileTimestampUnavailable(path)
+            raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         file_id = self.path2id(path)
