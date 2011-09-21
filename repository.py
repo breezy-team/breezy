@@ -111,6 +111,7 @@ class GitRepository(ForeignRepository):
     def __init__(self, gitdir, lockfiles):
         super(GitRepository, self).__init__(GitRepositoryFormat(),
             gitdir, lockfiles)
+        self._transport = lockfiles._transport
         from bzrlib.plugins.git import fetch, push
         for optimiser in [fetch.InterRemoteGitNonGitRepository,
                           fetch.InterLocalGitNonGitRepository,

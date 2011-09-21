@@ -734,8 +734,12 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     self.target.last_revision_info()
                 result.new_git_head, remote_refs = self._update_revisions(
                     stop_revision, overwrite=overwrite)
-                result.tag_conflicts = self.source.tags.merge_to(
+                tags_ret  = self.source.tags.merge_to(
                     self.target.tags, overwrite)
+                if isinstance(tags_ret, tuple):
+                    result.tag_updates, result.tag_conflicts = tags_ret
+                else:
+                    result.tag_conflicts = tags_ret
                 (result.new_revno, result.new_revid) = \
                     self.target.last_revision_info()
                 if _hook_master:
@@ -901,10 +905,16 @@ class InterToGitBranch(branch.GenericInterBranch):
         if fetch_tags is None:
             c = self.source.get_config()
             fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
-        if fetch_tags:
+        self.source.lock_read()
+        try:
+            graph = self.source.repository.get_graph()
             for name, revid in self.source.tags.get_tag_dict().iteritems():
                 if self.source.repository.has_revision(revid):
-                    refs[tag_name_to_ref(name)] = (None, revid)
+                    ref = tag_name_to_ref(name)
+                    if fetch_tags or graph.is_ancestor(revid, stop_revision):
+                        refs[ref] = (None, revid)
+        finally:
+            self.source.unlock()
         return refs, main_ref, (stop_revno, stop_revision)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
@@ -916,7 +926,8 @@ class InterToGitBranch(branch.GenericInterBranch):
         try:
             self.target.lock_write()
             try:
-                new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
+                new_refs, main_ref, stop_revinfo = self._get_new_refs(
+                    stop_revision)
                 def update_refs(old_refs):
                     mutter("updating refs. old refs: %r, new refs: %r",
                            old_refs, new_refs)
