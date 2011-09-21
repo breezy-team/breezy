@@ -235,13 +235,23 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _utf8_decode(self, field, value):
         try:
-            return value.decode('utf_8')
+            return value.decode('utf-8')
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
             self.warning("%s not in utf8 - replacing unknown "
                 "characters" % (field,))
-            return value.decode('utf_8', 'replace')
+            return value.decode('utf-8', 'replace')
+
+    def _decode_path(self, path):
+        try:
+            return path.decode('utf-8')
+        except UnicodeDecodeError:
+            # The spec says fields are *typically* utf8 encoded
+            # but that isn't enforced by git-fast-export (at least)
+            self.warning("path %r not in utf8 - replacing unknown "
+                "characters" % (path,))
+            return path.decode('utf-8', 'replace')
 
     def _format_name_email(self, section, name, email):
         """Format name & email as a string."""
@@ -353,7 +363,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = ''
         elif kind == 'symlink':
-            ie.symlink_target = data.decode('utf8')
+            ie.symlink_target = self._decode_path(data)
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = ''
@@ -475,7 +485,8 @@ class GenericCommitHandler(processor.CommitHandler):
                 content = self.rev_store.get_file_text(self.parents[0], file_id)
             self._modify_item(dest_path, kind, ie.executable, content, inv)
         elif kind == 'symlink':
-            self._modify_item(dest_path, kind, False, ie.symlink_target.encode("utf-8"), inv)
+            self._modify_item(dest_path, kind, False,
+                ie.symlink_target.encode("utf-8"), inv)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
                 kind, dest_path)
@@ -606,22 +617,22 @@ class InventoryCommitHandler(GenericCommitHandler):
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
         (kind, is_executable) = mode_to_kind(filecmd.mode)
-        self._modify_item(filecmd.path.decode('utf8'), kind,
+        self._modify_item(self._decode_path(filecmd.path), kind,
             is_executable, data, self.inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        self._delete_item(filecmd.path.decode('utf8'), self.inventory)
+        self._delete_item(self._decode_path(filecmd.path), self.inventory)
 
     def copy_handler(self, filecmd):
-        src_path = filecmd.src_path.decode('utf8')
-        dest_path = filecmd.dest_path.decode('utf8')
+        src_path = self._decode_path(filecmd.src_path)
+        dest_path = self._decode_path(filecmd.dest_path)
         self.debug("copying %s to %s", src_path, dest_path)
         self._copy_item(src_path, dest_path, self.inventory)
 
     def rename_handler(self, filecmd):
-        old_path = filecmd.old_path.decode('utf8')
-        new_path = filecmd.new_path.decode('utf8')
+        old_path = self._decode_path(filecmd.old_path)
+        new_path = self._decode_path(filecmd.new_path)
         self.debug("renaming %s to %s", old_path, new_path)
         self._rename_item(old_path, new_path, self.inventory)
 
@@ -887,22 +898,24 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
-        self._modify_item(filecmd.path.decode('utf8'), kind,
+        decoded_path = self._decode_path(filecmd.path)
+        self._modify_item(decoded_path, kind,
             executable, data, self.basis_inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        self._delete_item(filecmd.path.decode('utf8'), self.basis_inventory)
+        self._delete_item(
+            self._decode_path(filecmd.path), self.basis_inventory)
 
     def copy_handler(self, filecmd):
-        src_path = filecmd.src_path.decode("utf8")
-        dest_path = filecmd.dest_path.decode("utf8")
+        src_path = self._decode_path(filecmd.src_path)
+        dest_path = self._decode_path(filecmd.dest_path)
         self.debug("copying %s to %s", src_path, dest_path)
         self._copy_item(src_path, dest_path, self.basis_inventory)
 
     def rename_handler(self, filecmd):
-        old_path = filecmd.old_path.decode("utf8")
-        new_path = filecmd.new_path.decode("utf8")
+        old_path = self._decode_path(filecmd.old_path)
+        new_path = self._decode_path(filecmd.new_path)
         self.debug("renaming %s to %s", old_path, new_path)
         self._rename_item(old_path, new_path, self.basis_inventory)
 

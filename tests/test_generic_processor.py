@@ -1967,3 +1967,27 @@ class TestCommitCommands(TestCaseForGenericProcessor):
         handler.process(command_list)
         rev = branch.repository.get_revision(branch.last_revision())
         self.assertEquals(u"This is a funky character: \ufffd", rev.message)
+
+
+class TestAddNonUtf8InBranch(TestCaseForGenericProcessor):
+
+    def file_command_iter(self):
+        # A     add 'foo\x83'
+        def command_list():
+            committer_a = ['', 'a@elmer.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(
+                    'foo\x83', kind_to_mode('file', False), None, "content A\n")
+            yield commands.CommitCommand('head', '1', None,
+                committer_a, "commit 1", None, [], files_one)
+        return command_list
+
+    def test_add(self):
+        handler, branch = self.get_handler()
+        handler.process(self.file_command_iter())
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
+        rev_a = branch.last_revision()
+        rtree_a = branch.repository.revision_tree(rev_a)
+        foo_id = rtree_a.path2id(u'foo\ufffd')
+        self.assertEqual(rev_a, rtree_a.inventory[foo_id].revision)
