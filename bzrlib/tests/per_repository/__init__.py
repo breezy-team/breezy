@@ -25,6 +25,7 @@ rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (
+    bzrdir,
     repository,
     )
 from bzrlib.remote import RemoteRepositoryFormat
@@ -92,18 +93,20 @@ def all_repository_format_scenarios():
 
 class TestCaseWithRepository(TestCaseWithControlDir):
 
+    def get_default_format(self):
+        format = bzrdir.format_registry.make_bzrdir('default')
+        format.repository_format = self.repository_format
+        return format
+
     def make_repository(self, relpath, shared=False, format=None):
-        if format is None:
+        format = self.resolve_format(format)
+        repo = super(TestCaseWithRepository, self).make_repository(
+            relpath, shared=shared, format=format)
+        if format is None or format.repository_format is self.repository_format:
             # Create a repository of the type we are trying to test.
-            made_control = self.make_bzrdir(relpath)
-            repo = self.repository_format.initialize(made_control,
-                    shared=shared)
             if getattr(self, "repository_to_test_repository", None):
                 repo = self.repository_to_test_repository(repo)
-            return repo
-        else:
-            return super(TestCaseWithRepository, self).make_repository(
-                relpath, shared=shared, format=format)
+        return repo
 
 
 def load_tests(standard_tests, module, loader):
