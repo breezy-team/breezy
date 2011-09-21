@@ -79,7 +79,7 @@ class TestPull(TestCaseWithInterBranch):
         other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_branch()
         # move the branch out of the way on disk to cause a connection
         # error.
-        os.rename('master', 'master_gone')
+        master_tree.branch.bzrdir.destroy_branch()
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other)
