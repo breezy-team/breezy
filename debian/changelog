@@ -1,4 +1,4 @@
-bzr (2.5.0~beta1-2) UNRELEASED; urgency=low
+bzr (2.5.0~beta1-2) experimental; urgency=low
 
   * Add Build-Conflicts to python-gpgme, to work around test suite
     failures.
