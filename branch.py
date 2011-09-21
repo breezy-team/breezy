@@ -919,6 +919,52 @@ class InterToGitBranch(branch.GenericInterBranch):
                     refs[ref] = (None, revid)
         return refs, main_ref, (stop_revno, stop_revision)
 
+    def _update_refs(self, result, old_refs, new_refs, overwrite):
+        mutter("updating refs. old refs: %r, new refs: %r",
+               old_refs, new_refs)
+        result.tag_updates = {}
+        result.tag_conflicts = []
+        ret = dict(old_refs)
+        def ref_equals(refs, ref, git_sha, revid):
+            try:
+                value = refs[ref]
+            except KeyError:
+                return False
+            if (value[0] is not None and
+                git_sha is not None and
+                value[0] != git_sha):
+                return False
+            if (value[1] is not None and
+                revid is not None and
+                value[1] != revid):
+                return False
+            # FIXME: If one side only has the git sha available and the other only
+            # has the bzr revid, then this will cause us to show a tag as updated
+            # that hasn't actually been updated. 
+            return True
+        for ref, (git_sha, revid) in new_refs.iteritems():
+            if ref not in ret or overwrite:
+                if not ref_equals(ret, ref, git_sha, revid):
+                    try:
+                        tag_name = ref_to_tag_name(ref)
+                    except ValueError:
+                        pass
+                    else:
+                        result.tag_updates[tag_name] = revid
+                ret[ref] = (git_sha, revid)
+            elif ref_equals(ret, ref, git_sha, revid):
+                pass
+            else:
+                try:
+                    name = ref_to_tag_name(ref)
+                except ValueError:
+                    pass
+                else:
+                    result.tag_conflicts.append((name, revid, ret[name][1]))
+        # FIXME: Check for diverged branches
+        ret.update(new_refs)
+        return ret
+
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True):
         result = GitBranchPullResult()
@@ -931,10 +977,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 new_refs, main_ref, stop_revinfo = self._get_new_refs(
                     stop_revision)
                 def update_refs(old_refs):
-                    mutter("updating refs. old refs: %r, new refs: %r",
-                           old_refs, new_refs)
-                    # FIXME: Check for diverged branches
-                    return new_refs
+                    return self._update_refs(result, old_refs, new_refs, overwrite)
                 try:
                     result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
                         update_refs, lossy=False)
@@ -966,10 +1009,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         try:
             new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
             def update_refs(old_refs):
-                mutter("updating refs. old refs: %r, new refs: %r",
-                       old_refs, new_refs)
-                # FIXME: Check for diverged branches
-                return new_refs
+                return self._update_refs(result, old_refs, new_refs, overwrite)
             try:
                 result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
                     update_refs, lossy=lossy)
