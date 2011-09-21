@@ -282,37 +282,30 @@ class SmartServerStreamMedium(SmartMedium):
         return protocol
 
     def _wait_on_descriptor(self, fd, timeout_seconds):
-        """select() on a file descriptor, waiting for nonblocking read()"""
-        # Use local variables to handle when the interpreter is shutting down
-        try:
-            # It looks like during the test suite, we close the server-side
-            # socket as part of 'shut down this server'. Depending on how
-            # we race with select.select, that either
-            # 1) Raises socket.error(EBADF) immediately
-            # 2) Occasionally (1 in 1000 or so) raises select.error(EBADF)
-            # 3) 1-in-3 or so times out, calling select.select immediately
-            #    afterwards seems to raise EBADF.
-            # I think what happens is select.select is unable to see the
-            # status of a file that is closed after it starts 'sleeping'.
-            t_end = time.time() + timeout_seconds
-            poll_timeout = min(timeout_seconds, self._client_poll_timeout)
-            rs = []
-            while not rs and time.time() < t_end:
+        """select() on a file descriptor, waiting for nonblocking read()
+
+        :return: Did we time out before fd is ready to read? (Note that ready
+            to read may be either that there is data to be read, or that the
+            descriptor is already closed, or there is a pending error.)
+        """
+        t_end = time.time() + timeout_seconds
+        poll_timeout = min(timeout_seconds, self._client_poll_timeout)
+        rs = xs = None
+        while not rs and not xs and time.time() < t_end:
+            try:
                 rs, _, xs = select.select([fd], [], [fd], poll_timeout)
-        except (select.error, socket.error) as e:
-            err = getattr(e, 'errno', None)
-            if err is None:
-                # select.error doesn't have 'errno', it just has args[0]
-                if getattr(e, 'args', None) is not None:
+            except (select.error, socket.error) as e:
+                err = getattr(e, 'errno', None)
+                if err is None and getattr(e, 'args', None) is not None:
+                    # select.error doesn't have 'errno', it just has args[0]
                     err = e.args[0]
-            if err in _bad_file_descriptor:
-                # If we are told at this point that socket is no longer a valid
-                # socket, just return 'without timeout'
-                return False
-            raise
+                if err in _bad_file_descriptor:
+                    return False    # Not a socket indicates read() will fail
+                elif err == errno.EINTR:
+                    # Interrupted, keep looping.
+                    continue
+                raise
         if rs or xs:
-            # Either we can read without blocking, or there is a pending error.
-            # Either way, we didn't time out, so try to read from it.
             return False
         return True
 
