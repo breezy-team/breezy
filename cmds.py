@@ -886,9 +886,9 @@ class cmd_import_dsc(Command):
                             "sure it is tagged as %r." % (last_version,
                                     db.pristine_upstream_source.tag_name(
                                         last_version.upstream_version)))
-                    upstream_tip = db.pristine_upstream_source.version_as_revision(
+                    upstream_tips = db.pristine_upstream_source.version_as_revisions(
                         changelog.package, last_version.upstream_version)
-                    db.extract_upstream_tree(upstream_tip, tempdir)
+                    db.extract_upstream_tree(upstream_tips, tempdir)
                 else:
                     db._create_empty_upstream_tree(tempdir)
                 self.import_many(db, files_list, orig_target)
@@ -966,7 +966,7 @@ class cmd_import_upstream(Command):
             if upstream is not None:
                 # See bug lp:309682
                 upstream.repository.fetch(branch.repository, parents[0])
-            db.extract_upstream_tree(parents[0], tempdir)
+            db.extract_upstream_tree({ None: parents[0] }, tempdir)
         else:
             db._create_empty_upstream_tree(tempdir)
         tree = db.branch.basis_tree()

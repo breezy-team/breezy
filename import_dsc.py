@@ -1251,16 +1251,16 @@ class DistributionBranch(object):
         finally:
             extractor.cleanup()
 
-    def extract_upstream_tree(self, upstream_tip, basedir):
+    def extract_upstream_tree(self, upstream_tips, basedir):
         """Extract upstream_tip to a tempdir as a working tree."""
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
-        # TODO: remove the _extract_upstream_tree alias below.
         to_location = os.path.join(basedir, "upstream")
         # Use upstream_branch if it has been set, otherwise self.branch.
         source_branch = self.pristine_upstream_branch or self.branch
+        assert upstream_tips.keys() == [None]
         dir_to = source_branch.bzrdir.sprout(to_location,
-                revision_id=upstream_tip,
+                revision_id=upstream_tips[None],
                 accelerator_tree=self.tree)
         try:
             self.pristine_upstream_tree = dir_to.open_workingtree()
@@ -1268,8 +1268,6 @@ class DistributionBranch(object):
             # Handle shared treeless repo's.
             self.pristine_upstream_tree = dir_to.create_workingtree()
         self.pristine_upstream_branch = self.pristine_upstream_tree.branch
-
-    _extract_upstream_tree = extract_upstream_tree
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
@@ -1320,7 +1318,7 @@ class DistributionBranch(object):
         assert isinstance(previous_version, str), \
             "Should pass upstream version as str, not Version."
         try:
-            upstream_tip = self.pristine_upstream_source.version_as_revision(
+            upstream_tips = self.pristine_upstream_source.version_as_revisions(
                     package, previous_version)
         except PackageVersionNotPresent:
             raise BzrCommandError("Unable to find the tag for the "
@@ -1328,14 +1326,13 @@ class DistributionBranch(object):
                     "%s" % (
                 previous_version,
                 self.pristine_upstream_source.tag_name(previous_version)))
-        self.extract_upstream_tree(upstream_tip, tempdir)
+        self.extract_upstream_tree(upstream_tips, tempdir)
 
-    def has_merged_upstream_revisions(self, upstream_repository, upstream_revisions):
+    def has_merged_upstream_revisions(self, this_revision, upstream_repository, upstream_revisions):
         graph = self.branch.repository.get_graph(
             other_repository=upstream_repository)
-        return all(graph.is_ancestor(upstream_revision,
-                   self.branch.last_revision()) for upstream_revision in
-                   upstream_revisions.values())
+        return all(graph.is_ancestor(upstream_revision, this_revision)
+                for upstream_revision in upstream_revisions.values())
 
     def merge_upstream(self, tarball_filenames, package, version, previous_version,
             upstream_branch=None, upstream_revisions=None, merge_type=None,
@@ -1360,7 +1357,7 @@ class DistributionBranch(object):
                     if upstream_revisions is None:
                         upstream_revisions = { None: upstream_branch.last_revision() }
                     if (not force and
-                        self.has_merged_upstream_revisions(upstream_branch.repository, upstream_revisions)):
+                        self.has_merged_upstream_revisions(self.branch.last_revision(), upstream_branch.repository, upstream_revisions)):
                         raise UpstreamBranchAlreadyMerged
                 upstream_tarballs = [
                     (os.path.abspath(fn), component, md5sum_filename(fn)) for

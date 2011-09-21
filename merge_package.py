@@ -136,7 +136,7 @@ def fix_ancestry_as_needed(tree, source):
             try:
                 # Extract the merge target's upstream tree into a temporary
                 # directory.
-                db.extract_upstream_tree(ut_revid, tempdir)
+                db.extract_upstream_tree({None: ut_revid}, tempdir)
                 tmp_target_utree = db.pristine_upstream_tree
 
                 # Merge upstream branch tips to obtain a shared upstream parent.
