@@ -45,7 +45,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.smart import client, protocol, request, vfs
+from bzrlib.smart import client, protocol, request, signals, vfs
 from bzrlib.transport import ssh
 """)
 from bzrlib import config, osutils
@@ -225,9 +225,16 @@ class SmartServerStreamMedium(SmartMedium):
         """Serve requests until the client disconnects."""
         # Keep a reference to stderr because the sys module's globals get set to
         # None during interpreter shutdown.
-        from bzrlib.smart import signals
-        signals.register_on_hangup(id(self), self._stop_gracefully)
         from sys import stderr
+        # Note: There is a temptation to do
+        #       signals.register_on_hangup(id(self), self._stop_gracefully)
+        #       However, that creates a temporary object which is a bound
+        #       method. signals._on_sighup is a WeakKeyDictionary so it
+        #       immediately gets garbage collected, because nothing else
+        #       references it. Instead, we need to keep a real reference to the
+        #       bound method for the lifetime of the serve() function.
+        stop_gracefully = self._stop_gracefully
+        signals.register_on_hangup(id(self), stop_gracefully)
         try:
             while not self.finished:
                 server_protocol = self._build_protocol()

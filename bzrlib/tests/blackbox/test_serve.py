@@ -314,6 +314,21 @@ class TestBzrServe(TestBzrServeBase):
             err)
         self.assertServerFinishesCleanly(process)
 
+    def test_bzr_serve_graceful_shutdown(self):
+        self.build_tree_contents([('a_file', 'contents\n')])
+        process, url = self.start_server_port(['--client-timeout=1.0'])
+        # TODO: I would like to test this by having a large data set that we
+        #       want to finish reading before exiting. So the server should be
+        #       blocked but not accepting new connections after SIGHUP.
+        t = transport.get_transport_from_url(url)
+        self.assertEqual('contents\n', t.get_bytes('a_file'))
+        # Note: process.send_signal is a Python 2.6ism
+        process.send_signal(signal.SIGHUP)
+        m = t.get_smart_medium()
+        self.assertEqual('', m.read_bytes(1))
+        err = process.stderr.readline()
+        self.assertEqual('Requested to stop gracefully\n', err)
+
 
 class TestCmdServeChrooting(TestBzrServeBase):
 

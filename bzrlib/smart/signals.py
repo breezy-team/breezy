@@ -38,8 +38,8 @@ def _sighup_handler(signal_number, interrupted_frame):
     """
     if _on_sighup is None:
         return
+    trace.mutter('Caught SIGHUP, sending graceful shutdown requests.')
     for ref in _on_sighup.valuerefs():
-        # TODO: ignore errors here
         try:
             cb = ref()
             if cb is not None:

@@ -148,10 +148,25 @@ class SmartTCPServer(object):
             hook(backing_urls, self.get_url())
 
     def _stop_gracefully(self):
+        # XXX: ATM, once we see the self._should_terminate we immediately exit
+        #      without waiting for client threads to shut down. (I don't know
+        #      if we *can* because they are marked as Daemon.)
+        #      Which means that while in-theory this is a graceful shutdown,
+        #      because we don't actively close the connections, etc, we don't
+        #      have a good way (yet) to poll the spawned clients and
+        trace.note('Requested to stop gracefully')
         self._should_terminate = True
 
     def serve(self, thread_name_suffix=''):
-        signals.register_on_hangup(id(self), self._stop_gracefully)
+        # Note: There is a temptation to do
+        #       signals.register_on_hangup(id(self), self._stop_gracefully)
+        #       However, that creates a temporary object which is a bound
+        #       method. signals._on_sighup is a WeakKeyDictionary so it
+        #       immediately gets garbage collected, because nothing else
+        #       references it. Instead, we need to keep a real reference to the
+        #       bound method for the lifetime of the serve() function.
+        stop_gracefully = self._stop_gracefully
+        signals.register_on_hangup(id(self), stop_gracefully)
         self._should_terminate = False
         # for hooks we are letting code know that a server has started (and
         # later stopped).
@@ -394,6 +409,7 @@ class BzrServerFactory(object):
         self.cleanups.append(restore_default_ui_factory_and_lockdir_timeout)
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        signals.install_sighup_handler()
 
     def set_up(self, transport, host, port, inet, timeout):
         self._make_backing_transport(transport)
