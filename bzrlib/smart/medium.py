@@ -225,8 +225,8 @@ class SmartServerStreamMedium(SmartMedium):
         """Serve requests until the client disconnects."""
         # Keep a reference to stderr because the sys module's globals get set to
         # None during interpreter shutdown.
-        from bzrlib.smart import server
-        server.register_sighup_callback(id(self), self.stop)
+        from bzrlib.smart import signals
+        signals.register_on_hangup(id(self), self._stop_gracefully)
         from sys import stderr
         try:
             while not self.finished:
@@ -246,9 +246,12 @@ class SmartServerStreamMedium(SmartMedium):
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
-        server.unregister_sighup_callback(id(self))
+        finally:
+            signals.unregister_on_hangup(id(self))
 
-    def stop(self):
+    def _stop_gracefully(self):
+        """When we finish this message, stop looking for more."""
+        trace.mutter('Stopping %s' % (self,))
         self.finished = True
 
     def _close(self):

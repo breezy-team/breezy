@@ -941,7 +941,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # _build_protocol should notice that we are stopping, and return
         # without waiting for bytes from the client.
         server, client_sock = self.create_stream_context(None)
-        server.stop()
+        server._stop_gracefully()
         self.assertIs(None, server._build_protocol())
 
     def test_socket_set_timeout(self):
@@ -990,7 +990,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # because of a timeout, etc.
         server._timer = lambda: t
         server._client_poll_timeout = 0.1
-        server.stop()
+        server._stop_gracefully()
         server._wait_for_bytes_with_timeout(1.0)
 
     def test_socket_serve_timeout_closes_socket(self):

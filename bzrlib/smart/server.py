@@ -30,7 +30,10 @@ from bzrlib import (
 )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib.smart import medium
+from bzrlib.smart import (
+    medium,
+    signals,
+    )
 from bzrlib.transport import (
     chroot,
     pathfilter,
@@ -40,28 +43,6 @@ from bzrlib import (
     urlutils,
     )
 """)
-
-import signal
-
-_on_sighup = {}
-def sighup_handler(signal_number, interrupted_frame):
-    for i, c in _on_sighup.items():
-        # TODO: ignore errors here
-        print "Calling %s: %s" % (i, c)
-        c()
-
-signal.signal(signal.SIGHUP, sighup_handler)
-
-
-def register_sighup_callback(identifier, a_callable):
-    """Register for us to call a_callable after SIGHUP."""
-    _on_sighup[identifier] = a_callable
-
-
-def unregister_sighup_callback(identifier):
-    """Remove a callback from being called during sighup."""
-    # TODO: Ignore errors
-    del _on_sighup[identifier]
 
 
 class SmartTCPServer(object):
@@ -170,7 +151,7 @@ class SmartTCPServer(object):
         self._should_terminate = True
 
     def serve(self, thread_name_suffix=''):
-        register_sighup_callback(id(self), self._stop_gracefully)
+        signals.register_on_hangup(id(self), self._stop_gracefully)
         self._should_terminate = False
         # for hooks we are letting code know that a server has started (and
         # later stopped).
@@ -202,7 +183,7 @@ class SmartTCPServer(object):
                 raise
         finally:
             self._stopped.set()
-            unregister_sighup_callback(id(self))
+            signals.unregister_on_hangup(id(self))
             try:
                 # ensure the server socket is closed.
                 self._server_socket.close()
