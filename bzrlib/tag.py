@@ -345,8 +345,9 @@ class BasicTags(_Tags):
         result = dict(dest_dict) # copy
         for name, target in source_dict.items():
             if name not in result or overwrite:
+                if name not in result:
+                    updates[name] = target
                 result[name] = target
-                updates[name] = target
             elif result[name] == target:
                 pass
             else:
