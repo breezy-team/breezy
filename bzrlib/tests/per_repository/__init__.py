@@ -94,8 +94,8 @@ def all_repository_format_scenarios():
 class TestCaseWithRepository(TestCaseWithControlDir):
 
     def get_default_format(self):
-        format = bzrdir.format_registry.make_bzrdir('default')
-        format.repository_format = self.repository_format
+        format = self.repository_format._matchingbzrdir
+        self.assertEquals(format.repository_format, self.repository_format)
         return format
 
     def make_repository(self, relpath, shared=False, format=None):
