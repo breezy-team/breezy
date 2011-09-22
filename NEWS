@@ -23,6 +23,8 @@
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)
 
+  * Support removal of remote branches. (Jelmer Vernooij, #855993)
+
 0.6.2	2011-08-07
 
  FEATURES
