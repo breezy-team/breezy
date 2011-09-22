@@ -956,7 +956,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_socket_wait_for_bytes_with_timeout_no_data(self):
         server, client_sock = self.create_stream_context(None)
         # This should timeout quickly, reporting that there wasn't any data
-        self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
+        self.assertRaises(errors.ConnectionTimeout,
+                          server._wait_for_bytes_with_timeout, 0.01)
         client_sock.close()
         data = server.read_bytes(1)
         self.assertEqual('', data)
@@ -990,7 +991,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
                 rf_server, None, None)
             os.write(w_client, 'data\n')
             # This should not block or consume any actual content
-            self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
+            server._wait_for_bytes_with_timeout(0.1)
             data = server.read_bytes(5)
             self.assertEqual('data\n', data)
 
@@ -1005,10 +1006,10 @@ class TestSmartServerStreamMedium(tests.TestCase):
                 rf_server, None, None)
             if sys.platform == 'win32':
                 # Windows cannot select() on a pipe, so we just always return
-                # False to indicate that we have to block.
-                self.assertFalse(server._wait_for_bytes_with_timeout(0.01))
+                server._wait_for_bytes_with_timeout(0.01)
             else:
-                self.assertTrue(server._wait_for_bytes_with_timeout(0.01))
+                self.assertRaises(errors.ConnectionTimeout,
+                                  server._wait_for_bytes_with_timeout, 0.01)
             os.close(w_client)
             data = server.read_bytes(5)
             self.assertEqual('', data)
@@ -1017,7 +1018,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server, _ = self.create_pipe_context('', None)
         # Our file doesn't support polling, so we should always just return
         # 'you have data to consume.
-        self.assertFalse(server._wait_for_bytes_with_timeout(0.01))
+        server._wait_for_bytes_with_timeout(0.01)
 
 
 class TestGetProtocolFactoryForBytes(tests.TestCase):

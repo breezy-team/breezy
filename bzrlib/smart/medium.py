@@ -265,15 +265,7 @@ class SmartServerStreamMedium(SmartMedium):
 
         :returns: a SmartServerRequestProtocol.
         """
-        if self._wait_for_bytes_with_timeout(self._client_timeout):
-            # TODO: We would like to have a nicer message than this. However,
-            #       we don't have any context available to us about who is
-            #       connecting for us to give a more useful message. :(
-            #       (eg, who is on the other side that we are disconnecting
-            #       from)
-            raise errors.ConnectionTimeout(
-                'disconnecting client after %.1f seconds'
-                % (self._client_timeout))
+        self._wait_for_bytes_with_timeout(self._client_timeout)
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(
@@ -284,9 +276,9 @@ class SmartServerStreamMedium(SmartMedium):
     def _wait_on_descriptor(self, fd, timeout_seconds):
         """select() on a file descriptor, waiting for nonblocking read()
 
-        :return: Did we time out before fd is ready to read? (Note that ready
-            to read may be either that there is data to be read, or that the
-            descriptor is already closed, or there is a pending error.)
+        This will raise a ConnectionTimeout exception if we do not get a
+        readable handle before timeout_seconds.
+        :return: None
         """
         t_end = time.time() + timeout_seconds
         poll_timeout = min(timeout_seconds, self._client_poll_timeout)
@@ -300,14 +292,15 @@ class SmartServerStreamMedium(SmartMedium):
                     # select.error doesn't have 'errno', it just has args[0]
                     err = e.args[0]
                 if err in _bad_file_descriptor:
-                    return False    # Not a socket indicates read() will fail
+                    return # Not a socket indicates read() will fail
                 elif err == errno.EINTR:
                     # Interrupted, keep looping.
                     continue
                 raise
         if rs or xs:
-            return False
-        return True
+            return
+        raise errors.ConnectionTimeout('disconnecting client after %.1f seconds'
+                                       % (timeout_seconds,))
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
@@ -372,8 +365,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         them, without setting the socket itself to non-blocking. This also
         allows us to specify when we watch for idle timeouts.
 
-        :return: Did we timeout? (True if we timed out, False if there is data
-            to be read)
+        :return: None, this will raise ConnectionTimeout if we time out before
+            data is available.
         """
         return self._wait_on_descriptor(self.socket, timeout_seconds)
 
@@ -447,13 +440,13 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         them, without setting the socket itself to non-blocking. This also
         allows us to specify when we watch for idle timeouts.
 
-        :return: Did we timeout? (True if we timed out, False if there is data
-            to be read)
+        :return: None, this will raise ConnectionTimeout if we time out before
+            data is available.
         """
         if (getattr(self._in, 'fileno', None) is None
             or sys.platform == 'win32'):
             # You can't select() file descriptors on Windows.
-            return False
+            return
         return self._wait_on_descriptor(self._in, timeout_seconds)
 
     def _read_bytes(self, desired_count):
