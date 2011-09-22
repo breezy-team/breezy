@@ -543,3 +543,14 @@ class TestPull(TestCaseWithTransport):
         out = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertEqual(out,
             ('1 tag(s) updated.\n', ''))
+
+    def test_pull_tag_overwrite(self):
+        """pulling tags with --overwrite only reports changed tags."""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "somerevid")
+        out = self.run_bzr(['pull', '--overwrite', '-d', 'to', 'from'])
+        self.assertEqual(out,
+            ('No revisions or tags to pull.\n', ''))

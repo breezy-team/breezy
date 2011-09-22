@@ -35,6 +35,9 @@ Bug Fixes
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
 
+* The ``--overwrite`` argument to ``bzr push`` and ``bzr pull`` no longer
+  reports all tags as changed. (Jelmer Vernooij, #845396)
+
 * ``WorkingTree.get_file_mtime`` now raises NoSuchId if a file id is
   specified that is unknown. (Jelmer Vernooij, #847435)
 
