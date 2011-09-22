@@ -206,6 +206,7 @@ class RemoteGitDir(GitDir):
         self._mode_check_done = None
         self._get_client = get_client
         self._client_path = client_path
+        self.base = self.root_transport.base
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
@@ -365,6 +366,10 @@ class RemoteGitRepository(GitRepository):
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
         self._refs = None
+
+    @property
+    def base(self):
+        return self.bzrdir.base
 
     @property
     def user_url(self):

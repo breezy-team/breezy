@@ -19,6 +19,8 @@
   * Friendlier error message when HEAD can not be found in remote repository.
     (Jelmer Vernooij, #778920)
 
+  * Support updating tags in remote branches. (Jelmer Vernooij, #706990)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)

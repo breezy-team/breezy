@@ -103,31 +103,64 @@ class GitTags(tag.BasicTags):
     def _iter_tag_refs(self, refs):
         raise NotImplementedError(self._iter_tag_refs)
 
-    def _merge_to_git(self, to_tags, refs, overwrite=False):
-        target_repo = to_tags.repository
+    def _merge_to_remote_git(self, target_repo, new_refs, overwrite=False):
+        updates = {}
         conflicts = []
+        def get_changed_refs(old_refs):
+            ret = dict(old_refs)
+            for k, v in new_refs.iteritems():
+                if not is_tag(name):
+                    continue
+                name = ref_to_tag_name(k)
+                if old_refs.get(k) == v:
+                    pass
+                elif overwrite or not k in old_refs:
+                    ret[k] = v
+                    updates[name] = target_repo.lookup_foreign_revision_id(v)
+                else:
+                    conflicts.append((name, v, old_refs[k]))
+            return ret
+        target_repo.bzrdir.send_pack(get_changed_refs, lambda have, want: [])
+        return updates, conflicts
+
+    def _merge_to_local_git(self, target_repo, refs, overwrite=False):
+        conflicts = []
+        updates = {}
         for k, v in refs.iteritems():
             if not is_tag(k):
                 continue
-            if overwrite or not k in target_repo._git.refs:
-                target_repo._git.refs[k] = v
-            elif target_repo._git.refs[k] == v:
+            name = ref_to_tag_name(k)
+            if target_repo._git.refs.get(k) == v:
                 pass
+            elif overwrite or not k in target_repo._git.refs:
+                target_repo._git.refs[k] = v
+                updates[name] = target_repo.lookup_foreign_revision_id(v)
             else:
-                conflicts.append((ref_to_tag_name(k), v, target_repo.refs[k]))
-        return conflicts
+                conflicts.append((name, v, target_repo.refs[k]))
+        return updates, conflicts
+
+    def _merge_to_git(self, to_tags, refs, overwrite=False):
+        target_repo = to_tags.repository
+        if self.repository.has_same_location(target_repo):
+            return {}, []
+        if getattr(target_repo, "_git", None):
+            return self._merge_to_local_git(target_repo, refs, overwrite)
+        else:
+            return self._merge_to_remote_git(target_repo, refs, overwrite)
 
     def _merge_to_non_git(self, to_tags, refs, overwrite=False):
         unpeeled_map = defaultdict(set)
         conflicts = []
+        updates = {}
         result = dict(to_tags.get_tag_dict())
         for n, peeled, unpeeled, bzr_revid in self._iter_tag_refs(refs):
             if unpeeled is not None:
                 unpeeled_map[peeled].add(unpeeled)
-            if n not in result or overwrite:
-                result[n] = bzr_revid
-            elif result[n] == bzr_revid:
+            if result.get(n) == bzr_revid:
                 pass
+            elif n not in result or overwrite:
+                result[n] = bzr_revid
+                updates[n] = bzr_revid
             else:
                 conflicts.append((n, result[n], bzr_revid))
         to_tags._set_tag_dict(result)
@@ -135,7 +168,7 @@ class GitTags(tag.BasicTags):
             map_file = UnpeelMap.from_repository(to_tags.branch.repository)
             map_file.update(unpeeled_map)
             map_file.save_in_repository(to_tags.branch.repository)
-        return conflicts
+        return updates, conflicts
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False,
                  source_refs=None):
@@ -152,13 +185,16 @@ class GitTags(tag.BasicTags):
                 master = None
             else:
                 master = to_tags.branch.get_master_branch()
-            conflicts = self._merge_to_non_git(to_tags, source_refs,
+            updates, conflicts = self._merge_to_non_git(to_tags, source_refs,
                                               overwrite=overwrite)
             if master is not None:
-                conflicts += self.merge_to(master.tags, overwrite=overwrite,
+                extra_updates, extra_conflicts = self.merge_to(
+                    master.tags, overwrite=overwrite,
                                            source_refs=source_refs,
                                            ignore_master=ignore_master)
-            return conflicts
+                updates.update(extra_updates)
+                conflicts += extra_conflicts
+            return updates, conflicts
 
     def get_tag_dict(self):
         ret = {}
