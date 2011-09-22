@@ -55,6 +55,11 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``Branch`` objects can now use a config stack with the newly introduced
+  ``get_config_stack()``. Both ``get_config`` and ``get_config_stack`` can
+  be used for the same branch but it's recommended to stick to one for a
+  given option.
+
 Testing
 *******
 
