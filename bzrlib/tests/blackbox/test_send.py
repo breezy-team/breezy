@@ -296,8 +296,8 @@ class TestSendStrictMixin(TestSendMixin):
     def set_config_send_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
-        conf = self.local_tree.branch.get_config()
-        conf.set_user_option('send_strict', value)
+        conf = self.local_tree.branch.get_config_stack()
+        conf.set('send_strict', value)
 
     def assertSendFails(self, args):
         out, err = self.run_send(args, rc=3, err_re=self._default_errors)

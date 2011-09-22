@@ -260,7 +260,7 @@ class MutableTree(tree.Tree):
         :param more_warning: Details about what is happening.
         """
         if strict is None:
-            strict = self.branch.get_config().get_user_option_as_bool(opt_name)
+            strict = self.branch.get_config_stack().get(opt_name)
         if strict is not False:
             err_class = None
             if (self.has_changes()):

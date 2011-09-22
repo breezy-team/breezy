@@ -215,6 +215,16 @@ class Branch(controldir.ControlComponent):
         """
         return _mod_config.BranchConfig(self)
 
+    def get_config_stack(self):
+        """Get a bzrlib.config.BranchStack for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A bzrlib.config.BranchStack.
+        """
+        return _mod_config.BranchStack(self)
+
     def _get_config(self):
         """Get the concrete config for just the config in this branch.
 

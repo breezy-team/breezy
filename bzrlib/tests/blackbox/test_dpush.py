@@ -146,8 +146,8 @@ class TestDpushStrictMixin(object):
     def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
-        conf = self.tree.branch.get_config()
-        conf.set_user_option('dpush_strict', value)
+        conf = self.tree.branch.get_config_stack()
+        conf.set('dpush_strict', value)
 
     _default_command = ['dpush', '../to']
 
