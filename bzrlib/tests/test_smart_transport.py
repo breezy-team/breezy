@@ -22,6 +22,7 @@ import os
 import socket
 import sys
 import threading
+import time
 
 import bzrlib
 from bzrlib import (
@@ -936,6 +937,13 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server_protocol = self.build_protocol_socket('bzr request 2\n')
         self.assertProtocolTwo(server_protocol)
 
+    def test__build_protocol_returns_if_stopping(self):
+        # _build_protocol should notice that we are stopping, and return
+        # without waiting for bytes from the client.
+        server, client_sock = self.create_stream_context(None)
+        server.stop()
+        self.assertIs(None, server._build_protocol())
+
     def test_socket_set_timeout(self):
         server, _ = self.create_stream_context(None, timeout=1.23)
         self.assertEqual(1.23, server._client_timeout)
@@ -973,6 +981,17 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertFalse(server._wait_for_bytes_with_timeout(10))
         data = server.read_bytes(1)
         self.assertEqual('', data)
+
+    def test_socket_wait_for_bytes_with_shutdown(self):
+        server, client_sock = self.create_stream_context(None)
+        t = time.time()
+        # Override the _timer functionality, so that time never increments,
+        # this way, we can be sure we stopped because of the flag, and not
+        # because of a timeout, etc.
+        server._timer = lambda: t
+        server._client_poll_timeout = 0.1
+        server.stop()
+        server._wait_for_bytes_with_timeout(1.0)
 
     def test_socket_serve_timeout_closes_socket(self):
         server, client_sock = self.create_stream_context(None, timeout=0.1)

@@ -204,6 +204,8 @@ class SmartServerStreamMedium(SmartMedium):
         the stream.  See also the _push_back method.
     """
 
+    _timer = time.time
+
     def __init__(self, backing_transport, root_client_path='/', timeout=None):
         """Construct new server.
 
@@ -223,10 +225,17 @@ class SmartServerStreamMedium(SmartMedium):
         """Serve requests until the client disconnects."""
         # Keep a reference to stderr because the sys module's globals get set to
         # None during interpreter shutdown.
+        from bzrlib.smart import server
+        server.register_sighup_callback(id(self), self.stop)
         from sys import stderr
         try:
             while not self.finished:
                 server_protocol = self._build_protocol()
+                # TODO: This seems inelegant:
+                if server_protocol is None:
+                    # We could 'continue' only to notice that self.finished is
+                    # True...
+                    break
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout, e:
             trace.note('%s' % (e,))
@@ -237,6 +246,10 @@ class SmartServerStreamMedium(SmartMedium):
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
+        server.unregister_sighup_callback(id(self))
+
+    def stop(self):
+        self.finished = True
 
     def _close(self):
         """Close the current connection. We stopped due to a timeout/etc."""
@@ -266,6 +279,9 @@ class SmartServerStreamMedium(SmartMedium):
         :returns: a SmartServerRequestProtocol.
         """
         self._wait_for_bytes_with_timeout(self._client_timeout)
+        if self.finished:
+            # We're stopping, so don't try to do any more work
+            return None
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(
@@ -280,10 +296,12 @@ class SmartServerStreamMedium(SmartMedium):
         readable handle before timeout_seconds.
         :return: None
         """
-        t_end = time.time() + timeout_seconds
+        t_end = self._timer() + timeout_seconds
         poll_timeout = min(timeout_seconds, self._client_poll_timeout)
         rs = xs = None
-        while not rs and not xs and time.time() < t_end:
+        while not rs and not xs and self._timer() < t_end:
+            if self.finished:
+                return
             try:
                 rs, _, xs = select.select([fd], [], [fd], poll_timeout)
             except (select.error, socket.error) as e:

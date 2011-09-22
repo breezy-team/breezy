@@ -41,6 +41,28 @@ from bzrlib import (
     )
 """)
 
+import signal
+
+_on_sighup = {}
+def sighup_handler(signal_number, interrupted_frame):
+    for i, c in _on_sighup.items():
+        # TODO: ignore errors here
+        print "Calling %s: %s" % (i, c)
+        c()
+
+signal.signal(signal.SIGHUP, sighup_handler)
+
+
+def register_sighup_callback(identifier, a_callable):
+    """Register for us to call a_callable after SIGHUP."""
+    _on_sighup[identifier] = a_callable
+
+
+def unregister_sighup_callback(identifier):
+    """Remove a callback from being called during sighup."""
+    # TODO: Ignore errors
+    del _on_sighup[identifier]
+
 
 class SmartTCPServer(object):
     """Listens on a TCP socket and accepts connections from smart clients.
@@ -144,7 +166,11 @@ class SmartTCPServer(object):
         for hook in SmartTCPServer.hooks['server_stopped']:
             hook(backing_urls, self.get_url())
 
+    def _stop_gracefully(self):
+        self._should_terminate = True
+
     def serve(self, thread_name_suffix=''):
+        register_sighup_callback(id(self), self._stop_gracefully)
         self._should_terminate = False
         # for hooks we are letting code know that a server has started (and
         # later stopped).
@@ -162,7 +188,7 @@ class SmartTCPServer(object):
                         # if the socket is closed by stop_background_thread
                         # we might get a EBADF here, any other socket errors
                         # should get logged.
-                        if e.args[0] != errno.EBADF:
+                        if e.args[0] not in (errno.EBADF, errno.EINTR):
                             trace.warning("listening socket error: %s", e)
                     else:
                         if self._should_terminate:
@@ -176,6 +202,7 @@ class SmartTCPServer(object):
                 raise
         finally:
             self._stopped.set()
+            unregister_sighup_callback(id(self))
             try:
                 # ensure the server socket is closed.
                 self._server_socket.close()
