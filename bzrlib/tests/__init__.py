@@ -2944,32 +2944,28 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # this obviously requires a format that supports branch references
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
-        format = self.resolve_format(format)
-        if not format.supports_workingtrees:
-            b = self.make_branch(relpath+".branch", format=format)
-            return b.create_checkout(relpath, lightweight=True)
-        else:
-            b = self.make_branch(relpath, format=format)
-            try:
-                return b.bzrdir.create_workingtree()
-            except errors.NotLocalUrl:
-                # We can only make working trees locally at the moment.  If the
-                # transport can't support them, then we keep the non-disk-backed
-                # branch and create a local checkout.
-                if self.vfs_transport_factory is test_server.LocalURLServer:
-                    # the branch is colocated on disk, we cannot create a checkout.
-                    # hopefully callers will expect this.
-                    local_controldir = bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
-                    wt = local_controldir.create_workingtree()
-                    if wt.branch._format != b._format:
-                        wt._branch = b
-                        # Make sure that assigning to wt._branch fixes wt.branch,
-                        # in case the implementation details of workingtree objects
-                        # change.
-                        self.assertIs(b, wt.branch)
-                    return wt
-                else:
-                    return b.create_checkout(relpath, lightweight=True)
+        format = self.resolve_format(format=format)
+        b = self.make_branch(relpath, format=format)
+        try:
+            return b.bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            # We can only make working trees locally at the moment.  If the
+            # transport can't support them, then we keep the non-disk-backed
+            # branch and create a local checkout.
+            if self.vfs_transport_factory is test_server.LocalURLServer:
+                # the branch is colocated on disk, we cannot create a checkout.
+                # hopefully callers will expect this.
+                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
+                wt = local_controldir.create_workingtree()
+                if wt.branch._format != b._format:
+                    wt._branch = b
+                    # Make sure that assigning to wt._branch fixes wt.branch,
+                    # in case the implementation details of workingtree objects
+                    # change.
+                    self.assertIs(b, wt.branch)
+                return wt
+            else:
+                return b.create_checkout(relpath, lightweight=True)
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
