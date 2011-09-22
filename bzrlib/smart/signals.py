@@ -31,6 +31,11 @@ _on_sighup = None
 #       large cases, we shouldn't have more than 100 or so callbacks
 #       registered.
 def _sighup_handler(signal_number, interrupted_frame):
+    """This is the actual function that is registered for handling SIGHUP.
+
+    It will call out to all the registered functions, letting them know that a
+    graceful termination has been requested.
+    """
     if _on_sighup is None:
         return
     for ref in _on_sighup.valuerefs():
@@ -48,8 +53,9 @@ def _sighup_handler(signal_number, interrupted_frame):
 
 def install_sighup_handler():
     """Setup a handler for the SIGHUP signal."""
-    signal.signal(signal.SIGHUP, _sighup_handler)
+    old = signal.signal(signal.SIGHUP, _sighup_handler)
     _setup_on_hangup_dict()
+    return old
 
 
 def _setup_on_hangup_dict():

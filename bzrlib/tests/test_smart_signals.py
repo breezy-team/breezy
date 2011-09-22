@@ -123,3 +123,13 @@ class TestSignalHandlers(tests.TestCase):
         signals.unregister_on_hangup('myid')
         log = self.get_log()
         self.assertEqual('', log)
+
+    def test_install_sighup_handler(self):
+        # install_sighup_handler should set up a signal handler for SIGHUP, as
+        # well as the signals._on_sighup dict.
+        # TODO: Windows testing
+        signals._on_sighup = None
+        orig = signals.install_sighup_handler()
+        old = signal.signal(signal.SIGHUP, orig)
+        self.assertIsNot(None, signals._on_sighup)
+        self.assertEqual(signals._sighup_handler, old)
