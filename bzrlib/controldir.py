@@ -75,7 +75,6 @@ class ControlComponent(object):
         return self.user_transport.base
 
 
-
 class ControlDir(ControlComponent):
     """A control directory.
 

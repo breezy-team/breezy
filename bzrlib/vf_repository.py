@@ -1207,6 +1207,8 @@ class VersionedFileRepository(Repository):
         # this construct will accept instances of those things.
         super(VersionedFileRepository, self).__init__(_format, a_bzrdir,
             control_files)
+        self._transport = control_files._transport
+        self.base = self._transport.base
         # for tests
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
