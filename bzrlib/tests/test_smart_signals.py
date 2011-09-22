@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import gc
 import signal
 import weakref
 
@@ -33,8 +32,11 @@ class TestSignalHandlers(tests.TestCase):
         #       with a tearDown that asserts that all the entries have been
         #       removed properly. Global state is always a bit messy. A shame
         #       that we need it for signal handling.
-        self.orig__on_sighup = self.overrideAttr(signals, '_on_sighup',
-                                                 weakref.WeakValueDictionary())
+        orig = signals._setup_on_hangup_dict()
+        self.assertIs(None, orig)
+        def cleanup():
+            signals._on_sighup = None
+        self.addCleanup(cleanup)
 
     def test_registered_callback_gets_called(self):
         calls = []
@@ -98,13 +100,26 @@ class TestSignalHandlers(tests.TestCase):
         # We overrideAttr during the test suite, so that we don't pollute the
         # original dict. However, we can test that what we override matches
         # what we are putting there.
-        self.assertIsInstance(self.orig__on_sighup,
+        self.assertIsInstance(signals._on_sighup,
                               weakref.WeakValueDictionary)
         calls = []
         def call_me():
             calls.append('called')
         signals.register_on_hangup('myid', call_me)
         del call_me
-        gc.collect()
+        # Non-CPython might want to do a gc.collect() here
         signals._sighup_handler(signal.SIGHUP, None)
         self.assertEqual([], calls)
+
+    def test_not_installed(self):
+        # If you haven't called bzrlib.smart.signals.install_sighup_handler,
+        # then _on_sighup should be None, and all the calls become no-ops.
+        signals._on_sighup = None
+        calls = []
+        def call_me():
+            calls.append('called')
+        signals.register_on_hangup('myid', calls)
+        signals._sighup_handler(signal.SIGHUP, None)
+        signals.unregister_on_hangup('myid')
+        log = self.get_log()
+        self.assertEqual('', log)

@@ -23,7 +23,7 @@ from bzrlib import trace
 
 
 # I'm pretty sure this has to be global, since signal handling is per-process.
-_on_sighup = weakref.WeakValueDictionary()
+_on_sighup = None
 # TODO: Using a dict means that the order of calls is unordered. We could use a
 #       list and then do something like LIFO ordering. A dict was chosen so
 #       that you could have a key to easily remove your entry. However, you
@@ -31,6 +31,8 @@ _on_sighup = weakref.WeakValueDictionary()
 #       large cases, we shouldn't have more than 100 or so callbacks
 #       registered.
 def _sighup_handler(signal_number, interrupted_frame):
+    if _on_sighup is None:
+        return
     for ref in _on_sighup.valuerefs():
         # TODO: ignore errors here
         try:
@@ -44,13 +46,23 @@ def _sighup_handler(signal_number, interrupted_frame):
             trace.log_exception_quietly()
 
 
-# TODO: One option, we could require install_sighup_handler to be called,
-#       before we allocate _on_sighup. And then register_on_hangup would become
-#       a no-op if install_sighup_handler was never installed. This would help
-#       us avoid creating garbage if the test suite isn't going to handle it.
 def install_sighup_handler():
     """Setup a handler for the SIGHUP signal."""
     signal.signal(signal.SIGHUP, _sighup_handler)
+    _setup_on_hangup_dict()
+
+
+def _setup_on_hangup_dict():
+    """Create something for _on_sighup.
+
+    This is done when we install the sighup handler, and for tests that want to
+    test the functionality. If this hasn'nt been called, then
+    register_on_hangup is a no-op. As is unregister_on_hangup.
+    """
+    global _on_sighup
+    old = _on_sighup
+    _on_sighup = weakref.WeakValueDictionary()
+    return old
 
 
 # TODO: Should these be single-use callables? Meaning that once we've triggered
@@ -61,11 +73,15 @@ def install_sighup_handler():
 #       get fired properly. Maybe we just assume we don't have to do it?
 def register_on_hangup(identifier, a_callable):
     """Register for us to call a_callable as part of a graceful shutdown."""
+    if _on_sighup is None:
+        return
     _on_sighup[identifier] = a_callable
 
 
 def unregister_on_hangup(identifier):
     """Remove a callback from being called during sighup."""
+    if _on_sighup is None:
+        return
     try:
         del _on_sighup[identifier]
     except KeyboardInterrupt:
