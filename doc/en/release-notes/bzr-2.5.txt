@@ -67,6 +67,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Really corrupt the pack file without depending on a special length or value.
+  (Vincent Ladeuil, #807032)
+
 
 bzr 2.5b1
 #########
