@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-09-20 17:57+0000\n"
+"PO-Revision-Date: 2011-09-21 14:27+0000\n"
 "Last-Translator: Sergey Basalaev <SBasalaev@gmail.com>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2011-09-21 04:31+0000\n"
+"X-Launchpad-Export-Date: 2011-09-22 04:30+0000\n"
 "X-Generator: Launchpad (build 13996)\n"
 
 #: bzrlib/add.py:95
@@ -8001,19 +8001,19 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:25
 msgid "Instead of using::"
-msgstr ""
+msgstr "Вместо использования::"
 
 #: en/help_topics/authentication.txt:27
 msgid "  bzr branch ftp://joe:secret@host.com/path/to/my/branch"
-msgstr ""
+msgstr "  bzr branch ftp://joe:secret@host.com/path/to/my/branch"
 
 #: en/help_topics/authentication.txt:29
 msgid "you simply use::"
-msgstr ""
+msgstr "можно просто использовать::"
 
 #: en/help_topics/authentication.txt:31
 msgid "  bzr branch ftp://host.com/path/to/my/branch"
-msgstr ""
+msgstr "  bzr branch ftp://host.com/path/to/my/branch"
 
 #: en/help_topics/authentication.txt:33
 msgid ""
@@ -8029,6 +8029,12 @@ msgid ""
 "  password=secret\n"
 "  "
 msgstr ""
+"  [myprojects]\n"
+"  scheme=ftp\n"
+"  host=host.com\n"
+"  user=joe\n"
+"  password=secret\n"
+"  "
 
 #: en/help_topics/authentication.txt:42
 msgid ""
