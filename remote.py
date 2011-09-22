@@ -233,7 +233,7 @@ class RemoteGitDir(GitDir):
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
             if not refname in ret:
-                raise NotBranchError(self)
+                raise NotBranchError(self.user_url)
             ret[refname] = "00" * 20
             return ret
         self.send_pack(get_changed_refs, lambda have, want: [])
@@ -244,6 +244,14 @@ class RemoteGitDir(GitDir):
 
     @property
     def user_transport(self):
+        return self.root_transport
+
+    @property
+    def control_url(self):
+        return self.control_transport.base
+
+    @property
+    def control_transport(self):
         return self.root_transport
 
     def open_repository(self):
