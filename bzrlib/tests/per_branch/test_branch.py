@@ -537,6 +537,12 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)
 
+    def get_get_config_calls(self):
+        # Smoke test that all branch succeed getting a config
+        br = self.make_branch('.')
+        br.get_config()
+        br.get_config_stack()
+
 
 class ChrootedTests(per_branch.TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
@@ -1070,7 +1076,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
 class TestBranchControlComponent(per_branch.TestCaseWithBranch):
     """Branch implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         br = self.make_branch('branch')
         self.assertIsInstance(br.user_url, str)
