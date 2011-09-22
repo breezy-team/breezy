@@ -653,6 +653,9 @@ class cmd_add(Command):
     are added.  This search proceeds recursively into versioned
     directories.  If no names are given '.' is assumed.
 
+    A warning will be printed when nested trees are encountered,
+    unless they are explicitly ignored.
+
     Therefore simply saying 'bzr add' will version all files that
     are currently unknown.
 
