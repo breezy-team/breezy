@@ -1172,8 +1172,8 @@ class TestSmartTCPServer(tests.TestCase):
 
     def test_propagates_timeout(self):
         server = _mod_server.SmartTCPServer(None, client_timeout=1.23)
-        server_socket = socket.socket()
-        handler = server._make_handler(server_socket)
+        server_sock, client_sock = portable_socket_pair()
+        handler = server._make_handler(server_sock)
         self.assertEqual(1.23, handler._client_timeout)
 
     def test_serve_conn_tracks_connections(self):
@@ -1280,7 +1280,7 @@ class TestSmartTCPServer(tests.TestCase):
         log = self.get_log()
         self.assertThat(log, DocTestMatches("""\
     INFO  Requested to stop gracefully
-... Stopping <bzrlib.smart.medium.SmartServerSocketStreamMedium ...
+... Stopping SmartServerSocketStreamMedium(client=('127.0.0.1', ...
     INFO  Waiting for 1 client(s) to finish
 """, flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
 

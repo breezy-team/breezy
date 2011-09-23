@@ -184,8 +184,6 @@ class TestInetServer(tests.TestCase):
         v = response_handler.read_body_bytes()
         if v != content:
             self.fail('Got the wrong content back, expected 1M "a"')
-        # writer is closed, so read returns nothing.
-        self.assertEqual('', client_read.read())
         stopped.wait()
         server_thread.join()
 

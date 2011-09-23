@@ -360,6 +360,18 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             timeout=timeout)
         sock.setblocking(True)
         self.socket = sock
+        # Get the getpeername now, as we might be closed later when we care.
+        try:
+            self._client_info = sock.getpeername()
+        except socket.error:
+            self._client_info = '<unknown>'
+
+    def __str__(self):
+        return '%s(client=%s)' % (self.__class__.__name__, self._client_info)
+
+    def __repr__(self):
+        return '%s.%s(client=%s)' % (self.__module__, self.__class__.__name__,
+            self._client_info)
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
