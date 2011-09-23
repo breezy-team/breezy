@@ -191,6 +191,8 @@ class SmartTCPServer(object):
                         if self._should_terminate:
                             break
                         self.serve_conn(conn, thread_name_suffix)
+                    # Cleanout any threads that have finished processing.
+                    # self._poll_active_connections()
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
@@ -206,6 +208,7 @@ class SmartTCPServer(object):
             except self._socket_error:
                 # ignore errors on close
                 pass
+            self._poll_active_connections()
             self.run_server_stopped_hooks()
 
     def get_url(self):

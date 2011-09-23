@@ -1119,6 +1119,47 @@ class TestSmartTCPServer(tests.TestCase):
         server._poll_active_connections(0.1)
         self.assertEqual(0, len(server._active_connections))
 
+    def test_serve_closes_out_finished_connections(self):
+        t = _mod_transport.get_transport_from_url('memory:///')
+        server = _mod_server.SmartTCPServer(t, client_timeout=1.0)
+        server._ACCEPT_TIMEOUT = 0.1
+        # We don't use 'localhost' because that might be an IPv6 address.
+        server.start_server('127.0.0.1', 0)
+        server_thread = threading.Thread(target=server.serve,
+                                         args=(self.id(),))
+        server_thread.start()
+        client_sock = None
+        try:
+            # Wait for the server to start. Then connect to the port
+            client_sock = socket.socket()
+            server._started.wait()
+            client_sock.connect(('127.0.0.1', server.port))
+            # We send and receive on the connection, so that we know the
+            # server-side has seen the connect, and started handling the
+            # results.
+            client_sock.send('hello\n')
+            self.assertEqual('ok\x012\n', client_sock.recv(5))
+            self.assertEqual(1, len(server._active_connections))
+            # Grab a handle to the thread that is processing our request
+            server_side_thread = server._active_connections[0][2]
+        finally:
+            # Close the connection, ask the server to stop, and wait for the
+            # server to stop, as well as the thread that was servicing the
+            # client request.
+            if client_sock is not None:
+                client_sock.close()
+            # Wait for the server-side request thread to notice we are closed.
+            server_side_thread.join()
+            # Stop the server, it should notice the connection has finished.
+            server._stop_gracefully()
+            # Do a throw-away connection so that the server stops immediately
+            s = socket.socket()
+            s.connect(('127.0.0.1', server.port))
+            s.close()
+            server._stopped.wait()
+            server_thread.join()
+        self.assertEqual(0, len(server._active_connections))
+
 
 class SmartTCPTests(tests.TestCase):
     """Tests for connection/end to end behaviour using the TCP server.
