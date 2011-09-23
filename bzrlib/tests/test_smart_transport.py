@@ -1211,6 +1211,8 @@ class TestSmartTCPServer(tests.TestCase):
         _, _, server_side_thread1 = server._active_connections[0]
         client_sock1.close()
         server_side_thread1.join()
+        # By waiting until the first connection is fully done, the server
+        # should notice after another connection that the first has finished.
         client_sock2 = self.connect_to_server(server)
         self.say_hello(client_sock2)
         self.assertEqual(1, len(server._active_connections))
@@ -1218,6 +1220,29 @@ class TestSmartTCPServer(tests.TestCase):
         client_sock2.close()
         server_side_thread2.join()
         self.shutdown_server_cleanly(server, server_thread)
+
+    def test_graceful_shutdown_waits_for_clients_to_stop(self):
+        server, server_thread = self.make_server()
+        client_sock = self.connect_to_server(server)
+        self.say_hello(client_sock)
+        _, _, server_side_thread = server._active_connections[0]
+        # Ask the server to stop gracefully, and wait for it.
+        server._stop_gracefully()
+        self.connect_to_server_and_hangup(server)
+        server._stopped.wait()
+        # It should not be accepting another connection.
+        self.assertRaises(socket.error, self.connect_to_server, server)
+        # It should also not be fully stopped
+        server._fully_stopped.wait(0.01)
+        self.assertFalse(server._fully_stopped.isSet())
+        client_sock.close()
+        server_side_thread.join()
+        server_thread.join()
+        self.assertTrue(server._fully_stopped.isSet())
+        log = self.get_log()
+        self.assertEqual('    INFO  Requested to stop gracefully\n'
+                         '    INFO  Waiting for 1 client(s) to finish\n',
+                         log)
 
 
 class SmartTCPTests(tests.TestCase):

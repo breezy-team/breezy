@@ -20,6 +20,7 @@ import errno
 import os.path
 import socket
 import sys
+import time
 import threading
 
 from bzrlib.hooks import Hooks
@@ -58,6 +59,10 @@ class SmartTCPServer(object):
     # so the test suite can set it faster. (It thread.interrupt_main() will not
     # fire a KeyboardInterrupt during socket.accept)
     _ACCEPT_TIMEOUT = 1.0
+    _SHUTDOWN_POLL_TIMEOUT = 1.0
+    _LOG_WAITING_TIMEOUT = 10.0
+
+    _timer = time.time
 
     def __init__(self, backing_transport, root_client_path='/',
                  client_timeout=None):
@@ -76,6 +81,9 @@ class SmartTCPServer(object):
         self.root_client_path = root_client_path
         self._client_timeout = client_timeout
         self._active_connections = []
+        # This is set to indicate we want to wait for clients to finish before
+        # we disconnect.
+        self._gracefully_stopping = False
 
     def start_server(self, host, port):
         """Create the server listening socket.
@@ -108,8 +116,14 @@ class SmartTCPServer(object):
         self.port = self._sockname[1]
         self._server_socket.listen(1)
         self._server_socket.settimeout(self._ACCEPT_TIMEOUT)
+        # Once we start accept()ing connections, we set started.
         self._started = threading.Event()
+        # Once we stop accept()ing connections (and are closing the socket) we
+        # set _stopped
         self._stopped = threading.Event()
+        # Once we have finished waiting for all clients, etc. We set
+        # _fully_stopped
+        self._fully_stopped = threading.Event()
 
     def _backing_urls(self):
         # There are three interesting urls:
@@ -157,6 +171,22 @@ class SmartTCPServer(object):
         #      have a good way (yet) to poll the spawned clients and
         trace.note('Requested to stop gracefully')
         self._should_terminate = True
+        self._gracefully_stopping = True
+
+    def _wait_for_clients_to_disconnect(self):
+        self._poll_active_connections()
+        if not self._active_connections:
+            return
+        trace.note('Waiting for %d client(s) to finish'
+                   % (len(self._active_connections),))
+        t_next_log = self._timer() + self._LOG_WAITING_TIMEOUT
+        while self._active_connections:
+            now = self._timer()
+            if now >= t_next_log:
+                trace.note('Still waiting for %d client(s) to finish'
+                           % (len(self._active_connections),))
+                t_next_log = now + self._LOG_WAITING_TIMEOUT
+            self._poll_active_connections(self._SHUTDOWN_POLL_TIMEOUT)
 
     def serve(self, thread_name_suffix=''):
         # Note: There is a temptation to do
@@ -208,8 +238,10 @@ class SmartTCPServer(object):
             except self._socket_error:
                 # ignore errors on close
                 pass
-            self._poll_active_connections()
             self.run_server_stopped_hooks()
+        if self._gracefully_stopping:
+            self._wait_for_clients_to_disconnect()
+        self._fully_stopped.set()
 
     def get_url(self):
         """Return the url of the server"""
