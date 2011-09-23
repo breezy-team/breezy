@@ -32,7 +32,7 @@ from info import (
     )
 
 import gettext as _gettext
-translation = _gettext.translation('bzr-rewrite', '/home/jr/src/bzr/rewrite/bzr-rewrite')
+translation = _gettext.translation('bzr-rewrite', '/home/jr/src/bzr/rewrite/bzr-rewrite/bzrlib/locale')
 gettext = translation.ugettext
 
 if version_info[3] == 'final':

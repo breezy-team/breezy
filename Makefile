@@ -44,3 +44,19 @@ tags::
 	$(CTAGS) -R .
 
 ctags:: tags
+
+.PHONY: update-pot po/bzr-rewrite.pot
+update-pot: po/bzr-rewrite.pot
+
+TRANSLATABLE_PYFILES:=$(shell find . -name '*.py' \
+    		| grep -v 'tests/' \
+		)
+
+po/bzr-rewrite.pot: $(PYFILES) $(DOCFILES)
+	#$(PYTHON) ./bzr export-pot > po/bzr.pot
+	echo $(TRANSLATABLE_PYFILES) | xargs \
+	  xgettext --package-name "bzr-rewrite" \
+	  --msgid-bugs-address "<bazaar@canonical.com>" \
+	  --copyright-holder "Canonical" \
+	  --from-code ISO-8859-1 --sort-by-file --add-comments=i18n: \
+	  -d bzr-rewrite -p po -o bzr-rewrite.pot
