@@ -34,6 +34,9 @@ from bzrlib.trace import (
     note,
     )
 
+from bzrlib.plugins.rewrite import gettext
+
+
 class cmd_rebase(Command):
     """Re-base a branch.
 
@@ -115,7 +118,7 @@ class cmd_rebase(Command):
                     upstream_location = wt.branch.get_parent()
                     if upstream_location is None:
                         raise BzrCommandError("No upstream branch specified.")
-                    note("Rebasing on %s", upstream_location)
+                    note(gettext("Rebasing on %s"), upstream_location)
             upstream = Branch.open_containing(upstream_location)[0]
             upstream_repository = upstream.repository
             upstream_revision = upstream.last_revision()
@@ -194,7 +197,7 @@ class cmd_rebase(Command):
 
             if verbose or dry_run:
                 todo = list(rebase_todo(wt.branch.repository, replace_map))
-                note('%d revisions will be rebased:' % len(todo))
+                note(gettext('%d revisions will be rebased:') % len(todo))
                 for revid in todo:
                     note("%s" % revid)
 
@@ -321,9 +324,9 @@ class cmd_rebase_todo(Command):
                 raise BzrCommandError("No rebase in progress")
             currentrevid = state.read_active_revid()
             if currentrevid is not None:
-                note("Currently replaying: %s" % currentrevid)
+                note(gettext("Currently replaying: %s") % currentrevid)
             for revid in rebase_todo(wt.branch.repository, replace_map):
-                note("%s -> %s" % (revid, replace_map[revid][0]))
+                note(gettext("{0} -> {1}").format(revid, replace_map[revid][0]))
         finally:
             wt.unlock()
 
@@ -495,7 +498,7 @@ class cmd_rebase_foreign(Command):
             branch_to.unlock()
 
         if renames == {}:
-            note("Nothing to do.")
+            note(gettext("Nothing to do."))
 
         if idmap_file is not None:
             f = open(idmap_file, 'w')

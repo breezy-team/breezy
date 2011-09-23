@@ -31,6 +31,10 @@ from info import (
     bzr_compatible_versions,
     )
 
+import gettext as _gettext
+translation = _gettext.translation('bzr-rewrite', '/home/jr/src/bzr/rewrite/bzr-rewrite')
+gettext = translation.ugettext
+
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
 else:
