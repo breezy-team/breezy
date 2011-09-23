@@ -18,11 +18,14 @@
 
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
+import doctest
 import os
 import socket
 import sys
 import threading
 import time
+
+from testtools.matchers import DocTestMatches
 
 import bzrlib
 from bzrlib import (
@@ -1131,6 +1134,7 @@ class TestSmartTCPServer(tests.TestCase):
         server._stop_gracefully()
         self.connect_to_server_and_hangup(server)
         server._stopped.wait()
+        server._fully_stopped.wait()
         server_thread.join()
 
     def test_get_error_unexpected(self):
@@ -1187,7 +1191,7 @@ class TestSmartTCPServer(tests.TestCase):
         self.say_hello(client_sock)
         self.assertEqual(1, len(server._active_connections))
         # Grab a handle to the thread that is processing our request
-        _, _, server_side_thread = server._active_connections[0]
+        _, server_side_thread = server._active_connections[0]
         # Close the connection, ask the server to stop, and wait for the
         # server to stop, as well as the thread that was servicing the
         # client request.
@@ -1208,7 +1212,7 @@ class TestSmartTCPServer(tests.TestCase):
         # results.
         self.say_hello(client_sock1)
         self.assertEqual(1, len(server._active_connections))
-        _, _, server_side_thread1 = server._active_connections[0]
+        _, server_side_thread1 = server._active_connections[0]
         client_sock1.close()
         server_side_thread1.join()
         # By waiting until the first connection is fully done, the server
@@ -1216,7 +1220,7 @@ class TestSmartTCPServer(tests.TestCase):
         client_sock2 = self.connect_to_server(server)
         self.say_hello(client_sock2)
         self.assertEqual(1, len(server._active_connections))
-        _, _, server_side_thread2 = server._active_connections[0]
+        _, server_side_thread2 = server._active_connections[0]
         client_sock2.close()
         server_side_thread2.join()
         self.shutdown_server_cleanly(server, server_thread)
@@ -1225,7 +1229,7 @@ class TestSmartTCPServer(tests.TestCase):
         server, server_thread = self.make_server()
         client_sock = self.connect_to_server(server)
         self.say_hello(client_sock)
-        _, _, server_side_thread = server._active_connections[0]
+        _, server_side_thread = server._active_connections[0]
         # Ask the server to stop gracefully, and wait for it.
         server._stop_gracefully()
         self.connect_to_server_and_hangup(server)
@@ -1240,9 +1244,24 @@ class TestSmartTCPServer(tests.TestCase):
         server_thread.join()
         self.assertTrue(server._fully_stopped.isSet())
         log = self.get_log()
-        self.assertEqual('    INFO  Requested to stop gracefully\n'
-                         '    INFO  Waiting for 1 client(s) to finish\n',
-                         log)
+        self.assertThat(log, DocTestMatches("""\
+    INFO  Requested to stop gracefully
+... Stopping <bzrlib.smart.medium.SmartServerSocketStreamMedium ...
+    INFO  Waiting for 1 client(s) to finish
+... Stopped while waiting for request: ...
+""", flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
+
+    def test_stop_gracefully_tells_handlers_to_stop(self):
+        server, server_thread = self.make_server()
+        client_sock = self.connect_to_server(server)
+        self.say_hello(client_sock)
+        server_handler, server_side_thread = server._active_connections[0]
+        self.assertFalse(server_handler.finished)
+        server._stop_gracefully()
+        self.assertTrue(server_handler.finished)
+        client_sock.close()
+        self.connect_to_server_and_hangup(server)
+        server_thread.join()
 
 
 class SmartTCPTests(tests.TestCase):

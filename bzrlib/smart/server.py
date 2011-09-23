@@ -172,6 +172,8 @@ class SmartTCPServer(object):
         trace.note('Requested to stop gracefully')
         self._should_terminate = True
         self._gracefully_stopping = True
+        for handler, _ in self._active_connections:
+            handler._stop_gracefully()
 
     def _wait_for_clients_to_disconnect(self):
         self._poll_active_connections()
@@ -230,14 +232,14 @@ class SmartTCPServer(object):
                 trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:
-            self._stopped.set()
-            signals.unregister_on_hangup(id(self))
             try:
                 # ensure the server socket is closed.
                 self._server_socket.close()
             except self._socket_error:
                 # ignore errors on close
                 pass
+            self._stopped.set()
+            signals.unregister_on_hangup(id(self))
             self.run_server_stopped_hooks()
         if self._gracefully_stopping:
             self._wait_for_clients_to_disconnect()
@@ -263,10 +265,10 @@ class SmartTCPServer(object):
         :return: None
         """
         still_active = []
-        for conn, handler, thread in self._active_connections:
+        for handler, thread in self._active_connections:
             thread.join(timeout)
             if thread.isAlive():
-                still_active.append((conn, handler, thread))
+                still_active.append((handler, thread))
         self._active_connections = still_active
 
     def serve_conn(self, conn, thread_name_suffix):
@@ -278,12 +280,9 @@ class SmartTCPServer(object):
         handler = self._make_handler(conn)
         connection_thread = threading.Thread(
             None, handler.serve, name=thread_name)
-        # FIXME: This thread is never joined, it should at least be collected
-        # somewhere so that tests that want to check for leaked threads can get
-        # rid of them -- vila 20100531
+        self._active_connections.append((handler, connection_thread))
         connection_thread.setDaemon(True)
         connection_thread.start()
-        self._active_connections.append((conn, handler, connection_thread))
         return connection_thread
 
     def start_background_thread(self, thread_name_suffix=''):

@@ -48,7 +48,7 @@ from bzrlib import (
 from bzrlib.smart import client, protocol, request, signals, vfs
 from bzrlib.transport import ssh
 """)
-from bzrlib import config, osutils
+from bzrlib import osutils
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
@@ -242,6 +242,8 @@ class SmartServerStreamMedium(SmartMedium):
                 if server_protocol is None:
                     # We could 'continue' only to notice that self.finished is
                     # True...
+                    trace.mutter('Stopped while waiting for request: %s\n'
+                                 % (self,))
                     break
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout, e:
