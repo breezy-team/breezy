@@ -389,8 +389,13 @@ class TestControlDir(TestCaseWithControlDir):
     def test_clone_respects_stacked(self):
         branch = self.make_branch('parent')
         child_transport = self.get_transport('child')
-        child = branch.bzrdir.clone_on_transport(child_transport,
-                                                 stacked_on=branch.base)
+        try:
+            child = branch.bzrdir.clone_on_transport(child_transport,
+                                                     stacked_on=branch.base)
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            raise TestNotApplicable("branch or repository format do "
+                "not support stacking")
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
     def test_get_branch_reference_on_reference(self):
@@ -442,7 +447,8 @@ class TestControlDir(TestCaseWithControlDir):
             target.open_workingtree()
         except errors.NoWorkingTree:
             # Some bzrdirs can never have working trees.
-            self.assertFalse(target._format.supports_workingtrees)
+            repo = target.find_repository()
+            self.assertFalse(repo.bzrdir._format.supports_workingtrees)
 
     def test_sprout_bzrdir_empty_under_shared_repo_force_new(self):
         # the force_new_repo parameter should force use of a new repo in an empty
@@ -1042,6 +1048,8 @@ class TestControlDir(TestCaseWithControlDir):
         # a stacking policy on the target, the location of the fallback
         # repository is the same as the external location of the stacked-on
         # branch.
+        if not self.bzrdir_format.repository_format.supports_nesting_repositories:
+            raise TestNotApplicable("requires nesting repositories")
         balloon = self.make_bzrdir('balloon')
         if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
             stack_on = self.make_branch('stack-on', format='1.9')
