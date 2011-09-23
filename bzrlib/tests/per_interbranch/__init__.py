@@ -81,13 +81,12 @@ def default_test_list():
 class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_from_branch(self, relpath):
-        repo = self.make_repository(relpath, format=self.branch_format_from._matchingbzrdir)
-        return self.branch_format_from.initialize(repo.bzrdir)
+        return self.make_branch(relpath, format=self.branch_format_from._matchingbzrdir)
 
     def make_from_branch_and_memory_tree(self, relpath):
         """Create a branch on the default transport and a MemoryTree for it."""
-        b = self.make_from_branch(relpath)
-        return memorytree.MemoryTree.create_on_branch(b)
+        return self.make_branch_and_memory_tree(
+            relpath, format=self.branch_format_from._matchingbzrdir)
 
     def make_from_branch_and_tree(self, relpath):
         """Create a branch on the default transport and a working tree for it."""
@@ -95,45 +94,46 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
             format=self.branch_format_from._matchingbzrdir)
 
     def make_from_branch_builder(self, relpath):
-        default_format = BzrDirFormat.get_default_format()
-        format = BzrDirMetaFormat1()
-        format.set_branch_format(self.branch_format_from)
-        format.repository_format = default_format.repository_format
-        format.workingtree_format = default_format.workingtree_format
         return branchbuilder.BranchBuilder(self.get_transport(relpath),
-            format=format)
+            format=self.branch_format_from._matchingbzrdir)
 
     def make_to_branch(self, relpath):
-        repo = self.make_repository(relpath, format=self.branch_format_to._matchingbzrdir)
-        return self.branch_format_to.initialize(repo.bzrdir)
+        return self.make_branch(relpath, format=self.branch_format_to._matchingbzrdir)
 
     def make_to_branch_and_memory_tree(self, relpath):
         """Create a branch on the default transport and a MemoryTree for it."""
-        b = self.make_to_branch(relpath)
-        return memorytree.MemoryTree.create_on_branch(b)
+        return self.make_branch_and_memory_tree(
+            relpath, format=self.branch_format_to._matchingbzrdir)
 
     def make_to_branch_and_tree(self, relpath):
         """Create a branch on the default transport and a working tree for it."""
         return self.make_branch_and_tree(relpath,
             format=self.branch_format_to._matchingbzrdir)
 
-    def sprout_to(self, origdir, to_url):
-        """Sprout a bzrdir, using to_format for the new branch."""
-        newbranch = self.make_to_branch(to_url)
+    def sprout(self, origdir, to_url, format):
+        need_checkout = (
+            not format.supports_workingtrees)
+        if need_checkout:
+            newbranch = self.make_branch(to_url+".branch", format=format)
+        else:
+            newbranch = self.make_branch(to_url, format=format)
         origbranch = origdir.open_branch()
         newbranch.repository.fetch(origbranch.repository)
         origbranch.copy_content_into(newbranch)
-        newbranch.bzrdir.create_workingtree()
-        return newbranch.bzrdir
+        if need_checkout:
+            checkout = newbranch.create_checkout(to_url, lightweight=True)
+            return checkout.bzrdir
+        else:
+            newbranch.bzrdir.create_workingtree()
+            return newbranch.bzrdir
+
+    def sprout_to(self, origdir, to_url):
+        """Sprout a bzrdir, using to_format for the new branch."""
+        return self.sprout(origdir, to_url, self.branch_format_to._matchingbzrdir) 
 
     def sprout_from(self, origdir, to_url):
         """Sprout a bzrdir, using from_format for the new bzrdir."""
-        newbranch = self.make_from_branch(to_url)
-        origbranch = origdir.open_branch()
-        newbranch.repository.fetch(origbranch.repository)
-        origbranch.copy_content_into(newbranch)
-        newbranch.bzrdir.create_workingtree()
-        return newbranch.bzrdir
+        return self.sprout(origdir, to_url, self.branch_format_from._matchingbzrdir) 
 
 
 class StubWithFormat(object):
