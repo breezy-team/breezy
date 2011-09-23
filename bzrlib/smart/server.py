@@ -192,7 +192,7 @@ class SmartTCPServer(object):
                             break
                         self.serve_conn(conn, thread_name_suffix)
                     # Cleanout any threads that have finished processing.
-                    # self._poll_active_connections()
+                    self._poll_active_connections()
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
