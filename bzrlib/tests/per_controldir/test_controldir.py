@@ -1010,9 +1010,6 @@ class TestControlDir(TestCaseWithControlDir):
             repo_format_name=repo_name, shared_repo=True)[0]
         made_repo, control = self.assertInitializeEx(t.clone('branch'),
             force_new_repo=True, repo_format_name=repo_name)
-        if control is None:
-            # uninitialisable format
-            return
         self.assertNotEqual(repo.bzrdir.root_transport.base,
             made_repo.bzrdir.root_transport.base)
 
@@ -1024,9 +1021,6 @@ class TestControlDir(TestCaseWithControlDir):
             repo_format_name=repo_name, shared_repo=True)[0]
         made_repo, control = self.assertInitializeEx(t.clone('branch'),
             force_new_repo=False, repo_format_name=repo_name)
-        if control is None:
-            # uninitialisable format
-            return
         if not control._format.fixed_components:
             self.assertEqual(repo.bzrdir.root_transport.base,
                 made_repo.bzrdir.root_transport.base)
@@ -1046,9 +1040,6 @@ class TestControlDir(TestCaseWithControlDir):
         repo, control = self.assertInitializeEx(t, need_meta=True,
             repo_format_name=repo_name, stacked_on='../trunk',
             stack_on_pwd=t.base)
-        if control is None:
-            # uninitialisable format
-            return
         self.assertLength(1, repo._fallback_repositories)
 
     def test_format_initialize_on_transport_ex_default_stack_on(self):
@@ -1073,9 +1064,6 @@ class TestControlDir(TestCaseWithControlDir):
         repo, control = self.assertInitializeEx(
             t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
         # self.addCleanup(repo.unlock)
-        if control is None:
-            # uninitialisable format
-            return
         # There's one fallback repo, with a public location.
         self.assertLength(1, repo._fallback_repositories)
         fallback_repo = repo._fallback_repositories[0]
@@ -1096,9 +1084,6 @@ class TestControlDir(TestCaseWithControlDir):
         fmt = bzrdir.format_registry.make_bzrdir('1.6')
         repo_name = fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(t, repo_format_name=repo_name)
-        if control is None:
-            # uninitialisable format
-            return
         if self.bzrdir_format.fixed_components:
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
@@ -1117,13 +1102,15 @@ class TestControlDir(TestCaseWithControlDir):
         """
         if not self.bzrdir_format.is_supported():
             # Not initializable - not a failure either.
-            return None, None
+            raise TestNotApplicable("control dir format is not "
+                "initializable")
         try:
             repo, control, require_stacking, repo_policy = \
                 self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         except errors.UninitializableFormat:
             # Not initializable - not a failure either.
-            return None, None
+            raise TestNotApplicable("control dir format is not "
+                "initializable")
         if repo is not None:
             # Repositories are open write-locked
             self.assertTrue(repo.is_write_locked())
