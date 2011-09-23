@@ -247,7 +247,7 @@ class SmartServerStreamMedium(SmartMedium):
         except errors.ConnectionTimeout, e:
             trace.note('%s' % (e,))
             trace.log_exception_quietly()
-            self._close()
+            self._disconnect_client()
             # We reported it, no reason to make a big fuss.
             return
         except Exception, e:
@@ -261,7 +261,7 @@ class SmartServerStreamMedium(SmartMedium):
         trace.mutter('Stopping %s' % (self,))
         self.finished = True
 
-    def _close(self):
+    def _disconnect_client(self):
         """Close the current connection. We stopped due to a timeout/etc."""
         # The default implementation is a no-op, because that is all we used to
         # do when disconnecting from a client. I suppose we never had the
@@ -382,7 +382,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
         self._push_back(protocol.unused_data)
 
-    def _close(self):
+    def _disconnect_client(self):
         """Close the current connection. We stopped due to a timeout/etc."""
         self.socket.close()
 
@@ -457,7 +457,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 return
             protocol.accept_bytes(bytes)
 
-    def _close(self):
+    def _disconnect_client(self):
         self._in.close()
         self._out.close()
 
