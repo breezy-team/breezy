@@ -233,8 +233,6 @@ class SmartServerStreamMedium(SmartMedium):
                 if server_protocol is None:
                     # We could 'continue' only to notice that self.finished is
                     # True...
-                    trace.mutter('Stopped while waiting for request: %s\n'
-                                 % (self,))
                     break
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout, e:
@@ -474,6 +472,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
 
     def _disconnect_client(self):
         self._in.close()
+        self._out.flush()
         self._out.close()
 
     def _wait_for_bytes_with_timeout(self, timeout_seconds):
