@@ -431,13 +431,17 @@ class BzrServerFactory(object):
             transport = _mod_transport.get_transport_from_url(expand_userdirs.get_url())
         self.transport = transport
 
+    def _get_stdin_stdout(self):
+        return sys.stdin, sys.stdout
+
     def _make_smart_server(self, host, port, inet, timeout):
         if timeout is None:
             c = config.GlobalStack()
             timeout = c.get('serve.client_timeout')
         if inet:
+            stdin, stdout = self._get_stdin_stdout()
             smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, self.transport, timeout=timeout)
+                stdin, stdout, self.transport, timeout=timeout)
         else:
             if host is None:
                 host = medium.BZR_DEFAULT_INTERFACE

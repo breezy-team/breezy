@@ -45,7 +45,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.smart import client, protocol, request, vfs
+from bzrlib.smart import client, protocol, request, signals, vfs
 from bzrlib.transport import ssh
 """)
 from bzrlib import osutils
@@ -246,6 +246,7 @@ class SmartServerStreamMedium(SmartMedium):
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
+        self._disconnect_client()
 
     def _stop_gracefully(self):
         """When we finish this message, stop looking for more."""
@@ -429,6 +430,17 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                     msvcrt.setmode(fileno(), os.O_BINARY)
         self._in = in_file
         self._out = out_file
+
+    def serve(self):
+        """See SmartServerStreamMedium.serve"""
+        # This is the regular serve, except it adds signal trapping for soft
+        # shutdown.
+        stop_gracefully = self._stop_gracefully
+        signals.register_on_hangup(id(self), stop_gracefully)
+        try:
+            return super(SmartServerPipeStreamMedium, self).serve()
+        finally:
+            signals.unregister_on_hangup(id(self))
 
     def _serve_one_request_unguarded(self, protocol):
         while True:
