@@ -1132,7 +1132,11 @@ class TestSmartTCPServer(tests.TestCase):
 
     def shutdown_server_cleanly(self, server, server_thread):
         server._stop_gracefully()
-        self.connect_to_server_and_hangup(server)
+        try:
+            self.connect_to_server_and_hangup(server)
+        except socket.error:
+            # If the server has hung up already, that is fine.
+            pass
         server._stopped.wait()
         server._fully_stopped.wait()
         server_thread.join()
@@ -1211,18 +1215,29 @@ class TestSmartTCPServer(tests.TestCase):
         # server-side has seen the connect, and started handling the
         # results.
         self.say_hello(client_sock1)
-        self.assertEqual(1, len(server._active_connections))
-        _, server_side_thread1 = server._active_connections[0]
+        server_handler1, server_side_thread1 = server._active_connections[0]
         client_sock1.close()
         server_side_thread1.join()
         # By waiting until the first connection is fully done, the server
         # should notice after another connection that the first has finished.
         client_sock2 = self.connect_to_server(server)
         self.say_hello(client_sock2)
-        self.assertEqual(1, len(server._active_connections))
-        _, server_side_thread2 = server._active_connections[0]
+        server_handler2, server_side_thread2 = server._active_connections[-1]
+        # There is a race condition. We know that client_sock2 has been
+        # registered, but not that _poll_active_connections has been called. We
+        # know that it will be called before the server will accept a new
+        # connection, however. So connect one more time, and assert that we
+        # either have 1 or 2 active connections (never 3), and that the 'first'
+        # connection is not connection 1
+        client_sock3 = self.connect_to_server(server)
+        self.say_hello(client_sock3)
+        # Copy the list, so we don't have it mutating behind our back
+        conns = list(server._active_connections)
+        self.assertEqual(2, len(conns))
+        self.assertNotEqual((server_handler1, server_side_thread1), conns[0])
+        self.assertEqual((server_handler2, server_side_thread2), conns[0])
         client_sock2.close()
-        server_side_thread2.join()
+        client_sock3.close()
         self.shutdown_server_cleanly(server, server_thread)
 
     def test_graceful_shutdown_waits_for_clients_to_stop(self):
