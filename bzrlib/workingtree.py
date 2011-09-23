@@ -3091,6 +3091,14 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     def unregister_format(klass, format):
         format_registry.remove(format)
 
+    def get_controldir_for_branch(self):
+        """Get the control directory format for creating branches.
+
+        This is to support testing of working tree formats that can not exist
+        in the same control directory as a branch.
+        """
+        return self._matchingbzrdir
+
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat4")
