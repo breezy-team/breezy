@@ -221,6 +221,7 @@ class SmartTCPServer(object):
                             trace.warning("listening socket error: %s", e)
                     else:
                         if self._should_terminate:
+                            conn.close()
                             break
                         self.serve_conn(conn, thread_name_suffix)
                     # Cleanout any threads that have finished processing.

@@ -1122,8 +1122,19 @@ class TestSmartTCPServer(tests.TestCase):
         """Connect to the server, and then hang up.
         That way it doesn't sit waiting for 'accept()' to timeout.
         """
-        client_sock = self.connect_to_server(server)
-        client_sock.close()
+        # If the server has already signaled that the socket is closed, we
+        # don't need to try to connect to it. Not being set, though, the server
+        # might still close the socket while we try to connect to it. So we
+        # still have to catch the exception.
+        if server._stopped.isSet():
+            return
+        try:
+            client_sock = self.connect_to_server(server)
+            client_sock.close()
+        except socket.error, e:
+            # If the server has hung up already, that is fine.
+            self.fail(str(e))
+            pass
 
     def say_hello(self, client_sock):
         """Send the 'hello' smart RPC, and expect the response."""
@@ -1132,11 +1143,7 @@ class TestSmartTCPServer(tests.TestCase):
 
     def shutdown_server_cleanly(self, server, server_thread):
         server._stop_gracefully()
-        try:
-            self.connect_to_server_and_hangup(server)
-        except socket.error:
-            # If the server has hung up already, that is fine.
-            pass
+        self.connect_to_server_and_hangup(server)
         server._stopped.wait()
         server._fully_stopped.wait()
         server_thread.join()
