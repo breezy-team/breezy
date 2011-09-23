@@ -31,8 +31,10 @@ from info import (
     bzr_compatible_versions,
     )
 
-import gettext as _gettext
-translation = _gettext.translation('bzr-rewrite', '/home/jr/src/bzr/rewrite/bzr-rewrite/bzrlib/locale')
+from bzrlib.i18n import install_translations
+import os, sys
+locale_base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
+translation = install_translations(domain='bzr-rewrite', locale_base=locale_base)
 gettext = translation.ugettext
 
 if version_info[3] == 'final':
