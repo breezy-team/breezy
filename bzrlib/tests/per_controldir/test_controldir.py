@@ -101,6 +101,13 @@ class TestControlDir(TestCaseWithControlDir):
                                     create_tree_if_local=create_tree_if_local)
         return target
 
+    def test_uninitializable(self):
+        if self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is initializable")
+        t = self.get_transport()
+        self.assertRaises(errors.UninitializableFormat,
+            self.bzrdir_format.initialize, t.base)
+
     def test_create_null_workingtree(self):
         dir = self.make_bzrdir('dir1')
         dir.create_repository()
