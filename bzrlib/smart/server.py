@@ -463,7 +463,10 @@ class BzrServerFactory(object):
         self.cleanups.append(restore_default_ui_factory_and_lockdir_timeout)
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-        signals.install_sighup_handler()
+        orig = signals.install_sighup_handler()
+        def restore_signals():
+            signals.restore_sighup_handler(orig)
+        self.cleanups.append(restore_signals)
 
     def set_up(self, transport, host, port, inet, timeout):
         self._make_backing_transport(transport)
@@ -473,6 +476,7 @@ class BzrServerFactory(object):
     def tear_down(self):
         for cleanup in reversed(self.cleanups):
             cleanup()
+
 
 def serve_bzr(transport, host=None, port=None, inet=False, timeout=None):
     """This is the default implementation of 'bzr serve'.

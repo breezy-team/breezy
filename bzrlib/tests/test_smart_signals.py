@@ -131,14 +131,13 @@ class TestSignalHandlers(tests.TestCase):
         self.assertEqual('', log)
 
     def test_install_sighup_handler(self):
-        if getattr(signal, 'SIGHUP', None) is None:
-            raise tests.TestNotApplicable('No SIGHUP to handle on this'
-                ' platform (%s)' % (sys.platform,))
         # install_sighup_handler should set up a signal handler for SIGHUP, as
         # well as the signals._on_sighup dict.
-        # TODO: Windows testing
         signals._on_sighup = None
         orig = signals.install_sighup_handler()
-        old = signal.signal(SIGHUP, orig)
+        if getattr(signal, 'SIGHUP', None) is not None:
+            cur = signal.getsignal(SIGHUP, orig)
+            self.assertEqual(signals._sighup_handler, cur)
         self.assertIsNot(None, signals._on_sighup)
-        self.assertEqual(signals._sighup_handler, old)
+        signals.restore_sighup_handler(orig)
+        self.assertIs(None, signals._on_sighup)

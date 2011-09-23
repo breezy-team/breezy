@@ -56,10 +56,11 @@ def install_sighup_handler():
     if getattr(signal, "SIGHUP", None) is None:
         # If we can't install SIGHUP, there is no reason (yet) to do graceful
         # shutdown.
-        return
-    old = signal.signal(signal.SIGHUP, _sighup_handler)
-    _setup_on_hangup_dict()
-    return old
+        old_signal = None
+    else:
+        old_signal = signal.signal(signal.SIGHUP, _sighup_handler)
+    old_dict = _setup_on_hangup_dict()
+    return old_signal, old_dict
 
 
 def _setup_on_hangup_dict():
@@ -73,6 +74,15 @@ def _setup_on_hangup_dict():
     old = _on_sighup
     _on_sighup = weakref.WeakValueDictionary()
     return old
+
+
+def restore_sighup_handler(orig):
+    """Pass in the returned value from install_sighup_handler to reset."""
+    global _on_sighup
+    old_signal, old_dict = orig
+    if old_signal is not None:
+        signal.signal(signal.SIGHUP, old_signal)
+    _on_sighup = old_dict
 
 
 # TODO: Should these be single-use callables? Meaning that once we've triggered
