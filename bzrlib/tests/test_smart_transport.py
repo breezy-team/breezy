@@ -1133,7 +1133,6 @@ class TestSmartTCPServer(tests.TestCase):
             client_sock.close()
         except socket.error, e:
             # If the server has hung up already, that is fine.
-            self.fail(str(e))
             pass
 
     def say_hello(self, client_sock):
@@ -1249,9 +1248,21 @@ class TestSmartTCPServer(tests.TestCase):
 
     def test_graceful_shutdown_waits_for_clients_to_stop(self):
         server, server_thread = self.make_server()
+        # We need something big enough that it won't fit in a single recv. So
+        # the server thread gets blocked writing content to the client until we
+        # finish reading on the client.
+        server.backing_transport.put_bytes('bigfile',
+            'a'*1024*1024)
         client_sock = self.connect_to_server(server)
         self.say_hello(client_sock)
         _, server_side_thread = server._active_connections[0]
+        # Start the RPC, but don't finish reading the response
+        client_medium = medium.SmartClientAlreadyConnectedSocketMedium(
+            'base', client_sock)
+        client_client = client._SmartClient(client_medium)
+        resp, response_handler = client_client.call_expecting_body('get',
+            'bigfile')
+        self.assertEqual(('ok',), resp)
         # Ask the server to stop gracefully, and wait for it.
         server._stop_gracefully()
         self.connect_to_server_and_hangup(server)
@@ -1261,6 +1272,7 @@ class TestSmartTCPServer(tests.TestCase):
         # It should also not be fully stopped
         server._fully_stopped.wait(0.01)
         self.assertFalse(server._fully_stopped.isSet())
+        response_handler.read_body_bytes()
         client_sock.close()
         server_side_thread.join()
         server_thread.join()
@@ -1270,7 +1282,6 @@ class TestSmartTCPServer(tests.TestCase):
     INFO  Requested to stop gracefully
 ... Stopping <bzrlib.smart.medium.SmartServerSocketStreamMedium ...
     INFO  Waiting for 1 client(s) to finish
-... Stopped while waiting for request: ...
 """, flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
 
     def test_stop_gracefully_tells_handlers_to_stop(self):
