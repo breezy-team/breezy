@@ -2620,7 +2620,7 @@ class cmd_log(Command):
             match_dict['author'] = match_author
         if match_bugs:
             match_dict['bugs'] = match_bugs
-            
+
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -5752,12 +5752,18 @@ class cmd_tags(Command):
 
         self.add_cleanup(branch.lock_read().unlock)
         if revision:
-            graph = branch.repository.get_graph()
             rev1, rev2 = _get_revision_range(revision, branch, self.name())
             revid1, revid2 = rev1.rev_id, rev2.rev_id
+            tagged_revids = branch.tags.get_reverse_tag_dict()
             # only show revisions between revid1 and revid2 (inclusive)
-            tags = [(tag, revid) for tag, revid in tags if
-                graph.is_between(revid, revid1, revid2)]
+            found = []
+            for r in branch.iter_merge_sorted_revisions(
+                start_revision_id=revid2, stop_revision_id=revid1,
+                stop_rule='include'):
+                revid_tags = tagged_revids.get(r[0], None)
+                if revid_tags:
+                    found.extend([(tag, r[0]) for tag in revid_tags])
+            tags = found
         if sort is None:
             sort = tag_sort_methods.get()
         sort(branch, tags)
@@ -5768,7 +5774,8 @@ class cmd_tags(Command):
                     revno = branch.revision_id_to_dotted_revno(revid)
                     if isinstance(revno, tuple):
                         revno = '.'.join(map(str, revno))
-                except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
+                except (errors.NoSuchRevision,
+                        errors.GhostRevisionsHaveNoRevno):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
