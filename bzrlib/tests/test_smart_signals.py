@@ -15,11 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import sys
 import signal
 import weakref
 
 from bzrlib import tests
 from bzrlib.smart import signals
+
+# Windows doesn't define SIGHUP. And while we could just skip a lot of these
+# tests, we often don't actually care about interaction with 'signal', so we
+# can still run the tests for code coverage.
+SIGHUP = getattr(signal, 'SIGHUP', 1)
 
 
 class TestSignalHandlers(tests.TestCase):
@@ -43,7 +49,7 @@ class TestSignalHandlers(tests.TestCase):
         def call_me():
             calls.append('called')
         signals.register_on_hangup('myid', call_me)
-        signals._sighup_handler(signal.SIGHUP, None)
+        signals._sighup_handler(SIGHUP, None)
         self.assertEqual(['called'], calls)
         signals.unregister_on_hangup('myid')
 
@@ -64,7 +70,7 @@ class TestSignalHandlers(tests.TestCase):
         signals.register_on_hangup('myid', call_me)
         signals.register_on_hangup('otherid', fail_me)
         # _sighup_handler should call both, even though it got an exception
-        signals._sighup_handler(signal.SIGHUP, None)
+        signals._sighup_handler(SIGHUP, None)
         signals.unregister_on_hangup('myid')
         signals.unregister_on_hangup('otherid')
         log = self.get_log()
@@ -82,7 +88,7 @@ class TestSignalHandlers(tests.TestCase):
             calls.append('called')
         signals.register_on_hangup('myid', call_me_and_unregister)
         signals.register_on_hangup('other', call_me)
-        signals._sighup_handler(signal.SIGHUP, None)
+        signals._sighup_handler(SIGHUP, None)
 
     def test_keyboard_interrupt_propagated(self):
         # In case we get 'stuck' while running a hangup function, we should
@@ -91,7 +97,7 @@ class TestSignalHandlers(tests.TestCase):
             raise KeyboardInterrupt()
         signals.register_on_hangup('myid', call_me_and_raise)
         self.assertRaises(KeyboardInterrupt,
-                          signals._sighup_handler, signal.SIGHUP, None)
+                          signals._sighup_handler, SIGHUP, None)
         signals.unregister_on_hangup('myid')
 
     def test_weak_references(self):
@@ -108,7 +114,7 @@ class TestSignalHandlers(tests.TestCase):
         signals.register_on_hangup('myid', call_me)
         del call_me
         # Non-CPython might want to do a gc.collect() here
-        signals._sighup_handler(signal.SIGHUP, None)
+        signals._sighup_handler(SIGHUP, None)
         self.assertEqual([], calls)
 
     def test_not_installed(self):
@@ -119,17 +125,20 @@ class TestSignalHandlers(tests.TestCase):
         def call_me():
             calls.append('called')
         signals.register_on_hangup('myid', calls)
-        signals._sighup_handler(signal.SIGHUP, None)
+        signals._sighup_handler(SIGHUP, None)
         signals.unregister_on_hangup('myid')
         log = self.get_log()
         self.assertEqual('', log)
 
     def test_install_sighup_handler(self):
+        if getattr(signal, 'SIGHUP', None) is None:
+            raise tests.TestNotApplicable('No SIGHUP to handle on this'
+                ' platform (%s)' % (sys.platform,))
         # install_sighup_handler should set up a signal handler for SIGHUP, as
         # well as the signals._on_sighup dict.
         # TODO: Windows testing
         signals._on_sighup = None
         orig = signals.install_sighup_handler()
-        old = signal.signal(signal.SIGHUP, orig)
+        old = signal.signal(SIGHUP, orig)
         self.assertIsNot(None, signals._on_sighup)
         self.assertEqual(signals._sighup_handler, old)

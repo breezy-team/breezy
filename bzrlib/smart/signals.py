@@ -53,6 +53,10 @@ def _sighup_handler(signal_number, interrupted_frame):
 
 def install_sighup_handler():
     """Setup a handler for the SIGHUP signal."""
+    if getattr(signal, "SIGHUP", None) is None:
+        # If we can't install SIGHUP, there is no reason (yet) to do graceful
+        # shutdown.
+        return
     old = signal.signal(signal.SIGHUP, _sighup_handler)
     _setup_on_hangup_dict()
     return old
