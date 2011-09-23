@@ -728,7 +728,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         client_sock.sendall(sample_request_bytes)
         server._serve_one_request(sample_protocol)
-        server._close()
+        server._disconnect_client()
         self.assertEqual('', client_sock.recv(1))
         self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
         self.assertFalse(server.finished)
@@ -762,7 +762,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server_protocol = server._build_protocol()
         client_sock.sendall(rest_of_request_bytes)
         server._serve_one_request(server_protocol)
-        server._close()
+        server._disconnect_client()
         self.assertEqual(expected_response, osutils.recv_all(client_sock, 50),
                          "Not a version 2 response to 'hello' request.")
         self.assertEqual('', client_sock.recv(1))
@@ -841,7 +841,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         stream_still_open = server._serve_one_request(second_protocol)
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertFalse(server.finished)
-        server._close()
+        server._disconnect_client()
         self.assertEqual('', client_sock.recv(1))
 
     def test_pipe_like_stream_error_handling(self):
@@ -883,7 +883,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
-        server._close()
+        server._disconnect_client()
         self.assertEqual('', client_sock.recv(1))
 
     def build_protocol_pipe_like(self, bytes):
