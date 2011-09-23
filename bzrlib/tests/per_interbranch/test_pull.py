@@ -16,8 +16,6 @@
 
 """Tests for InterBranch.pull behaviour."""
 
-import os
-
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib import errors
