@@ -75,6 +75,7 @@ class SmartTCPServer(object):
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
         self._client_timeout = client_timeout
+        self._active_connections = []
 
     def start_server(self, host, port):
         """Create the server listening socket.
@@ -216,6 +217,23 @@ class SmartTCPServer(object):
             conn, self.backing_transport, self.root_client_path,
             timeout=self._client_timeout)
 
+    def _poll_active_connections(self, timeout=0.0):
+        """Check to see if any active connections have finished.
+
+        This will iterate through self._active_connections, and update any
+        connections that are finished.
+
+        :param timeout: The timeout to pass to thread.join(). By default, we
+            set it to 0, so that we don't hang if threads are not done yet.
+        :return: None
+        """
+        still_active = []
+        for conn, handler, thread in self._active_connections:
+            thread.join(timeout)
+            if thread.isAlive():
+                still_active.append((conn, handler, thread))
+        self._active_connections = still_active
+
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
         # propagates to the newly accepted socket.
@@ -230,6 +248,7 @@ class SmartTCPServer(object):
         # rid of them -- vila 20100531
         connection_thread.setDaemon(True)
         connection_thread.start()
+        self._active_connections.append((conn, handler, connection_thread))
         return connection_thread
 
     def start_background_thread(self, thread_name_suffix=''):

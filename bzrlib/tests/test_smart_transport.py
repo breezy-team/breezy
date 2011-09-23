@@ -1104,6 +1104,21 @@ class TestSmartTCPServer(tests.TestCase):
         handler = server._make_handler(server_socket)
         self.assertEqual(1.23, handler._client_timeout)
 
+    def test_serve_conn_tracks_connections(self):
+        server = _mod_server.SmartTCPServer(None, client_timeout=4.0)
+        server_sock, client_sock = portable_socket_pair()
+        server.serve_conn(server_sock, '-%s' % (self.id(),))
+        self.assertEqual(1, len(server._active_connections))
+        # We still want to talk on the connection. Polling should indicate it
+        # is still active.
+        server._poll_active_connections()
+        self.assertEqual(1, len(server._active_connections))
+        # Closing the socket will end the active thread, and polling will
+        # notice and remove it from the active set.
+        client_sock.close()
+        server._poll_active_connections(0.1)
+        self.assertEqual(0, len(server._active_connections))
+
 
 class SmartTCPTests(tests.TestCase):
     """Tests for connection/end to end behaviour using the TCP server.
