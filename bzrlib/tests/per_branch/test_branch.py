@@ -400,7 +400,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
             return
         child_transport = repo.bzrdir.root_transport.clone('child')
         child_transport.mkdir('.')
-        child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
+        try:
+            child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
+        except errors.UninitializableFormat:
+            return
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:

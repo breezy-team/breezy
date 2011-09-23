@@ -389,8 +389,13 @@ class TestControlDir(TestCaseWithControlDir):
     def test_clone_respects_stacked(self):
         branch = self.make_branch('parent')
         child_transport = self.get_transport('child')
-        child = branch.bzrdir.clone_on_transport(child_transport,
-                                                 stacked_on=branch.base)
+        try:
+            child = branch.bzrdir.clone_on_transport(child_transport,
+                                                     stacked_on=branch.base)
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            raise TestNotApplicable("branch or repository format do "
+                "not support stacking")
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
     def test_get_branch_reference_on_reference(self):
@@ -946,7 +951,10 @@ class TestControlDir(TestCaseWithControlDir):
         # supported formats must be able to init and open
         t = self.get_transport()
         readonly_t = self.get_readonly_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         self.assertIsInstance(made_control, controldir.ControlDir)
         if isinstance(self.bzrdir_format, RemoteBzrDirFormat):
             return
@@ -975,9 +983,12 @@ class TestControlDir(TestCaseWithControlDir):
             return
         t = self.get_transport('dir')
         t.ensure_base()
-        self.assertRaises(errors.FileExists,
-            self.bzrdir_format.initialize_on_transport_ex, t,
-            use_existing_dir=False)
+        try:
+            self.assertRaises(errors.FileExists,
+                self.bzrdir_format.initialize_on_transport_ex, t,
+                use_existing_dir=False)
+        except errors.UninitializableFormat:
+            return
 
     def test_format_initialize_on_transport_ex_create_prefix_True(self):
         t = self.get_transport('missing/dir')
@@ -1021,6 +1032,9 @@ class TestControlDir(TestCaseWithControlDir):
                 made_repo.bzrdir.root_transport.base)
 
     def test_format_initialize_on_transport_ex_stacked_on(self):
+        if not self.bzrdir_format.is_supported():
+            # Not initializable - not a failure either.
+            return
         # trunk is a stackable format.  Note that its in the same server area
         # which is what launchpad does, but not sufficient to exercise the
         # general case.
@@ -1104,8 +1118,12 @@ class TestControlDir(TestCaseWithControlDir):
         if not self.bzrdir_format.is_supported():
             # Not initializable - not a failure either.
             return None, None
-        repo, control, require_stacking, repo_policy = \
-            self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
+        try:
+            repo, control, require_stacking, repo_policy = \
+                self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
+        except errors.UninitializableFormat:
+            # Not initializable - not a failure either.
+            return None, None
         if repo is not None:
             # Repositories are open write-locked
             self.assertTrue(repo.is_write_locked())
@@ -1162,7 +1180,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
         self.assertIsInstance(made_branch, bzrlib.branch.Branch)
@@ -1176,7 +1197,11 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            # format can not be initialized
+            return
         made_repo = made_control.create_repository()
         try:
             made_branch = made_control.create_branch(
@@ -1194,7 +1219,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
         opened_branch = made_control.open_branch()
@@ -1209,7 +1237,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
         branches = made_control.list_branches()
@@ -1230,7 +1261,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
         made_repo.has_revision('foo')
@@ -1245,7 +1279,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         try:
             made_repo = made_control.create_repository(shared=True)
         except errors.IncompatibleFormat:
@@ -1262,7 +1299,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         try:
             made_repo = made_control.create_repository(shared=False)
         except errors.IncompatibleFormat:
@@ -1278,7 +1318,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         made_repo = made_control.create_repository()
         opened_repo = made_control.open_repository()
         self.assertEqual(made_control, opened_repo.bzrdir)
@@ -1293,7 +1336,10 @@ class TestControlDir(TestCaseWithControlDir):
             # they may not be initializable.
             return
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            return
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
         made_tree = self.createWorkingTreeOrSkip(made_control)
@@ -1308,7 +1354,10 @@ class TestControlDir(TestCaseWithControlDir):
         source.commit('b', rev_id='b', allow_pointless=True)
         t.mkdir('new')
         t_new = t.clone('new')
-        made_control = self.bzrdir_format.initialize_on_transport(t_new)
+        try:
+            made_control = self.bzrdir_format.initialize_on_transport(t_new)
+        except errors.UninitializableFormat:
+            return
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
         try:
@@ -1334,6 +1383,8 @@ class TestControlDir(TestCaseWithControlDir):
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
+        except errors.UninitializableFormat:
+            return
         opened_tree = made_control.open_workingtree()
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.assertIsInstance(opened_tree, made_tree.__class__)
@@ -1350,7 +1401,8 @@ class TestControlDir(TestCaseWithControlDir):
         t = self.get_transport()
         try:
             made_control = self.bzrdir_format.initialize(t.base)
-        except (errors.NotLocalUrl, errors.UnsupportedOperation):
+        except (errors.NotLocalUrl, errors.UnsupportedOperation,
+                errors.UninitializableFormat):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         dir = bzrdir.BzrDir.open(t.base+",branch=foo")
@@ -1371,6 +1423,8 @@ class TestControlDir(TestCaseWithControlDir):
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
+        except errors.UninitializableFormat:
+            return
         dir = bzrdir.BzrDir.open(t.base)
         self.assertIs(None, dir._get_selected_branch())
 
@@ -1706,7 +1760,10 @@ class ChrootedControlDirTests(ChrootedTestCase):
         # XXX: TODO this should become a 'bzrdirlocation' api call.
         url = self.get_vfs_only_url('subdir')
         transport.get_transport_from_url(self.get_vfs_only_url()).mkdir('subdir')
-        made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
+        try:
+            made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
+        except errors.UninitializableFormat:
+            return
         try:
             repo = made_control.open_repository()
             # if there is a repository, then the format cannot ever hit this
