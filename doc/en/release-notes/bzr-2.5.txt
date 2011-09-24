@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Stop reloading all ancestry for each tag when searching tags in a revision
+  range. (Vincent Ladeuil, #857335)
+
 Bug Fixes
 *********
 
