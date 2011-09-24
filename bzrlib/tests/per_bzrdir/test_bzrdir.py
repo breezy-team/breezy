@@ -21,13 +21,16 @@ from stat import S_ISDIR
 
 import bzrlib.branch
 from bzrlib import (
+    bzrdir,
     errors,
     repository,
     revision as _mod_revision,
     transport,
     workingtree,
     )
+from bzrlib.remote import RemoteBzrDirFormat
 from bzrlib.tests import (
+    TestNotApplicable,
     TestSkipped,
     )
 from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
