@@ -96,8 +96,11 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         revid = tree.commit('a second commit')
         source = tree.branch
         target_transport = self.get_transport('target')
-        result = tree.branch.create_clone_on_transport(target_transport,
-            stacked_on=trunk.base)
+        try:
+            result = tree.branch.create_clone_on_transport(target_transport,
+                stacked_on=trunk.base)
+        except errors.UnstackableRepositoryFormat:
+            raise tests.TestNotApplicable("format does not support stacking")
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
 
@@ -133,8 +136,11 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         self.hook_calls = []
         branch.Branch.hooks.install_named_hook(
             'pre_change_branch_tip', self.assertBranchHookBranchIsStacked, None)
-        result = tree.branch.create_clone_on_transport(target_transport,
-            stacked_on=trunk.base)
+        try:
+            result = tree.branch.create_clone_on_transport(target_transport,
+                stacked_on=trunk.base)
+        except errors.UnstackableRepositoryFormat:
+            raise tests.TestNotApplicable("format does not support stacking")
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
         # Smart servers invoke hooks on both sides

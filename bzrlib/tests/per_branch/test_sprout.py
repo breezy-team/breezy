@@ -206,7 +206,8 @@ class TestSprout(TestCaseWithBranch):
             dir = source.bzrdir.sprout(target_transport.base,
                 source.last_revision(), possible_transports=[target_transport],
                 source_branch=source, stacked=True)
-        except errors.UnstackableBranchFormat:
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
             if not self.branch_format.supports_stacking():
                 raise tests.TestNotApplicable(
                     "Format doesn't auto stack successfully.")
