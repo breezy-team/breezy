@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-09-21 14:27+0000\n"
+"PO-Revision-Date: 2011-09-23 19:03+0000\n"
 "Last-Translator: Sergey Basalaev <SBasalaev@gmail.com>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -16,8 +16,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2011-09-22 04:30+0000\n"
-"X-Generator: Launchpad (build 13996)\n"
+"X-Launchpad-Export-Date: 2011-09-24 04:30+0000\n"
+"X-Generator: Launchpad (build 14012)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -749,6 +749,11 @@ msgid ""
 "identifier, if any. For example, \"branch lp:foo-bar\" will attempt to\n"
 "create ./foo-bar."
 msgstr ""
+"Если TO_LOCATION опущено, будет использована последняя компонента\n"
+"FROM_LOCATION. Иными словами, «branch ../foo/bar» попытается создать ./bar.\n"
+"Если FROM_LOCATION не содержит разделителя «/», то TO_LOCATION определется\n"
+"из FROM_LOCATION удалением префикса. Например «branch lp:foo-bar»\n"
+"попытается создать ./foo-bar."
 
 #: bzrlib/builtins.py:1221
 msgid ""
@@ -793,7 +798,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1250
 msgid "Bind new branch to from location."
-msgstr ""
+msgstr "Связать новую ветвь с FROM_LOCATION"
 
 #: bzrlib/builtins.py:1291
 #, python-format
@@ -860,6 +865,9 @@ msgid ""
 "or if it was never created - i.e. if you pushed the branch to its current\n"
 "location using SFTP."
 msgstr ""
+"Если аргумент BRANCH_LOCATION опущен, checkout воссоздаст рабочее дерево\n"
+"для ветви, найденной в '.'. Это полезно, если выв удалили рабочее дерево,\n"
+"или если вы никогда не создавали его."
 
 #: bzrlib/builtins.py:1366
 msgid ""
@@ -872,6 +880,11 @@ msgid ""
 "identifier, if any. For example, \"checkout lp:foo-bar\" will attempt to\n"
 "create ./foo-bar."
 msgstr ""
+"Если TO_LOCATION опущено, будет использована последняя компонента\n"
+"BRANCH_LOCATION. Иными словами, «checkout ../foo/bar» попытается\n"
+"создать ./bar. Если BRANCH_LOCATION не содержит разделителя «/»,\n"
+"то TO_LOCATION определется из BRANCH_LOCATION удалением префикса.\n"
+"Например «checkout lp:foo-bar» попытается создать ./foo-bar."
 
 #: bzrlib/builtins.py:1373
 msgid ""
@@ -882,6 +895,10 @@ msgid ""
 "old\n"
 "code.)"
 msgstr ""
+"Чтобы получить определённую ревизию ветви, добавьте параметр --revision,\n"
+"например «checkout foo/bar -r 5». Заметьте, что такое дерево будет сразу\n"
+"просрочено [так что в не сможете закрепить изменения], но это может быть\n"
+"полезно, к примеру, для просмотра старого кода."
 
 #: bzrlib/builtins.py:1383
 msgid ""
@@ -890,6 +907,10 @@ msgid ""
 "operations like diff and status without such access, and also support local "
 "commits."
 msgstr ""
+"Произвести легковесную выборку. Каждая операция над легковесной выборкой "
+"зависит от доступности ветви. Обычные выборки позволяют производить "
+"стандартные операции, как diff и status, без такого доступа, а также "
+"поддерживают локальные закрепления."
 
 #: bzrlib/builtins.py:1390
 msgid "Get file contents from this tree."
@@ -917,6 +938,9 @@ msgid ""
 "conflicts. If you have any local changes, you will still\n"
 "need to commit them after the update for the update to be complete."
 msgstr ""
+"Совершит слияние с рабочим деревом и может создать конфликты.\n"
+"Если у вас есть локальные изменения, их всё равно нужно будет\n"
+"закрепить после обновления, чтобы завершить обновление."
 
 #: bzrlib/builtins.py:1469
 msgid ""
@@ -939,6 +963,8 @@ msgid ""
 "If the tree's branch is bound to a master branch, it will also update\n"
 "the branch from the master."
 msgstr ""
+"Если ветвь дерева связана с основной ветвью, ветвь также обновится\n"
+"из основной."
 
 #: bzrlib/builtins.py:1490
 msgid "bzr update --revision takes exactly one revision"
@@ -946,7 +972,7 @@ msgstr "bzr update --revision принимает ровно одну ревиз�
 
 #: bzrlib/builtins.py:1521
 msgid "Tree is up to date at revision {0} of branch {1}"
-msgstr ""
+msgstr "Дерево в актуальной ревизии {0} ветви {1}"
 
 #: bzrlib/builtins.py:1537
 #, python-format
@@ -966,6 +992,8 @@ msgid ""
 "Your local commits will now show as pending merges with 'bzr status', and "
 "can be committed with 'bzr commit'."
 msgstr ""
+"Ваши локальные закрепления теперь будут отображаться в 'bzr status' как "
+"незавершённые слияния, и их можно закрепить с помощью 'bzr commit'."
 
 #: bzrlib/builtins.py:1556
 msgid "Show information about a working tree, branch or repository."
@@ -976,6 +1004,8 @@ msgid ""
 "This command will show all known locations and formats associated to the\n"
 "tree, branch or repository."
 msgstr ""
+"Эта команда выведет все известные местоположения и форматы, связанные\n"
+"с деревом, ветвью или репозиторием."
 
 #: bzrlib/builtins.py:1561
 msgid ""
@@ -983,14 +1013,18 @@ msgid ""
 "To see extended statistic information, use a verbosity level of 2 or\n"
 "higher by specifying the verbose option multiple times, e.g. -vv."
 msgstr ""
+"В подробном режиме в каждый отчёт включается статистическая информация.\n"
+"Чтобы увидеть расширенную статистическую информацию, используйте уровень\n"
+"подробностей 2 или выше, указывая опцию -v несколько раз, например -vv."
 
 #: bzrlib/builtins.py:1565
 msgid "Branches and working trees will also report any missing revisions."
 msgstr ""
+"Ветви и рабочие деревья также включают в отчёт отсутствующие ревизии."
 
 #: bzrlib/builtins.py:1569
 msgid "  Display information on the format and related locations:"
-msgstr ""
+msgstr "  Вывести информацию о формате и связанных местоположениях:"
 
 #: bzrlib/builtins.py:1571
 msgid "    bzr info"
@@ -1002,6 +1036,9 @@ msgid ""
 "  basic statistics (like the number of files in the working tree and\n"
 "  number of revisions in the branch and repository):"
 msgstr ""
+"  Вывести то же, что и выше, а также расширенную информацию о формате\n"
+"  и базовую статистику (как число файлов в рабочем дереве и число\n"
+"  ревизий в ветви и репозитории):"
 
 #: bzrlib/builtins.py:1577
 msgid "    bzr info -v"
@@ -1009,7 +1046,7 @@ msgstr "    bzr info -v"
 
 #: bzrlib/builtins.py:1579
 msgid "  Display the above together with number of committers to the branch:"
-msgstr ""
+msgstr "  Вывести то же, что и выше, а также число участников ветви:"
 
 #: bzrlib/builtins.py:1581
 msgid "    bzr info -vv"
@@ -1027,6 +1064,11 @@ msgid ""
 "parameters are given Bazaar will scan for files that are being tracked by\n"
 "Bazaar but missing in your tree and stop tracking them for you."
 msgstr ""
+"Прекращает отслеживание изменений в указанных файлах. Bazaar удалит их,\n"
+"если их можно легко восстановить с помощью revert, иначе будут созданы\n"
+"их резервные копии (с расширением вида .~#~). Если не указано ни опций,\n"
+"ни параметров, Bazaar найдёт файлы, которые отслеживаются, но отсутствуют\n"
+"в рабочем дереве и прекратит их отслеживать."
 
 #: bzrlib/builtins.py:1610
 msgid "Only remove files that have never been committed."
@@ -1043,6 +1085,7 @@ msgstr "Стратегия удаления"
 #: bzrlib/builtins.py:1626
 msgid "(The --force option is deprecated, rather use --no-backup in future.)"
 msgstr ""
+"(Опция --force устарела, в будущем следует использовать --no-backup.)"
 
 #: bzrlib/builtins.py:1643
 msgid "No matching files."
@@ -1050,7 +1093,7 @@ msgstr "Нет файлов, удовлетворяющих критерию."
 
 #: bzrlib/builtins.py:1704
 msgid "Reconcile bzr metadata in a branch."
-msgstr ""
+msgstr "Согласовать метаданные bzr в ветви."
 
 #: bzrlib/builtins.py:1706
 msgid ""
@@ -1059,6 +1102,9 @@ msgid ""
 "need to run this command if 'bzr check' or a bzr developer\n"
 "advises you to run it."
 msgstr ""
+"Может исправить несовпадения данных, вызванные обновлениями bzr.\n"
+"Эту команду стоит запускать только, если 'bzr check' или разработчик\n"
+"bzr предложат вам сделать это."
 
 #: bzrlib/builtins.py:1711
 msgid ""
@@ -1077,6 +1123,8 @@ msgstr ""
 #: bzrlib/builtins.py:1719
 msgid "The branch *MUST* be on a listable system such as local disk or sftp."
 msgstr ""
+"Ветвь *ДОЛЖНА* быть на системе, поддерживающей список файлов, такой как\r\n"
+"локальный диск или SFTP."
 
 #: bzrlib/builtins.py:1783
 msgid "Make a directory into a versioned branch."
@@ -1097,12 +1145,17 @@ msgid ""
 "init creates a standalone branch which carries its own history\n"
 "in the .bzr directory."
 msgstr ""
+"Если в родительской директории находится репозиторий, история ветви\n"
+"будет сохранена в репозитории. Иначе, init создаёт одиночную ветвь,\n"
+"которая несёт историю с собой в директории .bzr."
 
 #: bzrlib/builtins.py:1793
 msgid ""
 "If there is already a branch at the location but it has no working tree,\n"
 "the tree can be populated with 'bzr checkout'."
 msgstr ""
+"Если ветвь уже существует, но рабочее дерево отсутствует, то оно\n"
+"создаётся с помощью 'bzr checkout'."
 
 #: bzrlib/builtins.py:1796
 msgid "Recipe for importing a tree of files::"
@@ -1135,6 +1188,8 @@ msgstr "Указать формат данной ветви. См. «help format
 msgid ""
 "Never change revnos or the existing log.  Append revisions to it only."
 msgstr ""
+"Никогда не изменять номера ревизий в существующем журнале. Только добавлять "
+"к нему ревизии."
 
 #: bzrlib/builtins.py:1823
 msgid "Create a branch without a working tree."
@@ -1146,11 +1201,16 @@ msgid ""
 "Parent directory of %s does not exist.\n"
 "You may supply --create-prefix to create all leading parent directories."
 msgstr ""
+"Родительская директория для %s не существует.\n"
+"Вы может предоставить --create-prefix, чтобы создать все родительские "
+"директории."
 
 #: bzrlib/builtins.py:1877
 msgid ""
 "This branch format cannot be set to append-revisions-only.  Try --default."
 msgstr ""
+"Формат этой ветви не может быть установлен в append-revisions-only. "
+"Попробуйте --default."
 
 #: bzrlib/builtins.py:1888
 msgid "Created a {0} (format: {1})\n"
@@ -1173,6 +1233,10 @@ msgid ""
 "with shared history, this reduces the amount of storage needed and \n"
 "speeds up the creation of new branches."
 msgstr ""
+"Новые ветви, создаваемые в директории репозитория, будут хранить\n"
+"информацию о ревизиях в репозитории, а не в директории ветви.\n"
+"Для ветвей с общей историей это уменьшает размер необходимого\n"
+"пространства и ускоряет создание новых ветвей."
 
 #: bzrlib/builtins.py:1908
 msgid ""
@@ -1183,6 +1247,12 @@ msgid ""
 "store branches which are interacted with through checkouts or remote\n"
 "branches, such as on a server."
 msgstr ""
+"Если дана опция --no-trees, то по умолчанию ветви в репозитории не\n"
+"будут иметь рабочих деревьев.  Они по прежнему будут существовать,\n"
+"как директории на диске, но не будут иметь различных копий файлов\n"
+"определённой ревизии.  Это может быть полезно для репозиториев,\n"
+"хранящих ветви, работа с которыми производится через выборки или\n"
+"через удалённые ветви, например на сервере."
 
 #: bzrlib/builtins.py:1915
 msgid ""
@@ -1202,7 +1272,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1921
 msgid "    Make a lightweight checkout elsewhere::"
-msgstr ""
+msgstr "    Создать легковесную выборку где-нибудь ещё::"
 
 #: bzrlib/builtins.py:1923
 msgid ""
@@ -1218,6 +1288,8 @@ msgstr ""
 msgid ""
 "Specify a format for this repository. See \"bzr help formats\" for details."
 msgstr ""
+"Указать формат для этого репозитория. Описание форматов см. в «bzr help "
+"formats»."
 
 #: bzrlib/builtins.py:1935
 msgid "Repository format"
@@ -1240,12 +1312,19 @@ msgid ""
 "the first argument, if any, or the current tree if no arguments are\n"
 "given."
 msgstr ""
+"Если не дано аргументов, будут выведены все изменения текущего дерева.\n"
+"Если даны файлы, выводятся изменения только в этих файлах. Удалённые\n"
+"или множественные ветви можно сравнить, используя опции --old и --new.\n"
+"Если не указаны, значение по умолчанию для обоих извлекается из первого\n"
+"аргумента или из текущего дерева, если не дано аргументов."
 
 #: bzrlib/builtins.py:1970
 msgid ""
 "\"bzr diff -p1\" is equivalent to \"bzr diff --prefix old/:new/\", and\n"
 "produces patches suitable for \"patch -p1\"."
 msgstr ""
+"«bzr diff -p1» эквивалентно «bzr diff -prefix old/:new/», и\n"
+"создаёт патчи, подходящие для «patch -p1»."
 
 #: bzrlib/builtins.py:1973
 msgid ""
