@@ -55,6 +55,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Repository.fileids_altered_by_revision_ids`` has been moved to
+  ``VersionedFileRepository`` and is no longer part of the standard
+  ``Repository`` interface. (Jelmer Vernooij)
+
 Internals
 *********
 

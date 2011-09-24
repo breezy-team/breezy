@@ -114,7 +114,6 @@ def load_tests(standard_tests, module, loader):
         'test_check',
         'test_commit_builder',
         'test_fetch',
-        'test_fileid_involved',
         'test_file_graph',
         'test_get_parent_map',
         'test_has_same_location',
