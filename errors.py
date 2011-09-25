@@ -50,5 +50,5 @@ class NoPushSupport(bzr_errors.BzrError):
     _fmt = "Push is not yet supported for bzr-git. Try dpush instead."
 
 
-class GitSmartRemoteNotSupported(bzr_errors.BzrError):
+class GitSmartRemoteNotSupported(bzr_errors.UnsupportedOperation):
     _fmt = "This operation is not supported by the Git smart server protocol."

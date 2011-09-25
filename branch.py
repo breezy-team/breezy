@@ -933,6 +933,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 isinstance(target, GitBranch))
 
     def _get_new_refs(self, stop_revision=None, fetch_tags=None):
+        assert self.source.is_locked()
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
         else:
@@ -943,7 +944,6 @@ class InterToGitBranch(branch.GenericInterBranch):
         if fetch_tags is None:
             c = self.source.get_config()
             fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
-        graph = self.source.repository.get_graph()
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
                 ref = tag_name_to_ref(name)
@@ -951,7 +951,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                     warning("skipping tag with invalid characters %s (%s)",
                         name, ref)
                     continue
-                if fetch_tags or graph.is_ancestor(revid, stop_revision):
+                if fetch_tags:
+                    # FIXME: Skip tags that are not in the ancestry
                     refs[ref] = (None, revid)
         return refs, main_ref, (stop_revno, stop_revision)
 

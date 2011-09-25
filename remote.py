@@ -376,7 +376,7 @@ class RemoteGitRepository(GitRepository):
         return self.control_url
 
     def get_parent_map(self, revids):
-        raise GitSmartRemoteNotSupported()
+        raise GitSmartRemoteNotSupported(self.get_parent_map, self)
 
     def get_refs(self):
         if self._refs is not None:
@@ -445,7 +445,7 @@ class RemoteGitBranch(GitBranch):
                 lockfiles)
 
     def last_revision_info(self):
-        raise GitSmartRemoteNotSupported()
+        raise GitSmartRemoteNotSupported(self.last_revision_info, self)
 
     @property
     def user_url(self):
@@ -456,7 +456,7 @@ class RemoteGitBranch(GitBranch):
         return self.base
 
     def revision_history(self):
-        raise GitSmartRemoteNotSupported()
+        raise GitSmartRemoteNotSupported(self.last_revision_info, self)
 
     def last_revision(self):
         return self.lookup_foreign_revision_id(self.head)
