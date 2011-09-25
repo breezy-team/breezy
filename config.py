@@ -24,9 +24,12 @@ class GitBranchConfig(config.BranchConfig):
     """BranchConfig that uses locations.conf in place of branch.conf"""
 
     def __init__(self, branch):
-        config.BranchConfig.__init__(self, branch)
+        super(GitBranchConfig, self).__init__(branch)
         # do not provide a BranchDataConfig
         self.option_sources = self.option_sources[0], self.option_sources[2]
+
+    def __repr__(self):
+        return "<%s of %r>" % (self.__class__.__name__, self.branch)
 
     def set_user_option(self, name, value, store=config.STORE_BRANCH,
             warn_masked=False):

@@ -379,6 +379,9 @@ class GitBranch(ForeignBranch):
             return ret
         return "git"
 
+    def get_config(self):
+        return GitBranchConfig(self)
+
     def _get_nick(self, local=False, possible_master_transports=None):
         """Find the nick name for this branch.
 
@@ -566,9 +569,6 @@ class LocalGitBranch(GitBranch):
         self._clear_cached_state()
 
     head = property(_get_head, _set_head)
-
-    def get_config(self):
-        return GitBranchConfig(self)
 
     def get_push_location(self):
         """See Branch.get_push_location."""

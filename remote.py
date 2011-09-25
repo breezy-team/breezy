@@ -461,14 +461,6 @@ class RemoteGitBranch(GitBranch):
     def last_revision(self):
         return self.lookup_foreign_revision_id(self.head)
 
-    def _get_config(self):
-        class EmptyConfig(object):
-
-            def _get_configobj(self):
-                return config.ConfigObj()
-
-        return EmptyConfig()
-
     @property
     def head(self):
         if self._sha is not None:
