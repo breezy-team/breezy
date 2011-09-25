@@ -5765,7 +5765,8 @@ class cmd_tags(Command):
                     if isinstance(revno, tuple):
                         revno = '.'.join(map(str, revno))
                 except (errors.NoSuchRevision,
-                        errors.GhostRevisionsHaveNoRevno):
+                        errors.GhostRevisionsHaveNoRevno,
+                        errors.UnsupportedOperation):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'

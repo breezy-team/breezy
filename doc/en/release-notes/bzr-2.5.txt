@@ -35,6 +35,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr tags`` can now be used against remote repositories that do
+  not provide access to the revision graph. (Jelmer Vernooij, #858942)
+
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
 
