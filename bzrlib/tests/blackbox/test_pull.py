@@ -97,7 +97,7 @@ class TestPull(TestCaseWithTransport):
         a_tree.commit(message="blah4", allow_pointless=True)
         os.chdir('../b/subdir')
         self.run_bzr('pull ../../a')
-        self.assertEqual(a.revision_history()[-1], b.revision_history()[-1])
+        self.assertEqual(a.last_revision(), b.last_revision())
         sub_tree = WorkingTree.open_containing('.')[0]
         sub_tree.commit(message="blah5", allow_pointless=True)
         sub_tree.commit(message="blah6", allow_pointless=True)
