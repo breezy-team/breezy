@@ -148,6 +148,7 @@ class LocalGitProber(Prober):
             return LocalGitControlDirFormat()
         if transport.has('info') and transport.has('objects'):
             return BareLocalGitControlDirFormat()
+        raise bzr_errors.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
