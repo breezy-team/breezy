@@ -80,7 +80,7 @@ class TestPull(TestCaseWithTransport):
 
         os.chdir('a')
         self.run_bzr('pull ../b')
-        self.assertEqual(a.revision_history(), b.revision_history())
+        self.assertEqual(a.last_revision(), b.last_revision())
         a_tree.commit(message='blah2', allow_pointless=True)
         b_tree.commit(message='blah3', allow_pointless=True)
         # no overwrite

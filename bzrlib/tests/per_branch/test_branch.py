@@ -429,6 +429,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Create a fake revision history easily."""
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         orig_history = list(tree.branch.iter_revision_history())
         rev2 = tree.commit('bar', allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
@@ -438,6 +440,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         tree.branch.generate_revision_history(revision.NULL_REVISION)
         self.assertEqual(revision.NULL_REVISION, tree.branch.last_revision())
         self.assertEqual([], list(tree.branch.iter_revision_history()))
