@@ -55,6 +55,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.revision_history`` is now deprecated in favor of
+  ``Branch.iter_revision_history``. (Jelmer Vernooij, #799519)
+
 Internals
 *********
 

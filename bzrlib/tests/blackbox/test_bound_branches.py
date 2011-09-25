@@ -333,7 +333,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.build_tree_contents([('other/c', 'file c\n')])
         other_tree.add('c')
         other_tree.commit(message='adding c')
-        new_rev_id = other_branch.revision_history()[-1]
+        new_rev_id = other_branch.last_revision()
 
         child_tree.merge_from_branch(other_branch)
 

@@ -191,7 +191,6 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull --overwrite ../a')
         rev_history_b = b_tree.branch.revision_history()
         self.assertEqual(len(rev_history_b), 3)
-
         self.assertEqual(rev_history_b, rev_history_a)
 
     def test_overwrite_children(self):
