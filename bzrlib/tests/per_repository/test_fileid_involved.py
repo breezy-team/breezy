@@ -206,7 +206,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
         pp=[]
-        history = self.branch.revision_history( )
+        history = list(self.branch.iter_revision_history())
 
         if len(history) < 2: return
 
@@ -297,7 +297,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         # sees each change rather than the aggregate delta.
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        history = self.branch.revision_history()
+        history = list(self.branch.iter_revision_history())
         old_rev = history[0]
         new_rev = history[1]
         graph = self.branch.repository.get_graph()

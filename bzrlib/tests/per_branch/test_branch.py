@@ -76,7 +76,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = self.get_branch()
         br.fetch(wt.branch)
         br.generate_revision_history('rev3')
-        rh = br.revision_history()
+        rh = list(br.iter_revision_history())
         self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
         for revision_id in rh:
             self.assertIsInstance(revision_id, str)
@@ -429,16 +429,18 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Create a fake revision history easily."""
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
-        orig_history = tree.branch.revision_history()
+        orig_history = list(tree.branch.iter_revision_history())
         rev2 = tree.commit('bar', allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
-        self.assertEqual(orig_history, tree.branch.revision_history())
+        self.assertEqual(orig_history,
+            list(tree.branch.iter_revision_history()))
 
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
         tree.branch.generate_revision_history(revision.NULL_REVISION)
-        self.assertEqual([], tree.branch.revision_history())
+        self.assertEqual(revision.NULL_REVISION, tree.branch.last_revision())
+        self.assertEqual([], list(tree.branch.iter_revision_history()))
 
     def test_create_checkout(self):
         tree_a = self.make_branch_and_tree('a')
@@ -490,10 +492,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = tree.branch
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, ["rev1"])
-        self.assertEquals(br.revision_history(), ["rev1"])
+        self.assertEquals(br.last_revision(), "rev1")
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, [])
-        self.assertEquals(br.revision_history(), [])
+        self.assertEquals(br.last_revision(), 'null:')
 
     def test_heads_to_fetch(self):
         # heads_to_fetch is a method that returns a collection of revids that

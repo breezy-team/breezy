@@ -91,8 +91,8 @@ class TestPull(TestCaseWithTransport):
         os.chdir('overwriteme')
         self.run_bzr('pull --overwrite ../a')
         overwritten = Branch.open('.')
-        self.assertEqual(overwritten.revision_history(),
-                         a.revision_history())
+        self.assertEqual(overwritten.last_revision(),
+                         a.last_revision())
         a_tree.merge_from_branch(b_tree.branch)
         a_tree.commit(message="blah4", allow_pointless=True)
         os.chdir('../b/subdir')
@@ -143,7 +143,7 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull -r 3')
         self.assertEqual(b.revno(),3)
         self.run_bzr('pull -r 4')
-        self.assertEqual(a.revision_history(), b.revision_history())
+        self.assertEqual(a.last_revision(), b.last_revision())
 
     def test_pull_tags(self):
         """Tags are updated by pull, and revisions named in those tags are
@@ -179,19 +179,18 @@ class TestPull(TestCaseWithTransport):
         self.build_tree_contents([('a/foo', 'a third change')])
         a_tree.commit(message='a third change')
 
-        rev_history_a = a_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_a), 3)
+        self.assertEqual(a_tree.branch.last_revision_info()[0], 3)
 
         b_tree.merge_from_branch(a_tree.branch)
         b_tree.commit(message='merge')
 
-        self.assertEqual(len(b_tree.branch.revision_history()), 2)
+        self.assertEqual(b_tree.branch.last_revision_info()[0], 2)
 
         os.chdir('b')
         self.run_bzr('pull --overwrite ../a')
-        rev_history_b = b_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_b), 3)
-        self.assertEqual(rev_history_b, rev_history_a)
+        (last_revinfo_b) = b_tree.branch.last_revision_info()
+        self.assertEqual(last_revinfo_b[0], 3)
+        self.assertEqual(last_revinfo_b[1], a_tree.branch.last_revision())
 
     def test_overwrite_children(self):
         # Make sure pull --overwrite sets the revision-history
@@ -209,27 +208,26 @@ class TestPull(TestCaseWithTransport):
         self.build_tree_contents([('a/foo', 'a third change')])
         a_tree.commit(message='a third change')
 
-        self.assertEqual(len(a_tree.branch.revision_history()), 3)
+        self.assertEqual(a_tree.branch.last_revision_info()[0], 3)
 
         b_tree.merge_from_branch(a_tree.branch)
         b_tree.commit(message='merge')
 
-        self.assertEqual(len(b_tree.branch.revision_history()), 2)
+        self.assertEqual(b_tree.branch.last_revision_info()[0], 2)
 
         self.build_tree_contents([('a/foo', 'a fourth change\n')])
         a_tree.commit(message='a fourth change')
 
-        rev_history_a = a_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_a), 4)
+        rev_info_a = a_tree.branch.last_revision_info()
+        self.assertEqual(rev_history_a[0], 4)
 
         # With convergence, we could just pull over the
         # new change, but with --overwrite, we want to switch our history
         os.chdir('b')
         self.run_bzr('pull --overwrite ../a')
-        rev_history_b = b_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_b), 4)
-
-        self.assertEqual(rev_history_b, rev_history_a)
+        rev_info_b = b_tree.branch.last_revision_info()
+        self.assertEqual(rev_info_b[0], 4)
+        self.assertEqual(rev_info_b, rev_info_a)
 
     def test_pull_remember(self):
         """Pull changes from one branch to another and test parent location."""
@@ -304,8 +302,8 @@ class TestPull(TestCaseWithTransport):
         self.assertEqual(err,
                 ' M  a\nAll changes applied successfully.\n')
 
-        self.assertEqualDiff(tree_a.branch.revision_history(),
-                             tree_b.branch.revision_history())
+        self.assertEqualDiff(tree_a.branch.last_revision(),
+                             tree_b.branch.last_revision())
 
         testament_a = Testament.from_revision(tree_a.branch.repository,
                                               tree_a.get_parent_ids()[0])

@@ -172,7 +172,7 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         with each revision utf8 encoded and \x00 joined.
         """
         return SuccessfulSmartServerResponse(
-            ('ok', ), ('\x00'.join(branch.revision_history())))
+            ('ok', ), ('\x00'.join(branch.iter_revision_history())))
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):

@@ -37,7 +37,11 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.add('b')
         wt.commit('adding b', rev_id='r2')
 
-        self.revisions = wt.branch.revision_history()
+        wt.branch.lock_read()
+        try:
+            self.revisions = list(wt.branch.iter_revision_history())
+        finally:
+            wt.branch.unlock()
         return wt
 
     def test_basic(self):
