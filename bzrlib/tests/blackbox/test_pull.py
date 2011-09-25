@@ -53,6 +53,7 @@ class TestPull(TestCaseWithTransport):
     def test_pull(self):
         """Pull changes from one branch to another."""
         a_tree = self.example_branch('a')
+        base_rev = a_tree.branch.last_revision()
         os.chdir('a')
         self.run_bzr('pull', retcode=3)
         self.run_bzr('missing', retcode=3)
@@ -71,12 +72,13 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull')
         os.mkdir('subdir')
         b_tree.add('subdir')
-        b_tree.commit(message='blah', allow_pointless=True)
+        new_rev = b_tree.commit(message='blah', allow_pointless=True)
 
         os.chdir('..')
         a = Branch.open('a')
         b = Branch.open('b')
-        self.assertEqual(a.revision_history(), b.revision_history()[:-1])
+        self.assertEqual(a.last_revision(), base_rev)
+        self.assertEqual(b.last_revision(), new_rev)
 
         os.chdir('a')
         self.run_bzr('pull ../b')
@@ -219,7 +221,7 @@ class TestPull(TestCaseWithTransport):
         a_tree.commit(message='a fourth change')
 
         rev_info_a = a_tree.branch.last_revision_info()
-        self.assertEqual(rev_history_a[0], 4)
+        self.assertEqual(rev_info_a[0], 4)
 
         # With convergence, we could just pull over the
         # new change, but with --overwrite, we want to switch our history

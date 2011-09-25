@@ -1013,10 +1013,12 @@ class Branch(controldir.ControlComponent):
         """
         return self._revision_history()
 
+    @needs_read_lock
     def iter_revision_history(self):
         """Iterate over the revision ids in this branch, last to first.
         """
-        return iter(self._revision_history())
+        for revid in self._revision_history():
+            yield revid
 
     def _revision_history(self):
         if 'evil' in debug.debug_flags:
