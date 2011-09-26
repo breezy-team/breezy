@@ -20,6 +20,16 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* ``bzr serve`` will now disconnect clients if they have not issued an RPC
+  request after 5minutes. On POSIX platforms, this will also happen for
+  ``bzr serve --inet``. This can be overridden with the configuration
+  variable ``serve.client_timeout`` or in the command line parameter
+  ``bzr serve --client-timeout=X``. Further, it is possible to request
+  ``bzr serve [--inet]`` to shutdown gracefully by sending SIGHUP. It will
+  finish the current request, and then close the connection.
+  (John Arbash Meinel, #824797, #795025)
+
+
 Improvements
 ************
 
@@ -155,12 +165,6 @@ New Features
   The old name of the command line option will still be accepted.
   The name change also affects ``bzr missing``.
   (Martin von Gagern)
-
-* ``bzr serve`` will now disconnect clients if they have not issued an RPC
-  request after 5minutes. On POSIX platforms, this will also happen for
-  ``bzr serve --inet``. This can be overridden with the configuration
-  variable ``serve.client_timeout`` or in the command line parameter
-  ``bzr serve --client-timeout=X``. (John Arbash Meinel, #824797)
 
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
