@@ -318,7 +318,7 @@ class TestPull(TestCaseWithTransport):
         # it is legal to attempt to pull an already-merged bundle
         out, err = self.run_bzr('pull ../bundle')
         self.assertEqual(err, '')
-        self.assertEqual(out, 'No revisions to pull.\n')
+        self.assertEqual(out, 'No revisions or tags to pull.\n')
 
     def test_pull_verbose_no_files(self):
         """Pull --verbose should not list modified files"""
@@ -383,6 +383,15 @@ class TestPull(TestCaseWithTransport):
         self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
         self.assertNotContainsRe(
             out, r'revno: 1\ncommitter: .*\nbranch nick: source')
+
+    def test_pull_smart_bound_branch(self):
+        self.setup_smart_server_with_call_log()
+        parent = self.make_branch_and_tree('parent')
+        parent.commit(message='first commit')
+        child = parent.bzrdir.sprout('child').open_workingtree()
+        child.commit(message='second commit')
+        checkout = parent.branch.create_checkout('checkout')
+        self.run_bzr(['pull', self.get_url('child')], working_dir='checkout')
 
     def test_pull_smart_stacked_streaming_acceptance(self):
         """'bzr pull -r 123' works on stacked, smart branches, even when the
@@ -524,3 +533,24 @@ class TestPull(TestCaseWithTransport):
         out = self.run_bzr(['pull','-d','to','from'],retcode=1)
         self.assertEqual(out,
             ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
+
+    def test_pull_tag_notification(self):
+        """pulling tags with conflicts will change the exit code"""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        out = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertEqual(out,
+            ('1 tag(s) updated.\n', ''))
+
+    def test_pull_tag_overwrite(self):
+        """pulling tags with --overwrite only reports changed tags."""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "somerevid")
+        out = self.run_bzr(['pull', '--overwrite', '-d', 'to', 'from'])
+        self.assertEqual(out,
+            ('No revisions or tags to pull.\n', ''))

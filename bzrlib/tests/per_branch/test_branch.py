@@ -308,15 +308,18 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
-    def test_nicks(self):
-        """Test explicit and implicit branch nicknames.
+    def test_nicks_bzr(self):
+        """Test the behaviour of branch nicks specific to bzr branches.
 
         Nicknames are implicitly the name of the branch's directory, unless an
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
+
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
+        if not isinstance(branch, _mod_branch.BzrBranch):
+            raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
         # Move the branch to a different directory, 'bzr.ab'.  Now that branch
@@ -334,6 +337,24 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = _mod_branch.Branch.open(self.get_url('integration'))
+        self.assertEqual(branch.nick, "Aaron's branch")
+        branch.nick = u"\u1234"
+        self.assertEqual(branch.nick, u"\u1234")
+
+    def test_nicks(self):
+        """Test explicit and implicit branch nicknames.
+
+        A nickname is always available, whether set explicitly or not.
+        """
+        t = self.get_transport()
+        branch = self.make_branch('bzr.dev')
+        # An implicit nick name is set; what it is exactly depends on the
+        # format.
+        self.assertIsInstance(branch.nick, basestring)
+        # Set the branch nick explicitly.
+        branch.nick = "Aaron's branch"
+        # Because the nick has been set explicitly, the nick is now always
+        # "Aaron's branch".
         self.assertEqual(branch.nick, "Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
@@ -364,6 +385,34 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEquals(1, len(repo.bzrdir.list_branches()))
         self.branch_format.initialize(repo.bzrdir, name='branch2')
         self.assertEquals(2, len(repo.bzrdir.list_branches()))
+
+    def test_create_append_revisions_only(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        for val in (True, False):
+            try:
+                branch = self.branch_format.initialize(repo.bzrdir,
+                    append_revisions_only=True)
+            except (errors.UninitializableFormat, errors.UpgradeRequired):
+                # branch references are not default init'able and
+                # not all branches support append_revisions_only
+                return
+            self.assertEquals(True, branch.get_append_revisions_only())
+            repo.bzrdir.destroy_branch()
+
+    def test_get_set_append_revisions_only(self):
+        branch = self.make_branch('.')
+        if branch._format.supports_set_append_revisions_only():
+            branch.set_append_revisions_only(True)
+            self.assertTrue(branch.get_append_revisions_only())
+            branch.set_append_revisions_only(False)
+            self.assertFalse(branch.get_append_revisions_only())
+        else:
+            self.assertRaises(errors.UpgradeRequired,
+                branch.set_append_revisions_only, True)
+            self.assertFalse(branch.get_append_revisions_only())
 
     def test_create_open_branch_uses_repository(self):
         try:
@@ -508,6 +557,12 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
             registry = _mod_branch.network_format_registry
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)
+
+    def get_get_config_calls(self):
+        # Smoke test that all branch succeed getting a config
+        br = self.make_branch('.')
+        br.get_config()
+        br.get_config_stack()
 
 
 class ChrootedTests(per_branch.TestCaseWithBranch):
@@ -1042,7 +1097,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
 class TestBranchControlComponent(per_branch.TestCaseWithBranch):
     """Branch implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         br = self.make_branch('branch')
         self.assertIsInstance(br.user_url, str)

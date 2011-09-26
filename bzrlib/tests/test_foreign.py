@@ -101,7 +101,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
             *args, **kwargs)
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """

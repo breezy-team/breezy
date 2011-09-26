@@ -23,7 +23,6 @@ and attributes colocated branch support added should fail in known ways.
 from bzrlib import (
     errors,
     tests,
-    transport,
     )
 from bzrlib.tests import (
     per_controldir,

@@ -40,6 +40,7 @@ from bzrlib import (
         ui,
         urlutils,
         )
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib import (
@@ -213,6 +214,16 @@ class Branch(controldir.ControlComponent):
         :return: A bzrlib.config.BranchConfig.
         """
         return _mod_config.BranchConfig(self)
+
+    def get_config_stack(self):
+        """Get a bzrlib.config.BranchStack for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A bzrlib.config.BranchStack.
+        """
+        return _mod_config.BranchStack(self)
 
     def _get_config(self):
         """Get the concrete config for just the config in this branch.
@@ -641,6 +652,14 @@ class Branch(controldir.ControlComponent):
         """
         raise errors.UpgradeRequired(self.user_url)
 
+    def get_append_revisions_only(self):
+        """Whether it is only possible to append revisions to the history.
+        """
+        if not self._format.supports_set_append_revisions_only():
+            return False
+        return self.get_config(
+            ).get_user_option_as_bool('append_revisions_only')
+
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
@@ -840,7 +859,7 @@ class Branch(controldir.ControlComponent):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            pb.update("Unstacking")
+            pb.update(gettext("Unstacking"))
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
             # repository into a new repository object without the fallbacks. 
@@ -1372,7 +1391,7 @@ class Branch(controldir.ControlComponent):
         # specific check.
         return result
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
@@ -1424,13 +1443,12 @@ class Branch(controldir.ControlComponent):
         """
         t = transport.get_transport(to_location)
         t.ensure_base()
+        format = self._get_checkout_format(lightweight=lightweight)
         if lightweight:
-            format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)
             from_branch = BranchReferenceFormat().initialize(checkout, 
                 target_branch=self)
         else:
-            format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
                 to_location, force_new_tree=False, format=format)
             checkout = checkout_branch.bzrdir
@@ -1568,8 +1586,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     object will be created every time regardless.
     """
 
-    can_set_append_revisions_only = True
-
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
@@ -1647,7 +1663,8 @@ class BranchFormat(controldir.ControlComponentFormat):
         for hook in hooks:
             hook(params)
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir.
         
         :param name: Name of the colocated branch to create.
@@ -1738,6 +1755,14 @@ class BranchFormat(controldir.ControlComponentFormat):
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""
         return False  # by default
+
+    def tags_are_versioned(self):
+        """Whether the tag container for this branch versions tags."""
+        return False
+
+    def supports_tags_referencing_ghosts(self):
+        """True if tags can reference ghost revisions."""
+        return True
 
 
 class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
@@ -1983,6 +2008,14 @@ class BranchFormatMetadir(BranchFormat):
         """What class to instantiate on open calls."""
         raise NotImplementedError(self._branch_class)
 
+    def _get_initial_config(self, append_revisions_only=None):
+        if append_revisions_only:
+            return "append_revisions_only = True\n"
+        else:
+            # Avoid writing anything if append_revisions_only is disabled,
+            # as that is the default.
+            return ""
+
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
                            repository=None):
         """Initialize a branch in a bzrdir, with specified files
@@ -2078,8 +2111,11 @@ class BzrBranchFormat5(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 5"
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
+        if append_revisions_only:
+            raise errors.UpgradeRequired(a_bzrdir.user_url)
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
@@ -2111,10 +2147,12 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 6"
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch.conf', ''),
+                      ('branch.conf',
+                          self._get_initial_config(append_revisions_only)),
                       ('tags', ''),
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
@@ -2141,10 +2179,12 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 8"
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch.conf', ''),
+                      ('branch.conf',
+                          self._get_initial_config(append_revisions_only)),
                       ('tags', ''),
                       ('references', '')
                       ]
@@ -2172,10 +2212,12 @@ class BzrBranchFormat7(BranchFormatMetadir):
     This format was introduced in bzr 1.6.
     """
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch.conf', ''),
+                      ('branch.conf',
+                          self._get_initial_config(append_revisions_only)),
                       ('tags', ''),
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
@@ -2234,7 +2276,7 @@ class BranchReferenceFormat(BranchFormat):
         location = transport.put_bytes('location', to_branch.base)
 
     def initialize(self, a_bzrdir, name=None, target_branch=None,
-            repository=None):
+            repository=None, append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
             # this format does not implement branch itself, thus the implicit
@@ -2504,7 +2546,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         old_revno, old_revid = self.last_revision_info()
-        if self._get_append_revisions_only():
+        if self.get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._run_pre_change_branch_tip_hooks(revno, revision_id)
         self._write_last_revision_info(revno, revision_id)
@@ -2949,10 +2991,6 @@ class BzrBranch8(BzrBranch):
             raise errors.NotStacked(self)
         return stacked_url
 
-    def _get_append_revisions_only(self):
-        return self.get_config(
-            ).get_user_option_as_bool('append_revisions_only')
-
     @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -3044,6 +3082,7 @@ class PullResult(_Result):
     :ivar local_branch: target branch if there is a Master, else None
     :ivar target_branch: Target/destination branch object. (write locked)
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
+    :ivar tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
     @deprecated_method(deprecated_in((2, 3, 0)))
@@ -3055,11 +3094,18 @@ class PullResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
+        tag_conflicts = getattr(self, "tag_conflicts", None)
+        tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
-            if self.old_revid == self.new_revid:
-                to_file.write('No revisions to pull.\n')
-            else:
+            if self.old_revid != self.new_revid:
                 to_file.write('Now on revision %d.\n' % self.new_revno)
+            if tag_updates:
+                to_file.write('%d tag(s) updated.\n' % len(tag_updates))
+            if self.old_revid == self.new_revid and not tag_updates:
+                if not tag_conflicts:
+                    to_file.write('No revisions or tags to pull.\n')
+                else:
+                    to_file.write('No revisions to pull.\n')
         self._show_tag_conficts(to_file)
 
 
@@ -3091,11 +3137,22 @@ class BranchPushResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
-        """Write a human-readable description of the result."""
-        if self.old_revid == self.new_revid:
-            note('No new revisions to push.')
-        else:
-            note('Pushed up to revision %d.' % self.new_revno)
+        # TODO: This function gets passed a to_file, but then
+        # ignores it and calls note() instead. This is also
+        # inconsistent with PullResult(), which writes to stdout.
+        # -- JRV20110901, bug #838853
+        tag_conflicts = getattr(self, "tag_conflicts", None)
+        tag_updates = getattr(self, "tag_updates", None)
+        if not is_quiet():
+            if self.old_revid != self.new_revid:
+                note(gettext('Pushed up to revision %d.') % self.new_revno)
+            if tag_updates:
+                note(ngettext('%d tag updated.', '%d tags updated.', len(tag_updates)) % len(tag_updates))
+            if self.old_revid == self.new_revid and not tag_updates:
+                if not tag_conflicts:
+                    note(gettext('No new revisions or tags to push.'))
+                else:
+                    note(gettext('No new revisions to push.'))
         self._show_tag_conficts(to_file)
 
 
@@ -3115,10 +3172,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s', self.branch.user_url,
-            self.branch._format)
+        note(gettext('checked branch {0} format {1}').format(
+                                self.branch.user_url, self.branch._format))
         for error in self.errors:
-            note('found error:%s', error)
+            note(gettext('found error:%s'), error)
 
 
 class Converter5to6(object):
@@ -3409,8 +3466,8 @@ class GenericInterBranch(InterBranch):
             self._update_revisions(stop_revision, overwrite=overwrite,
                     graph=graph)
         if self.source._push_should_merge_tags():
-            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite)
+            result.tag_updates, result.tag_conflicts = (
+                self.source.tags.merge_to(self.target.tags, overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -3499,8 +3556,9 @@ class GenericInterBranch(InterBranch):
             # TODO: The old revid should be specified when merging tags, 
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
-            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite, ignore_master=not merge_tags_to_master)
+            result.tag_updates, result.tag_conflicts = (
+                self.source.tags.merge_to(self.target.tags, overwrite,
+                    ignore_master=not merge_tags_to_master))
             result.new_revno, result.new_revid = self.target.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master

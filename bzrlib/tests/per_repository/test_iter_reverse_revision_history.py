@@ -150,6 +150,9 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
 
     def test_ghost(self):
         tree = self.make_branch_and_memory_tree('tree')
+        if not tree.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable(
+                "repository format does not support ghosts")
         tree.lock_write()
         try:
             tree.add('')

@@ -172,6 +172,9 @@ class TestControlDir(TestCaseWithControlDir):
         tree.commit('revision 1', rev_id='1')
         dir = self.make_bzrdir('source')
         repo = dir.create_repository()
+        if not repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("repository format does not support "
+                "nesting")
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
         try:
@@ -188,6 +191,9 @@ class TestControlDir(TestCaseWithControlDir):
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
             return
+        if not shared_repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("format does not support nesting "
+                "repositories")
         # Make a branch, 'commit_tree', and working tree outside of the shared
         # repository, and commit some revisions to it.
         tree = self.make_branch_and_tree('commit_tree')
@@ -219,6 +225,9 @@ class TestControlDir(TestCaseWithControlDir):
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
             return
+        if not shared_repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("format does not support nesting "
+                "repositories")
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
@@ -292,9 +301,12 @@ class TestControlDir(TestCaseWithControlDir):
         tree.branch.repository.copy_content_into(source.repository)
         tree.branch.copy_content_into(source)
         try:
-            self.make_repository('target', shared=True)
+            shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
             return
+        if not shared_repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("format does not support nesting "
+                "repositories")
         dir = source.bzrdir
         target = dir.clone(self.get_url('target/child'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
@@ -410,7 +422,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_sprout_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = dir.sprout(self.get_url('target'))
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.control_transport.base, target.control_transport.base)
         # creates a new repository branch and tree
         target.open_repository()
         target.open_branch()
@@ -462,7 +474,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             return
         target = dir.sprout(self.get_url('target/child'))
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.user_transport.base, target.user_transport.base)
         self.assertTrue(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_repository_branch_both_under_shared(self):
@@ -470,6 +482,9 @@ class TestControlDir(TestCaseWithControlDir):
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
             return
+        if not shared_repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("format does not support nesting "
+                "repositories")
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
@@ -491,6 +506,9 @@ class TestControlDir(TestCaseWithControlDir):
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
             return
+        if not shared_repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("format does not support nesting "
+                "repositories")
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
@@ -535,7 +553,9 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             return
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(
+            dir.control_transport.base,
+            target.control_transport.base)
         self.assertFalse(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_repository_revision(self):
@@ -591,7 +611,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             return
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
-        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.control_transport.base, target.control_transport.base)
         self.assertFalse(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_branch_reference(self):
@@ -707,8 +727,9 @@ class TestControlDir(TestCaseWithControlDir):
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', 'missing-rev')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+            raise TestNotApplicable('Branch format does not support tags '
+                'or tags referencing ghost revisions.')
         # Now source has a tag pointing to an absent revision.  Sprout its
         # controldir.
         dir = source.bzrdir
@@ -725,8 +746,9 @@ class TestControlDir(TestCaseWithControlDir):
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', 'missing-rev')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+            raise TestNotApplicable('Branch format does not support tags '
+                'or tags referencing missing revisions.')
         # Now source has a tag pointing to an absent revision.  Sprout its
         # controldir.
         dir = source.bzrdir
@@ -759,18 +781,28 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             # Create a tag for B2, and for an absent rev
             source.tags.set_tag('tag-non-ancestry', 'rev-b2')
-            source.tags.set_tag('tag-absent', 'absent-rev')
         except errors.TagsNotSupported:
-            raise TestNotApplicable('Branch format does not support tags.')
+            raise TestNotApplicable('Branch format does not support tags ')
+        try:
+            source.tags.set_tag('tag-absent', 'absent-rev')
+        except errors.GhostTagsNotSupported:
+            has_ghost_tag = False
+        else:
+            has_ghost_tag = True
         source.get_config().set_user_option('branch.fetch_tags', 'True')
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
         # The tags are present
         new_branch = target.open_branch()
-        self.assertEqual(
-            {'tag-absent': 'absent-rev', 'tag-non-ancestry': 'rev-b2'},
-            new_branch.tags.get_tag_dict())
+        if has_ghost_tag:
+            self.assertEqual(
+                {'tag-absent': 'absent-rev', 'tag-non-ancestry': 'rev-b2'},
+                new_branch.tags.get_tag_dict())
+        else:
+            self.assertEqual(
+                {'tag-non-ancestry': 'rev-b2'},
+                new_branch.tags.get_tag_dict())
         # And the revs for A2, B2 and C2's ancestries are present, but no
         # others.
         self.assertEqual(
@@ -1136,6 +1168,25 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertIsInstance(made_branch, bzrlib.branch.Branch)
         self.assertEqual(made_control, made_branch.bzrdir)
 
+    def test_create_branch_append_revisions_only(self):
+        # a bzrdir can construct a branch and repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = self.get_transport()
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        try:
+            made_branch = made_control.create_branch(
+                append_revisions_only=True)
+        except errors.UpgradeRequired:
+            return
+        self.assertIsInstance(made_branch, bzrlib.branch.Branch)
+        self.assertEquals(True, made_branch.get_append_revisions_only())
+        self.assertEqual(made_control, made_branch.bzrdir)
+
     def test_open_branch(self):
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
@@ -1212,7 +1263,12 @@ class TestControlDir(TestCaseWithControlDir):
             return
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
-        made_repo = made_control.create_repository(shared=False)
+        try:
+            made_repo = made_control.create_repository(shared=False)
+        except errors.IncompatibleFormat:
+            # Some control dir formats don't support non-shared repositories
+            # and should raise IncompatibleFormat
+            return
         self.assertFalse(made_repo.is_shared())
 
     def test_open_repository(self):
@@ -1331,6 +1387,8 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
             return
+        if not repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("requires nesting repositories")
         url = self.get_url('intermediate')
         t = self.get_transport()
         t.mkdir('intermediate')
@@ -1357,6 +1415,8 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
             return
+        if not repo._format.supports_nesting_repositories:
+            return
         url = self.get_url('childbzrdir')
         self.get_transport().mkdir('childbzrdir')
         made_control = self.bzrdir_format.initialize(url)
@@ -1372,12 +1432,16 @@ class TestControlDir(TestCaseWithControlDir):
                          found_repo.bzrdir.root_transport.base)
 
     def test_find_repository_standalone_with_containing_shared_repository(self):
-        # find repo inside a standalone repo inside a shared repo finds the standalone repo
+        # find repo inside a standalone repo inside a shared repo finds the
+        # standalone repo
         try:
             containing_repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
             return
+        if not containing_repo._format.supports_nesting_repositories:
+            raise TestNotApplicable("format does not support "
+                "nesting repositories")
         child_repo = self.make_repository('childrepo')
         opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
         found_repo = opened_control.find_repository()
@@ -1390,6 +1454,8 @@ class TestControlDir(TestCaseWithControlDir):
             containing_repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
+            return
+        if not containing_repo._format.supports_nesting_repositories:
             return
         url = self.get_url('childrepo')
         self.get_transport().mkdir('childrepo')
@@ -1409,6 +1475,8 @@ class TestControlDir(TestCaseWithControlDir):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
+            return
+        if not repo._format.supports_nesting_repositories:
             return
         url = self.get_url('intermediate')
         t = self.get_transport()

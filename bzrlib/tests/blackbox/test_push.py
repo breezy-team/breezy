@@ -157,7 +157,9 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr('push -d tree pushed-to')
         path = t.branch.get_push_location()
         out, err = self.run_bzr('push', working_dir="tree")
-        self.assertEqual('Using saved push location: %s\nNo new revisions to push.\n' % urlutils.local_path_from_url(path), err)
+        self.assertEqual('Using saved push location: %s\n'
+                         'No new revisions or tags to push.\n' %
+                         urlutils.local_path_from_url(path), err)
         out, err = self.run_bzr('push -q', working_dir="tree")
         self.assertEqual('', out)
         self.assertEqual('', err)
@@ -674,8 +676,8 @@ class TestPushStrictMixin(object):
     def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
-        conf = self.tree.branch.get_config()
-        conf.set_user_option('push_strict', value)
+        conf = self.tree.branch.get_config_stack()
+        conf.set('push_strict', value)
 
     _default_command = ['push', '../to']
     _default_wd = 'local'

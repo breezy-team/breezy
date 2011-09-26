@@ -347,10 +347,10 @@ class TestCommandHelpI18n(tests.TestCase):
             }}zz{{:Usage:   bzr WithSeeAlso
             }}
             zz{{:Options:
-              --usage        Show usage message and options.
-              -v, --verbose  Display more information.
-              -q, --quiet    Only display errors and warnings.
-              -h, --help     Show help message.
+              --usage        zz{{Show usage message and options.}}
+              -v, --verbose  zz{{Display more information.}}
+              -q, --quiet    zz{{Only display errors and warnings.}}
+              -h, --help     zz{{Show help message.}}
             }}
             zz{{:See also: bar, foo}}
             ''',
@@ -365,10 +365,10 @@ class TestCommandHelpI18n(tests.TestCase):
             }}zz{{:Usage:   bzr Demo
             }}
             zz{{:Options:
-              --usage        Show usage message and options.
-              -v, --verbose  Display more information.
-              -q, --quiet    Only display errors and warnings.
-              -h, --help     Show help message.
+              --usage        zz{{Show usage message and options.}}
+              -v, --verbose  zz{{Display more information.}}
+              -q, --quiet    zz{{Only display errors and warnings.}}
+              -h, --help     zz{{Show help message.}}
             }}
             ''',
                            cmd_Demo())
@@ -381,9 +381,9 @@ class TestCommandHelpI18n(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -v, --verbose  Display more information.\n'
-            '  -q, --quiet    Only display errors and warnings.\n'
-            '  -h, --help     Show help message.\n'
+            '  -v, --verbose  zz{{Display more information.}}\n'
+            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
+            '  -h, --help     zz{{Show help message.}}\n'
             '}}\n'
             'zz{{:See also: bar, foo, gam}}\n')
 
@@ -395,10 +395,10 @@ class TestCommandHelpI18n(tests.TestCase):
         self.assertEndsWith(
             helptext,
             'zz{{:Options:\n'
-            '  --usage        Show usage message and options.\n'
-            '  -v, --verbose  Display more information.\n'
-            '  -q, --quiet    Only display errors and warnings.\n'
-            '  -h, --help     Show help message.\n'
+            '  --usage        zz{{Show usage message and options.}}\n'
+            '  -v, --verbose  zz{{Display more information.}}\n'
+            '  -q, --quiet    zz{{Only display errors and warnings.}}\n'
+            '  -h, --help     zz{{Show help message.}}\n'
             '}}\n'
             'zz{{:See also: gam}}\n')
 
@@ -427,10 +427,10 @@ class TestCommandHelpI18n(tests.TestCase):
             }}zz{{:Usage:   bzr Demo
             }}
             zz{{:Options:
-              --usage        Show usage message and options.
-              -v, --verbose  Display more information.
-              -q, --quiet    Only display errors and warnings.
-              -h, --help     Show help message.
+              --usage        zz{{Show usage message and options.}}
+              -v, --verbose  zz{{Display more information.}}
+              -q, --quiet    zz{{Only display errors and warnings.}}
+              -h, --help     zz{{Show help message.}}
             }}
             Description:
               zz{{zz{{Blah blah blah.}}
@@ -470,10 +470,10 @@ class TestCommandHelpI18n(tests.TestCase):
 
             }}
             zz{{:Options:
-              --usage        Show usage message and options.
-              -v, --verbose  Display more information.
-              -q, --quiet    Only display errors and warnings.
-              -h, --help     Show help message.
+              --usage        zz{{Show usage message and options.}}
+              -v, --verbose  zz{{Display more information.}}
+              -q, --quiet    zz{{Only display errors and warnings.}}
+              -h, --help     zz{{Show help message.}}
             }}
             Description:
               zz{{zz{{Blah blah blah.}}

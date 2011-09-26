@@ -67,7 +67,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch('')
+            self.branch = self.make_branch('abranch')
         return self.branch
 
     def make_branch(self, relpath, format=None):
@@ -77,9 +77,13 @@ class TestCaseWithBranch(TestCaseWithControlDir):
         # fixme RBC 20060210 this isnt necessarily a fixable thing,
         # Skipped is the wrong exception to raise.
         try:
-            return self.branch_format.initialize(repo.bzrdir)
+            branch = self.branch_format.initialize(repo.bzrdir)
         except errors.UninitializableFormat:
             raise tests.TestSkipped('Uninitializable branch format')
+        if (branch._format.supports_set_append_revisions_only() and
+            branch.get_append_revisions_only()):
+            branch.set_append_revisions_only(False)
+        return branch
 
     def make_branch_builder(self, relpath, format=None):
         if format is None:
@@ -87,7 +91,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
         return super(TestCaseWithBranch, self).make_branch_builder(
             relpath, format=format)
 
-    def make_repository(self, relpath, shared=False, format=None):
+    def make_repository(self, relpath, shared=None, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 

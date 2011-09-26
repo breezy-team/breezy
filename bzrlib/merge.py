@@ -38,6 +38,7 @@ from bzrlib import (
     versionedfile,
     workingtree,
     )
+from bzrlib.i18n import gettext
 """)
 from bzrlib import (
     decorators,
@@ -711,9 +712,9 @@ class Merger(object):
         merge = operation.run_simple()
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero and not trace.is_quiet():
-                trace.note("All changes applied successfully.")
+                trace.note(gettext("All changes applied successfully."))
         else:
-            trace.note("%d conflicts encountered."
+            trace.note(gettext("%d conflicts encountered.")
                        % len(merge.cooked_conflicts))
 
         return len(merge.cooked_conflicts)
@@ -858,7 +859,7 @@ class Merge3Merger(object):
             self.active_hooks = [hook for hook in hooks if hook is not None]
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
-                child_pb.update('Preparing file merge', num, len(entries))
+                child_pb.update(gettext('Preparing file merge'), num, len(entries))
                 self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
                     file_status = self._do_merge_contents(file_id)
@@ -1906,7 +1907,7 @@ class MergeIntoMergeType(Merge3Merger):
             entries = self._entries_to_incorporate()
             entries = list(entries)
             for num, (entry, parent_id) in enumerate(entries):
-                child_pb.update('Preparing file merge', num, len(entries))
+                child_pb.update(gettext('Preparing file merge'), num, len(entries))
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
                 trans_id = transform.new_by_entry(self.tt, entry,
                     parent_trans_id, self.other_tree)

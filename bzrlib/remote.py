@@ -40,6 +40,7 @@ from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
+from bzrlib.i18n import gettext
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
@@ -486,11 +487,13 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+                      append_revisions_only=None):
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
-            name=name, repository=repository)
+            name=name, repository=repository,
+            append_revisions_only=append_revisions_only)
         if not isinstance(real_branch, RemoteBranch):
             if not isinstance(repository, RemoteRepository):
                 raise AssertionError(
@@ -739,6 +742,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         self._supports_external_lookups = None
         self._supports_tree_reference = None
         self._supports_funky_characters = None
+        self._supports_nesting_repositories = None
         self._rich_root_data = None
 
     def __repr__(self):
@@ -779,6 +783,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             self._supports_funky_characters = \
                 self._custom_format.supports_funky_characters
         return self._supports_funky_characters
+
+    @property
+    def supports_nesting_repositories(self):
+        if self._supports_nesting_repositories is None:
+            self._ensure_real()
+            self._supports_nesting_repositories = \
+                self._custom_format.supports_nesting_repositories
+        return self._supports_nesting_repositories
 
     @property
     def supports_tree_reference(self):
@@ -1509,12 +1521,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         #
+        # Make the check before we lock: this raises an exception.
+        self._check_fallback_repository(repository)
         if self.is_locked():
             # We will call fallback.unlock() when we transition to the unlocked
             # state, so always add a lock here. If a caller passes us a locked
             # repository, they are responsible for unlocking it later.
             repository.lock_read()
-        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
@@ -1870,7 +1883,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         from bzrlib import osutils
         import tarfile
         # TODO: Maybe a progress bar while streaming the tarball?
-        note("Copying repository content as tarball...")
+        note(gettext("Copying repository content as tarball..."))
         tar_file = self._get_tarball('bz2')
         if tar_file is None:
             return None
@@ -2350,7 +2363,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         return a_bzrdir.open_branch(name=name, 
             ignore_fallbacks=ignore_fallbacks)
 
-    def _vfs_initialize(self, a_bzrdir, name):
+    def _vfs_initialize(self, a_bzrdir, name, append_revisions_only):
         # Initialisation when using a local bzrdir object, or a non-vfs init
         # method is not available on the server.
         # self._custom_format is always set - the start of initialize ensures
@@ -2358,17 +2371,19 @@ class RemoteBranchFormat(branch.BranchFormat):
         if isinstance(a_bzrdir, RemoteBzrDir):
             a_bzrdir._ensure_real()
             result = self._custom_format.initialize(a_bzrdir._real_bzrdir,
-                name)
+                name, append_revisions_only=append_revisions_only)
         else:
             # We assume the bzrdir is parameterised; it may not be.
-            result = self._custom_format.initialize(a_bzrdir, name)
+            result = self._custom_format.initialize(a_bzrdir, name,
+                append_revisions_only=append_revisions_only)
         if (isinstance(a_bzrdir, RemoteBzrDir) and
             not isinstance(result, RemoteBranch)):
             result = RemoteBranch(a_bzrdir, a_bzrdir.find_repository(), result,
                                   name=name)
         return result
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -2380,10 +2395,12 @@ class RemoteBranchFormat(branch.BranchFormat):
             network_name = reference_format.network_name()
         # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            return self._vfs_initialize(a_bzrdir, name=name)
+            return self._vfs_initialize(a_bzrdir, name=name,
+                append_revisions_only=append_revisions_only)
         medium = a_bzrdir._client._medium
         if medium._is_remote_before((1, 13)):
-            return self._vfs_initialize(a_bzrdir, name=name)
+            return self._vfs_initialize(a_bzrdir, name=name,
+                append_revisions_only=append_revisions_only)
         # Creating on a remote bzr dir.
         # 2) try direct creation via RPC
         path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
@@ -2396,7 +2413,8 @@ class RemoteBranchFormat(branch.BranchFormat):
         except errors.UnknownSmartMethod:
             # Fallback - use vfs methods
             medium._remember_remote_is_before((1, 13))
-            return self._vfs_initialize(a_bzrdir, name=name)
+            return self._vfs_initialize(a_bzrdir, name=name,
+                    append_revisions_only=append_revisions_only)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         # Turn the response into a RemoteRepository object.
@@ -2423,6 +2441,8 @@ class RemoteBranchFormat(branch.BranchFormat):
             remote_repo = RemoteRepository(repo_bzrdir, repo_format)
         remote_branch = RemoteBranch(a_bzrdir, remote_repo,
             format=format, setup_stacking=False, name=name)
+        if append_revisions_only:
+            remote_branch.set_append_revisions_only(append_revisions_only)
         # XXX: We know this is a new branch, so it must have revno 0, revid
         # NULL_REVISION. Creating the branch locked would make this be unable
         # to be wrong; here its simply very unlikely to be wrong. RBC 20090225
@@ -2623,9 +2643,16 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self.bzrdir, self._client)
         return self._control_files
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         self._ensure_real()
-        return self._real_branch._get_checkout_format()
+        if lightweight:
+            format = RemoteBzrDirFormat()
+            self.bzrdir._format._supply_sub_formats_to(format)
+            format.workingtree_format = self._real_branch._get_checkout_format(
+                lightweight=lightweight).workingtree_format
+            return format
+        else:
+            return self._real_branch._get_checkout_format(lightweight=False)
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""

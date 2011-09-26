@@ -229,7 +229,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
     try:
         return _get_cmd_object(cmd_name, plugins_override)
     except KeyError:
-        raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+        raise errors.BzrCommandError(gettext('unknown command "%s"') % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
@@ -465,7 +465,7 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
-        if self.l10n and not i18n.installed():
+        if self.l10n:
             i18n.install()  # Install i18n only for get_help_text for now.
         doc = self.help()
         if doc:
@@ -554,7 +554,8 @@ class Command(object):
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = gettext(":doc:`%s <%s-help>`") % (item, item)
+                        link_text = gettext(":doc:`{0} <{1}-help>`").format(
+                                                                    item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
             result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
@@ -815,7 +816,7 @@ def parse_args(command, argv, alias_argv=None):
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError,e:
-        raise errors.BzrCommandError('Only ASCII permitted in option names')
+        raise errors.BzrCommandError(gettext('Only ASCII permitted in option names'))
 
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
@@ -839,29 +840,33 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise errors.BzrCommandError("command %r needs one or more %s"
-                                             % (cmd, argname.upper()))
+                raise errors.BzrCommandError(gettext(
+                      "command {0!r} needs one or more {1}").format(
+                      cmd, argname.upper()))
             else:
                 argdict[argname + '_list'] = args[:]
                 args = []
         elif ap[-1] == '$': # all but one
             if len(args) < 2:
-                raise errors.BzrCommandError("command %r needs one or more %s"
-                                             % (cmd, argname.upper()))
+                raise errors.BzrCommandError(
+                      gettext("command {0!r} needs one or more {1}").format(
+                                             cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
             args[:-1] = []
         else:
             # just a plain arg
             argname = ap
             if not args:
-                raise errors.BzrCommandError("command %r requires argument %s"
-                               % (cmd, argname.upper()))
+                raise errors.BzrCommandError(
+                     gettext("command {0!r} requires argument {1}").format(
+                               cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.BzrCommandError("extra argument to command %s: %s"
-                                     % (cmd, args[0]))
+        raise errors.BzrCommandError( gettext(
+                              "extra argument to command {0}: {1}").format(
+                                       cmd, args[0]) )
 
     return argdict
 
@@ -957,7 +962,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
         stats.pprint()
     else:
         stats.save(filename)
-        trace.note('Profile data written to "%s".', filename)
+        trace.note(gettext('Profile data written to "%s".'), filename)
     return ret
 
 

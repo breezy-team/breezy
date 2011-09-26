@@ -16,8 +16,6 @@
 
 """Tests for InterBranch.pull behaviour."""
 
-import os
-
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib import errors
@@ -79,7 +77,7 @@ class TestPull(TestCaseWithInterBranch):
         other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_branch()
         # move the branch out of the way on disk to cause a connection
         # error.
-        os.rename('master', 'master_gone')
+        master_tree.branch.bzrdir.destroy_branch()
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other)
@@ -99,7 +97,7 @@ class TestPull(TestCaseWithInterBranch):
         self.assertEqual('P1', result.old_revid)
         self.assertEqual(2, result.new_revno)
         self.assertEqual('M1', result.new_revid)
-        self.assertEqual(None, result.tag_conflicts)
+        self.assertEqual([], result.tag_conflicts)
 
     def test_pull_overwrite(self):
         tree_a = self.make_from_branch_and_tree('tree_a')

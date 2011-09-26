@@ -167,6 +167,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib.cmd_version_info',
             'bzrlib.externalcommand',
             'bzrlib.filters',
+            'bzrlib.hashcache',
             # foreign branch plugins import the foreign_vcs_registry from 
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
@@ -235,6 +236,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib._dirstate_helpers_pyx',
             'bzrlib.externalcommand',
             'bzrlib.filters',
+            'bzrlib.hashcache',
             # foreign branch plugins import the foreign_vcs_registry from 
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
