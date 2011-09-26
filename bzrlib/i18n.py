@@ -110,6 +110,15 @@ def install_translations(lang=None, domain='bzr', locale_base=None):
             fallback=True)
     return translation
 
+def add_fallback(fallback):
+    """
+    Add a fallback translations object.  Typically used by plugins.
+
+    :param fallback: gettext.GNUTranslations object
+    """
+    install()
+    _translations.add_fallback(fallback)
+
 def uninstall():
     """Disables gettext translations."""
     global _translations
