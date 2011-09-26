@@ -98,6 +98,13 @@ class TestCaseWithRepository(TestCaseWithControlDir):
         self.assertEquals(format.repository_format, self.repository_format)
         return format
 
+    def make_branch_and_tree(self, relpath, format=None):
+        if format is None:
+            format = self.repository_format._matchingbzrdir
+            self.assertEquals(format.repository_format, self.repository_format)
+        return super(TestCaseWithRepository, self).make_branch_and_tree(
+            relpath, format=format)
+
     def make_repository(self, relpath, shared=False, format=None):
         format = self.resolve_format(format)
         repo = super(TestCaseWithRepository, self).make_repository(
