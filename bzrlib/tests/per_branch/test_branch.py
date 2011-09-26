@@ -308,15 +308,18 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
-    def test_nicks(self):
-        """Test explicit and implicit branch nicknames.
+    def test_nicks_bzr(self):
+        """Test the behaviour of branch nicks specific to bzr branches.
 
         Nicknames are implicitly the name of the branch's directory, unless an
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
+
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
+        if not isinstance(branch, _mod_branch.BzrBranch):
+            raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
         # Move the branch to a different directory, 'bzr.ab'.  Now that branch
@@ -334,6 +337,24 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = _mod_branch.Branch.open(self.get_url('integration'))
+        self.assertEqual(branch.nick, "Aaron's branch")
+        branch.nick = u"\u1234"
+        self.assertEqual(branch.nick, u"\u1234")
+
+    def test_nicks(self):
+        """Test explicit and implicit branch nicknames.
+
+        A nickname is always available, whether set explicitly or not.
+        """
+        t = self.get_transport()
+        branch = self.make_branch('bzr.dev')
+        # An implicit nick name is set; what it is exactly depends on the
+        # format.
+        self.assertIsInstance(branch.nick, basestring)
+        # Set the branch nick explicitly.
+        branch.nick = "Aaron's branch"
+        # Because the nick has been set explicitly, the nick is now always
+        # "Aaron's branch".
         self.assertEqual(branch.nick, "Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
