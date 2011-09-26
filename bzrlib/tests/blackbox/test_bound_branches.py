@@ -229,6 +229,10 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         child_tree.commit(message='merged')
         self.check_revno(3)
 
+        self.assertEquals(
+            child_tree.branch.last_revision(),
+            base_tree.branch.last_revision())
+
     def test_bind_parent_ahead(self):
         base_tree = self.create_branches()[0]
 
