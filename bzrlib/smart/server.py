@@ -164,12 +164,6 @@ class SmartTCPServer(object):
             hook(backing_urls, self.get_url())
 
     def _stop_gracefully(self):
-        # XXX: ATM, once we see the self._should_terminate we immediately exit
-        #      without waiting for client threads to shut down. (I don't know
-        #      if we *can* because they are marked as Daemon.)
-        #      Which means that while in-theory this is a graceful shutdown,
-        #      because we don't actively close the connections, etc, we don't
-        #      have a good way (yet) to poll the spawned clients and
         trace.note(gettext('Requested to stop gracefully'))
         self._should_terminate = True
         self._gracefully_stopping = True
@@ -216,8 +210,9 @@ class SmartTCPServer(object):
                         pass
                     except self._socket_error, e:
                         # if the socket is closed by stop_background_thread
-                        # we might get a EBADF here, any other socket errors
-                        # should get logged.
+                        # we might get a EBADF here, or if we get a signal we
+                        # can get EINTR, any other socket errors should get
+                        # logged.
                         if e.args[0] not in (errno.EBADF, errno.EINTR):
                             trace.warning(gettext("listening socket error: %s")
                                           % (e,))
