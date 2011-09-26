@@ -27,16 +27,11 @@ itself rather than in tests/per_interbranch/*.py.
 
 from bzrlib import (
     branchbuilder,
-    memorytree,
     )
 from bzrlib.branch import (
                            GenericInterBranch,
                            InterBranch,
                            )
-from bzrlib.bzrdir import (
-    BzrDirFormat,
-    BzrDirMetaFormat1,
-    )
 from bzrlib.tests import (
     TestCaseWithTransport,
     multiply_tests,
@@ -110,30 +105,28 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         return self.make_branch_and_tree(relpath,
             format=self.branch_format_to._matchingbzrdir)
 
-    def sprout(self, origdir, to_url, format):
-        need_checkout = (
-            not format.supports_workingtrees)
-        if need_checkout:
-            newbranch = self.make_branch(to_url+".branch", format=format)
-        else:
+    def _sprout(self, origdir, to_url, format):
+        if format.supports_workingtrees:
             newbranch = self.make_branch(to_url, format=format)
+        else:
+            newbranch = self.make_branch(to_url+".branch", format=format)
         origbranch = origdir.open_branch()
         newbranch.repository.fetch(origbranch.repository)
         origbranch.copy_content_into(newbranch)
-        if need_checkout:
-            checkout = newbranch.create_checkout(to_url, lightweight=True)
-            return checkout.bzrdir
+        if format.supports_workingtrees:
+            wt = newbranch.bzrdir.create_workingtree()
         else:
-            newbranch.bzrdir.create_workingtree()
-            return newbranch.bzrdir
+            wt = newbranch.create_checkout(to_url, lightweight=True)
+        return wt.bzrdir
 
     def sprout_to(self, origdir, to_url):
         """Sprout a bzrdir, using to_format for the new branch."""
-        return self.sprout(origdir, to_url, self.branch_format_to._matchingbzrdir) 
+        return self._sprout(origdir, to_url, self.branch_format_to._matchingbzrdir)
 
     def sprout_from(self, origdir, to_url):
         """Sprout a bzrdir, using from_format for the new bzrdir."""
-        return self.sprout(origdir, to_url, self.branch_format_from._matchingbzrdir) 
+        return self._sprout(origdir, to_url,
+            self.branch_format_from._matchingbzrdir)
 
 
 class StubWithFormat(object):

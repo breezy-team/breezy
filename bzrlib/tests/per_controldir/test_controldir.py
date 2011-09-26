@@ -394,7 +394,7 @@ class TestControlDir(TestCaseWithControlDir):
                                                      stacked_on=branch.base)
         except (errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
-            raise TestNotApplicable("branch or repository format do "
+            raise TestNotApplicable("branch or repository format does "
                 "not support stacking")
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
