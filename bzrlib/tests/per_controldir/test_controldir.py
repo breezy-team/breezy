@@ -323,8 +323,8 @@ class TestControlDir(TestCaseWithControlDir):
         target = dir.clone(self.get_url('target/child'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertRaises(errors.NoRepositoryPresent, target.open_repository)
-        self.assertEqual(source.revision_history(),
-                         target.open_branch().revision_history())
+        self.assertEqual(source.last_revision(),
+                         target.open_branch().last_revision())
 
     def test_clone_bzrdir_branch_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].

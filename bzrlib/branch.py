@@ -739,10 +739,11 @@ class Branch(controldir.ControlComponent):
         The delta is relative to its mainline predecessor, or the
         empty tree for revision 1.
         """
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
+        try:
+            revid = self.get_rev_id(revno)
+        except errors.NoSuchRevision:
             raise errors.InvalidRevisionNumber(revno)
-        return self.repository.get_revision_delta(rh[revno-1])
+        return self.repository.get_revision_delta(revid)
 
     def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.
