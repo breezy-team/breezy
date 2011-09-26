@@ -167,7 +167,7 @@ class PristineTarSource(UpstreamSource):
         :param package: Package name
         :param version: Package version
         :param path: Path with tree to import
-        :param parent_ids: Parent revisions
+        :param parent_ids: Dictionary mapping component names to revision ids
         :param tarballs: List of (path, component, md5)
         :param timestamp: Optional timestamp for new commits
         :param author: Optional author for new commitscopmone
@@ -181,7 +181,7 @@ class PristineTarSource(UpstreamSource):
             else:
                 exclude = []
             (tag, revid) = self.import_component_tarball(
-                    package, version, tree, parent_ids, component,
+                    package, version, tree, parent_ids[component], component,
                     md5, tarball, author=author, timestamp=timestamp,
                     exclude=exclude)
             ret.append((component, tag, revid))
@@ -196,6 +196,7 @@ class PristineTarSource(UpstreamSource):
 
         :param package: Package name
         :param version: Upstream version
+        :param parent_ids: Dictionary mapping component names to revision ids
         :param component: Component name (None for base)
         :param exclude: Exclude directories
         """

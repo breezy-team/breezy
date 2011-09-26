@@ -784,8 +784,8 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            upstream_revids = self.pristine_upstream_source.version_as_revisions(package,
-                version.upstream_version, tarballs)
+            upstream_revids = self.pristine_upstream_source.version_as_revisions(
+                package, version.upstream_version, tarballs)
             def key(a):
                 if a is None:
                     return None
@@ -1388,7 +1388,8 @@ class DistributionBranch(object):
                     if self.pristine_upstream_branch.last_revision() != NULL_REVISION:
                         parents = [self.pristine_upstream_branch.last_revision()]
                     for (component, tag, revid) in self.import_upstream(tarball_dir,
-                            package, version, parents, upstream_tarballs=upstream_tarballs,
+                            package, version, parents,
+                            upstream_tarballs=upstream_tarballs,
                             upstream_branch=upstream_branch,
                             upstream_revisions=upstream_revisions):
                         self._fetch_upstream_to_branch(revid)
