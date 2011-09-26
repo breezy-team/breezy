@@ -475,6 +475,12 @@ def _standard_option(name, **kwargs):
     Option.STD_OPTIONS[name] = Option(name, **kwargs)
     Option.OPTIONS[name] = Option.STD_OPTIONS[name]
 
+def _standard_list_option(name, **kwargs):
+    """Register a standard option."""
+    # All standard options are implicitly 'global' ones
+    Option.STD_OPTIONS[name] = ListOption(name, **kwargs)
+    Option.OPTIONS[name] = Option.STD_OPTIONS[name]
+
 
 def _global_option(name, **kwargs):
     """Register a global option."""
@@ -531,13 +537,16 @@ _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
 # Declare the standard options
 _standard_option('help', short_name='h',
                  help='Show help message.')
+_standard_list_option('override-config', short_name='O', type=unicode,
+                      help='Override a configuration option value,'
+                      ' e.g. -Oname=value')
+_standard_option('quiet', short_name='q',
+                 help="Only display errors and warnings.",
+                 custom_callback=_verbosity_level_callback)
 _standard_option('usage',
                  help='Show usage message and options.')
 _standard_option('verbose', short_name='v',
                  help='Display more information.',
-                 custom_callback=_verbosity_level_callback)
-_standard_option('quiet', short_name='q',
-                 help="Only display errors and warnings.",
                  custom_callback=_verbosity_level_callback)
 
 # Declare commonly used options

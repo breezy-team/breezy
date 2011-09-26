@@ -44,6 +44,17 @@ class TestCommands(tests.TestCase):
                 commands_without_help.append(cmd_name)
         self.assertLength(0, commands_without_help)
 
+    def test_command_see_config_overrides(self):
+        class cmd_my_cmd(commands.Command):
+
+            def run(self):
+                c = config.GlobalStack()
+                val = c.get('xx')
+                return val
+
+        cmd = cmd_my_cmd()
+        self.assertEquals('12', cmd.run_argv_aliases(['-Oxx=12']))
+
     def test_display_command(self):
         """EPIPE message is selectively suppressed"""
         def pipe_thrower():

@@ -77,6 +77,7 @@ import string
 import sys
 
 
+import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -101,6 +102,7 @@ from bzrlib import (
     urlutils,
     win32utils,
     )
+from bzrlib.i18n import gettext
 from bzrlib.util.configobj import configobj
 """)
 from bzrlib import (
@@ -2643,6 +2645,24 @@ class MutableSection(Section):
         del self.options[name]
 
 
+class CommandLineSection(MutableSection):
+    """A section used to carry command line option overrides."""
+
+    def __init__(self, opts=None):
+        if opts is None:
+            opts = {}
+        super(CommandLineSection, self).__init__('cmdline-overrides', opts)
+
+    def _from_cmdline(self, overrides):
+        for over in overrides:
+            try:
+                name, value = over.split('=', 1)
+            except ValueError:
+                raise errors.BzrCommandError(
+                    gettext("Invalid '%s', should be of the form 'name=value'"))
+            self.set(name, value)
+
+
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
@@ -3264,7 +3284,9 @@ class GlobalStack(_CompatibleStack):
     def __init__(self):
         # Get a GlobalStore
         gstore = GlobalStore()
-        super(GlobalStack, self).__init__([gstore.get_sections], gstore)
+        super(GlobalStack, self).__init__(
+            [bzrlib.global_state.cmdline_overrides, gstore.get_sections],
+            gstore)
 
 
 class LocationStack(_CompatibleStack):
@@ -3278,7 +3300,9 @@ class LocationStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
-            [matcher.get_sections, gstore.get_sections], lstore)
+            [bzrlib.global_state.cmdline_overrides,
+             matcher.get_sections, gstore.get_sections],
+            lstore)
 
 
 class BranchStack(_CompatibleStack):
@@ -3290,7 +3314,8 @@ class BranchStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
-            [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            [bzrlib.global_state.cmdline_overrides,
+             matcher.get_sections, bstore.get_sections, gstore.get_sections],
             bstore)
         self.branch = branch
 

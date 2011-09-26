@@ -20,6 +20,12 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* A new ``--override-config`` (``-O`` for short) standard option (common to
+  all commands) have been added. It provides a value for a config option in
+  the ``-Oname=value`` form that takes precedence over all definitions found
+  in config files.  It can be used multiple times to override different
+  options. (Vincent Ladeuil, #491196)
+
 Improvements
 ************
 

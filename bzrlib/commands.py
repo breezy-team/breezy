@@ -663,6 +663,12 @@ class Command(object):
             opts['quiet'] = trace.is_quiet()
         elif opts.has_key('quiet'):
             del opts['quiet']
+        try:
+            bzrlib.global_state.cmdline_overrides._from_cmdline(
+                opts.pop('override_config'))
+        except KeyError:
+            # No overrides were specified
+            pass
 
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
@@ -1163,8 +1169,9 @@ def install_bzr_command_hooks():
         "bzr plugin commands")
     Command.hooks.install_named_hook("get_command", _get_external_command,
         "bzr external command lookup")
-    Command.hooks.install_named_hook("get_missing_command", _try_plugin_provider,
-        "bzr plugin-provider-db check")
+    Command.hooks.install_named_hook("get_missing_command",
+                                     _try_plugin_provider,
+                                     "bzr plugin-provider-db check")
 
 
 
