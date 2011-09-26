@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
 Bug Fixes
 *********
 
