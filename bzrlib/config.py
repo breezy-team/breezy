@@ -2361,7 +2361,7 @@ class Option(object):
                 raise AssertionError(
                     'Only empty lists are supported as default values')
             self.default = u','
-        elif isinstance(default, (str, unicode, bool, int)):
+        elif isinstance(default, (str, unicode, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
         else:
@@ -2424,6 +2424,11 @@ def bool_from_store(unicode_str):
 
 def int_from_store(unicode_str):
     return int(unicode_str)
+
+
+def float_from_store(unicode_str):
+    return float(unicode_str)
+
 
 
 # Use a an empty dict to initialize an empty configobj avoiding all
@@ -2595,6 +2600,12 @@ The default value for ``send --strict``.
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before pushing.
 '''))
+
+option_registry.register(
+    Option('serve.client_timeout',
+           default=300.0, from_unicode=float_from_store,
+           help="If we wait for a new request from a client for more than"
+                " X seconds, consider the client idle, and hangup."))
 
 
 class Section(object):

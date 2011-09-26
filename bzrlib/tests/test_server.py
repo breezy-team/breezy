@@ -265,7 +265,7 @@ class TestThread(cethread.CatchingExceptionThread):
             #raise AssertionError('thread %s hung' % (self.name,))
 
 
-class TestingTCPServerMixin:
+class TestingTCPServerMixin(object):
     """Mixin to support running SocketServer.TCPServer in a thread.
 
     Tests are connecting from the main thread, the server has to be run in a
@@ -589,7 +589,8 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
     def __init__(self, request, client_address, server):
         medium.SmartServerSocketStreamMedium.__init__(
             self, request, server.backing_transport,
-            server.root_client_path)
+            server.root_client_path,
+            timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
         request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         SocketServer.BaseRequestHandler.__init__(self, request, client_address,
                                                  server)
@@ -600,6 +601,8 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
             self._serve_one_request(server_protocol)
 
 
+_DEFAULT_TESTING_CLIENT_TIMEOUT = 4.0
+
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 
     def __init__(self, server_address, request_handler_class,
@@ -607,7 +610,8 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
         TestingThreadingTCPServer.__init__(self, server_address,
                                            request_handler_class)
         server.SmartTCPServer.__init__(self, backing_transport,
-                                       root_client_path)
+            root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
+
     def serve(self):
         self.run_server_started_hooks()
         try:
