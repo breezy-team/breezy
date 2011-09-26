@@ -34,7 +34,10 @@ from bzrlib.trace import (
     note,
     )
 
-from bzrlib.plugins.rewrite import gettext
+try: # Plugin not installed, used for export_pot.py
+    from __init__ import gettext
+except ImportError: # Plugin is installed and called from bzr
+    from bzrlib.plugins.rewrite import gettext
 
 
 class cmd_rebase(Command):
@@ -105,8 +108,8 @@ class cmd_rebase(Command):
             rebase_todo,
             )
         if revision is not None and pending_merges:
-            raise BzrCommandError(
-                "--revision and --pending-merges are mutually exclusive")
+            raise BzrCommandError(gettext(
+                "--revision and --pending-merges are mutually exclusive"))
 
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
@@ -118,16 +121,16 @@ class cmd_rebase(Command):
                 else:
                     upstream_location = wt.branch.get_parent()
                     if upstream_location is None:
-                        raise BzrCommandError("No upstream branch specified.")
+                        raise BzrCommandError(gettext("No upstream branch specified."))
                     note(gettext("Rebasing on %s"), upstream_location)
             upstream = Branch.open_containing(upstream_location)[0]
             upstream_repository = upstream.repository
             upstream_revision = upstream.last_revision()
             # Abort if there already is a plan file
             if state.has_plan():
-                raise BzrCommandError("A rebase operation was interrupted. "
+                raise BzrCommandError(gettext("A rebase operation was interrupted. "
                     "Continue using 'bzr rebase-continue' or abort using 'bzr "
-                    "rebase-abort'")
+                    "rebase-abort'"))
 
             start_revid = None
             stop_revid = None
@@ -141,16 +144,16 @@ class cmd_rebase(Command):
                     if revision[1] is not None:
                         stop_revid = revision[1].as_revision_id(wt.branch)
                 else:
-                    raise BzrCommandError(
-                        "--revision takes only one or two arguments")
+                    raise BzrCommandError(gettext(
+                        "--revision takes only one or two arguments"))
 
             if pending_merges:
                 wt_parents = wt.get_parent_ids()
                 if len(wt_parents) in (0, 1):
-                    raise BzrCommandError("No pending merges present.")
+                    raise BzrCommandError(gettext("No pending merges present."))
                 elif len(wt_parents) > 2:
-                    raise BzrCommandError(
-                        "Rebasing more than one pending merge not supported")
+                    raise BzrCommandError(gettext(
+                        "Rebasing more than one pending merge not supported"))
                 stop_revid = wt_parents[1]
                 assert stop_revid is not None, "stop revid invalid"
 
@@ -176,11 +179,11 @@ class cmd_rebase(Command):
 
             if start_revid is None:
                 if not onto_unique:
-                    self.outf.write("No revisions to rebase.\n")
+                    self.outf.write(gettext("No revisions to rebase.\n"))
                     return
                 if not our_new:
-                    self.outf.write("Base branch is descendant of current "
-                        "branch. Pulling instead.\n")
+                    self.outf.write(gettext("Base branch is descendant of current "
+                        "branch. Pulling instead.\n"))
                     if not dry_run:
                         wt.pull(upstream, onto)
                     return
@@ -212,9 +215,9 @@ class cmd_rebase(Command):
                         WorkingTreeRevisionRewriter(wt, state,
                             merge_type=merge_type))
                 except ConflictsInTree:
-                    raise BzrCommandError("A conflict occurred replaying a "
+                    raise BzrCommandError(gettext("A conflict occurred replaying a "
                         "commit. Resolve the conflict and run "
-                        "'bzr rebase-continue' or run 'bzr rebase-abort'.")
+                        "'bzr rebase-continue' or run 'bzr rebase-abort'."))
                 # Remove plan file
                 state.remove_plan()
         finally:
@@ -273,14 +276,14 @@ class cmd_rebase_continue(Command):
             replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
-                raise BzrCommandError("There are still conflicts present. "
+                raise BzrCommandError(gettext("There are still conflicts present. "
                                       "Resolve the conflicts and then run "
-                                      "'bzr resolve' and try again.")
+                                      "'bzr resolve' and try again."))
             # Read plan file
             try:
                 replace_map = state.read_plan()[1]
             except NoSuchFile:
-                raise BzrCommandError("No rebase to continue")
+                raise BzrCommandError(gettext("No rebase to continue"))
             oldrevid = state.read_active_revid()
             if oldrevid is not None:
                 oldrev = wt.branch.repository.get_revision(oldrevid)
@@ -289,9 +292,9 @@ class cmd_rebase_continue(Command):
                 # Start executing plan from current Branch.last_revision()
                 rebase(wt.branch.repository, replace_map, replayer)
             except ConflictsInTree:
-                raise BzrCommandError("A conflict occurred replaying a commit."
+                raise BzrCommandError(gettext("A conflict occurred replaying a commit."
                     " Resolve the conflict and run 'bzr rebase-continue' or "
-                    "run 'bzr rebase-abort'.")
+                    "run 'bzr rebase-abort'."))
             # Remove plan file
             state.remove_plan()
         finally:
@@ -322,7 +325,7 @@ class cmd_rebase_todo(Command):
             try:
                 replace_map = state.read_plan()[1]
             except NoSuchFile:
-                raise BzrCommandError("No rebase in progress")
+                raise BzrCommandError(gettext("No rebase in progress"))
             currentrevid = state.read_active_revid()
             if currentrevid is not None:
                 note(gettext("Currently replaying: %s") % currentrevid)
@@ -369,10 +372,10 @@ class cmd_replay(Command):
                 for revno in range(from_revno, to_revno + 1):
                     todo.append(from_branch.get_rev_id(revno))
             else:
-                raise BzrCommandError(
-                    "--revision takes only one or two arguments")
+                raise BzrCommandError(gettext(
+                    "--revision takes only one or two arguments"))
         else:
-            raise BzrCommandError("--revision is mandatory")
+            raise BzrCommandError(gettext("--revision is mandatory"))
 
         wt = WorkingTree.open(directory)
         wt.lock_write()
@@ -382,7 +385,7 @@ class cmd_replay(Command):
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for revid in todo:
-                    pb.update("replaying commits", todo.index(revid), len(todo))
+                    pb.update(gettext("replaying commits"), todo.index(revid), len(todo))
                     wt.branch.repository.fetch(from_branch.repository, revid)
                     newrevid = regenerate_default_revid(wt.branch.repository, revid)
                     replayer(revid, newrevid, [wt.last_revision()])
@@ -460,12 +463,12 @@ class cmd_rebase_foreign(Command):
         stored_loc = branch_to.get_parent()
         if new_base is None:
             if stored_loc is None:
-                raise BzrCommandError("No pull location known or"
-                                             " specified.")
+                raise BzrCommandError(gettext("No pull location known or"
+                                             " specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                self.outf.write(gettext("Using saved location: %s\n") % display_url)
                 new_base = Branch.open(stored_loc)
         else:
             new_base = Branch.open(new_base)
