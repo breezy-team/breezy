@@ -272,6 +272,7 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
     supports_ghosts = False
     supports_external_lookups = False
     supports_chks = False
+    supports_nesting_repositories = True
     _fetch_order = 'topological'
     _fetch_reconcile = True
     fast_deltas = False

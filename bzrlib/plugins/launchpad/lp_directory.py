@@ -26,6 +26,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.i18n import gettext
 
 from bzrlib.plugins.launchpad.lp_registration import (
     LaunchpadService, ResolveLaunchpadPathRequest)
@@ -164,8 +165,9 @@ class LaunchpadDirectory(object):
             if 'launchpad' in debug.debug_flags:
                 local_res = result
                 result = self._resolve_via_xmlrpc(path, url, _request_factory)
-                trace.note('resolution for %s\n  local: %s\n remote: %s'
-                           % (url, local_res['urls'], result['urls']))
+                trace.note(gettext(
+                    'resolution for {0}\n  local: {1}\n remote: {2}').format(
+                           url, local_res['urls'], result['urls']))
         else:
             result = self._resolve_via_xmlrpc(path, url, _request_factory)
 

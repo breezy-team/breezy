@@ -45,6 +45,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.i18n import gettext
 from bzrlib.smart import client, protocol, request, signals, vfs
 from bzrlib.transport import ssh
 """)
@@ -711,8 +712,8 @@ class _DebugCounter(object):
         value['count'] = 0
         value['vfs_count'] = 0
         if count != 0:
-            trace.note('HPSS calls: %d (%d vfs) %s',
-                       count, vfs_count, medium_repr)
+            trace.note(gettext('HPSS calls: {0} ({1} vfs) {2}').format(
+                       count, vfs_count, medium_repr))
 
     def flush_all(self):
         for ref in list(self.counts.keys()):

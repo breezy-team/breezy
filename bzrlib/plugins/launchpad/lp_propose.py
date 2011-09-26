@@ -142,8 +142,8 @@ class Proposer(object):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch.lp.self_link:
-                raise errors.BzrCommandError(
-                    'There is already a branch merge proposal: %s' %
+                raise errors.BzrCommandError(gettext(
+                    'There is already a branch merge proposal: %s') %
                     lp_api.canonical_url(mp))
 
     def _get_prerequisite_branch(self):

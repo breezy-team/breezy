@@ -445,9 +445,9 @@ class Config(object):
                         elif m.group(2).lower() == 'g':
                             val *= 10**9
                 else:
-                    ui.ui_factory.show_warning('Invalid config value for "%s" '
-                                               ' value %r is not an SI unit.'
-                                                % (option_name, val))
+                    ui.ui_factory.show_warning(gettext('Invalid config value for "{0}" '
+                                               ' value {1!r} is not an SI unit.').format(
+                                                option_name, val))
                     val = default
             except TypeError:
                 val = default
@@ -2533,6 +2533,16 @@ option_registry.register(
     Option('default_format', default='2a',
            help='Format used when creating branches.'))
 option_registry.register(
+    Option('dpush_strict', default=None,
+           from_unicode=bool_from_store,
+           help='''\
+The default value for ``dpush --strict``.
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing into a different VCS without any
+custom bzr metadata.
+'''))
+option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
@@ -2563,6 +2573,15 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
+    Option('push_strict', default=None,
+           from_unicode=bool_from_store,
+           help='''\
+The default value for ``push --strict``.
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before sending a merge directive.
+'''))
+option_registry.register(
     Option('repository.fdatasync', default=True,
            from_unicode=bool_from_store,
            help='''\
@@ -2571,6 +2590,15 @@ Flush repository changes onto physical disk?
 If true (default), repository changes are flushed through the OS buffers
 to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
+'''))
+option_registry.register(
+    Option('send_strict', default=None,
+           from_unicode=bool_from_store,
+           help='''\
+The default value for ``send --strict``.
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing.
 '''))
 
 option_registry.register(

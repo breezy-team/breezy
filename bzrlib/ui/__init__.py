@@ -154,6 +154,10 @@ class UIFactory(object):
             "The command 'bzr %(deprecated_name)s' "
             "has been deprecated in bzr %(deprecated_in_version)s. "
             "Please use 'bzr %(recommended_name)s' instead."),
+        deprecated_command_option=(
+            "The option '%(deprecated_name)s' to 'bzr %(command)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use '%(recommended_name)s' instead."),
         recommend_upgrade=("%(current_format_name)s is deprecated "
             "and a better format is available.\n"
             "It is recommended that you upgrade by "

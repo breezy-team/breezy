@@ -29,6 +29,7 @@ from bzrlib import (
     trace,
     transport as _mod_transport,
 )
+from bzrlib.i18n import gettext
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import (
@@ -450,7 +451,7 @@ class BzrServerFactory(object):
             smart_server = SmartTCPServer(self.transport,
                                           client_timeout=timeout)
             smart_server.start_server(host, port)
-            trace.note('listening on port: %s' % smart_server.port)
+            trace.note(gettext('listening on port: %s') % smart_server.port)
         self.smart_server = smart_server
 
     def _change_globals(self):

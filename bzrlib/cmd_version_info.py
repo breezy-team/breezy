@@ -25,6 +25,7 @@ from bzrlib import (
     version_info_formats,
     workingtree,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.commands import Command
@@ -41,9 +42,9 @@ def _parse_version_info_format(format):
         return version_info_formats.get_builder(format)
     except KeyError:
         formats = version_info_formats.get_builder_formats()
-        raise errors.BzrCommandError('No known version info format %s.'
-                                     ' Supported types are: %s'
-                                     % (format, formats))
+        raise errors.BzrCommandError(gettext('No known version info format {0}.'
+                                     ' Supported types are: {1}').format(
+                                     format, formats))
 
 
 class cmd_version_info(Command):
