@@ -253,7 +253,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         gitid = revidmap[revid][0]
                     except KeyError:
                         gitid = self.source_store._lookup_revision_sha1(revid)
-                assert len(gitid) == 40
+                assert len(gitid) == 40 or gitid.startswith('ref: ')
                 self.target_refs[name] = gitid
         finally:
             self.source_store.unlock()
