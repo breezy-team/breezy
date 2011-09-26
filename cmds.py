@@ -955,19 +955,24 @@ class cmd_import_upstream(Command):
         if db.pristine_upstream_source.has_version(None, version):
             raise BzrCommandError("Version %s is already present." % version)
         tagged_versions = {}
-        for tag, tag_version, revid in db.pristine_upstream_source.iter_versions():
-            tagged_versions[Version(tag_version)] = revid
+        for tversion, tcomponents in db.pristine_upstream_source.iter_versions():
+            tagged_versions[Version(version)] = tcomponents
         tag_order = sorted(tagged_versions.keys())
         if tag_order:
-            parents = [tagged_versions[tag_order[-1]]]
+            base_revisions = tagged_versions[tag_order[-1]]
         else:
-            parents = []
-        if parents:
+            base_revisions = {}
+        if base_revisions:
             if upstream is not None:
                 # See bug lp:309682
-                upstream.repository.fetch(branch.repository, parents[0])
-            db.extract_upstream_tree({ None: parents[0] }, tempdir)
+                for parent in base_revisions.values():
+                    upstream.repository.fetch(branch.repository, parent)
+            db.extract_upstream_tree(base_revisions, tempdir)
+            parents = {}
+            for name, base_revid in base_revisions.iteritems():
+                parents[name] = [base_revid]
         else:
+            parents = {}
             db._create_empty_upstream_tree(tempdir)
         tree = db.branch.basis_tree()
         tree.lock_read()
@@ -1224,9 +1229,8 @@ class cmd_dh_make(Command):
                 dh_make.run_dh_make(tree, package_name, version, use_v3=v3)
             finally:
                 tree.unlock()
-        note('Package prepared in %s'
-                % urlutils.unescape_for_display(tree.basedir,
-                    self.outf.encoding))
+        note('Package prepared in %s',
+            urlutils.unescape_for_display(tree.basedir, self.outf.encoding))
 
 
 class cmd_dep3_patch(Command):

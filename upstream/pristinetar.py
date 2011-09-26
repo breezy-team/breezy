@@ -419,10 +419,13 @@ class PristineTarSource(UpstreamSource):
 
         :return: Iterator over (tag_name, version, revid) tuples
         """
+        ret = {}
         for tag_name, tag_revid in self.branch.tags.get_tag_dict().iteritems():
             if not is_upstream_tag(tag_name):
                 continue
-            yield (tag_name, upstream_tag_version(tag_name), tag_revid)
+            (component, version) = upstream_tag_version(tag_name)
+            ret.setdefault(version, {})[component] = tag_revid
+        return ret.iteritems()
 
 
 def is_upstream_tag(tag):
@@ -438,7 +441,7 @@ def upstream_tag_version(tag):
     """Return the upstream version portion of an upstream tag name.
 
     :param tag: The string name of the tag.
-    :return: The version portion of the tag.
+    :return: tuple with version portion of the tag and component name
     """
     assert is_upstream_tag(tag), "Not an upstream tag: %s" % tag
     if tag.startswith('upstream/'):
@@ -449,4 +452,9 @@ def upstream_tag_version(tag):
             tag = tag[len('debian-'):]
         elif tag.startswith('ubuntu-'):
             tag = tag[len('ubuntu-'):]
-    return tag
+    if not '/' in tag:
+        return (None, tag)
+    (version, component) = tag.rsplit('/', 1)
+    if component == "":
+        component = None
+    return (component, version)

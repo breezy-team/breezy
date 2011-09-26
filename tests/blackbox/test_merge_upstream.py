@@ -98,7 +98,7 @@ class DHMadePackage(Fixture):
             [(self.tar.tarball, None, md5sum_filename(self.tar.tarball))],
             "foo",
             str(self.tar.version),
-            [tree.branch.last_revision()])
+            { None: [tree.branch.last_revision()]} )
         package_builder = SourcePackageBuilder("foo",
             str(self.tar.version)+"-1")
         package_builder.add_default_control()
