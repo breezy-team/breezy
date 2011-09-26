@@ -315,19 +315,32 @@ class TestBzrServe(TestBzrServeBase):
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_graceful_shutdown(self):
-        self.build_tree_contents([('a_file', 'contents\n')])
+        big_contents = 'a'*64*1024
+        self.build_tree_contents([('bigfile', big_contents)])
         process, url = self.start_server_port(['--client-timeout=1.0'])
-        # TODO: I would like to test this by having a large data set that we
-        #       want to finish reading before exiting. So the server should be
-        #       blocked but not accepting new connections after SIGHUP.
         t = transport.get_transport_from_url(url)
-        self.assertEqual('contents\n', t.get_bytes('a_file'))
+        m = t.get_smart_medium()
+        c = client._SmartClient(m)
+        # Start, but don't finish a response
+        resp, response_handler = c.call_expecting_body('get', 'bigfile')
+        self.assertEqual(('ok',), resp)
         # Note: process.send_signal is a Python 2.6ism
         process.send_signal(signal.SIGHUP)
-        m = t.get_smart_medium()
+        # Wait for the server to notice the signal, and then read the actual
+        # body of the response. That way we know that it is waiting for the
+        # request to finish
+        self.assertEqual('Requested to stop gracefully\n',
+                         process.stderr.readline())
+        self.assertEqual('Waiting for 1 client(s) to finish\n',
+                         process.stderr.readline())
+        body = response_handler.read_body_bytes()
+        if body != big_contents:
+            self.fail('Failed to properly read the contents of "bigfile"')
+        # Now that our request is finished, the medium should notice it has
+        # been disconnected.
         self.assertEqual('', m.read_bytes(1))
-        err = process.stderr.readline()
-        self.assertEqual('Requested to stop gracefully\n', err)
+        # And the server should be stopping
+        self.assertEqual(0, process.wait())
 
 
 class TestCmdServeChrooting(TestBzrServeBase):
