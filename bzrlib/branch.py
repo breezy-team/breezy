@@ -740,7 +740,7 @@ class Branch(controldir.ControlComponent):
         empty tree for revision 1.
         """
         try:
-            revid = self.get_rev_id(revno-1)
+            revid = self.get_rev_id(revno)
         except errors.NoSuchRevision:
             raise errors.InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(revid)
