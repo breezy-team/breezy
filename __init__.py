@@ -31,11 +31,16 @@ from info import (
     bzr_compatible_versions,
     )
 
-from bzrlib.i18n import install_translations
-import os, sys
-locale_base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
-translation = install_translations(domain='bzr-rewrite', locale_base=locale_base)
-gettext = translation.ugettext
+try:
+    from bzrlib.i18n import install_translations, add_fallback
+except ImportError: # No translations for bzr < 2.5
+    gettext = lambda x: x
+else:
+    import os, sys
+    locale_base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
+    translation = install_translations(domain='bzr-rewrite', locale_base=locale_base)
+    gettext = translation.ugettext
+    add_fallback(translation)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -47,7 +52,7 @@ __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 if __name__ == 'bzrlib.plugins.rebase':
-    raise ImportError("The rebase plugin has been renamed to rewrite. Please rename the directory in ~/.bazaar/plugins")
+    raise ImportError(gettext("The rebase plugin has been renamed to rewrite. Please rename the directory in ~/.bazaar/plugins"))
 
 for cmd in bzr_commands:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [],
