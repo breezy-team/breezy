@@ -170,7 +170,7 @@ class SmartTCPServer(object):
         #      Which means that while in-theory this is a graceful shutdown,
         #      because we don't actively close the connections, etc, we don't
         #      have a good way (yet) to poll the spawned clients and
-        trace.note('Requested to stop gracefully')
+        trace.note(gettext('Requested to stop gracefully'))
         self._should_terminate = True
         self._gracefully_stopping = True
         for handler, _ in self._active_connections:
@@ -180,13 +180,13 @@ class SmartTCPServer(object):
         self._poll_active_connections()
         if not self._active_connections:
             return
-        trace.note('Waiting for %d client(s) to finish'
+        trace.note(gettext('Waiting for %d client(s) to finish')
                    % (len(self._active_connections),))
         t_next_log = self._timer() + self._LOG_WAITING_TIMEOUT
         while self._active_connections:
             now = self._timer()
             if now >= t_next_log:
-                trace.note('Still waiting for %d client(s) to finish'
+                trace.note(gettext('Still waiting for %d client(s) to finish')
                            % (len(self._active_connections),))
                 t_next_log = now + self._LOG_WAITING_TIMEOUT
             self._poll_active_connections(self._SHUTDOWN_POLL_TIMEOUT)
@@ -219,7 +219,8 @@ class SmartTCPServer(object):
                         # we might get a EBADF here, any other socket errors
                         # should get logged.
                         if e.args[0] not in (errno.EBADF, errno.EINTR):
-                            trace.warning("listening socket error: %s", e)
+                            trace.warning(gettext("listening socket error: %s")
+                                          % (e,))
                     else:
                         if self._should_terminate:
                             conn.close()
