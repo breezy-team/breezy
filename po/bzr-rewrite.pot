@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr-rewrite\n"
 "Report-Msgid-Bugs-To: <bazaar@canonical.com>\n"
-"POT-Creation-Date: 2011-09-26 12:33+0100\n"
+"POT-Creation-Date: 2011-09-26 16:52+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: __init__.py:54
+#: __init__.py:55
 msgid ""
 "The rebase plugin has been renamed to rewrite. Please rename the directory "
 "in ~/.bazaar/plugins"
@@ -209,25 +209,6 @@ msgid ""
 "current rebase operation."
 msgstr ""
 
-#: commands.py:339
-msgid "Replay commits from another branch on top of this one."
-msgstr ""
-
-#: commands.py:341
-msgid "    "
-msgstr ""
-
-#: commands.py:399
-msgid "Show a list of 'pseudonym' revisions."
-msgstr ""
-
-#: commands.py:401
-msgid ""
-"Pseudonym revisions are revisions that are roughly the same revision,\n"
-"usually because they were converted from the same revision in a\n"
-"foreign version control system."
-msgstr ""
-
 #: commands.py:419
 msgid ""
 "Rebase revisions based on a branch created with a different import tool."
@@ -250,7 +231,7 @@ msgstr ""
 msgid "Write map with old and new revision ids."
 msgstr ""
 
-# help of 'directory' option of 'replay' command
+# help of 'directory' option of 'rebase' command
 #: commands.py:433
 msgid ""
 "Branch to replay onto, rather than the one containing the working directory."
