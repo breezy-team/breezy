@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr-rewrite\n"
 "Report-Msgid-Bugs-To: <bazaar@canonical.com>\n"
-"POT-Creation-Date: 2011-09-23 12:47+0100\n"
+"POT-Creation-Date: 2011-09-26 12:33+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,29 +17,241 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: commands.py:95
+#: __init__.py:54
+msgid ""
+"The rebase plugin has been renamed to rewrite. Please rename the directory "
+"in ~/.bazaar/plugins"
+msgstr ""
+
+#: commands.py:98
 msgid "HELLO"
 msgstr ""
 
-#: commands.py:122
+#: commands.py:112
+msgid "--revision and --pending-merges are mutually exclusive"
+msgstr ""
+
+#: commands.py:124
+msgid "No upstream branch specified."
+msgstr ""
+
+#: commands.py:125
 #, python-format
 msgid "Rebasing on %s"
 msgstr ""
 
-#: commands.py:201
+#: commands.py:131
+msgid ""
+"A rebase operation was interrupted. Continue using 'bzr rebase-continue' or "
+"abort using 'bzr rebase-abort'"
+msgstr ""
+
+#: commands.py:148 commands.py:376
+msgid "--revision takes only one or two arguments"
+msgstr ""
+
+#: commands.py:153
+msgid "No pending merges present."
+msgstr ""
+
+#: commands.py:156
+msgid "Rebasing more than one pending merge not supported"
+msgstr ""
+
+#: commands.py:182
+msgid "No revisions to rebase.\n"
+msgstr ""
+
+#: commands.py:185
+msgid "Base branch is descendant of current branch. Pulling instead.\n"
+msgstr ""
+
+#: commands.py:204
 #, python-format
 msgid "%d revisions will be rebased:"
 msgstr ""
 
+#: commands.py:218 commands.py:295
+msgid ""
+"A conflict occurred replaying a commit. Resolve the conflict and run 'bzr "
+"rebase-continue' or run 'bzr rebase-abort'."
+msgstr ""
+
+#: commands.py:279
+msgid ""
+"There are still conflicts present. Resolve the conflicts and then run 'bzr "
+"resolve' and try again."
+msgstr ""
+
+#: commands.py:286
+msgid "No rebase to continue"
+msgstr ""
+
 #: commands.py:328
+msgid "No rebase in progress"
+msgstr ""
+
+#: commands.py:331
 #, python-format
 msgid "Currently replaying: %s"
 msgstr ""
 
-#: commands.py:330
+#: commands.py:333
 msgid "{0} -> {1}"
 msgstr ""
 
-#: commands.py:502
+#: commands.py:378
+msgid "--revision is mandatory"
+msgstr ""
+
+#: commands.py:388
+msgid "replaying commits"
+msgstr ""
+
+#: commands.py:466
+msgid "No pull location known or specified."
+msgstr ""
+
+#: commands.py:471
+#, python-format
+msgid "Using saved location: %s\n"
+msgstr ""
+
+#: commands.py:505
 msgid "Nothing to do."
+msgstr ""
+
+#: commands.py:44
+msgid "Re-base a branch."
+msgstr ""
+
+#: commands.py:46
+msgid ""
+"Rebasing is the process of taking a branch and modifying the history so\n"
+"that it appears to start from a different point. This can be useful\n"
+"to clean up the history before submitting your changes. The tree at the\n"
+"end of the process will be the same as if you had merged the other branch,\n"
+"but the history will be different."
+msgstr ""
+
+#: commands.py:52
+msgid ""
+"The command takes the location of another branch on to which the branch in\n"
+"the specified directory (by default, the current working directory) \n"
+"will be rebased. If a branch is not specified then the parent branch \n"
+"is used, and this is usually the desired result."
+msgstr ""
+
+#: commands.py:57
+msgid ""
+"The first step identifies the revisions that are in the current branch that\n"
+"are not in the parent branch. The current branch is then set to be at the\n"
+"same revision as the target branch, and each revision is replayed on top\n"
+"of the branch. At the end of the process it will appear as though your\n"
+"current branch was branched off the current last revision of the target."
+msgstr ""
+
+#: commands.py:63
+msgid ""
+"Each revision that is replayed may cause conflicts in the tree. If this\n"
+"happens the command will stop and allow you to fix them up. Resolve the\n"
+"commits as you would for a merge, and then run 'bzr resolve' to marked\n"
+"them as resolved. Once you have resolved all the conflicts you should\n"
+"run 'bzr rebase-continue' to continue the rebase operation."
+msgstr ""
+
+#: commands.py:69
+msgid ""
+"If conflicts are encountered and you decide that you do not wish to "
+"continue\n"
+"you can run 'bzr rebase-abort'."
+msgstr ""
+
+#: commands.py:72
+msgid ""
+"The '--onto' option allows you to specify a different revision in the\n"
+"target branch to start at when replaying the revisions. This means that\n"
+"you can change the point at which the current branch will appear to be\n"
+"branched from when the operation completes."
+msgstr ""
+
+# help of 'dry-run' option of 'rebase' command
+#: commands.py:80
+msgid "Show what would be done, but don't actually do anything."
+msgstr ""
+
+# help of 'always-rebase-merges' option of 'rebase' command
+#: commands.py:82
+msgid "Don't skip revisions that merge already present revisions."
+msgstr ""
+
+# help of 'pending-merges' option of 'rebase' command
+#: commands.py:84
+msgid "Rebase pending merges onto local branch."
+msgstr ""
+
+# help of 'onto' option of 'rebase' command
+#: commands.py:85
+msgid "Different revision to replay onto."
+msgstr ""
+
+#: commands.py:228
+msgid "Abort an interrupted rebase."
+msgstr ""
+
+#: commands.py:258
+msgid "Continue an interrupted rebase after resolving conflicts."
+msgstr ""
+
+#: commands.py:305
+msgid ""
+"Print list of revisions that still need to be replayed as part of the\n"
+"current rebase operation."
+msgstr ""
+
+#: commands.py:339
+msgid "Replay commits from another branch on top of this one."
+msgstr ""
+
+#: commands.py:341
+msgid "    "
+msgstr ""
+
+#: commands.py:399
+msgid "Show a list of 'pseudonym' revisions."
+msgstr ""
+
+#: commands.py:401
+msgid ""
+"Pseudonym revisions are revisions that are roughly the same revision,\n"
+"usually because they were converted from the same revision in a\n"
+"foreign version control system."
+msgstr ""
+
+#: commands.py:419
+msgid ""
+"Rebase revisions based on a branch created with a different import tool."
+msgstr ""
+
+#: commands.py:421
+msgid ""
+"This will change the identity of revisions whose parents\n"
+"were mapped from revisions in the other version control system."
+msgstr ""
+
+#: commands.py:424
+msgid ""
+"You are recommended to run \"bzr check\" in the local repository\n"
+"after running this command."
+msgstr ""
+
+# help of 'idmap-file' option of 'rebase-foreign' command
+#: commands.py:429
+msgid "Write map with old and new revision ids."
+msgstr ""
+
+# help of 'directory' option of 'replay' command
+#: commands.py:433
+msgid ""
+"Branch to replay onto, rather than the one containing the working directory."
 msgstr ""
