@@ -137,7 +137,7 @@ class TestSignalHandlers(tests.TestCase):
         signals._on_sighup = None
         orig = signals.install_sighup_handler()
         if getattr(signal, 'SIGHUP', None) is not None:
-            cur = signal.getsignal(SIGHUP, orig)
+            cur = signal.getsignal(SIGHUP)
             self.assertEqual(signals._sighup_handler, cur)
         self.assertIsNot(None, signals._on_sighup)
         signals.restore_sighup_handler(orig)
