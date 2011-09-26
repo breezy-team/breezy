@@ -490,10 +490,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = tree.branch
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, ["rev1"])
-        self.assertEquals(br.revision_history(), ["rev1"])
+        self.assertEquals(br.last_revision(), "rev1")
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, [])
-        self.assertEquals(br.revision_history(), [])
+        self.assertEquals(br.last_revision(), 'null:')
 
     def test_heads_to_fetch(self):
         # heads_to_fetch is a method that returns a collection of revids that

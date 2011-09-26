@@ -42,7 +42,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         parent.merge_from_branch(mine.branch)
         parent.commit('merge my change', rev_id='P2')
         mine.pull(parent.branch)
-        self.assertEqual(['P1', 'P2'], mine.branch.revision_history())
+        self.assertEqual('P2', mine.branch.last_revision())
 
     def test_pull_merged_indirect(self):
         # it should be possible to do a pull from one branch into another
@@ -59,7 +59,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         parent.merge_from_branch(other.branch)
         parent.commit('merge other', rev_id='P2')
         mine.pull(parent.branch)
-        self.assertEqual(['P1', 'P2'], mine.branch.revision_history())
+        self.assertEqual('P2', mine.branch.last_revision())
 
     def test_pull_updates_checkout_and_master(self):
         """Pulling into a checkout updates the checkout and the master branch"""
@@ -71,8 +71,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         checkout.branch.pull(other.branch)
-        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
-        self.assertEqual([rev1, rev2], master_tree.branch.revision_history())
+        self.assertEqual(rev2, checkout.branch.last_revision())
+        self.assertEqual(rev2, master_tree.branch.last_revision())
 
     def test_pull_local_updates_checkout_only(self):
         """Pulling --local into a checkout updates the checkout and not the
@@ -85,8 +85,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         rev2 = other.commit('other commit')
         # now pull local, which should update checkout but not master.
         checkout.branch.pull(other.branch, local = True)
-        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
-        self.assertEqual([rev1], master_tree.branch.revision_history())
+        self.assertEqual(rev2, checkout.branch.last_revision())
+        self.assertEqual(rev1, master_tree.branch.last_revision())
 
     def test_pull_local_raises_LocalRequiresBoundBranch_on_unbound(self):
         """Pulling --local into a branch that is not bound should fail."""
@@ -98,7 +98,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         # now pull --local, which should raise LocalRequiresBoundBranch error.
         self.assertRaises(errors.LocalRequiresBoundBranch,
                           master_tree.branch.pull, other.branch, local = True)
-        self.assertEqual([rev1], master_tree.branch.revision_history())
+        self.assertEqual(rev1, master_tree.branch.last_revision())
 
     def test_pull_returns_result(self):
         parent = self.make_branch_and_tree('parent')
@@ -134,8 +134,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         tree_a.branch.pull(tree_b.branch, overwrite=True,
                            stop_revision='rev2b')
         self.assertEqual('rev2b', tree_a.branch.last_revision())
-        self.assertEqual(tree_b.branch.revision_history(),
-                         tree_a.branch.revision_history())
+        self.assertEqual(tree_b.branch.last_revision(),
+                         tree_a.branch.last_revision())
 
     def test_pull_merges_and_fetches_tags(self):
         """Tags are updated by br.pull(source), and revisions named in those

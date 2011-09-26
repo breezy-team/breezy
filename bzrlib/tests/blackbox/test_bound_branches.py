@@ -49,7 +49,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def check_revno(self, val, loc='.'):
         self.assertEqual(
-            val, len(BzrDir.open(loc).open_branch().revision_history()))
+            val, BzrDir.open(loc).open_branch().last_revision_info()[0])
 
     def test_simple_binding(self):
         tree = self.make_branch_and_tree('base')
@@ -229,11 +229,6 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         child_tree.commit(message='merged')
         self.check_revno(3)
 
-        # After binding, the revision history should be unaltered
-        # take a copy before
-        base_history = base_branch.revision_history()
-        child_history = child_branch.revision_history()
-
     def test_bind_parent_ahead(self):
         base_tree = self.create_branches()[0]
 
@@ -333,7 +328,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.build_tree_contents([('other/c', 'file c\n')])
         other_tree.add('c')
         other_tree.commit(message='adding c')
-        new_rev_id = other_branch.revision_history()[-1]
+        new_rev_id = other_branch.last_revision()
 
         child_tree.merge_from_branch(other_branch)
 
