@@ -6397,10 +6397,14 @@ class cmd_export_pot(Command):
     __doc__ = """Export command helps and error messages in po format."""
 
     hidden = True
+    takes_options = [Option('plugins', 
+                            help='Comma separated list of plugin commands '\
+                                 'to export (defaults to all built in commands).',
+                            type=str)]
 
-    def run(self):
+    def run(self, plugins=None):
         from bzrlib.export_pot import export_pot
-        export_pot(self.outf)
+        export_pot(self.outf, plugins)
 
 
 def _register_lazy_builtins():

@@ -169,7 +169,7 @@ def _write_command_help(outf, cmd):
     _command_options(outf, path, cmd)
 
 
-def _command_helps(outf):
+def _command_helps(outf, plugins=None):
     """Extract docstrings from path.
 
     This respects the Bazaar cmdtable/table convention and will
@@ -182,6 +182,9 @@ def _command_helps(outf):
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
+        if plugins is not None:
+            # only export builtins if we are not exporting plugin commands
+            continue
         note(gettext("Exporting messages from builtin command: %s"), cmd_name)
         _write_command_help(outf, command)
 
@@ -189,12 +192,15 @@ def _command_helps(outf):
     core_plugins = glob(plugin_path + '/*/__init__.py')
     core_plugins = [os.path.basename(os.path.dirname(p))
                         for p in core_plugins]
-    # core plugins
+    # plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
-        if command.plugin_name() not in core_plugins:
+        if plugins is not None and cmd_name not in plugins:
+            # if we are exporting plugin commands, skip plugins we have not specified.
+            continue
+        if plugins is None and command.plugin_name() not in core_plugins:
             # skip non-core plugins
             # TODO: Support extracting from third party plugins.
             continue
@@ -246,10 +252,14 @@ def _help_topics(outf):
             _poentry(outf, 'dummy/help_topics/'+key+'/summary.txt',
                      1, summary)
 
-def export_pot(outf):
+def export_pot(outf, plugins=None):
     global _FOUND_MSGID
     _FOUND_MSGID = set()
-    _standard_options(outf)
-    _command_helps(outf)
-    _error_messages(outf)
-    _help_topics(outf)
+    if plugins is None:
+        _standard_options(outf)
+        _command_helps(outf)
+        _error_messages(outf)
+        _help_topics(outf)
+    else:
+        plugin_commands = plugins.split(',')
+        _command_helps(outf, plugins)
