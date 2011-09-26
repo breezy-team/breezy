@@ -25,7 +25,6 @@
 from base64 import standard_b64encode
 
 import bz2
-import gzip
 import os
 import tarfile
 import zipfile

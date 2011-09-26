@@ -160,35 +160,6 @@ class PristineTarSource(UpstreamSource):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
 
-    def import_tarballs(self, package, version, tree, parent_ids, tarballs,
-            timestamp=None, author=None):
-        """Import the upstream tarballs.
-
-        :param package: Package name
-        :param version: Package version
-        :param path: Path with tree to import
-        :param parent_ids: Dictionary mapping component names to revision ids
-        :param tarballs: List of (path, component, md5)
-        :param timestamp: Optional timestamp for new commits
-        :param author: Optional author for new commitscopmone
-        :return: List of tuples with (component, tag, revid)
-        """
-        ret = []
-        component_paths = [cp for (_, cp, _) in tarballs if cp is not None]
-        for (tarball, component, md5) in tarballs:
-            if component is None:
-                exclude = component_paths
-            else:
-                exclude = []
-            (tag, revid) = self.import_component_tarball(
-                    package, version, tree, parent_ids[component], component,
-                    md5, tarball, author=author, timestamp=timestamp,
-                    exclude=exclude)
-            ret.append((component, tag, revid))
-        # FIXME: Handle multiple components
-        tree.branch.generate_revision_history(revid)
-        return ret
-
     def import_component_tarball(self, package, version, tree, parent_ids,
             component=None, md5=None, tarball=None, author=None, timestamp=None,
             subdir=None, exclude=None):
