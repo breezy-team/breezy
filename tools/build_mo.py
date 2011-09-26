@@ -60,7 +60,7 @@ class build_mo(Command):
         self.set_undefined_options('build', ('force', 'force'))
         self.prj_name = self.distribution.get_name()
         if self.build_dir is None:
-            self.build_dir = 'bzrlib/locale'
+            self.build_dir = 'locale'
         if not self.output_base:
             self.output_base = self.prj_name or 'messages'
         if self.source_dir is None:
@@ -77,7 +77,6 @@ class build_mo(Command):
 
     def run(self):
         """Run msgfmt for each language"""
-        print "build_mo run()"
         if not self.lang:
             return
 
