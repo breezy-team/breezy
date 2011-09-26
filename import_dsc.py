@@ -60,6 +60,7 @@ from bzrlib.transport import (
 
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
+    MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
@@ -556,6 +557,7 @@ class DistributionBranch(object):
                 tarballs=upstream_tarballs):
             return False
 
+
         up_branch = self.pristine_upstream_branch
         up_branch.lock_read()
         try:
@@ -563,10 +565,14 @@ class DistributionBranch(object):
             other_up_branch = branch.pristine_upstream_branch
             other_up_branch.lock_read()
             try:
+                pristine_upstream_revids = branch.pristine_upstream_source.version_as_revisions(package, version)
+                if pristine_upstream_revids.keys() != [None]:
+                    raise MultipleUpstreamTarballsNotSupported()
+                pristine_upstream_revid = pristine_upstream_revids[None]
                 graph = other_up_branch.repository.get_graph(
                         up_branch.repository)
                 return graph.is_ancestor(up_branch.last_revision(),
-                        branch.pristine_upstream_source.version_as_revision(package, version))
+                        pristine_upstream_revid)
             finally:
                 other_up_branch.unlock()
         finally:
@@ -680,7 +686,11 @@ class DistributionBranch(object):
         :param version: the upstream version string
         """
         assert isinstance(version, str)
-        pull_revision = pull_branch.pristine_upstream_source.version_as_revision(package, version)
+        pull_revisions = pull_branch.pristine_upstream_source.version_as_revisions(
+            package, version)
+        if pull_revisions.keys() != [None]:
+            raise MultipleUpstreamTarballsNotSupported()
+        pull_revision = pull_revisions[None]
         mutter("Pulling upstream part of %s from revision %s" % \
                 (version, pull_revision))
         assert self.pristine_upstream_tree is not None, \
@@ -774,12 +784,17 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            parent_revid = self.pristine_upstream_source.version_as_revision(package,
+            upstream_revids = self.pristine_upstream_source.version_as_revisions(package,
                 version.upstream_version, tarballs)
-            if len(parents) > 0:
-                real_parents.insert(1, parent_revid)
-            else:
-                real_parents = [parent_revid]
+            def key(a):
+                if a is None:
+                    return None
+                return a
+            for component in sorted(upstream_revids.keys(), key=key):
+                if len(real_parents) > 0:
+                    real_parents.insert(1, upstream_revids[component])
+                else:
+                    real_parents = [upstream_revids[component]]
         return real_parents
 
     def _fetch_upstream_to_branch(self, revid):
@@ -1058,8 +1073,11 @@ class DistributionBranch(object):
                 pull_branch = pull_parents[1][0]
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
-                pull_revid = pull_branch.pristine_upstream_source.version_as_revision(
+                pull_revids = pull_branch.pristine_upstream_source.version_as_revisions(
                     package, pull_version.upstream_version)
+                if pull_revids.keys() != [None]:
+                    raise MultipleUpstreamTarballsNotSupported()
+                pull_revid = pull_revids[None]
                 mutter("Initialising upstream from %s, version %s",
                     str(pull_branch), str(pull_version))
                 parents.append(pull_revid)

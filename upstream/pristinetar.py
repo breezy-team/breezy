@@ -293,14 +293,16 @@ class PristineTarSource(UpstreamSource):
                 "revision %s", revid)
             return True
 
-    def version_as_revision(self, package, version, tarballs=None):
+    def version_as_revisions(self, package, version, tarballs=None):
         if tarballs is None:
-            return self.version_component_as_revision(package, version, component=None)
-        elif len(tarballs) > 1:
-            raise MultipleUpstreamTarballsNotSupported()
-        else:
-            return self.version_component_as_revision(package, version, tarballs[0][1],
-                tarballs[0][2])
+            # FIXME: What if there are multiple tarballs?
+            return {
+                None: self.version_component_as_revision(package, version, component=None) }
+        ret = {}
+        for (tarball, component, md5) in tarballs:
+            ret[component] = self.version_component_as_revision(
+                package, version, component, md5)
+        return ret
 
     def version_component_as_revision(self, package, version, component, md5=None):
         assert isinstance(version, str)

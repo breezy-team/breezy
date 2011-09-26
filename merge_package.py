@@ -31,7 +31,9 @@ except ImportError:
     from debian_bundle.changelog import Version
 
 from bzrlib.plugins.builddeb.errors import (
-    SharedUpstreamConflictsWithTargetPackaging)
+    MultipleUpstreamTarballsNotSupported,
+    SharedUpstreamConflictsWithTargetPackaging,
+    )
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import find_changelog
 
@@ -59,8 +61,11 @@ def _upstream_version_data(source, target):
     for branch in (source, target):
         db = DistributionBranch(branch, branch)
         uver = _latest_version(branch).upstream_version
-        results.append((Version(uver),
-                    db.pristine_upstream_source.version_as_revision(None, uver)))
+        upstream_revids = db.pristine_upstream_source.version_as_revisions(None, uver)
+        if upstream_revids.keys() != [None]:
+            raise MultipleUpstreamTarballsNotSupported()
+        upstream_revid = upstream_revids[None]
+        results.append((Version(uver), upstream_revid))
 
     return results
 
