@@ -53,7 +53,7 @@ TRANSLATABLE_PYFILES:=$(shell find . -name '*.py' \
 		)
 
 po/bzr-rewrite.pot: $(PYFILES) $(DOCFILES)
-	bzr export-pot \
+	BZR_PLUGINS_AT=rewrite@$(shell pwd) bzr export-pot \
           --plugins=rebase,rebase-abort,rebase-continue,rebase-foreign,rebase-todo \
           > po/bzr-rewrite.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \

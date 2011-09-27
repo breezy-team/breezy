@@ -2,7 +2,7 @@
 
 from info import *
 
-from tools.build_mo import build_mo
+from bzrlib.bzr_distutils import build_mo
 
 command_classes = {
                    'build_mo': build_mo,
