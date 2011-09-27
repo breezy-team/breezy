@@ -1028,8 +1028,6 @@ class Branch(controldir.ControlComponent):
                 if revid == _mod_revision.NULL_REVISION:
                     return
                 yield revid
-            else:
-                raise errors.GhostRevisionUnusableHere(revid)
         finally:
             self.unlock()
 
