@@ -114,10 +114,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a.add('vla', 'file2')
         tree_a.commit('rev2', rev_id='rev2')
 
-        delta = tree_a.branch.get_revision_delta(1)
+        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
+            (2, 5, 0)), tree_a.branch.get_revision_delta, 1)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('foo', 'file1', 'file')], delta.added)
-        delta = tree_a.branch.get_revision_delta(2)
+        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
+            (2, 5, 0)), tree_a.branch.get_revision_delta, 2)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
