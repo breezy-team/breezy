@@ -450,19 +450,21 @@ class DistributionBranch(object):
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
-        path = '.bzr-builddeb/default.conf'
-        c_fileid = tree.path2id(path)
-        config = None
-        if c_fileid is not None:
-            tree.lock_read()
+        for path in ('.bzr-builddeb/default.conf', ):
+            c_fileid = tree.path2id(path)
+            if c_fileid is not None:
+                break
+        else:
+            return None
+        tree.lock_read()
+        try:
+            config = ConfigObj(tree.get_file(c_fileid, path))
             try:
-                config = ConfigObj(tree.get_file(c_fileid, path))
-                try:
-                    config['BUILDDEB']
-                except KeyError:
-                    config['BUILDDEB'] = {}
-            finally:
-                tree.unlock()
+                config['BUILDDEB']
+            except KeyError:
+                config['BUILDDEB'] = {}
+        finally:
+            tree.unlock()
         return config
 
     def _is_tree_native(self, tree):
