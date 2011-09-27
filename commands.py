@@ -95,7 +95,6 @@ class cmd_rebase(Command):
             merge_type=None, verbose=False, dry_run=False,
             always_rebase_merges=False, pending_merges=False,
             directory="."):
-        note(gettext("HELLO"))
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
