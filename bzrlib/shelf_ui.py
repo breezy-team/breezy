@@ -257,7 +257,7 @@ class Shelver(object):
         :param message: The message to prompt a user with.
         :return: A character.
         """
-        char_based = os.environ.get('INSIDE_EMACS', None) is not None
+        char_based = not(os.environ.get('INSIDE_EMACS', None) is not None)
         if char_based and not sys.stdin.isatty():
             # Since there is no controlling terminal we will hang when
             # trying to prompt the user, better abort now.  See
