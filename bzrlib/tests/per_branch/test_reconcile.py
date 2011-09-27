@@ -81,4 +81,4 @@ class TestBranchReconcile(TestCaseWithBranch):
         tree.branch.set_last_revision_info(2, r2)
 
         reconciler = tree.branch.reconcile()
-        self.assertEquals([r1, r2], tree.branch.revision_history())
+        self.assertEquals(r2, tree.branch.last_revision())

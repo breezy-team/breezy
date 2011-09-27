@@ -157,6 +157,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
         # 1 ghost parent -> No parents
+        if not self.repository_format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support "
+                 "ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
             [('tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
             ], allow_lefthand_ghost=True)

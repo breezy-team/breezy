@@ -1344,18 +1344,34 @@ class cmd_branch(Command):
 class cmd_branches(Command):
     __doc__ = """List the branches available at the current location.
 
-    This command will print the names of all the branches at the current location.
+    This command will print the names of all the branches at the current
+    location.
     """
 
     takes_args = ['location?']
+    takes_options = [
+                  Option('recursive', short_name='R',
+                         help='Recursively scan for branches rather than '
+                              'just looking in the specified location.')]
 
-    def run(self, location="."):
-        dir = bzrdir.BzrDir.open_containing(location)[0]
-        for branch in dir.list_branches():
-            if branch.name is None:
-                self.outf.write(gettext(" (default)\n"))
-            else:
-                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
+    def run(self, location=".", recursive=False):
+        if recursive:
+            t = transport.get_transport(location)
+            if not t.listable():
+                raise errors.BzrCommandError(
+                    "Can't scan this type of location.")
+            for b in bzrdir.BzrDir.find_branches(t):
+                self.outf.write("%s\n" % urlutils.unescape_for_display(
+                    urlutils.relative_url(t.base, b.base),
+                    self.outf.encoding).rstrip("/"))
+        else:
+            dir = bzrdir.BzrDir.open_containing(location)[0]
+            for branch in dir.list_branches():
+                if branch.name is None:
+                    self.outf.write(gettext(" (default)\n"))
+                else:
+                    self.outf.write(" %s\n" % branch.name.encode(
+                        self.outf.encoding))
 
 
 class cmd_checkout(Command):
@@ -2620,7 +2636,7 @@ class cmd_log(Command):
             match_dict['author'] = match_author
         if match_bugs:
             match_dict['bugs'] = match_bugs
-            
+
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -5239,6 +5255,8 @@ class cmd_serve(Command):
                     'option leads to global uncontrolled write access to your '
                     'file system.'
                 ),
+        Option('client-timeout', type=float,
+               help='Override the default idle client timeout (5min).'),
         ]
 
     def get_host_and_port(self, port):
@@ -5261,7 +5279,7 @@ class cmd_serve(Command):
         return host, port
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
-            protocol=None):
+            protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
@@ -5272,7 +5290,19 @@ class cmd_serve(Command):
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport(url)
-        protocol(t, host, port, inet)
+        try:
+            protocol(t, host, port, inet, client_timeout)
+        except TypeError, e:
+            # We use symbol_versioning.deprecated_in just so that people
+            # grepping can find it here.
+            # symbol_versioning.deprecated_in((2, 5, 0))
+            symbol_versioning.warn(
+                'Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
+                'Most likely it needs to be updated to support a'
+                ' "timeout" parameter (added in bzr 2.5.0)'
+                % (e, protocol.__module__, protocol),
+                DeprecationWarning)
+            protocol(t, host, port, inet)
 
 
 class cmd_join(Command):
@@ -5752,12 +5782,8 @@ class cmd_tags(Command):
 
         self.add_cleanup(branch.lock_read().unlock)
         if revision:
-            graph = branch.repository.get_graph()
-            rev1, rev2 = _get_revision_range(revision, branch, self.name())
-            revid1, revid2 = rev1.rev_id, rev2.rev_id
-            # only show revisions between revid1 and revid2 (inclusive)
-            tags = [(tag, revid) for tag, revid in tags if
-                graph.is_between(revid, revid1, revid2)]
+            # Restrict to the specified range
+            tags = self._tags_for_range(branch, revision)
         if sort is None:
             sort = tag_sort_methods.get()
         sort(branch, tags)
@@ -5768,7 +5794,8 @@ class cmd_tags(Command):
                     revno = branch.revision_id_to_dotted_revno(revid)
                     if isinstance(revno, tuple):
                         revno = '.'.join(map(str, revno))
-                except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
+                except (errors.NoSuchRevision,
+                        errors.GhostRevisionsHaveNoRevno):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
@@ -5776,6 +5803,32 @@ class cmd_tags(Command):
         self.cleanup_now()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
+
+    def _tags_for_range(self, branch, revision):
+        range_valid = True
+        rev1, rev2 = _get_revision_range(revision, branch, self.name())
+        revid1, revid2 = rev1.rev_id, rev2.rev_id
+        # _get_revision_range will always set revid2 if it's not specified.
+        # If revid1 is None, it means we want to start from the branch
+        # origin which is always a valid ancestor. If revid1 == revid2, the
+        # ancestry check is useless.
+        if revid1 and revid1 != revid2:
+            # FIXME: We really want to use the same graph than
+            # branch.iter_merge_sorted_revisions below, but this is not
+            # easily available -- vila 2011-09-23
+            if branch.repository.get_graph().is_ancestor(revid2, revid1):
+                # We don't want to output anything in this case...
+                return []
+        # only show revisions between revid1 and revid2 (inclusive)
+        tagged_revids = branch.tags.get_reverse_tag_dict()
+        found = []
+        for r in branch.iter_merge_sorted_revisions(
+            start_revision_id=revid2, stop_revision_id=revid1,
+            stop_rule='include'):
+            revid_tags = tagged_revids.get(r[0], None)
+            if revid_tags:
+                found.extend([(tag, r[0]) for tag in revid_tags])
+        return found
 
 
 class cmd_reconfigure(Command):

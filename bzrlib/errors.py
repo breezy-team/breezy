@@ -1710,6 +1710,11 @@ class ConnectionReset(TransportError):
     _fmt = "Connection closed: %(msg)s %(orig_error)s"
 
 
+class ConnectionTimeout(ConnectionError):
+
+    _fmt = "Connection Timeout: %(msg)s%(orig_error)s"
+
+
 class InvalidRange(TransportError):
 
     _fmt = "Invalid range access in %(path)s at %(offset)s: %(msg)s"
