@@ -95,13 +95,8 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
             format=self.branch_format_from._matchingbzrdir)
 
     def make_from_branch_builder(self, relpath):
-        default_format = BzrDirFormat.get_default_format()
-        format = BzrDirMetaFormat1()
-        format.set_branch_format(self.branch_format_from)
-        format.repository_format = default_format.repository_format
-        format.workingtree_format = default_format.workingtree_format
         return branchbuilder.BranchBuilder(self.get_transport(relpath),
-            format=format)
+            format=self.branch_format_from._matchingbzrdir)
 
     def make_to_branch(self, relpath):
         repo = self.make_repository(relpath, format=self.branch_format_to._matchingbzrdir)

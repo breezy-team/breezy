@@ -41,3 +41,20 @@ class TestBranches(TestCaseWithTransport):
         self.run_bzr('init-repo a')
         out, err = self.run_bzr('branches', working_dir='a')
         self.assertEquals(out, "")
+
+    def test_recursive_current(self):
+        self.run_bzr('init .')
+        self.assertEquals(".\n", self.run_bzr('branches --recursive')[0])
+
+    def test_recursive(self):
+        self.run_bzr('init source')
+        self.run_bzr('init source/subsource')
+        self.run_bzr('checkout --lightweight source checkout')
+        self.run_bzr('init checkout/subcheckout')
+        self.run_bzr('init checkout/.bzr/subcheckout')
+        out = self.run_bzr('branches --recursive')[0]
+        lines = out.split('\n')
+        self.assertIs(True, 'source' in lines, lines)
+        self.assertIs(True, 'source/subsource' in lines, lines)
+        self.assertIs(True, 'checkout/subcheckout' in lines, lines)
+        self.assertIs(True, 'checkout' not in lines, lines)

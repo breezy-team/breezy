@@ -101,6 +101,13 @@ class TestControlDir(TestCaseWithControlDir):
                                     create_tree_if_local=create_tree_if_local)
         return target
 
+    def test_uninitializable(self):
+        if self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is initializable")
+        t = self.get_transport()
+        self.assertRaises(errors.UninitializableFormat,
+            self.bzrdir_format.initialize, t.base)
+
     def test_create_null_workingtree(self):
         dir = self.make_bzrdir('dir1')
         dir.create_repository()
@@ -162,7 +169,8 @@ class TestControlDir(TestCaseWithControlDir):
         if vfs_dir.has_workingtree():
             # This ControlDir format doesn't support ControlDirs without
             # working trees, so this test is irrelevant.
-            return
+            raise TestNotApplicable("format does not support "
+                "control directories without working tree")
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
     def test_clone_bzrdir_repository_under_shared(self):
@@ -180,7 +188,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("repository format does not support "
+                "shared repositories")
         target = dir.clone(self.get_url('target/child'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertRaises(errors.NoRepositoryPresent, target.open_repository)
@@ -190,7 +199,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("repository format does not support "
+                "shared repositories")
         if not shared_repo._format.supports_nesting_repositories:
             raise TestNotApplicable("format does not support nesting "
                 "repositories")
@@ -224,7 +234,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("repository format does not support "
+                "shared repositories")
         if not shared_repo._format.supports_nesting_repositories:
             raise TestNotApplicable("format does not support nesting "
                 "repositories")
@@ -303,7 +314,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("repository format does not support "
+                "shared repositories")
         if not shared_repo._format.supports_nesting_repositories:
             raise TestNotApplicable("format does not support nesting "
                 "repositories")
@@ -389,8 +401,13 @@ class TestControlDir(TestCaseWithControlDir):
     def test_clone_respects_stacked(self):
         branch = self.make_branch('parent')
         child_transport = self.get_transport('child')
-        child = branch.bzrdir.clone_on_transport(child_transport,
-                                                 stacked_on=branch.base)
+        try:
+            child = branch.bzrdir.clone_on_transport(child_transport,
+                                                     stacked_on=branch.base)
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            raise TestNotApplicable("branch or repository format do "
+                "not support stacking")
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
     def test_get_branch_reference_on_reference(self):
@@ -402,7 +419,8 @@ class TestControlDir(TestCaseWithControlDir):
                 target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
-            return
+            raise TestNotApplicable("control directory does not "
+                "support branch references")
         self.assertEqual(referenced_branch.bzrdir.root_transport.abspath('') + '/',
             dir.get_branch_reference())
 
@@ -416,7 +434,8 @@ class TestControlDir(TestCaseWithControlDir):
         dir = self.make_bzrdir('source')
         if dir.has_branch():
             # this format does not support branchless bzrdirs.
-            return
+            raise TestNotApplicable("format does not support "
+                "branchless control directories")
         self.assertRaises(errors.NotBranchError, dir.get_branch_reference)
 
     def test_sprout_bzrdir_empty(self):
@@ -434,7 +453,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         target = dir.sprout(self.get_url('target/child'))
         self.assertRaises(errors.NoRepositoryPresent, target.open_repository)
         target.open_branch()
@@ -451,7 +471,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
         target.open_repository()
         target.open_branch()
@@ -472,7 +493,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support "
+                "shared repositories")
         target = dir.sprout(self.get_url('target/child'))
         self.assertNotEqual(dir.user_transport.base, target.user_transport.base)
         self.assertTrue(shared_repo.has_revision('1'))
@@ -481,7 +503,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         if not shared_repo._format.supports_nesting_repositories:
             raise TestNotApplicable("format does not support nesting "
                 "repositories")
@@ -505,7 +528,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('shared', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         if not shared_repo._format.supports_nesting_repositories:
             raise TestNotApplicable("format does not support nesting "
                 "repositories")
@@ -551,7 +575,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
         self.assertNotEqual(
             dir.control_transport.base,
@@ -591,7 +616,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         target = dir.sprout(self.get_url('target/child'))
         self.assertTrue(shared_repo.has_revision('1'))
 
@@ -609,7 +635,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
         self.assertNotEqual(dir.control_transport.base, target.control_transport.base)
         self.assertFalse(shared_repo.has_revision('1'))
@@ -622,8 +649,8 @@ class TestControlDir(TestCaseWithControlDir):
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 target_branch=referenced_branch)
         except errors.IncompatibleFormat:
-            # this is ok too, not all formats have to support references.
-            return
+            raise TestNotApplicable("format does not support branch "
+                "references")
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
@@ -642,13 +669,14 @@ class TestControlDir(TestCaseWithControlDir):
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
-            # this is ok too, not all formats have to support references.
-            return
+            raise TestNotApplicable("format does not support branch "
+                "references")
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         try:
             shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support "
+                "shared repositories")
         target = dir.sprout(self.get_url('target/child'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # we want target to have a branch that is in-place.
@@ -669,12 +697,14 @@ class TestControlDir(TestCaseWithControlDir):
                 target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
-            return
+            raise TestNotApplicable("format does not support "
+                "branch references")
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         try:
             shared_repo = self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # we want target to have a branch that is in-place.
@@ -819,7 +849,8 @@ class TestControlDir(TestCaseWithControlDir):
                 target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
-            return
+            raise TestNotApplicable("format does not support "
+                "branch references")
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         tree = self.createWorkingTreeOrSkip(dir)
         self.build_tree(['source/subdir/'])
@@ -845,7 +876,8 @@ class TestControlDir(TestCaseWithControlDir):
                 target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
-            return
+            raise TestNotApplicable("format does not support "
+                "branch references")
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         tree = self.createWorkingTreeOrSkip(dir)
         self.build_tree(['source/foo'])
@@ -931,11 +963,11 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         # for remote formats, there must be no prior assumption about the
         # network name to use - it's possible that this may somehow have got
         # in through an unisolated test though - see
@@ -970,9 +1002,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertInitializeEx(t, use_existing_dir=True)
 
     def test_format_initialize_on_transport_ex_use_existing_dir_False(self):
-        if not self.bzrdir_format.is_supported():
-            # Not initializable - not a failure either.
-            return
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport('dir')
         t.ensure_base()
         self.assertRaises(errors.FileExists,
@@ -984,9 +1015,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertInitializeEx(t, create_prefix=True)
 
     def test_format_initialize_on_transport_ex_create_prefix_False(self):
-        if not self.bzrdir_format.is_supported():
-            # Not initializable - not a failure either.
-            return
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport('missing/dir')
         self.assertRaises(errors.NoSuchFile, self.assertInitializeEx, t,
             create_prefix=False)
@@ -999,9 +1029,6 @@ class TestControlDir(TestCaseWithControlDir):
             repo_format_name=repo_name, shared_repo=True)[0]
         made_repo, control = self.assertInitializeEx(t.clone('branch'),
             force_new_repo=True, repo_format_name=repo_name)
-        if control is None:
-            # uninitialisable format
-            return
         self.assertNotEqual(repo.bzrdir.root_transport.base,
             made_repo.bzrdir.root_transport.base)
 
@@ -1013,14 +1040,13 @@ class TestControlDir(TestCaseWithControlDir):
             repo_format_name=repo_name, shared_repo=True)[0]
         made_repo, control = self.assertInitializeEx(t.clone('branch'),
             force_new_repo=False, repo_format_name=repo_name)
-        if control is None:
-            # uninitialisable format
-            return
         if not control._format.fixed_components:
             self.assertEqual(repo.bzrdir.root_transport.base,
                 made_repo.bzrdir.root_transport.base)
 
     def test_format_initialize_on_transport_ex_stacked_on(self):
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         # trunk is a stackable format.  Note that its in the same server area
         # which is what launchpad does, but not sufficient to exercise the
         # general case.
@@ -1032,9 +1058,6 @@ class TestControlDir(TestCaseWithControlDir):
         repo, control = self.assertInitializeEx(t, need_meta=True,
             repo_format_name=repo_name, stacked_on='../trunk',
             stack_on_pwd=t.base)
-        if control is None:
-            # uninitialisable format
-            return
         self.assertLength(1, repo._fallback_repositories)
 
     def test_format_initialize_on_transport_ex_default_stack_on(self):
@@ -1059,9 +1082,6 @@ class TestControlDir(TestCaseWithControlDir):
         repo, control = self.assertInitializeEx(
             t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
         # self.addCleanup(repo.unlock)
-        if control is None:
-            # uninitialisable format
-            return
         # There's one fallback repo, with a public location.
         self.assertLength(1, repo._fallback_repositories)
         fallback_repo = repo._fallback_repositories[0]
@@ -1082,9 +1102,6 @@ class TestControlDir(TestCaseWithControlDir):
         fmt = bzrdir.format_registry.make_bzrdir('1.6')
         repo_name = fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(t, repo_format_name=repo_name)
-        if control is None:
-            # uninitialisable format
-            return
         if self.bzrdir_format.fixed_components:
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
@@ -1101,9 +1118,9 @@ class TestControlDir(TestCaseWithControlDir):
             initialize_on_transport_ex.
         :return: the resulting repo, control dir tuple.
         """
-        if not self.bzrdir_format.is_supported():
-            # Not initializable - not a failure either.
-            return None, None
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("control dir format is not "
+                "initializable")
         repo, control, require_stacking, repo_policy = \
             self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         if repo is not None:
@@ -1156,11 +1173,11 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_create_branch(self):
         # a bzrdir can construct a branch and repository for itself.
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
@@ -1170,11 +1187,11 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_create_branch_append_revisions_only(self):
         # a bzrdir can construct a branch and repository for itself.
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
@@ -1182,17 +1199,18 @@ class TestControlDir(TestCaseWithControlDir):
             made_branch = made_control.create_branch(
                 append_revisions_only=True)
         except errors.UpgradeRequired:
-            return
+            raise TestNotApplicable("format does not support "
+                "append_revisions_only setting")
         self.assertIsInstance(made_branch, bzrlib.branch.Branch)
         self.assertEquals(True, made_branch.get_append_revisions_only())
         self.assertEqual(made_control, made_branch.bzrdir)
 
     def test_open_branch(self):
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
@@ -1203,11 +1221,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertIsInstance(opened_branch._format, made_branch._format.__class__)
 
     def test_list_branches(self):
-        if not self.bzrdir_format.is_supported():
-            # unsupported formats are not loopback testable
-            # because the default open will not open them and
-            # they may not be initializable.
-            return
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
@@ -1224,11 +1239,11 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
@@ -1239,11 +1254,11 @@ class TestControlDir(TestCaseWithControlDir):
     def test_create_repository_shared(self):
         # a bzrdir can create a shared repository or
         # fail appropriately
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         try:
@@ -1251,16 +1266,17 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             # Old bzrdir formats don't support shared repositories
             # and should raise IncompatibleFormat
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         self.assertTrue(made_repo.is_shared())
 
     def test_create_repository_nonshared(self):
         # a bzrdir can create a non-shared repository
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         try:
@@ -1268,15 +1284,16 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             # Some control dir formats don't support non-shared repositories
             # and should raise IncompatibleFormat
-            return
+            raise TestNotApplicable("format does not support shared "
+                "repositories")
         self.assertFalse(made_repo.is_shared())
 
     def test_open_repository(self):
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
@@ -1287,11 +1304,11 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_create_workingtree(self):
         # a bzrdir can construct a working tree for itself.
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
@@ -1302,6 +1319,8 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_create_workingtree_revision(self):
         # a bzrdir can construct a working tree for itself @ a specific revision.
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         source = self.make_branch_and_tree('source')
         source.commit('a', rev_id='a', allow_pointless=True)
@@ -1318,11 +1337,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual(['a'], made_tree.get_parent_ids())
 
     def test_open_workingtree(self):
-        if not self.bzrdir_format.is_supported():
-            # unsupported formats are not loopback testable
-            # because the default open will not open them and
-            # they may not be initializable.
-            return
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         # this has to be tested with local access as we still support creating
         # format 6 bzrdirs
         t = self.get_transport()
@@ -1342,11 +1358,8 @@ class TestControlDir(TestCaseWithControlDir):
     def test_get_selected_branch(self):
         # The segment parameters are accessible from the root transport
         # if a URL with segment parameters is opened.
-        if not self.bzrdir_format.is_supported():
-            # unsupported formats are not loopback testable
-            # because the default open will not open them and
-            # they may not be initializable.
-            return
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         try:
             made_control = self.bzrdir_format.initialize(t.base)
@@ -1360,11 +1373,8 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_get_selected_branch_none_selected(self):
         # _get_selected_branch defaults to None
-        if not self.bzrdir_format.is_supported():
-            # unsupported formats are not loopback testable
-            # because the default open will not open them and
-            # they may not be initializable.
-            return
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("format is not initializable")
         t = self.get_transport()
         try:
             made_control = self.bzrdir_format.initialize(t.base)
@@ -1386,7 +1396,7 @@ class TestControlDir(TestCaseWithControlDir):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
-            return
+            raise TestNotApplicable("requires shared repository support")
         if not repo._format.supports_nesting_repositories:
             raise TestNotApplicable("requires nesting repositories")
         url = self.get_url('intermediate')
@@ -1414,9 +1424,11 @@ class TestControlDir(TestCaseWithControlDir):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
-            return
+            raise TestNotApplicable("requires format with shared repository "
+                "support")
         if not repo._format.supports_nesting_repositories:
-            return
+            raise TestNotApplicable("requires support for nesting "
+                "repositories")
         url = self.get_url('childbzrdir')
         self.get_transport().mkdir('childbzrdir')
         made_control = self.bzrdir_format.initialize(url)
@@ -1438,7 +1450,8 @@ class TestControlDir(TestCaseWithControlDir):
             containing_repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
-            return
+            raise TestNotApplicable("requires support for shared "
+                "repositories")
         if not containing_repo._format.supports_nesting_repositories:
             raise TestNotApplicable("format does not support "
                 "nesting repositories")
@@ -1454,9 +1467,11 @@ class TestControlDir(TestCaseWithControlDir):
             containing_repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
-            return
+            raise TestNotApplicable("requires support for shared "
+                "repositories")
         if not containing_repo._format.supports_nesting_repositories:
-            return
+            raise TestNotApplicable("requires support for nesting "
+                "repositories")
         url = self.get_url('childrepo')
         self.get_transport().mkdir('childrepo')
         child_control = self.bzrdir_format.initialize(url)
@@ -1475,9 +1490,11 @@ class TestControlDir(TestCaseWithControlDir):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             # need a shared repository to test this.
-            return
+            raise TestNotApplicable("requires support for shared "
+                "repositories")
         if not repo._format.supports_nesting_repositories:
-            return
+            raise TestNotApplicable("requires support for nesting "
+                "repositories")
         url = self.get_url('intermediate')
         t = self.get_transport()
         t.mkdir('intermediate')
@@ -1581,7 +1598,7 @@ class TestBreakLock(TestCaseWithControlDir):
             # and thus this interaction cannot be tested at the interface
             # level.
             repo.unlock()
-            return
+            raise TestNotApplicable("format does not physically lock")
         # only one yes needed here: it should only be unlocking
         # the repo
         bzrlib.ui.ui_factory = CannedInputUIFactory([True])
@@ -1590,7 +1607,7 @@ class TestBreakLock(TestCaseWithControlDir):
         except NotImplementedError:
             # this bzrdir does not implement break_lock - so we cant test it.
             repo.unlock()
-            return
+            raise TestNotApplicable("format does not support breaking locks")
         lock_repo.lock_write()
         lock_repo.unlock()
         self.assertRaises(errors.LockBroken, repo.unlock)
@@ -1607,7 +1624,8 @@ class TestBreakLock(TestCaseWithControlDir):
             bzrlib.branch.BranchReferenceFormat().initialize(
                 thisdir, target_branch=master)
         except errors.IncompatibleFormat:
-            return
+            raise TestNotApplicable("format does not support "
+                "branch references")
         unused_repo = thisdir.create_repository()
         master.lock_write()
         unused_repo.lock_write()
@@ -1660,7 +1678,7 @@ class TestBreakLock(TestCaseWithControlDir):
             # raised a LockActive because we do still have a live locked
             # object.
             tree.unlock()
-            return
+            raise TestNotApplicable("format does not support breaking locks")
         self.assertEqual([True],
                 bzrlib.ui.ui_factory.responses)
         lock_tree = tree.bzrdir.open_workingtree()
@@ -1696,11 +1714,11 @@ class ChrootedControlDirTests(ChrootedTestCase):
     def test_find_repository_no_repository(self):
         # loopback test to check the current format fails to find a
         # share repository correctly.
-        if not self.bzrdir_format.is_supported():
+        if not self.bzrdir_format.is_initializable():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable("format is not initializable")
         # supported formats must be able to init and open
         # - do the vfs initialisation over the basic vfs transport
         # XXX: TODO this should become a 'bzrdirlocation' api call.
