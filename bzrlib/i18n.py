@@ -26,6 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
+
 _translations = None
 
 
@@ -88,6 +89,7 @@ def install(lang=None):
         return
     _translations = install_translations(lang)
 
+
 def install_translations(lang=None, domain='bzr', locale_base=None):
     """Create a gettext translation object.
     
@@ -110,6 +112,7 @@ def install_translations(lang=None, domain='bzr', locale_base=None):
             fallback=True)
     return translation
 
+
 def add_fallback(fallback):
     """
     Add a fallback translations object.  Typically used by plugins.
@@ -118,6 +121,7 @@ def add_fallback(fallback):
     """
     install()
     _translations.add_fallback(fallback)
+
 
 def uninstall():
     """Disables gettext translations."""
