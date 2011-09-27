@@ -816,7 +816,8 @@ def parse_args(command, argv, alias_argv=None):
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError,e:
-        raise errors.BzrCommandError(gettext('Only ASCII permitted in option names'))
+        raise errors.BzrCommandError(
+            gettext('Only ASCII permitted in option names'))
 
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
