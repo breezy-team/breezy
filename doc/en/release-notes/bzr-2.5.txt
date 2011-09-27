@@ -65,6 +65,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.get_revision_delta`` has been deprecated. Use
+  ``Repository.get_revision_delta`` instead. (Jelmer Vernooij, #859712)
+
 * The new method ``ControlDirFormat.is_initializable()`` returns a boolean
   indicating whether or not it is possible to use any of the
   initialization methods of that format to create a new control dir.
