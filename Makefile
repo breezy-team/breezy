@@ -54,8 +54,7 @@ TRANSLATABLE_PYFILES:=$(shell find . -name '*.py' \
 
 po/bzr-rewrite.pot: $(PYFILES) $(DOCFILES)
 	BZR_PLUGINS_AT=rewrite@$(shell pwd) bzr export-pot \
-          --plugins=rebase,rebase-abort,rebase-continue,rebase-foreign,rebase-todo \
-          > po/bzr-rewrite.pot
+          --plugin=rewrite > po/bzr-rewrite.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "bzr-rewrite" \
 	  --msgid-bugs-address "<bazaar@lists.canonical.com>" \
