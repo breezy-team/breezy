@@ -263,7 +263,7 @@ class Shelver(object):
             # trying to prompt the user, better abort now.  See
             # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
             # for more context.
-            raise errors.BzrError("You need a controlling terminal.")
+            raise errors.BzrError(gettext("You need a controlling terminal."))
         sys.stdout.write(message)
         if char_based:
             # We peek one char at a time which requires a real term here
