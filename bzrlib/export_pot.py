@@ -169,7 +169,7 @@ def _write_command_help(outf, cmd):
     _command_options(outf, path, cmd)
 
 
-def _command_helps(outf, plugins=None):
+def _command_helps(outf, plugin_name=None):
     """Extract docstrings from path.
 
     This respects the Bazaar cmdtable/table convention and will
@@ -182,7 +182,7 @@ def _command_helps(outf, plugins=None):
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
-        if plugins is not None:
+        if plugin_name is not None:
             # only export builtins if we are not exporting plugin commands
             continue
         note(gettext("Exporting messages from builtin command: %s"), cmd_name)
@@ -197,10 +197,10 @@ def _command_helps(outf, plugins=None):
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
-        if plugins is not None and cmd_name not in plugins:
+        if plugin_name is not None and command.plugin_name() != plugin_name:
             # if we are exporting plugin commands, skip plugins we have not specified.
             continue
-        if plugins is None and command.plugin_name() not in core_plugins:
+        if plugin_name is None and command.plugin_name() not in core_plugins:
             # skip non-core plugins
             # TODO: Support extracting from third party plugins.
             continue
@@ -252,14 +252,13 @@ def _help_topics(outf):
             _poentry(outf, 'dummy/help_topics/'+key+'/summary.txt',
                      1, summary)
 
-def export_pot(outf, plugins=None):
+def export_pot(outf, plugin=None):
     global _FOUND_MSGID
     _FOUND_MSGID = set()
-    if plugins is None:
+    if plugin is None:
         _standard_options(outf)
         _command_helps(outf)
         _error_messages(outf)
         _help_topics(outf)
     else:
-        plugin_commands = plugins.split(',')
-        _command_helps(outf, plugins)
+        _command_helps(outf, plugin)
