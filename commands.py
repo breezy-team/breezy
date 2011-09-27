@@ -34,10 +34,7 @@ from bzrlib.trace import (
     note,
     )
 
-try: # Plugin is installed and called from bzr
-    from bzrlib.plugins.rewrite import gettext
-except ImportError: # Plugin not installed, used for export_pot.py
-    from __init__ import gettext
+from bzrlib.plugins.rewrite import gettext
 
 
 class cmd_rebase(Command):
