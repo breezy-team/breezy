@@ -64,6 +64,7 @@ def load_tests(basic_tests, module, loader):
                      'test_dpush',
                      'test_exceptions',
                      'test_export',
+                     'test_export_pot',
                      'test_filesystem_cicp',
                      'test_filtered_view_ops',
                      'test_find_merge_base',
