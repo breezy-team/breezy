@@ -2659,7 +2659,8 @@ class CommandLineSection(MutableSection):
                 name, value = over.split('=', 1)
             except ValueError:
                 raise errors.BzrCommandError(
-                    gettext("Invalid '%s', should be of the form 'name=value'"))
+                    gettext("Invalid '%s', should be of the form 'name=value'")
+                    % (over,))
             self.set(name, value)
 
 

@@ -663,12 +663,14 @@ class Command(object):
             opts['quiet'] = trace.is_quiet()
         elif opts.has_key('quiet'):
             del opts['quiet']
+        overrides = None
         try:
-            bzrlib.global_state.cmdline_overrides._from_cmdline(
-                opts.pop('override_config'))
+            overrides = opts.pop('override_config')
         except KeyError:
             # No overrides were specified
             pass
+        if overrides:
+            bzrlib.global_state.cmdline_overrides._from_cmdline(overrides)
 
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
