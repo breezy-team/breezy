@@ -1,4 +1,4 @@
-# Brazilian Portuguese translation for bzr
+# Malay translation for bzr
 # Copyright (c) 2011 Rosetta Contributors and Canonical Ltd 2011
 # This file is distributed under the same license as the bzr package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011.
@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-09-26 21:53+0000\n"
-"Last-Translator: Rafael Neri <Unknown>\n"
-"Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
+"PO-Revision-Date: 2011-09-26 23:55+0000\n"
+"Last-Translator: abuyop <Unknown>\n"
+"Language-Team: Malay <ms@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2011-09-27 04:33+0000\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Launchpad-Export-Date: 2011-09-27 04:32+0000\n"
 "X-Generator: Launchpad (build 14028)\n"
 
 #: bzrlib/add.py:95
@@ -53,12 +53,12 @@ msgstr ""
 #: bzrlib/branch.py:3168
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "temui ralat:%s"
 
 #: bzrlib/builtins.py:116 bzrlib/builtins.py:2782 bzrlib/workingtree.py:306
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr ""
+msgstr "Abaikan fail diluar paparan. Paparan ialah %s"
 
 #: bzrlib/builtins.py:125
 #, python-format
@@ -67,23 +67,19 @@ msgstr ""
 
 #: bzrlib/builtins.py:210
 msgid "Display status summary."
-msgstr "Mostrar o resumo do estado."
+msgstr "Papar ringkasan status"
 
 #: bzrlib/builtins.py:212
 msgid ""
 "This reports on versioned and unknown files, reporting them\n"
 "grouped by state.  Possible states are:"
 msgstr ""
-"Este é um relatório de arquivos versionados desconhecidos, reportá-los\n"
-"agrupados por estado.  Estados possíveis são:"
 
 #: bzrlib/builtins.py:215
 msgid ""
 "added\n"
 "    Versioned in the working copy but not in the previous revision."
 msgstr ""
-"adicionado\n"
-"    Versionado na cópia de trabalho, mas não na revisão anterior."
 
 #: bzrlib/builtins.py:218
 msgid ""
@@ -91,9 +87,6 @@ msgid ""
 "    Versioned in the previous revision but removed or deleted\n"
 "    in the working copy."
 msgstr ""
-"removido\n"
-"    Versionado na revisão anterior, mas removido ou excluído\n"
-"    na cópia de trabalho."
 
 #: bzrlib/builtins.py:222
 msgid ""
@@ -102,34 +95,24 @@ msgid ""
 "    the text may also have changed.  This includes files whose\n"
 "    parent directory was renamed."
 msgstr ""
-"renomeado\n"
-"    O caminho deste arquivo foi alterado a partir da revisão anterior;\n"
-"    o texto também pode ter mudado. Isso inclui arquivos cujo\n"
-"    diretório pai foi renomeado."
 
 #: bzrlib/builtins.py:227
 msgid ""
 "modified\n"
 "    Text has changed since the previous revision."
 msgstr ""
-"modificado\n"
-"    O texto mudou desde a versão anterior."
 
 #: bzrlib/builtins.py:230
 msgid ""
 "kind changed\n"
 "    File kind has been changed (e.g. from file to directory)."
 msgstr ""
-"tipo alterado\n"
-"    Tipo de arquivo foi alterado (por exemplo, de arquivo para o diretório)."
 
 #: bzrlib/builtins.py:233
 msgid ""
 "unknown\n"
 "    Not versioned and not matching an ignore pattern."
 msgstr ""
-"desconhecido\n"
-"    Não versionado e não corresponde aos padrões de ignorar."
 
 #: bzrlib/builtins.py:236
 msgid ""
@@ -138,18 +121,12 @@ msgid ""
 "character: '/', '@' or '*' respectively. These decorations can be\n"
 "disabled using the '--no-classify' option."
 msgstr ""
-"Além disso para diretórios, links simbólicos e arquivos com um bit\n"
-"executáve alterado, o Bazaar indica seu tipo usando um caracter\n"
-"de fuga: '/', '@' ou '*' respectivamente. Estes adicionais podem ser\n"
-"desativados usando a opção '--no-classify'."
 
 #: bzrlib/builtins.py:241
 msgid ""
 "To see ignored files use 'bzr ignored'.  For details on the\n"
 "changes to file texts, use 'bzr diff'."
 msgstr ""
-"Para ver arquivos ignorados use 'bzr ignored'.  Para detalhes sobre\n"
-"alterações em arquivos texto, use 'bzr diff'."
 
 #: bzrlib/builtins.py:244
 msgid ""
@@ -157,10 +134,6 @@ msgid ""
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use bzr status -SV."
 msgstr ""
-"Note que --short ou -S oferecem sinalizadores de status para cada item, "
-"similar\n"
-"ao comando status do Subversion. Para obter uma saída semelhante ao svn -q,\n"
-"use bzr status -SV."
 
 #: bzrlib/builtins.py:248
 msgid ""
@@ -169,10 +142,6 @@ msgid ""
 "files or directories is reported.  If a directory is given, status\n"
 "is reported for everything inside that directory."
 msgstr ""
-"Se nenhum argumento for especificado, o status total do diretório\n"
-"de trabalho é mostrado. Caso contrário, apenas o status do arquivo\n"
-"ou diretório especificado é relatado. Se um diretório for passado, o\n"
-"status é relatado para tudo dentro deste diretório."
 
 #: bzrlib/builtins.py:253
 msgid ""
@@ -181,20 +150,12 @@ msgid ""
 "To skip the display of pending merge information altogether, use\n"
 "the no-pending option or specify a file/directory."
 msgstr ""
-"Antes de mesclar são enviadas, as revisões pendentes do ponto de mesclagem\n"
-"mostrado. Para ver todas as revisões pendentes da mesclagem, use a opção -"
-"v.\n"
-"Para ignorar a exibição de pendência de informações e fundir completamente, "
-"use\n"
-"a opção no-pending ou especifique um arquivo/diretório."
 
 #: bzrlib/builtins.py:258
 msgid ""
 "To compare the working directory to a specific revision, pass a\n"
 "single revision to the revision argument."
 msgstr ""
-"Para comparar o diretório de trabalho com uma revisão específica,\n"
-"passe uma simples revisão como argumento."
 
 #: bzrlib/builtins.py:261
 msgid ""
@@ -202,25 +163,22 @@ msgid ""
 "two revisions, pass a revision range to the revision argument.\n"
 "This will produce the same results as calling 'bzr diff --summarize'."
 msgstr ""
-"Para ver quais arquivos foram alterados em uma revisão específica, ou entre\n"
-"duas revisões, passe uma intervalo de revisões como argumento.\n"
-"Isto irá produzir os mesmos resultados de 'bzr diff --summarize'."
 
 #: bzrlib/builtins.py:270
 msgid "Use short status indicators."
-msgstr "Use indicadores de status curto."
+msgstr ""
 
 #: bzrlib/builtins.py:272
 msgid "Only show versioned files."
-msgstr "Mostrar apenas arquivos versionados."
+msgstr ""
 
 #: bzrlib/builtins.py:274
 msgid "Don't show pending merges."
-msgstr "Não mostrar mesclagens pendentes."
+msgstr ""
 
 #: bzrlib/builtins.py:277
 msgid "Do not mark object type using indicator."
-msgstr "Não marque o tipo do objeto através do indicador."
+msgstr ""
 
 #: bzrlib/builtins.py:292
 msgid "bzr status --revision takes exactly one or two revision specifiers"
@@ -250,7 +208,6 @@ msgstr ""
 #: bzrlib/builtins.py:456
 msgid "Remove the working tree from a given branch/checkout."
 msgstr ""
-"Remover a árvore de trabalho a partir de um determinado ramo/projeto obtido."
 
 #: bzrlib/builtins.py:458
 msgid ""
@@ -260,14 +217,12 @@ msgstr ""
 
 #: bzrlib/builtins.py:461
 msgid "To re-create the working tree, use \"bzr checkout\"."
-msgstr "Para recriar a árvore de trabalho, use \"bzr checkout\"."
+msgstr ""
 
 #: bzrlib/builtins.py:467
 msgid ""
 "Remove the working tree even if it has uncommitted or shelved changes."
 msgstr ""
-"Remover a árvore de trabalho, mesmo que tenha mudanças não confirmadas ou "
-"arquivadas."
 
 #: bzrlib/builtins.py:481
 msgid "No working tree to remove"
@@ -299,7 +254,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:551
 msgid "Show current revision number."
-msgstr "Mostrar o número da revisão atual."
+msgstr ""
 
 #: bzrlib/builtins.py:553
 msgid "This is equal to the number of revisions on this branch."
@@ -311,7 +266,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:642
 msgid "Add specified files or directories."
-msgstr "Adicionar arquivos ou diretórios especificados."
+msgstr ""
 
 #: bzrlib/builtins.py:644
 msgid ""
@@ -377,11 +332,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:685
 msgid "Don't recursively add the contents of directories."
-msgstr "Não adiciona recursivamente o conteúdo dos diretórios."
+msgstr ""
 
 #: bzrlib/builtins.py:691
 msgid "Lookup file ids from this tree."
-msgstr "Pesquisa de arquivo ids desta árvore"
+msgstr ""
 
 #: bzrlib/builtins.py:727
 msgid "ignored {0} matching \"{1}\"\n"
@@ -389,11 +344,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:732
 msgid "Create a new versioned directory."
-msgstr "Criar um novo diretório versionado."
+msgstr ""
 
 #: bzrlib/builtins.py:734
 msgid "This is equivalent to creating the directory and then adding it."
-msgstr "Isto é equivalente a criar o diretório e depois adicioná-lo."
+msgstr ""
 
 #: bzrlib/builtins.py:748
 #, python-format
@@ -407,7 +362,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:829
 msgid "Move or rename a file."
-msgstr "Mover ou renomear um arquivo."
+msgstr ""
 
 #: bzrlib/builtins.py:831
 msgid "    bzr mv SOURCE... DESTINATION"
@@ -431,22 +386,21 @@ msgstr ""
 
 #: bzrlib/builtins.py:843
 msgid "Files cannot be moved between branches."
-msgstr "Os arquivos não podem ser movidos entre os ramos."
+msgstr ""
 
 #: bzrlib/builtins.py:850
 msgid ""
 "Move only the bzr identifier of the file, because the file has already been "
 "moved."
 msgstr ""
-"Mover apenas o identificador bzr do arquivo, porque o arquivo já foi movido."
 
 #: bzrlib/builtins.py:852
 msgid "Automatically guess renames."
-msgstr "Penso que renomeia automaticamente."
+msgstr ""
 
 #: bzrlib/builtins.py:853
 msgid "Avoid making changes when guessing renames."
-msgstr "Evite fazer alterações quando pensa em renomeiar."
+msgstr ""
 
 #: bzrlib/builtins.py:862
 msgid "--dry-run requires --auto."
@@ -470,7 +424,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:965
 msgid "Turn this branch into a mirror of another branch."
-msgstr "Transformar esse ramo em um espelho de outro ramo."
+msgstr ""
 
 #: bzrlib/builtins.py:967
 msgid ""
@@ -511,7 +465,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:993
 msgid "Show logs of pulled revisions."
-msgstr "Mostrar os logs de revisões puxadas."
+msgstr ""
 
 #: bzrlib/builtins.py:995
 msgid ""
@@ -543,7 +497,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1097
 msgid "Update a mirror of this branch."
-msgstr "Atualização de um espelho deste ramo."
+msgstr ""
 
 #: bzrlib/builtins.py:1099
 msgid ""
@@ -556,9 +510,6 @@ msgid ""
 "Some smart servers or protocols *may* put the working tree in place in\n"
 "the future."
 msgstr ""
-"Alguns servidores inteligentes ou protocolos * pode * colocar a árvore de "
-"trabalho em vigor no\n"
-"futuro."
 
 #: bzrlib/builtins.py:1105
 msgid ""
@@ -12556,15 +12507,15 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:20
 msgid "  <protocol>://[user[:password]@]host[:port]/[path]"
-msgstr "  <protocolo>://[usuário[:senha]@]servidor[:porta]/[diretório]"
+msgstr ""
 
 #: en/help_topics/urlspec.txt:22
 msgid "allowing URLs such as::"
-msgstr "permitindo URLs, tais como::"
+msgstr ""
 
 #: en/help_topics/urlspec.txt:24
 msgid "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
-msgstr "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
+msgstr ""
 
 #: en/help_topics/urlspec.txt:26
 msgid ""
@@ -12577,11 +12528,11 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:32
 msgid "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
-msgstr "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
+msgstr ""
 
 #: en/help_topics/urlspec.txt:34
 msgid "would refer to ``/home/remote/myproject/trunk``."
-msgstr "refere-se a ``/home/remote/myproject/trunk``."
+msgstr ""
 
 #: en/help_topics/urlspec.txt:36
 msgid ""
