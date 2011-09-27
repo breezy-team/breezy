@@ -171,14 +171,24 @@ class PristineTarSource(UpstreamSource):
         :param component: Component name (None for base)
         :param exclude: Exclude directories
         """
-        if exclude is not None or subdir is not None:
-            raise NotImplementedError
         if exclude is None:
             exclude = []
+        def include_change(c):
+            if not exclude:
+                return True
+            path = c[1][1]
+            if path is None:
+                return True
+            for e in exclude:
+                if path == e or path.startswith(e+"/"):
+                    return False
+            else:
+                return True
         revprops = {}
         if md5 is not None:
             revprops["deb-md5"] = md5
-            delta = self.make_pristine_tar_delta(tree, tarball, subdir=subdir)
+            delta = self.make_pristine_tar_delta(tree, tarball, subdir=subdir,
+                    exclude=exclude)
             uuencoded = standard_b64encode(delta)
             if tarball.endswith(".tar.bz2"):
                 revprops["deb-pristine-delta-bz2"] = uuencoded
@@ -206,8 +216,9 @@ class PristineTarSource(UpstreamSource):
                 revprops=revprops, timestamp=timestamp, timezone=timezone)
             builder.will_record_deletes()
             try:
-                list(builder.record_iter_changes(tree, base_revid,
-                    tree.iter_changes(basis_tree)))
+                changes = [c for c in tree.iter_changes(basis_tree) if
+                           include_change(c)]
+                list(builder.record_iter_changes(tree, base_revid, changes))
                 builder.finish_inventory()
             except:
                 builder.abort()
@@ -228,13 +239,13 @@ class PristineTarSource(UpstreamSource):
             rev = self.branch.repository.get_revision(revid)
         except NoSuchRevision:
             raise PackageVersionNotPresent(package, version, self)
-        note("Using pristine-tar to reconstruct the needed tarball.")
         if self.has_pristine_tar_delta(rev):
             format = self.pristine_tar_format(rev)
         else:
             format = 'gz'
         target_filename = self._tarball_path(package, version, component,
                                              target_dir, format=format)
+        note("Using pristine-tar to reconstruct %s.", os.path.basename(target_filename))
         try:
             self.reconstruct_pristine_tar(revid, package, version, target_filename)
         except PristineTarError:
@@ -243,8 +254,15 @@ class PristineTarSource(UpstreamSource):
             raise PackageVersionNotPresent(package, version, self)
         return target_filename
 
-    def fetch_tarballs(self, package, version, target_dir):
-        return [self.fetch_component_tarball(package, version, None, target_dir)]
+    def fetch_tarballs(self, package, version, target_dir, components=None):
+        if components is None:
+            # Scan tags for components
+            try:
+                components = self._components_by_version()[version].keys()
+            except KeyError:
+                raise PackageVersionNotPresent(package, version, self)
+        return [self.fetch_component_tarball(package, version, component, target_dir)
+                for component in components]
 
     def _has_revision(self, revid, md5=None):
         self.branch.lock_read()
@@ -370,7 +388,7 @@ class PristineTarSource(UpstreamSource):
         finally:
             shutil.rmtree(tmpdir)
 
-    def make_pristine_tar_delta(self, tree, tarball_path, subdir=None):
+    def make_pristine_tar_delta(self, tree, tarball_path, subdir=None, exclude=None):
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
@@ -385,17 +403,21 @@ class PristineTarSource(UpstreamSource):
         finally:
             shutil.rmtree(tmpdir)
 
-    def iter_versions(self):
-        """Iterate over all upstream versions.
-
-        :return: Iterator over (tag_name, version, revid) tuples
-        """
+    def _components_by_version(self):
         ret = {}
         for tag_name, tag_revid in self.branch.tags.get_tag_dict().iteritems():
             if not is_upstream_tag(tag_name):
                 continue
             (component, version) = upstream_tag_version(tag_name)
             ret.setdefault(version, {})[component] = tag_revid
+        return ret
+
+    def iter_versions(self):
+        """Iterate over all upstream versions.
+
+        :return: Iterator over (tag_name, version, revid) tuples
+        """
+        ret = self._components_by_version()
         return ret.iteritems()
 
 

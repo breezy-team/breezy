@@ -748,7 +748,7 @@ class cmd_merge_upstream(Command):
             if need_upstream_tarball:
                 target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
                 locations = primary_upstream_source.fetch_tarballs(
-                    package, version, target_dir)
+                    package, version, target_dir, components=[None])
                 source_format = get_source_format(tree)
                 v3 = (source_format in [
                     FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])

@@ -878,9 +878,14 @@ class DistributionBranch(object):
                         target_tree=target_tree)
             finally:
                 self_tree.unlock()
+            if component is None:
+                exclude = [tb[1] for tb in upstream_tarballs if tb[1] is not None]
+            else:
+                exclude = []
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
                 package, version, self.pristine_upstream_tree, parents,
-                component, md5, tarball, author=author, timestamp=timestamp)
+                component, md5, tarball, author=author, timestamp=timestamp,
+                exclude=exclude)
             self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
