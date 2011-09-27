@@ -257,14 +257,30 @@ class Shelver(object):
         :param message: The message to prompt a user with.
         :return: A character.
         """
-        if not sys.stdin.isatty():
-            # Since there is no controlling terminal we will hang when trying
-            # to prompt the user, better abort now.  See
+        char_based = os.environ.get('INSIDE_EMACS', None) is not None
+        if char_based and not sys.stdin.isatty():
+            # Since there is no controlling terminal we will hang when
+            # trying to prompt the user, better abort now.  See
             # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
             # for more context.
-            raise errors.BzrError(gettext("You need a controlling terminal."))
+            raise errors.BzrError("You need a controlling terminal.")
         sys.stdout.write(message)
-        char = osutils.getchar()
+        if char_based:
+            # We peek one char at a time which requires a real term here
+            char = osutils.getchar()
+        else:
+            # While running tests (or under emacs) the input is line buffered
+            # so we must not use osutils.getchar(). Instead we switch to a mode
+            # where each line is terminated by a new line
+            line = sys.stdin.readline()
+            if line:
+                # XXX: Warn if more than one char is typed ?
+                char = line[0]
+            else:
+                # In the char based implementation, the default value is
+                # selected when the user just hit enter, so we return that here
+                # for edge cases.
+                char = '\n'
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
         sys.stdout.flush()
         return char
