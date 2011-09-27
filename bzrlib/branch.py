@@ -733,6 +733,7 @@ class Branch(controldir.ControlComponent):
         """
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
 

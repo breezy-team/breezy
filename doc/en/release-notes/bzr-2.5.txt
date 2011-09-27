@@ -65,6 +65,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.get_revision_delta`` has been deprecated. Use
+  ``Repository.get_revision_delta`` instead. (Jelmer Vernooij, #859712)
+
 * ``Branch.revision_history`` is now deprecated in favor of
   ``Branch.iter_revision_history``. (Jelmer Vernooij, #799519)
 
