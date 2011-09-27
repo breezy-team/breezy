@@ -450,7 +450,7 @@ class DistributionBranch(object):
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
-        for path in ('.bzr-builddeb/default.conf', ):
+        for path in ('debian/bzr-builddeb.conf', '.bzr-builddeb/default.conf',):
             c_fileid = tree.path2id(path)
             if c_fileid is not None:
                 break

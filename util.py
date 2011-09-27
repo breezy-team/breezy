@@ -55,6 +55,7 @@ from bzrlib.plugins.builddeb import (
     default_conf,
     local_conf,
     global_conf,
+    new_conf,
     )
 from bzrlib.plugins.builddeb.config import (
     DebBuildConfig,
@@ -540,6 +541,9 @@ def debuild_config(tree, working_tree):
             warning('Not using configuration from %s as it is versioned.')
     config_files.append((global_conf(), True))
     user_config = global_conf()
+    if tree.path2id(new_conf):
+        config_files.append((tree.get_file(tree.path2id(new_conf)), False,
+                    "bzr-builddeb.conf"))
     if tree.path2id(default_conf):
         config_files.append((tree.get_file(tree.path2id(default_conf)), False,
                     "default.conf"))
