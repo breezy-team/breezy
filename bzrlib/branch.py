@@ -2788,15 +2788,11 @@ class FullHistoryBzrBranch(BzrBranch):
             history.pop()
         return history
 
+    @needs_read_lock
     def iter_reverse_revision_history(self):
         """Iterate over the revision ids in this branch, last to first.
         """
-        self.lock_read()
-        try:
-            for revid in reversed(self._revision_history()):
-                yield revid
-        finally:
-            self.unlock()
+        return reversed(self._revision_history())
 
     def _synchronize_history(self, destination, revision_id):
         if not isinstance(destination, FullHistoryBzrBranch):
