@@ -510,7 +510,8 @@ class BundleTester(object):
                 new.unlock()
                 old.unlock()
         if not _mod_revision.is_null(rev_id):
-            rh = list(self.b1.iter_revision_history())
+            rh = list(self.b1.iter_reverse_revision_history())
+            rh.reverse()
             self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
                 tree.branch.set_revision_history, rh[:rh.index(rev_id)+1])
             tree.update()

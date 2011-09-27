@@ -37,11 +37,8 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.add('b')
         wt.commit('adding b', rev_id='r2')
 
-        wt.branch.lock_read()
-        try:
-            self.revisions = list(wt.branch.iter_revision_history())
-        finally:
-            wt.branch.unlock()
+        self.revisions = list(
+            wt.branch.iter_reverse_revision_history())
         return wt
 
     def test_basic(self):
@@ -51,7 +48,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[-1])
+        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[0])
 
     def test_all(self):
         """'--all' includes clean, revision history, and file revisions"""
@@ -59,7 +56,7 @@ class TestVersionInfo(TestCaseWithTransport):
         txt = self.run_bzr('version-info branch --all')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[-1])
+        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[0])
         self.assertContainsRe(txt, 'clean: True')
         self.assertContainsRe(txt, 'revisions:')
         for rev_id in self.revisions:

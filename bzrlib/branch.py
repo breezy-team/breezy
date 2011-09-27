@@ -1013,13 +1013,22 @@ class Branch(controldir.ControlComponent):
         """
         return self._revision_history()
 
-    def iter_revision_history(self):
+    def iter_reverse_revision_history(self):
         """Iterate over the revision ids in this branch, last to first.
         """
         self.lock_read()
         try:
-            for revid in self._revision_history():
+            revid = self.last_revision()
+            for revid in self._partial_revision_history_cache:
                 yield revid
+            graph = self.repository.get_graph()
+            for revid in graph.iter_lefthand_ancestry(revid):
+                self._partial_revision_history_cache.append(revid)
+                if revid == _mod_revision.NULL_REVISION:
+                    return
+                yield revid
+            else:
+                raise errors.GhostRevisionUnusableHere(revid)
         finally:
             self.unlock()
 
@@ -2779,6 +2788,16 @@ class FullHistoryBzrBranch(BzrBranch):
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
+
+    def iter_reverse_revision_history(self):
+        """Iterate over the revision ids in this branch, last to first.
+        """
+        self.lock_read()
+        try:
+            for revid in reversed(self._revision_history()):
+                yield revid
+        finally:
+            self.unlock()
 
     def _synchronize_history(self, destination, revision_id):
         if not isinstance(destination, FullHistoryBzrBranch):

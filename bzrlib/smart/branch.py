@@ -171,8 +171,9 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         The revision list is returned as the body content,
         with each revision utf8 encoded and \x00 joined.
         """
+        history = list(branch.iter_reverse_revision_history())
         return SuccessfulSmartServerResponse(
-            ('ok', ), ('\x00'.join(branch.iter_revision_history())))
+            ('ok', ), ('\x00'.join(reversed(history))))
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):

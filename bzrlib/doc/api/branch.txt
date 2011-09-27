@@ -25,7 +25,7 @@ or via the BzrDir:
 
 A branch has a history of revisions on it:
 
-   >>> list(new_branch.iter_revision_history())
+   >>> list(new_branch.iter_reverse_revision_history())
    []
 
 We need to write some more documentation, showing
