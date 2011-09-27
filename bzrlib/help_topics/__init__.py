@@ -312,24 +312,27 @@ _global_options = \
 
 These options may be used with any command, and may appear in front of any
 command.  (e.g. ``bzr --profile help``).
-
---version      Print the version number. Must be supplied before the command.
---no-aliases   Do not process command aliases when running this command.
---builtin      Use the built-in version of a command, not the plugin version.
-               This does not suppress other plugin effects.
---no-plugins   Do not process any plugins.
---no-l10n      Do not translate messages.
---concurrency  Number of processes that can be run concurrently (selftest).
-
---profile      Profile execution using the hotshot profiler.
---lsprof       Profile execution using the lsprof profiler.
---lsprof-file  Profile execution using the lsprof profiler, and write the
-               results to a specified file.  If the filename ends with ".txt",
-               text format will be used.  If the filename either starts with
-               "callgrind.out" or end with ".callgrind", the output will be
-               formatted for use with KCacheGrind. Otherwise, the output
-               will be a pickle.
---coverage     Generate line coverage report in the specified directory.
+                  
+--version         Print the version number. Must be supplied before the command.
+--no-aliases      Do not process command aliases when running this command.
+--builtin         Use the built-in version of a command, not the plugin version.
+                  This does not suppress other plugin effects.
+--no-plugins      Do not process any plugins.
+--no-l10n         Do not translate messages.
+--concurrency     Number of processes that can be run concurrently (selftest).
+                  
+--profile         Profile execution using the hotshot profiler.
+--lsprof          Profile execution using the lsprof profiler.
+--lsprof-file     Profile execution using the lsprof profiler, and write the
+                  results to a specified file.  If the filename ends with 
+                  ".txt",  text format will be used.  If the filename either
+                  starts with "callgrind.out" or end with ".callgrind", the 
+                  output will be formatted for use with KCacheGrind. Otherwise,
+                  the output will be a pickle.
+--coverage        Generate line coverage report in the specified directory.
+--override-config Override a config option for the duration of the command. 
+                  This can be used multiple times if several options need to 
+                  be overridden. The short form is ``-Oname=value``.
 
 See http://doc.bazaar.canonical.com/developers/profiling.html for more
 information on profiling.

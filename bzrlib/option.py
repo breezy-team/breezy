@@ -537,10 +537,6 @@ _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
 # Declare the standard options
 _standard_option('help', short_name='h',
                  help='Show help message.')
-_standard_list_option('override-config', short_name='O', type=unicode,
-                      hidden=True,
-                      help='Override a configuration option value,'
-                      ' e.g. -Oname=value')
 _standard_option('quiet', short_name='q',
                  help="Only display errors and warnings.",
                  custom_callback=_verbosity_level_callback)

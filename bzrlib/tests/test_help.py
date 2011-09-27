@@ -49,13 +49,10 @@ Purpose: A sample command.
 Usage:   bzr WithSeeAlso
 
 Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 See also: bar, foo
 ''',
@@ -70,13 +67,10 @@ Purpose: A sample command.
 Usage:   bzr Demo
 
 Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 ''',
                            cmd_Demo())
@@ -86,7 +80,7 @@ Options:
             'Purpose: A sample command.\n'
             'Usage:   bzr Demo')
         self.assertEndsWith(helptext,
-            '  -h, --help            Show help message.\n\n')
+            '  -h, --help     Show help message.\n\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -96,9 +90,9 @@ Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -q, --quiet           Only display errors and warnings.\n'
-            '  -v, --verbose         Display more information.\n'
-            '  -h, --help            Show help message.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             'See also: bar, foo, gam\n')
 
@@ -109,9 +103,9 @@ Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -q, --quiet           Only display errors and warnings.\n'
-            '  -v, --verbose         Display more information.\n'
-            '  -h, --help            Show help message.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             'See also: gam\n')
 
@@ -149,13 +143,10 @@ Purpose: A sample command.
 Usage:   bzr Demo
 
 Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 Examples:
     Example 1:
@@ -178,13 +169,10 @@ Examples:
 :Usage:   bzr Demo
 
 :Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 :Examples:
     Example 1::
@@ -223,13 +211,10 @@ Purpose: A sample command.
 Usage:   bzr Demo
 
 Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 Description:
   Blah blah blah.
@@ -247,13 +232,10 @@ Purpose: A sample command.
 Usage:   bzr Demo
 
 Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 See bzr help Demo for more details and examples.
 
@@ -286,13 +268,10 @@ Purpose: A sample command.
 Usage:   bzr Demo
 
 Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 Description:
   Blah blah blah.
@@ -334,13 +313,10 @@ Usage:
 
 
 Options:
-  -O ARG, --override-config=ARG
-                        Override a configuration option value, e.g.
-                        -Oname=value
-  --usage               Show usage message and options.
-  -q, --quiet           Only display errors and warnings.
-  -v, --verbose         Display more information.
-  -h, --help            Show help message.
+  --usage        Show usage message and options.
+  -q, --quiet    Only display errors and warnings.
+  -v, --verbose  Display more information.
+  -h, --help     Show help message.
 
 Description:
   Blah blah blah.
@@ -382,13 +358,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   bzr WithSeeAlso
 }}
 zz{{:Options:
-  -O ARG, --override-config=ARG
-                        zz{{Override a configuration option value, e.g.
-                        -Oname=value}}
-  --usage               zz{{Show usage message and options.}}
-  -q, --quiet           zz{{Only display errors and warnings.}}
-  -v, --verbose         zz{{Display more information.}}
-  -h, --help            zz{{Show help message.}}
+  --usage        zz{{Show usage message and options.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  -v, --verbose  zz{{Display more information.}}
+  -h, --help     zz{{Show help message.}}
 }}
 zz{{:See also: bar, foo}}
 ''',
@@ -403,13 +376,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   bzr Demo
 }}
 zz{{:Options:
-  -O ARG, --override-config=ARG
-                        zz{{Override a configuration option value, e.g.
-                        -Oname=value}}
-  --usage               zz{{Show usage message and options.}}
-  -q, --quiet           zz{{Only display errors and warnings.}}
-  -v, --verbose         zz{{Display more information.}}
-  -h, --help            zz{{Show help message.}}
+  --usage        zz{{Show usage message and options.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  -v, --verbose  zz{{Display more information.}}
+  -h, --help     zz{{Show help message.}}
 }}
 ''',
                            cmd_Demo())
@@ -422,9 +392,9 @@ zz{{:Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,'''\
-  -q, --quiet           zz{{Only display errors and warnings.}}
-  -v, --verbose         zz{{Display more information.}}
-  -h, --help            zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  -v, --verbose  zz{{Display more information.}}
+  -h, --help     zz{{Show help message.}}
 }}
 zz{{:See also: bar, foo, gam}}
 ''')
@@ -437,13 +407,10 @@ zz{{:See also: bar, foo, gam}}
         self.assertEndsWith(
             helptext, '''\
 zz{{:Options:
-  -O ARG, --override-config=ARG
-                        zz{{Override a configuration option value, e.g.
-                        -Oname=value}}
-  --usage               zz{{Show usage message and options.}}
-  -q, --quiet           zz{{Only display errors and warnings.}}
-  -v, --verbose         zz{{Display more information.}}
-  -h, --help            zz{{Show help message.}}
+  --usage        zz{{Show usage message and options.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  -v, --verbose  zz{{Display more information.}}
+  -h, --help     zz{{Show help message.}}
 }}
 zz{{:See also: gam}}
 ''')
@@ -473,13 +440,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   bzr Demo
 }}
 zz{{:Options:
-  -O ARG, --override-config=ARG
-                        zz{{Override a configuration option value, e.g.
-                        -Oname=value}}
-  --usage               zz{{Show usage message and options.}}
-  -q, --quiet           zz{{Only display errors and warnings.}}
-  -v, --verbose         zz{{Display more information.}}
-  -h, --help            zz{{Show help message.}}
+  --usage        zz{{Show usage message and options.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  -v, --verbose  zz{{Display more information.}}
+  -h, --help     zz{{Show help message.}}
 }}
 Description:
   zz{{zz{{Blah blah blah.}}
@@ -519,13 +483,10 @@ zz{{:Purpose: zz{{A sample command.}}
 
 }}
 zz{{:Options:
-  -O ARG, --override-config=ARG
-                        zz{{Override a configuration option value, e.g.
-                        -Oname=value}}
-  --usage               zz{{Show usage message and options.}}
-  -q, --quiet           zz{{Only display errors and warnings.}}
-  -v, --verbose         zz{{Display more information.}}
-  -h, --help            zz{{Show help message.}}
+  --usage        zz{{Show usage message and options.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  -v, --verbose  zz{{Display more information.}}
+  -h, --help     zz{{Show help message.}}
 }}
 Description:
   zz{{zz{{Blah blah blah.}}

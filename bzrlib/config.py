@@ -2654,6 +2654,8 @@ class CommandLineSection(MutableSection):
         super(CommandLineSection, self).__init__('cmdline-overrides', opts)
 
     def _from_cmdline(self, overrides):
+        # Reset before accepting new definitions
+        self.options.clear()
         for over in overrides:
             try:
                 name, value = over.split('=', 1)

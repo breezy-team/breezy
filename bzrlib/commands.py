@@ -663,15 +663,6 @@ class Command(object):
             opts['quiet'] = trace.is_quiet()
         elif opts.has_key('quiet'):
             del opts['quiet']
-        overrides = None
-        try:
-            overrides = opts.pop('override_config')
-        except KeyError:
-            # No overrides were specified
-            pass
-        if overrides:
-            bzrlib.global_state.cmdline_overrides._from_cmdline(overrides)
-
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -1048,6 +1039,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     argv_copy = []
     i = 0
+    override_config = []
     while i < len(argv):
         a = argv[i]
         if a == '--profile':
@@ -1076,9 +1068,16 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             pass # already handled in startup script Bug #588277
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
+        elif a.startswith('-O'):
+            override_config.append(a[2:])
+        elif a.startswith('--override-config'):
+            i += 1
+            override_config.append(argv[i])
         else:
             argv_copy.append(a)
         i += 1
+
+    bzrlib.global_state.cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
 
