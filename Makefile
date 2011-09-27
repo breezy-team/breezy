@@ -58,7 +58,7 @@ po/bzr-rewrite.pot: $(PYFILES) $(DOCFILES)
           > po/bzr-rewrite.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "bzr-rewrite" \
-	  --msgid-bugs-address "<bazaar@canonical.com>" \
-	  --copyright-holder "Canonical" \
+	  --msgid-bugs-address "<bazaar@lists.canonical.com>" \
+	  --copyright-holder "Jelmer Vernooij <jelmer@samba.org>" \
 	  --from-code ISO-8859-1 --sort-by-file --join --add-comments=i18n: \
 	  -d bzr-rewrite -p po -o bzr-rewrite.pot
