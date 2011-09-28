@@ -60,14 +60,14 @@ that code to ``~/packages/scruff/scruff`` and then run
 which will create a branch and add all of your current code to it.
 
 The next step is to tell `bzr-builddeb` that it is a split mode package. To
-do this create the configuration file ``.bzr-builddeb/default.conf`` in the
+do this create the configuration file ``debian/bzr-builddeb.conf`` in the
 branch. This contains the options that are default for building the package.
 The file starts with a ``[BUILDDEB]`` header to identify the options that
 the plugin should use, and the option that you need to set is ``split``.
 The following commands will set up the configuration files for you::
 
-  $ echo -e '[BUILDDEB]\nsplit = True' > .bzr-builddeb/default.conf
-  $ bzr add .bzr-builddeb/default.conf
+  $ echo -e '[BUILDDEB]\nsplit = True' > debian/bzr-builddeb.conf
+  $ bzr add debian/bzr-builddeb.conf
 
 When you are happy with the code you can commit, and then build the package.
 `bzr-builddeb` will see that it is a split mode package and create the

@@ -48,14 +48,13 @@ then you should run
 
 Now you have a branch that you will create the package in you need to tell
 `bzr-builddeb` that it will be built in merge mode. To do this you need to
-create the configuration file ``.bzr-builddeb/default.conf``. This contains
+create the configuration file ``debian/bzr-builddeb.conf``. This contains
 the default options for the package. The file starts with a ``[BUILDDEB]``
 header which states that the file is for use by `bzr-builddeb`. The option
 we are interested in is the ``merge`` option. The commands to do this are::
 
-  $ mkdir .bzr-builddeb/
-  $ echo -e '[BUILDDEB]\nmerge = True' > .bzr-builddeb/default.conf
-  $ bzr add .bzr-builddeb/default.conf
+  $ echo -e '[BUILDDEB]\nmerge = True' > debian/bzr-builddeb.conf
+  $ bzr add debian/bzr-builddeb.conf
 
 Now you should add the packaging files to the branch. You have a choice
 here, either you can add a ``debian/`` directory containing the files,
