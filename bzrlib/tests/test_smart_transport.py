@@ -229,9 +229,7 @@ class SmartClientMediumTests(tests.TestCase):
 
     def test_simple_pipes__flush_subprocess_closed(self):
         p = subprocess.Popen([sys.executable, '-c',
-            'import sys, os, msvcrt\n'
-            'msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)\n'
-            'msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)\n'
+            'import sys\n'
             'sys.stdout.write(sys.stdin.read(4))\n'
             'sys.stdout.close()\n'],
             stdout=subprocess.PIPE, stdin=subprocess.PIPE)
