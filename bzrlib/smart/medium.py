@@ -726,7 +726,13 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
-        osutils.until_no_eintr(self._writeable_pipe.write, bytes)
+        try:
+            osutils.until_no_eintr(self._writeable_pipe.write, bytes)
+        except IOError, e:
+            if e.errno in (errno.EINVAL, errno.EPIPE):
+                raise errors.ConnectionReset(
+                    "Error trying to write to subprocess:\n%s"
+                    % (e,))
         self._report_activity(len(bytes), 'write')
 
     def _flush(self):

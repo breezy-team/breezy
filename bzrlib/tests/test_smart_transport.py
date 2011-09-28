@@ -184,8 +184,12 @@ class SmartClientMediumTests(tests.TestCase):
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', client_medium._read_bytes(3))
         p.wait()
-        # On win32 python2.6 we get IOError(EINVAL) trying to do this.
-        client_medium._accept_bytes('more')
+        # While writing to the underlying pipe,
+        #   Windows py2.6.6 we get IOError(EINVAL)
+        #   Lucid py2.6.5, we get IOError(EPIPE)
+        # In both cases, it should be wrapped to ConnectionReset
+        self.assertRaises(errors.ConnectionReset,
+                          client_medium._accept_bytes, 'more')
 
     def test_simple_pipes_client_disconnect_does_nothing(self):
         # calling disconnect does nothing.
