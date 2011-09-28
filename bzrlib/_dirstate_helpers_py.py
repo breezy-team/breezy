@@ -26,8 +26,7 @@ from bzrlib import errors
 from bzrlib.dirstate import DirState
 
 
-def pack_stat(st, _b64=binascii.b2a_base64,
-        _pack=struct.Struct('>LLLLLL').pack):
+def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):
     """Convert stat values into a packed representation
 
     Not all of the fields from the stat included are strictly needed, and by
@@ -45,7 +44,7 @@ def _unpack_stat(packed_stat):
     This is meant as a debugging tool, should not be used in real code.
     """
     (st_size, st_mtime, st_ctime, st_dev, st_ino,
-     st_mode) = struct.unpack('>LLLLLL', binascii.a2b_base64(packed_stat))
+     st_mode) = struct.unpack('>6L', binascii.a2b_base64(packed_stat))
     return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
                 st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
 
