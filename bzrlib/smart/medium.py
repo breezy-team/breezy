@@ -738,6 +738,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
+        # Note: If flush were to fail, we'd like to raise ConnectionReset, etc.
+        #       However, testing shows that even when the child process is
+        #       gone, this doesn't error.
         osutils.until_no_eintr(self._writeable_pipe.flush)
 
     def _read_bytes(self, count):
