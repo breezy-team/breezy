@@ -1334,3 +1334,53 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         state._sha1_provider = UppercaseSHA1Provider()
         self.assertChangedFileIds(['file-id'], tree)
 
+
+class TestPackStat(tests.TestCase):
+    """Check packed representaton of stat values is robust on all inputs"""
+
+    # GZ 2011-09-26: Should parametrise against all pack_stat implementations
+
+    @staticmethod
+    def pack(statlike_tuple):
+        return dirstate.pack_stat(os.stat_result(statlike_tuple))
+
+    @staticmethod
+    def unpack_field(packed_string, stat_field):
+        return dirstate._unpack_stat(packed_string)[stat_field]
+
+    def test_result(self):
+        self.assertEqual("AAAQAAAAABAAAAARAAAAAgAAAAEAAIHk",
+            self.pack((33252, 1, 2, 0, 0, 0, 4096, 15.5, 16.5, 17.5)))
+
+    def test_giant_inode(self):
+        packed = self.pack((33252, 0xF80000ABC, 0, 0, 0, 0, 0, 0, 0, 0))
+        self.assertEqual(0x80000ABC, self.unpack_field(packed, "st_ino"))
+
+    def test_giant_size(self):
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 1<<33, 0, 0, 0))
+        self.assertEqual((1 << 32) - 1, self.unpack_field(packed, "st_size"))
+
+    def test_fractional_mtime(self):
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 16.9375, 0))
+        self.assertEqual(16, self.unpack_field(packed, "st_mtime"))
+
+    def test_ancient_mtime(self):
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, -11644473600.0, 0))
+        self.assertEqual(0, self.unpack_field(packed, "st_mtime"))
+
+    def test_distant_mtime(self):
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 64060588800.0, 0))
+        self.assertEqual((1 << 32) - 1, self.unpack_field(packed, "st_mtime"))
+
+    def test_fractional_ctime(self):
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 17.5625))
+        self.assertEqual(17, self.unpack_field(packed, "st_ctime"))
+
+    def test_ancient_ctime(self):
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, -11644473600.0))
+        self.assertEqual(0, self.unpack_field(packed, "st_ctime"))
+
+    def test_distant_ctime(self):
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 64060588800.0))
+        self.assertEqual((1 << 32) - 1, self.unpack_field(packed, "st_ctime"))
+
