@@ -733,6 +733,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
                 raise errors.ConnectionReset(
                     "Error trying to write to subprocess:\n%s"
                     % (e,))
+            raise
         self._report_activity(len(bytes), 'write')
 
     def _flush(self):

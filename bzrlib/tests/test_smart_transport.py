@@ -51,6 +51,13 @@ from bzrlib.transport import (
 from bzrlib.transport.http import SmartClientHTTPMediumRequest
 
 
+def create_file_pipes():
+    r, w = os.pipe()
+    rf = os.fdopen(r, 'rb', 0)
+    wf = os.fdopen(w, 'wb', 0)
+    return rf, wf
+
+
 class StringIOSSHVendor(object):
     """A SSH vendor that uses StringIO to buffer writes and answer reads."""
 
@@ -173,21 +180,39 @@ class SmartClientMediumTests(tests.TestCase):
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
 
-    def test_simple_pipes_accept_bytes_closed_pipe(self):
-        p = subprocess.Popen([sys.executable, '-c',
-            'import sys\n'
-            'sys.stdout.write(sys.stdin.read(3))\n'
-            'sys.stdout.close()\n'],
-            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    # def test_simple_pipes__accept_bytes_subprocess_closed(self):
+    #     # It is unfortunate that we have to use Popen for this. However,
+    #     # os.pipe() does not behave the same as subprocess.Popen().
+    #     # On Windows, if you use os.pipe() and close the write side,
+    #     # read.read() hangs. On Linux, read.read() returns the empty string.
+    #     p = subprocess.Popen([sys.executable, '-c',
+    #         'import sys\n'
+    #         'sys.stdout.write(sys.stdin.read(3))\n'
+    #         'sys.stdout.close()\n'],
+    #         stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    #     client_medium = medium.SmartSimplePipesClientMedium(
+    #         p.stdout, p.stdin, 'base')
+    #     client_medium._accept_bytes('abc')
+    #     self.assertEqual('abc', client_medium._read_bytes(3))
+    #     p.wait()
+    #     # While writing to the underlying pipe,
+    #     #   Windows py2.6.6 we get IOError(EINVAL)
+    #     #   Lucid py2.6.5, we get IOError(EPIPE)
+    #     # In both cases, it should be wrapped to ConnectionReset
+    #     self.assertRaises(errors.ConnectionReset,
+    #                       client_medium._accept_bytes, 'more')
+
+    def test_simple_pipes__accept_bytes_pipe_closed(self):
+        child_read, client_write = create_file_pipes()
         client_medium = medium.SmartSimplePipesClientMedium(
-            p.stdout, p.stdin, 'base')
+            None, client_write, 'base')
         client_medium._accept_bytes('abc')
-        self.assertEqual('abc', client_medium._read_bytes(3))
-        p.wait()
+        self.assertEqual('abc', child_read.read(3))
         # While writing to the underlying pipe,
         #   Windows py2.6.6 we get IOError(EINVAL)
         #   Lucid py2.6.5, we get IOError(EPIPE)
         # In both cases, it should be wrapped to ConnectionReset
+        child_read.close()
         self.assertRaises(errors.ConnectionReset,
                           client_medium._accept_bytes, 'more')
 
