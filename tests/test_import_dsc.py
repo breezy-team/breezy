@@ -1284,8 +1284,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(rev_tree1.get_parent_ids(), [rh1[0]])
         self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1]])
         self.check_changes(rev_tree2.changes_from(rev_tree1),
-                added=["NEWS", ".bzr-builddeb/",
-                    ".bzr-builddeb/default.conf"],
+                added=["NEWS", ".bzr-builddeb/", ".bzr-builddeb/default.conf"],
                 removed=["BUGS"], modified=["debian/changelog", "COPYING"])
         self.assertEqual(self.db1.revid_of_version(version1), rh1[1])
         self.assertEqual(self.db1.revid_of_version(version2), rh1[2])

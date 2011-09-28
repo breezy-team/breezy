@@ -455,7 +455,7 @@ class DistributionBranch(object):
             if c_fileid is not None:
                 break
         else:
-            return None
+            return None, None
         tree.lock_read()
         try:
             config = ConfigObj(tree.get_file(c_fileid, path))
@@ -465,10 +465,9 @@ class DistributionBranch(object):
                 config['BUILDDEB'] = {}
         finally:
             tree.unlock()
-        return config
+        return c_fileid, config
 
-    def _is_tree_native(self, tree):
-        config = self._default_config_for_tree(tree)
+    def _is_tree_native(self, config):
         if config is not None:
             try:
                 current_value = config['BUILDDEB']['native']
@@ -487,7 +486,8 @@ class DistributionBranch(object):
         """
         revid = self.revid_of_version(version)
         rev_tree = self.branch.repository.revision_tree(revid)
-        if self._is_tree_native(rev_tree):
+        config_fileid, current_config = self._default_config_for_tree(rev_tree)
+        if self._is_tree_native(current_config):
             return True
         rev = self.branch.repository.get_revision(revid)
         try:
@@ -893,8 +893,8 @@ class DistributionBranch(object):
 
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.basis_tree()
-        current_native = self._is_tree_native(poss_native_tree)
-        current_config = self._default_config_for_tree(poss_native_tree)
+        config_fileid, current_config = self._default_config_for_tree(poss_native_tree)
+        current_native = self._is_tree_native(config)
         dirname = os.path.join(self.tree.basedir, '.bzr-builddeb')
         if current_config is not None:
             # Add that back to the current tree
