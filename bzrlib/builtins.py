@@ -1479,20 +1479,31 @@ class cmd_renames(Command):
 
 
 class cmd_update(Command):
-    __doc__ = """Update a tree to have the latest code committed to its branch.
+    __doc__ = """Update a working tree to a new revision.
 
-    This will perform a merge into the working tree, and may generate
-    conflicts. If you have any local changes, you will still
-    need to commit them after the update for the update to be complete.
+    This will perform a merge of the destination revision (the tip of the
+    branch, or the specified revision) into the working tree, and then make
+    that revision the basis revision for the working tree.  
 
-    If you want to discard your local changes, you can just do a
-    'bzr revert' instead of 'bzr commit' after the update.
+    You can use this to visit an older revision, or to update a working tree
+    that is out of date from its branch.
+    
+    If there are any uncommitted changes in the tree, they will be carried
+    across and remain as uncommitted changes after the update.  To discard
+    these changes, use 'bzr revert'.  The uncommitted changes may conflict
+    with the changes brought in by the change in basis revision.
 
-    If you want to restore a file that has been removed locally, use
-    'bzr revert' instead of 'bzr update'.
+    If the tree's branch is bound to a master branch, bzr will also update
 
     If the tree's branch is bound to a master branch, it will also update
     the branch from the master.
+
+    You cannot update just a single file or directory, because each Bazaar
+    working tree has just a single basis revision.  If you want to restore a
+    file that has been removed locally, use 'bzr revert' instead of 'bzr
+    update'.  If you want to restore a file to its state in a previous
+    revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write
+    out the old content of that file to a new location.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
@@ -1506,8 +1517,13 @@ class cmd_update(Command):
     def run(self, dir='.', revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(gettext(
-                        "bzr update --revision takes exactly one revision"))
-        tree = WorkingTree.open_containing(dir)[0]
+                "bzr update --revision takes exactly one revision"))
+        tree, relpath = WorkingTree.open_containing(dir)
+        if relpath:
+            # See bug 557886.
+            raise errors.BzrCommandError(gettext(
+                "bzr update can only update a whole tree, "
+                "not a file or subdirectory"))
         branch = tree.branch
         possible_transports = []
         master = branch.get_master_branch(
