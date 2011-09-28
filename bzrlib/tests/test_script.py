@@ -608,7 +608,6 @@ class TestShelve(script.TestCaseWithTransportAndScript):
             """)
 
     def test_shelve(self):
-        self.overrideEnv('INSIDE_EMACS', '1')
         self.run_script("""
             $ bzr shelve -m 'shelve bar'
             # Shelve? [yNfq?]
@@ -628,7 +627,6 @@ class TestShelve(script.TestCaseWithTransportAndScript):
             """)
 
     def test_dont_shelve(self):
-        self.overrideEnv('INSIDE_EMACS', '1')
         # We intentionally provide no input here to test EOF
         self.run_script("""
             $ bzr shelve -m 'shelve bar'

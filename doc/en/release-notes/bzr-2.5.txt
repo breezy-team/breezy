@@ -32,6 +32,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr shelve`` can now be used in emacs shells as the input handling is
+  turned into a line-basde one when ``INSIDE_EMACS`` is set (which is the
+  case for all recent emacs versions). (Vincent Ladeuil, #856261)
+
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
 
@@ -57,6 +61,9 @@ Internals
 
 Testing
 *******
+
+* Test scripts can now use ``bzr shelve`` and provide their input as
+  complete lines. (Vincent Ladeuil, #856261)
 
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
