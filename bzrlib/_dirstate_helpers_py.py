@@ -26,7 +26,7 @@ from bzrlib import errors
 from bzrlib.dirstate import DirState
 
 
-def pack_stat(st, _encode=binascii.b2a_base64,
+def pack_stat(st, _b64=binascii.b2a_base64,
         _pack=struct.Struct('>LLLLLL').pack):
     """Convert stat values into a packed representation
 
@@ -35,7 +35,7 @@ def pack_stat(st, _encode=binascii.b2a_base64,
     However, using the pyrex version instead is a bigger win.
     """
     # base64 encoding always adds a final newline, so strip it off
-    return _encode(_pack(st.st_size, int(st.st_mtime), int(st.st_ctime),
+    return _b64(_pack(st.st_size, int(st.st_mtime), int(st.st_ctime),
         st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
 
 
