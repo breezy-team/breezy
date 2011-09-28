@@ -1494,8 +1494,6 @@ class cmd_update(Command):
     with the changes brought in by the change in basis revision.
 
     If the tree's branch is bound to a master branch, bzr will also update
-
-    If the tree's branch is bound to a master branch, it will also update
     the branch from the master.
 
     You cannot update just a single file or directory, because each Bazaar
