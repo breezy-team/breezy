@@ -32,6 +32,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Prevent several kinds of OverflowError and other fallout from failing to fit
+  stat fields into four bytes in dirstate pack_stat implementations.
+  (Martin Packman, #683191 #706957)
+
 Documentation
 *************
 
