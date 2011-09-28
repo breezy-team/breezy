@@ -255,8 +255,9 @@ if not getattr(struct, '_compile', None):
     # Cannot pre-compile the dirstate pack_stat
     def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
         """Convert stat values into a packed representation."""
-        return _encode(_pack('>LLLLLL', st.st_size, int(st.st_mtime),
-            int(st.st_ctime), st.st_dev, st.st_ino & 0xFFFFFFFF,
+        return _encode(_pack('>LLLLLL', st.st_size & 0xFFFFFFFF,
+            int(st.st_mtime) & 0xFFFFFFFF, int(st.st_ctime) & 0xFFFFFFFF,
+            st.st_dev & 0xFFFFFFFF, st.st_ino & 0xFFFFFFFF,
             st.st_mode))[:-1]
 else:
     # compile the struct compiler we need, so as to only do it once
