@@ -1192,7 +1192,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.addCleanup(self.tree1.unlock)
         self.assertTrue(self.db1.is_version_native(version))
         revtree = self.tree1.branch.repository.revision_tree(rh1[0])
-        self.assertTrue(self.db1._is_tree_native(revtree))
+        config_fileid, current_config = self.db1._default_config_for_tree(revtree)
+        self.assertTrue(self.db1._is_tree_native(current_config))
 
     def test_import_native_two(self):
         version1 = Version("1.0")
@@ -1284,7 +1285,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(rev_tree1.get_parent_ids(), [rh1[0]])
         self.assertEqual(rev_tree2.get_parent_ids(), [rh1[1]])
         self.check_changes(rev_tree2.changes_from(rev_tree1),
-                added=["NEWS", ".bzr-builddeb/", ".bzr-builddeb/default.conf"],
+                added=["NEWS", "debian/bzr-builddeb.conf"],
                 removed=["BUGS"], modified=["debian/changelog", "COPYING"])
         self.assertEqual(self.db1.revid_of_version(version1), rh1[1])
         self.assertEqual(self.db1.revid_of_version(version2), rh1[2])
@@ -1324,14 +1325,12 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(up_rev_tree1.get_parent_ids(), [rh1[0]])
         self.check_changes(rev_tree2.changes_from(rev_tree1),
                 added=["NEWS"],
-                removed=["BUGS", ".bzr-builddeb/",
-                    ".bzr-builddeb/default.conf"],
+                removed=["BUGS", "debian/bzr-builddeb.conf"],
                 modified=["debian/changelog", "COPYING"])
         self.check_changes(up_rev_tree1.changes_from(rev_tree1),
                 added=["NEWS"],
                 removed=["debian/", "debian/changelog", "debian/control",
-                        "BUGS", "README", ".bzr-builddeb/",
-                        ".bzr-builddeb/default.conf"],
+                        "BUGS", "README", "debian/bzr-builddeb.conf"],
                 modified=["COPYING"])
         self.check_changes(rev_tree2.changes_from(up_rev_tree1),
                 added=["debian/", "debian/changelog", "debian/control",

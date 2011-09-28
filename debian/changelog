@@ -1,8 +1,10 @@
 bzr-builddeb (2.7.9) UNRELEASED; urgency=low
 
   * Support .tar.xz Debian files rather than .tar.lzma.
+  * Move .bzr-builddeb/default.conf to debian/bzr-builddeb.conf. LP:
+    #793137
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 09 Sep 2011 15:21:22 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 28 Sep 2011 15:15:14 +0200
 
 bzr-builddeb (2.7.8) unstable; urgency=low
 
