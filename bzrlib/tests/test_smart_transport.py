@@ -242,6 +242,15 @@ class SmartClientMediumTests(tests.TestCase):
         # Even though the child process is dead, flush seems to be a no-op.
         client_medium._flush()
 
+    def test_simple_pipes__read_bytes_pipe_closed(self):
+        child_read, client_write = create_file_pipes()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            child_read, client_write, 'base')
+        client_medium._accept_bytes('abc\n')
+        client_write.close()
+        self.assertEqual('abc\n', client_medium._read_bytes(4))
+        self.assertEqual('', client_medium._read_bytes(4))
+
     def test_simple_pipes__read_bytes_subprocess_closed(self):
         p = subprocess.Popen([sys.executable, '-c',
             'import sys\n'
