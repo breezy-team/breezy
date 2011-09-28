@@ -572,9 +572,9 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
     def test_confirm_action(self):
         """You can write tests that demonstrate user confirmation.
         
-        Specifically, ScriptRunner does't care if the output line for the prompt
-        isn't terminated by a newline from the program; it's implicitly terminated 
-        by the input.
+        Specifically, ScriptRunner does't care if the output line for the
+        prompt isn't terminated by a newline from the program; it's implicitly
+        terminated by the input.
         """
         commands.builtin_command_registry.register(cmd_test_confirm)
         self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
@@ -589,3 +589,58 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
             ok, no
             """)
 
+class TestShelve(script.TestCaseWithTransportAndScript):
+
+    def setUp(self):
+        super(TestShelve, self).setUp()
+        self.run_script("""
+            $ bzr init test
+            Created a standalone tree (format: 2a)
+            $ cd test
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'file added'
+            2>Committing to:...test/
+            2>added file
+            2>Committed revision 1.
+            $ echo bar > file
+            """)
+
+    def test_shelve(self):
+        self.overrideEnv('INSIDE_EMACS', '1')
+        self.run_script("""
+            $ bzr shelve -m 'shelve bar'
+            # Shelve? [yNfq?]
+            <y
+            # Shelve 1 change(s)? [yNfq?]
+            <y
+            2>Selected changes:
+            2> M  file
+            2>Changes shelved with id "1".
+            """,
+                        # shelve uses \r that can't be represented in the
+                        # script ?
+                        null_output_matches_anything=True)
+        self.run_script("""
+            $ bzr shelve --list
+              1: shelve bar
+            """)
+
+    def test_dont_shelve(self):
+        self.overrideEnv('INSIDE_EMACS', '1')
+        # We intentionally provide no input here to test EOF
+        self.run_script("""
+            $ bzr shelve -m 'shelve bar'
+            # Shelve? [yNfq?]
+            # Shelve 1 change(s)? [yNfq?]
+            2>No changes to shelve.
+            """,
+                        # shelve uses \r that can't be represented in the
+                        # script ?
+                        null_output_matches_anything=True)
+        self.run_script("""
+            $ bzr st
+            modified:
+              file
+            """)
