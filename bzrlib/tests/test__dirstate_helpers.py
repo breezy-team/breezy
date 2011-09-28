@@ -1357,8 +1357,8 @@ class TestPackStat(tests.TestCase):
         self.assertEqual(0x80000ABC, self.unpack_field(packed, "st_ino"))
 
     def test_giant_size(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 1<<33, 0, 0, 0))
-        self.assertEqual((1 << 32) - 1, self.unpack_field(packed, "st_size"))
+        packed = self.pack((33252, 0, 0, 0, 0, 0, (1 << 33) + 4096, 0, 0, 0))
+        self.assertEqual(4096, self.unpack_field(packed, "st_size"))
 
     def test_fractional_mtime(self):
         packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 16.9375, 0))
@@ -1366,11 +1366,11 @@ class TestPackStat(tests.TestCase):
 
     def test_ancient_mtime(self):
         packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, -11644473600.0, 0))
-        self.assertEqual(0, self.unpack_field(packed, "st_mtime"))
+        self.assertEqual(1240428288, self.unpack_field(packed, "st_mtime"))
 
     def test_distant_mtime(self):
         packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 64060588800.0, 0))
-        self.assertEqual((1 << 32) - 1, self.unpack_field(packed, "st_mtime"))
+        self.assertEqual(3931046656, self.unpack_field(packed, "st_mtime"))
 
     def test_fractional_ctime(self):
         packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 17.5625))
@@ -1378,11 +1378,11 @@ class TestPackStat(tests.TestCase):
 
     def test_ancient_ctime(self):
         packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, -11644473600.0))
-        self.assertEqual(0, self.unpack_field(packed, "st_ctime"))
+        self.assertEqual(1240428288, self.unpack_field(packed, "st_ctime"))
 
     def test_distant_ctime(self):
         packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 64060588800.0))
-        self.assertEqual((1 << 32) - 1, self.unpack_field(packed, "st_ctime"))
+        self.assertEqual(3931046656, self.unpack_field(packed, "st_ctime"))
 
     def test_negative_dev(self):
         packed = self.pack((33252, 0, -0xFFFFFCDE, 0, 0, 0, 0, 0, 0, 0))
