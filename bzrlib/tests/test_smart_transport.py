@@ -229,7 +229,9 @@ class SmartClientMediumTests(tests.TestCase):
 
     def test_simple_pipes__flush_subprocess_closed(self):
         p = subprocess.Popen([sys.executable, '-c',
-            'import sys\n'
+            'import sys, os, msvcrt\n'
+            'msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)\n'
+            'msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)\n'
             'sys.stdout.write(sys.stdin.read(4))\n'
             'sys.stdout.close()\n'],
             stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -239,6 +241,23 @@ class SmartClientMediumTests(tests.TestCase):
         p.wait()
         # Even though the child process is dead, flush seems to be a no-op.
         client_medium._flush()
+
+    def test_simple_pipes__read_bytes_subprocess_closed(self):
+        p = subprocess.Popen([sys.executable, '-c',
+            'import sys\n'
+            'if sys.platform == "win32":\n'
+            '    import msvcrt, os\n'
+            '    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)\n'
+            '    msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)\n'
+            'sys.stdout.write(sys.stdin.read(4))\n'
+            'sys.stdout.close()\n'],
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            p.stdout, p.stdin, 'base')
+        client_medium._accept_bytes('abc\n')
+        p.wait()
+        self.assertEqual('abc\n', client_medium._read_bytes(4))
+        self.assertEqual('', client_medium._read_bytes(4))
 
     def test_simple_pipes_client_disconnect_does_nothing(self):
         # calling disconnect does nothing.
