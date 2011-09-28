@@ -152,6 +152,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         ie = inventory.entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.store[hexsha].data
+        elif kind == 'tree-reference':
+            ie.reference_revision = self.mapping.revision_id_foreign_to_bzr(hexsha)
         else:
             data = self.store[hexsha].data
             ie.text_sha1 = osutils.sha_string(data)
