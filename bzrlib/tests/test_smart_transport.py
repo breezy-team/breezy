@@ -20,6 +20,8 @@
 from cStringIO import StringIO
 import os
 import socket
+import subprocess
+import sys
 import threading
 
 import bzrlib
@@ -170,6 +172,20 @@ class SmartClientMediumTests(tests.TestCase):
             None, output, 'base')
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
+
+    def test_simple_pipes_accept_bytes_closed_pipe(self):
+        p = subprocess.Popen([sys.executable, '-c',
+            'import sys\n'
+            'sys.stdout.write(sys.stdin.read(3))\n'
+            'sys.stdout.close()\n'],
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            p.stdout, p.stdin, 'base')
+        client_medium._accept_bytes('abc')
+        self.assertEqual('abc', client_medium._read_bytes(3))
+        p.wait()
+        # On win32 python2.6 we get IOError(EINVAL) trying to do this.
+        client_medium._accept_bytes('more')
 
     def test_simple_pipes_client_disconnect_does_nothing(self):
         # calling disconnect does nothing.
