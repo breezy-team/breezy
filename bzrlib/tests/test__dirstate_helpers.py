@@ -1384,3 +1384,6 @@ class TestPackStat(tests.TestCase):
         packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 64060588800.0))
         self.assertEqual((1 << 32) - 1, self.unpack_field(packed, "st_ctime"))
 
+    def test_negative_dev(self):
+        packed = self.pack((33252, 0, -0xFFFFFCDE, 0, 0, 0, 0, 0, 0, 0))
+        self.assertEqual(0x322, self.unpack_field(packed, "st_dev"))
