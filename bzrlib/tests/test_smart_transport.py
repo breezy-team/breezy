@@ -53,6 +53,7 @@ from bzrlib.transport.http import SmartClientHTTPMediumRequest
 
 def create_file_pipes():
     r, w = os.pipe()
+    # These must be opened without buffering, or we get undefined results
     rf = os.fdopen(r, 'rb', 0)
     wf = os.fdopen(w, 'wb', 0)
     return rf, wf
@@ -206,8 +207,8 @@ class SmartClientMediumTests(tests.TestCase):
         child_read, client_write = create_file_pipes()
         client_medium = medium.SmartSimplePipesClientMedium(
             None, client_write, 'base')
-        client_medium._accept_bytes('abc')
-        self.assertEqual('abc', child_read.read(3))
+        client_medium._accept_bytes('abc\n')
+        self.assertEqual('abc\n', child_read.read(4))
         # While writing to the underlying pipe,
         #   Windows py2.6.6 we get IOError(EINVAL)
         #   Lucid py2.6.5, we get IOError(EPIPE)
@@ -215,6 +216,29 @@ class SmartClientMediumTests(tests.TestCase):
         child_read.close()
         self.assertRaises(errors.ConnectionReset,
                           client_medium._accept_bytes, 'more')
+
+    def test_simple_pipes__flush_pipe_closed(self):
+        child_read, client_write = create_file_pipes()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            None, client_write, 'base')
+        client_medium._accept_bytes('abc\n')
+        child_read.close()
+        # Even though the pipe is closed, flush on the write side seems to be a
+        # no-op, rather than a failure.
+        client_medium._flush()
+
+    def test_simple_pipes__flush_subprocess_closed(self):
+        p = subprocess.Popen([sys.executable, '-c',
+            'import sys\n'
+            'sys.stdout.write(sys.stdin.read(4))\n'
+            'sys.stdout.close()\n'],
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            p.stdout, p.stdin, 'base')
+        client_medium._accept_bytes('abc\n')
+        p.wait()
+        # Even though the child process is dead, flush seems to be a no-op.
+        client_medium._flush()
 
     def test_simple_pipes_client_disconnect_does_nothing(self):
         # calling disconnect does nothing.
