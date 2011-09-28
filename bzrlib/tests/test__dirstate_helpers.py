@@ -61,6 +61,11 @@ if compiled_dirstate_helpers_feature.available():
     process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
     pe_scenarios.append(('dirstate_Pyrex', {'_process_entry': process_entry}))
 
+helper_scenarios = [('dirstate_Python', {'helpers': _dirstate_helpers_py})]
+if compiled_dirstate_helpers_feature.available():
+    helper_scenarios.append(('dirstate_Pyrex',
+        {'helpers': compiled_dirstate_helpers_feature.module}))
+
 
 class TestBisectPathMixin(object):
     """Test that _bisect_path_*() returns the expected values.
@@ -1342,11 +1347,10 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
 class TestPackStat(tests.TestCase):
     """Check packed representaton of stat values is robust on all inputs"""
 
-    # GZ 2011-09-26: Should parametrise against all pack_stat implementations
+    scenarios = helper_scenarios
 
-    @staticmethod
-    def pack(statlike_tuple):
-        return dirstate.pack_stat(os.stat_result(statlike_tuple))
+    def pack(self, statlike_tuple):
+        return self.helpers.pack_stat(os.stat_result(statlike_tuple))
 
     @staticmethod
     def unpack_field(packed_string, stat_field):
