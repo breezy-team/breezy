@@ -43,15 +43,18 @@ class OptionTests(TestCase):
         # XXX: Using cmd_commit makes these tests overly sensitive to changes
         # to cmd_commit, when they are meant to be about option parsing in
         # general.
-        self.assertEqual(parse_args(cmd_commit(), ['--help']),
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}))
-        self.assertEqual(parse_args(cmd_commit(), ['--message=biter']),
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}))
+        self.assertEqual(
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}),
+           parse_args(cmd_commit(), ['--help']))
+        self.assertEqual(
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}),
+           parse_args(cmd_commit(), ['--message=biter']))
 
     def test_no_more_opts(self):
         """Terminated options"""
-        self.assertEqual(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
-                          (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}))
+        self.assertEqual(
+            (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}),
+            parse_args(cmd_commit(), ['--', '-file-with-dashes']))
 
     def test_option_help(self):
         """Options have help strings."""
