@@ -31,6 +31,11 @@ class TestExportPot(TestCaseWithMemoryTransport):
                                    "msgid \"Select changes introduced by the specified revision.")
 
     def test_export_pot_plugin(self):
-        out, err = self.run_bzr("export-pot --plugin=launchpad")
-        self.assertContainsRe(err, 'Exporting messages from plugin command: launchpad-login in launchpad')
-        self.assertContainsRe(out, 'msgid "Show or set the Launchpad user ID."')
+        try:
+            import bzrlib.plugins.launchpad
+        except ImportError:
+            pass
+        else:
+            out, err = self.run_bzr("export-pot --plugin=launchpad")
+            self.assertContainsRe(err, 'Exporting messages from plugin command: launchpad-login in launchpad')
+            self.assertContainsRe(out, 'msgid "Show or set the Launchpad user ID."')
