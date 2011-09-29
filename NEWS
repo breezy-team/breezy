@@ -24,6 +24,9 @@
   * Fix compatibility with tags API after changes in bzr.
     (Jelmer Vernooij, #861592)
 
+  * Cope with tags pointing at trees when cloning local git repositories.
+    (Jelmer Vernooij, #861973)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)

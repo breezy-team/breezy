@@ -36,6 +36,9 @@ from bzrlib.foreign import (
 from bzrlib.plugins.git.commit import (
     GitCommitBuilder,
     )
+from bzrlib.plugins.git.errors import (
+    NotCommitError,
+    )
 from bzrlib.plugins.git.filegraph import (
     GitFileLastChangeScanner,
     GitFileParentProvider,
@@ -329,6 +332,8 @@ class LocalGitRepository(GitRepository):
         commit = self._git.object_store[foreign_revid]
         while isinstance(commit, Tag):
             commit = self._git[commit.object[1]]
+        if not isinstance(commit, Commit):
+            raise NotCommitError(commit.id)
         rev, roundtrip_revid, verifiers = mapping.import_commit(commit,
             mapping.revision_id_foreign_to_bzr)
         # FIXME: check testament before doing this?

@@ -69,6 +69,9 @@ from bzrlib.versionedfile import (
     ChunkedContentFactory,
     )
 
+from bzrlib.plugins.git.errors import (
+    NotCommitError,
+    )
 from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     mode_is_executable,
@@ -562,7 +565,14 @@ class InterGitNonGitRepository(InterFromGitRepository):
     repository."""
 
     def _target_has_shas(self, shas):
-        revids = [self.source.lookup_foreign_revision_id(sha) for sha in shas]
+        revids = []
+        for sha in shas:
+            try:
+                revid = self.source.lookup_foreign_revision_id(sha)
+            except NotCommitError:
+                continue
+            else:
+                revids.append(revid)
         return self.target.has_revisions(revids)
 
     def get_determine_wants_revids(self, revids, include_tags=False):

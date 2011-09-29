@@ -17,6 +17,7 @@
 
 from dulwich.objects import (
     Blob,
+    Tag,
     Tree,
     )
 from dulwich.repo import (
@@ -24,6 +25,7 @@ from dulwich.repo import (
     )
 import os
 import stat
+import time
 
 from bzrlib import (
     knit,
@@ -60,7 +62,7 @@ class RepositoryFetchTests(object):
 
     def make_git_repo(self, path):
         os.mkdir(path)
-        GitRepo.init(path)
+        return GitRepo.init(os.path.abspath(path))
 
     def clone_git_repo(self, from_url, to_url, revision_id=None):
         oldrepos = self.open_git_repo(from_url)
@@ -243,6 +245,29 @@ class RepositoryFetchTests(object):
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         tree = newrepo.revision_tree(revid)
         self.assertTrue(tree.has_filename(u"foőbar"))
+
+    def test_tagged_tree(self):
+        r = self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("foobar", "fooll\nbar\n", False)
+        mark = bb.commit("Somebody <somebody@someorg.org>", "nextmsg")
+        marks = bb.finish()
+        gitsha = marks[mark]
+        tag = Tag()
+        tag.name = "sometag"
+        tag.tag_time = time.time()
+        tag.tag_timezone = 0
+        tag.tagger = "Somebody <somebody@example.com>"
+        tag.message = "Created tag pointed at tree"
+        tag.object = (Tree, r[gitsha].tree)
+        r.object_store.add_object(tag)
+        r["refs/tags/sometag"] = tag
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        newrepo = self.clone_git_repo("d", "f")
+        self.assertEquals(set([revid]), set(newrepo.all_revision_ids()))
 
 
 class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):

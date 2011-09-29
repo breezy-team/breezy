@@ -20,6 +20,8 @@
 
 from dulwich import errors as git_errors
 
+from dulwich.errors import NotCommitError
+
 from bzrlib import errors as bzr_errors
 
 
