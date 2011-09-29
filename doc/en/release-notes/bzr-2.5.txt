@@ -26,17 +26,34 @@ New Features
   used multiple times to override different options.
   (Vincent Ladeuil, #491196)
 
+* ``bzr serve`` will now disconnect clients if they have not issued an RPC
+  request after 5minutes. On POSIX platforms, this will also happen for
+  ``bzr serve --inet``. This can be overridden with the configuration
+  variable ``serve.client_timeout`` or in the command line parameter
+  ``bzr serve --client-timeout=X``. Further, it is possible to request
+  ``bzr serve [--inet]`` to shutdown gracefully by sending SIGHUP. It will
+  finish the current request, and then close the connection.
+  (John Arbash Meinel, #824797, #795025)
+
+
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr shelve`` can now be used in emacs shells as the input handling is
+  turned into a line-basde one when ``INSIDE_EMACS`` is set (which is the
+  case for all recent emacs versions). (Vincent Ladeuil, #856261)
 
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
@@ -58,6 +75,14 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.get_revision_delta`` has been deprecated. Use
+  ``Repository.get_revision_delta`` instead. (Jelmer Vernooij, #859712)
+
+* The new method ``ControlDirFormat.is_initializable()`` returns a boolean
+  indicating whether or not it is possible to use any of the
+  initialization methods of that format to create a new control dir.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
@@ -72,9 +97,15 @@ Internals
 Testing
 *******
 
+* Test scripts can now use ``bzr shelve`` and provide their input as
+  complete lines. (Vincent Ladeuil, #856261)
+
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Really corrupt the pack file without depending on a special length or value.
+  (Vincent Ladeuil, #807032)
 
 
 bzr 2.5b1
@@ -300,6 +331,11 @@ API Changes
 
 * New registry ``OptionRegistry`` specialized for configuration options.
   (Vincent Ladeuil)
+
+* Plugins that implement custom protocols for ``bzr serve`` should now
+  also take an argument ``timeout``. This is used by the the bzr protocol
+  to close a connection if a client has been idle for more than X seconds.
+  (Default 5minutes). (John Arbash Meinel)
 
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)

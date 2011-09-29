@@ -559,6 +559,10 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
+    except ValueError, e:
+        # On Windows, I get ValueError calling stdout.flush() on a closed
+        # handle
+        pass
     except IOError, e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:

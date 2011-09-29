@@ -66,11 +66,21 @@ class TestBranch(TestCaseWithTransport):
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
         self.example_branch('a')
-        #now add some random corruption
-        fname = 'a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0]
+        # add some corruption
+        packs_dir = 'a/.bzr/repository/packs/'
+        fname = packs_dir + os.listdir(packs_dir)[0]
         with open(fname, 'rb+') as f:
-            f.seek(750)
-            f.write("\xff")
+            # Start from the end of the file to avoid choosing a place bigger
+            # than the file itself.
+            f.seek(-5, os.SEEK_END)
+            c = f.read(1)
+            f.seek(-5, os.SEEK_END)
+            # Make sure we inject a value different than the one we just read
+            if c == '\xFF':
+                corrupt = '\x00'
+            else:
+                corrupt = '\xFF'
+            f.write(corrupt) # make sure we corrupt something
         self.run_bzr_error(['Corruption while decompressing repository file'], 
                             'branch a b', retcode=3)
 

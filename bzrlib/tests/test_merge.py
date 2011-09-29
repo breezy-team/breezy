@@ -420,8 +420,7 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(['a'])
         tree.add('a')
-        tree.commit("added a")
-        first_rev = tree.branch.revision_history()[0]
+        first_rev = tree.commit("added a")
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
@@ -509,9 +508,8 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(['a'])
         tree.add('a')
-        tree.commit("added a")
+        first_rev = tree.commit("added a")
         old_root_id = tree.get_root_id()
-        first_rev = tree.branch.revision_history()[0]
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
