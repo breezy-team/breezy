@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-09-24 19:07+0000\n"
+"PO-Revision-Date: 2011-09-28 12:42+0000\n"
 "Last-Translator: Sergey Basalaev <SBasalaev@gmail.com>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -16,8 +16,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2011-09-25 04:30+0000\n"
-"X-Generator: Launchpad (build 14012)\n"
+"X-Launchpad-Export-Date: 2011-09-29 04:30+0000\n"
+"X-Generator: Launchpad (build 14049)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1952,50 +1952,54 @@ msgstr "Показать изменения, сделанные в каждой 
 
 #: bzrlib/builtins.py:2426
 msgid "Show merged revisions like --levels 0 does."
-msgstr ""
+msgstr "Показыывать слияния, как это делает --levels 0."
 
 #: bzrlib/builtins.py:2430
 msgid "Do not report commits with more than one parent."
-msgstr ""
+msgstr "Не сообщать о закреплениях с более, чем одним родителем."
 
 #: bzrlib/builtins.py:2432
 msgid ""
 "Display only the revisions that are not part of both ancestries (require -"
 "rX..Y)"
 msgstr ""
+"Выводить только ревизии, которые не являются частью обоих предков (требует -"
+"rX..Y)"
 
 #: bzrlib/builtins.py:2436
 msgid "Show digital signature validity"
-msgstr ""
+msgstr "Показывать валидность цифровой подписи"
 
 #: bzrlib/builtins.py:2439
 msgid "Show revisions whose properties match this expression."
-msgstr ""
+msgstr "Показывать ревизии, свойства которых удовлетворяют этому выражению."
 
 #: bzrlib/builtins.py:2443
 msgid "Show revisions whose message matches this expression."
 msgstr ""
+"Показывать ревизии, комментарий которых удовлетворяет этому выражению."
 
 #: bzrlib/builtins.py:2447
 msgid "Show revisions whose committer matches this expression."
 msgstr ""
+"Показывать ревизии, закрепитель которых удовлетворяет этому выражению."
 
 #: bzrlib/builtins.py:2451
 msgid "Show revisions whose authors match this expression."
-msgstr ""
+msgstr "Показывать ревизии, авторы которых удовлетворяют этому выражению."
 
 #: bzrlib/builtins.py:2455
 msgid "Show revisions whose bugs match this expression."
-msgstr ""
+msgstr "Показывать ревизии, ошибки которых удовлетворяют этому выражению."
 
 #: bzrlib/builtins.py:2509
 msgid "--exclude-common-ancestry requires -r with two revisions"
-msgstr ""
+msgstr "--exclude-common-ancestry требует -r с двумя ревизиями"
 
 #: bzrlib/builtins.py:2537
 #, python-format
 msgid "Path unknown at end or start of revision range: %s"
-msgstr ""
+msgstr "Неизвестный путь в начале или конце интервала ревизий: %s"
 
 #: bzrlib/builtins.py:2654
 #, python-format
@@ -2012,10 +2016,12 @@ msgid ""
 "List files in a tree.\n"
 "    "
 msgstr ""
+"Вывести список файлов в дереве.\n"
+"    "
 
 #: bzrlib/builtins.py:2724
 msgid "Recurse into subdirectories."
-msgstr ""
+msgstr "Рекурсивно входить в поддиректории."
 
 #: bzrlib/builtins.py:2726
 msgid "Print paths relative to the root of the branch."
@@ -2023,23 +2029,23 @@ msgstr ""
 
 #: bzrlib/builtins.py:2728
 msgid "Print unknown files."
-msgstr ""
+msgstr "Выводить неизвестные файлы."
 
 #: bzrlib/builtins.py:2729
 msgid "Print versioned files."
-msgstr ""
+msgstr "Выводить файлы под контролем системы версий."
 
 #: bzrlib/builtins.py:2732
 msgid "Print ignored files."
-msgstr ""
+msgstr "Выводить игнорируемые файлы."
 
 #: bzrlib/builtins.py:2734
 msgid "List entries of a particular kind: file, directory, symlink."
-msgstr ""
+msgstr "Выводить файлы определённого типа: file, directory, symlink."
 
 #: bzrlib/builtins.py:2747
 msgid "invalid kind specified"
-msgstr ""
+msgstr "указан неверный вид файла"
 
 #: bzrlib/builtins.py:2750
 msgid "Cannot set both --verbose and --null"
@@ -13158,7 +13164,7 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:24
 msgid "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
-msgstr ""
+msgstr "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
 
 #: en/help_topics/urlspec.txt:26
 msgid ""
@@ -13171,7 +13177,7 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:32
 msgid "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
-msgstr ""
+msgstr "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
 
 #: en/help_topics/urlspec.txt:34
 msgid "would refer to ``/home/remote/myproject/trunk``."
