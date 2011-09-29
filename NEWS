@@ -21,6 +21,9 @@
 
   * Support updating tags in remote branches. (Jelmer Vernooij, #706990)
 
+  * Fix compatibility with tags API after changes in bzr.
+    (Jelmer Vernooij, #861592)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)

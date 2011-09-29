@@ -109,7 +109,7 @@ class GitTags(tag.BasicTags):
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
             for k, v in new_refs.iteritems():
-                if not is_tag(name):
+                if not is_tag(k):
                     continue
                 name = ref_to_tag_name(k)
                 if old_refs.get(k) == v:
@@ -176,7 +176,7 @@ class GitTags(tag.BasicTags):
         if source_refs is None:
             source_refs = self.get_refs()
         if self == to_tags:
-            return
+            return {}, []
         if isinstance(to_tags, GitTags):
             return self._merge_to_git(to_tags, source_refs,
                                       overwrite=overwrite)
@@ -802,8 +802,12 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result.old_revno, result.old_revid = self.target.last_revision_info()
         result.new_git_head, remote_refs = self._update_revisions(
             stop_revision, overwrite=overwrite)
-        result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+        tags_ret = self.source.tags.merge_to(self.target.tags,
             overwrite)
+        if isinstance(tags_ret, tuple):
+            (result.tag_updates, result.tag_conflicts) = tags_ret
+        else:
+            result.tag_conflicts = tags_ret
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -866,8 +870,12 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
-        result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+        tags_ret = self.source.tags.merge_to(self.target.tags,
             source_refs=refs, overwrite=overwrite)
+        if isinstance(tags_ret, tuple):
+            (result.tag_updates, result.tag_conflicts) = tags_ret
+        else:
+            result.tag_conflicts = tags_ret
         result.new_revid = self.target.last_revision()
         return result
 
@@ -896,8 +904,12 @@ class InterGitLocalGitBranch(InterGitBranch):
                 result.old_revid = self.target.last_revision()
                 refs, stop_revision = self.update_refs(stop_revision)
                 self.target.generate_revision_history(stop_revision, result.old_revid)
-                result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+                tags_ret = self.source.tags.merge_to(self.target.tags,
                     overwrite=overwrite, source_refs=refs)
+                if isinstance(tags_ret, tuple):
+                    (result.tag_updates, result.tag_conflicts) = tags_ret
+                else:
+                    result.tag_conflicts = tags_ret
                 result.new_revid = self.target.last_revision()
                 result.local_branch = None
                 result.master_branch = result.target_branch
