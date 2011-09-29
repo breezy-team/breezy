@@ -41,21 +41,21 @@ class SourceDistiller(object):
 
     supports_use_existing = False
 
-    def __init__(self, tree, upstream_provider, larstiq=False,
+    def __init__(self, tree, upstream_provider, top_level=False,
             use_existing=False, is_working_tree=False):
         """Create a SourceDistiller to distill from the specified tree.
 
         :param tree: The tree to use as the source.
         :param upstream_provider: an UpstreamProvider to provide the upstream
             tarball if needed.
-        :param larstiq: if the tree is in the "LarstiQ" layout.
+        :param top_level: if the tree is in the top level directory instead of inside debian/.
         :param use_existing: whether the distiller should re-use an existing
             target if the distiller supports it.
         :param is_working_tree: if `tree` is a working tree.
         """
         self.tree = tree
         self.upstream_provider = upstream_provider
-        self.larstiq = larstiq
+        self.top_level = top_level
         self.use_existing = use_existing
         if not self.supports_use_existing:
             assert not self.use_existing, "distiller doesn't support use_existing"
@@ -138,7 +138,7 @@ class MergeModeDistiller(SourceDistiller):
         basetempdir = tempfile.mkdtemp(prefix='builddeb-merge-debian-')
         try:
             tempdir = os.path.join(basetempdir,"export")
-            if self.larstiq:
+            if self.top_level
                 os.makedirs(tempdir)
                 export_dir = os.path.join(tempdir, 'debian')
             else:
