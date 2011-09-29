@@ -2569,6 +2569,14 @@ this process.
 Otherwise, bzr will prompt as normal to break the lock.
 '''))
 option_registry.register(
+    Option('log_format', default='long',
+           help= '''\
+Log format to use when displaying revisions.
+
+Standard log formats are ``long``, ``short`` and ``line``. Additional formats
+may be provided by plugins.
+'''))
+option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
