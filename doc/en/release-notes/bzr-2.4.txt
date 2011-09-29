@@ -35,6 +35,10 @@ Bug Fixes
 * Fixed loading of external merge tools from config to properly decode
   command-lines which contain embedded quotes. (Gordon Tyler, #828803)
 
+* Prevent several kinds of OverflowError and other fallout from failing to fit
+  stat fields into four bytes in dirstate pack_stat implementations.
+  (Martin Packman, #683191 #706957)
+
 Documentation
 *************
 
