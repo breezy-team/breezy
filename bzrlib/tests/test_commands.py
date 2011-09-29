@@ -44,12 +44,6 @@ class TestCommands(tests.TestCase):
                 commands_without_help.append(cmd_name)
         self.assertLength(0, commands_without_help)
 
-    def test_command_see_config_overrides(self):
-        self.run_bzr(['rocks', '-Oxx=12', '--override-config', 'yy=foo'])
-        c = config.GlobalStack()
-        self.assertEquals('12', c.get('xx'))
-        self.assertEquals('foo', c.get('yy'))
-
     def test_display_command(self):
         """EPIPE message is selectively suppressed"""
         def pipe_thrower():
@@ -95,6 +89,23 @@ class TestCommands(tests.TestCase):
     def test_help_not_hidden(self):
         c = self.get_command([option.Option('foo', hidden=False)])
         self.assertContainsRe(c.get_help_text(), '--foo')
+
+
+class TestInsideCommand(tests.TestCaseInTempDir):
+
+    def test_command_see_config_overrides(self):
+        def run(cmd):
+            # We override the run() command method so we can observe the
+            # overrides from inside.
+            c = config.GlobalStack()
+            self.assertEquals('12', c.get('xx'))
+            self.assertEquals('foo', c.get('yy'))
+        self.overrideAttr(builtins.cmd_rocks, 'run', run)
+        self.run_bzr(['rocks', '-Oxx=12', '-Oyy=foo'])
+        c = config.GlobalStack()
+        # Ensure that we don't leak outside of the command
+        self.assertEquals(None, c.get('xx'))
+        self.assertEquals(None, c.get('yy'))
 
 
 class TestInvokedAs(tests.TestCase):

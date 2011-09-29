@@ -2646,16 +2646,20 @@ class MutableSection(Section):
 
 
 class CommandLineSection(MutableSection):
-    """A section used to carry command line option overrides."""
+    """A section used to carry command line overrides for the config options."""
 
     def __init__(self, opts=None):
         if opts is None:
             opts = {}
         super(CommandLineSection, self).__init__('cmdline-overrides', opts)
 
+    def _reset(self):
+        # The dict should be cleared but not replaced so it can be shared.
+        self.options.clear()
+
     def _from_cmdline(self, overrides):
         # Reset before accepting new definitions
-        self.options.clear()
+        self._reset()
         for over in overrides:
             try:
                 name, value = over.split('=', 1)

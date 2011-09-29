@@ -1070,9 +1070,6 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             debug.debug_flags.add(a[2:])
         elif a.startswith('-O'):
             override_config.append(a[2:])
-        elif a.startswith('--override-config'):
-            i += 1
-            override_config.append(argv[i])
         else:
             argv_copy.append(a)
         i += 1
@@ -1136,6 +1133,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         if 'memory' in debug.debug_flags:
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
+        # Reset the overrides 
+        bzrlib.global_state.cmdline_overrides._reset()
 
 
 def display_command(func):
