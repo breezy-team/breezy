@@ -123,7 +123,8 @@ def debian_changelog_commit(commit, start_message):
     bugs_fixed = find_bugs_fixed([changes], commit.work_tree.branch)
     commit.builder._revprops["bugs"] = "\n".join(bugs_fixed)
 
-    return debian_changelog_commit_message(commit, start_message)
+    # Debian Policy Manual states that debian/changelog must be UTF-8
+    return changes.decode("utf-8")
 
 
 def changelog_merge_hook_factory(merger):
