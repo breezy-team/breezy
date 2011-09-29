@@ -663,7 +663,6 @@ class Command(object):
             opts['quiet'] = trace.is_quiet()
         elif opts.has_key('quiet'):
             del opts['quiet']
-
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -1041,6 +1040,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     argv_copy = []
     i = 0
+    override_config = []
     while i < len(argv):
         a = argv[i]
         if a == '--profile':
@@ -1069,9 +1069,13 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             pass # already handled in startup script Bug #588277
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
+        elif a.startswith('-O'):
+            override_config.append(a[2:])
         else:
             argv_copy.append(a)
         i += 1
+
+    bzrlib.global_state.cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
 
@@ -1130,6 +1134,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         if 'memory' in debug.debug_flags:
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
+        # Reset the overrides 
+        bzrlib.global_state.cmdline_overrides._reset()
 
 
 def display_command(func):
@@ -1164,8 +1170,9 @@ def install_bzr_command_hooks():
         "bzr plugin commands")
     Command.hooks.install_named_hook("get_command", _get_external_command,
         "bzr external command lookup")
-    Command.hooks.install_named_hook("get_missing_command", _try_plugin_provider,
-        "bzr plugin-provider-db check")
+    Command.hooks.install_named_hook("get_missing_command",
+                                     _try_plugin_provider,
+                                     "bzr plugin-provider-db check")
 
 
 
