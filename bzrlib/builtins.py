@@ -1502,6 +1502,10 @@ class cmd_update(Command):
     update'.  If you want to restore a file to its state in a previous
     revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write
     out the old content of that file to a new location.
+
+    The 'dir' argument, if given, must be the location of the root of a
+    working tree to update.  By default, the working tree that contains the 
+    current working directory is used.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
@@ -1512,16 +1516,19 @@ class cmd_update(Command):
                      ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None, show_base=None):
+    def run(self, dir=None, revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(gettext(
                 "bzr update --revision takes exactly one revision"))
-        tree, relpath = WorkingTree.open_containing(dir)
-        if relpath:
-            # See bug 557886.
-            raise errors.BzrCommandError(gettext(
-                "bzr update can only update a whole tree, "
-                "not a file or subdirectory"))
+        if dir is None:
+            tree = WorkingTree.open_containing('.')[0]
+        else:
+            tree, relpath = WorkingTree.open_containing(dir)
+            if relpath:
+                # See bug 557886.
+                raise errors.BzrCommandError(gettext(
+                    "bzr update can only update a whole tree, "
+                    "not a file or subdirectory"))
         branch = tree.branch
         possible_transports = []
         master = branch.get_master_branch(

@@ -475,4 +475,10 @@ master
             2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
             $ bzr update .
             2>Tree is up to date at revision 0 of branch ...
+            $ cd a
+            $ bzr update .
+            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            # however, you can update the whole tree from a subdirectory
+            $ bzr update
+            2>Tree is up to date at revision 0 of branch ...
             ''')
