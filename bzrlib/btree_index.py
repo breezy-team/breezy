@@ -383,10 +383,17 @@ class BTreeBuilder(index.GraphIndexBuilder):
             if key_count == 0:
                 # First key triggers the first row
                 rows.append(_LeafBuilderRow())
-            key_count += 1
             string_key, line = _btree_serializer._flatten_node(node,
                                     self.reference_lists)
-            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
+            # prevent infinite recursion by ensuring we don't have more data
+            # than fits in a single page
+            if len(line) < _PAGE_SIZE:   
+                key_count += 1
+                self._add_key(string_key, line, rows, allow_optimize=allow_optimize)                                    
+            else:
+                if 'index' in debug.debug_flags:                
+                    trace.mutter("skipping node larger than page size"
+                                 " (%s > %s)" % (len(line), _PAGE_SIZE))
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
