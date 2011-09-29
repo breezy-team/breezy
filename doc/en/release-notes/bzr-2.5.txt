@@ -24,7 +24,7 @@ New Features
   provides a value for a config option in the ``-Oname=value`` form that
   takes precedence over all definitions found in config files.  It can be
   used multiple times to override different options.
-  (Vincent Ladeuil, #491196)
+  (Vincent Ladeuil, #491196, #861472)
 
 * ``bzr serve`` will now disconnect clients if they have not issued an RPC
   request after 5minutes. On POSIX platforms, this will also happen for
