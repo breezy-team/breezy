@@ -198,7 +198,7 @@ class GetOrigSourceSource(UpstreamSource):
         return None
 
     def fetch_tarballs(self, package, version, target_dir):
-        if self.top_level
+        if self.top_level:
             rules_name = 'rules'
         else:
             rules_name = 'debian/rules'
