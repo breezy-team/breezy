@@ -137,7 +137,7 @@ version_string = __version__
 # variables that need to be hunted down. Accessing the current BzrLibraryState
 # through this variable is not encouraged: it is better to pass it around as
 # part of the context of an operation than to look it up directly, but when
-# that is too hard, it is better to use this variable than to make a branch new
+# that is too hard, it is better to use this variable than to make a brand new
 # global variable.
 # If using this variable by looking it up (because it can't be easily obtained)
 # it is important to store the reference you get, rather than looking it up

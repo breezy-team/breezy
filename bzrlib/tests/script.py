@@ -481,6 +481,10 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
     def setUp(self):
         super(TestCaseWithMemoryTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
+        # FIXME: See shelf_ui.Shelver._char_based. This allow using shelve in
+        # scripts while providing a line-based input (better solution in
+        # progress). -- vila 2011-09-28
+        self.overrideEnv('INSIDE_EMACS', '1')
 
     def run_script(self, script, null_output_matches_anything=False):
         return self.script_runner.run_script(self, script, 
@@ -511,6 +515,10 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestCaseWithTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
+        # FIXME: See shelf_ui.Shelver._char_based. This allow using shelve in
+        # scripts while providing a line-based input (better solution in
+        # progress). -- vila 2011-09-28
+        self.overrideEnv('INSIDE_EMACS', '1')
 
     def run_script(self, script, null_output_matches_anything=False):
         return self.script_runner.run_script(self, script,

@@ -983,6 +983,8 @@ class TestCase(testtools.TestCase):
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
+        self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
+                          config.CommandLineSection())
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -4077,6 +4079,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_smart',
         'bzrlib.tests.test_smart_add',
         'bzrlib.tests.test_smart_request',
+        'bzrlib.tests.test_smart_signals',
         'bzrlib.tests.test_smart_transport',
         'bzrlib.tests.test_smtp_connection',
         'bzrlib.tests.test_source',

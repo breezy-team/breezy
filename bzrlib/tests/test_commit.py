@@ -90,25 +90,24 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         file('hello', 'w').write('hello world')
         wt.add('hello')
-        wt.commit(message='add hello')
+        rev1 = wt.commit(message='add hello')
         file_id = wt.path2id('hello')
 
         file('hello', 'w').write('version 2')
-        wt.commit(message='commit 2')
+        rev2 = wt.commit(message='commit 2')
 
         eq = self.assertEquals
         eq(b.revno(), 2)
-        rh = b.revision_history()
-        rev = b.repository.get_revision(rh[0])
+        rev = b.repository.get_revision(rev1)
         eq(rev.message, 'add hello')
 
-        tree1 = b.repository.revision_tree(rh[0])
+        tree1 = b.repository.revision_tree(rev1)
         tree1.lock_read()
         text = tree1.get_file_text(file_id)
         tree1.unlock()
         self.assertEqual('hello world', text)
 
-        tree2 = b.repository.revision_tree(rh[1])
+        tree2 = b.repository.revision_tree(rev2)
         tree2.lock_read()
         text = tree2.get_file_text(file_id)
         tree2.unlock()
@@ -465,7 +464,7 @@ class TestCommit(TestCaseWithTransport):
                               rev_id='B',
                               working_tree=wt)
             branch = Branch.open(self.get_url('.'))
-            self.assertEqual(branch.revision_history(), ['A'])
+            self.assertEqual(branch.last_revision(), 'A')
             self.assertFalse(branch.repository.has_revision('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
