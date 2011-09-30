@@ -929,16 +929,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
-        """Find the file ids and versions affected by revisions.
-
-        :param revisions: an iterable containing revision ids.
-        :return: a dictionary mapping altered file-ids to an iterable of
-            revision_ids. Each altered file-ids has the exact revision_ids
-            that altered it listed explicitly.
-        """
-        raise NotImplementedError(self.fileids_altered_by_revision_ids)
-
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
 
