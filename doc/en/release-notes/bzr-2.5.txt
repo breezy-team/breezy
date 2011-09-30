@@ -55,6 +55,9 @@ Bug Fixes
   turned into a line-basde one when ``INSIDE_EMACS`` is set (which is the
   case for all recent emacs versions). (Vincent Ladeuil, #856261)
 
+* Emit a warning but don't crash if bzrlib.initialize() has not been called. 
+  (Vincent Ladeuil, #863401)
+
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
 
