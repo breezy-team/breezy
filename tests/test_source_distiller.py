@@ -224,7 +224,7 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         self.assertPathExists('target/a')
         self.assertPathDoesNotExist('target/debian/foo')
 
-    def test_distill_larstiq(self):
+    def test_distill_top_level(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
         self.addCleanup(wt.unlock)
@@ -234,7 +234,7 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         version = Version("0.1-1")
         self.make_tarball(name, version)
         sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
-                    version.upstream_version, "."), larstiq=True)
+                    version.upstream_version, "."), top_level=True)
         sd.distill('target/')
         self.assertPathExists('target/a')
         self.assertPathExists('target/debian/b')
