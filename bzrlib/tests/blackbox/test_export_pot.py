@@ -19,10 +19,8 @@
 import os
 
 from bzrlib import ignores, osutils
-from bzrlib.tests import (TestCaseWithMemoryTransport, 
-                          ModuleAvailableFeature,
-                          )
-
+from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.tests.features import ModuleAvailableFeature
 
 class TestExportPot(TestCaseWithMemoryTransport):
 
