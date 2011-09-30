@@ -17,10 +17,12 @@
 import time
 
 from bzrlib import (
+    errors,
     inventory,
     remote,
     revision as _mod_revision,
     tests,
+    transform,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 from bzrlib.tests.per_repository_vf import (
