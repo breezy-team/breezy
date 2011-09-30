@@ -138,7 +138,7 @@ class MergeModeDistiller(SourceDistiller):
         basetempdir = tempfile.mkdtemp(prefix='builddeb-merge-debian-')
         try:
             tempdir = os.path.join(basetempdir,"export")
-            if self.top_level
+            if self.top_level:
                 os.makedirs(tempdir)
                 export_dir = os.path.join(tempdir, 'debian')
             else:
