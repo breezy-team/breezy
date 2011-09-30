@@ -474,9 +474,6 @@ class cmd_get_tar(Command):
         config = debuild_config(tree, tree)
 
         (changelog, larstiq) = find_changelog(tree, True)
-        build_dir = config.build_dir
-        if build_dir is None:
-            build_dir = default_build_dir
         orig_dir = config.orig_dir
         if orig_dir is None:
             orig_dir = default_orig_dir
@@ -488,7 +485,7 @@ class cmd_get_tar(Command):
                  GetOrigSourceSource(tree, larstiq),
                  UScanSource(tree, larstiq) ])
 
-        result = upstream_provider.provide(build_dir)
+        result = upstream_provider.provide(orig_dir)
         if (len(result) > 0):
             note("Tar now in " + result[0][0])
         
