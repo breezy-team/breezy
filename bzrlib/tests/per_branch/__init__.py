@@ -71,7 +71,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
         return self.branch
 
     def get_default_format(self):
-        format = self.branch_format._matchingbzrdir
+        format = self.bzrdir_format
         self.assertEquals(format.get_branch_format(), self.branch_format)
         return format
 
