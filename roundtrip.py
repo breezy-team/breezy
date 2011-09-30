@@ -91,6 +91,11 @@ def inject_bzr_metadata(message, metadata):
 
 
 def serialize_fileid_map(file_ids):
+    """Serialize a fileid map.
+
+    :param file_ids: Path -> fileid map
+    :return: Serialized fileid map, as sequence of chunks
+    """
     lines = []
     for path in sorted(file_ids.keys()):
         lines.append("%s\0%s\n" % (path, file_ids[path]))
@@ -98,6 +103,11 @@ def serialize_fileid_map(file_ids):
 
 
 def deserialize_fileid_map(file):
+    """Deserialize a fileid map.
+
+    :param file: File
+    :return: Fileid map (path -> fileid)
+    """
     ret = {}
     f = StringIO(file)
     lines = f.readlines()
