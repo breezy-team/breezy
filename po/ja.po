@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-09-28 13:58+0000\n"
+"PO-Revision-Date: 2011-09-29 23:33+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-09-29 04:30+0000\n"
-"X-Generator: Launchpad (build 14049)\n"
+"X-Launchpad-Export-Date: 2011-09-30 04:30+0000\n"
+"X-Generator: Launchpad (build 14071)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -58,7 +58,7 @@ msgstr ""
 #: bzrlib/builtins.py:116 bzrlib/builtins.py:2782 bzrlib/workingtree.py:306
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr ""
+msgstr "ビューに含まれないファイルは無視します。ビュー：%s"
 
 #: bzrlib/builtins.py:125
 #, python-format
@@ -67,13 +67,16 @@ msgstr "bzr %s --revision には、リビジョンＩＤを一つだけ指定し
 
 #: bzrlib/builtins.py:210
 msgid "Display status summary."
-msgstr ""
+msgstr "ステータスのサマリーを表示します。"
 
 #: bzrlib/builtins.py:212
 msgid ""
 "This reports on versioned and unknown files, reporting them\n"
 "grouped by state.  Possible states are:"
 msgstr ""
+"このコマンドは、バージョン管理されたファイルやバージョン管理外ファイル\n"
+"について、ステータスごとにグルーピングして表示します。\n"
+"表示されるステータスは以下の通りです。:"
 
 #: bzrlib/builtins.py:215
 msgid ""
@@ -136,6 +139,9 @@ msgid ""
 "character: '/', '@' or '*' respectively. These decorations can be\n"
 "disabled using the '--no-classify' option."
 msgstr ""
+"さらにディレクトリ、シンボリックリンク、実行可能ファイルについては、\n"
+"末尾に種別を現す文字としてそれぞれ'/'、'@'、'*'が付加されます。\n"
+"これを表示しないようにするには、'--no-classify'オプションを指定してください。"
 
 #: bzrlib/builtins.py:241
 msgid ""
@@ -151,6 +157,10 @@ msgid ""
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use bzr status -SV."
 msgstr ""
+"--shortまたは-Sを指定した場合、Subversionのstatusコマンドと同じように\n"
+"すべてのアイテムにマーカーが表示されることに注意してください。\n"
+"SVNで-qを指定した場合と同じような形式にするには、bzr status -SV を\n"
+"使用してください。"
 
 #: bzrlib/builtins.py:248
 msgid ""
@@ -244,6 +254,8 @@ msgid ""
 "Since a lightweight checkout is little more than a working tree\n"
 "this will refuse to run against one."
 msgstr ""
+"軽量チェックアウトは作業ツリーよりも小さいため、軽量チェック\n"
+"アウトに対して実行することはできません。"
 
 #: bzrlib/builtins.py:461
 msgid "To re-create the working tree, use \"bzr checkout\"."
@@ -278,11 +290,11 @@ msgstr ""
 msgid ""
 ", the header appears corrupt, try passing -r -1 to set the state to the last "
 "commit"
-msgstr ""
+msgstr ", ヘッダーが壊れているようです。-r -1を指定して最終コミット時点の状態に戻してください。"
 
 #: bzrlib/builtins.py:547
 msgid "failed to reset the tree state{0}"
-msgstr ""
+msgstr "ツリーの状態をリセットできませんでした。{0}"
 
 #: bzrlib/builtins.py:551
 msgid "Show current revision number."
@@ -366,12 +378,20 @@ msgid ""
 "adds as a conflict). It is also useful when merging another project\n"
 "into a subdirectory of this one."
 msgstr ""
+"--file-ids-fromを指定すると、指定されたパスから得たファイルIDを使おうと\n"
+"します。対応する親ディレクトリ内の同じ名前のファイルからファイルIDを探し、\n"
+"無ければ純粋なパスから生成します。このオプションが必要になることはほとんど\n"
+"ありませんが、同じファイルを、いずれマージする予定の２つのブランチに追加する\n"
+"場合に便利です(マージの時の衝突を避けられます)。また、別のプロジェクトをサブ\n"
+"ディレクトリとしてマージする時にも便利です。"
 
 #: bzrlib/builtins.py:675
 msgid ""
 "Any files matching patterns in the ignore list will not be added\n"
 "unless they are explicitly mentioned."
 msgstr ""
+"無視パターンにマッチするファイルは、明示的に指定されない限り追加は\n"
+"されません。"
 
 #: bzrlib/builtins.py:678
 msgid ""
@@ -379,14 +399,17 @@ msgid ""
 "add.maximum_file_size will be skipped. Named items are never skipped due\n"
 "to file size."
 msgstr ""
+"recursiveモードの場合、add.maximum_file_sizeの設定値より大きな\n"
+"ファイルは追加されません。明示的に指定されたアイテムはファイルサイズに\n"
+"かかわらず追加されます。"
 
 #: bzrlib/builtins.py:685
 msgid "Don't recursively add the contents of directories."
-msgstr ""
+msgstr "ディレクトリの内容を再帰的に追加しません。"
 
 #: bzrlib/builtins.py:691
 msgid "Lookup file ids from this tree."
-msgstr ""
+msgstr "このツリーからファイルIDを検索します。"
 
 #: bzrlib/builtins.py:727
 msgid "ignored {0} matching \"{1}\"\n"
@@ -403,20 +426,20 @@ msgstr "ディレクトリを作成して、バージョン管理に追加する
 #: bzrlib/builtins.py:748
 #, python-format
 msgid "added %s\n"
-msgstr ""
+msgstr "%s が追加されました。\n"
 
 #: bzrlib/builtins.py:792
 #, python-format
 msgid "invalid kind %r specified"
-msgstr ""
+msgstr "kindが正しくありません。 %s"
 
 #: bzrlib/builtins.py:829
 msgid "Move or rename a file."
-msgstr ""
+msgstr "ファイルの移動や名前の変更を行います。"
 
 #: bzrlib/builtins.py:831
 msgid "    bzr mv SOURCE... DESTINATION"
-msgstr ""
+msgstr "    bzr mv SOURCE... DESTINATION"
 
 #: bzrlib/builtins.py:833
 msgid ""
@@ -424,6 +447,9 @@ msgid ""
 "are moved into it.  Otherwise, there must be exactly two arguments\n"
 "and the file is changed to a new name."
 msgstr ""
+"最後の引数がバージョン管理対象ディレクトリの場合、指定された他の項目は\n"
+"すべてそのディレクトリの中に移動されます。そうでない場合は、引数の数は\n"
+"２つでなければならず、ファイルは新しい名前に変更されます。"
 
 #: bzrlib/builtins.py:837
 msgid ""
@@ -433,48 +459,53 @@ msgid ""
 "its internal inventory to reflect that change.\n"
 "The same is valid when moving many SOURCE files to a DESTINATION."
 msgstr ""
+"OLDNAMEがファイルシステム上に存在せず、かつバージョン管理対象に\n"
+"なっていて、NEWNAMEはファイルシステム上に存在しているがバージョン\n"
+"管理対象にはなっていない場合は、ファイルは既に手動で移動済みだとみなし、\n"
+"内部データへの変更の反映だけを行います。\n"
+"複数のSOURCEをひとつのDESTINATIONに移動する場合も同じです。"
 
 #: bzrlib/builtins.py:843
 msgid "Files cannot be moved between branches."
-msgstr ""
+msgstr "ファイルを別のブランチに移動することはできません。"
 
 #: bzrlib/builtins.py:850
 msgid ""
 "Move only the bzr identifier of the file, because the file has already been "
 "moved."
-msgstr ""
+msgstr "ファイルは既に移動済みのため、ファイルのBazaar IDだけを移動します。"
 
 #: bzrlib/builtins.py:852
 msgid "Automatically guess renames."
-msgstr ""
+msgstr "変名を自動的に推測します。"
 
 #: bzrlib/builtins.py:853
 msgid "Avoid making changes when guessing renames."
-msgstr ""
+msgstr "変名を推測する時に、実際には変更を行いません。"
 
 #: bzrlib/builtins.py:862
 msgid "--dry-run requires --auto."
-msgstr ""
+msgstr "--dry-runは--autoとともに指定してください。"
 
 #: bzrlib/builtins.py:866
 msgid "missing file argument"
-msgstr ""
+msgstr "ファイルが指定されていません。"
 
 #: bzrlib/builtins.py:873
 msgid "Only one path may be specified to --auto."
-msgstr ""
+msgstr "--autoを指定する場合はパスはひとつだけ指定してください。"
 
 #: bzrlib/builtins.py:876
 msgid "--after cannot be specified with --auto."
-msgstr ""
+msgstr "--afterと--autoを同時に指定することはできません。"
 
 #: bzrlib/builtins.py:913
 msgid "to mv multiple files the destination must be a versioned directory"
-msgstr ""
+msgstr "複数のファイルを移動する時は、移動先はバージョン管理対象になっていなければなりません。"
 
 #: bzrlib/builtins.py:965
 msgid "Turn this branch into a mirror of another branch."
-msgstr ""
+msgstr "このブランチを別のブランチのミラーにします。"
 
 #: bzrlib/builtins.py:967
 msgid ""
@@ -483,6 +514,9 @@ msgid ""
 "commit is one that has not been merged (directly or indirectly) into the \n"
 "parent."
 msgstr ""
+"デフォルトでは、このコマンドは分岐していないブランチでのみ実行できます。\n"
+"対象のブランチの最新コミットがまだ(直接的または間接的に)親ブランチにマージ\n"
+"されていなければ、ブランチが分岐しているとみなします。"
 
 #: bzrlib/builtins.py:972
 msgid ""
@@ -490,6 +524,9 @@ msgid ""
 "from one into the other.  Once one branch has merged, the other should\n"
 "be able to pull it again."
 msgstr ""
+"ブランチが分岐している場合、その変更を片方からもう片方に統合するために\n"
+"'bzr merge'を使用することができます。ブランチをマージすれば、またpullできる\n"
+"ようになるはずです。"
 
 #: bzrlib/builtins.py:976
 msgid ""
@@ -497,6 +534,9 @@ msgid ""
 "match the remote one, use pull --overwrite. This will work even if the two\n"
 "branches have diverged."
 msgstr ""
+"もし、リモートの変更内容で手元での変更内容を単純に置き換えたい場合は、\n"
+"pull --overwriteを使用してください。これは、ブランチ同士が分岐していても\n"
+"実行できます。"
 
 #: bzrlib/builtins.py:980
 msgid ""
@@ -505,6 +545,11 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
+"デフォルトのpull対象ブランチが設定されていない場合は、最初にpullした時に\n"
+"設定されます。(これをしないようにするには、--no-rememberを指定します。)\n"
+"その後は、デフォルトのブランチを使用する時には指定を省略できるようになります。\n"
+"デフォルトを変更するには、--rememberを指定します。この値は、リモートのブランチに\n"
+"アクセスできた時だけ保存されます。"
 
 #: bzrlib/builtins.py:985
 msgid ""
@@ -512,29 +557,31 @@ msgid ""
 "or in the form of a path to a file containing a merge directive generated\n"
 "with bzr send."
 msgstr ""
+"ブランチだけでなく、bzr sendで生成されたマージディレクティブを含むファイルも\n"
+"pull対象として指定できることに注意してください。"
 
 #: bzrlib/builtins.py:993
 msgid "Show logs of pulled revisions."
-msgstr ""
+msgstr "pull対象リビジョンのログを表示します。"
 
 #: bzrlib/builtins.py:995
 msgid ""
 "Branch to pull into, rather than the one containing the working directory."
-msgstr ""
+msgstr "作業フォルダの代わりにpullを受け入れるブランチ"
 
 #: bzrlib/builtins.py:998
 msgid ""
 "Perform a local pull in a bound branch.  Local pulls are not applied to the "
 "master branch."
-msgstr ""
+msgstr "バインドブランチに対してpullする場合に、マスターブランチには反映しないようにします。"
 
 #: bzrlib/builtins.py:1027
 msgid "Need working tree for --show-base."
-msgstr ""
+msgstr "--show-baseオプションを使用するには作業ツリーが必要です。"
 
 #: bzrlib/builtins.py:1043
 msgid "No pull location known or specified."
-msgstr ""
+msgstr "pull対象ブランチが指定されていません。"
 
 #: bzrlib/builtins.py:1049
 #, python-format
@@ -543,7 +590,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1056 bzrlib/builtins.py:4137
 msgid "Cannot use -r with merge directives or bundles"
-msgstr ""
+msgstr "マージディレクティブやバンドルに対して-rを使用することはできません。"
 
 #: bzrlib/builtins.py:1097
 msgid "Update a mirror of this branch."
