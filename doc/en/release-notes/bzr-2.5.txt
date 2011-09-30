@@ -24,7 +24,7 @@ New Features
   provides a value for a config option in the ``-Oname=value`` form that
   takes precedence over all definitions found in config files.  It can be
   used multiple times to override different options.
-  (Vincent Ladeuil, #491196, #861472)
+  (Vincent Ladeuil, #491196)
 
 * ``bzr serve`` will now disconnect clients if they have not issued an RPC
   request after 5minutes. On POSIX platforms, this will also happen for
@@ -35,6 +35,10 @@ New Features
   finish the current request, and then close the connection.
   (John Arbash Meinel, #824797, #795025)
 
+* The ``log_format`` configuration can be used with ``-Olog_format=line`` to
+  change the format ``push`` and ``pull`` use to display the
+  revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
+  format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
 
 Improvements
 ************
