@@ -129,7 +129,7 @@ def find_changelog(t, merge, max_blocks=1):
     'max_blocks' defaults to 1 to try and prevent old broken
     changelog entries from causing the command to fail, 
 
-    "larstiq" is a subset of "merge" mode. It indicates that the
+    "top_level" is a subset of "merge" mode. It indicates that the
     '.bzr' dir is at the same level as 'changelog' etc., rather
     than being at the same level as 'debian/'.
 
@@ -137,26 +137,27 @@ def find_changelog(t, merge, max_blocks=1):
     :param merge: whether this is a "merge" package.
     :param max_blocks: Number of max_blocks to parse (defaults to 1). Use None
         to parse the entire changelog.
-    :return: (changelog, larstiq) where changelog is the Changelog,
-        and larstiq is a boolean indicating whether the file is at
-        'changelog' if merge was given, False otherwise.
+    :return: (changelog, top_level) where changelog is the Changelog,
+        and top_level is a boolean indicating whether the file is
+        located at 'changelog' (rather than 'debian/changelog') if
+        merge was given, False otherwise.
     """
     changelog_file = 'debian/changelog'
-    larstiq = False
+    top_level = False
     t.lock_read()
     try:
         if not t.has_filename(changelog_file):
             if merge:
                 # Assume LarstiQ's layout (.bzr in debian/)
                 changelog_file = 'changelog'
-                larstiq = True
+                top_level = True
                 if not t.has_filename(changelog_file):
                     raise MissingChangelogError('"debian/changelog" or '
                             '"changelog"')
             else:
                 raise MissingChangelogError('"debian/changelog"')
         elif merge and t.has_filename('changelog'):
-            # If it is a "larstiq" package and debian is a symlink to
+            # If it is a "top_level" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
             debian_file_id = t.path2id('debian')
@@ -164,7 +165,7 @@ def find_changelog(t, merge, max_blocks=1):
                 t.kind(debian_file_id) == 'symlink' and 
                 t.get_symlink_target(t.path2id('debian')) == '.'):
                 changelog_file = 'changelog'
-                larstiq = True
+                top_level = True
         mutter("Using '%s' to get package information", changelog_file)
         changelog_id = t.path2id(changelog_file)
         if changelog_id is None:
@@ -177,7 +178,7 @@ def find_changelog(t, merge, max_blocks=1):
         changelog.parse_changelog(contents, max_blocks=max_blocks, allow_empty_author=True)
     except ChangelogParseError, e:
         raise UnparseableChangelog(str(e))
-    return changelog, larstiq
+    return changelog, top_level
 
 
 def strip_changelog_message(changes):
@@ -583,7 +584,7 @@ def find_previous_upload(tree, merge):
     Ubuntu.
     """
     try:
-        cl, larstiq = find_changelog(tree, merge, max_blocks=None)
+        cl, top_level = find_changelog(tree, merge, max_blocks=None)
     except UnparseableChangelog:
         raise UnableToFindPreviousUpload()
     return _find_previous_upload(cl)
