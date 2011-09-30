@@ -76,12 +76,10 @@ class TestCaseWithBranch(TestCaseWithControlDir):
         return format
 
     def make_branch(self, relpath, format=None):
-        # fixme RBC 20060210 this isnt necessarily a fixable thing,
-        # Skipped is the wrong exception to raise.
         try:
             return super(TestCaseWithBranch, self).make_branch(relpath, format)
         except errors.UninitializableFormat:
-            raise tests.TestSkipped('Uninitializable branch format')
+            raise tests.TestNotApplicable('Uninitializable branch format')
 
     def create_tree_with_merge(self):
         """Create a branch with a simple ancestry.
