@@ -473,7 +473,6 @@ class cmd_get_tar(Command):
         tree = WorkingTree.open_containing('.')[0]
         config = debuild_config(tree, tree)
 
-        give_instruction = False
         (changelog, larstiq) = find_changelog(tree, True)
         build_dir = config.build_dir
         if build_dir is None:
@@ -488,11 +487,8 @@ class cmd_get_tar(Command):
                  AptSource(),
                  GetOrigSourceSource(tree, larstiq),
                  UScanSource(tree, larstiq) ])
-        
-        build_source_dir = os.path.join(build_dir,
-                changelog.package + "-" + changelog.version.upstream_version)
 
-        upstream_provider.provide(get_parent_dir(build_source_dir))
+        upstream_provider.provide(build_dir)
         
 
 class cmd_merge_upstream(Command):
