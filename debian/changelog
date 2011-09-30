@@ -1,6 +1,10 @@
 bzr-builddeb (2.7.9) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * Support .tar.xz Debian files rather than .tar.lzma.
+
+  [ Jonathan Riddell ]
+  * Add get-tar command which will get the upstream tar file.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 09 Sep 2011 15:21:22 +0200
 
