@@ -488,7 +488,9 @@ class cmd_get_tar(Command):
                  GetOrigSourceSource(tree, larstiq),
                  UScanSource(tree, larstiq) ])
 
-        upstream_provider.provide(build_dir)
+        result = upstream_provider.provide(build_dir)
+        if (len(result) > 0):
+            note("Tar now in " + result[0][0])
         
 
 class cmd_merge_upstream(Command):
