@@ -16,7 +16,8 @@
 
 """Tests for branch break-lock behaviour."""
 
-from  bzrlib import (
+from bzrlib import (
+    branch as _mod_branch,
     errors,
     ui,
     tests,
@@ -29,7 +30,7 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
     def setUp(self):
         super(TestBreakLock, self).setUp()
         self.unused_branch = self.make_branch('branch')
-        self.branch = self.unused_branch.bzrdir.open_branch()
+        self.branch = _mod_branch.Branch.open(self.unused_branch.base)
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return
