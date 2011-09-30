@@ -320,6 +320,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
+            # if we failed to write, despite having an empty page to write to,
+            # then line is too big. len is 2 here because we've already written
+            # some header
+            if rows[-1].writer.bytes_out_len <= 2:
+                # skip this key
+                rows[-1].finish_node()
+                if 'index' in debug.debug_flags:
+                    trace.mutter('Skipping key that does not fit in page'
+                                 ', uncompressed size: %s' % len(line))
+                return False
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + "\n"
@@ -352,7 +362,9 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 new_row.writer.write(_INTERNAL_OFFSET +
                     str(rows[1].nodes - 1) + "\n")
                 new_row.writer.write(key_line)
-            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
+            return self._add_key(string_key, line, 
+                                 rows, allow_optimize=allow_optimize)
+        return True
 
     def _write_nodes(self, node_iterator, allow_optimize=True):
         """Write node_iterator out as a B+Tree.
@@ -385,15 +397,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 rows.append(_LeafBuilderRow())
             string_key, line = _btree_serializer._flatten_node(node,
                                     self.reference_lists)
-            # prevent infinite recursion by ensuring we don't have more data
-            # than fits in a single page
-            if len(line) < _PAGE_SIZE:   
+            # if _add_key returns False, line was too big and we skip it
+            if self._add_key(string_key, line, 
+                             rows, allow_optimize=allow_optimize):
                 key_count += 1
-                self._add_key(string_key, line, rows, allow_optimize=allow_optimize)                                    
-            else:
-                if 'index' in debug.debug_flags:                
-                    trace.mutter("skipping node larger than page size"
-                                 " (%s > %s)" % (len(line), _PAGE_SIZE))
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
