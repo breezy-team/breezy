@@ -82,7 +82,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         self.all_repo.lock_read()
         self.addCleanup(self.all_repo.unlock)
         self.base_repo = self.make_repository('base')
-        self.stacked_repo = self.make_referring('referring', 'base')
+        self.stacked_repo = self.make_referring('referring', self.base_repo)
 
     def make_simple_split(self):
         """Set up the repositories so that everything is in base except F"""

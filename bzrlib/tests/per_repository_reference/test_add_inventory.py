@@ -33,7 +33,7 @@ class TestAddInventory(TestCaseWithExternalReferenceRepository):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         base = self.make_repository('base')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', base)
         repo.lock_write()
         try:
             repo.start_write_group()
