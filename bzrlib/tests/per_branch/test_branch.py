@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     gpg,
     merge,
+    osutils,
     urlutils,
     transport,
     remote,
@@ -503,7 +504,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
         # open the branch via a readonly transport
-        source_branch = _mod_branch.Branch.open(self.get_readonly_url('a'))
+        source_branch = _mod_branch.Branch.open(
+            self.get_readonly_url(
+                osutils.basename(tree_a.branch.base.rstrip('/'))))
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
