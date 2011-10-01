@@ -1,4 +1,4 @@
-bzr-builddeb (2.7.9) UNRELEASED; urgency=low
+bzr-builddeb (2.7.9) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Support .tar.xz Debian files rather than .tar.lzma.
@@ -7,7 +7,10 @@ bzr-builddeb (2.7.9) UNRELEASED; urgency=low
   * Support non-ascii characters in changelog entry when determining
     commit message. LP: #853664
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 09 Sep 2011 15:21:22 +0200
+  [ Jelmer Vernooij ]
+  * Use more complete control file during examples. Closes: #642818
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 01 Oct 2011 21:27:05 +0200
 
 bzr-builddeb (2.7.8) unstable; urgency=low
 
