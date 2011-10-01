@@ -75,7 +75,6 @@ class ControlComponent(object):
         return self.user_transport.base
 
 
-
 class ControlDir(ControlComponent):
     """A control directory.
 
@@ -682,11 +681,16 @@ class ControlDirFormat(object):
     def is_supported(self):
         """Is this format supported?
 
-        Supported formats must be initializable and openable.
+        Supported formats must be openable.
         Unsupported formats may not support initialization or committing or
         some other features depending on the reason for not being supported.
         """
         return True
+
+    def is_initializable(self):
+        """Whether new control directories of this format can be initialized.
+        """
+        return self.is_supported()
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
         basedir=None):

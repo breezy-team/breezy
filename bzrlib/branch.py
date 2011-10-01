@@ -40,6 +40,7 @@ from bzrlib import (
         ui,
         urlutils,
         )
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib import (
@@ -213,6 +214,16 @@ class Branch(controldir.ControlComponent):
         :return: A bzrlib.config.BranchConfig.
         """
         return _mod_config.BranchConfig(self)
+
+    def get_config_stack(self):
+        """Get a bzrlib.config.BranchStack for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A bzrlib.config.BranchStack.
+        """
+        return _mod_config.BranchStack(self)
 
     def _get_config(self):
         """Get the concrete config for just the config in this branch.
@@ -722,16 +733,18 @@ class Branch(controldir.ControlComponent):
         """
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
 
         The delta is relative to its mainline predecessor, or the
         empty tree for revision 1.
         """
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
+        try:
+            revid = self.get_rev_id(revno)
+        except errors.NoSuchRevision:
             raise errors.InvalidRevisionNumber(revno)
-        return self.repository.get_revision_delta(rh[revno-1])
+        return self.repository.get_revision_delta(revid)
 
     def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.
@@ -848,7 +861,7 @@ class Branch(controldir.ControlComponent):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            pb.update("Unstacking")
+            pb.update(gettext("Unstacking"))
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
             # repository into a new repository object without the fallbacks. 
@@ -3134,14 +3147,14 @@ class BranchPushResult(_Result):
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
             if self.old_revid != self.new_revid:
-                note('Pushed up to revision %d.' % self.new_revno)
+                note(gettext('Pushed up to revision %d.') % self.new_revno)
             if tag_updates:
-                note('%d tag(s) updated.' % len(tag_updates))
+                note(ngettext('%d tag updated.', '%d tags updated.', len(tag_updates)) % len(tag_updates))
             if self.old_revid == self.new_revid and not tag_updates:
                 if not tag_conflicts:
-                    note('No new revisions or tags to push.')
+                    note(gettext('No new revisions or tags to push.'))
                 else:
-                    note('No new revisions to push.')
+                    note(gettext('No new revisions to push.'))
         self._show_tag_conficts(to_file)
 
 
@@ -3161,10 +3174,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s', self.branch.user_url,
-            self.branch._format)
+        note(gettext('checked branch {0} format {1}').format(
+                                self.branch.user_url, self.branch._format))
         for error in self.errors:
-            note('found error:%s', error)
+            note(gettext('found error:%s'), error)
 
 
 class Converter5to6(object):

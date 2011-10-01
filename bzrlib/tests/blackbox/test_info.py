@@ -125,7 +125,7 @@ Repository:
 """, out)
         self.assertEqual('', err)
         tree1.commit('commit one')
-        rev = branch1.repository.get_revision(branch1.revision_history()[0])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Branch standalone with push location
@@ -317,7 +317,7 @@ Repository:
         self.build_tree(['standalone/b'])
         tree1.add('b')
         tree1.commit('commit two')
-        rev = branch1.repository.get_revision(branch1.revision_history()[-1])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Out of date branched standalone branch will not be detected
@@ -571,7 +571,7 @@ Repository:
         self.build_tree(['tree/lightcheckout/a'])
         tree2.add('a')
         tree2.commit('commit one')
-        rev = repo.get_revision(branch2.revision_history()[0])
+        rev = repo.get_revision(branch2.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -690,7 +690,7 @@ Repository:
         tree3.commit('commit two')
 
         # Out of date lightweight checkout
-        rev = repo.get_revision(branch1.revision_history()[-1])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -846,7 +846,7 @@ Repository:
         tree1 = branch1.bzrdir.open_workingtree()
         tree1.add('a')
         tree1.commit('commit one')
-        rev = repo.get_revision(branch1.revision_history()[0])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info -v repo/branch1')
         self.assertEqualDiff(

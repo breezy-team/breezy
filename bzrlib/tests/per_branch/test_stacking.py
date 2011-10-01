@@ -511,6 +511,8 @@ class TestStacking(TestCaseWithBranch):
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise TestNotApplicable()
+        if not repo._format.supports_nesting_repositories:
+            raise TestNotApplicable()
         # Avoid make_branch, which produces standalone branches.
         bzrdir = self.make_bzrdir('repo/stack-on')
         try:

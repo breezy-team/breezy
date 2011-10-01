@@ -40,6 +40,7 @@ from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
     )
+from bzrlib.i18n import gettext
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
@@ -741,6 +742,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         self._supports_external_lookups = None
         self._supports_tree_reference = None
         self._supports_funky_characters = None
+        self._supports_nesting_repositories = None
         self._rich_root_data = None
 
     def __repr__(self):
@@ -781,6 +783,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             self._supports_funky_characters = \
                 self._custom_format.supports_funky_characters
         return self._supports_funky_characters
+
+    @property
+    def supports_nesting_repositories(self):
+        if self._supports_nesting_repositories is None:
+            self._ensure_real()
+            self._supports_nesting_repositories = \
+                self._custom_format.supports_nesting_repositories
+        return self._supports_nesting_repositories
 
     @property
     def supports_tree_reference(self):
@@ -1873,7 +1883,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         from bzrlib import osutils
         import tarfile
         # TODO: Maybe a progress bar while streaming the tarball?
-        note("Copying repository content as tarball...")
+        note(gettext("Copying repository content as tarball..."))
         tar_file = self._get_tarball('bz2')
         if tar_file is None:
             return None

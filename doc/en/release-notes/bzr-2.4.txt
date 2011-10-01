@@ -26,11 +26,18 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
 Bug Fixes
 *********
 
 * Fixed loading of external merge tools from config to properly decode
   command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+* Prevent several kinds of OverflowError and other fallout from failing to fit
+  stat fields into four bytes in dirstate pack_stat implementations.
+  (Martin Packman, #683191 #706957)
 
 Documentation
 *************

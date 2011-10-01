@@ -89,8 +89,12 @@ class TestLogWithLogCatcher(TestLog):
     def get_captured_revisions(self):
         return self.log_catcher.revisions
 
-    def assertLogRevnos(self, args, expected_revnos, working_dir='.'):
-        self.run_bzr(['log'] + args, working_dir=working_dir)
+    def assertLogRevnos(self, args, expected_revnos, working_dir='.',
+                        out='', err=''):
+        actual_out, actual_err = self.run_bzr(['log'] + args,
+                                              working_dir=working_dir)
+        self.assertEqual(out, actual_out)
+        self.assertEqual(err, actual_err)
         self.assertEqual(expected_revnos,
                          [r.revno for r in self.get_captured_revisions()])
 
@@ -536,18 +540,29 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def test_include_merges(self):
         # Confirm --include-merges gives the same output as -n0
+        msg = ("The option '--include-merges' to 'bzr log' "
+               "has been deprecated in bzr 2.5. "
+               "Please use '--include-merged' instead.\n")
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
+                             working_dir='level0', err=msg)
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
+                             working_dir='level0', err=msg)
         out_im, err_im = self.run_bzr('log --include-merges',
                                       working_dir='level0')
         out_n0, err_n0 = self.run_bzr('log -n0', working_dir='level0')
-        self.assertEqual('', err_im)
+        self.assertEqual(msg, err_im)
         self.assertEqual('', err_n0)
         self.assertEqual(out_im, out_n0)
+
+    def test_include_merged(self):
+        # Confirm --include-merged gives the same output as -n0
+        expected = ['2', '1.1.2', '1.2.1', '1.1.1', '1']
+        self.assertLogRevnos(['--include-merged'],
+                             expected, working_dir='level0')
+        self.assertLogRevnos(['--include-merged'],
+                             expected, working_dir='level0')
 
     def test_force_merge_revisions_N(self):
         self.assertLogRevnos(['-n2'],
@@ -571,6 +586,14 @@ class TestLogMerges(TestLogWithLogCatcher):
                 ['-n0', '-r1.1.2..2'],
                 [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
                 working_dir='level0')
+
+    def test_omit_merges_with_sidelines(self):
+        self.assertLogRevnos(['--omit-merges', '-n0'], ['1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
+
+    def test_omit_merges_without_sidelines(self):
+        self.assertLogRevnos(['--omit-merges', '-n1'], ['1'],
+                             working_dir='level0')
 
 
 class TestLogDiff(TestLogWithLogCatcher):

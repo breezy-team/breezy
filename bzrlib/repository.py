@@ -35,6 +35,7 @@ from bzrlib import (
     gpg,
     )
 from bzrlib.bundle import serializer
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
@@ -280,7 +281,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 raise
             mutter('abort_write_group failed')
             log_exception_quietly()
-            note('bzr: ERROR (ignored): %s', exc)
+            note(gettext('bzr: ERROR (ignored): %s'), exc)
         self._write_group = None
 
     def _abort_write_group(self):
@@ -360,8 +361,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
         self.control_files = control_files
-        self._transport = control_files._transport
-        self.base = self._transport.base
         # for tests
         self._write_group = None
         # Additional places to query for data.
@@ -405,7 +404,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         if self.__class__ is not other.__class__:
             return False
-        return (self._transport.base == other._transport.base)
+        return (self.control_url == other.control_url)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -930,16 +929,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
-        """Find the file ids and versions affected by revisions.
-
-        :param revisions: an iterable containing revision ids.
-        :return: a dictionary mapping altered file-ids to an iterable of
-            revision_ids. Each altered file-ids has the exact revision_ids
-            that altered it listed explicitly.
-        """
-        raise NotImplementedError(self.fileids_altered_by_revision_ids)
-
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
 
@@ -1418,6 +1407,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     rich_root_data = None
     # Does this format support explicitly versioned directories?
     supports_versioned_directories = None
+    # Can other repositories be nested into one of this format?
+    supports_nesting_repositories = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1549,6 +1540,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_external_lookups = False
     supports_leaving_lock = True
+    supports_nesting_repositories = True
 
     @property
     def _matchingbzrdir(self):
@@ -1799,25 +1791,25 @@ class CopyConverter(object):
         # trigger an assertion if not such
         repo._format.get_format_string()
         self.repo_dir = repo.bzrdir
-        pb.update('Moving repository to repository.backup')
+        pb.update(gettext('Moving repository to repository.backup'))
         self.repo_dir.transport.move('repository', 'repository.backup')
         backup_transport =  self.repo_dir.transport.clone('repository.backup')
         repo._format.check_conversion_target(self.target_format)
         self.source_repo = repo._format.open(self.repo_dir,
             _found=True,
             _override_transport=backup_transport)
-        pb.update('Creating new repository')
+        pb.update(gettext('Creating new repository'))
         converted = self.target_format.initialize(self.repo_dir,
                                                   self.source_repo.is_shared())
         converted.lock_write()
         try:
-            pb.update('Copying content')
+            pb.update(gettext('Copying content'))
             self.source_repo.copy_content_into(converted)
         finally:
             converted.unlock()
-        pb.update('Deleting old repository content')
+        pb.update(gettext('Deleting old repository content'))
         self.repo_dir.transport.delete_tree('repository.backup')
-        ui.ui_factory.note('repository converted')
+        ui.ui_factory.note(gettext('repository converted'))
         pb.finished()
 
 

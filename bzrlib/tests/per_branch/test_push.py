@@ -53,7 +53,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         mine.merge_from_branch(other.branch)
         mine.commit('merge my change', rev_id='P2')
         result = mine.branch.push(other.branch)
-        self.assertEqual(['P1', 'P2'], other.branch.revision_history())
+        self.assertEqual('P2', other.branch.last_revision())
         # result object contains some structured data
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
@@ -78,7 +78,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         mine.merge_from_branch(other.branch)
         mine.commit('merge other', rev_id='P2')
         mine.branch.push(target.branch)
-        self.assertEqual(['P1', 'P2'], target.branch.revision_history())
+        self.assertEqual('P2', target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
         """Pushing into a checkout updates the checkout and the master branch"""
@@ -95,8 +95,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
         other.branch.push(checkout.branch)
-        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
-        self.assertEqual([rev1, rev2], master_tree.branch.revision_history())
+        self.assertEqual(rev2, checkout.branch.last_revision())
+        self.assertEqual(rev2, master_tree.branch.last_revision())
 
     def test_push_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_branch_and_tree('master')
@@ -156,6 +156,8 @@ class TestPush(per_branch.TestCaseWithBranch):
             repo = self.make_repository('repo', shared=True)
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
+            return
+        if not repo._format.supports_nesting_repositories:
             return
         # This is a little bit trickier because make_branch_and_tree will not
         # re-use a shared repository.

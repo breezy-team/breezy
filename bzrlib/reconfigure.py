@@ -29,7 +29,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
-
+from bzrlib.i18n import gettext
 
 # TODO: common base class for all reconfigure operations, making no
 # assumptions about what kind of change will be done.
@@ -48,9 +48,9 @@ class ReconfigureStackedOn(object):
         try:
             branch.set_stacked_on_url(on_url)
             if not trace.is_quiet():
-                ui.ui_factory.note(
-                    "%s is now stacked on %s\n"
-                    % (branch.base, branch.get_stacked_on_url()))
+                ui.ui_factory.note(gettext(
+                    "{0} is now stacked on {1}\n").format(
+                      branch.base, branch.get_stacked_on_url()))
         finally:
             branch.unlock()
 
@@ -63,8 +63,8 @@ class ReconfigureUnstacked(object):
         try:
             branch.set_stacked_on_url(None)
             if not trace.is_quiet():
-                ui.ui_factory.note(
-                    "%s is now not stacked\n"
+                ui.ui_factory.note(gettext(
+                    "%s is now not stacked\n")
                     % (branch.base,))
         finally:
             branch.unlock()
