@@ -1,0 +1,4 @@
+This plugin provides very basic support for Monotone in Bazaar.
+
+The user will be informed about any Monotone directories that are found,
+but Monotone directories can not be opened.
