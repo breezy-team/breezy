@@ -283,6 +283,7 @@ class TextUIFactory(UIFactory):
             prompt = prompt % kwargs
         prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
+        self.stdout.flush()
         self.stderr.write(prompt)
 
     def report_transport_activity(self, transport, byte_count, direction):
