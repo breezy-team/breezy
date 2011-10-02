@@ -168,18 +168,6 @@ class TextUIFactory(UIFactory):
         # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
 
-    def get_boolean(self, prompt):
-        while True:
-            self.prompt(prompt + "? [y/n]: ")
-            line = self.stdin.readline().lower()
-            if line in ('y\n', 'yes\n'):
-                return True
-            elif line in ('n\n', 'no\n'):
-                return False
-            elif line in ('', None):
-                # end-of-file; possibly should raise an error here instead
-                return None
-
     def get_integer(self, prompt):
         while True:
             self.prompt(prompt)
