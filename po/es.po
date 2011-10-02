@@ -9,15 +9,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-09-19 13:48+0000\n"
+"PO-Revision-Date: 2011-10-01 18:31+0000\n"
 "Last-Translator: Paco Molinero <paco@byasl.com>\n"
 "Language-Team: Spanish <es@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2011-09-21 04:32+0000\n"
-"X-Generator: Launchpad (build 13996)\n"
+"X-Launchpad-Export-Date: 2011-10-02 04:33+0000\n"
+"X-Generator: Launchpad (build 14071)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -49,7 +49,7 @@ msgstr "No hay revisiones para subir."
 
 #: bzrlib/branch.py:3165
 msgid "checked branch {0} format {1}"
-msgstr ""
+msgstr "rama comprobada {0} formato {1}"
 
 #: bzrlib/branch.py:3168
 #, python-format
@@ -139,6 +139,11 @@ msgid ""
 "character: '/', '@' or '*' respectively. These decorations can be\n"
 "disabled using the '--no-classify' option."
 msgstr ""
+"Adicionalmente para directorios, vínculos simbólicos y archivos con el bit "
+"de\n"
+"ejecutable cambiado, Bazaar indica su tipo usando un carácter \n"
+"final: «/», «@» o «*» respectivamente. Estas decoraciones pueden ser\n"
+"desactivadas usando la opción «--no-classify»."
 
 #: bzrlib/builtins.py:241
 msgid ""
@@ -374,7 +379,7 @@ msgstr "Crear un directorio versionado nuevo."
 
 #: bzrlib/builtins.py:734
 msgid "This is equivalent to creating the directory and then adding it."
-msgstr ""
+msgstr "Esto es equivalente a crear el directorio y luego añadirlo."
 
 #: bzrlib/builtins.py:748
 #, python-format
@@ -422,11 +427,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:852
 msgid "Automatically guess renames."
-msgstr ""
+msgstr "Adivinar automáticamente rel renombrado."
 
 #: bzrlib/builtins.py:853
 msgid "Avoid making changes when guessing renames."
-msgstr ""
+msgstr "Evitar hacer cambios cunado se adivina el renombrado."
 
 #: bzrlib/builtins.py:862
 msgid "--dry-run requires --auto."
@@ -571,6 +576,8 @@ msgstr ""
 msgid ""
 "Branch to push from, rather than the one containing the working directory."
 msgstr ""
+"Rama desde la que impulsar en vez de la que contiene el directorio de "
+"trabajo."
 
 #: bzrlib/builtins.py:1131
 msgid ""
@@ -583,6 +590,8 @@ msgid ""
 "Create a stacked branch that references the public location of the parent "
 "branch."
 msgstr ""
+"Crear una rama apilada que referencia a la ubicación pública de la rama "
+"padre."
 
 #: bzrlib/builtins.py:1139
 msgid ""
@@ -608,12 +617,12 @@ msgstr "No se puede determinar la rama a la que referirse."
 
 #: bzrlib/builtins.py:1198 bzrlib/foreign.py:306
 msgid "No push location known or specified."
-msgstr ""
+msgstr "No hay una ubicación para impulsar conocida o especificada."
 
 #: bzrlib/builtins.py:1202
 #, python-format
 msgid "Using saved push location: %s"
-msgstr ""
+msgstr "Usar la ubicación para impulsar guardada: %s"
 
 #: bzrlib/builtins.py:1212
 msgid "Create a new branch that is a copy of an existing branch."
@@ -782,7 +791,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1463
 msgid "Update a tree to have the latest code committed to its branch."
-msgstr ""
+msgstr "Actualizar un árbol para tener el último código enviado a esta rama."
 
 #: bzrlib/builtins.py:1465
 msgid ""
@@ -825,6 +834,9 @@ msgid ""
 "branch has no revision %s\n"
 "bzr update --revision only works for a revision in the branch history"
 msgstr ""
+"la rama no tiene revisión %s\n"
+"bzr update --revision solo funciona para una revisión en el histórico de la "
+"rama"
 
 #: bzrlib/builtins.py:1543
 msgid "Updated to revision {0} of branch {1}"
@@ -880,7 +892,7 @@ msgstr "    bzr info -v"
 
 #: bzrlib/builtins.py:1579
 msgid "  Display the above together with number of committers to the branch:"
-msgstr ""
+msgstr "  Mostrar lo anterior junto con el número de aplicadores de la rama:"
 
 #: bzrlib/builtins.py:1581
 msgid "    bzr info -vv"
@@ -901,7 +913,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1610
 msgid "Only remove files that have never been committed."
-msgstr ""
+msgstr "Eliminar solo los archivos que nunca se han aplicado."
 
 #: bzrlib/builtins.py:1612
 msgid "The file deletion mode to be used."
@@ -945,6 +957,8 @@ msgid ""
 "At the same time it is run it may recompress data resulting in\n"
 "a potential saving in disk space or performance gain."
 msgstr ""
+"Al mismo tiempo que se ejecuta, puede comprimir los datos resultando\n"
+"un ahorro potencial de espacio en disco o aumento el rendimiento."
 
 #: bzrlib/builtins.py:1719
 msgid "The branch *MUST* be on a listable system such as local disk or sftp."
@@ -1155,6 +1169,9 @@ msgid ""
 ":Examples:\n"
 "    Shows the difference in the working tree versus the last commit::"
 msgstr ""
+":Ejemplos:\n"
+"    Muestra las diferencias en el árbol de trabajo contra la última "
+"aplicación::"
 
 #: bzrlib/builtins.py:1989
 msgid "        bzr diff"
@@ -1219,6 +1236,8 @@ msgid ""
 "    The changes between the current revision and the previous revision\n"
 "    (equivalent to -c-1 and -r-2..-1)"
 msgstr ""
+"    Los cambios entre la versión actual y la previa\n"
+"    (equivalente a -c-1 y -r-2..-1)"
 
 #: bzrlib/builtins.py:2020
 msgid "        bzr diff -r-2.."
@@ -1314,7 +1333,7 @@ msgstr ""
 #: bzrlib/builtins.py:2104 bzrlib/builtins.py:2502 bzrlib/builtins.py:2515
 #: bzrlib/builtins.py:2523 bzrlib/builtins.py:4663
 msgid "{0} and {1} are mutually exclusive"
-msgstr ""
+msgstr "{0} y {1} se excluyen mutuamente"
 
 #: bzrlib/builtins.py:2124
 msgid ""
@@ -1417,7 +1436,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2274
 msgid ":Ordering control:"
-msgstr ""
+msgstr ":Control de ordenación:"
 
 #: bzrlib/builtins.py:2276
 msgid ""
@@ -5614,7 +5633,7 @@ msgstr ""
 
 #: bzrlib/errors.py:2743
 msgid "Server sent an unexpected error: %(error_tuple)r"
-msgstr ""
+msgstr "El servidor envió un error inesperado: %(error_tuple)r"
 
 #: bzrlib/errors.py:2762
 msgid "Unrecognised container format: %(container_format)r"
@@ -5622,15 +5641,15 @@ msgstr ""
 
 #: bzrlib/errors.py:2770
 msgid "Unexpected end of container stream"
-msgstr ""
+msgstr "Final inesperado del flujo del contenedor"
 
 #: bzrlib/errors.py:2775
 msgid "Unknown record type: %(record_type)r"
-msgstr ""
+msgstr "Tipo de registro inesperado: %(record_type)r"
 
 #: bzrlib/errors.py:2783
 msgid "Invalid record: %(reason)s"
-msgstr ""
+msgstr "Registro inesperado: %(reason)s"
 
 #: bzrlib/errors.py:2791
 msgid "Container has data after end marker: %(excess)r"
@@ -5646,7 +5665,7 @@ msgstr ""
 
 #: bzrlib/errors.py:2820
 msgid "SMTP error: %(error)s"
-msgstr ""
+msgstr "Error SMTP: %(error)s"
 
 #: bzrlib/errors.py:2828
 msgid "No message supplied."
@@ -5655,6 +5674,8 @@ msgstr "No se ha proporcionado mensaje."
 #: bzrlib/errors.py:2833
 msgid "No mail-to address (--mail-to) or output (-o) specified."
 msgstr ""
+"No se a especificado una dirección de correo a enviar (--mail-to) o salida (-"
+"o)."
 
 #: bzrlib/errors.py:2838
 msgid "Unknown mail client: %(mail_client)s"
@@ -5668,7 +5689,7 @@ msgstr ""
 
 #: bzrlib/errors.py:2856
 msgid "SMTP connection to %(host)s refused"
-msgstr ""
+msgstr "Las conexiones SMTP a %(host)s se han rechazado"
 
 #: bzrlib/errors.py:2865
 msgid "Please specify smtp_server.  No server at default %(host)s."
@@ -5682,27 +5703,27 @@ msgstr ""
 
 #: bzrlib/errors.py:2891
 msgid "'%(display_url)s' is already a branch."
-msgstr ""
+msgstr "«%(display_url)s» ya es una la rama."
 
 #: bzrlib/errors.py:2896
 msgid "'%(display_url)s' is already a tree."
-msgstr ""
+msgstr "«%(display_url)s» ya es un árbol."
 
 #: bzrlib/errors.py:2901
 msgid "'%(display_url)s' is already a checkout."
-msgstr ""
+msgstr "«%(display_url)s» ya es una comprobación."
 
 #: bzrlib/errors.py:2906
 msgid "'%(display_url)s' is already a lightweight checkout."
-msgstr ""
+msgstr "«%(display_url)s» ya es una comprobación ligera."
 
 #: bzrlib/errors.py:2911
 msgid "'%(display_url)s' is already using a shared repository."
-msgstr ""
+msgstr "«%(display_url)s» ya está usando un repositorio compartido."
 
 #: bzrlib/errors.py:2916
 msgid "'%(display_url)s' is already standalone."
-msgstr ""
+msgstr "«%(display_url)s» ya es autónomo."
 
 #: bzrlib/errors.py:2921
 msgid "Shared repository '%(display_url)s' already creates working trees."
@@ -5719,7 +5740,7 @@ msgstr ""
 
 #: bzrlib/errors.py:2938
 msgid "No location could be found to bind to at %(display_url)s."
-msgstr ""
+msgstr "No se encontró ubicación a donde vincular %(display_url)s."
 
 #: bzrlib/errors.py:2943
 msgid ""
@@ -5735,21 +5756,23 @@ msgstr ""
 
 #: bzrlib/errors.py:2968
 msgid "Variable {%(name)s} is not available."
-msgstr ""
+msgstr "La variable {%(name)s} no está disponible."
 
 #: bzrlib/errors.py:2976
 msgid "No template specified."
-msgstr ""
+msgstr "No se ha especificado una plantilla."
 
 #: bzrlib/errors.py:2981
 msgid "Unable to create symlink %(path_str)son this platform"
-msgstr ""
+msgstr "Imposible crear un vínculo simbólico %(path_str)s en esta plataforma"
 
 #: bzrlib/errors.py:2996
 msgid ""
 "Unsupported timezone format \"%(timezone)s\", options are \"utc\", "
 "\"original\", \"local\"."
 msgstr ""
+"Formato de zona horaria «%(timezone)s» no permitido , las opciones son«utc», "
+"«original», «local»."
 
 #: bzrlib/errors.py:3030
 msgid ""
@@ -5782,7 +5805,7 @@ msgstr ""
 
 #: bzrlib/errors.py:3098
 msgid "Unknown rules detected: %(unknowns_str)s."
-msgstr ""
+msgstr "Reglas detectadas desconocidas: %(unknowns_str)s."
 
 #: bzrlib/errors.py:3111
 msgid ""
@@ -5817,7 +5840,7 @@ msgstr ""
 
 #: bzrlib/errors.py:3183
 msgid "The user aborted the operation."
-msgstr ""
+msgstr "El usuario abortó la operación."
 
 #: bzrlib/errors.py:3188
 msgid "Branching '%(url)s'(%(format)s) must create a working tree."
@@ -5851,7 +5874,7 @@ msgstr ""
 
 #: bzrlib/errors.py:3299
 msgid "Invalid pattern(s) found. %(msg)s"
-msgstr ""
+msgstr "Se encontró un patrón inválido. %(msg)s"
 
 #: bzrlib/errors.py:3307
 msgid ""
@@ -5881,7 +5904,7 @@ msgstr ""
 #: bzrlib/export_pot.py:123 bzrlib/export_pot.py:129
 #, python-format
 msgid "%r is not found in bzrlib/option.py"
-msgstr ""
+msgstr "%r no se encuentra en bzrlib/option.py"
 
 #: bzrlib/export_pot.py:185
 #, python-format
@@ -5895,7 +5918,7 @@ msgstr ""
 #: bzrlib/export_pot.py:226
 #, python-format
 msgid "Exporting message from error: %s"
-msgstr ""
+msgstr "Exportando mensaje del error: %s"
 
 #: bzrlib/fetch.py:97
 msgid "Finding revisions"
@@ -5918,25 +5941,25 @@ msgstr ""
 
 #: bzrlib/gpg.py:116 bzrlib/gpg.py:454
 msgid "{0} commits with valid signatures"
-msgstr ""
+msgstr "{0} ejecuciones con firmas válidas"
 
 #: bzrlib/gpg.py:120 bzrlib/gpg.py:459
 msgid "{0} commit with unknown key"
 msgid_plural "{0} commits with unknown keys"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} ejecución con clave desconocida"
+msgstr[1] "{0} ejecuciones con claves desconocidas"
 
 #: bzrlib/gpg.py:126 bzrlib/gpg.py:466
 msgid "{0} commit not valid"
 msgid_plural "{0} commits not valid"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} ejecución inválida"
+msgstr[1] "{0} ejecuciones inválidas"
 
 #: bzrlib/gpg.py:132 bzrlib/gpg.py:473
 msgid "{0} commit not signed"
 msgid_plural "{0} commits not signed"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} ejecución no firmada"
+msgstr[1] "{0} ejecuciones no firmadas"
 
 #: bzrlib/gpg.py:138 bzrlib/gpg.py:480
 msgid "{0} commit with key now expired"
@@ -5946,7 +5969,7 @@ msgstr[1] ""
 
 #: bzrlib/gpg.py:336
 msgid "No GnuPG key results for pattern: {0}"
-msgstr ""
+msgstr "No hay resultados de la clave GnuPG para el patrón: {0}"
 
 #: bzrlib/gpg.py:379
 msgid "{0} signed {1} commit"
@@ -5991,7 +6014,7 @@ msgstr ""
 
 #: bzrlib/log.py:569
 msgid "--exclude-common-ancestry requires two different revisions"
-msgstr ""
+msgstr "--exclude-common-ancestry requiere dos revisiones diferentes"
 
 #: bzrlib/log.py:571
 #, python-format
@@ -6012,7 +6035,7 @@ msgstr ""
 
 #: bzrlib/log.py:1084 bzrlib/log.py:1142
 msgid "Start revision must be older than the end revision."
-msgstr ""
+msgstr "El inicio de la revisión debe ser anterior al final."
 
 #: bzrlib/log.py:1828
 #, python-format
@@ -6022,17 +6045,17 @@ msgstr ""
 #: bzrlib/log.py:2123
 msgid "fixes bug"
 msgid_plural "fixes bugs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "error areglado"
+msgstr[1] "errores arreglados"
 
 #: bzrlib/merge.py:715
 msgid "All changes applied successfully."
-msgstr ""
+msgstr "Cambios aplicados con éxito."
 
 #: bzrlib/merge.py:717
 #, python-format
 msgid "%d conflicts encountered."
-msgstr ""
+msgstr "%d conflictos encontrados."
 
 #: bzrlib/merge.py:862 bzrlib/merge.py:1910
 msgid "Preparing file merge"
@@ -6044,19 +6067,19 @@ msgstr "Importar revisiones"
 
 #: bzrlib/option.py:530
 msgid "Show help message."
-msgstr ""
+msgstr "Mostrar mensaje de ayuda."
 
 #: bzrlib/option.py:532
 msgid "Show usage message and options."
-msgstr ""
+msgstr "Mostrar mensaje de uso y opciones."
 
 #: bzrlib/option.py:534
 msgid "Display more information."
-msgstr ""
+msgstr "Mostrar más información."
 
 #: bzrlib/option.py:537
 msgid "Only display errors and warnings."
-msgstr ""
+msgstr "Mostrar solo errores y avisos."
 
 #: bzrlib/option.py:542
 msgid "Ignore differences between branches and overwrite unconditionally."
@@ -6076,7 +6099,7 @@ msgstr ""
 
 #: bzrlib/option.py:563
 msgid "See \"help revisionspec\" for details."
-msgstr ""
+msgstr "Consulte «help revisionspec» para obtener más detalles."
 
 #: bzrlib/option.py:568
 msgid ""
@@ -6086,7 +6109,7 @@ msgstr ""
 
 #: bzrlib/option.py:570
 msgid "Show internal object ids."
-msgstr ""
+msgstr "Mostrar las id de los objetos internos."
 
 #: bzrlib/option.py:573
 msgid "Display timezone as local, original, or utc."
@@ -6094,7 +6117,7 @@ msgstr ""
 
 #: bzrlib/option.py:578
 msgid "Use specified log format."
-msgstr ""
+msgstr "Usar el formato de registro especificado."
 
 #: bzrlib/option.py:580
 msgid "Log format"
@@ -6114,19 +6137,19 @@ msgstr ""
 
 #: bzrlib/option.py:588
 msgid "Select a particular merge algorithm."
-msgstr ""
+msgstr "Seleccionar un algoritmo de combinación particular."
 
 #: bzrlib/option.py:590
 msgid "Merge algorithm"
-msgstr ""
+msgstr "Algoritmo de combinació"
 
 #: bzrlib/option.py:592
 msgid "Remember the specified location as a default."
-msgstr ""
+msgstr "Recordar la ubicación especificada como predeterminada."
 
 #: bzrlib/option.py:594
 msgid "Reprocess to reduce spurious conflicts."
-msgstr ""
+msgstr "Reprocesar para reducir los conflictos espurios."
 
 #: bzrlib/option.py:597
 msgid "Show what would be done, but don't actually do anything."
@@ -6134,7 +6157,7 @@ msgstr ""
 
 #: bzrlib/option.py:598
 msgid "The path name in the old tree."
-msgstr ""
+msgstr "La ruta en el árbol antiguo."
 
 #: bzrlib/option.py:600
 msgid "Branch to operate on, instead of working directory"
@@ -6146,7 +6169,7 @@ msgstr ""
 
 #: bzrlib/osutils.py:194
 msgid "lstat/stat of ({0!r}): {1!r}"
-msgstr ""
+msgstr "lstat/stat de ({0!r}): {1!r}"
 
 #: bzrlib/osutils.py:929 bzrlib/osutils.py:940
 #, python-format
@@ -6181,7 +6204,7 @@ msgstr ""
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:421
 msgid "Name of the generated function (default: _bzr)"
-msgstr ""
+msgstr "Nombre de la función generada (predeterminado: _bzr)"
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:423
 msgid "Generate only the shell function, don't enable it"
@@ -6189,7 +6212,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:78
 msgid "Register a branch with launchpad.net."
-msgstr ""
+msgstr "Registrar una rama con launchpad.net."
 
 #: bzrlib/plugins/launchpad/__init__.py:80
 msgid ""
@@ -6225,7 +6248,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:103
 msgid "Launchpad project short name to associate with the branch."
-msgstr ""
+msgstr "Nombre corto del proyecto de Launchpad para asociar con la rama."
 
 #: bzrlib/plugins/launchpad/__init__.py:110
 msgid ""
@@ -6247,7 +6270,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:123
 msgid "The bug this branch fixes."
-msgstr ""
+msgstr "El error que arregla esta rama."
 
 #: bzrlib/plugins/launchpad/__init__.py:126
 msgid "Prepare the request but don't actually send it."
@@ -6255,7 +6278,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:186
 msgid "Open a Launchpad branch page in your web browser."
-msgstr ""
+msgstr "Abrir una página de rama de Launchpad en su navegador web."
 
 #: bzrlib/plugins/launchpad/__init__.py:191
 msgid "Do not actually open the browser. Just say the URL we would use."
@@ -6263,7 +6286,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:236
 msgid "Show or set the Launchpad user ID."
-msgstr ""
+msgstr "Mostrar o establecer el ID de usuario de Launchpad."
 
 #: bzrlib/plugins/launchpad/__init__.py:238
 msgid ""
@@ -6280,7 +6303,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:245
 msgid "      bzr launchpad-login"
-msgstr ""
+msgstr "      bzr launchpad-login"
 
 #: bzrlib/plugins/launchpad/__init__.py:247
 msgid "  Set the Launchpad ID of the current user to 'bob'::"
@@ -6288,11 +6311,11 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:249
 msgid "      bzr launchpad-login bob"
-msgstr ""
+msgstr "      bzr launchpad-login bob"
 
 #: bzrlib/plugins/launchpad/__init__.py:256
 msgid "Don't check that the user name is valid."
-msgstr ""
+msgstr "No comprueba que el nombre de usuario sea válido."
 
 #: bzrlib/plugins/launchpad/__init__.py:292
 msgid "Ask Launchpad to mirror a branch now."
@@ -6325,7 +6348,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:326
 msgid "  bzr lp-propose-merge --review jrandom --review review-team=qa"
-msgstr ""
+msgstr "  bzr lp-propose-merge --review jrandom --review review-team=qa"
 
 #: bzrlib/plugins/launchpad/__init__.py:328
 msgid ""
@@ -6339,19 +6362,19 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:335
 msgid "Commit message."
-msgstr ""
+msgstr "Mensaje de ejecución."
 
 #: bzrlib/plugins/launchpad/__init__.py:337
 msgid "Mark the proposal as approved immediately."
-msgstr ""
+msgstr "Marcar el propuesto como aprobado inmediatamente."
 
 #: bzrlib/plugins/launchpad/__init__.py:339
 msgid "Requested reviewer and optional type."
-msgstr ""
+msgstr "Revisor solicitado y tipo opcional."
 
 #: bzrlib/plugins/launchpad/__init__.py:376
 msgid "Find the proposal to merge this revision."
-msgstr ""
+msgstr "Buscar el propuesto para combinar esta revisión."
 
 #: bzrlib/plugins/launchpad/__init__.py:378
 msgid ""
@@ -6373,7 +6396,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:388
 msgid "  bzr lp-find-proposal -r annotate:README:1"
-msgstr ""
+msgstr "  bzr lp-find-proposal -r annotate:README:1"
 
 #: bzrlib/push.py:54
 msgid "Created new branch."
@@ -6421,16 +6444,16 @@ msgstr ""
 #: bzrlib/reconcile.py:96
 #, python-format
 msgid "Reconciling branch %s"
-msgstr ""
+msgstr "Reconciliando rama %s"
 
 #: bzrlib/reconcile.py:102
 #, python-format
 msgid "Reconciling repository %s"
-msgstr ""
+msgstr "Reconciliando repositorio %s"
 
 #: bzrlib/reconcile.py:104
 msgid "Reconciling repository"
-msgstr ""
+msgstr "Reconciliando repositorio"
 
 #: bzrlib/reconcile.py:110
 #, python-format
@@ -6447,7 +6470,7 @@ msgstr ""
 
 #: bzrlib/reconcile.py:122
 msgid "Reconciliation complete."
-msgstr ""
+msgstr "Reconciliación completa."
 
 #: bzrlib/reconcile.py:165
 msgid "Fixing last revision info {0}  => {1}"
@@ -6459,7 +6482,7 @@ msgstr ""
 
 #: bzrlib/reconcile.py:233
 msgid "Reading inventory data"
-msgstr ""
+msgstr "Leyendo los datos de inventario"
 
 #: bzrlib/reconcile.py:253 bzrlib/reconcile.py:383
 msgid "Inventory ok."
@@ -6467,7 +6490,7 @@ msgstr ""
 
 #: bzrlib/reconcile.py:255 bzrlib/reconcile.py:385
 msgid "Backing up inventory"
-msgstr ""
+msgstr "Respaldando inventario"
 
 #: bzrlib/reconcile.py:257
 msgid "Backup inventory created."
@@ -6479,11 +6502,11 @@ msgstr ""
 
 #: bzrlib/reconcile.py:276 bzrlib/reconcile.py:407
 msgid "Inventory regenerated."
-msgstr ""
+msgstr "Inventario regenerado."
 
 #: bzrlib/reconcile.py:370 bzrlib/reconcile.py:372 bzrlib/reconcile.py:375
 msgid "Reading indexes"
-msgstr ""
+msgstr "Leyendo índices"
 
 #: bzrlib/reconcile.py:379 bzrlib/reconcile.py:381
 msgid "Checking unused inventories"
@@ -6499,7 +6522,7 @@ msgstr ""
 
 #: bzrlib/reconfigure.py:52
 msgid "{0} is now stacked on {1}\n"
-msgstr ""
+msgstr "{0} está ahora apilado en {1}\n"
 
 #: bzrlib/reconfigure.py:67
 #, python-format
@@ -6512,7 +6535,7 @@ msgstr ""
 
 #: bzrlib/rename_map.py:68
 msgid "Calculating hashes"
-msgstr ""
+msgstr "Calculando hashes"
 
 #: bzrlib/rename_map.py:106
 msgid "Determining hash hits"
@@ -6520,12 +6543,12 @@ msgstr ""
 
 #: bzrlib/rename_map.py:241
 msgid "{0} => {1}"
-msgstr ""
+msgstr "{0} => {1}"
 
 #: bzrlib/repository.py:284
 #, python-format
 msgid "bzr: ERROR (ignored): %s"
-msgstr ""
+msgstr "bzr: ERROR (ignorado): %s"
 
 #: bzrlib/repository.py:1806
 msgid "Moving repository to repository.backup"
@@ -6533,7 +6556,7 @@ msgstr ""
 
 #: bzrlib/repository.py:1813
 msgid "Creating new repository"
-msgstr ""
+msgstr "Creando repositorio nuevo"
 
 #: bzrlib/repository.py:1818
 msgid "Copying content"
@@ -6549,7 +6572,7 @@ msgstr "repositorio convertido"
 
 #: bzrlib/revisionspec.py:914
 msgid "Using {0} {1}"
-msgstr ""
+msgstr "Usando {0} {1}"
 
 #: bzrlib/send.py:56
 #, python-format
@@ -6615,7 +6638,7 @@ msgstr ""
 
 #: bzrlib/shelf_ui.py:51
 msgid "Shelve?"
-msgstr ""
+msgstr "¿Arrinconar?"
 
 #: bzrlib/shelf_ui.py:52
 #, python-format
@@ -6635,7 +6658,7 @@ msgstr ""
 
 #: bzrlib/shelf_ui.py:73
 msgid "Selected changes destroyed."
-msgstr ""
+msgstr "Cambios seleccionados destruidos."
 
 #: bzrlib/shelf_ui.py:77
 msgid "Selected changes:"
@@ -6644,11 +6667,11 @@ msgstr "Cambios seleccionados:"
 #: bzrlib/shelf_ui.py:97
 #, python-format
 msgid "Delete file \"%(path)s\"?"
-msgstr ""
+msgstr "¿Eliminar archivo «%(path)s»?"
 
 #: bzrlib/shelf_ui.py:98
 msgid "Apply binary changes?"
-msgstr ""
+msgstr "¿Aplicar cambios binarios?"
 
 #: bzrlib/shelf_ui.py:99
 #, python-format
@@ -6658,16 +6681,16 @@ msgstr ""
 #: bzrlib/shelf_ui.py:101
 #, python-format
 msgid "Add file \"%(path)s\"?"
-msgstr ""
+msgstr "¿Añadir archivo «%(path)s»?"
 
 #: bzrlib/shelf_ui.py:102
 #, python-format
 msgid "Apply %d change(s)?"
-msgstr ""
+msgstr "¿Aplicar %d cambio(s)?"
 
 #: bzrlib/shelf_ui.py:103
 msgid "Apply change?"
-msgstr ""
+msgstr "¿Aplicar cambio?"
 
 #: bzrlib/shelf_ui.py:104
 #, python-format
@@ -6685,7 +6708,7 @@ msgstr ""
 
 #: bzrlib/shelf_ui.py:415
 msgid "No changes are shelved."
-msgstr ""
+msgstr "No se han arrinconado cambios."
 
 #: bzrlib/shelf_ui.py:473
 #, python-format
@@ -6942,6 +6965,8 @@ msgid ""
 "  bzr log            show history of changes\n"
 "  bzr check          validate storage"
 msgstr ""
+"  bzr log            muestra el historial de cambios\n"
+"  bzr check          valida el almacenamiento"
 
 #: dummy/help_topics/basic/detail.txt:22
 msgid ""
@@ -6952,11 +6977,11 @@ msgstr ""
 
 #: dummy/help_topics/basic/summary.txt:1
 msgid "Basic commands"
-msgstr ""
+msgstr "Órdenes básicas"
 
 #: dummy/help_topics/branches/detail.txt:1
 msgid "Branches"
-msgstr ""
+msgstr "Ramas"
 
 #: dummy/help_topics/branches/detail.txt:3
 msgid ""
@@ -6978,7 +7003,7 @@ msgstr ""
 
 #: dummy/help_topics/branches/detail.txt:15
 msgid "Related commands::"
-msgstr ""
+msgstr "Órdenes relacionadas"
 
 #: dummy/help_topics/branches/detail.txt:17
 msgid ""
@@ -6994,11 +7019,11 @@ msgstr ""
 
 #: dummy/help_topics/bugs/summary.txt:1
 msgid "Bug tracker settings"
-msgstr ""
+msgstr "Configuración del seguimiento de errores"
 
 #: dummy/help_topics/checkouts/detail.txt:1
 msgid "Checkouts"
-msgstr ""
+msgstr "Comrpobaciones"
 
 #: dummy/help_topics/checkouts/detail.txt:3
 msgid ""
@@ -7134,19 +7159,19 @@ msgstr ""
 
 #: dummy/help_topics/checkouts/summary.txt:1
 msgid "Information on what a checkout is"
-msgstr ""
+msgstr "información sobre lo que es una comprobación"
 
 #: dummy/help_topics/commands/summary.txt:1
 msgid "Basic help for all commands"
-msgstr ""
+msgstr "Ayuda básica para todas las órdenes"
 
 #: dummy/help_topics/configuration/summary.txt:1
 msgid "Details on the configuration settings available"
-msgstr ""
+msgstr "Detalles de las configuraciones disponibles"
 
 #: dummy/help_topics/conflict-types/summary.txt:1
 msgid "Types of conflicts and what to do about them"
-msgstr ""
+msgstr "Tipos de conflicto y qué hacer con ellos"
 
 #: dummy/help_topics/content-filters/summary.txt:1
 msgid "Conversion of content into/from working trees"
@@ -7216,7 +7241,7 @@ msgstr ""
 
 #: dummy/help_topics/debug-flags/summary.txt:1
 msgid "Options to show or record debug information"
-msgstr ""
+msgstr "Opciones para mostrar o grabar información de depuración"
 
 #: dummy/help_topics/diverged-branches/summary.txt:1
 msgid "How to fix diverged branches"
@@ -7224,7 +7249,7 @@ msgstr ""
 
 #: dummy/help_topics/env-variables/detail.txt:1
 msgid "Environment Variables"
-msgstr ""
+msgstr "Variables de entorno"
 
 #: dummy/help_topics/env-variables/detail.txt:3
 msgid ""
@@ -7265,7 +7290,7 @@ msgstr ""
 
 #: dummy/help_topics/env-variables/summary.txt:1
 msgid "Environment variable names and values"
-msgstr ""
+msgstr "Nombres y valores de variables de entorno"
 
 #: dummy/help_topics/eol/summary.txt:1
 msgid "Information on end-of-line handling"
@@ -7306,10 +7331,13 @@ msgid ""
 "  commit = commit --strict\n"
 "  log10 = log --short -r -10..-1\n"
 msgstr ""
+"  [ALIASES]\n"
+"  commit = commit --strict\n"
+"  log10 = log --short -r -10..-1\n"
 
 #: dummy/help_topics/files/summary.txt:1
 msgid "Information on configuration and log files"
-msgstr ""
+msgstr "Información sobre configuración y archivos de registro"
 
 #: dummy/help_topics/formats/detail.txt:1
 msgid "Storage Formats"
@@ -7361,7 +7389,7 @@ msgstr ""
 
 #: dummy/help_topics/formats/summary.txt:1
 msgid "Information on choosing a storage format"
-msgstr ""
+msgstr "Información para escoger un formato de almacenamiento"
 
 #: dummy/help_topics/global-options/detail.txt:1
 msgid "Global Options"
@@ -7407,6 +7435,8 @@ msgid ""
 "See http://doc.bazaar.canonical.com/developers/profiling.html for more\n"
 "information on profiling."
 msgstr ""
+"Visite http://doc.bazaar.canonical.com/developers/profiling.html para tener\n"
+"más información del perfilado."
 
 #: dummy/help_topics/global-options/detail.txt:27
 msgid ""
@@ -7416,7 +7446,7 @@ msgstr ""
 
 #: dummy/help_topics/global-options/summary.txt:1
 msgid "Options that control how Bazaar runs"
-msgstr ""
+msgstr "Opciones que controlan como se ejecuta Bazaar"
 
 #: dummy/help_topics/hidden-commands/summary.txt:1
 msgid "All hidden commands"
@@ -7428,7 +7458,7 @@ msgstr ""
 
 #: dummy/help_topics/launchpad/detail.txt:1
 msgid "Integration with Launchpad.net"
-msgstr ""
+msgstr "Integración con Launchpad.net"
 
 #: dummy/help_topics/launchpad/detail.txt:3
 msgid ""
@@ -7483,23 +7513,23 @@ msgstr ""
 
 #: dummy/help_topics/launchpad/summary.txt:1
 msgid "Using Bazaar with Launchpad.net"
-msgstr ""
+msgstr "Usar Bazaar con Launchpad.net"
 
 #: dummy/help_topics/location-alias/summary.txt:1
 msgid "Aliases for remembered locations"
-msgstr ""
+msgstr "Alias para recordar ubicaciones"
 
 #: dummy/help_topics/log-formats/summary.txt:1
 msgid "Details on the logging formats available"
-msgstr ""
+msgstr "Detalles sobre los formatos de acceso disponibles"
 
 #: dummy/help_topics/other-formats/summary.txt:1
 msgid "Experimental and deprecated storage formats"
-msgstr ""
+msgstr "Formatos de almacenamiento  experimentales y obsoletos"
 
 #: dummy/help_topics/patterns/summary.txt:1
 msgid "Information on the pattern syntax"
-msgstr ""
+msgstr "Información de la sintaxis de patrones"
 
 #: dummy/help_topics/repositories/detail.txt:1
 msgid "Repositories"
@@ -7572,11 +7602,11 @@ msgstr ""
 
 #: dummy/help_topics/repositories/summary.txt:1
 msgid "Basic information on shared repositories."
-msgstr ""
+msgstr "Información básica de los repositorios compartidos."
 
 #: dummy/help_topics/revisionspec/summary.txt:1
 msgid "Explain how to use --revision"
-msgstr ""
+msgstr "Explicar cómo se usa --revision"
 
 #: dummy/help_topics/rules/summary.txt:1
 msgid "Information on defining rule-based preferences"
@@ -7584,7 +7614,7 @@ msgstr ""
 
 #: dummy/help_topics/standalone-trees/detail.txt:1
 msgid "Standalone Trees"
-msgstr ""
+msgstr "Áboles autónomos"
 
 #: dummy/help_topics/standalone-trees/detail.txt:3
 msgid ""
@@ -7604,7 +7634,7 @@ msgstr ""
 
 #: dummy/help_topics/standalone-trees/summary.txt:1
 msgid "Information on what a standalone tree is"
-msgstr ""
+msgstr "Información sobre lo que es un árbol autónomo"
 
 #: dummy/help_topics/standard-options/detail.txt:1
 msgid "Standard Options"
@@ -7612,7 +7642,7 @@ msgstr "Opciones estándar"
 
 #: dummy/help_topics/standard-options/detail.txt:3
 msgid "Standard options are legal for all commands."
-msgstr ""
+msgstr "Las opciones estándar son legales para todas las órdenes."
 
 #: dummy/help_topics/standard-options/detail.txt:5
 msgid ""
@@ -7627,11 +7657,11 @@ msgstr ""
 
 #: dummy/help_topics/standard-options/summary.txt:1
 msgid "Options that can be used with any command"
-msgstr ""
+msgstr "Opciones que se pueden usar con cualquier orden"
 
 #: dummy/help_topics/status-flags/detail.txt:1
 msgid "Status Flags"
-msgstr ""
+msgstr "Marcas de estado"
 
 #: dummy/help_topics/status-flags/detail.txt:3
 msgid ""
@@ -7641,11 +7671,11 @@ msgstr ""
 
 #: dummy/help_topics/status-flags/detail.txt:6
 msgid "   xxx   <filename>"
-msgstr ""
+msgstr "   xxx   <nombre de archivo>"
 
 #: dummy/help_topics/status-flags/detail.txt:8
 msgid "where the columns' meanings are as follows."
-msgstr ""
+msgstr "donde los significados de las columnas son los siguientes"
 
 #: dummy/help_topics/status-flags/detail.txt:10
 msgid "Column 1 - versioning/renames::"
@@ -7684,11 +7714,11 @@ msgstr ""
 
 #: dummy/help_topics/status-flags/summary.txt:1
 msgid "Help on status flags"
-msgstr ""
+msgstr "Ayuda sobre marcas de estado"
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:1
 msgid "Branches Out of Sync"
-msgstr ""
+msgstr "Ramas sin sincronización"
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:3
 msgid ""
@@ -7727,7 +7757,7 @@ msgstr ""
 
 #: dummy/help_topics/topics/summary.txt:1
 msgid "Topics list"
-msgstr ""
+msgstr "Lista de temas"
 
 #: dummy/help_topics/url-special-chars/summary.txt:1
 msgid "Special character handling in URLs"
@@ -7735,7 +7765,7 @@ msgstr ""
 
 #: dummy/help_topics/urlspec/summary.txt:1
 msgid "Supported transport protocols"
-msgstr ""
+msgstr "Protocolos de transporte permitidos"
 
 #: dummy/help_topics/working-trees/detail.txt:1
 msgid "Working Trees"
@@ -7819,6 +7849,8 @@ msgid ""
 "Authentication Settings\n"
 "======================="
 msgstr ""
+"Configuración de la autenticación\n"
+"==========================="
 
 #: en/help_topics/authentication.txt:4
 msgid ""
@@ -7826,6 +7858,9 @@ msgid ""
 "Intent\n"
 "------"
 msgstr ""
+"\n"
+"Intento\n"
+"-----------"
 
 #: en/help_topics/authentication.txt:8
 msgid ""
@@ -7852,6 +7887,8 @@ msgstr ""
 msgid ""
 "The intent is to make this file as small as possible to minimize maintenance."
 msgstr ""
+"El intento es hacer este archivo tan pequeño como sea posible para minimizar "
+"el mantenimiento."
 
 #: en/help_topics/authentication.txt:21
 msgid ""
@@ -7864,7 +7901,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:25
 msgid "Instead of using::"
-msgstr ""
+msgstr "en vez de usar::"
 
 #: en/help_topics/authentication.txt:27
 msgid "  bzr branch ftp://joe:secret@host.com/path/to/my/branch"
@@ -7872,7 +7909,7 @@ msgstr "  bzr branch ftp://joe:secret@host.com/path/to/my/branch"
 
 #: en/help_topics/authentication.txt:29
 msgid "you simply use::"
-msgstr ""
+msgstr "simplemente use::"
 
 #: en/help_topics/authentication.txt:31
 msgid "  bzr branch ftp://host.com/path/to/my/branch"
@@ -7892,6 +7929,12 @@ msgid ""
 "  password=secret\n"
 "  "
 msgstr ""
+"  [misproyectos]\n"
+"  scheme=ftp\n"
+"  host=host.com\n"
+"  user=juan\n"
+"  password=secreta\n"
+"  "
 
 #: en/help_topics/authentication.txt:42
 msgid ""
@@ -8002,16 +8045,18 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:93
 msgid " 1. the first match wins,"
-msgstr ""
+msgstr " 1. la primera coincidencia gana,"
 
 #: en/help_topics/authentication.txt:95
 msgid " 2. empty fields match everything,"
-msgstr ""
+msgstr " 2. los campos vacíos coinciden siempre,"
 
 #: en/help_topics/authentication.txt:97
 msgid ""
 " 3. ``scheme`` matches even if decorators are used in the requested URL,"
 msgstr ""
+" 3. «scheme» coincide incluso si los decoradores se han usado en el URL "
+"solicitado,"
 
 #: en/help_topics/authentication.txt:99
 msgid ""
@@ -8049,7 +8094,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:116
 msgid "Each section describes an authentication definition."
-msgstr ""
+msgstr "Cada sección describe una definición de autenticación."
 
 #: en/help_topics/authentication.txt:118
 msgid ""
@@ -8064,7 +8109,7 @@ msgstr "Cada sección debe definir:"
 
 #: en/help_topics/authentication.txt:123
 msgid "* ``user``: the login to be used,"
-msgstr ""
+msgstr "* «user»: el acceso a usar,"
 
 #: en/help_topics/authentication.txt:125
 msgid "Each section could define:"
@@ -8072,19 +8117,19 @@ msgstr "Cada sección puede definir:"
 
 #: en/help_topics/authentication.txt:127
 msgid "* ``host``: the remote server,"
-msgstr ""
+msgstr "* «host»: el servidor remoto,"
 
 #: en/help_topics/authentication.txt:129
 msgid "* ``port``: the port the server is listening,"
-msgstr ""
+msgstr "* «port»: el puerto en el que escucha el servidor,"
 
 #: en/help_topics/authentication.txt:131
 msgid "* ``path``: the branch location,"
-msgstr ""
+msgstr "* «path»: la ubicación de la rama,"
 
 #: en/help_topics/authentication.txt:133
 msgid "* ``password``: the password."
-msgstr ""
+msgstr "* «password»: la contraseña."
 
 #: en/help_topics/authentication.txt:135
 msgid ""
@@ -8132,6 +8177,23 @@ msgid ""
 "foobar\n"
 "        user=foobar"
 msgstr ""
+"        # Proyecto de mascotas para hobby.net\n"
+"        [hobby]\n"
+"        host=r.hobby.net\n"
+"        user=jaime\n"
+"        password=obvia1234\n"
+"        \n"
+"        # Home server\n"
+"        [home]\n"
+"        scheme=https\n"
+"        host=home.net\n"
+"        user=juan\n"
+"        password=1essobV10us\n"
+"        \n"
+"        [DEFAULT]\n"
+"        # Nuestro usuario local es barbaz, en todos los sitios remotos se "
+"conoce como foobar\n"
+"        user=foobar"
 
 #: en/help_topics/authentication.txt:164
 msgid ""
@@ -8139,10 +8201,14 @@ msgid ""
 "Source hosting provider\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"Proveedor del albergue de origen\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/authentication.txt:168
 msgid "In the shp.net (fictitious) domain, each project has its own site::"
 msgstr ""
+"En el dominio shp.net (ficticio) cada proyecto tiene su propio sitio::"
 
 #: en/help_topics/authentication.txt:170
 msgid ""
@@ -8162,6 +8228,8 @@ msgid ""
 "HTTPS, SFTP servers and their proxy\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"HTTPS, servidores SFTP y su  proxy\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/authentication.txt:183
 msgid ""
@@ -8179,6 +8247,12 @@ msgid ""
 "        user=user1\n"
 "        password=pass1"
 msgstr ""
+"        [reference code]\n"
+"        scheme=https\n"
+"        host=dev.company.com\n"
+"        path=/dev\n"
+"        user=user1\n"
+"        password=pass1"
 
 #: en/help_topics/authentication.txt:193
 msgid ""
@@ -8234,7 +8308,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:223
 msgid "* add a ``verify_certificates`` field for ``HTTPS``."
-msgstr ""
+msgstr "* añadri un campo «verify_certificates» para «HTTPS»."
 
 #: en/help_topics/authentication.txt:225
 msgid ""
@@ -8245,7 +8319,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:1
 msgid "Bug Tracker Settings"
-msgstr ""
+msgstr "Configuración del seguimiento de errores"
 
 #: en/help_topics/bugs.txt:3
 msgid ""
@@ -8264,7 +8338,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:11
 msgid "    bzr commit --fixes <tracker>:<id>"
-msgstr ""
+msgstr "    bzr commit --fixes <tracker>:<id>"
 
 #: en/help_topics/bugs.txt:13
 msgid "or::"
@@ -8272,7 +8346,7 @@ msgstr "o::"
 
 #: en/help_topics/bugs.txt:15
 msgid "    bzr commit --fixes <id>"
-msgstr ""
+msgstr "    bzr commit --fixes <id>"
 
 #: en/help_topics/bugs.txt:17
 msgid ""
@@ -8301,6 +8375,13 @@ msgid ""
 "  http://bugzilla.gnome.org/   gnome        gnome:12345\n"
 "  ============================ ============ ============"
 msgstr ""
+"  ============================ ============ ============\n"
+"  URL                          Ejemplo de abreviatura\n"
+"  ============================ ============ ============\n"
+"  https://bugs.launchpad.net/  lp           lp:12345\n"
+"  http://bugs.debian.org/      deb          deb:12345\n"
+"  http://bugzilla.gnome.org/   gnome        gnome:12345\n"
+"  ============================ ============ ============"
 
 #: en/help_topics/bugs.txt:35
 msgid ""
@@ -8339,12 +8420,16 @@ msgstr ""
 msgid ""
 "Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2."
 msgstr ""
+"Use «bzr commit --fixes lp:2»» para grabar que esta ejecución arregla el "
+"error 2."
 
 #: en/help_topics/bugs.txt:56
 msgid ""
 "bugzilla_<tracker>_url\n"
 "----------------------"
 msgstr ""
+"bugzilla_<tracker>_url\n"
+"----------------------"
 
 #: en/help_topics/bugs.txt:59
 msgid ""
@@ -8356,7 +8441,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:64
 msgid "    bugzilla_squid_url = http://bugs.squid-cache.org"
-msgstr ""
+msgstr "    bugzilla_squid_url = http://bugs.squid-cache.org"
 
 #: en/help_topics/bugs.txt:66
 msgid ""
@@ -8369,6 +8454,8 @@ msgid ""
 "trac_<tracker>_url\n"
 "------------------"
 msgstr ""
+"trac_<tracker>_url\n"
+"------------------"
 
 #: en/help_topics/bugs.txt:72
 msgid ""
@@ -8380,7 +8467,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:77
 msgid "    trac_twisted_url = http://www.twistedmatrix.com/trac"
-msgstr ""
+msgstr "    trac_twisted_url = http://www.twistedmatrix.com/trac"
 
 #: en/help_topics/bugs.txt:79
 msgid ""
@@ -8394,6 +8481,8 @@ msgid ""
 "bugtracker_<tracker>_url\n"
 "------------------------"
 msgstr ""
+"bugtracker_<tracker>_url\n"
+"------------------------"
 
 #: en/help_topics/bugs.txt:85
 msgid ""
@@ -8406,7 +8495,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:91
 msgid "    bugtracker_python_url = http://bugs.python.org/issue{id}"
-msgstr ""
+msgstr "    bugtracker_python_url = http://bugs.python.org/issue{id}"
 
 #: en/help_topics/bugs.txt:93
 msgid ""
@@ -8418,6 +8507,7 @@ msgstr ""
 msgid ""
 "    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}"
 msgstr ""
+"    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}"
 
 #: en/help_topics/bugs.txt:98
 msgid ""
@@ -8427,7 +8517,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:101
 msgid "    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}"
-msgstr ""
+msgstr "    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}"
 
 #: en/help_topics/bugs.txt:103
 msgid ""
@@ -8655,6 +8745,8 @@ msgid ""
 "BZR_EMAIL\n"
 "~~~~~~~~~"
 msgstr ""
+"BZR_EMAIL\n"
+"~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:13
 msgid "Override the email id used by Bazaar.  Typical format::"
@@ -8662,17 +8754,19 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:15
 msgid "  \"John Doe <jdoe@example.com>\""
-msgstr ""
+msgstr "  \"Juan Dado <jdado@ejemplo.com>\""
 
 #: en/help_topics/configuration.txt:17
 msgid "See also the ``email`` configuration option."
-msgstr ""
+msgstr "Vea también las opciones de configuración de «email»"
 
 #: en/help_topics/configuration.txt:19
 msgid ""
 "BZR_PROGRESS_BAR\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_PROGRESS_BAR\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:22
 msgid ""
@@ -8688,6 +8782,8 @@ msgid ""
 "BZR_SIGQUIT_PDB\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_SIGQUIT_PDB\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:29
 msgid ""
@@ -8710,7 +8806,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:37
 msgid "Override the home directory used by Bazaar."
-msgstr ""
+msgstr "Sobrescribe el directorio de inicio usado por Bazaar."
 
 #: en/help_topics/configuration.txt:39
 msgid ""
@@ -8722,7 +8818,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:42
 msgid "Select a different SSH implementation."
-msgstr ""
+msgstr "Seleccione una implementación SSH diferente."
 
 #: en/help_topics/configuration.txt:44
 msgid ""
@@ -8734,13 +8830,15 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:47
 msgid "Control whether to launch a debugger on error."
-msgstr ""
+msgstr "Controla si lanzar un depurador para el error."
 
 #: en/help_topics/configuration.txt:49
 msgid ""
 "* 0 = Standard behavior\n"
 "* 1 = Launch debugger"
 msgstr ""
+"* 0 = Comportamiento estándar\n"
+"* 1 = Lanzar depurador"
 
 #: en/help_topics/configuration.txt:52
 msgid ""
@@ -8819,7 +8917,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:85
 msgid "* the bzrlib directory (containing the ``core`` plugins),"
-msgstr ""
+msgstr "* el directorio bzrlib (contiene los complementos «core»),"
 
 #: en/help_topics/configuration.txt:87
 msgid ""
@@ -8859,6 +8957,8 @@ msgid ""
 "* ``-user``, ``-core``, ``-site`` will remove the corresponding\n"
 "  path from the default values,"
 msgstr ""
+"* «-user», «-core», «-site» eliminarán las correspondientes\n"
+"  rutas de los valores predeterminados,"
 
 #: en/help_topics/configuration.txt:108
 msgid ""
@@ -8883,10 +8983,11 @@ msgstr ""
 #: en/help_topics/configuration.txt:119
 msgid "Overriding the default user plugin directory::"
 msgstr ""
+"Sobrescribiendo el directorio de complemento de usuario predeterminado::"
 
 #: en/help_topics/configuration.txt:121
 msgid "  BZR_PLUGIN_PATH='/path/to/my/other/plugins'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='/ruta/a/mis/otros/complementos'"
 
 #: en/help_topics/configuration.txt:123
 msgid "Disabling the site directory while retaining the user directory::"
@@ -8902,15 +9003,15 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:129
 msgid "  BZR_PLUGIN_PATH='-user:-core:-site'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='-user:-core:-site'"
 
 #: en/help_topics/configuration.txt:131
 msgid "Overriding the default site plugin directory::"
-msgstr ""
+msgstr "Sobrescribe el directorio de complemento de sitio predeterminado::"
 
 #: en/help_topics/configuration.txt:133
 msgid "  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='/ruta/a/mi/sitiode/complementos:-sitio':+usuario"
 
 #: en/help_topics/configuration.txt:135
 msgid ""
@@ -8937,17 +9038,19 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:147
 msgid "Disabling ``myplugin`` and ``yourplugin`` is achieved by::"
-msgstr ""
+msgstr "Desactivar «myplugin» y «yourplugin» se consigue::"
 
 #: en/help_topics/configuration.txt:149
 msgid "  BZR_DISABLE_PLUGINS='myplugin:yourplugin'"
-msgstr ""
+msgstr "  BZR_DISABLE_PLUGINS='myplugin:yourplugin'"
 
 #: en/help_topics/configuration.txt:151
 msgid ""
 "BZR_PLUGINS_AT\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_PLUGINS_AT\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:154
 msgid ""
@@ -9021,6 +9124,8 @@ msgid ""
 "  http_proxy=http://proxy.example.com:3128/ \n"
 "  https_proxy=http://proxy.example.com:3128/"
 msgstr ""
+"  http_proxy=http://proxy.ejemplo.com:3128/ \n"
+"  https_proxy=http://proxy.ejemplo.com:3128/"
 
 #: en/help_topics/configuration.txt:192
 msgid ""
@@ -9051,23 +9156,28 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:204
 msgid "There are three primary configuration files in this location:"
-msgstr ""
+msgstr "Hay tres archivos de configuración primarios en esta ubicación:"
 
 #: en/help_topics/configuration.txt:206
 msgid "* ``bazaar.conf`` describes default configuration options,"
 msgstr ""
+"* «bazaar.conf» describe las opciones de configuración predeterminadas,"
 
 #: en/help_topics/configuration.txt:208
 msgid ""
 "* ``locations.conf`` describes configuration information for\n"
 "  specific branch locations,"
 msgstr ""
+"* «locations.conf» describe información de configuración para\n"
+"  ubicaciones de rama específicas,"
 
 #: en/help_topics/configuration.txt:211
 msgid ""
 "* ``authentication.conf`` describes credential information for\n"
 "  remote servers."
 msgstr ""
+"* «authentication.conf» describe información de credencial para\n"
+"  servidores remotos."
 
 #: en/help_topics/configuration.txt:214
 msgid ""
@@ -9149,6 +9259,8 @@ msgid ""
 "    [http://mybranches.isp.com/~jdoe/branchdir]\n"
 "    [/home/jdoe/branches/]"
 msgstr ""
+"    [http://misramas.isp.com/~jdado/dirrama]\n"
+"    [/home/jdado/ramas/]"
 
 #: en/help_topics/configuration.txt:253
 msgid ""
@@ -9171,6 +9283,8 @@ msgid ""
 "    email            = John Doe <jdoe@isp.com>\n"
 "    gpg_signing_key  = Amy Pond <amy@example.com>"
 msgstr ""
+"    email            = Juan Dado <jdado@isp.com>\n"
+"    gpg_signing_key  = Ana Pons <ana@ejemplo.com>"
 
 #: en/help_topics/configuration.txt:263
 msgid ""
@@ -9192,6 +9306,9 @@ msgid ""
 "Variable policies\n"
 "^^^^^^^^^^^^^^^^^"
 msgstr ""
+"\n"
+"Políticas de variable\n"
+"^^^^^^^^^^^^^^^^"
 
 #: en/help_topics/configuration.txt:274
 msgid ""
@@ -9227,6 +9344,9 @@ msgid ""
 "  push_location = sftp://example.com/location\n"
 "  push_location:policy = appendpath"
 msgstr ""
+"  [/top/ubicacón]\n"
+"  push_location = sftp://ejemplo.com/ubicaciñon\n"
+"  push_location:policy = appendpath"
 
 #: en/help_topics/configuration.txt:297
 msgid ""
@@ -9240,6 +9360,9 @@ msgid ""
 "The main configuration file, bazaar.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"El archivo de configuración principal, bazaar.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:304
 msgid ""
@@ -9260,6 +9383,10 @@ msgid ""
 "    editor            = /usr/bin/vim\n"
 "    create_signatures = when-required"
 msgstr ""
+"    [DEFAULT]\n"
+"    email             = Juan Dado <jdado@isp.com>\n"
+"    editor            = /usr/bin/vim\n"
+"    create_signatures = when-required"
 
 #: en/help_topics/configuration.txt:316
 msgid ""
@@ -9267,6 +9394,9 @@ msgid ""
 "The branch location configuration file, locations.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"El archivo de ubicación de la rama, locations.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:320
 msgid ""
@@ -9283,18 +9413,24 @@ msgid ""
 "    [/home/jdoe/branches/nethack]\n"
 "    email = Nethack Admin <nethack@nethack.com>"
 msgstr ""
+"    [/home/jdado/ramas/nethack]\n"
+"    email = Nethack Admin <nethack@nethack.com>"
 
 #: en/help_topics/configuration.txt:329
 msgid ""
 "    [http://hypothetical.site.com/branches/devel-branch]\n"
 "    create_signatures = always"
 msgstr ""
+"    [http://hypothetical.site.com/branches/devel-branch]\n"
+"    create_signatures = always"
 
 #: en/help_topics/configuration.txt:332
 msgid ""
 "The authentication configuration file, authentication.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"El archivo de configuración de la autenticación, authentication.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:335
 msgid ""
@@ -9323,12 +9459,17 @@ msgid ""
 "Common variable options\n"
 "-----------------------"
 msgstr ""
+"\n"
+"Opciones de variables comunes\n"
+"--------------------------------------------------"
 
 #: en/help_topics/configuration.txt:349
 msgid ""
 "debug_flags\n"
 "~~~~~~~~~~~"
 msgstr ""
+"debug_flags\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:352
 msgid ""
@@ -9339,11 +9480,11 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:356
 msgid "    debug_flags = hpss"
-msgstr ""
+msgstr "    debug_flags = hpss"
 
 #: en/help_topics/configuration.txt:360
 msgid "    debug_flags = hpss,evil"
-msgstr ""
+msgstr "    debug_flags = hpss,evil"
 
 #: en/help_topics/configuration.txt:362
 msgid ""
@@ -9368,6 +9509,8 @@ msgid ""
 "editor\n"
 "~~~~~~"
 msgstr ""
+"editor\n"
+"~~~~~~"
 
 #: en/help_topics/configuration.txt:373
 msgid ""
@@ -9382,6 +9525,8 @@ msgid ""
 "log_format\n"
 "~~~~~~~~~~"
 msgstr ""
+"log_format\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:381
 msgid ""
@@ -9395,6 +9540,8 @@ msgid ""
 "check_signatures\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"check_signatures\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:388
 msgid ""
@@ -9427,6 +9574,8 @@ msgid ""
 "create_signatures\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"create_signatures\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:405
 msgid ""
@@ -9448,12 +9597,16 @@ msgid ""
 "when-required\n"
 "    Reserved for future use."
 msgstr ""
+"when-required\n"
+"    Reservada para uso futuro."
 
 #: en/help_topics/configuration.txt:415
 msgid ""
 "never\n"
 "    Reserved for future use."
 msgstr ""
+"never\n"
+"    Reservada para uso futuro."
 
 #: en/help_topics/configuration.txt:418
 msgid ""
@@ -9468,6 +9621,8 @@ msgid ""
 "dirstate.fdatasync\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"dirstate.fdatasync\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:425
 msgid ""
@@ -9481,6 +9636,8 @@ msgid ""
 "gpg_signing_key\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"gpg_signing_key\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:432
 msgid ""
@@ -9494,6 +9651,8 @@ msgid ""
 "recurse\n"
 "~~~~~~~"
 msgstr ""
+"recurse\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:439
 msgid ""
@@ -9519,6 +9678,8 @@ msgid ""
 "gpg_signing_command\n"
 "~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"gpg_signing_command\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:452
 msgid ""
@@ -9529,19 +9690,23 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:455
 msgid "    gpg_signing_command = /usr/bin/gnpg"
-msgstr ""
+msgstr "    gpg_signing_command = /usr/bin/gnpg"
 
 #: en/help_topics/configuration.txt:457
 msgid ""
 "The specified command must accept the options \"--clearsign\" and \"-u "
 "<email>\"."
 msgstr ""
+"La orden especificada puede aceptar las opciones «--clearsign» y «-u "
+"<correo>»."
 
 #: en/help_topics/configuration.txt:459
 msgid ""
 "bzr_remote_path\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr_remote_path\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:462
 msgid ""
@@ -9566,6 +9731,8 @@ msgid ""
 "smtp_server\n"
 "~~~~~~~~~~~"
 msgstr ""
+"smtp_server\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:474
 msgid ""
@@ -9578,6 +9745,8 @@ msgid ""
 "smtp_username, smtp_password\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"smtp_username, smtp_password\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:480
 msgid ""
@@ -9592,6 +9761,8 @@ msgid ""
 "locks.steal_dead\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"locks.steal_dead\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:488
 msgid ""
@@ -9606,6 +9777,8 @@ msgid ""
 "mail_client\n"
 "~~~~~~~~~~~"
 msgstr ""
+"mail_client\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:496
 msgid ""
@@ -9618,7 +9791,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:501
 msgid "Supported values for specific clients:"
-msgstr ""
+msgstr "Valores permitidos para clientes específicos:"
 
 #: en/help_topics/configuration.txt:503
 msgid ""
@@ -9633,7 +9806,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:510
 msgid "Supported generic values are:"
-msgstr ""
+msgstr "Los valores genéricos permitidos son:"
 
 #: en/help_topics/configuration.txt:512
 msgid ""
@@ -9665,6 +9838,8 @@ msgid ""
 "submit_branch\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"submit_branch\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:529
 msgid ""
@@ -9680,6 +9855,8 @@ msgid ""
 "public_branch\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"public_branch\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:536
 msgid ""
@@ -9693,6 +9870,8 @@ msgid ""
 "suppress_warnings\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"suppress_warnings\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:542
 msgid ""
@@ -9702,7 +9881,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:545
 msgid "Valid values:"
-msgstr ""
+msgstr "valores válidos:"
 
 #: en/help_topics/configuration.txt:547
 msgid ""
@@ -9717,6 +9896,8 @@ msgid ""
 "default_format\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"default_format\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:554
 msgid ""
@@ -9740,6 +9921,8 @@ msgid ""
 "output_encoding\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"output_encoding\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:564
 msgid ""
@@ -9754,6 +9937,9 @@ msgid ""
 "Branch type specific options\n"
 "----------------------------"
 msgstr ""
+"\n"
+"Opciones específicas del tipo de rama\n"
+"-----------------------------------------------------------"
 
 #: en/help_topics/configuration.txt:572
 msgid ""
@@ -9768,6 +9954,8 @@ msgid ""
 "append_revisions_only\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"append_revisions_only\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:580
 msgid ""
@@ -9784,6 +9972,8 @@ msgid ""
 "parent_location\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"parent_location\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:590
 msgid ""
@@ -9798,6 +9988,8 @@ msgid ""
 "push_location\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"push_location\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:597
 msgid ""
@@ -9810,6 +10002,8 @@ msgid ""
 "push_strict\n"
 "~~~~~~~~~~~"
 msgstr ""
+"push_strict\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:603
 msgid ""
@@ -9822,6 +10016,8 @@ msgid ""
 "dpush_strict\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"dpush_strict\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:609
 msgid ""
@@ -9835,6 +10031,8 @@ msgid ""
 "bound_location\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"bound_location\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:616
 msgid ""
@@ -9847,6 +10045,8 @@ msgid ""
 "bound\n"
 "~~~~~"
 msgstr ""
+"bound\n"
+"~~~~~"
 
 #: en/help_topics/configuration.txt:622
 msgid ""
@@ -9860,6 +10060,8 @@ msgid ""
 "send_strict\n"
 "~~~~~~~~~~~"
 msgstr ""
+"send_strict\n"
+"~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:628
 msgid ""
@@ -9872,6 +10074,8 @@ msgid ""
 "add.maximum_file_size\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"add.maximum_file_size\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:634
 msgid ""
@@ -9890,12 +10094,16 @@ msgid ""
 "External Merge Tools\n"
 "--------------------"
 msgstr ""
+"Herramientas de combinación externas\n"
+"-------------------------------------------------------------"
 
 #: en/help_topics/configuration.txt:643
 msgid ""
 "bzr.mergetool.<name>\n"
 "~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr.mergetool.<nombre>\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:646
 msgid ""
@@ -9925,13 +10133,15 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:662
 msgid "  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}"
-msgstr ""
+msgstr "  bzr.mergetool.kdiff3 = kdiff3 {base} {este} {otro} -o {resultado}"
 
 #: en/help_topics/configuration.txt:664
 msgid ""
 "bzr.default_mergetool\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr.default_mergetool\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:667
 msgid ""
@@ -9942,7 +10152,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:672
 msgid "  bzr.default_mergetool = kdiff3\n"
-msgstr ""
+msgstr "  bzr.default_mergetool = kdiff3\n"
 
 #: en/help_topics/conflict-types.txt:1
 msgid ""
@@ -10059,17 +10269,19 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:56
 msgid "   ``bzr resolve FILE``"
-msgstr ""
+msgstr "   «bzr resolve ARCHIVO»"
 
 #: en/help_topics/conflict-types.txt:58
 msgid "See ``bzr help resolve`` for more details."
-msgstr ""
+msgstr "Vea «bzr help resolve» para tener más detalles."
 
 #: en/help_topics/conflict-types.txt:60
 msgid ""
 "Text conflicts\n"
 "--------------"
 msgstr ""
+"Conflictos de texto\n"
+"------------------------------"
 
 #: en/help_topics/conflict-types.txt:63
 msgid "Typical message::"
@@ -10077,7 +10289,7 @@ msgstr "Mensaje típico::"
 
 #: en/help_topics/conflict-types.txt:65
 msgid "  Text conflict in FILE"
-msgstr ""
+msgstr "  Conflictos de texto en ARCHIVO"
 
 #: en/help_topics/conflict-types.txt:67
 msgid ""
@@ -10117,10 +10329,15 @@ msgid ""
 "  The project leader released Bazaar.\n"
 "  >>>>>>> MERGE-SOURCE"
 msgstr ""
+"  <<<<<<< TREE\n"
+"  Martin Pool released it.\n"
+"  =======\n"
+"  The project leader released Bazaar.\n"
+"  >>>>>>> MERGE-SOURCE"
 
 #: en/help_topics/conflict-types.txt:88
 msgid "The correct resolution would be \"Martin Pool released Bazaar.\""
-msgstr ""
+msgstr "La resolución correcta debería ser «Martin Pool released Bazaar.»"
 
 #: en/help_topics/conflict-types.txt:90
 msgid ""
@@ -10176,10 +10393,12 @@ msgid ""
 "Content conflicts\n"
 "-----------------"
 msgstr ""
+"Conflictos de contenido\n"
+"-------------------------------------"
 
 #: en/help_topics/conflict-types.txt:122
 msgid "  Contents conflict in FILE"
-msgstr ""
+msgstr "  Conflictos de contenido en ARCHIVO"
 
 #: en/help_topics/conflict-types.txt:124
 msgid ""
@@ -10212,7 +10431,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:137
 msgid "``bzr resolve`` recognizes the following actions:"
-msgstr ""
+msgstr "«bzr resolve» reconoce las siguientes acciones:"
 
 #: en/help_topics/conflict-types.txt:139
 msgid ""
@@ -10232,12 +10451,16 @@ msgstr ""
 msgid ""
 "Bazaar cannot auto-detect when conflicts of this kind have been resolved."
 msgstr ""
+"Bazaar no puede detectar automáticamente cuando se han resuelto conflictos "
+"de esta clase."
 
 #: en/help_topics/conflict-types.txt:148
 msgid ""
 "Tag conflicts\n"
 "-------------"
 msgstr ""
+"Conflicto de etiquetas\n"
+"-----------------------------------"
 
 #: en/help_topics/conflict-types.txt:153
 msgid ""
@@ -10277,6 +10500,8 @@ msgid ""
 "Duplicate paths\n"
 "---------------"
 msgstr ""
+"Rutas duplicadas\n"
+"--------------------------"
 
 #: en/help_topics/conflict-types.txt:177
 msgid "  Conflict adding file FILE.  Moved existing file to FILE.moved."
@@ -10306,6 +10531,8 @@ msgid ""
 "Unversioned parent\n"
 "------------------"
 msgstr ""
+"Padre sin versión\n"
+"--------------------------"
 
 #: en/help_topics/conflict-types.txt:200
 msgid ""
@@ -10332,6 +10559,8 @@ msgid ""
 "Missing parent\n"
 "--------------"
 msgstr ""
+"Falta el padre\n"
+"---------------------"
 
 #: en/help_topics/conflict-types.txt:215
 msgid "  Conflict adding files to FILE.  Created directory."
@@ -10368,6 +10597,8 @@ msgid ""
 "Deleting parent\n"
 "---------------"
 msgstr ""
+"Eliminando padre\n"
+"---------------------------"
 
 #: en/help_topics/conflict-types.txt:241
 msgid "  Conflict: can't delete DIR because it is not empty.  Not deleting."
@@ -10413,7 +10644,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:268
 msgid "There are two possible values for this option:"
-msgstr ""
+msgstr "Hay dos posibles valores para esta opción:"
 
 #: en/help_topics/conflict-types.txt:270
 msgid ""
@@ -10433,6 +10664,8 @@ msgid ""
 "Path conflict\n"
 "-------------"
 msgstr ""
+"Conflicto de ruta\n"
+"--------------------------"
 
 #: en/help_topics/conflict-types.txt:283
 msgid "  Path conflict: PATH1 / PATH2"
@@ -10542,6 +10775,16 @@ msgid ""
 "  $ bzr commit ../other -m \"OTHER\"\n"
 "  $ bzr merge ../other"
 msgstr ""
+"  $ bzr init\n"
+"  $ bzr mkdir foo\n"
+"  $ bzr commit -m \"BASE\"\n"
+"  $ bzr branch . ../other\n"
+"  $ rmdir foo\n"
+"  $ touch foo\n"
+"  $ bzr commit -m \"THIS\"\n"
+"  $ bzr mkdir ../other/foo/bar\n"
+"  $ bzr commit ../other -m \"OTHER\"\n"
+"  $ bzr merge ../other"
 
 #: en/help_topics/conflict-types.txt:358
 msgid ""
@@ -10600,7 +10843,7 @@ msgstr ""
 
 #: en/help_topics/content-filters.txt:16
 msgid "To generalize, there are two content formats supported by Bazaar:"
-msgstr ""
+msgstr "Generalizando, hay dos formatos de contenido permitidos por Bazaar:"
 
 #: en/help_topics/content-filters.txt:18
 msgid ""
@@ -10614,6 +10857,9 @@ msgid ""
 "Format conversion\n"
 "-----------------"
 msgstr ""
+"\n"
+"Conversión de formato\n"
+"------------------------------------"
 
 #: en/help_topics/content-filters.txt:25
 msgid ""
@@ -10643,6 +10889,9 @@ msgid ""
 "Enabling content filters\n"
 "------------------------"
 msgstr ""
+"\n"
+"Activar filtros de contenido\n"
+"--------------------------------------------"
 
 #: en/help_topics/content-filters.txt:42
 msgid ""
@@ -10662,6 +10911,9 @@ msgid ""
 "Impact on commands\n"
 "------------------"
 msgstr ""
+"\n"
+"Impacto en las órdenes\n"
+"------------------------------------"
 
 #: en/help_topics/content-filters.txt:55
 msgid ""
@@ -10694,6 +10946,9 @@ msgid ""
 "Refreshing your working tree\n"
 "----------------------------"
 msgstr ""
+"\n"
+"Actualizar su árbol de trabajo\n"
+"----------------------------------------------"
 
 #: en/help_topics/content-filters.txt:75
 msgid ""
@@ -10707,7 +10962,7 @@ msgstr ""
 
 #: en/help_topics/content-filters.txt:82
 msgid "Here are some general guidelines for doing this:"
-msgstr ""
+msgstr "Aquí hay algunas directrices para hacer esto:"
 
 #: en/help_topics/content-filters.txt:84
 msgid ""
@@ -10731,7 +10986,7 @@ msgstr ""
 
 #: en/help_topics/current-formats.txt:1
 msgid "Current Storage Formats"
-msgstr ""
+msgstr "Formatos de almacenamiento actual"
 
 #: en/help_topics/current-formats.txt:3
 msgid ""
@@ -10773,6 +11028,8 @@ msgid ""
 "Debug Flags\n"
 "==========="
 msgstr ""
+"Marcas de depuración\n"
+"================="
 
 #: en/help_topics/debug-flags.txt:4
 msgid ""
@@ -10833,6 +11090,8 @@ msgid ""
 "Diverged Branches\n"
 "================="
 msgstr ""
+"Ramas con divergencia\n"
+"=================="
 
 #: en/help_topics/diverged-branches.txt:4
 msgid ""
@@ -10909,6 +11168,8 @@ msgid ""
 "End of Line Conversion\n"
 "======================"
 msgstr ""
+"Conversión de fin de línea\n"
+"====================="
 
 #: en/help_topics/eol.txt:4
 msgid ""
@@ -11153,6 +11414,9 @@ msgid ""
 "Hooks\n"
 "====="
 msgstr ""
+"\n"
+"Ganchos\n"
+"======="
 
 #: en/help_topics/hooks.txt:5
 msgid ""
@@ -11216,16 +11480,21 @@ msgid ""
 "BranchHooks\n"
 "-----------"
 msgstr ""
+"\n"
+"BranchHooks\n"
+"-----------"
 
 #: en/help_topics/hooks.txt:35
 msgid ""
 "automatic_tag_name\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"automatic_tag_name\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:38
 msgid "Introduced in: 2.2"
-msgstr ""
+msgstr "Introducido en: 2.2"
 
 #: en/help_topics/hooks.txt:40
 msgid ""
@@ -11240,10 +11509,12 @@ msgid ""
 "open\n"
 "~~~~"
 msgstr ""
+"open\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:48
 msgid "Introduced in: 1.8"
-msgstr ""
+msgstr "Introducido en: 1.8"
 
 #: en/help_topics/hooks.txt:50
 msgid ""
@@ -11256,6 +11527,8 @@ msgid ""
 "post_branch_init\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"post_branch_init\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:58
 msgid ""
@@ -11270,10 +11543,12 @@ msgid ""
 "post_change_branch_tip\n"
 "~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"post_change_branch_tip\n"
+"~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:66
 msgid "Introduced in: 1.4"
-msgstr ""
+msgstr "Introducido en: 1.4"
 
 #: en/help_topics/hooks.txt:68
 msgid ""
@@ -11288,10 +11563,12 @@ msgid ""
 "post_commit\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_commit\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:76
 msgid "Introduced in: 0.15"
-msgstr ""
+msgstr "Introducido en: 0.15"
 
 #: en/help_topics/hooks.txt:78
 msgid ""
@@ -11306,6 +11583,8 @@ msgid ""
 "post_pull\n"
 "~~~~~~~~~"
 msgstr ""
+"post_pull\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:88
 msgid ""
@@ -11318,6 +11597,8 @@ msgid ""
 "post_push\n"
 "~~~~~~~~~"
 msgstr ""
+"post_push\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:96
 msgid ""
@@ -11330,6 +11611,8 @@ msgid ""
 "post_switch\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_switch\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:104
 msgid ""
@@ -11342,6 +11625,8 @@ msgid ""
 "post_uncommit\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"post_uncommit\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:112
 msgid ""
@@ -11357,10 +11642,12 @@ msgid ""
 "pre_change_branch_tip\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"pre_change_branch_tip\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:121
 msgid "Introduced in: 1.6"
-msgstr ""
+msgstr "Introducido en: 1.6"
 
 #: en/help_topics/hooks.txt:123
 msgid ""
@@ -11375,10 +11662,12 @@ msgid ""
 "pre_commit\n"
 "~~~~~~~~~~"
 msgstr ""
+"pre_commit\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:131
 msgid "Introduced in: 0.91"
-msgstr ""
+msgstr "Introducido en: 0.91"
 
 #: en/help_topics/hooks.txt:133
 msgid ""
@@ -11414,6 +11703,8 @@ msgid ""
 "transform_fallback_location\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"transform_fallback_location\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:156
 msgid "Introduced in: 1.9"
@@ -11446,6 +11737,8 @@ msgid ""
 "post_repo_init\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"post_repo_init\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:177
 msgid ""
@@ -11458,10 +11751,12 @@ msgid ""
 "pre_open\n"
 "~~~~~~~~"
 msgstr ""
+"pre_open\n"
+"~~~~~~~~"
 
 #: en/help_topics/hooks.txt:183
 msgid "Introduced in: 1.14"
-msgstr ""
+msgstr "Introducido en: 1.14"
 
 #: en/help_topics/hooks.txt:185
 msgid ""
@@ -11474,16 +11769,20 @@ msgid ""
 "CommandHooks\n"
 "------------"
 msgstr ""
+"CommandHooks\n"
+"------------"
 
 #: en/help_topics/hooks.txt:191
 msgid ""
 "extend_command\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"extend_command\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:194
 msgid "Introduced in: 1.13"
-msgstr ""
+msgstr "Introducido en: 1.13"
 
 #: en/help_topics/hooks.txt:196
 msgid ""
@@ -11497,10 +11796,12 @@ msgid ""
 "get_command\n"
 "~~~~~~~~~~~"
 msgstr ""
+"get_command\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:203
 msgid "Introduced in: 1.17"
-msgstr ""
+msgstr "Introducido en: 1.17"
 
 #: en/help_topics/hooks.txt:205
 msgid ""
@@ -11517,6 +11818,8 @@ msgid ""
 "get_missing_command\n"
 "~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"get_missing_command\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:217
 msgid ""
@@ -11530,6 +11833,8 @@ msgid ""
 "list_commands\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"list_commands\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:226
 msgid ""
@@ -11544,16 +11849,20 @@ msgid ""
 "_ConfigHooks\n"
 "------------"
 msgstr ""
+"_ConfigHooks\n"
+"------------"
 
 #: en/help_topics/hooks.txt:234
 msgid ""
 "get\n"
 "~~~"
 msgstr ""
+"get\n"
+"~~~"
 
 #: en/help_topics/hooks.txt:237
 msgid "Introduced in: 2.4"
-msgstr ""
+msgstr "Introducido en: 2.4"
 
 #: en/help_topics/hooks.txt:239
 msgid ""
@@ -11566,6 +11875,8 @@ msgid ""
 "load\n"
 "~~~~"
 msgstr ""
+"load\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:247
 msgid "Invoked when a config store is loaded. The signature is (store)."
@@ -11576,6 +11887,8 @@ msgid ""
 "remove\n"
 "~~~~~~"
 msgstr ""
+"remove\n"
+"~~~~~~"
 
 #: en/help_topics/hooks.txt:254
 msgid ""
@@ -11588,6 +11901,8 @@ msgid ""
 "save\n"
 "~~~~"
 msgstr ""
+"save\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:262
 msgid "Invoked when a config store is saved. The signature is (store)."
@@ -11598,6 +11913,8 @@ msgid ""
 "set\n"
 "~~~"
 msgstr ""
+"set\n"
+"~~~"
 
 #: en/help_topics/hooks.txt:269
 msgid ""
@@ -11610,16 +11927,20 @@ msgid ""
 "InfoHooks\n"
 "---------"
 msgstr ""
+"InfoHooks\n"
+"---------"
 
 #: en/help_topics/hooks.txt:275
 msgid ""
 "repository\n"
 "~~~~~~~~~~"
 msgstr ""
+"repository\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:278
 msgid "Introduced in: 1.15"
-msgstr ""
+msgstr "Introducido en: 1.15"
 
 #: en/help_topics/hooks.txt:280
 msgid ""
@@ -11633,12 +11954,16 @@ msgid ""
 "LockHooks\n"
 "---------"
 msgstr ""
+"LockHooks\n"
+"---------"
 
 #: en/help_topics/hooks.txt:287
 msgid ""
 "lock_acquired\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"lock_acquired\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:292
 msgid ""
@@ -11650,6 +11975,8 @@ msgid ""
 "lock_broken\n"
 "~~~~~~~~~~~"
 msgstr ""
+"lock_broken\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:299
 msgid "Called with a bzrlib.lock.LockResult when a physical lock is broken."
@@ -11660,6 +11987,8 @@ msgid ""
 "lock_released\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"lock_released\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:306
 msgid ""
@@ -11671,16 +12000,20 @@ msgid ""
 "MergeHooks\n"
 "----------"
 msgstr ""
+"MergeHooks\n"
+"----------"
 
 #: en/help_topics/hooks.txt:311
 msgid ""
 "merge_file_content\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"merge_file_content\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:314
 msgid "Introduced in: 2.1"
-msgstr ""
+msgstr "Introducido en: 2.1"
 
 #: en/help_topics/hooks.txt:316
 msgid ""
@@ -11697,16 +12030,20 @@ msgid ""
 "MergeDirectiveHooks\n"
 "-------------------"
 msgstr ""
+"MergeDirectiveHooks\n"
+"-------------------"
 
 #: en/help_topics/hooks.txt:326
 msgid ""
 "merge_request_body\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"merge_request_body\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:329
 msgid "Introduced in: 1.15.0"
-msgstr ""
+msgstr "Introducido en: 1.15.0"
 
 #: en/help_topics/hooks.txt:331
 msgid ""
@@ -11720,16 +12057,20 @@ msgid ""
 "MessageEditorHooks\n"
 "------------------"
 msgstr ""
+"MessageEditorHooks\n"
+"------------------"
 
 #: en/help_topics/hooks.txt:338
 msgid ""
 "commit_message_template\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"commit_message_template\n"
+"~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:341
 msgid "Introduced in: 1.10"
-msgstr ""
+msgstr "Introducido en: 1.10"
 
 #: en/help_topics/hooks.txt:343
 msgid ""
@@ -11747,6 +12088,8 @@ msgid ""
 "set_commit_message\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"set_commit_message\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:356
 msgid ""
@@ -11762,10 +12105,12 @@ msgid ""
 "MutableTreeHooks\n"
 "----------------"
 msgstr ""
+"MutableTreeHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:368
 msgid "Introduced in: 2.0"
-msgstr ""
+msgstr "Introducido en: 2.0"
 
 #: en/help_topics/hooks.txt:370
 msgid ""
@@ -11780,6 +12125,8 @@ msgid ""
 "start_commit\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"start_commit\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:380
 msgid ""
@@ -11794,12 +12141,16 @@ msgid ""
 "SmartClientHooks\n"
 "----------------"
 msgstr ""
+"SmartClientHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:388
 msgid ""
 "call\n"
 "~~~~"
 msgstr ""
+"call\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:391
 msgid "Introduced in: unknown"
@@ -11817,12 +12168,16 @@ msgid ""
 "SmartServerHooks\n"
 "----------------"
 msgstr ""
+"SmartServerHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:400
 msgid ""
 "server_exception\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"server_exception\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:405
 msgid ""
@@ -11837,6 +12192,8 @@ msgid ""
 "server_started\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"server_started\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:413
 msgid "Introduced in: 0.16"
@@ -11856,6 +12213,8 @@ msgid ""
 "server_started_ex\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"server_started_ex\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:426
 msgid ""
@@ -11868,6 +12227,8 @@ msgid ""
 "server_stopped\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"server_stopped\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:434
 msgid ""
@@ -11881,12 +12242,16 @@ msgid ""
 "StatusHooks\n"
 "-----------"
 msgstr ""
+"StatusHooks\n"
+"-----------"
 
 #: en/help_topics/hooks.txt:441
 msgid ""
 "post_status\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_status\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:444
 msgid "Introduced in: 2.3"
@@ -11906,6 +12271,8 @@ msgid ""
 "pre_status\n"
 "~~~~~~~~~~"
 msgstr ""
+"pre_status\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:457
 msgid ""
@@ -11921,12 +12288,16 @@ msgid ""
 "RioVersionInfoBuilderHooks\n"
 "--------------------------"
 msgstr ""
+"RioVersionInfoBuilderHooks\n"
+"--------------------------"
 
 #: en/help_topics/hooks.txt:466
 msgid ""
 "revision\n"
 "~~~~~~~~"
 msgstr ""
+"revisión\n"
+"~~~~~~~~"
 
 #: en/help_topics/hooks.txt:471
 msgid ""
@@ -11940,6 +12311,8 @@ msgid ""
 "Location aliases\n"
 "================"
 msgstr ""
+"Alias de ubicación\n"
+"=============="
 
 #: en/help_topics/location-alias.txt:4
 msgid ""
@@ -11950,7 +12323,7 @@ msgstr ""
 
 #: en/help_topics/location-alias.txt:7
 msgid "The aliases are::"
-msgstr ""
+msgstr "Los alias son::"
 
 #: en/help_topics/location-alias.txt:9
 msgid ""
@@ -11964,17 +12337,19 @@ msgstr ""
 
 #: en/help_topics/location-alias.txt:16
 msgid "For example, to push to the parent location::"
-msgstr ""
+msgstr "Por ejemplo para impulsar la ubicación padre::"
 
 #: en/help_topics/location-alias.txt:18
 msgid "    bzr push :parent"
-msgstr ""
+msgstr "    bzr push :parent"
 
 #: en/help_topics/log-formats.txt:1
 msgid ""
 "Log Formats\n"
 "==========="
 msgstr ""
+"Formatos de registro\n"
+"================"
 
 #: en/help_topics/log-formats.txt:4
 msgid ""
@@ -12028,17 +12403,19 @@ msgstr ""
 
 #: en/help_topics/other-formats.txt:1
 msgid "Other Storage Formats"
-msgstr ""
+msgstr "Otros formatos de almacenamiento"
 
 #: en/help_topics/other-formats.txt:3
 msgid "No experimental formats are available."
-msgstr ""
+msgstr "No hay formatos experimentales disponibles."
 
 #: en/help_topics/other-formats.txt:5
 msgid ""
 "\n"
 "No deprecated formats are available."
 msgstr ""
+"\n"
+"No hay formatos obsoletos disponibles."
 
 #: en/help_topics/patterns.txt:1
 msgid ""
@@ -12067,7 +12444,7 @@ msgstr ""
 
 #: en/help_topics/patterns.txt:15
 msgid "Patterns may include globbing wildcards such as::"
-msgstr ""
+msgstr "Los patrones pueden incluir comodines globales tales como::"
 
 #: en/help_topics/patterns.txt:17
 msgid ""
@@ -12113,7 +12490,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:1
 msgid "Revision Identifiers"
-msgstr ""
+msgstr "Identificadores de revisión"
 
 #: en/help_topics/revisionspec.txt:3
 msgid ""
@@ -12164,6 +12541,8 @@ msgstr ""
 #: en/help_topics/revisionspec.txt:28
 msgid "The keywords used as revision selection methods are the following:"
 msgstr ""
+"Las palabras claves usadas como métodos de selección de revisión son las "
+"siguientes:"
 
 #: en/help_topics/revisionspec.txt:30
 msgid ""
@@ -12195,15 +12574,17 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:55
 msgid "In addition, plugins can provide other keywords."
-msgstr ""
+msgstr "Además, los complementos pueden proporcionar otras palabras clave."
 
 #: en/help_topics/revisionspec.txt:57
 msgid "A detailed description of each keyword is given below."
 msgstr ""
+"A continuación se proporciona una detallada descripción de cada palabra "
+"clave."
 
 #: en/help_topics/revisionspec.txt:59
 msgid ":revid:"
-msgstr ""
+msgstr ":revid:"
 
 #: en/help_topics/revisionspec.txt:61
 msgid ""
@@ -12217,10 +12598,12 @@ msgstr ""
 msgid ""
 "      revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'"
 msgstr ""
+"      revid:aaaa@bbbb-123456789 -> Selecciona la revisión «aaaa@bbbb-"
+"123456789»"
 
 #: en/help_topics/revisionspec.txt:68
 msgid ":submit:"
-msgstr ""
+msgstr ":submit:"
 
 #: en/help_topics/revisionspec.txt:70
 msgid ""
@@ -12240,15 +12623,15 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:79
 msgid "    Examples::"
-msgstr ""
+msgstr "    Ejemplos::"
 
 #: en/help_topics/revisionspec.txt:81
 msgid "      $ bzr diff -r submit:"
-msgstr ""
+msgstr "      $ bzr diff -r submit:"
 
 #: en/help_topics/revisionspec.txt:83
 msgid ":ancestor:"
-msgstr ""
+msgstr ":ancestor:"
 
 #: en/help_topics/revisionspec.txt:85
 msgid "    Supply the path to a branch to select the common ancestor."
@@ -12269,7 +12652,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:100
 msgid ":date:"
-msgstr ""
+msgstr ":date:"
 
 #: en/help_topics/revisionspec.txt:102
 msgid ""
@@ -12297,19 +12680,20 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:117
 msgid ":branch:"
-msgstr ""
+msgstr ":branch:"
 
 #: en/help_topics/revisionspec.txt:119
 msgid "    Supply the path to a branch to select its last revision."
 msgstr ""
+"    Suministra la ruta a una rama para seleccionar su última revisión."
 
 #: en/help_topics/revisionspec.txt:123
 msgid "      branch:/path/to/branch"
-msgstr ""
+msgstr "      branch:/ruta/a/rama"
 
 #: en/help_topics/revisionspec.txt:125
 msgid ":tag:"
-msgstr ""
+msgstr ":tag:"
 
 #: en/help_topics/revisionspec.txt:127
 msgid "    Tags are stored in the branch and created by the 'tag' command."
@@ -12317,7 +12701,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:129
 msgid ":package:"
-msgstr ""
+msgstr ":package:"
 
 #: en/help_topics/revisionspec.txt:131
 msgid ""
@@ -12328,7 +12712,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:135
 msgid ":revno:"
-msgstr ""
+msgstr ":revno:"
 
 #: en/help_topics/revisionspec.txt:137
 msgid ""
@@ -12354,7 +12738,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:153
 msgid ":before:"
-msgstr ""
+msgstr ":before:"
 
 #: en/help_topics/revisionspec.txt:155
 msgid ""
@@ -12384,7 +12768,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:171
 msgid ":annotate:"
-msgstr ""
+msgstr ":annotate:"
 
 #: en/help_topics/revisionspec.txt:173
 msgid ""
@@ -12397,7 +12781,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:178
 msgid ":mainline:"
-msgstr ""
+msgstr ":mainline:"
 
 #: en/help_topics/revisionspec.txt:180
 msgid ""
@@ -12406,7 +12790,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:182
 msgid ":last:"
-msgstr ""
+msgstr ":last:"
 
 #: en/help_topics/revisionspec.txt:184
 msgid ""
@@ -12420,6 +12804,8 @@ msgid ""
 "      last:1        -> return the last revision\n"
 "      last:3        -> return the revision 2 before the end.\n"
 msgstr ""
+"      last:1        -> devuelve la última revisión\n"
+"      last:3        -> devuelve la revisión 2 antes del final.\n"
 
 #: en/help_topics/rules.txt:1
 msgid ""
@@ -12447,6 +12833,8 @@ msgid ""
 "    [name *.html *.xml]\n"
 "    keywords = xml_escape"
 msgstr ""
+"    [name *.html *.xml]\n"
+"    keywords = xml_escape"
 
 #: en/help_topics/rules.txt:17
 msgid ""
@@ -12476,6 +12864,8 @@ msgid ""
 "Rule Patterns\n"
 "-------------"
 msgstr ""
+"Patrones de regla\n"
+"----------------------------"
 
 #: en/help_topics/rules.txt:32
 msgid ""
@@ -12487,7 +12877,7 @@ msgstr ""
 
 #: en/help_topics/rules.txt:37
 msgid ".. note::"
-msgstr ""
+msgstr ".. nota::"
 
 #: en/help_topics/rules.txt:39
 msgid ""
@@ -12551,7 +12941,7 @@ msgstr ""
 
 #: en/help_topics/url-special-chars.txt:8
 msgid " * File system paths, relative or absolute"
-msgstr ""
+msgstr " * Rutas de sistemas de archivo, relativas o absolutas"
 
 #: en/help_topics/url-special-chars.txt:10
 msgid ""
@@ -12606,13 +12996,15 @@ msgstr ""
 
 #: en/help_topics/url-special-chars.txt:34
 msgid "These are valid but do not refer to the same file::"
-msgstr ""
+msgstr "Estas son válidas pero no se refieren al mismo archivo::"
 
 #: en/help_topics/url-special-chars.txt:36
 msgid ""
 "  bzr log file:///tmp/%2False (refers to a file called /tmp/\\/alse)\n"
 "  bzr log %252False (refers to a file called /tmp/%252False)"
 msgstr ""
+"  bzr log file:///tmp/%2Falso (se refiere al archivo llamado /tmp/\\/also)\n"
+"  bzr log %252Falso (se refiere al archivo llamado /tmp/%252Falso)"
 
 #: en/help_topics/url-special-chars.txt:39
 msgid ""
@@ -12672,11 +13064,11 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:18
 msgid "Bazaar supports all of the standard parts within the URL::"
-msgstr ""
+msgstr "Bazaar permite todas las partes estándar con el URL::"
 
 #: en/help_topics/urlspec.txt:20
 msgid "  <protocol>://[user[:password]@]host[:port]/[path]"
-msgstr ""
+msgstr "  <protocolo>://[usuario[:contraseña]@]anfitrión[:puerto]/[ruta]"
 
 #: en/help_topics/urlspec.txt:22
 msgid "allowing URLs such as::"
@@ -12708,3 +13100,5 @@ msgid ""
 "Many commands that accept URLs also accept location aliases too.\n"
 "See :doc:`location-alias-help` and :doc:`url-special-chars-help`.\n"
 msgstr ""
+"Muchas órdenes que aceptan URL también aceptan alias de ubicaciones.\n"
+"Vea :doc:`location-alias-help` y :doc:`url-special-chars-help`.\n"
