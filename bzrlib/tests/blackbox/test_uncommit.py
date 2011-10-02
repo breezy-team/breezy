@@ -72,7 +72,7 @@ class TestUncommit(TestCaseWithTransport):
         $ bzr uncommit
         ...
         The above revision(s) will be removed.
-        2>Uncommit these revisions? [y/n]: 
+        2>Uncommit these revisions? ([y]es, [n]o): n
         <n
         Canceled
         """)
