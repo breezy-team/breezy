@@ -111,6 +111,8 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_ui_get_boolean(self):
         stdin = tests.StringIOWrapper("y\n" # True
                                       "n\n" # False
+                                      " \n y \n" # True
+                                      " no \n" # False
                                       "yes with garbage\nY\n" # True
                                       "not an answer\nno\n" # False
                                       "I'm sure!\nyes\n" # True
@@ -125,9 +127,13 @@ class TestTextUIFactory(tests.TestCase):
         self.assertEqual(False, factory.get_boolean(u""))
         self.assertEqual(True, factory.get_boolean(u""))
         self.assertEqual(False, factory.get_boolean(u""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
+        # return false on EOF
+        self.assertEqual(False, factory.get_boolean(u""))
 
     def test_text_ui_get_integer(self):
         stdin = tests.StringIOWrapper(
@@ -170,8 +176,8 @@ class TestTextUIFactory(tests.TestCase):
         output = out.getvalue()
         self.assertContainsRe(output,
             "| foo *\r\r  *\r*")
-        self.assertContainsRe(output,
-            r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
+        self.assertContainsString(output,
+            r"what do you want? ([y]es, [n]o): what do you want? ([y]es, [n]o): ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
 
