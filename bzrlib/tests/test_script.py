@@ -580,12 +580,12 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
         self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
         self.run_script("""
             $ bzr test-confirm
-            2>Really do it? [y/n]: 
-            <yes
+            2>Really do it? ([y]es, [n]o): y
+            <y
             Do it!
             $ bzr test-confirm
-            2>Really do it? [y/n]: 
-            <no
+            2>Really do it? ([y]es, [n]o): n
+            <n
             ok, no
             """)
 
