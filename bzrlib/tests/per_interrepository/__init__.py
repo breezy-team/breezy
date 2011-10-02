@@ -159,6 +159,12 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
         if self.extra_setup:
             self.extra_setup(self)
 
+    def get_default_format(self):
+        self.assertEquals(
+            self.repository_format._matchingbzrdir.repository_format,
+            self.repository_format)
+        return self.repository_format._matchingbzrdir
+
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch()

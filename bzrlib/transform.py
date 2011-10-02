@@ -42,6 +42,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.i18n import gettext
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot,
@@ -1726,7 +1727,7 @@ class TreeTransform(DiskTreeTransform):
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             if precomputed_delta is None:
-                child_pb.update('Apply phase', 0, 2)
+                child_pb.update(gettext('Apply phase'), 0, 2)
                 inventory_delta = self._generate_inventory_delta()
                 offset = 1
             else:
@@ -1737,9 +1738,9 @@ class TreeTransform(DiskTreeTransform):
             else:
                 mover = _mover
             try:
-                child_pb.update('Apply phase', 0 + offset, 2 + offset)
+                child_pb.update(gettext('Apply phase'), 0 + offset, 2 + offset)
                 self._apply_removals(mover)
-                child_pb.update('Apply phase', 1 + offset, 2 + offset)
+                child_pb.update(gettext('Apply phase'), 1 + offset, 2 + offset)
                 modified_paths = self._apply_insertions(mover)
             except:
                 mover.rollback()
@@ -1765,7 +1766,7 @@ class TreeTransform(DiskTreeTransform):
         try:
             for num, trans_id in enumerate(self._removed_id):
                 if (num % 10) == 0:
-                    child_pb.update('removing file', num, total_entries)
+                    child_pb.update(gettext('removing file'), num, total_entries)
                 if trans_id == self._new_root:
                     file_id = self._tree.get_root_id()
                 else:
@@ -1783,7 +1784,7 @@ class TreeTransform(DiskTreeTransform):
             final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
-                    child_pb.update('adding file',
+                    child_pb.update(gettext('adding file'),
                                     num + len(self._removed_id), total_entries)
                 file_id = new_path_file_ids[trans_id]
                 if file_id is None:
@@ -1833,7 +1834,7 @@ class TreeTransform(DiskTreeTransform):
                 # do not attempt to move root into a subdirectory of itself.
                 if path == '':
                     continue
-                child_pb.update('removing file', num, len(tree_paths))
+                child_pb.update(gettext('removing file'), num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
                     delete_path = os.path.join(self._deletiondir, trans_id)
@@ -1868,7 +1869,7 @@ class TreeTransform(DiskTreeTransform):
         try:
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
-                    child_pb.update('adding file', num, len(new_paths))
+                    child_pb.update(gettext('adding file'), num, len(new_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._needs_rename:
                     try:
@@ -2583,7 +2584,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     existing_files.update(f[0] for f in files)
             for num, (tree_path, entry) in \
                 enumerate(tree.inventory.iter_entries_by_dir()):
-                pb.update("Building tree", num - len(deferred_contents), total)
+                pb.update(gettext("Building tree"), num - len(deferred_contents), total)
                 if entry.parent_id is None:
                     continue
                 reparent = False
@@ -2673,7 +2674,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 new_desired_files.append((file_id,
                     (trans_id, tree_path, text_sha1)))
                 continue
-            pb.update('Adding file contents', count + offset, total)
+            pb.update(gettext('Adding file contents'), count + offset, total)
             if hardlink:
                 tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
                                    trans_id)
@@ -2700,7 +2701,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
             contents = filtered_output_bytes(contents, filters,
                 ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id, sha1=text_sha1)
-        pb.update('Adding file contents', count + offset, total)
+        pb.update(gettext('Adding file contents'), count + offset, total)
 
 
 def _reparent_children(tt, old_parent, new_parent):
@@ -3047,7 +3048,7 @@ def resolve_conflicts(tt, pb=None, pass_func=None):
     pb = ui.ui_factory.nested_progress_bar()
     try:
         for n in range(10):
-            pb.update('Resolution pass', n+1, 10)
+            pb.update(gettext('Resolution pass'), n+1, 10)
             conflicts = tt.find_conflicts()
             if len(conflicts) == 0:
                 return new_conflicts

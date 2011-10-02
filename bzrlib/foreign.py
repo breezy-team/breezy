@@ -31,6 +31,7 @@ from bzrlib import (
     registry,
     transform,
     )
+from bzrlib.i18n import gettext
 """)
 
 class VcsMapping(object):
@@ -302,11 +303,12 @@ class cmd_dpush(Command):
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:
-                raise BzrCommandError("No push location known or specified.")
+                raise BzrCommandError(gettext("No push location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                self.outf.write(
+                       gettext("Using saved location: %s\n") % display_url)
                 location = stored_loc
 
         bzrdir = BzrDir.open(location)
@@ -316,9 +318,9 @@ class cmd_dpush(Command):
             try:
                 push_result = source_branch.push(target_branch, lossy=True)
             except errors.LossyPushToSameVCS:
-                raise BzrCommandError("%r and %r are in the same VCS, lossy "
-                    "push not necessary. Please use regular push." %
-                    (source_branch, target_branch))
+                raise BzrCommandError(gettext("{0!r} and {1!r} are in the same VCS, lossy "
+                    "push not necessary. Please use regular push.").format(
+                    source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)

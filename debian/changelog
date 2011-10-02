@@ -1,3 +1,9 @@
+bzr (2.5.0~beta1+bzr6182-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 02 Oct 2011 02:00:12 +0200
+
 bzr (2.5.0~beta1-2) experimental; urgency=low
 
   * Add Build-Conflicts to python-gpgme, to work around test suite

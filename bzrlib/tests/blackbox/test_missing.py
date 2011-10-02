@@ -49,7 +49,7 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_missing(self):
-        missing = "You are missing 1 revision(s):"
+        missing = "You are missing 1 revision:"
 
         # create a source branch
         a_tree = self.make_branch_and_tree('a')
@@ -92,7 +92,7 @@ class TestMissing(TestCaseWithTransport):
 
         # compare again, but now we have the 'merge' commit extra
         lines = self.run_bzr('missing ../b', retcode=1)[0].splitlines()
-        self.assertEqual("You have 1 extra revision(s):", lines[0])
+        self.assertEqual("You have 1 extra revision:", lines[0])
         self.assertEqual(8, len(lines))
         lines2 = self.run_bzr('missing ../b --mine-only', retcode=1)[0]
         lines2 = lines2.splitlines()

@@ -36,18 +36,18 @@ Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
 $ bzr resolve myfile
-2>1 conflict(s) resolved, 2 remaining
+2>1 conflict resolved, 2 remaining
 $ bzr resolve my_other_file
-2>1 conflict(s) resolved, 1 remaining
+2>1 conflict resolved, 1 remaining
 $ bzr resolve mydir2
-2>1 conflict(s) resolved, 0 remaining
+2>1 conflict resolved, 0 remaining
 """)
 
     def test_resolve_all(self):
         self.run_script("""\
 $ cd branch
 $ bzr resolve --all
-2>3 conflict(s) resolved, 0 remaining
+2>3 conflicts resolved, 0 remaining
 $ bzr conflicts
 """)
 
@@ -56,19 +56,19 @@ $ bzr conflicts
 $ mkdir branch/subdir
 $ cd branch/subdir
 $ bzr resolve ../myfile
-2>1 conflict(s) resolved, 2 remaining
+2>1 conflict resolved, 2 remaining
 """)
 
     def test_resolve_via_directory_option(self):
         self.run_script("""\
 $ bzr resolve -d branch myfile
-2>1 conflict(s) resolved, 2 remaining
+2>1 conflict resolved, 2 remaining
 """)
 
     def test_resolve_all_via_directory_option(self):
         self.run_script("""\
 $ bzr resolve -d branch --all
-2>3 conflict(s) resolved, 0 remaining
+2>3 conflicts resolved, 0 remaining
 $ bzr conflicts -d branch
 """)
 
@@ -107,7 +107,7 @@ Now on revision 2.
 $ bzr resolve --take-other
 2>deleted dir/file.THIS
 2>deleted dir
-2>3 conflict(s) resolved, 0 remaining
+2>3 conflicts resolved, 0 remaining
 ''')
 
 
@@ -123,7 +123,7 @@ class TestResolveAuto(tests.TestCaseWithTransport):
         file_conflict = conflicts.TextConflict('file', file_id='file_id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         note = self.run_bzr('resolve', retcode=1, working_dir='tree')[1]
-        self.assertContainsRe(note, '0 conflict\\(s\\) auto-resolved.')
+        self.assertContainsRe(note, '0 conflicts auto-resolved.')
         self.assertContainsRe(note,
             'Remaining conflicts:\nText conflict in file')
         self.build_tree_contents([('tree/file', 'a\n')])

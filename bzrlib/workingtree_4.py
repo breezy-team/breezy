@@ -1849,7 +1849,7 @@ class DirStateRevisionTree(InventoryTree):
         # Make sure the file exists
         entry = self._get_entry(file_id, path=path)
         if entry == (None, None): # do we raise?
-            return None
+            raise errors.NoSuchId(self, file_id)
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]
         try:

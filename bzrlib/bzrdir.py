@@ -55,6 +55,7 @@ from bzrlib.transport import (
     do_catching_redirections,
     local,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.trace import (
@@ -632,7 +633,7 @@ class BzrDir(controldir.ControlDir):
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
-            ui.ui_factory.note('making backup of %s\n  to %s' % (
+            ui.ui_factory.note(gettext('making backup of {0}\n  to {1}').format(
                 urlutils.unescape_for_display(old_path, 'utf-8'),
                 urlutils.unescape_for_display(new_path, 'utf-8')))
             self.root_transport.copy_tree('.bzr', backup_dir)
@@ -655,8 +656,8 @@ class BzrDir(controldir.ControlDir):
             try:
                 to_path = '.bzr.retired.%d' % i
                 self.root_transport.rename('.bzr', to_path)
-                note("renamed %s to %s"
-                    % (self.root_transport.abspath('.bzr'), to_path))
+                note(gettext("renamed {0} to {1}").format(
+                    self.root_transport.abspath('.bzr'), to_path))
                 return
             except (errors.TransportError, IOError, errors.PathError):
                 i += 1
@@ -847,8 +848,8 @@ class BzrDir(controldir.ControlDir):
             redirected_transport = transport._redirected_to(e.source, e.target)
             if redirected_transport is None:
                 raise errors.NotBranchError(base)
-            note('%s is%s redirected to %s',
-                 transport.base, e.permanently, redirected_transport.base)
+            note(gettext('{0} is{1} redirected to {2}').format(
+                 transport.base, e.permanently, redirected_transport.base))
             return redirected_transport
 
         try:
@@ -1723,8 +1724,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
                     new_repo_format = None
             if new_repo_format is not None:
                 self.repository_format = new_repo_format
-                note('Source repository format does not support stacking,'
-                     ' using format:\n  %s',
+                note(gettext('Source repository format does not support stacking,'
+                     ' using format:\n  %s'),
                      new_repo_format.get_format_description())
 
         if not self.get_branch_format().supports_stacking():
@@ -1743,8 +1744,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             if new_branch_format is not None:
                 # Does support stacking, use its format.
                 self.set_branch_format(new_branch_format)
-                note('Source branch format does not support stacking,'
-                     ' using format:\n  %s',
+                note(gettext('Source branch format does not support stacking,'
+                     ' using format:\n  %s'),
                      new_branch_format.get_format_description())
 
     def get_converter(self, format=None):
@@ -1854,7 +1855,7 @@ class ConvertMetaToMeta(controldir.Converter):
         else:
             if not isinstance(repo._format, self.target_format.repository_format.__class__):
                 from bzrlib.repository import CopyConverter
-                ui.ui_factory.note('starting repository conversion')
+                ui.ui_factory.note(gettext('starting repository conversion'))
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
         for branch in self.bzrdir.list_branches():
@@ -2033,8 +2034,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
                                     possible_transports=[self._bzrdir.root_transport])
             if not self._require_stacking:
                 # We have picked up automatic stacking somewhere.
-                note('Using default stacking branch %s at %s', self._stack_on,
-                    self._stack_on_pwd)
+                note(gettext('Using default stacking branch {0} at {1}').format(
+                    self._stack_on, self._stack_on_pwd))
         repository = self._bzrdir.create_repository(shared=shared)
         self._add_fallback(repository,
                            possible_transports=[self._bzrdir.transport])
