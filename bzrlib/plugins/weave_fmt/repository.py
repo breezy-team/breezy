@@ -322,7 +322,6 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
             raise NotImplementedError
 
         repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = a_bzrdir._control_files
         result = AllInOneRepository(_format=self, a_bzrdir=a_bzrdir)
         result.revisions = self._get_revisions(repo_transport, result)
         result.signatures = self._get_signatures(repo_transport, result)

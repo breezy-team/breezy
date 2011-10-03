@@ -331,6 +331,10 @@ command.  (e.g. ``bzr --profile help``).
                will be a pickle.
 --coverage     Generate line coverage report in the specified directory.
 
+-Oname=value   Override the ``name`` config option setting it to ``value`` for
+               the duration of the command.  This can be used multiple times if
+               several options need to be overridden.
+
 See http://doc.bazaar.canonical.com/developers/profiling.html for more
 information on profiling.
 
