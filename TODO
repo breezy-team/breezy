@@ -29,12 +29,12 @@
 **  A DAV web server can't handle mode on files because:
 
     - there is nothing in the protocol for that (bar some of them
-   via PROPPATCH, but only for apache2 anyway),
+      via PROPPATCH, but only for apache2 anyway),
 
     - the  server  itself  generally  uses  the mode  for  its  own
-      purposes, except  if you  make it run  suid which  is really,
+      purposes, except  if you  make it run under  suid which  is really,
       really   dangerous   (Apache    should   be   compiled   with
-      -D-DBIG_SECURITY_HOLE for those who didn't get the message).
+      -DBIG_SECURITY_HOLE for those who didn't get the message).
 
    That means this transport will do no better. May be the file
    mode should be a file property handled explicitely inside the
