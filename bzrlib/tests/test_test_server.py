@@ -205,6 +205,7 @@ class TestTCPServerInAThread(tests.TestCase):
         client.connect((server.host, server.port))
         client.write('ping\n')
         sync.wait()
+        self.assertEqual('', client.read()) # connection closed
         self.assertRaises(FailToRespond, server.pending_exception)
 
     def test_exception_swallowed_while_serving(self):
@@ -230,6 +231,7 @@ class TestTCPServerInAThread(tests.TestCase):
         client.connect((server.host, server.port))
         # Wait for the exception to propagate.
         sync.wait()
+        self.assertEqual('', client.read()) # connection closed
         # The connection wasn't served properly but the exception should have
         # been swallowed.
         server.pending_exception()
