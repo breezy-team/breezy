@@ -1,7 +1,7 @@
 bzr-builddeb (2.7.10) UNRELEASED; urgency=low
 
   [ Jonathan Riddell ]
-  * Add get-tar command which will get the upstream tar file.
+  * Add get-orig-source command which will get the upstream tar file.
     LP: #862188
   * Change "bd-do" command to "builddeb-do" and alias "bd-do".
 
