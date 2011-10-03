@@ -68,7 +68,8 @@ class _SmartClient(object):
                       readv_body=None, body_stream=None):
         try:
             response_handler = self._send_request_no_retry(protocol_version,
-                method, args, body=None, readv_body=None, body_stream=None)
+                method, args, body=body, readv_body=readv_body,
+                body_stream=body_stream)
         except errors.ConnectionReset, e:
             # If we fail during the _send_request_no_retry phase, then we can
             # be confident that the server did not get our request, because we
@@ -78,7 +79,8 @@ class _SmartClient(object):
             trace.log_exception_quietly()
             trace.warning('ConnectionReset calling %s, retrying' % (method,))
             response_handler = self._send_request_no_retry(protocol_version,
-                method, args, body=None, readv_body=None, body_stream=None)
+                method, args, body=body, readv_body=readv_body,
+                body_stream=body_stream)
         return response_handler
 
     def _run_call_hooks(self, method, args, body, readv_body):
