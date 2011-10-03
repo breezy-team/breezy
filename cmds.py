@@ -1019,7 +1019,7 @@ class cmd_import_upstream(Command):
                     location, component, tag_name))
 
 
-class cmd_bd_do(Command):
+class cmd_builddeb_do(Command):
     """Run a command in an exported package, copying the result back.
 
     For a merge mode package the full source is not available, making some
@@ -1029,7 +1029,7 @@ class cmd_bd_do(Command):
 
     For instance:
 
-      bzr bd-do
+      bzr builddeb-do
 
     will run a shell in the unpacked source. Any changes you make in the
     ``debian/`` directory (and only those made in that directory) will be copied
@@ -1038,13 +1038,14 @@ class cmd_bd_do(Command):
 
     You can also specify single commands to be run, e.g.
 
-      bzr bd-do "dpatch-edit-patch 01-fix-build"
+      bzr builddeb-do "dpatch-edit-patch 01-fix-build"
 
     Note that only the first argument is used as the command, and so the above
     example had to be quoted.
     """
 
     takes_args = ['command*']
+    aliases = ['bd-do']
 
     def run(self, command_list=None):
         t = WorkingTree.open_containing('.')[0]

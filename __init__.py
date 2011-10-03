@@ -35,7 +35,7 @@ from info import (
 
 
 commands = {
-        "bd_do": [],
+        "builddeb_do": ["bd_do"],
         "builddeb": ["bd"],
         "get_orig_source": [],
         "dep3_patch": [],
