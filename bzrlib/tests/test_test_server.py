@@ -31,6 +31,21 @@ from bzrlib.tests.scenarios import load_tests_apply_scenarios
 load_tests = load_tests_apply_scenarios
 
 
+def portable_socket_pair():
+    """Return a pair of TCP sockets connected to each other.
+
+    Unlike socket.socketpair, this should work on Windows.
+    """
+    listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listen_sock.bind(('127.0.0.1', 0))
+    listen_sock.listen(1)
+    client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_sock.connect(listen_sock.getsockname())
+    server_sock, addr = listen_sock.accept()
+    listen_sock.close()
+    return server_sock, client_sock
+
+
 class TCPClient(object):
 
     def __init__(self):
@@ -255,3 +270,34 @@ class TestTestingSmartServer(tests.TestCase):
         h = server._make_handler(sock)
         self.assertEqual(test_server._DEFAULT_TESTING_CLIENT_TIMEOUT,
                          h._client_timeout)
+
+
+class FakeServer(object):
+    """Minimal implementation to pass to TestingSmartConnectionHandler"""
+    backing_transport = None
+    root_client_path = '/'
+
+
+class TestTestingSmartConnectionHandler(tests.TestCase):
+
+    def test_connection_timeout_suppressed(self):
+        self.overrideAttr(test_server, '_DEFAULT_TESTING_CLIENT_TIMEOUT', 0.01)
+        s = FakeServer()
+        server_sock, client_sock = portable_socket_pair()
+        # This should timeout quickly, but not generate an exception.
+        handler = test_server.TestingSmartConnectionHandler(server_sock,
+            server_sock.getpeername(), s)
+
+    def test_connection_shutdown_while_serving_no_error(self):
+        s = FakeServer()
+        server_sock, client_sock = portable_socket_pair()
+        class ShutdownConnectionHandler(
+            test_server.TestingSmartConnectionHandler):
+
+            def _build_protocol(self):
+                self.finished = True
+                return super(ShutdownConnectionHandler, self)._build_protocol()
+        # This should trigger shutdown after the entering _build_protocol, and
+        # we should exit cleanly, without raising an exception.
+        handler = ShutdownConnectionHandler(server_sock,
+            server_sock.getpeername(), s)

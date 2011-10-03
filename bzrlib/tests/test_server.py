@@ -24,6 +24,7 @@ import traceback
 
 from bzrlib import (
     cethread,
+    errors,
     osutils,
     transport,
     urlutils,
@@ -605,9 +606,13 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
                                                  server)
 
     def handle(self):
-        while not self.finished:
-            server_protocol = self._build_protocol()
-            self._serve_one_request(server_protocol)
+        try:
+            while not self.finished:
+                server_protocol = self._build_protocol()
+                self._serve_one_request(server_protocol)
+        except errors.ConnectionTimeout:
+            # idle connections aren't considered a failure of the server
+            return
 
 
 _DEFAULT_TESTING_CLIENT_TIMEOUT = 4.0
