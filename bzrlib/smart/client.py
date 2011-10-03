@@ -20,6 +20,7 @@ from bzrlib.trace import warning
 from bzrlib import (
     errors,
     hooks,
+    trace,
     )
 
 
@@ -39,8 +40,8 @@ class _SmartClient(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self._medium)
 
-    def _send_request(self, protocol_version, method, args, body=None,
-                      readv_body=None, body_stream=None):
+    def _send_request_no_retry(self, protocol_version, method, args, body=None,
+                               readv_body=None, body_stream=None):
         encoder, response_handler = self._construct_protocol(
             protocol_version)
         encoder.set_headers(self._headers)
@@ -61,6 +62,23 @@ class _SmartClient(object):
             encoder.call_with_body_stream((method, ) + args, body_stream)
         else:
             encoder.call(method, *args)
+        return response_handler
+
+    def _send_request(self, protocol_version, method, args, body=None,
+                      readv_body=None, body_stream=None):
+        try:
+            response_handler = self._send_request_no_retry(protocol_version,
+                method, args, body=None, readv_body=None, body_stream=None)
+        except errors.ConnectionReset, e:
+            # If we fail during the _send_request_no_retry phase, then we can
+            # be confident that the server did not get our request, because we
+            # haven't started waiting for the reply yet. So try the request
+            # again. We only issue a single retry, because if the connection
+            # really is down, there is no reason to loop endlessly.
+            trace.log_exception_quietly()
+            trace.warning('ConnectionReset calling %s, retrying' % (method,))
+            response_handler = self._send_request_no_retry(protocol_version,
+                method, args, body=None, readv_body=None, body_stream=None)
         return response_handler
 
     def _run_call_hooks(self, method, args, body, readv_body):
