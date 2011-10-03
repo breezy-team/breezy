@@ -24,6 +24,7 @@ def load_tests(standard_tests, module, loader):
           'test_builddeb',
           'test_dep3',
           'test_do',
+          'test_get_tar',
           'test_import_dsc',
           'test_import_upstream',
           'test_mark_uploaded',

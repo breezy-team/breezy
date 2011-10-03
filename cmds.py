@@ -73,6 +73,9 @@ from bzrlib.plugins.builddeb.errors import (
     PackageVersionNotPresent,
     StrictBuildFailed,
     )
+from bzrlib.plugins.builddeb.util import (
+    get_parent_dir,
+    )
 from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
@@ -461,6 +464,30 @@ class cmd_builddeb(Command):
                     dget_changes(changes_path, target_dir)
         finally:
             tree.unlock()
+
+
+class cmd_get_orig_source(Command):
+    """Gets the upstream tar file for the packaging branch."""
+
+    def run(self):
+        tree = WorkingTree.open_containing('.')[0]
+        config = debuild_config(tree, tree)
+
+        (changelog, larstiq) = find_changelog(tree, True)
+        orig_dir = config.orig_dir
+        if orig_dir is None:
+            orig_dir = default_orig_dir
+
+        upstream_provider = UpstreamProvider(changelog.package,
+                changelog.version.upstream_version, orig_dir,
+                [PristineTarSource(tree, tree.branch),
+                 AptSource(),
+                 GetOrigSourceSource(tree, larstiq),
+                 UScanSource(tree, larstiq) ])
+
+        result = upstream_provider.provide(orig_dir)
+        for tar, component in result:
+            note("Tar now in " + tar)
 
 
 class cmd_merge_upstream(Command):
