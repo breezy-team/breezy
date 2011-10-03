@@ -117,7 +117,7 @@ The last step is to update the packaging. The first part of this is changing
 any files to reflect changes in the upstream build, for instance updating
 ``debian/rules``, or ``debian/install``. The last part is updating any
 patches against the upstream code to work against the latest
-version. To make this easier you can use the ``bd-do`` command. This runs
+version. To make this easier you can use the ``builddeb-do`` command. This runs
 the specified command in an exported directory (so you have the full source
 of the package available). If the command is successful then the contents
 of ``debian/`` is copied back to your branch. If the command fails then
@@ -126,7 +126,7 @@ then you will have to ``bzr add`` or ``bzr rm`` them as necessary.
 
 For instance you can run::
 
-  bzr bd-do
+  bzr builddeb-do
 
 and have a shell in the unpacked source directory. You can then run any
 commands that you would like. If you then exit the shell normally the contents
@@ -135,10 +135,10 @@ with a non-zero exit code, for instance by running ``exit 1`` then you will
 abort any changes, and they will not show up in your branch.
 
 You can also run any command by passing it as the first argument to the
-``bd-do`` command. For instance if you use ``dpatch`` in your package the
+``builddeb-do`` command. For instance if you use ``dpatch`` in your package the
 following may be useful::
 
-  bzr bd-do "dpatch-edit-patch 01-fix-build"
+  bzr builddeb-do "dpatch-edit-patch 01-fix-build"
 
 Note that only the first argument is used, so the command had to be quoted.
 The command is run through the shell, so you can execute multiple commands
