@@ -1,4 +1,4 @@
-#    test_get_tar.py -- Blackbox tests for get-tar.
+#    test_get_tar.py -- Blackbox tests for get-orig-source.
 #    Copyright 2011 Canonical Ltd
 #
 #    This file is part of bzr-builddeb.
@@ -35,7 +35,7 @@ except ImportError:
 from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 
-class TestGetTar(BuilddebTestCase):
+class TestGetOrigSource(BuilddebTestCase):
 
     def make_changelog(self, version=None):
         if version is None:
@@ -85,22 +85,22 @@ class TestGetTar(BuilddebTestCase):
         tree.commit("two", rev_id='revid2')
         return tree
 
-    def test_get_tar_registered(self):
-        self.run_bzr("get-tar --help")
+    def test_get_orig_source_registered(self):
+        self.run_bzr("get-orig-source --help")
 
-    def test_get_tar_error_no_changelog(self):
+    def test_get_orig_source_error_no_changelog(self):
         self.run_bzr_error(
         ['Could not find changelog at "debian/changelog" or "changelog".'],
-        "get-tar")
+        "get-orig-source")
 
-    def test_get_tar_error_no_tar(self):
+    def test_get_orig_source_error_no_tar(self):
         self.make_unpacked_source()
         self.run_bzr_error(
             ['Unable to find the needed upstream tarball for package test, '\
             'version 0.1.'],
-            "get-tar")
+            "get-orig-source")
 
-    def test_get_tar(self):
+    def test_get_orig_source(self):
         tree = self.make_source_with_upstream()
-        self.run_bzr(['get-tar'])
+        self.run_bzr(['get-orig-source'])
         self.assertPathExists('../test_0.1.orig.tar.gz')

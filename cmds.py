@@ -466,7 +466,7 @@ class cmd_builddeb(Command):
             tree.unlock()
 
 
-class cmd_get_tar(Command):
+class cmd_get_orig_source(Command):
     """Gets the upstream tar file for the packaging branch."""
 
     def run(self):
