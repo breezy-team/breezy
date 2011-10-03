@@ -714,9 +714,11 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
      <D:allprop/>
    </D:propfind>
 """
-        request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
-                                            {'Depth': '%s' % (depth,)},
-                                            accepted_errors=[207, 404, 409,])
+        request = _urllib2_wrappers.Request(
+            'PROPFIND', abspath, propfind,
+            {'Depth': '%s' % (depth,),
+             'Content-Type': 'text/xml; charset="utf-8"'},
+            accepted_errors=[207, 404, 409,])
         response = self._perform(request)
 
         code = response.code
@@ -761,9 +763,10 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
      <D:allprop/>
    </D:propfind>
 """
-        request = _urllib2_wrappers.Request('PROPFIND', abspath, propfind,
-                                            {'Depth': '0', 'Content-Type': 'application/xml; charset="utf-8"'},
-                                            accepted_errors=[207, 404, 409,])
+        request = _urllib2_wrappers.Request(
+            'PROPFIND', abspath, propfind,
+            {'Depth': '0', 'Content-Type': 'text/xml; charset="utf-8"'},
+            accepted_errors=[207, 404, 409,])
 
         response = self._perform(request)
 
