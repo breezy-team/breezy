@@ -45,6 +45,10 @@ Improvements
 * Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
   every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
 
+* ``bzr info -v`` can now be run against branches that don't support
+  ``last_revision_info``, in which case the branch information will simply
+  not be displayed. (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
