@@ -177,7 +177,12 @@ class TestTCPServerInAThread(tests.TestCase):
         try:
             self.assertEqual('', client.read())
         except socket.error, e:
-            pass
+            # On Windows, failing during 'handle' means we get
+            # 'forced-close-of-connection'. Possibly because we haven't
+            # processed the write request before we close the socket.
+            WSAECONNRESET = 10054
+            if e.errno in (WSAECONNRESET,):
+                pass
         # Now the server has raised the exception in its own thread
         self.assertRaises(CantConnect, server.stop_server)
 
