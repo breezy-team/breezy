@@ -336,6 +336,7 @@ class TestingTCPServerMixin(object):
         # exception and the traceback just when it occurs instead of waiting
         # for the thread to be joined.
         # SocketServer.BaseServer.handle_error(self, request, client_address)
+
         # We call close_request manually, because we are going to raise an
         # exception. The SocketServer implementation calls:
         #   handle_error(...)
