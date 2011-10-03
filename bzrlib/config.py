@@ -3276,7 +3276,6 @@ class Stack(object):
         # Hack around library_state.initialize never called
         if bzrlib.global_state is not None:
             return [bzrlib.global_state.cmdline_overrides]
-        trace.warning("You forgot to use 'with bzrlib.initialize():'")
         return []
 
 

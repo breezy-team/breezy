@@ -16,12 +16,9 @@
 
 """Tests for BzrLibraryState."""
 
-import bzrlib
 from bzrlib import (
-    config,
     library_state,
     tests,
-    trace,
     ui as _mod_ui
     )
 from bzrlib.tests import fixtures
@@ -52,17 +49,3 @@ class TestLibraryState(tests.TestCaseWithTransport):
         finally:
             state.__exit__(None, None, None)
             self.assertEqual(['__enter__', '__exit__'], tracer._calls)
-
-    def test_warns_if_not_called(self):
-        self.overrideAttr(bzrlib, 'global_state', None)
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
-        # Querying for a an option requires a real global_state or emits a
-        # warning
-        c = config.GlobalStack()
-        v = c.get('whatever')
-        self.assertLength(1, warnings)
-        self.assertEquals("You forgot to use 'with bzrlib.initialize():'",
-                          warnings[0])
