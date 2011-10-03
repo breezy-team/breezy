@@ -751,7 +751,10 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
 
 class SmartSSHClientMedium(SmartClientStreamMedium):
-    """A client medium using SSH."""
+    """A client medium using SSH.
+
+    It delegates IO to a SmartSimplePipesClientMedium.
+    """
 
     def __init__(self, host, port=None, username=None, password=None,
             base=None, vendor=None, bzr_remote_path=None):
@@ -760,11 +763,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        self._connected = False
         self._host = host
         self._password = password
         self._port = port
         self._username = username
+        self._real_medium = None
         # for the benefit of progress making a short description of this
         # transport
         self._scheme = 'bzr+ssh'
@@ -772,10 +775,8 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         # _DebugCounter so we have to store all the values used in our repr
         # method before calling the super init.
         SmartClientStreamMedium.__init__(self, base)
-        self._read_from = None
         self._ssh_connection = None
         self._vendor = vendor
-        self._write_to = None
         self._bzr_remote_path = bzr_remote_path
 
     def __repr__(self):
@@ -793,21 +794,20 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
-        osutils.until_no_eintr(self._write_to.write, bytes)
-        self._report_activity(len(bytes), 'write')
+        self._real_medium.accept_bytes(bytes)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
-        if not self._connected:
-            return
-        osutils.until_no_eintr(self._read_from.close)
-        osutils.until_no_eintr(self._write_to.close)
-        self._ssh_connection.close()
-        self._connected = False
+        if self._real_medium is not None:
+            self._real_medium.disconnect()
+            self._real_medium = None
+        if self._ssh_connection is not None:
+            self._ssh_connection.close()
+            self._ssh_connection = None
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
-        if self._connected:
+        if self._real_medium is not None:
             return
         if self._vendor is None:
             vendor = ssh._get_ssh_vendor()
@@ -817,22 +817,19 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
                 self._password, self._host, self._port,
                 command=[self._bzr_remote_path, 'serve', '--inet',
                          '--directory=/', '--allow-writes'])
-        self._read_from, self._write_to = \
-            self._ssh_connection.get_filelike_channels()
-        self._connected = True
+        read_from, write_to = self._ssh_connection.get_filelike_channels()
+        self._real_medium = SmartSimplePipesClientMedium(
+            read_from, write_to, self.base)
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
-        self._write_to.flush()
+        self._real_medium._flush()
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium.read_bytes."""
-        if not self._connected:
+        if self._real_medium is None:
             raise errors.MediumNotConnected(self)
-        bytes_to_read = min(count, _MAX_READ_SIZE)
-        bytes = osutils.until_no_eintr(self._read_from.read, bytes_to_read)
-        self._report_activity(len(bytes), 'read')
-        return bytes
+        return self._real_medium.read_bytes(count)
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
