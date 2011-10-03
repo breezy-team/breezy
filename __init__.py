@@ -124,7 +124,8 @@ def debian_changelog_commit(commit, start_message):
     bugs_fixed = find_bugs_fixed([changes], commit.work_tree.branch)
     commit.builder._revprops["bugs"] = "\n".join(bugs_fixed)
 
-    return debian_changelog_commit_message(commit, start_message)
+    # Debian Policy Manual states that debian/changelog must be UTF-8
+    return changes.decode("utf-8")
 
 
 def changelog_merge_hook_factory(merger):
@@ -141,7 +142,7 @@ def debian_tag_name(branch, revid):
     t = branch.repository.revision_tree(revid)
     config = debuild_config(t, False)
     try:
-        (changelog, larstiq) = find_changelog(t, config.build_type == BUILD_TYPE_MERGE)
+        (changelog, top_level) = find_changelog(t, config.build_type == BUILD_TYPE_MERGE)
     except MissingChangelogError:
         # Not a debian package
         return None

@@ -171,4 +171,25 @@ class TestBuilddeb(BuilddebTestCase):
     self.assertPathExists('pre-export')
     self.assertInBuildDir(['pre-build', 'post-build'])
 
+  def test_utf8_changelog(self):
+    from bzrlib.plugins import builddeb
+    from bzrlib.msgeditor import hooks
+    if "set_commit_message" not in hooks:
+      self.skip("No set_commit_message hook in bzrlib this old")
+    hooks.install_named_hook("set_commit_message",
+      builddeb.debian_changelog_commit, "Test builddeb set commit msg hook")
+    tree = self.make_unpacked_source()
+    # The changelog is only used for commit message when it already exists and
+    # is then changed, so need to clear it, commit, then set the contents.
+    open("debian/changelog", "w").close()
+    tree.commit("Prepare for release", rev_id="prerel")
+    c = self.make_changelog()
+    c.add_change(u"")
+    c.add_change(u"  *  \u2026and another thing")
+    self.write_changelog(c, "debian/changelog")
+    self.run_bzr(['commit'])
+    branch = tree.branch
+    self.assertEqual(u"*  test build\n*  \u2026and another thing\n",
+      branch.repository.get_revision(branch.last_revision()).message)
+
 # vim: ts=2 sts=2 sw=2

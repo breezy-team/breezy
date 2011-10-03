@@ -320,6 +320,9 @@ class SourcePackageBuilder(object):
         text = """Source: %s\nSection: misc\n""" % self.name
         text += "Priority: optional\n"
         text += "Maintainer: Maintainer <nobody@ubuntu.com>\n"
+        text += "\n"
+        text += "Package: %s\n" % self.name
+        text += "Architecture: all\n\n"
         self.add_debian_file("debian/control", text)
 
     def new_version(self, version, change_text=None):
