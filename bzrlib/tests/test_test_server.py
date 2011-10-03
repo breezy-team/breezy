@@ -62,7 +62,7 @@ class TCPClient(object):
         return self.sock.recv(bufsize)
 
 
-class TCPConnectionHandler(SocketServer.StreamRequestHandler):
+class TCPConnectionHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         self.done = False
@@ -70,12 +70,22 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
         while not self.done:
             self.handle_connection()
 
+    def readline(self):
+        # TODO: We should be buffering any extra data sent, etc. However, in
+        #       practice, we don't send extra content, so we haven't bothered
+        #       to implement it yet.
+        req = self.request.recv(4096)
+        # An empty string is allowed, to indicate the end of the connection
+        if not req or (req.endswith('\n') and req.count('\n') == 1):
+            return req
+        raise ValueError('[%r] not a simple line' % (req,))
+
     def handle_connection(self):
-        req = self.rfile.readline()
+        req = self.readline()
         if not req:
             self.done = True
         elif req == 'ping\n':
-            self.wfile.write('pong\n')
+            self.request.sendall('pong\n')
         else:
             raise ValueError('[%s] not understood' % req)
 
@@ -149,7 +159,7 @@ class TestTCPServerInAThread(tests.TestCase):
         class CantConnect(Exception):
             pass
 
-        class FailingConnectionHandler(SocketServer.BaseRequestHandler):
+        class FailingConnectionHandler(TCPConnectionHandler):
 
             def handle(self):
                 raise CantConnect()
@@ -180,7 +190,7 @@ class TestTCPServerInAThread(tests.TestCase):
         class FailingDuringResponseHandler(TCPConnectionHandler):
 
             def handle_connection(self):
-                req = self.rfile.readline()
+                req = self.readline()
                 threading.currentThread().set_sync_event(sync)
                 raise FailToRespond()
 
