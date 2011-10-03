@@ -486,9 +486,9 @@ class cmd_get_tar(Command):
                  UScanSource(tree, larstiq) ])
 
         result = upstream_provider.provide(orig_dir)
-        if (len(result) > 0):
-            note("Tar now in " + result[0][0])
-        
+        for tar, component in result:
+            note("Tar now in " + tar)
+
 
 class cmd_merge_upstream(Command):
     """Merges a new upstream version into the current branch.
