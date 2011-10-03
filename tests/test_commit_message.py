@@ -115,3 +115,16 @@ class CommitMessageTests(TestCaseWithTransport):
         self.assertEqual(commit.builder._revprops, 
                         {'bugs': 'https://launchpad.net/bugs/1234 fixed\n'
                                  'https://launchpad.net/bugs/4321 fixed'})
+
+    def test_set_message_returns_unicode(self):
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['a', 'debian/', 'debian/changelog'])
+        wt.add(['debian/', 'debian/changelog'])
+        wt.commit("one")
+        self.set_changelog_content("  * \xe2\x80\xa6real fix this time\n")
+        wt.add(['a'])
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        commit = self._Commit(wt)
+        self.assertEqual(debian_changelog_commit(commit, None),
+                u"\u2026real fix this time\n")

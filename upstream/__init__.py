@@ -174,9 +174,9 @@ class AptSource(UpstreamSource):
 class GetOrigSourceSource(UpstreamSource):
     """Upstream source that uses the get-orig-source rule in debian/rules."""
 
-    def __init__(self, tree, larstiq):
+    def __init__(self, tree, top_level):
         self.tree = tree
-        self.larstiq = larstiq
+        self.top_level = top_level
 
     def _get_orig_source(self, source_dir, prefix, target_dir):
         note("Trying to use get-orig-source to retrieve needed tarball.")
@@ -201,7 +201,7 @@ class GetOrigSourceSource(UpstreamSource):
         return None
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
-        if self.larstiq:
+        if self.top_level:
             rules_name = 'rules'
         else:
             rules_name = 'debian/rules'
@@ -211,7 +211,7 @@ class GetOrigSourceSource(UpstreamSource):
             try:
                 base_export_dir = os.path.join(tmpdir, "export")
                 export_dir = base_export_dir
-                if self.larstiq:
+                if self.top_level:
                     os.mkdir(export_dir)
                     export_dir = os.path.join(export_dir, "debian")
                 export(self.tree, export_dir, format="dir")
@@ -229,12 +229,12 @@ class GetOrigSourceSource(UpstreamSource):
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
-    def __init__(self, tree, larstiq):
+    def __init__(self, tree, top_level):
         self.tree = tree
-        self.larstiq = larstiq
+        self.top_level = top_level
 
     def _export_watchfile(self):
-        if self.larstiq:
+        if self.top_level:
             watchfile = 'watch'
         else:
             watchfile = 'debian/watch'

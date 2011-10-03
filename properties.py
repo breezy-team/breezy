@@ -22,11 +22,11 @@ import os
 class BuildProperties(object):
   """Properties of this specific build"""
 
-  def __init__(self, changelog, build_dir, tarball_dir, larstiq):
+  def __init__(self, changelog, build_dir, tarball_dir, top_level):
     self._changelog = changelog
     self._build_dir = build_dir
     self._tarball_dir = tarball_dir
-    self._larstiq = larstiq
+    self._top_level = top_level
   
   def package(self):
     return self._changelog.package
@@ -58,7 +58,7 @@ class BuildProperties(object):
   def tarball_dir(self):
     return self._tarball_dir
 
-  def larstiq(self):
-    return self._larstiq
+  def top_level(self):
+    return self._top_level
 
 # vim: ts=2 sts=2 sw=2

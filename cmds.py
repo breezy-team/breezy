@@ -351,7 +351,7 @@ class cmd_builddeb(Command):
             if build_type is None:
                 build_type = config.build_type
             contains_upstream_source = tree_contains_upstream_source(tree)
-            (changelog, larstiq) = find_changelog(tree, not contains_upstream_source)
+            (changelog, top_level) = find_changelog(tree, not contains_upstream_source)
             if build_type is None:
                 build_type = guess_build_type(tree, changelog.version,
                     contains_upstream_source)
@@ -396,8 +396,8 @@ class cmd_builddeb(Command):
             elif not native and config.upstream_branch is not None:
                 upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
             upstream_sources.extend([
-                GetOrigSourceSource(tree, larstiq),
-                UScanSource(tree, larstiq),
+                GetOrigSourceSource(tree, top_level),
+                UScanSource(tree, top_level),
                 ])
             if build_type == BUILD_TYPE_SPLIT:
                 upstream_sources.append(SelfSplitSource(tree))
@@ -413,7 +413,7 @@ class cmd_builddeb(Command):
                 distiller_cls = FullSourceDistiller
 
             distiller = distiller_cls(tree, upstream_provider,
-                    larstiq=larstiq, use_existing=use_existing,
+                    top_level=top_level, use_existing=use_existing,
                     is_working_tree=working_tree)
 
             build_source_dir = os.path.join(build_dir,
@@ -604,7 +604,7 @@ class cmd_merge_upstream(Command):
     def _get_changelog_info(self, tree, last_version, package, distribution):
         current_version = last_version
         try:
-            (changelog, larstiq) = find_changelog(tree, False, max_blocks=2)
+            (changelog, top_level) = find_changelog(tree, False, max_blocks=2)
             if last_version is None:
                 current_version = changelog.version.upstream_version
             if package is None:
@@ -614,7 +614,7 @@ class cmd_merge_upstream(Command):
                 if distribution is not None:
                     note("Using distribution %s" % distribution)
         except MissingChangelogError:
-            larstiq = False
+            top_level = False
             changelog = None
         if distribution is None:
             note("No distribution specified, and no changelog, "
@@ -631,7 +631,7 @@ class cmd_merge_upstream(Command):
             raise BzrCommandError("Unknown target distribution: %s" \
                         % distribution)
         return (current_version, package, distribution, distribution_name,
-                changelog, larstiq)
+                changelog, top_level)
 
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
@@ -647,7 +647,7 @@ class cmd_merge_upstream(Command):
                         "command.")
             config = debuild_config(tree, tree)
             (current_version, package, distribution, distribution_name,
-             changelog, larstiq) = self._get_changelog_info(tree, last_version,
+             changelog, top_level) = self._get_changelog_info(tree, last_version,
                  package, distribution)
             contains_upstream_source = tree_contains_upstream_source(tree)
             if changelog is None:
@@ -702,7 +702,7 @@ class cmd_merge_upstream(Command):
                             " branch source")
                     primary_upstream_source = upstream_branch_source
                 else:
-                    primary_upstream_source = UScanSource(tree, larstiq)
+                    primary_upstream_source = UScanSource(tree, top_level)
 
             if revision is not None:
                 if upstream_branch is None:
@@ -869,7 +869,7 @@ class cmd_import_dsc(Command):
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             try:
-                (changelog, larstiq) = find_changelog(tree, False)
+                (changelog, top_level) = find_changelog(tree, False)
                 last_version = changelog.version
             except MissingChangelogError:
                 last_version = None
@@ -1039,7 +1039,7 @@ class cmd_bd_do(Command):
             except KeyError:
                 command_list = ["/bin/sh"]
             give_instruction = True
-        (changelog, larstiq) = find_changelog(t, True)
+        (changelog, top_level) = find_changelog(t, True)
         build_dir = config.build_dir
         if build_dir is None:
             build_dir = default_build_dir
@@ -1051,11 +1051,11 @@ class cmd_bd_do(Command):
                 changelog.version.upstream_version, orig_dir,
                 [PristineTarSource(t, t.branch),
                  AptSource(),
-                 GetOrigSourceSource(t, larstiq),
-                 UScanSource(t, larstiq) ])
+                 GetOrigSourceSource(t, top_level),
+                 UScanSource(t, top_level) ])
 
         distiller = MergeModeDistiller(t, upstream_provider,
-                larstiq=larstiq)
+                top_level=top_level)
 
         build_source_dir = os.path.join(build_dir,
                 changelog.package + "-" + changelog.version.upstream_version)
@@ -1076,7 +1076,7 @@ class cmd_bd_do(Command):
             raise BzrCommandError('Not updating the working tree as the '
                     'command failed.')
         note("Copying debian/ back")
-        if larstiq:
+        if top_level:
             destination = ''
         else:
             destination = 'debian/'
@@ -1118,7 +1118,7 @@ class cmd_mark_uploaded(Command):
             config = debuild_config(t, t)
             if merge is None:
                 merge = (config.build_type == BUILD_TYPE_MERGE)
-            (changelog, larstiq) = find_changelog(t, merge)
+            (changelog, top_level) = find_changelog(t, merge)
             if changelog.distributions == 'UNRELEASED':
                 if not force:
                     raise BzrCommandError("The changelog still targets "

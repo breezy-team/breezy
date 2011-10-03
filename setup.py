@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.4
+#!/usr/bin/env python
 #
 #    setup.py -- Install the bzr-builddeb plugin
 #    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>

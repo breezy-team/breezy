@@ -361,7 +361,7 @@ class UScanSourceTests(TestCaseWithTransport):
         src = UScanSource(self.tree, False)
         self.assertRaises(WatchFileMissing, src._export_watchfile)
 
-    def test_export_watchfile_larstiq(self):
+    def test_export_watchfile_top_level(self):
         src = UScanSource(self.tree, True)
         self.build_tree(['watch'])
         self.assertRaises(WatchFileMissing, src._export_watchfile)
