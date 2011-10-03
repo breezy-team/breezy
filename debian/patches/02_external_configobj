@@ -3,12 +3,12 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Bug-Debian: http://bugs.debian.org/555336
 
 === modified file 'bzrlib/config.py'
---- old/bzrlib/config.py	2011-06-16 23:05:13 +0000
-+++ new/bzrlib/config.py	2011-06-16 23:18:17 +0000
-@@ -90,7 +90,7 @@
-     urlutils,
+--- old/bzrlib/config.py	2011-10-02 00:00:44 +0000
++++ new/bzrlib/config.py	2011-10-02 00:01:48 +0000
+@@ -104,7 +104,7 @@
      win32utils,
      )
+ from bzrlib.i18n import gettext
 -from bzrlib.util.configobj import configobj
 +import configobj
  """)
@@ -17,7 +17,7 @@ Bug-Debian: http://bugs.debian.org/555336
 
 === modified file 'bzrlib/rules.py'
 --- old/bzrlib/rules.py	2011-05-21 17:34:06 +0000
-+++ new/bzrlib/rules.py	2011-06-16 23:18:17 +0000
++++ new/bzrlib/rules.py	2011-10-02 00:01:28 +0000
 @@ -26,7 +26,7 @@
      globbing,
      osutils,
@@ -29,9 +29,9 @@ Bug-Debian: http://bugs.debian.org/555336
  # Name of the file holding rules in a tree
 
 === modified file 'bzrlib/tests/test_config.py'
---- old/bzrlib/tests/test_config.py	2011-06-16 23:05:13 +0000
-+++ new/bzrlib/tests/test_config.py	2011-06-16 23:18:17 +0000
-@@ -52,7 +52,7 @@
+--- old/bzrlib/tests/test_config.py	2011-10-02 00:00:44 +0000
++++ new/bzrlib/tests/test_config.py	2011-10-02 00:01:28 +0000
+@@ -48,7 +48,7 @@
      scenarios,
      test_server,
      )
