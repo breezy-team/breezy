@@ -40,10 +40,8 @@ class _SmartClient(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self._medium)
 
-    def _send_request_no_retry(self, protocol_version, method, args, body=None,
+    def _send_request_no_retry(self, encoder, method, args, body=None,
                                readv_body=None, body_stream=None):
-        encoder, response_handler = self._construct_protocol(
-            protocol_version)
         encoder.set_headers(self._headers)
         if body is not None:
             if readv_body is not None:
@@ -62,25 +60,33 @@ class _SmartClient(object):
             encoder.call_with_body_stream((method, ) + args, body_stream)
         else:
             encoder.call(method, *args)
-        return response_handler
 
     def _send_request(self, protocol_version, method, args, body=None,
                       readv_body=None, body_stream=None):
+        encoder, response_handler = self._construct_protocol(
+            protocol_version)
         try:
-            response_handler = self._send_request_no_retry(protocol_version,
-                method, args, body=body, readv_body=readv_body,
-                body_stream=body_stream)
+            self._send_request_no_retry(encoder, method, args, body=body,
+                readv_body=readv_body, body_stream=body_stream)
         except errors.ConnectionReset, e:
             # If we fail during the _send_request_no_retry phase, then we can
             # be confident that the server did not get our request, because we
             # haven't started waiting for the reply yet. So try the request
             # again. We only issue a single retry, because if the connection
             # really is down, there is no reason to loop endlessly.
+            # XXX: If body_stream is not None, then we probably have a problem
+            #      here, because the body stream is partially consumed.
+            if body_stream is not None:
+                raise
             trace.log_exception_quietly()
             trace.warning('ConnectionReset calling %s, retrying' % (method,))
-            response_handler = self._send_request_no_retry(protocol_version,
-                method, args, body=body, readv_body=readv_body,
-                body_stream=body_stream)
+            self._medium.reset()
+            # encoder._medium_request.finished_writing()
+            # encoder._medium_request.finished_reading()
+            encoder, response_handler = self._construct_protocol(
+                protocol_version)
+            self._send_request_no_retry(encoder, method, args, body=body,
+                readv_body=readv_body, body_stream=body_stream)
         return response_handler
 
     def _run_call_hooks(self, method, args, body, readv_body):

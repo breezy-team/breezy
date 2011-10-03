@@ -712,6 +712,17 @@ class SmartClientStreamMedium(SmartClientMedium):
         """
         return SmartClientStreamMediumRequest(self)
 
+    def reset(self):
+        """We have been disconnected, reset current state.
+
+        This resets things like _current_request and connected state.
+        """
+        # TODO: Arguably if self._current_request is not None, we could call
+        #       self._current_request.finished_writing()/finished_reading(),
+        #       etc.
+        self.disconnect()
+        self._current_request = None
+
 
 class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """A client medium using simple pipes.
