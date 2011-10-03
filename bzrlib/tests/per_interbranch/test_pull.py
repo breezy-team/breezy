@@ -16,8 +16,6 @@
 
 """Tests for InterBranch.pull behaviour."""
 
-import os
-
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib import errors
@@ -42,7 +40,7 @@ class TestPull(TestCaseWithInterBranch):
         parent.merge_from_branch(mine.branch)
         parent.commit('merge my change', rev_id='P2')
         mine.pull(parent.branch)
-        self.assertEqual(['P1', 'P2'], mine.branch.revision_history())
+        self.assertEqual('P2', mine.branch.last_revision())
 
     def test_pull_merged_indirect(self):
         # it should be possible to do a pull from one branch into another
@@ -59,7 +57,7 @@ class TestPull(TestCaseWithInterBranch):
         parent.merge_from_branch(other.branch)
         parent.commit('merge other', rev_id='P2')
         mine.pull(parent.branch)
-        self.assertEqual(['P1', 'P2'], mine.branch.revision_history())
+        self.assertEqual('P2', mine.branch.last_revision())
 
     def test_pull_updates_checkout_and_master(self):
         """Pulling into a checkout updates the checkout and the master branch"""
@@ -70,8 +68,8 @@ class TestPull(TestCaseWithInterBranch):
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         checkout.branch.pull(other.branch)
-        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
-        self.assertEqual([rev1, rev2], master_tree.branch.revision_history())
+        self.assertEqual(rev2, checkout.branch.last_revision())
+        self.assertEqual(rev2, master_tree.branch.last_revision())
 
     def test_pull_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_from_branch_and_tree('master')
@@ -118,8 +116,8 @@ class TestPull(TestCaseWithInterBranch):
         tree_a.branch.pull(tree_b.branch, overwrite=True,
                            stop_revision='rev2b')
         self.assertEqual('rev2b', tree_a.branch.last_revision())
-        self.assertEqual(tree_b.branch.revision_history(),
-                         tree_a.branch.revision_history())
+        self.assertEqual(tree_b.branch.last_revision(),
+                         tree_a.branch.last_revision())
 
 
 class TestPullHook(TestCaseWithInterBranch):

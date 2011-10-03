@@ -172,7 +172,7 @@ class bzr_build(build):
 ## Setup
 ########################
 
-from tools.build_mo import build_mo
+from bzrlib.bzr_distutils import build_mo
 
 command_classes = {'install_scripts': my_install_scripts,
                    'build': bzr_build,

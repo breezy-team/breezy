@@ -199,13 +199,13 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b2 = bzrdir.BzrDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1'])
+        self.assertEquals(b2.last_revision(), 'a1')
 
         open('a/foo', 'wt').write('something new in foo\n')
         t.commit('new', rev_id='a2')
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1', 'a2'])
+        self.assertEquals(b2.last_revision(), 'a2')
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
