@@ -19,6 +19,7 @@ import socket
 import SocketServer
 import threading
 
+
 from bzrlib import (
     osutils,
     tests,
@@ -94,7 +95,7 @@ class TestTCPServerInAThread(tests.TestCase):
             self.server_class = server_class
         if connection_handler_class is None:
             connection_handler_class = TCPConnectionHandler
-        server =  test_server.TestingTCPServerInAThread(
+        server = test_server.TestingTCPServerInAThread(
             ('localhost', 0), self.server_class, connection_handler_class)
         server.start_server()
         self.addCleanup(server.stop_server)
@@ -148,7 +149,7 @@ class TestTCPServerInAThread(tests.TestCase):
         class CantConnect(Exception):
             pass
 
-        class FailingConnectionHandler(TCPConnectionHandler):
+        class FailingConnectionHandler(SocketServer.BaseRequestHandler):
 
             def handle(self):
                 raise CantConnect()
@@ -158,15 +159,14 @@ class TestTCPServerInAThread(tests.TestCase):
         # The server won't fail until a client connect
         client = self.get_client()
         client.connect((server.host, server.port))
+        # We make sure the server wants to handle a request, but the request is
+        # guaranteed to fail. However, the server should make sure that the
+        # connection gets closed, and stop_server should then raise the
+        # original exception.
+        client.write('ping\n')
         try:
-            # Now we must force the server to answer by sending the request and
-            # waiting for some answer. But since we don't control when the
-            # server thread will be given cycles, we don't control either
-            # whether our reads or writes may hang.
-            client.sock.settimeout(0.1)
-            client.write('ping\n')
-            client.read()
-        except socket.error:
+            self.assertEqual('', client.read())
+        except socket.error, e:
             pass
         # Now the server has raised the exception in its own thread
         self.assertRaises(CantConnect, server.stop_server)
@@ -218,6 +218,13 @@ class TestTCPServerInAThread(tests.TestCase):
         # The connection wasn't served properly but the exception should have
         # been swallowed.
         server.pending_exception()
+
+    def test_handle_request_closes_if_it_doesnt_process(self):
+        server = self.get_server()
+        client = self.get_client()
+        server.server.serving = False
+        client.connect((server.host, server.port))
+        self.assertEqual('', client.read())
 
 
 class TestTestingSmartServer(tests.TestCase):
