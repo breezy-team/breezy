@@ -1,11 +1,15 @@
-bzr-builddeb (2.7.9) unstable; urgency=low
-
-  [ Jelmer Vernooij ]
-  * Support .tar.xz Debian files rather than .tar.lzma.
+bzr-builddeb (2.7.10) UNRELEASED; urgency=low
 
   [ Jonathan Riddell ]
   * Add get-tar command which will get the upstream tar file.
     LP: #862188
+
+ -- Jonathan Riddell <jriddell@ubuntu.com>  Mon, 03 Oct 2011 12:28:54 +0100
+
+bzr-builddeb (2.7.9) unstable; urgency=low
+
+  [ Jelmer Vernooij ]
+  * Support .tar.xz Debian files rather than .tar.lzma.
 
   [ Martin Packman ]
   * Support non-ascii characters in changelog entry when determining
