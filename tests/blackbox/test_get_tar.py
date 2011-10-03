@@ -37,66 +37,70 @@ from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 class TestGetTar(BuilddebTestCase):
 
-  def make_changelog(self, version=None):
-    if version is None:
-      version = self.package_version
-    c = Changelog()
-    c.new_block()
-    c.version = Version(version)
-    c.package = self.package_name
-    c.distributions = 'unstable'
-    c.urgency = 'low'
-    c.author = 'James Westby <jw+debian@jameswestby.net>'
-    c.date = 'The,  3 Aug 2006 19:16:22 +0100'
-    c.add_change('')
-    c.add_change('  *  test build')
-    c.add_change('')
-    return c
+    def make_changelog(self, version=None):
+        if version is None:
+            version = self.package_version
+        c = Changelog()
+        c.new_block()
+        c.version = Version(version)
+        c.package = self.package_name
+        c.distributions = 'unstable'
+        c.urgency = 'low'
+        c.author = 'James Westby <jw+debian@jameswestby.net>'
+        c.date = 'The,  3 Aug 2006 19:16:22 +0100'
+        c.add_change('')
+        c.add_change('  *  test build')
+        c.add_change('')
+        return c
 
-  def make_unpacked_source(self):
-    """Create an unpacked source tree in a branch. Return the working tree"""
-    tree = self.make_branch_and_tree('.')
-    cl_file = 'debian/changelog'
-    source_files = ['README', 'debian/'] + [cl_file]
-    self.build_tree(source_files)
-    c = self.make_changelog()
-    self.write_changelog(c, cl_file)
-    tree.add(source_files)
-    return tree
+    def make_unpacked_source(self):
+        """
+        Create an unpacked source tree in a branch. Return the working
+        tree
+        """
+        tree = self.make_branch_and_tree('.')
+        cl_file = 'debian/changelog'
+        source_files = ['README', 'debian/'] + [cl_file]
+        self.build_tree(source_files)
+        c = self.make_changelog()
+        self.write_changelog(c, cl_file)
+        tree.add(source_files)
+        return tree
 
-  def make_source_with_upstream(self):
-    """Create a source tree in a branch with an upstream tag."""
-    tree = self.make_branch_and_tree('.')
-    source_files = ['README']
-    self.build_tree(source_files)
-    tree.add(source_files)
-    tree.commit("one", rev_id='revid1')
-    tree.branch.tags.set_tag("upstream-0.1", tree.branch.last_revision())
+    def make_source_with_upstream(self):
+        """Create a source tree in a branch with an upstream tag."""
+        tree = self.make_branch_and_tree('.')
+        source_files = ['README']
+        self.build_tree(source_files)
+        tree.add(source_files)
+        tree.commit("one", rev_id='revid1')
+        tree.branch.tags.set_tag("upstream-0.1", tree.branch.last_revision())
 
-    cl_file = 'debian/changelog'
-    source_files = ['debian/'] + [cl_file]
-    self.build_tree(source_files)
-    c = self.make_changelog()
-    self.write_changelog(c, cl_file)
-    tree.add(source_files)
-    tree.commit("two", rev_id='revid2')
-    return tree
+        cl_file = 'debian/changelog'
+        source_files = ['debian/'] + [cl_file]
+        self.build_tree(source_files)
+        c = self.make_changelog()
+        self.write_changelog(c, cl_file)
+        tree.add(source_files)
+        tree.commit("two", rev_id='revid2')
+        return tree
 
-  def test_get_tar_registered(self):
-    self.run_bzr("get-tar --help")
+    def test_get_tar_registered(self):
+        self.run_bzr("get-tar --help")
 
-  def test_get_tar_error_no_changelog(self):
-    self.run_bzr_error(
-      ['Could not find changelog at "debian/changelog" or "changelog".'],
-      "get-tar")
+    def test_get_tar_error_no_changelog(self):
+        self.run_bzr_error(
+        ['Could not find changelog at "debian/changelog" or "changelog".'],
+        "get-tar")
 
-  def test_get_tar_error_no_tar(self):
-    self.make_unpacked_source()
-    self.run_bzr_error(
-      ['Unable to find the needed upstream tarball for package test, version 0.1.'],
-      "get-tar")
+    def test_get_tar_error_no_tar(self):
+        self.make_unpacked_source()
+        self.run_bzr_error(
+            ['Unable to find the needed upstream tarball for package test, '\
+            'version 0.1.'],
+            "get-tar")
 
-  def test_get_tar(self):
-    tree = self.make_source_with_upstream()
-    self.run_bzr(['get-tar'])
-    self.assertPathExists('../test_0.1.orig.tar.gz')
+    def test_get_tar(self):
+        tree = self.make_source_with_upstream()
+        self.run_bzr(['get-tar'])
+        self.assertPathExists('../test_0.1.orig.tar.gz')
