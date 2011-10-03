@@ -59,6 +59,9 @@ Bug Fixes
   turned into a line-basde one when ``INSIDE_EMACS`` is set (which is the
   case for all recent emacs versions). (Vincent Ladeuil, #856261)
 
+* ``bzr tags`` can now be used against remote repositories that do
+  not provide access to the revision graph. (Jelmer Vernooij, #858942)
+
 * ``bzr update PATH`` will stop if you seem to be asking it to update
   anything less than a whole tree, because that's not supported by bzr's
   concept that the whole tree has a single basis revision.  Previously, it
