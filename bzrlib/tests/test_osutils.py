@@ -818,6 +818,16 @@ class TestSafeFileId(tests.TestCase):
         self.assertEqual(None, osutils.safe_file_id(None))
 
 
+class TestPosixFuncs(tests.TestCase):
+    """Test that the posix version of normpath returns an appropriate path
+       when used with 2 leading slashes."""
+
+    def test_normpath(self):
+        self.assertEqual('/etc/shadow', osutils.normpath('/etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils.normpath('//etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils.normpath('///etc/shadow'))
+
+
 class TestWin32Funcs(tests.TestCase):
     """Test that _win32 versions of os utilities return appropriate paths."""
 
