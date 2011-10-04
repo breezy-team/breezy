@@ -68,6 +68,9 @@ Bug Fixes
   would go ahead and update the whole tree, which was surprising.
   (Martin Pool, #557886)
 
+* Don't crash if bzrlib.initialize() has not been called while accessing
+  configs.  (Vincent Ladeuil, #863401)
+
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
 
