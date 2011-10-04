@@ -99,8 +99,10 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         try:
             result = tree.branch.create_clone_on_transport(target_transport,
                 stacked_on=trunk.base)
-        except errors.UnstackableRepositoryFormat:
-            raise tests.TestNotApplicable("format does not support stacking")
+        except errors.UnstackableBranchFormat:
+            if not trunk.repository._format.supports_full_versioned_files:
+                raise tests.TestNotApplicable("can not stack on format")
+            raise
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
 
@@ -139,8 +141,10 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         try:
             result = tree.branch.create_clone_on_transport(target_transport,
                 stacked_on=trunk.base)
-        except errors.UnstackableRepositoryFormat:
-            raise tests.TestNotApplicable("format does not support stacking")
+        except errors.UnstackableBranchFormat:
+            if not trunk.repository._format.supports_full_versioned_files:
+                raise tests.TestNotApplicable("can not stack on format")
+            raise
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
         # Smart servers invoke hooks on both sides
