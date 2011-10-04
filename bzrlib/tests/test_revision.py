@@ -66,14 +66,13 @@ def make_branches(self, format=None):
     br2 = tree2.branch
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
-    revisions_2 = br2.revision_history()
-    self.assertEquals(revisions_2[-1], 'b@u-0-4')
+    self.assertEquals(br2.last_revision(), 'b@u-0-4')
 
     tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
-    self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
+    self.assertEquals(br2.last_revision(), 'b@u-0-5')
 
     tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")

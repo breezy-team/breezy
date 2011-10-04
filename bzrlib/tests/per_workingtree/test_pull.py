@@ -39,7 +39,7 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
     def test_pull_overwrites(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.commit('foo', rev_id='B')
-        self.assertEqual(['B'], tree_b.branch.revision_history())
+        self.assertEqual('B', tree_b.branch.last_revision())
         tree_b.pull(tree_a.branch, overwrite=True)
         self.assertTrue(tree_b.branch.repository.has_revision('A'))
         self.assertTrue(tree_b.branch.repository.has_revision('B'))

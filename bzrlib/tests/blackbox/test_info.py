@@ -125,7 +125,7 @@ Repository:
 """, out)
         self.assertEqual('', err)
         tree1.commit('commit one')
-        rev = branch1.repository.get_revision(branch1.revision_history()[0])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Branch standalone with push location
@@ -317,7 +317,7 @@ Repository:
         self.build_tree(['standalone/b'])
         tree1.add('b')
         tree1.commit('commit two')
-        rev = branch1.repository.get_revision(branch1.revision_history()[-1])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Out of date branched standalone branch will not be detected
@@ -571,7 +571,7 @@ Repository:
         self.build_tree(['tree/lightcheckout/a'])
         tree2.add('a')
         tree2.commit('commit one')
-        rev = repo.get_revision(branch2.revision_history()[0])
+        rev = repo.get_revision(branch2.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -690,7 +690,7 @@ Repository:
         tree3.commit('commit two')
 
         # Out of date lightweight checkout
-        rev = repo.get_revision(branch1.revision_history()[-1])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -846,7 +846,7 @@ Repository:
         tree1 = branch1.bzrdir.open_workingtree()
         tree1.add('a')
         tree1.commit('commit one')
-        rev = repo.get_revision(branch1.revision_history()[0])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info -v repo/branch1')
         self.assertEqualDiff(
@@ -1343,5 +1343,35 @@ Location:
 Related branches:
   parent branch: mainline
      stacked on: mainline
+""", out)
+        self.assertEqual("", err)
+
+    def test_info_revinfo_optional(self):
+        tree = self.make_branch_and_tree('.')
+        def last_revision_info(self):
+            raise errors.UnsupportedOperation(last_revision_info, self)
+        self.overrideAttr(
+            branch.Branch, "last_revision_info", last_revision_info)
+        out, err = self.run_bzr('info -v .')
+        self.assertEqual(
+"""Standalone tree (format: 2a)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 6
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
 """, out)
         self.assertEqual("", err)
