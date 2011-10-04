@@ -10,6 +10,14 @@ if __name__ == '__main__':
     version = bzr_plugin_version[:3]
     version_string = ".".join([str(x) for x in version])
 
+    command_classes = {}
+    try:
+        from bzrlib.bzr_distutils import build_mo
+    except ImportError:
+        pass
+    else:
+        command_classes['build_mo'] = build_mo
+
     setup(name='bzr-git',
           description='Support for Git branches in Bazaar',
           keywords='plugin bzr git bazaar',
@@ -32,5 +40,6 @@ if __name__ == '__main__':
               'Operating System :: OS Independent',
               'Programming Language :: Python',
               'Programming Language :: Python :: 2',
-          ]
+          ],
+          cmdclass=command_classes,
           )

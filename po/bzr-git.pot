@@ -1,0 +1,41 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Canonical Ltd <canonical-bazaar@lists.canonical.com>
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: bzr-git\n"
+"Report-Msgid-Bugs-To: <bazaar@lists.canonical.com>\n"
+"POT-Creation-Date: 2011-10-05 00:42+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: commands.py:33
+msgid "Import all branches from a git repository."
+msgstr ""
+
+#: commands.py:35
+msgid "    "
+msgstr ""
+
+#: commands.py:223
+msgid "Apply a series of git-am style patches."
+msgstr ""
+
+#: commands.py:225
+msgid ""
+"This command will in the future probably be integrated into \n"
+"\"bzr pull\"."
+msgstr ""
+
+# help of 'signoff' option of 'git-apply' command
+#: commands.py:230
+msgid "Add a Signed-off-by line."
+msgstr ""

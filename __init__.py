@@ -202,6 +202,8 @@ class RemoteGitProber(Prober):
                 else:
                     raise bzr_errors.NotBranchError(transport.base)
         ct = headers.getheader("Content-Type")
+        if ct is None:
+            raise bzr_errors.NotBranchError(transport.base)
         if ct.startswith("application/x-git"):
             from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
