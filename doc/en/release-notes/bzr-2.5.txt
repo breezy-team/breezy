@@ -20,20 +20,56 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* A new ``-O`` standard option (common to all commands) have been added. It
+  provides a value for a config option in the ``-Oname=value`` form that
+  takes precedence over all definitions found in config files.  It can be
+  used multiple times to override different options.
+  (Vincent Ladeuil, #491196)
+
+* ``bzr serve`` will now disconnect clients if they have not issued an RPC
+  request after 5minutes. On POSIX platforms, this will also happen for
+  ``bzr serve --inet``. This can be overridden with the configuration
+  variable ``serve.client_timeout`` or in the command line parameter
+  ``bzr serve --client-timeout=X``. Further, it is possible to request
+  ``bzr serve [--inet]`` to shutdown gracefully by sending SIGHUP. It will
+  finish the current request, and then close the connection.
+  (John Arbash Meinel, #824797, #795025)
+
+
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* Stop reloading all ancestry for each tag when searching tags in a revision
-  range. (Vincent Ladeuil, #857335)
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
+* ``bzr info -v`` can now be run against branches that don't support
+  ``last_revision_info``, in which case the branch information will simply
+  not be displayed. (Jelmer Vernooij)
 
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr shelve`` can now be used in emacs shells as the input handling is
+  turned into a line-basde one when ``INSIDE_EMACS`` is set (which is the
+  case for all recent emacs versions). (Vincent Ladeuil, #856261)
+
+* ``bzr tags`` can now be used against remote repositories that do
+  not provide access to the revision graph. (Jelmer Vernooij, #858942)
+
+* ``bzr update PATH`` will stop if you seem to be asking it to update
+  anything less than a whole tree, because that's not supported by bzr's
+  concept that the whole tree has a single basis revision.  Previously, it
+  would go ahead and update the whole tree, which was surprising.
+  (Martin Pool, #557886)
+
+* Don't crash if bzrlib.initialize() has not been called while accessing
+  configs.  (Vincent Ladeuil, #863401)
 
 * Redirects between http and https no longer discard path information
   in some cases. (Jelmer Vernooij, #853765)
@@ -55,6 +91,18 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.get_revision_delta`` has been deprecated. Use
+  ``Repository.get_revision_delta`` instead. (Jelmer Vernooij, #859712)
+
+* ``Repository.fileids_altered_by_revision_ids`` has been moved to
+  ``VersionedFileRepository`` and is no longer part of the standard
+  ``Repository`` interface. (Jelmer Vernooij)
+
+* The new method ``ControlDirFormat.is_initializable()`` returns a boolean
+  indicating whether or not it is possible to use any of the
+  initialization methods of that format to create a new control dir.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
@@ -68,6 +116,9 @@ Internals
 
 Testing
 *******
+
+* Test scripts can now use ``bzr shelve`` and provide their input as
+  complete lines. (Vincent Ladeuil, #856261)
 
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
@@ -300,6 +351,11 @@ API Changes
 
 * New registry ``OptionRegistry`` specialized for configuration options.
   (Vincent Ladeuil)
+
+* Plugins that implement custom protocols for ``bzr serve`` should now
+  also take an argument ``timeout``. This is used by the the bzr protocol
+  to close a connection if a client has been idle for more than X seconds.
+  (Default 5minutes). (John Arbash Meinel)
 
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)

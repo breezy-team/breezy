@@ -19,7 +19,6 @@ import bz2
 import re
 
 from bzrlib import (
-    diff,
     errors,
     iterablefile,
     lru_cache,
@@ -33,7 +32,7 @@ from bzrlib import (
     versionedfile as _mod_versionedfile,
     )
 from bzrlib.bundle import bundle_data, serializer as bundle_serializer
-from bzrlib.i18n import gettext, ngettext
+from bzrlib.i18n import ngettext
 from bzrlib import bencode
 
 

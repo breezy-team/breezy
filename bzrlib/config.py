@@ -77,6 +77,7 @@ import string
 import sys
 
 
+import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -90,6 +91,7 @@ from bzrlib import (
     debug,
     errors,
     lazy_regex,
+    library_state,
     lockdir,
     mail_client,
     mergetools,
@@ -101,6 +103,7 @@ from bzrlib import (
     urlutils,
     win32utils,
     )
+from bzrlib.i18n import gettext
 from bzrlib.util.configobj import configobj
 """)
 from bzrlib import (
@@ -2361,7 +2364,7 @@ class Option(object):
                 raise AssertionError(
                     'Only empty lists are supported as default values')
             self.default = u','
-        elif isinstance(default, (str, unicode, bool, int)):
+        elif isinstance(default, (str, unicode, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
         else:
@@ -2424,6 +2427,11 @@ def bool_from_store(unicode_str):
 
 def int_from_store(unicode_str):
     return int(unicode_str)
+
+
+def float_from_store(unicode_str):
+    return float(unicode_str)
+
 
 
 # Use a an empty dict to initialize an empty configobj avoiding all
@@ -2596,6 +2604,12 @@ If present, defines the ``--strict`` option default value for checking
 uncommitted changes before pushing.
 '''))
 
+option_registry.register(
+    Option('serve.client_timeout',
+           default=300.0, from_unicode=float_from_store,
+           help="If we wait for a new request from a client for more than"
+                " X seconds, consider the client idle, and hangup."))
+
 
 class Section(object):
     """A section defines a dict of option name => value.
@@ -2641,6 +2655,31 @@ class MutableSection(Section):
         if name not in self.orig:
             self.orig[name] = self.get(name, None)
         del self.options[name]
+
+
+class CommandLineSection(MutableSection):
+    """A section used to carry command line overrides for the config options."""
+
+    def __init__(self, opts=None):
+        if opts is None:
+            opts = {}
+        super(CommandLineSection, self).__init__('cmdline-overrides', opts)
+
+    def _reset(self):
+        # The dict should be cleared but not replaced so it can be shared.
+        self.options.clear()
+
+    def _from_cmdline(self, overrides):
+        # Reset before accepting new definitions
+        self._reset()
+        for over in overrides:
+            try:
+                name, value = over.split('=', 1)
+            except ValueError:
+                raise errors.BzrCommandError(
+                    gettext("Invalid '%s', should be of the form 'name=value'")
+                    % (over,))
+            self.set(name, value)
 
 
 class Store(object):
@@ -3233,6 +3272,12 @@ class Stack(object):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
+    def _get_overrides(self):
+        # Hack around library_state.initialize never called
+        if bzrlib.global_state is not None:
+            return [bzrlib.global_state.cmdline_overrides]
+        return []
+
 
 class _CompatibleStack(Stack):
     """Place holder for compatibility with previous design.
@@ -3264,7 +3309,9 @@ class GlobalStack(_CompatibleStack):
     def __init__(self):
         # Get a GlobalStore
         gstore = GlobalStore()
-        super(GlobalStack, self).__init__([gstore.get_sections], gstore)
+        super(GlobalStack, self).__init__(
+            [self._get_overrides, gstore.get_sections],
+            gstore)
 
 
 class LocationStack(_CompatibleStack):
@@ -3278,7 +3325,9 @@ class LocationStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
-            [matcher.get_sections, gstore.get_sections], lstore)
+            [self._get_overrides,
+             matcher.get_sections, gstore.get_sections],
+            lstore)
 
 
 class BranchStack(_CompatibleStack):
@@ -3290,7 +3339,8 @@ class BranchStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
-            [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            [self._get_overrides,
+             matcher.get_sections, bstore.get_sections, gstore.get_sections],
             bstore)
         self.branch = branch
 

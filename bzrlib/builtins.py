@@ -1344,18 +1344,34 @@ class cmd_branch(Command):
 class cmd_branches(Command):
     __doc__ = """List the branches available at the current location.
 
-    This command will print the names of all the branches at the current location.
+    This command will print the names of all the branches at the current
+    location.
     """
 
     takes_args = ['location?']
+    takes_options = [
+                  Option('recursive', short_name='R',
+                         help='Recursively scan for branches rather than '
+                              'just looking in the specified location.')]
 
-    def run(self, location="."):
-        dir = bzrdir.BzrDir.open_containing(location)[0]
-        for branch in dir.list_branches():
-            if branch.name is None:
-                self.outf.write(gettext(" (default)\n"))
-            else:
-                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
+    def run(self, location=".", recursive=False):
+        if recursive:
+            t = transport.get_transport(location)
+            if not t.listable():
+                raise errors.BzrCommandError(
+                    "Can't scan this type of location.")
+            for b in bzrdir.BzrDir.find_branches(t):
+                self.outf.write("%s\n" % urlutils.unescape_for_display(
+                    urlutils.relative_url(t.base, b.base),
+                    self.outf.encoding).rstrip("/"))
+        else:
+            dir = bzrdir.BzrDir.open_containing(location)[0]
+            for branch in dir.list_branches():
+                if branch.name is None:
+                    self.outf.write(gettext(" (default)\n"))
+                else:
+                    self.outf.write(" %s\n" % branch.name.encode(
+                        self.outf.encoding))
 
 
 class cmd_checkout(Command):
@@ -1463,20 +1479,33 @@ class cmd_renames(Command):
 
 
 class cmd_update(Command):
-    __doc__ = """Update a tree to have the latest code committed to its branch.
+    __doc__ = """Update a working tree to a new revision.
 
-    This will perform a merge into the working tree, and may generate
-    conflicts. If you have any local changes, you will still
-    need to commit them after the update for the update to be complete.
+    This will perform a merge of the destination revision (the tip of the
+    branch, or the specified revision) into the working tree, and then make
+    that revision the basis revision for the working tree.  
 
-    If you want to discard your local changes, you can just do a
-    'bzr revert' instead of 'bzr commit' after the update.
+    You can use this to visit an older revision, or to update a working tree
+    that is out of date from its branch.
+    
+    If there are any uncommitted changes in the tree, they will be carried
+    across and remain as uncommitted changes after the update.  To discard
+    these changes, use 'bzr revert'.  The uncommitted changes may conflict
+    with the changes brought in by the change in basis revision.
 
-    If you want to restore a file that has been removed locally, use
-    'bzr revert' instead of 'bzr update'.
-
-    If the tree's branch is bound to a master branch, it will also update
+    If the tree's branch is bound to a master branch, bzr will also update
     the branch from the master.
+
+    You cannot update just a single file or directory, because each Bazaar
+    working tree has just a single basis revision.  If you want to restore a
+    file that has been removed locally, use 'bzr revert' instead of 'bzr
+    update'.  If you want to restore a file to its state in a previous
+    revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write
+    out the old content of that file to a new location.
+
+    The 'dir' argument, if given, must be the location of the root of a
+    working tree to update.  By default, the working tree that contains the 
+    current working directory is used.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
@@ -1487,11 +1516,19 @@ class cmd_update(Command):
                      ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None, show_base=None):
+    def run(self, dir=None, revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(gettext(
-                        "bzr update --revision takes exactly one revision"))
-        tree = WorkingTree.open_containing(dir)[0]
+                "bzr update --revision takes exactly one revision"))
+        if dir is None:
+            tree = WorkingTree.open_containing('.')[0]
+        else:
+            tree, relpath = WorkingTree.open_containing(dir)
+            if relpath:
+                # See bug 557886.
+                raise errors.BzrCommandError(gettext(
+                    "bzr update can only update a whole tree, "
+                    "not a file or subdirectory"))
         branch = tree.branch
         possible_transports = []
         master = branch.get_master_branch(
@@ -5239,6 +5276,8 @@ class cmd_serve(Command):
                     'option leads to global uncontrolled write access to your '
                     'file system.'
                 ),
+        Option('client-timeout', type=float,
+               help='Override the default idle client timeout (5min).'),
         ]
 
     def get_host_and_port(self, port):
@@ -5261,7 +5300,7 @@ class cmd_serve(Command):
         return host, port
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
-            protocol=None):
+            protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
@@ -5272,7 +5311,19 @@ class cmd_serve(Command):
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport(url)
-        protocol(t, host, port, inet)
+        try:
+            protocol(t, host, port, inet, client_timeout)
+        except TypeError, e:
+            # We use symbol_versioning.deprecated_in just so that people
+            # grepping can find it here.
+            # symbol_versioning.deprecated_in((2, 5, 0))
+            symbol_versioning.warn(
+                'Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
+                'Most likely it needs to be updated to support a'
+                ' "timeout" parameter (added in bzr 2.5.0)'
+                % (e, protocol.__module__, protocol),
+                DeprecationWarning)
+            protocol(t, host, port, inet)
 
 
 class cmd_join(Command):
@@ -5765,7 +5816,8 @@ class cmd_tags(Command):
                     if isinstance(revno, tuple):
                         revno = '.'.join(map(str, revno))
                 except (errors.NoSuchRevision,
-                        errors.GhostRevisionsHaveNoRevno):
+                        errors.GhostRevisionsHaveNoRevno,
+                        errors.UnsupportedOperation):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
@@ -6420,10 +6472,14 @@ class cmd_export_pot(Command):
     __doc__ = """Export command helps and error messages in po format."""
 
     hidden = True
+    takes_options = [Option('plugin', 
+                            help='Export help text from named command '\
+                                 '(defaults to all built in commands).',
+                            type=str)]
 
-    def run(self):
+    def run(self, plugin=None):
         from bzrlib.export_pot import export_pot
-        export_pot(self.outf)
+        export_pot(self.outf, plugin)
 
 
 def _register_lazy_builtins():

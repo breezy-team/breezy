@@ -112,7 +112,7 @@ class TestSprout(TestCaseWithBranch):
         repo.fetch(wt.branch.repository)
         branch2 = wt.branch.sprout(repo.bzrdir, revision_id='rev2-alt')
         self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
-        self.assertEqual(['rev1', 'rev2-alt'], branch2.revision_history())
+        self.assertEqual('rev2-alt', branch2.last_revision())
 
     def test_sprout_preserves_tags(self):
         """Sprout preserves tags, even tags of absent revisions."""

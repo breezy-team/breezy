@@ -2562,12 +2562,17 @@ class TestSection(tests.TestCase):
 
 class TestMutableSection(tests.TestCase):
 
-    # FIXME: Parametrize so that all sections (including os.environ and the
-    # ones produced by Stores) run these tests -- vila 2011-04-01
+    scenarios = [('mutable',
+                  {'get_section':
+                       lambda opts: config.MutableSection('myID', opts)},),
+                 ('cmdline',
+                  {'get_section':
+                       lambda opts: config.CommandLineSection(opts)},),
+        ]
 
     def test_set(self):
         a_dict = dict(foo='bar')
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.set('foo', 'new_value')
         self.assertEquals('new_value', section.get('foo'))
         # The change appears in the shared section
@@ -2578,7 +2583,7 @@ class TestMutableSection(tests.TestCase):
 
     def test_set_preserve_original_once(self):
         a_dict = dict(foo='bar')
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.set('foo', 'first_value')
         section.set('foo', 'second_value')
         # We keep track of the original value
@@ -2587,7 +2592,7 @@ class TestMutableSection(tests.TestCase):
 
     def test_remove(self):
         a_dict = dict(foo='bar')
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.remove('foo')
         # We get None for unknown options via the default value
         self.assertEquals(None, section.get('foo'))
@@ -2600,7 +2605,7 @@ class TestMutableSection(tests.TestCase):
 
     def test_remove_new_option(self):
         a_dict = dict()
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.set('foo', 'bar')
         section.remove('foo')
         self.assertFalse('foo' in section.options)
@@ -2608,6 +2613,40 @@ class TestMutableSection(tests.TestCase):
         # with a special value
         self.assertTrue('foo' in section.orig)
         self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
+
+
+class TestCommandLineSection(tests.TestCase):
+
+    def setUp(self):
+        super(TestCommandLineSection, self).setUp()
+        self.section = config.CommandLineSection()
+
+    def test_no_override(self):
+        self.section._from_cmdline([])
+        # FIXME: we want some iterator over all options, failing that, we peek
+        # under the cover -- vila 2011-09026
+        self.assertLength(0, self.section.options)
+
+    def test_simple_override(self):
+        self.section._from_cmdline(['a=b'])
+        self.assertEqual('b', self.section.get('a'))
+
+    def test_list_override(self):
+        self.section._from_cmdline(['l=1,2,3'])
+        val = self.section.get('l')
+        self.assertEqual('1,2,3', val)
+        # Reminder: lists should registered as such explicitely, otherwise the
+        # conversion needs to be done afterwards.
+        self.assertEqual(['1', '2', '3'], config.list_from_store(val))
+
+    def test_multiple_overrides(self):
+        self.section._from_cmdline(['a=b', 'x=y'])
+        self.assertEquals('b', self.section.get('a'))
+        self.assertEquals('y', self.section.get('x'))
+
+    def test_wrong_syntax(self):
+        self.assertRaises(errors.BzrCommandError,
+                          self.section._from_cmdline, ['a=b', 'c'])
 
 
 class TestStore(tests.TestCaseWithTransport):
