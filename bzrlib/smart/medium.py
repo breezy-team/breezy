@@ -230,11 +230,6 @@ class SmartServerStreamMedium(SmartMedium):
         try:
             while not self.finished:
                 server_protocol = self._build_protocol()
-                # TODO: This seems inelegant:
-                if server_protocol is None:
-                    # We could 'continue' only to notice that self.finished is
-                    # True...
-                    break
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout, e:
             trace.note('%s' % (e,))
@@ -326,6 +321,8 @@ class SmartServerStreamMedium(SmartMedium):
 
         :param protocol: a SmartServerRequestProtocol.
         """
+        if protocol is None:
+            return
         try:
             self._serve_one_request_unguarded(protocol)
         except KeyboardInterrupt:
