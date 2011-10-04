@@ -32,17 +32,12 @@ from info import (
     )
 
 try:
-    from bzrlib.i18n import install_translations, add_fallback
+    from bzrlib.i18n import load_plugin_translations
 except ImportError: # No translations for bzr < 2.5
     gettext = lambda x: x
 else:
-    import os, sys
-    locale_base = os.path.dirname(
-        unicode(__file__, sys.getfilesystemencoding()))
-    translation = install_translations(domain='bzr-rewrite',
-        locale_base=locale_base)
+    translation = load_plugin_translations("bzr-rewrite")
     gettext = translation.ugettext
-    add_fallback(translation)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
