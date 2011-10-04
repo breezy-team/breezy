@@ -641,13 +641,13 @@ class TestBzrDir(TestCaseWithBzrDir):
         # a stacking policy on the target, the location of the fallback
         # repository is the same as the external location of the stacked-on
         # branch.
-        if not self.bzrdir_format.repository_format.supports_nesting_repositories:
-            raise TestNotApplicable("requires nesting repositories")
         balloon = self.make_bzrdir('balloon')
         if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
             stack_on = self.make_branch('stack-on', format='1.9')
         else:
             stack_on = self.make_branch('stack-on')
+        if not stack_on.repository._format.supports_nesting_repositories:
+            raise TestNotApplicable("requires nesting repositories")
         config = self.make_bzrdir('.').get_config()
         try:
             config.set_default_stack_on('stack-on')
