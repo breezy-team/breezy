@@ -1045,55 +1045,6 @@ class TestControlDir(TestCaseWithControlDir):
             self.assertEqual(repo.bzrdir.root_transport.base,
                 made_repo.bzrdir.root_transport.base)
 
-    def test_format_initialize_on_transport_ex_stacked_on(self):
-        if not self.bzrdir_format.is_initializable():
-            raise TestNotApplicable("format is not initializable")
-        # trunk is a stackable format.  Note that its in the same server area
-        # which is what launchpad does, but not sufficient to exercise the
-        # general case.
-        trunk = self.make_branch('trunk', format='1.9')
-        t = self.get_transport('stacked')
-        old_fmt = bzrdir.format_registry.make_bzrdir('pack-0.92')
-        repo_name = old_fmt.repository_format.network_name()
-        # Should end up with a 1.9 format (stackable)
-        repo, control = self.assertInitializeEx(t, need_meta=True,
-            repo_format_name=repo_name, stacked_on='../trunk',
-            stack_on_pwd=t.base)
-        self.assertLength(1, repo._fallback_repositories)
-
-    def test_format_initialize_on_transport_ex_default_stack_on(self):
-        # When initialize_on_transport_ex uses a stacked-on branch because of
-        # a stacking policy on the target, the location of the fallback
-        # repository is the same as the external location of the stacked-on
-        # branch.
-        balloon = self.make_bzrdir('balloon')
-        if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
-            stack_on = self.make_branch('stack-on', format='1.9')
-        else:
-            stack_on = self.make_branch('stack-on')
-        if not stack_on.repository._format.supports_nesting_repositories:
-            raise TestNotApplicable("requires nesting repositories")
-        config = self.make_bzrdir('.').get_config()
-        try:
-            config.set_default_stack_on('stack-on')
-        except errors.BzrError:
-            raise TestNotApplicable('Only relevant for stackable formats.')
-        # Initialize a bzrdir subject to the policy.
-        t = self.get_transport('stacked')
-        repo_fmt = bzrdir.format_registry.make_bzrdir('1.9')
-        repo_name = repo_fmt.repository_format.network_name()
-        repo, control = self.assertInitializeEx(
-            t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
-        # self.addCleanup(repo.unlock)
-        # There's one fallback repo, with a public location.
-        self.assertLength(1, repo._fallback_repositories)
-        fallback_repo = repo._fallback_repositories[0]
-        self.assertEqual(
-            stack_on.base, fallback_repo.bzrdir.root_transport.base)
-        # The bzrdir creates a branch in stacking-capable format.
-        new_branch = control.create_branch()
-        self.assertTrue(new_branch._format.supports_stacking())
-
     def test_format_initialize_on_transport_ex_repo_fmt_name_None(self):
         t = self.get_transport('dir')
         repo, control = self.assertInitializeEx(t)
@@ -1110,7 +1061,7 @@ class TestControlDir(TestCaseWithControlDir):
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
 
-    def assertInitializeEx(self, t, need_meta=False, **kwargs):
+    def assertInitializeEx(self, t, **kwargs):
         """Execute initialize_on_transport_ex and check it succeeded correctly.
 
         This involves checking that the disk objects were created, open with
@@ -1133,10 +1084,6 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertIsInstance(control, controldir.ControlDir)
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
-        if need_meta and expected_format.fixed_components:
-            # Pre-metadir formats change when we are making something that
-            # needs a metaformat, because clone is used for push.
-            expected_format = bzrdir.BzrDirMetaFormat1()
         if not isinstance(expected_format, RemoteBzrDirFormat):
             self.assertEqual(control._format.network_name(),
                 expected_format.network_name())

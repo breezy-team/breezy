@@ -1278,7 +1278,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            osutils.delete_any(path)
+            if osutils.file_kind(path) == "directory":
+                osutils.rmtree(path)
+            else:
+                osutils.delete_any(path)
             make_after(path)
 
         self._add_commit_change_check_changed(tree, path, change_kind,
