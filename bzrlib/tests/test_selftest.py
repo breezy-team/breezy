@@ -3346,7 +3346,7 @@ class TestUncollectedWarnings(tests.TestCase):
             gc.disable()
         try:
             tests.selftest(test_suite_factory=self._get_suite, stream=sio,
-                **kwargs)
+                stop_on_failure=False, **kwargs)
         finally:
             if gc_on:
                 gc.enable()
@@ -3368,7 +3368,8 @@ class TestUncollectedWarnings(tests.TestCase):
         self.assertNotContainsRe(out, "test_skip")
 
     def test_random_seed(self):
-        self._run_selftest_with_suite(random_seed="now")
+        out = self._run_selftest_with_suite(random_seed="now")
+        self.assertContainsRe(out, "Ran 4 tests in \d+.\d+s")
 
     def test_matching_tests_first(self):
         self._run_selftest_with_suite(matching_tests_first=True,
