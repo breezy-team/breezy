@@ -897,12 +897,14 @@ class TestIgnoreFallbacksParameter(per_branch.TestCaseWithBranch):
     def test_fallbacks_not_opened(self):
         stacked = self.make_branch_with_fallback()
         self.get_transport('').rename('fallback', 'moved')
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
 
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
 
 

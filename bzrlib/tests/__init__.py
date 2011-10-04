@@ -2634,21 +2634,8 @@ class TestCaseWithMemoryTransport(TestCase):
         repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch(append_revisions_only=False)
 
-    def resolve_format(self, format):
-        """Resolve an object to a ControlDir format object.
-
-        The initial format object can either already be
-        a ControlDirFormat, None (for the default format),
-        or a string with the name of the control dir format.
-
-        :param format: Object to resolve
-        :return A ControlDirFormat instance
-        """
-        if format is None:
-            format = 'default'
-        if isinstance(format, basestring):
-            format = bzrdir.format_registry.make_bzrdir(format)
-        return format
+    def get_default_format(self):
+        return 'default'
 
     def resolve_format(self, format):
         """Resolve an object to a ControlDir format object.
@@ -2661,7 +2648,7 @@ class TestCaseWithMemoryTransport(TestCase):
         :return A ControlDirFormat instance
         """
         if format is None:
-            format = 'default'
+            format = self.get_default_format()
         if isinstance(format, basestring):
             format = bzrdir.format_registry.make_bzrdir(format)
         return format
@@ -2959,6 +2946,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # this obviously requires a format that supports branch references
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
+        format = self.resolve_format(format=format)
         b = self.make_branch(relpath, format=format)
         try:
             return b.bzrdir.create_workingtree()
