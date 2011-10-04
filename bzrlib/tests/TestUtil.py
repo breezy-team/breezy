@@ -115,6 +115,8 @@ class TestSuite(unittest.TestSuite):
                 if stored_count == new_stored_count and notify:
                     # Testcase didn't fail, but somehow is still alive
                     FailedCollectionCase(case).run(result)
+                    # Adding a new failure so need to reupdate the count
+                    new_stored_count = count_stored_tests()
                 # GZ 2011-09-16: Previously zombied the case at this point by
                 #                clearing the dict as fallback, skip for now.
             stored_count = new_stored_count
