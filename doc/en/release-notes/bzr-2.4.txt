@@ -39,6 +39,10 @@ Bug Fixes
   stat fields into four bytes in dirstate pack_stat implementations.
   (Martin Packman, #683191 #706957)
 
+* Return early from create_delta_index_from_delta given tiny inputs. This
+  avoids raising a spurious MemoryError on certain platforms such as AIX.
+  (John Arbash Meinel, #856731)
+
 Documentation
 *************
 
