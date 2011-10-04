@@ -601,22 +601,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
 
-    def test_format_initialize_on_transport_ex_stacked_on(self):
-        if not self.bzrdir_format.is_initializable():
-            raise TestNotApplicable("format is not initializable")
-        # trunk is a stackable format.  Note that its in the same server area
-        # which is what launchpad does, but not sufficient to exercise the
-        # general case.
-        trunk = self.make_branch('trunk', format='1.9')
-        t = self.get_transport('stacked')
-        old_fmt = bzrdir.format_registry.make_bzrdir('pack-0.92')
-        repo_name = old_fmt.repository_format.network_name()
-        # Should end up with a 1.9 format (stackable)
-        repo, control = self.assertInitializeEx(t, need_meta=True,
-            repo_format_name=repo_name, stacked_on='../trunk',
-            stack_on_pwd=t.base)
-        self.assertLength(1, repo._fallback_repositories)
-
     def assertInitializeEx(self, t, need_meta=False, **kwargs):
         """Execute initialize_on_transport_ex and check it succeeded correctly.
 
