@@ -420,13 +420,13 @@ class TestBranch(per_branch.TestCaseWithBranch):
         try:
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise tests.TestNotApplicable("requires shared repository support")
         child_transport = repo.bzrdir.root_transport.clone('child')
         child_transport.mkdir('.')
         try:
             child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
         except errors.UninitializableFormat:
-            return
+            raise tests.TestNotApplicable("control dir format not initializable")
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:

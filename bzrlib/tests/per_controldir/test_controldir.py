@@ -406,7 +406,7 @@ class TestControlDir(TestCaseWithControlDir):
                                                      stacked_on=branch.base)
         except (errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
-            raise TestNotApplicable("branch or repository format do "
+            raise TestNotApplicable("branch or repository format does "
                 "not support stacking")
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
@@ -462,7 +462,8 @@ class TestControlDir(TestCaseWithControlDir):
             target.open_workingtree()
         except errors.NoWorkingTree:
             # Some bzrdirs can never have working trees.
-            self.assertFalse(target._format.supports_workingtrees)
+            repo = target.find_repository()
+            self.assertFalse(repo.bzrdir._format.supports_workingtrees)
 
     def test_sprout_bzrdir_empty_under_shared_repo_force_new(self):
         # the force_new_repo parameter should force use of a new repo in an empty
@@ -1070,6 +1071,8 @@ class TestControlDir(TestCaseWithControlDir):
             stack_on = self.make_branch('stack-on', format='1.9')
         else:
             stack_on = self.make_branch('stack-on')
+        if not stack_on.repository._format.supports_nesting_repositories:
+            raise TestNotApplicable("requires nesting repositories")
         config = self.make_bzrdir('.').get_config()
         try:
             config.set_default_stack_on('stack-on')
