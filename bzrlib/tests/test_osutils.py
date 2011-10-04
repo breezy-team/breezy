@@ -823,9 +823,9 @@ class TestPosixFuncs(tests.TestCase):
        when used with 2 leading slashes."""
 
     def test_normpath(self):
-        self.assertEqual('/etc/shadow', osutils.normpath('/etc/shadow'))
-        self.assertEqual('/etc/shadow', osutils.normpath('//etc/shadow'))
-        self.assertEqual('/etc/shadow', osutils.normpath('///etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('/etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('//etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('///etc/shadow'))
 
 
 class TestWin32Funcs(tests.TestCase):

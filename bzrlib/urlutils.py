@@ -22,7 +22,7 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from posixpath import split as _posix_split, normpath as _posix_normpath
+from posixpath import split as _posix_split
 import urllib
 import urlparse
 
@@ -200,8 +200,7 @@ def _posix_local_path_to_url(path):
     """
     # importing directly from posixpath allows us to test this
     # on non-posix platforms
-    return 'file://' + escape(_posix_normpath(
-        osutils._posix_abspath(path)))
+    return 'file://' + escape(osutils._posix_abspath(path))
 
 
 def _win32_local_path_from_url(url):
