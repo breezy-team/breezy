@@ -32,6 +32,9 @@ from bzrlib import (
     osutils,
     versionedfile,
     )
+from bzrlib.branch import (
+    Branch,
+    )
 from bzrlib.bzrdir import (
     BzrDir,
     )
@@ -90,7 +93,8 @@ class RepositoryFetchTests(object):
         path, gitsha = self.make_onerev_branch()
         oldrepo = self.open_git_repo(path)
         newrepo = self.clone_git_repo(path, "f")
-        self.assertEquals([oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)], newrepo.all_revision_ids())
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        self.assertEquals([revid], newrepo.all_revision_ids())
 
     def test_single_rev_specific(self):
         path, gitsha = self.make_onerev_branch()
@@ -231,6 +235,41 @@ class RepositoryFetchTests(object):
         fileid = tree.path2id("foobar")
         self.assertEquals(True, tree.is_executable(fileid))
         self.assertEquals(revid, tree.get_file_revision(fileid))
+
+    def test_into_stacked_on(self):
+        r = self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file(u"foobar", "foo\n", False)
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        gitsha1 = bb.finish()[mark1]
+        os.chdir("..")
+        stacked_on = self.clone_git_repo("d", "stacked-on")
+        oldrepo = Repository.open("d")
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        self.assertEquals([revid1], stacked_on.all_revision_ids())
+        b = stacked_on.bzrdir.create_branch()
+        b.generate_revision_history(revid1)
+        self.assertEquals(b.last_revision(), revid1)
+        tree = self.make_branch_and_tree("stacked")
+        tree.branch.set_stacked_on_url(b.user_url)
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file(u"barbar", "bar\n", False)
+        bb.set_file(u"foo/blie/bla", "bla\n", False)
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        gitsha2 = bb.finish()[mark2]
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        os.chdir("..")
+        tree.branch.fetch(Branch.open("d"))
+        tree.branch.repository.check()
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertEquals(
+            set([(revid2,)]),
+            tree.branch.repository.revisions.without_fallbacks().keys())
+        self.assertEquals(
+            set([revid1, revid2]),
+            set(tree.branch.repository.all_revision_ids()))
 
     def test_non_ascii_characters(self):
         self.make_git_repo("d")
