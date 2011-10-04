@@ -4,6 +4,10 @@
 
    * Mark as compatible with the Bazaar 2.5 API. (Jelmer Vernooij)
 
+  FEATURES
+
+   * Internationalization support. (Jonathan Riddell)
+
 0.6.2	2011-03-02
 
   BUG FIXES

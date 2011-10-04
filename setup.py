@@ -2,6 +2,15 @@
 
 from info import *
 
+command_classes = {}
+try:
+    from bzrlib.bzr_distutils import build_mo
+except ImportError:
+    pass
+else:
+    command_classes['build_mo'] = build_mo
+
+
 if __name__ == '__main__':
     from distutils.core import setup
 
@@ -20,5 +29,6 @@ if __name__ == '__main__':
           Hooks into Bazaar and provides commands for rebasing.
           """,
           package_dir={'bzrlib.plugins.rewrite':'.'},
-          packages=['bzrlib.plugins.rewrite', 'bzrlib.plugins.rewrite.tests']
+          packages=['bzrlib.plugins.rewrite', 'bzrlib.plugins.rewrite.tests'],
+          cmdclass=command_classes,
     )
