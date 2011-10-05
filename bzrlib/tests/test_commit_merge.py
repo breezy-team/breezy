@@ -60,6 +60,7 @@ class TestCommitMerge(TestCaseWithTransport):
 
         self.assertEquals(by.revno(), 3)
         graph = wty.branch.repository.get_graph()
+        self.addCleanup(wty.lock_read().unlock)
         self.assertEquals(list(
             graph.iter_lefthand_ancestry(by.last_revision(),
                 [_mod_revision.NULL_REVISION])),

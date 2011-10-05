@@ -210,9 +210,14 @@ class RevisionSpec(object):
         if branch:
             if self.wants_revision_history:
                 # TODO: avoid looking at all of history
-                graph = branch.repository.get_graph()
-                revs = list(graph.iter_lefthand_ancestry(
-                    branch.last_revision(), [revision.NULL_REVISION]))
+                branch.lock_read()
+                try:
+                    graph = branch.repository.get_graph()
+                    revs = list(graph.iter_lefthand_ancestry(
+                        branch.last_revision(), [revision.NULL_REVISION]))
+                finally:
+                    branch.unlock()
+                revs.reverse()
             else:
                 revs = None
         else:

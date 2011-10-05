@@ -172,10 +172,14 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         The revision list is returned as the body content,
         with each revision utf8 encoded and \x00 joined.
         """
-        graph = self.branch.get_graph()
-        stop_revisions = (None, _mod_revision.NULL_REVISION)
-        history = list(graph.iter_lefthand_ancestry(
-            branch.last_revision(), stop_revisions))
+        branch.lock_read()
+        try:
+            graph = branch.repository.get_graph()
+            stop_revisions = (None, _mod_revision.NULL_REVISION)
+            history = list(graph.iter_lefthand_ancestry(
+                branch.last_revision(), stop_revisions))
+        finally:
+            branch.unlock()
         return SuccessfulSmartServerResponse(
             ('ok', ), ('\x00'.join(reversed(history))))
 
