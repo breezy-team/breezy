@@ -62,7 +62,7 @@ class TextUIFactory(UIFactory):
         self._progress_view = self.make_progress_view()
 
     def confirm(self, msg, choices, default=None):
-        """UI.confirm implementation.
+        """Prompt the user for a list of alternatives.
 
         Support both line-based and char-based editing, depending on the
         presence of a controlling terminal. Line-based input can be forced by
