@@ -548,8 +548,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertEqual({}, repo.get_parent_map(['rev1']))
         # revision_history should work, even though the history is spread over
         # multiple repositories.
-        self.assertLength(2,
-            list(stacked.branch.iter_reverse_revision_history()))
+        self.assertEquals((2, 'rev2'), stacked.branch.last_revision_info())
 
 
 class TestStackingConnections(

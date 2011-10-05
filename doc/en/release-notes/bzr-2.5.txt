@@ -68,8 +68,7 @@ API Changes
 * ``Branch.get_revision_delta`` has been deprecated. Use
   ``Repository.get_revision_delta`` instead. (Jelmer Vernooij, #859712)
 
-* ``Branch.revision_history`` is now deprecated in favor of
-  ``Branch.iter_revision_history``. (Jelmer Vernooij, #799519)
+* ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
 
 * The new method ``ControlDirFormat.is_initializable()`` returns a boolean
   indicating whether or not it is possible to use any of the

@@ -38,7 +38,8 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.commit('adding b', rev_id='r2')
 
         self.revisions = list(
-            wt.branch.iter_reverse_revision_history())
+            wt.branch.repository.iter_reverse_revision_history(
+                wt.last_revision()))
         return wt
 
     def test_basic(self):

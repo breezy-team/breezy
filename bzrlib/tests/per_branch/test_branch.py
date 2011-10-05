@@ -76,7 +76,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = self.get_branch()
         br.fetch(wt.branch)
         br.generate_revision_history('rev3')
-        rh = list(br.iter_reverse_revision_history())
+        rh = list(br.repository.iter_reverse_revision_history(
+            br.last_revision()))
         self.assertEqual(['rev3', 'rev2', 'rev1'], rh)
         for revision_id in rh:
             self.assertIsInstance(revision_id, str)
@@ -457,11 +458,14 @@ class TestBranch(per_branch.TestCaseWithBranch):
         rev1 = tree.commit('foo')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        orig_history = list(tree.branch.iter_reverse_revision_history())
+        orig_history = list(
+            tree.branch.repository.iter_reverse_revision_history(
+                tree.branch.last_revision()))
         rev2 = tree.commit('bar', allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
-        self.assertEqual(orig_history,
-            list(tree.branch.iter_reverse_revision_history()))
+        self.assertEqual(orig_history, list(
+            tree.branch.repository.iter_reverse_revision_history(
+                tree.branch.last_revision())))
 
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree('.')
@@ -470,7 +474,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.addCleanup(tree.unlock)
         tree.branch.generate_revision_history(revision.NULL_REVISION)
         self.assertEqual(revision.NULL_REVISION, tree.branch.last_revision())
-        self.assertEqual([], list(tree.branch.iter_reverse_revision_history()))
 
     def test_create_checkout(self):
         tree_a = self.make_branch_and_tree('a')

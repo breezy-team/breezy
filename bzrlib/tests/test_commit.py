@@ -364,7 +364,8 @@ class TestCommit(TestCaseWithTransport):
             rev_ids.append(rev_id)
             wt.commit(message='rev %d' % (i+1),
                      rev_id=rev_id)
-        history = list(b.iter_reverse_revision_history())
+        history = list(b.repository.iter_reverse_revision_history(
+            b.last_revision()))
         history.reverse()
         self.assertEquals(history, rev_ids)
         for i in range(4):

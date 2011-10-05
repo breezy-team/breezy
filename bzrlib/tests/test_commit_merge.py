@@ -55,8 +55,10 @@ class TestCommitMerge(TestCaseWithTransport):
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 3)
-        self.assertEquals(list(by.iter_reverse_revision_history()),
-                          ['y@u-0-2', 'y@u-0-1', base_rev])
+        self.assertEquals(list(
+            by.repository.iter_reverse_revision_history(
+                by.last_revision())),
+            ['y@u-0-2', 'y@u-0-1', base_rev])
         rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
