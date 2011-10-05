@@ -18,6 +18,7 @@ import sys
 
 from bzrlib import (
     errors,
+    revision as _mod_revision,
     tests,
     transform,
     )
@@ -205,13 +206,14 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # the revision history.
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        pp=[]
-        history = list(
-            self.branch.repository.iter_reverse_revision_history(
-                self.branch.last_revision()))
+        pp = []
+        graph = self.branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(self.branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
         history.reverse()
 
-        if len(history) < 2: return
+        if len(history) < 2:
+            return
 
         graph = self.branch.repository.get_graph()
         for start in range(0,len(history)-1):
@@ -300,8 +302,9 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         # sees each change rather than the aggregate delta.
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        history = list(self.branch.repository.iter_reverse_revision_history(
-            self.branch.last_revision()))
+        graph = self.branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(self.branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
         new_rev = history[0]
         old_rev = history[1]
         graph = self.branch.repository.get_graph()

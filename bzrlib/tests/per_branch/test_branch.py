@@ -76,10 +76,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = self.get_branch()
         br.fetch(wt.branch)
         br.generate_revision_history('rev3')
-        rh = list(br.repository.iter_reverse_revision_history(
-            br.last_revision()))
-        self.assertEqual(['rev3', 'rev2', 'rev1'], rh)
-        for revision_id in rh:
+        for revision_id in ['rev3', 'rev2', 'rev1']:
             self.assertIsInstance(revision_id, str)
         last = br.last_revision()
         self.assertEqual('rev3', last)
