@@ -1212,34 +1212,21 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        path, name = self._get_branch_path(name)
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:
-            return self.transport.clone(path)
+            return self.transport.clone('branch')
         try:
             branch_format.get_format_string()
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
-        if name is not None:
-            try:
-                self.transport.mkdir('branches', mode=self._get_mkdir_mode())
-            except errors.FileExists:
-                pass
-            branches = self._read_branch_list()
-            if not name in branches:
-                self.control_files.lock_write()
-                try:
-                    branches = self._read_branch_list()
-                    branches.append(name)
-                    self._write_branch_list(branches)
-                finally:
-                    self.control_files.unlock()
         try:
-            self.transport.mkdir(path, mode=self._get_mkdir_mode())
+            self.transport.mkdir('branch', mode=self._get_mkdir_mode())
         except errors.FileExists:
             pass
-        return self.transport.clone(path)
+        return self.transport.clone('branch')
 
     def get_repository_transport(self, repository_format):
         """See BzrDir.get_repository_transport()."""
@@ -1747,7 +1734,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     It has:
 
     - Format 3 working trees [optional]
-    - Format 5 branches [zero or more]
+    - Format 5 branches [optional]
     - Format 7 repositories [optional]
     """
 
@@ -1960,7 +1947,7 @@ controldir.ControlDirFormat._default_format = BzrDirMetaFormat1()
 
 
 class BzrDirMetaFormat1Colo(BzrDirMetaFormat1):
-    """BzrDir1 format with support for colocated branches."""
+    """BzrDirMeta1 format with support for colocated branches."""
 
     colocated_branches = True
 
@@ -1972,6 +1959,15 @@ class BzrDirMetaFormat1Colo(BzrDirMetaFormat1):
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1 with support for colocated branches"
+
+    def _open(self, transport):
+        """See BzrDirFormat._open."""
+        # Create a new format instance because otherwise initialisation of new
+        # metadirs share the global default format object leading to alias
+        # problems.
+        format = BzrDirMetaFormat1Colo()
+        self._supply_sub_formats_to(format)
+        return BzrDirMeta1Colo(transport, format)
 
 
 BzrProber.formats.register(BzrDirMetaFormat1Colo.get_format_string(),

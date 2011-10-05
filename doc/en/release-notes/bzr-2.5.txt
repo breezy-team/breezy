@@ -86,6 +86,12 @@ New Features
   option. A value of 0 disables skipping. Named items passed to add are
   never skipped. (Shannon Weyrick, #54624)
 
+* The new experimental format ``development-colo`` supports colocated
+  branches. This format will eventually be merged back into the ``2a``
+  format when it has stabilized and there is adequate UI support for
+  colocated branches.
+  (Jelmer Vernooij, #831481)
+
 Improvements
 ************
 
@@ -98,11 +104,6 @@ Improvements
 
 * Locations printed by ``bzr upgrade`` are now formatted before display.
   (Jelmer Vernooij)
-
-* The default Bazaar format now supports colocated branches. Older
-  versions of Bazaar will be able to access the active branch, but
-  can not browse the available colocated branches or switch between them.
-  (Jelmer Vernooij, #831481)
 
 Bug Fixes
 *********
