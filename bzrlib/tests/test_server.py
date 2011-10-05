@@ -602,9 +602,6 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
             self, request, server.backing_transport,
             server.root_client_path,
             timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
-        # Override the default _client_poll_timeout, this way we quickly detect
-        # when we are requested to stop as part of stop_server().
-        self._client_poll_timeout = 0.1
         request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         SocketServer.BaseRequestHandler.__init__(self, request, client_address,
                                                  server)
