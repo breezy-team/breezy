@@ -580,11 +580,11 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
         self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
         self.run_script("""
             $ bzr test-confirm
-            2>Really do it? ([y]es, [n]o): y
+            2>Really do it? ([y]es, [n]o): yes
             <y
             Do it!
             $ bzr test-confirm
-            2>Really do it? ([y]es, [n]o): n
+            2>Really do it? ([y]es, [n]o): no
             <n
             ok, no
             """)
@@ -610,11 +610,11 @@ class TestShelve(script.TestCaseWithTransportAndScript):
     def test_shelve(self):
         self.run_script("""
             $ bzr shelve -m 'shelve bar'
-            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): y
+            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): yes
             <y
             2>Selected changes:
             2> M  file
-            2>Shelve 1 change(s)? ([y]es, [N]o, [f]inish, [q]uit): y
+            2>Shelve 1 change(s)? ([y]es, [N]o, [f]inish, [q]uit): yes
             <y
             2>Changes shelved with id "1".
             """,
