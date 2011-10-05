@@ -63,7 +63,7 @@ po/bzr-git.pot: $(PYFILES) $(DOCFILES)
 	BZR_PLUGINS_AT=git@$(shell pwd) bzr export-pot \
           --plugin=git > po/bzr-git.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
-	  xgettext --package-name "bzr-git" \
+	xgettext --package-name "bzr-git" \
 	  --msgid-bugs-address "<bazaar@lists.canonical.com>" \
 	  --copyright-holder "Canonical Ltd <canonical-bazaar@lists.canonical.com>" \
 	  --from-code ISO-8859-1 --sort-by-file --join --add-comments=i18n: \
