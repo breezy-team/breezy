@@ -227,6 +227,12 @@ New Features
   for any message using gettext given on output.  (Jonathan Riddell,
   INADA Naoki, #83941)
 
+* The new experimental format ``development-colo`` supports colocated
+  branches. This format will eventually be merged back into the ``2a``
+  format when it has stabilized and there is adequate UI support for
+  colocated branches.
+  (Jelmer Vernooij, #831481)
+
 Improvements
 ************
 

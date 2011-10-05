@@ -1397,3 +1397,10 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
         self._transport.put_bytes("a.~1~", "some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
 
+
+class TestMeta1DirColoFormat(TestCaseWithTransport):
+    """Tests specific to the meta1 dir with colocated branches format."""
+
+    def test_supports_colo(self):
+        format = bzrdir.BzrDirMetaFormat1Colo()
+        self.assertTrue(format.colocated_branches)
