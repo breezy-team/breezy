@@ -603,7 +603,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                 'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository
-    def make_remote_repository(self, path, shared=False):
+    def make_remote_repository(self, path, shared=None):
         """Make a RemoteRepository object backed by a real repository that will
         be created at the given path."""
         repo = self.make_repository(path, shared=shared)
@@ -808,7 +808,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
                          [b.base for b in branches])
 
     def test_find_branches_using_empty_standalone_repo(self):
-        repo = self.make_repository('repo', shared=False)
+        try:
+            repo = self.make_repository('repo', shared=False)
+        except errors.IncompatibleFormat:
+            raise tests.TestNotApplicable("format does not support standalone "
+                "repositories")
         try:
             repo.bzrdir.open_branch()
         except errors.NotBranchError:

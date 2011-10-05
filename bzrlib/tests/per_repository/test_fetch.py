@@ -22,7 +22,6 @@ from bzrlib import (
     gpg,
     remote,
     repository,
-    tests,
     )
 from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import (
