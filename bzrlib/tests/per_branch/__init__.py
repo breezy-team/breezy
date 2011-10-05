@@ -162,7 +162,6 @@ def load_tests(standard_tests, module, loader):
         'hooks',
         'http',
         'iter_merge_sorted_revisions',
-        'iter_revision_history',
         'last_revision_info',
         'locking',
         'parent',
