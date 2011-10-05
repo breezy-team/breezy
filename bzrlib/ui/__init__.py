@@ -330,17 +330,17 @@ class UIFactory(object):
         :param msg: message to be shown as part of the prompt.
 
         :param choices: list of choices, with the individual choices separated
-        by '\n', e.g.: confirm("Save changes?", "&Yes\n&No\n&Cancel").
-        The letter after the '&' is the shortcut key for that choice. Thus you
-        can type 'c' to select "Cancel". Shorcuts are case insensitive. The
-        shortcut does not need to be the first letter. If a shorcut key is not
-        provided, the first letter for the choice will be used.
+            by '\n', e.g.: confirm("Save changes?", "&Yes\n&No\n&Cancel"). The
+            letter after the '&' is the shortcut key for that choice. Thus you
+            can type 'c' to select "Cancel".  Shorcuts are case insensitive.
+            The shortcut does not need to be the first letter. If a shorcut key
+            is not provided, the first letter for the choice will be used.
 
-        :param default: default choice (index), returned for example when
-        enter is pressed for the console version.
+        :param default: default choice (index), returned for example when enter
+            is pressed for the console version.
 
         :return: the index fo the user choice (so '0', '1' or '2' for
-        respectively yes/no/cancel in the previous example).
+            respectively yes/no/cancel in the previous example).
         """
         raise NotImplementedError(self.confirm)
 
