@@ -1393,7 +1393,7 @@ class Branch(controldir.ControlComponent):
         # TODO: We should probably also check that self.revision_history
         # matches the repository for older branch formats.
         # If looking for the code that cross-checks repository parents against
-        # the iter_reverse_revision_history output, that is now a repository
+        # the Graph.iter_lefthand_ancestry output, that is now a repository
         # specific check.
         return result
 

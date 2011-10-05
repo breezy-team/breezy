@@ -455,14 +455,15 @@ class TestBranch(per_branch.TestCaseWithBranch):
         rev1 = tree.commit('foo')
         tree.lock_write()
         self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
         orig_history = list(
-            tree.branch.repository.iter_reverse_revision_history(
-                tree.branch.last_revision()))
+            graph.iter_lefthand_ancestry(
+                tree.branch.last_revision(), [revision.NULL_REVISION]))
         rev2 = tree.commit('bar', allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
         self.assertEqual(orig_history, list(
-            tree.branch.repository.iter_reverse_revision_history(
-                tree.branch.last_revision())))
+            graph.iter_lefthand_ancestry(
+                tree.branch.last_revision(), [revision.NULL_REVISION])))
 
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree('.')
