@@ -929,7 +929,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
         reference_parent = tree.branch.reference_parent(
-            'subtree-id', urlutils.basename(subtree.branch.base))
+            'subtree-id', urlutils.basename(subtree.branch.user_url))
         self.assertEqual(subtree.branch.base, reference_parent.base)
 
     def test_reference_parent_accepts_possible_transports(self):
@@ -941,7 +941,8 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
         reference_parent = tree.branch.reference_parent('subtree-id',
-            'subtree', possible_transports=[subtree.bzrdir.root_transport])
+            urlutils.basename(subtree.branch.base),
+            possible_transports=[subtree.bzrdir.root_transport])
 
     def test_get_reference_info(self):
         branch = self.make_branch('branch')

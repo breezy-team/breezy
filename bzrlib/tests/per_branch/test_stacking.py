@@ -172,7 +172,8 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         tree = new_dir.open_branch().create_checkout('local')
         new_branch_revid = tree.commit('something local')
-        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionNotInRepository(trunk_tree.branch.user_url,
+            new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_unstack_fetches(self):
