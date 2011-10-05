@@ -61,12 +61,114 @@ class TextUIFactory(UIFactory):
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
 
+    class ChooseUI:
+
+        """ Helper class for choose implementation.
+        """
+
+        class InputEOF(StandardError):
+            pass
+
+        def __init__(self, ui, msg, choices, default):
+            self.ui = ui
+            self._setup_mode()
+            self._build_alternatives(msg, choices, default)
+
+        def _setup_mode(self):
+            """Setup input mode (line-based, char-based) and echo-back.
+
+            Line-based input is used if the BZR_TEXTUI_INPUT environment
+            variable is set to 'line-based', or if there is no controlling
+            terminal.
+            """
+            if os.environ.get('BZR_TEXTUI_INPUT') != 'line-based' and \
+               self.ui.stdin == sys.stdin and self.ui.stdin.isatty():
+                self.line_based = False
+                self.echo_back = True
+            else:
+                self.line_based = True
+                self.echo_back = not self.ui.stdin.isatty()
+
+        def _build_alternatives(self, msg, choices, default):
+            """Parse choices string.
+
+            Setup final prompt and the lists of choices and associated
+            shortcuts.
+            """
+            index = 0
+            help_list = []
+            self.alternatives = {}
+            for c in choices.split('\n'):
+                name = c.strip('&').lower()
+                choice = (name, index)
+                self.alternatives[name] = choice
+                shortcut = c.find('&')
+                if -1 != shortcut and (shortcut + 1) < len(c):
+                    help = c[:shortcut]
+                    help += '[' + c[shortcut + 1] + ']'
+                    help += c[(shortcut + 2):]
+                    shortcut = c[shortcut + 1]
+                else:
+                    help = c.strip('&')
+                    shortcut = c[0]
+                shortcut = shortcut.lower()
+                self.alternatives[shortcut] = choice
+                # Add redirections for default.
+                if index == default:
+                    self.alternatives[''] = choice
+                    self.alternatives['\r'] = choice
+                    self.alternatives['\n'] = choice
+                help_list.append(help)
+                index += 1
+
+            self.prompt = u'%s (%s): ' % (msg, ', '.join(help_list))
+
+        def _getline(self):
+            line = self.ui.stdin.readline()
+            if '' == line:
+                raise self.InputEOF
+            return line.strip().lower()
+
+        def _getchar(self):
+            char = osutils.getchar()
+            if char == chr(3): # INTR
+                raise KeyboardInterrupt
+            if char == chr(4): # EOF (^d, C-d)
+                raise self.InputEOF
+            return char.lower()
+
+        def interact(self):
+            """Keep asking the user until a valid choice is made.
+            """
+            if self.line_based:
+                getchoice = self._getline
+            else:
+                getchoice = self._getchar
+            iter = 0
+            while True:
+                iter += 1
+                if 1 == iter or self.line_based:
+                    self.ui.prompt(self.prompt)
+                try:
+                    choice = getchoice()
+                except self.InputEOF:
+                    self.ui.stderr.write('\n')
+                    return None
+                except KeyboardInterrupt:
+                    self.ui.stderr.write('\n')
+                    raise KeyboardInterrupt
+                if choice not in self.alternatives:
+                    # Not a valid choice, keep on asking.
+                    continue
+                name, index = self.alternatives[choice]
+                if self.echo_back:
+                    self.ui.stderr.write(name + '\n')
+                return index
+
     def choose(self, msg, choices, default=None):
         """Prompt the user for a list of alternatives.
 
-        Support both line-based and char-based editing, depending on the
-        presence of a controlling terminal. Line-based input can be forced by
-        setting the BZR_TEXTUI_INPUT environment variable to 'line-based'.
+        Support both line-based and char-based editing.
 
         In line-based mode, both the shortcut and full choice name are valid
         answers, e.g. for choose('prompt', '&yes\n&no'): 'y', ' Y ', ' yes',
@@ -80,76 +182,9 @@ class TextUIFactory(UIFactory):
           and osutils.getchar is used
         - input is line-based, and no controlling terminal is available
         """
-        if os.environ.get('BZR_TEXTUI_INPUT') != 'line-based' and \
-           self.stdin == sys.stdin and self.stdin.isatty():
-            line_based = False
-            echo_back = True
-        else:
-            line_based = True
-            echo_back = not self.stdin.isatty()
 
-        help_list = []
-        choice_list = []
-        shorcut_list = ''
-        for c in choices.split('\n'):
-            choice_list.append(c.strip('&').lower())
-            shortcut = c.find('&')
-            if -1 != shortcut and (shortcut + 1) < len(c):
-                help = c[:shortcut]
-                help += '[' + c[shortcut + 1] + ']'
-                help += c[(shortcut + 2):]
-                shortcut = c[shortcut + 1]
-            else:
-                help = c.strip('&')
-                shortcut = c[0]
-            shorcut_list += shortcut.lower()
-            help_list.append(help)
-
-        prompt = u'%s (%s): ' % (msg, ', '.join(help_list))
-
-        iter = 0
-        while True:
-            iter += 1
-            if 1 == iter or line_based:
-                self.prompt(prompt)
-            if line_based:
-                line = self.stdin.readline()
-                if '' == line:
-                    # EOF
-                    self.stderr.write('\n')
-                    return None
-                line = line.strip().lower()
-                if len(line) > 1:
-                    # Not a shortcut, must match choice.
-                    try:
-                        choice = choice_list.index(line)
-                        if echo_back:
-                            self.stderr.write(line + '\n')
-                        return choice
-                    except ValueError:
-                        # Not a valid choice, keep on asking
-                        continue
-                # One character only, will try to match a shortcut.
-                char = line
-            else:
-                char = osutils.getchar()
-                if char == chr(3): # INTR
-                    self.stderr.write('\n')
-                    raise KeyboardInterrupt
-                if char == chr(4): # EOF (^d, C-d)
-                    self.stderr.write('\n')
-                    return None
-                char = char.lower()
-            # Default choice?
-            if default is not None and ('' == char or char in '\r\n'):
-                char = shorcut_list[default]
-            if '' == char:
-                continue
-            choice = shorcut_list.find(char)
-            if -1 != choice:
-                if echo_back:
-                    self.stderr.write(char + '\n')
-                return choice
+        choose_ui = self.ChooseUI(self, msg, choices, default)
+        return choose_ui.interact()
 
     def be_quiet(self, state):
         if state and not self._quiet:
