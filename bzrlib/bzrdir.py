@@ -1150,48 +1150,6 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
-    def _get_branch_path(self, name):
-        """Obtain the branch path to use.
-
-        This uses the API specified branch name first, and then falls back to
-        the branch name specified in the URL. If neither of those is specified,
-        it uses the default branch.
-
-        :param name: Optional branch name to use
-        :return: Relative path to branch, branch name
-        """
-        if name is None:
-            name = self._get_selected_branch()
-        if name is None:
-            return 'branch', None
-        return urlutils.join('branches', name), name
-
-    def _read_branch_list(self):
-        """Read the branch list.
-
-        :return: List of utf-8 encoded branch names.
-        """
-        try:
-            f = self.control_transport.get('branch-list')
-        except errors.NoSuchFile:
-            return []
-
-        ret = []
-        try:
-            for name in f:
-                ret.append(name.rstrip("\n"))
-        finally:
-            f.close()
-        return ret
-
-    def _write_branch_list(self, branches):
-        """Write out the branch list.
-
-        :param branches: List of utf-8 branch names to write
-        """
-        self.transport.put_bytes('branch-list',
-            "".join([name+"\n" for name in branches]))
-
     def create_branch(self, name=None, repository=None):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self, name=name,
@@ -1403,6 +1361,56 @@ class BzrDirMeta1(BzrDir):
 
     def _get_config(self):
         return config.TransportConfig(self.transport, 'control.conf')
+
+
+class BzrDirMeta1Colo(BzrDirMeta1):
+    """BzrDirMeta1 with support for colocated branches.
+
+    This format is experimental, and will eventually be merged back into BzrDirMeta1.
+    """
+
+    def _get_branch_path(self, name):
+        """Obtain the branch path to use.
+
+        This uses the API specified branch name first, and then falls back to
+        the branch name specified in the URL. If neither of those is specified,
+        it uses the default branch.
+
+        :param name: Optional branch name to use
+        :return: Relative path to branch, branch name
+        """
+        if name is None:
+            name = self._get_selected_branch()
+        if name is None:
+            return 'branch', None
+        return urlutils.join('branches', name), name
+
+    def _read_branch_list(self):
+        """Read the branch list.
+
+        :return: List of utf-8 encoded branch names.
+        """
+        try:
+            f = self.control_transport.get('branch-list')
+        except errors.NoSuchFile:
+            return []
+
+        ret = []
+        try:
+            for name in f:
+                ret.append(name.rstrip("\n"))
+        finally:
+            f.close()
+        return ret
+
+    def _write_branch_list(self, branches):
+        """Write out the branch list.
+
+        :param branches: List of utf-8 branch names to write
+        """
+        self.transport.put_bytes('branch-list',
+            "".join([name+"\n" for name in branches]))
+
 
 
 class BzrProber(controldir.Prober):
@@ -1909,6 +1917,10 @@ class BzrDirMetaFormat1(BzrDirFormat):
                                   __set_workingtree_format)
 
 
+class BzrDirMetaFormat1Colo(BzrDirMetaFormat1):
+    """BzrDir1 format with support for colocated branches."""
+
+
 # Register bzr formats
 BzrProber.formats.register(BzrDirMetaFormat1.get_format_string(),
     BzrDirMetaFormat1)
@@ -2160,11 +2172,11 @@ def register_metadir(registry, key,
          tree_format=None,
          hidden=False,
          experimental=False,
-         alias=False):
+         alias=False, bzrdir_format=None):
     """Register a metadir subformat.
 
-    These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
-    by the Repository/Branch/WorkingTreeformats.
+    These all use a meta bzrdir, but can be parameterized by the
+    Repository/Branch/WorkingTreeformats.
 
     :param repository_format: The fully-qualified repository format class
         name as a string.
@@ -2173,8 +2185,10 @@ def register_metadir(registry, key,
     :param tree_format: Fully-qualified tree format class name as
         a string.
     """
+    if bzrdir_format is None:
+        bzrdir_format = BzrDirMetaFormat1
     # This should be expanded to support setting WorkingTree and Branch
-    # formats, once BzrDirMetaFormat1 supports that.
+    # formats, once the API supports that.
     def _load(full_name):
         mod_name, factory_name = full_name.rsplit('.', 1)
         try:
@@ -2187,7 +2201,7 @@ def register_metadir(registry, key,
         return factory()
 
     def helper():
-        bd = BzrDirMetaFormat1()
+        bd = bzrdir_format()
         if branch_format is not None:
             bd.set_branch_format(_load(branch_format))
         if tree_format is not None:
@@ -2346,6 +2360,16 @@ register_metadir(controldir.format_registry, 'development5-subtree',
     hidden=True,
     alias=False,
     )
+
+register_metadir(controldir.format_registry, 'development-colo',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    help='The 2a format with experimental support for colocated branches.\n',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
+    experimental=False,
+    bzrdir_format=BzrDirMetaFormat1Colo,
+    )
+
 
 # And the development formats above will have aliased one of the following:
 
