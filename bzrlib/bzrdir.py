@@ -1323,8 +1323,14 @@ class BzrDirMeta1(BzrDir):
 class BzrDirMeta1Colo(BzrDirMeta1):
     """BzrDirMeta1 with support for colocated branches.
 
-    This format is experimental, and will eventually be merged back into BzrDirMeta1.
+    This format is experimental, and will eventually be merged back into
+    BzrDirMeta1.
     """
+
+    def __init__(self, _transport, _format):
+        super(BzrDirMeta1Colo, self).__init__(_transport, _format)
+        self.control_files = lockable_files.LockableFiles(_transport,
+            self._format._lock_file_name, self._format._lock_class)
 
     def _get_branch_path(self, name):
         """Obtain the branch path to use.
