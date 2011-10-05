@@ -1141,11 +1141,6 @@ class BzrDirMeta1(BzrDir):
     present within a BzrDir.
     """
 
-    def __init__(self, _transport, _format):
-        super(BzrDirMeta1, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(_transport,
-            self._format._lock_file_name, self._format._lock_class)
-
     def can_convert_format(self):
         """See BzrDir.can_convert_format()."""
         return True
