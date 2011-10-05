@@ -253,7 +253,7 @@ class Shelver(object):
         return patches.parse_patch(diff_file)
 
     def prompt(self, message, choices, default):
-        return ui.ui_factory.confirm(message, choices, default=default)
+        return ui.ui_factory.choose(message, choices, default=default)
 
     def prompt_bool(self, question, allow_editor=False):
         """Prompt the user with a yes/no question.

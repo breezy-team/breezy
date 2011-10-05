@@ -61,7 +61,7 @@ class TextUIFactory(UIFactory):
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
 
-    def confirm(self, msg, choices, default=None):
+    def choose(self, msg, choices, default=None):
         """Prompt the user for a list of alternatives.
 
         Support both line-based and char-based editing, depending on the
@@ -69,7 +69,7 @@ class TextUIFactory(UIFactory):
         setting the BZR_TEXTUI_INPUT environment variable to 'line-based'.
 
         In line-based mode, both the shortcut and full choice name are valid
-        answers, e.g. for confirm('prompt', '&yes\n&no'): 'y', ' Y ', ' yes',
+        answers, e.g. for choose('prompt', '&yes\n&no'): 'y', ' Y ', ' yes',
         'YES ' are all valid input lines for choosing 'yes'.
 
         An empty line, when in line-based mode, or pressing enter in char-based

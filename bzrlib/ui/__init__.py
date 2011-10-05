@@ -324,13 +324,13 @@ class UIFactory(object):
             warnings.warn(fail)   # so tests will fail etc
             return fail
 
-    def confirm(self, msg, choices, default=None):
-        """Ask the user for confirmation, providing multiple choices.
+    def choose(self, msg, choices, default=None):
+        """Prompt the user for a list of alternatives.
 
         :param msg: message to be shown as part of the prompt.
 
         :param choices: list of choices, with the individual choices separated
-            by '\n', e.g.: confirm("Save changes?", "&Yes\n&No\n&Cancel"). The
+            by '\n', e.g.: choose("Save changes?", "&Yes\n&No\n&Cancel"). The
             letter after the '&' is the shortcut key for that choice. Thus you
             can type 'c' to select "Cancel".  Shorcuts are case insensitive.
             The shortcut does not need to be the first letter. If a shorcut key
@@ -342,7 +342,7 @@ class UIFactory(object):
         :return: the index fo the user choice (so '0', '1' or '2' for
             respectively yes/no/cancel in the previous example).
         """
-        raise NotImplementedError(self.confirm)
+        raise NotImplementedError(self.choose)
 
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user.
@@ -351,7 +351,7 @@ class UIFactory(object):
             line without terminating \\n.
         :return: True or False for y/yes or n/no.
         """
-        choice = self.confirm(prompt + '?', '&yes\n&no', default=None)
+        choice = self.choose(prompt + '?', '&yes\n&no', default=None)
         return 0 == choice
 
     def get_integer(self, prompt):
