@@ -42,6 +42,11 @@ Bug Fixes
 * Return early from create_delta_index_from_delta given tiny inputs. This
   avoids raising a spurious MemoryError on certain platforms such as AIX.
   (John Arbash Meinel, #856731)
+  
+* Fixed an infinite loop when creating a repo at the root of the filesystem, 
+  i.e. "/", due to posixpath.normpath() not collapsing 2 leading slashes into 
+  one, thus respecting the POSIX standard, but making relpath() loop infinitely.
+  (Florian Vichot, #861008)
 
 Documentation
 *************
