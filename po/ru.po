@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-09-28 12:42+0000\n"
+"PO-Revision-Date: 2011-10-04 18:13+0000\n"
 "Last-Translator: Sergey Basalaev <SBasalaev@gmail.com>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -16,8 +16,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2011-09-29 04:30+0000\n"
-"X-Generator: Launchpad (build 14049)\n"
+"X-Launchpad-Export-Date: 2011-10-05 04:30+0000\n"
+"X-Generator: Launchpad (build 14085)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1678,6 +1678,10 @@ msgid ""
 "  time taken to produce a log, though --forward does not incrementally\n"
 "  display revisions like --reverse does when it can."
 msgstr ""
+"  Чтобы вывести ревизии от старой до новой, используйте опцию --forward.\n"
+"  В большинстве случаев, при использовании этой опции на создание журнала\n"
+"  расходуется мало времени, хотя --forward не выводит ревизии по порядку,\n"
+"  как это делает --reverse."
 
 #: bzrlib/builtins.py:2281
 msgid ":Revision filtering:"
@@ -1920,19 +1924,19 @@ msgstr ""
 
 #: bzrlib/builtins.py:2390
 msgid "Show from oldest to newest."
-msgstr ""
+msgstr "Выводить от старых к новым."
 
 #: bzrlib/builtins.py:2393
 msgid "Show files changed in each revision."
-msgstr ""
+msgstr "Показывать файлы, изменённые в каждой ревизии."
 
 #: bzrlib/builtins.py:2399
 msgid "Show just the specified revision. See also \"help revisionspec\"."
-msgstr ""
+msgstr "Показать только указанную ревизию. См. также «help revisionspec»."
 
 #: bzrlib/builtins.py:2403
 msgid "What names to list as authors - first, all or committer."
-msgstr ""
+msgstr "Какие имена выводить, как авторов — first, all или committer."
 
 #: bzrlib/builtins.py:2404
 msgid "Authors"
@@ -1940,7 +1944,7 @@ msgstr "Авторы"
 
 #: bzrlib/builtins.py:2409
 msgid "Number of levels to display - 0 for all, 1 for flat."
-msgstr ""
+msgstr "Число уровней для вывода — 0 для всех, 1 для плоского вывода."
 
 #: bzrlib/builtins.py:2419
 msgid "Limit the output to the first N revisions."
@@ -1952,7 +1956,7 @@ msgstr "Показать изменения, сделанные в каждой 
 
 #: bzrlib/builtins.py:2426
 msgid "Show merged revisions like --levels 0 does."
-msgstr "Показыывать слияния, как это делает --levels 0."
+msgstr "Показывать слияния, как это делает --levels 0."
 
 #: bzrlib/builtins.py:2430
 msgid "Do not report commits with more than one parent."
@@ -2004,12 +2008,12 @@ msgstr "Неизвестный путь в начале или конце инт
 #: bzrlib/builtins.py:2654
 #, python-format
 msgid "bzr %s doesn't accept two revisions in different branches."
-msgstr ""
+msgstr "bzr %s не принимает две ревизии в различных ветвях."
 
 #: bzrlib/builtins.py:2670
 #, python-format
 msgid "bzr %s --revision takes one or two values."
-msgstr ""
+msgstr "bzr %s --revision принимает одно или два значения."
 
 #: bzrlib/builtins.py:2715
 msgid ""
@@ -2025,7 +2029,7 @@ msgstr "Рекурсивно входить в поддиректории."
 
 #: bzrlib/builtins.py:2726
 msgid "Print paths relative to the root of the branch."
-msgstr ""
+msgstr "Выводить пути относительно корня ветви."
 
 #: bzrlib/builtins.py:2728
 msgid "Print unknown files."
@@ -2049,19 +2053,19 @@ msgstr "указан неверный вид файла"
 
 #: bzrlib/builtins.py:2750
 msgid "Cannot set both --verbose and --null"
-msgstr ""
+msgstr "Нельзя установить оба --verbose и --null"
 
 #: bzrlib/builtins.py:2759
 msgid "cannot specify both --from-root and PATH"
-msgstr ""
+msgstr "нельзя указать оба --from-root и PATH"
 
 #: bzrlib/builtins.py:2846
 msgid "Ignore specified files or patterns."
-msgstr ""
+msgstr "Игнорировать указанные файлы или шаблоны."
 
 #: bzrlib/builtins.py:2848
 msgid "See ``bzr help patterns`` for details on the syntax of patterns."
-msgstr ""
+msgstr "Смотрите подробности о синтаксисе шаблонов в «bzr help patterns»."
 
 #: bzrlib/builtins.py:2850
 msgid ""
@@ -2071,6 +2075,11 @@ msgid ""
 ".bzrignore file to be versioned. Creating a .bzrignore file without\n"
 "the use of the ignore command will require an explicit add command."
 msgstr ""
+"Если файл .bzrignore не существует, команда ignore создаст его\n"
+"и добавит указанные файлы или шаблоны к только что созданному\n"
+"файлу. Команда ignore также автоматически добавит файл .bzrignore\n"
+"к системе версий. Создание файла .bzrignore без использования\n"
+"команды ignore потребует явного добавления командой add."
 
 #: bzrlib/builtins.py:2856
 msgid ""
@@ -2079,6 +2088,10 @@ msgid ""
 "using this command or directly by using an editor, be sure to commit\n"
 "it."
 msgstr ""
+"Чтобы удалить шаблоны из списка игнорируемых файлов, отредактируйте\n"
+"файл .bzrignore. После добавления, редактирования или удаления этого\n"
+"файла, как неявно с помощью этой команды, так и явно при помощи\n"
+"редактора, не забывайте закреплять его."
 
 #: bzrlib/builtins.py:2861
 msgid ""
