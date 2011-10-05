@@ -37,35 +37,27 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(['branch/b'])
         wt.add('b')
         wt.commit('adding b', rev_id='r2')
-
-        wt.lock_read()
-        try:
-            graph = wt.branch.repository.get_graph()
-            self.revisions = list(graph.iter_lefthand_ancestry(wt.last_revision(),
-                [NULL_REVISION]))
-        finally:
-            wt.unlock()
         return wt
 
     def test_basic(self):
-        self.create_tree()
+        wt = self.create_tree()
 
         txt = self.run_bzr('version-info branch')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[0])
+        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
 
     def test_all(self):
         """'--all' includes clean, revision history, and file revisions"""
-        self.create_tree()
+        wt = self.create_tree()
         txt = self.run_bzr('version-info branch --all')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[0])
+        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
         self.assertContainsRe(txt, 'clean: True')
         self.assertContainsRe(txt, 'revisions:')
-        for rev_id in self.revisions:
+        for rev_id in wt.branch.repository.all_revision_ids():
             self.assertContainsRe(txt, 'id: ' + rev_id)
         self.assertContainsRe(txt, 'message: adding a')
         self.assertContainsRe(txt, 'message: adding b')
