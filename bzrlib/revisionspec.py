@@ -209,7 +209,10 @@ class RevisionSpec(object):
     def in_history(self, branch):
         if branch:
             if self.wants_revision_history:
-                revs = branch.revision_history()
+                # TODO: avoid looking at all of history
+                graph = branch.repository.get_graph()
+                revs = list(graph.iter_lefthand_ancestry(
+                    branch.last_revision(), [revision.NULL_REVISION]))
             else:
                 revs = None
         else:
