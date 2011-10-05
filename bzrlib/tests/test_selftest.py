@@ -3368,8 +3368,7 @@ class TestUncollectedWarnings(tests.TestCase):
         self.assertNotContainsRe(out, "test_skip")
 
     def test_random_seed(self):
-        out = self._run_selftest_with_suite(random_seed="now")
-        self.assertContainsRe(out, "Ran 4 tests in \d+.\d+s")
+        self._run_selftest_with_suite(random_seed="now")
 
     def test_matching_tests_first(self):
         self._run_selftest_with_suite(matching_tests_first=True,
