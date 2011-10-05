@@ -18,6 +18,7 @@
 
 import os
 
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -37,9 +38,13 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.add('b')
         wt.commit('adding b', rev_id='r2')
 
-        self.revisions = list(
-            wt.branch.repository.iter_reverse_revision_history(
-                wt.last_revision()))
+        wt.lock_read()
+        try:
+            graph = wt.branch.repository.get_graph()
+            self.revisions = list(graph.iter_lefthand_ancestry(wt.last_revision(),
+                [NULL_REVISION]))
+        finally:
+            wt.unlock()
         return wt
 
     def test_basic(self):
