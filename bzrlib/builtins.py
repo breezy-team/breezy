@@ -1908,7 +1908,7 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             branch = a_bzrdir.create_branch()
-            if not no_tree:
+            if not no_tree and not a_bzrdir.has_workingtree():
                 a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:

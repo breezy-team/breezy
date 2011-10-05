@@ -190,3 +190,16 @@ def _get_current_locale():
         if lang:
             return lang
     return None
+
+
+def load_plugin_translations(domain):
+    """Load the translations for a specific plugin.
+
+    :param domain: Gettext domain name (usually 'bzr-PLUGINNAME')
+    """
+    locale_base = os.path.dirname(
+        unicode(__file__, sys.getfilesystemencoding()))
+    translation = install_translations(domain=domain,
+        locale_base=locale_base)
+    add_fallback(translation)
+    return translation

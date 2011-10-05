@@ -218,6 +218,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
         self.assertEqual(['non:existent@rev--ision--0--2'],
@@ -231,6 +234,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_two_ghosts(self):
         """Recording with all ghosts works."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids([
                 'foo@azkhazan-123123-abcabc',
                 'wibble@fofof--20050401--1928390812',
@@ -421,13 +427,13 @@ class TestBranch(per_branch.TestCaseWithBranch):
         try:
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise tests.TestNotApplicable("requires shared repository support")
         child_transport = repo.bzrdir.root_transport.clone('child')
         child_transport.mkdir('.')
         try:
             child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
         except errors.UninitializableFormat:
-            return
+            raise tests.TestNotApplicable("control dir format not initializable")
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
