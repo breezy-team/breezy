@@ -308,7 +308,7 @@ class TestUpgrade(TestCaseWithTransport):
         # other tests.
         self.assertIsInstance(control._format, bzrdir.BzrDirMetaFormat1)
         b = control.open_branch()
-        self.assertEquals(b.revision_history(),
+        self.assertEquals(b._revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
@@ -323,7 +323,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertIsInstance(
             control._format,
             bzrdir.BzrDirFormat.get_default_format().__class__)
-        rh = b.revision_history()
+        rh = b._revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
@@ -378,7 +378,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_ghost_template)
         upgrade.upgrade(u'.')
         b = branch.Branch.open(u'.')
-        revision_id = b.revision_history()[1]
+        revision_id = b._revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
         eq(rev.parent_ids[1], 'wibble@wobble-2')
@@ -407,7 +407,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_upgrade_dir_template)
         upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         tree = workingtree.WorkingTree.open('.')
-        self.assertEqual([tree.branch.revision_history()[-1]],
+        self.assertEqual([tree.branch._revision_history()[-1]],
             tree.get_parent_ids())
 
 
