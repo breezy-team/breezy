@@ -1,4 +1,3 @@
-#!/usr/bin/python
 bzr_plugin_name = 'fastimport'
 
 bzr_commands = [
