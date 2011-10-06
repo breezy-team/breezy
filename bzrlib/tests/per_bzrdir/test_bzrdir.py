@@ -503,8 +503,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/branch/branch.conf',
-                                     './.bzr/branch/parent',
+                                     './.bzr/branch',
                                      './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/inventory',
