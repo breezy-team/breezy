@@ -33,7 +33,6 @@ from bzrlib import (
     )
 from bzrlib.osutils import (
     getcwd,
-    lexists,
     )
 from bzrlib.tests.test_bundle import V4BundleTester
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -308,6 +307,7 @@ class TestUpgrade(TestCaseWithTransport):
         # other tests.
         self.assertIsInstance(control._format, bzrdir.BzrDirMetaFormat1)
         b = control.open_branch()
+        self.addCleanup(b.lock_read().unlock)
         self.assertEquals(b._revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
@@ -323,6 +323,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertIsInstance(
             control._format,
             bzrdir.BzrDirFormat.get_default_format().__class__)
+        self.addCleanup(b.lock_read().unlock)
         rh = b._revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
@@ -378,6 +379,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_ghost_template)
         upgrade.upgrade(u'.')
         b = branch.Branch.open(u'.')
+        self.addCleanup(b.lock_read().unlock)
         revision_id = b._revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
@@ -407,6 +409,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_upgrade_dir_template)
         upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         tree = workingtree.WorkingTree.open('.')
+        self.addCleanup(tree.lock_read().unlock)
         self.assertEqual([tree.branch._revision_history()[-1]],
             tree.get_parent_ids())
 
