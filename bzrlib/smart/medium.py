@@ -963,13 +963,17 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         self._medium._flush()
 
 
+WSAECONNABORTED = 10053
+WSAECONNRESET = 10054
+
 def _read_bytes_from_socket(sock, desired_count, report_activity):
     # We ignore the desired_count because on sockets it's more efficient to
     # read large chunks (of _MAX_READ_SIZE bytes) at a time.
     try:
         bytes = osutils.until_no_eintr(sock, _MAX_READ_SIZE)
     except socket.error, e:
-        if len(e.args) and e.args[0] in (errno.ECONNRESET, 10054):
+        if len(e.args) and e.args[0] in (errno.ECONNRESET, WSAECONNABORTED,
+                                         WSAECONNRESET):
             # The connection was closed by the other side.  Callers expect an
             # empty string to signal end-of-stream.
             bytes = ''

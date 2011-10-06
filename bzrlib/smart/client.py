@@ -69,6 +69,7 @@ class _SmartClient(object):
             self._send_request_no_retry(encoder, method, args, body=body,
                 readv_body=readv_body, body_stream=body_stream)
         except errors.ConnectionReset, e:
+            raise
             # If we fail during the _send_request_no_retry phase, then we can
             # be confident that the server did not get our request, because we
             # haven't started waiting for the reply yet. So try the request

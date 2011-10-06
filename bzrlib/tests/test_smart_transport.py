@@ -97,6 +97,8 @@ class StringIOSSHConnection(object):
 
     def close(self):
         self.vendor.calls.append(('close', ))
+        self.vendor.read_from.close()
+        self.vendor.write_to.close()
 
     def get_filelike_channels(self):
         return self.vendor.read_from, self.vendor.write_to
@@ -3331,6 +3333,36 @@ class Test_SmartClient(tests.TestCase):
             bzrlib.__version__, smart_client._headers['Software version'])
         # XXX: need a test that smart_client._headers is passed to the request
         # encoder.
+
+    def test__send_request_no_retry_pipes(self):
+        client_read, server_write = create_file_pipes()
+        server_read, client_write = create_file_pipes()
+        client_medium = medium.SmartSimplePipesClientMedium(client_read,
+            client_write, base='/')
+        smart_client = client._SmartClient(client_medium)
+        # Close the server side
+        server_read.close()
+        encoder, response_handler = smart_client._construct_protocol(3)
+        self.assertRaises(errors.ConnectionReset,
+            smart_client._send_request_no_retry, encoder, 'hello', ())
+
+    def test__send_request_read_response_sockets(self):
+        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_sock.bind(('127.0.0.1', 0))
+        listen_sock.listen(1)
+        host, port = listen_sock.getsockname()
+        client_medium = medium.SmartTCPClientMedium(host, port, '/')
+        client_medium._ensure_connection()
+        smart_client = client._SmartClient(client_medium)
+        # Accept the connection, but don't actually talk to the client.
+        server_sock, _ = listen_sock.accept()
+        server_sock.close()
+        # Sockets buffer and don't really notice that the server has closed the
+        # connection until we try to read again.
+        handler = smart_client._send_request(3, 'hello', ())
+        self.assertRaises(errors.ConnectionReset,
+            handler.read_response_tuple, expect_body=False)
+
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
