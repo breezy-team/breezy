@@ -18,6 +18,7 @@
 
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
+import errno
 import os
 import socket
 import subprocess
@@ -57,6 +58,21 @@ def create_file_pipes():
     rf = os.fdopen(r, 'rb', 0)
     wf = os.fdopen(w, 'wb', 0)
     return rf, wf
+
+
+def portable_socket_pair():
+    """Return a pair of TCP sockets connected to each other.
+
+    Unlike socket.socketpair, this should work on Windows.
+    """
+    listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listen_sock.bind(('127.0.0.1', 0))
+    listen_sock.listen(1)
+    client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_sock.connect(listen_sock.getsockname())
+    server_sock, addr = listen_sock.accept()
+    listen_sock.close()
+    return server_sock, client_sock
 
 
 class StringIOSSHVendor(object):
@@ -188,12 +204,12 @@ class SmartClientMediumTests(tests.TestCase):
         # read.read() hangs. On Linux, read.read() returns the empty string.
         p = subprocess.Popen([sys.executable, '-c',
             'import sys\n'
-            'sys.stdout.write(sys.stdin.read(3))\n'
+            'sys.stdout.write(sys.stdin.read(4))\n'
             'sys.stdout.close()\n'],
             stdout=subprocess.PIPE, stdin=subprocess.PIPE)
         client_medium = medium.SmartSimplePipesClientMedium(
             p.stdout, p.stdin, 'base')
-        client_medium._accept_bytes('abc')
+        client_medium._accept_bytes('abc\n')
         self.assertEqual('abc', client_medium._read_bytes(3))
         p.wait()
         # While writing to the underlying pipe,
@@ -651,6 +667,28 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         request.finished_reading()
         self.assertRaises(errors.ReadingCompleted, request.read_bytes, None)
 
+    def test_reset(self):
+        server_sock, client_sock = portable_socket_pair()
+        # TODO: Use SmartClientAlreadyConnectedSocketMedium for the versions of
+        #       bzr where it exists.
+        client_medium = medium.SmartTCPClientMedium(None, None, None)
+        client_medium._socket = client_sock
+        client_medium._connected = True
+        req = client_medium.get_request()
+        self.assertRaises(errors.TooManyConcurrentRequests,
+            client_medium.get_request)
+        client_medium.reset()
+        # The stream should be reset, marked as disconnected, though ready for
+        # us to make a new request
+        self.assertFalse(client_medium._connected)
+        self.assertIs(None, client_medium._socket)
+        try:
+            self.assertEqual('', client_sock.recv(1))
+        except socket.error, e:
+            if e.errno not in (errno.EBADF,):
+                raise
+        req = client_medium.get_request()
+
 
 class RemoteTransportTests(TestCaseWithSmartMedium):
 
@@ -703,20 +741,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def setUp(self):
         super(TestSmartServerStreamMedium, self).setUp()
         self._captureVar('BZR_NO_SMART_VFS', None)
-
-    def portable_socket_pair(self):
-        """Return a pair of TCP sockets connected to each other.
-
-        Unlike socket.socketpair, this should work on Windows.
-        """
-        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        listen_sock.bind(('127.0.0.1', 0))
-        listen_sock.listen(1)
-        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_sock.connect(listen_sock.getsockname())
-        server_sock, addr = listen_sock.accept()
-        listen_sock.close()
-        return server_sock, client_sock
 
     def test_smart_query_version(self):
         """Feed a canned query version to a server"""
@@ -782,7 +806,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
@@ -801,7 +825,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_socket_stream_shutdown_detection(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         client_sock.close()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
@@ -821,7 +845,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         rest_of_request_bytes = 'lo\n'
         expected_response = (
             protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n')
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         client_sock.sendall(incomplete_request_bytes)
@@ -897,7 +921,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # _serve_one_request should still process both of them as if they had
         # been received separately.
         sample_request_bytes = 'command\n'
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
@@ -934,7 +958,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_socket_stream_error_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
@@ -955,7 +979,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', from_server.getvalue())
 
     def test_socket_stream_keyboard_interrupt_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
@@ -972,7 +996,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         return server._build_protocol()
 
     def build_protocol_socket(self, bytes):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         client_sock.sendall(bytes)
