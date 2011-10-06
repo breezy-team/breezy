@@ -8,7 +8,7 @@ Bazaar Release Notes
 bzr 2.5b3
 #########
 
-:2.x.y: NOT RELEASED YET
+:2.5b3: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -19,6 +19,11 @@ New Features
 ************
 
 .. New commands, options, etc that users may wish to try out.
+
+* The ``log_format`` configuration can be used with ``-Olog_format=line`` to
+  change the format ``push`` and ``pull`` use to display the
+  revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
+  format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
 
 Improvements
 ************

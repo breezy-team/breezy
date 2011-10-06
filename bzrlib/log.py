@@ -1796,7 +1796,8 @@ class LogFormatterRegistry(registry.Registry):
         return self.get(name)(*args, **kwargs)
 
     def get_default(self, branch):
-        return self.get(branch.get_config().log_format())
+        c = branch.get_config_stack()
+        return self.get(c.get('log_format'))
 
 
 log_formatter_registry = LogFormatterRegistry()
