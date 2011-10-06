@@ -19,10 +19,12 @@ import socket
 import SocketServer
 import sys
 import threading
+import traceback
 
 
 from bzrlib import (
     cethread,
+    errors,
     osutils,
     transport,
     urlutils,
@@ -312,7 +314,8 @@ class TestingTCPServerMixin(object):
                 self.process_request(request, client_address)
             except:
                 self.handle_error(request, client_address)
-                self.close_request(request)
+        else:
+            self.close_request(request)
 
     def get_request(self):
         return self.socket.accept()
@@ -332,8 +335,16 @@ class TestingTCPServerMixin(object):
         # The following can be used for debugging purposes, it will display the
         # exception and the traceback just when it occurs instead of waiting
         # for the thread to be joined.
-
         # SocketServer.BaseServer.handle_error(self, request, client_address)
+
+        # We call close_request manually, because we are going to raise an
+        # exception. The SocketServer implementation calls:
+        #   handle_error(...)
+        #   close_request(...)
+        # But because we raise the exception, close_request will never be
+        # triggered. This helps client not block waiting for a response when
+        # the server gets an exception.
+        self.close_request(request)
         raise
 
     def ignored_exceptions_during_shutdown(self, e):
@@ -419,7 +430,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         SocketServer.ThreadingTCPServer.__init__(self, server_address,
                                                  request_handler_class)
 
-    def get_request (self):
+    def get_request(self):
         """Get the request and client address from the socket."""
         sock, addr = TestingTCPServerMixin.get_request(self)
         # The thread is not create yet, it will be updated in process_request
@@ -440,8 +451,8 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         t = TestThread(
             sync_event=stopped,
             name='%s -> %s' % (client_address, self.server_address),
-            target = self.process_request_thread,
-            args = (started, stopped, request, client_address))
+            target=self.process_request_thread,
+            args=(started, stopped, request, client_address))
         # Update the client description
         self.clients.pop()
         self.clients.append((request, client_address, t))
@@ -596,12 +607,16 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
                                                  server)
 
     def handle(self):
-        while not self.finished:
-            server_protocol = self._build_protocol()
-            self._serve_one_request(server_protocol)
+        try:
+            while not self.finished:
+                server_protocol = self._build_protocol()
+                self._serve_one_request(server_protocol)
+        except errors.ConnectionTimeout:
+            # idle connections aren't considered a failure of the server
+            return
 
 
-_DEFAULT_TESTING_CLIENT_TIMEOUT = 4.0
+_DEFAULT_TESTING_CLIENT_TIMEOUT = 60.0
 
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 

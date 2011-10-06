@@ -131,7 +131,7 @@ class LaunchpadDirectory(object):
             else:
                 # There are either 0 or > 2 path parts, neither of which is
                 # supported for these schemes.
-                raise errors.InvalidURL('Bad path: %s' % result.path)
+                raise errors.InvalidURL('Bad path: %s' % url)
             # Expand any series shortcuts, but keep unknown series.
             series = distro_series.get(series, series)
             # Hack the url and let the following do the final resolution.

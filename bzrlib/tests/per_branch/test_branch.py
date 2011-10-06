@@ -217,6 +217,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
         self.assertEqual(['non:existent@rev--ision--0--2'],
@@ -230,6 +233,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_two_ghosts(self):
         """Recording with all ghosts works."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids([
                 'foo@azkhazan-123123-abcabc',
                 'wibble@fofof--20050401--1928390812',
@@ -420,13 +426,13 @@ class TestBranch(per_branch.TestCaseWithBranch):
         try:
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise tests.TestNotApplicable("requires shared repository support")
         child_transport = repo.bzrdir.root_transport.clone('child')
         child_transport.mkdir('.')
         try:
             child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
         except errors.UninitializableFormat:
-            return
+            raise tests.TestNotApplicable("control dir format not initializable")
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -897,12 +903,14 @@ class TestIgnoreFallbacksParameter(per_branch.TestCaseWithBranch):
     def test_fallbacks_not_opened(self):
         stacked = self.make_branch_with_fallback()
         self.get_transport('').rename('fallback', 'moved')
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
 
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
 
 
