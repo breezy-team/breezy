@@ -25,7 +25,8 @@ override a configuration option from the command line. For example::
   bzr pull -v -Olog_format=line
 
 will change the way the pulled revisions are displayed (the default log
-format is ``long``.
+format is ``long``). This a work in progress and only some options are
+supported so far.
 
 
 Further information
