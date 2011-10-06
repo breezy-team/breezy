@@ -1795,6 +1795,7 @@ cdef class ProcessEntryC:
                 advance_entry = -1
                 advance_path = -1
                 result = None
+                changed = None
                 path_handled = 0
                 if current_entry is None:
                     # unversioned -  the check for path_handled when the path
