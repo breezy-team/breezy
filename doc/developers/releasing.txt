@@ -206,6 +206,18 @@ Update the source code
    also mail the list to raise this issue in our process. Milestones are
    found at <https://launchpad.net/bzr/+milestone/x.y.z>.
 
+#. Merge into your branch all previous stable series fixes that haven't been
+   merged yet. For example, if you're releasing 2.5.x, make sure the fixes
+   on 2.4, 2.3, etc have already been merged up::
+
+     bzr merge lp:bzr/2.4
+
+   and commit that merge in its own commit. This should happen only if the
+   devs landing changes in previous releases forgot to merge them up. Since
+   this can slow down the freeze, feel free to gently remind them about
+   their duties ;) If you feel unsafe resolving the conflicts or it's too
+   time consuming, contact the related devs and skip this merge.
+ 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
    Make sure the corresponding milestone exists.
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
@@ -225,9 +237,16 @@ Update the source code
 
 #. Update the ``./doc/en/release-notes/`` section for this release.
 
+   Check that all news entries related to this release have been added in
+   the right section. For example, if you're releasing 2.5b2, the following
+   command should display a a single chuk diff for the 2.5b2 release::
+
+     bzr diff -rbzr-2.5b1.. doc/en/release-notes/bzr-2.5.txt
+
    Fill out the date and a description of the release under the existing
-   header. If there isn't one, follow the instructions above for using the
-   ``release-template.txt`` file.
+   header (the diff above will help you summarizing). If there isn't one,
+   follow the instructions above for using the ``release-template.txt`` file
+   and remind people that they should document their changes there ;)
 
    See *2.1.1* or similar for an example of what this looks like.
 
