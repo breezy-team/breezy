@@ -1,7 +1,0 @@
-bzr-fast-export is no longer provided as a separate script.
-Instead a fast-export command is now available. For help, run ...
-
-  bzr help fast-export
-
-Ian C.
-18-Feb-2009
