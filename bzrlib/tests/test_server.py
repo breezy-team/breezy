@@ -616,7 +616,7 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
             return
 
 
-_DEFAULT_TESTING_CLIENT_TIMEOUT = 4.0
+_DEFAULT_TESTING_CLIENT_TIMEOUT = 60.0
 
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 
