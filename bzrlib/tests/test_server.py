@@ -287,7 +287,6 @@ class TestingTCPServerMixin:
 
     def serve(self):
         self.serving = True
-        self.stopped.clear()
         # We are listening and ready to accept connections
         self.started.set()
         try:
@@ -508,7 +507,7 @@ class TestingTCPServerInAThread(transport.Server):
             sync_event=self.server.started,
             target=self.run_server)
         self._server_thread.start()
-        # Wait for the server thread to start (i.e release the lock)
+        # Wait for the server thread to start (i.e. release the lock)
         self.server.started.wait()
         # Get the real address, especially the port
         self.host, self.port = self.server.server_address

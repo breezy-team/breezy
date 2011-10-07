@@ -86,9 +86,6 @@ class TestTCPServerInAThread(tests.TestCase):
         for name in
         ('TestingTCPServer', 'TestingThreadingTCPServer')]
 
-    # Set by load_tests()
-    server_class = None
-
     def get_server(self, server_class=None, connection_handler_class=None):
         if server_class is not None:
             self.server_class = server_class
@@ -174,6 +171,9 @@ class TestTCPServerInAThread(tests.TestCase):
     def test_server_crash_while_responding(self):
         sync = threading.Event()
         sync.clear()
+        # The thread that will serve the client
+        self.connection_thread = None
+        test = self # So the handler can set connection_thread
         class FailToRespond(Exception):
             pass
 
@@ -181,7 +181,10 @@ class TestTCPServerInAThread(tests.TestCase):
 
             def handle_connection(self):
                 req = self.rfile.readline()
-                threading.currentThread().set_sync_event(sync)
+                # Capture the thread and make it use 'sync' so we can wait on
+                # the even set when the exception is caught
+                test.connection_thread = threading.currentThread()
+                test.connection_thread.set_sync_event(sync)
                 raise FailToRespond()
 
         server = self.get_server(
@@ -190,20 +193,31 @@ class TestTCPServerInAThread(tests.TestCase):
         client.connect((server.host, server.port))
         client.write('ping\n')
         sync.wait()
-        self.assertRaises(FailToRespond, server.pending_exception)
+        # Check that the connection thread did catch the exception,
+        # http://pad.lv/869366 was wrongly checking the server thread which
+        # works for TestingTCPServer where the connection is handled in the
+        # same thread than the server one but is racy for
+        # TestingThreadingTCPServer where the server thread may be in a
+        # blocking accept() call.
+        self.assertRaises(FailToRespond,
+                          self.connection_thread.pending_exception)
 
     def test_exception_swallowed_while_serving(self):
         sync = threading.Event()
         sync.clear()
+        # The thread that will serve the client
+        self.connection_thread = None
+        test = self # So the handler can set connection_thread
         class CantServe(Exception):
             pass
 
         class FailingWhileServingConnectionHandler(TCPConnectionHandler):
 
-            def handle(self):
-                # We want to sync with the thread that is serving the
-                # connection.
-                threading.currentThread().set_sync_event(sync)
+            def handle(request):
+                # Capture the thread and make it use 'sync' so we can wait on
+                # the even set when the exception is caught
+                test.connection_thread = threading.currentThread()
+                test.connection_thread.set_sync_event(sync)
                 raise CantServe()
 
         server = self.get_server(
@@ -216,5 +230,7 @@ class TestTCPServerInAThread(tests.TestCase):
         # Wait for the exception to propagate.
         sync.wait()
         # The connection wasn't served properly but the exception should have
-        # been swallowed.
-        server.pending_exception()
+        # been swallowed (see test_server_crash_while_responding remark about
+        # http://pad.lv/869366 explaining why we can't check the server thread
+        # here).
+        self.connection_thread.pending_exception()
