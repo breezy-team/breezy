@@ -123,6 +123,14 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
+    def test_mkdir_quiet(self):
+        """'bzr mkdir --quiet' should not print a status message"""
+
+        self.run_bzr('init')
+        out, err = self.run_bzr(['mkdir', '--quiet', 'foo'])
+        self.assertEquals('', err)
+        self.assertEquals('', out)
+
     def check_branch(self):
         """After all the above changes, run the check and upgrade commands.
 
