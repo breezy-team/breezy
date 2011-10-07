@@ -74,15 +74,16 @@ class _SmartClient(object):
             # haven't started waiting for the reply yet. So try the request
             # again. We only issue a single retry, because if the connection
             # really is down, there is no reason to loop endlessly.
-            # XXX: If body_stream is not None, then we probably have a problem
-            #      here, because the body stream is partially consumed.
+
+            # Connection is dead, so close our end of it.
+            self._medium.reset()
             if body_stream is not None:
+                # We can't determine how much of body_stream got consumed
+                # before we noticed the connection is down, so we don't retry
+                # here.
                 raise
             trace.log_exception_quietly()
             trace.warning('ConnectionReset calling %s, retrying' % (method,))
-            self._medium.reset()
-            # encoder._medium_request.finished_writing()
-            # encoder._medium_request.finished_reading()
             encoder, response_handler = self._construct_protocol(
                 protocol_version)
             self._send_request_no_retry(encoder, method, args, body=body,

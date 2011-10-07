@@ -3448,6 +3448,28 @@ class Test_SmartClient(tests.TestCase):
             vendor.calls)
         self.assertRaises(errors.ConnectionReset, handler.read_response_tuple)
 
+    def test__send_request_doesnt_retry_body_stream(self):
+        # We don't know how much of body_stream would get iterated as part of
+        # _send_request before it failed to actually send the request, so we
+        # just always fail in this condition.
+        response = StringIO()
+        output = StringIO()
+        vendor = FirstRejectedStringIOSSHVendor(response, output)
+        client_medium = medium.SmartSSHClientMedium(
+            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
+            'bzr')
+        smart_client = client._SmartClient(client_medium)
+        self.assertRaises(errors.ConnectionReset,
+            smart_client._send_request, 3, 'hello', (), body_stream=['a', 'b'])
+        # We got one connect, but it fails, so we disconnect, but we don't
+        # retry it
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+             ('close',),
+            ],
+            vendor.calls)
+
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
 
