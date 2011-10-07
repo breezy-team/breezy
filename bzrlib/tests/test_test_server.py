@@ -175,7 +175,6 @@ class TestTCPServerInAThread(tests.TestCase):
         # We need to ensure the exception has been caught
         caught = threading.Event()
         caught.clear()
-#        print 'will_raise: %r, caught: %r\n' % (will_raise, caught)
         # The thread that will serve the client
         self.connection_thread = None
         class FailToRespond(Exception):
