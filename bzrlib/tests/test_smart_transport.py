@@ -98,7 +98,7 @@ class FirstRejectedStringIOSSHVendor(StringIOSSHVendor):
     def __init__(self, read_from, write_to, fail_at_write=True):
         super(FirstRejectedStringIOSSHVendor, self).__init__(read_from,
             write_to)
-        self.fail_at_write= fail_at_write
+        self.fail_at_write = fail_at_write
         self._first = True
 
     def connect_ssh(self, username, password, host, port, command):
@@ -2943,6 +2943,33 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             'e', # end
             output.getvalue())
 
+    def test_records_start_of_body_stream(self):
+        requester, output = self.make_client_encoder_and_output()
+        requester.set_headers({})
+        in_stream = [False]
+        def stream_checker():
+            self.assertTrue(requester.body_stream_started)
+            in_stream[0] = True
+            yield 'content'
+        flush_called = []
+        orig_flush = requester.flush
+        def tracked_flush():
+            flush_called.append(in_stream[0])
+            if in_stream[0]:
+                self.assertTrue(requester.body_stream_started)
+            else:
+                self.assertFalse(requester.body_stream_started)
+            return orig_flush()
+        requester.flush = tracked_flush
+        requester.call_with_body_stream(('one arg',), stream_checker())
+        self.assertEqual(
+            'bzr message 3 (bzr 1.6)\n' # protocol version
+            '\x00\x00\x00\x02de' # headers
+            's\x00\x00\x00\x0bl7:one arge' # args
+            'b\x00\x00\x00\x07content' # body
+            'e', output.getvalue())
+        self.assertEqual([False, True, True], flush_called)
+
 
 class StubMediumRequest(object):
     """A stub medium request that tracks the number of times accept_bytes is
@@ -3414,11 +3441,12 @@ class Test_SmartClient(tests.TestCase):
         client_medium = medium.SmartSSHClientMedium(
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
-        smart_client = client._SmartClient(client_medium)
+        smart_client = client._SmartClient(client_medium, headers={})
         handler = smart_client._send_request(3, 'hello', ())
-        message_sent = output.getvalue()
-        self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
-        self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloee',
+                         output.getvalue())
         self.assertEqual(
             [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
               ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
@@ -3436,11 +3464,12 @@ class Test_SmartClient(tests.TestCase):
         client_medium = medium.SmartSSHClientMedium(
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
-        smart_client = client._SmartClient(client_medium)
+        smart_client = client._SmartClient(client_medium, headers={})
         handler = smart_client._send_request(3, 'hello', ())
-        message_sent = output.getvalue()
-        self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
-        self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloee',
+                         output.getvalue())
         self.assertEqual(
             [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
               ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
@@ -3448,27 +3477,71 @@ class Test_SmartClient(tests.TestCase):
             vendor.calls)
         self.assertRaises(errors.ConnectionReset, handler.read_response_tuple)
 
-    def test__send_request_doesnt_retry_body_stream(self):
-        # We don't know how much of body_stream would get iterated as part of
-        # _send_request before it failed to actually send the request, so we
-        # just always fail in this condition.
+    def test__send_request_retries_body_stream_if_not_started(self):
         response = StringIO()
         output = StringIO()
         vendor = FirstRejectedStringIOSSHVendor(response, output)
         client_medium = medium.SmartSSHClientMedium(
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
-        smart_client = client._SmartClient(client_medium)
+        smart_client = client._SmartClient(client_medium, headers={})
+        smart_client._send_request(3, 'hello', (), body_stream=['a', 'b'])
+        # We connect, get disconnected, and notice before consuming the stream,
+        # so we try again one time and succeed.
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+             ('close',),
+             ('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ],
+            vendor.calls)
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloe'
+                         'b\x00\x00\x00\x01a'
+                         'b\x00\x00\x00\x01b'
+                         'e',
+                         output.getvalue())
+
+    def test__send_request_stops_if_body_started(self):
+        # We intentionally use the python StringIO so that we can subclass it.
+        from StringIO import StringIO
+        response = StringIO()
+
+        class FailAfterFirstWrite(StringIO):
+            """Allow one 'write' call to pass, fail the rest"""
+            def __init__(self):
+                StringIO.__init__(self)
+                self._first = True
+
+            def write(self, s):
+                if self._first:
+                    self._first = False
+                    return StringIO.write(self, s)
+                raise IOError(errno.EINVAL, 'invalid file handle')
+        output = FailAfterFirstWrite()
+
+        vendor = FirstRejectedStringIOSSHVendor(response, output,
+            fail_at_write=False)
+        client_medium = medium.SmartSSHClientMedium(
+            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
+            'bzr')
+        smart_client = client._SmartClient(client_medium, headers={})
         self.assertRaises(errors.ConnectionReset,
             smart_client._send_request, 3, 'hello', (), body_stream=['a', 'b'])
-        # We got one connect, but it fails, so we disconnect, but we don't
-        # retry it
+        # We connect, and manage to get to the point that we start consuming
+        # the body stream. The next write fails, so we just stop.
         self.assertEqual(
             [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
               ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
              ('close',),
             ],
             vendor.calls)
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloe',
+                         output.getvalue())
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):

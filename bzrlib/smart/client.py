@@ -77,13 +77,11 @@ class _SmartClient(object):
 
             # Connection is dead, so close our end of it.
             self._medium.reset()
-            if body_stream is not None:
-                # We can't determine how much of body_stream got consumed
-                # before we noticed the connection is down, so we don't retry
-                # here.
+            if body_stream is not None and encoder.body_stream_started:
+                # We consumed some of body_stream, so it isn't safe to retry
                 raise
-            trace.log_exception_quietly()
             trace.warning('ConnectionReset calling %s, retrying' % (method,))
+            trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(
                 protocol_version)
             self._send_request_no_retry(encoder, method, args, body=body,
