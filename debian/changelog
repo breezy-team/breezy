@@ -4,6 +4,8 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
   * Add get-orig-source command which will get the upstream tar file.
     LP: #862188
   * Change "bd-do" command to "builddeb-do" and alias "bd-do".
+  * Add commit-message-from-changelog option for those who do not
+    want commit message set automatically
 
  -- Jonathan Riddell <jriddell@ubuntu.com>  Mon, 03 Oct 2011 12:28:54 +0100
 

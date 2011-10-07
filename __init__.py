@@ -116,6 +116,12 @@ def debian_changelog_commit(commit, start_message):
      Set the commit message from debian/changelog and set any LP: #1234 to bug
      fixed tags."""
     from bzrlib.plugins.builddeb.util import find_bugs_fixed
+    from bzrlib.plugins.builddeb.util import debuild_config
+
+    t = commit.work_tree
+    config = debuild_config(t, False)
+    if config.commit_message_from_changelog == False:
+        return None
 
     changes = debian_changelog_commit_message(commit, start_message)
     if changes is None:
