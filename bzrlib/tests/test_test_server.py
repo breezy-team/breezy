@@ -169,22 +169,27 @@ class TestTCPServerInAThread(tests.TestCase):
         self.assertRaises(CantConnect, server.stop_server)
 
     def test_server_crash_while_responding(self):
-        sync = threading.Event()
-        sync.clear()
+        # We need to ensure the exception will be raised
+        will_raise = threading.Event()
+        will_raise.clear()
+        # We need to ensure the exception has been caught
+        caught = threading.Event()
+        caught.clear()
+#        print 'will_raise: %r, caught: %r\n' % (will_raise, caught)
         # The thread that will serve the client
         self.connection_thread = None
-        test = self # So the handler can set connection_thread
         class FailToRespond(Exception):
             pass
 
         class FailingDuringResponseHandler(TCPConnectionHandler):
 
-            def handle_connection(self):
-                req = self.rfile.readline()
-                # Capture the thread and make it use 'sync' so we can wait on
+            def handle_connection(request):
+                req = request.rfile.readline()
+                # Capture the thread and make it use 'caught' so we can wait on
                 # the even set when the exception is caught
-                test.connection_thread = threading.currentThread()
-                test.connection_thread.set_sync_event(sync)
+                self.connection_thread = threading.currentThread()
+                self.connection_thread.set_sync_event(caught)
+                will_raise.set()
                 raise FailToRespond()
 
         server = self.get_server(
@@ -192,32 +197,48 @@ class TestTCPServerInAThread(tests.TestCase):
         client = self.get_client()
         client.connect((server.host, server.port))
         client.write('ping\n')
-        sync.wait()
+        # Wait for the connection to succeed and be processed
+        will_raise.wait()
+        # Wait for the exception to be caught
+        caught.wait()
         # Check that the connection thread did catch the exception,
         # http://pad.lv/869366 was wrongly checking the server thread which
         # works for TestingTCPServer where the connection is handled in the
         # same thread than the server one but is racy for
         # TestingThreadingTCPServer where the server thread may be in a
         # blocking accept() call.
-        self.assertRaises(FailToRespond,
-                          self.connection_thread.pending_exception)
+        try:
+            self.connection_thread.pending_exception()
+        except FailToRespond:
+            # Great, the test succeeded
+            pass
+        else:
+            # If the exception is not in the connection thread anymore, it's in
+            # the server. 
+            server.server.stopped.wait()
+            # The exception is available now
+            self.assertRaises(FailToRespond, server.pending_exception)
 
     def test_exception_swallowed_while_serving(self):
-        sync = threading.Event()
-        sync.clear()
+        # We need to ensure the exception will be raised
+        will_raise = threading.Event()
+        will_raise.clear()
+        # We need to ensure the exception has been caught
+        caught = threading.Event()
+        caught.clear()
         # The thread that will serve the client
         self.connection_thread = None
-        test = self # So the handler can set connection_thread
         class CantServe(Exception):
             pass
 
         class FailingWhileServingConnectionHandler(TCPConnectionHandler):
 
             def handle(request):
-                # Capture the thread and make it use 'sync' so we can wait on
+                # Capture the thread and make it use 'caught' so we can wait on
                 # the even set when the exception is caught
-                test.connection_thread = threading.currentThread()
-                test.connection_thread.set_sync_event(sync)
+                self.connection_thread = threading.currentThread()
+                self.connection_thread.set_sync_event(caught)
+                will_raise.set()
                 raise CantServe()
 
         server = self.get_server(
@@ -227,10 +248,15 @@ class TestTCPServerInAThread(tests.TestCase):
         client = self.get_client()
         # Connect to the server so the exception is raised there
         client.connect((server.host, server.port))
-        # Wait for the exception to propagate.
-        sync.wait()
+        # Wait for the connection to succeed and be processed
+        will_raise.wait()
+        # Wait for the exception to be caught
+        caught.wait()
         # The connection wasn't served properly but the exception should have
         # been swallowed (see test_server_crash_while_responding remark about
         # http://pad.lv/869366 explaining why we can't check the server thread
-        # here).
+        # here). More precisely, the exception *has* been caught and captured
+        # but it is cleared when joining the thread (or trying to acquire the
+        # exception) and as such won't propagate to the server thread.
         self.connection_thread.pending_exception()
+        server.pending_exception()

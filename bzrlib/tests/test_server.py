@@ -452,6 +452,8 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         if debug_threads():
             sys.stderr.write('Client thread %s started\n' % (t.name,))
         # If an exception occured during the thread start, it will get raised.
+        # In rare cases, an exception raised during the request processing may
+        # also get caught here (see http://pad.lv/869366)
         t.pending_exception()
 
     # The following methods are called by the main thread

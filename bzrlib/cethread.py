@@ -126,6 +126,8 @@ class CatchingExceptionThread(threading.Thread):
                 super(CatchingExceptionThread, self).run()
             except:
                 self.exception = sys.exc_info()
+#                print '\nthread %r, sync: %r see %r' % (
+#                    self, self.sync_event, self.exception[0],)
         finally:
             # Make sure the calling thread is released
             self.sync_event.set()
