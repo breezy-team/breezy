@@ -100,6 +100,24 @@ class CommitMessageTests(TestCaseWithTransport):
         self.assertEqual(debian_changelog_commit_message(commit, None),
                 "* two\n* changes\n")
 
+    def test_no_set_message_config_option(self):
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['a', 'debian/', 'debian/changelog', '.bzr-builddeb/', '.bzr-builddeb/default.conf'])
+        f = open(".bzr-builddeb/default.conf", 'wb')
+        try:
+            f.write("[BUILDDEB]\ncommit-message-from-changelog = false")
+        finally:
+            f.close()
+        wt.add(['debian/', 'debian/changelog', '.bzr-builddeb/', '.bzr-builddeb/default.conf'])
+        wt.commit("one")
+        self.set_changelog_content("  * a change\n")
+        wt.add(['a'])
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        commit = self._Commit(wt)
+        self.assertEqual(debian_changelog_commit(commit, None),
+                None)
+
     def test_set_message_with_bugs(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['a', 'debian/', 'debian/changelog'])

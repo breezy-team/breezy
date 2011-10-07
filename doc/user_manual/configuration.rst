@@ -113,6 +113,14 @@ normal mode use the ``merge-upstream`` command.
     upstream code. This has no effect if ``upstream-branch`` is not set.
 
 
+Committing
+^^^^^^^^^^
+
+bzr-builddeb will set the commit message from debian/changelog.  If you do not
+want this set::
+
+  * ``commit-message-from-changelog = false``
+
 Builders
 ^^^^^^^^
 
