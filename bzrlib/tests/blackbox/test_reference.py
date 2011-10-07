@@ -24,11 +24,10 @@ from bzrlib.tests import TestCaseWithTransport
 
 class TestReference(TestCaseWithTransport):
 
-    def make_branch(self, location, format=None):
-        if format is None:
-            format = bzrdir.format_registry.make_bzrdir('1.9')
-            format.set_branch_format(_mod_branch.BzrBranchFormat8())
-        return TestCaseWithTransport.make_branch(self, location, format=format)
+    def get_default_format(self):
+        format = bzrdir.format_registry.make_bzrdir('1.9')
+        format.set_branch_format(_mod_branch.BzrBranchFormat8())
+        return format
 
     def test_no_args_lists(self):
         branch = self.make_branch('branch')

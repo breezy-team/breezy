@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: <bazaar@canonical.com>\n"
-"POT-Creation-Date: 2011-09-16 10:15+0100\n"
+"POT-Creation-Date: 2011-09-20 10:41+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,44 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: bzrlib/builtins.py:116 bzrlib/builtins.py:2758
+#: bzrlib/add.py:95
+msgid "skipping {0} (larger than {1} of {2} bytes)"
+msgstr ""
+
+#: bzrlib/branch.py:852
+msgid "Unstacking"
+msgstr ""
+
+#: bzrlib/branch.py:3138
+#, python-format
+msgid "Pushed up to revision %d."
+msgstr ""
+
+#: bzrlib/branch.py:3140
+#, python-format
+msgid "%d tag updated."
+msgid_plural "%d tags updated."
+msgstr[0] ""
+msgstr[1] ""
+
+#: bzrlib/branch.py:3143
+msgid "No new revisions or tags to push."
+msgstr ""
+
+#: bzrlib/branch.py:3145
+msgid "No new revisions to push."
+msgstr ""
+
+#: bzrlib/branch.py:3165
+msgid "checked branch {0} format {1}"
+msgstr ""
+
+#: bzrlib/branch.py:3168
+#, python-format
+msgid "found error:%s"
+msgstr ""
+
+#: bzrlib/builtins.py:116 bzrlib/builtins.py:2782 bzrlib/workingtree.py:306
 #, python-format
 msgid "Ignoring files outside view. View is %s"
 msgstr ""
@@ -151,11 +188,11 @@ msgstr ""
 msgid "bzr status --revision takes exactly one or two revision specifiers"
 msgstr ""
 
-#: bzrlib/builtins.py:336 bzrlib/builtins.py:4877
+#: bzrlib/builtins.py:336 bzrlib/builtins.py:4927
 msgid "You can only supply one of revision_id or --revision"
 msgstr ""
 
-#: bzrlib/builtins.py:339 bzrlib/builtins.py:4879
+#: bzrlib/builtins.py:339 bzrlib/builtins.py:4929
 msgid "You must supply either --revision or a revision_id"
 msgstr ""
 
@@ -467,7 +504,7 @@ msgstr ""
 msgid "Using saved parent location: %s\n"
 msgstr ""
 
-#: bzrlib/builtins.py:1056 bzrlib/builtins.py:4109
+#: bzrlib/builtins.py:1056 bzrlib/builtins.py:4137
 msgid "Cannot use -r with merge directives or bundles"
 msgstr ""
 
@@ -559,7 +596,7 @@ msgstr ""
 msgid "Could not determine branch to refer to."
 msgstr ""
 
-#: bzrlib/builtins.py:1198
+#: bzrlib/builtins.py:1198 bzrlib/foreign.py:306
 msgid "No push location known or specified."
 msgstr ""
 
@@ -641,22 +678,24 @@ msgstr ""
 msgid "The branch {0} has no revision {1}."
 msgstr ""
 
-#: bzrlib/builtins.py:1323
+#: bzrlib/builtins.py:1323 bzrlib/push.py:51
 #, python-format
 msgid "Created new stacked branch referring to %s."
 msgstr ""
 
 #: bzrlib/builtins.py:1327
 #, python-format
-msgid "Branched %d revision(s)."
-msgstr ""
+msgid "Branched %d revision."
+msgid_plural "Branched %d revisions."
+msgstr[0] ""
+msgstr[1] ""
 
 #: bzrlib/builtins.py:1332
 #, python-format
 msgid "New branch bound to %s"
 msgstr ""
 
-#: bzrlib/builtins.py:1337 bzrlib/builtins.py:5918
+#: bzrlib/builtins.py:1337 bzrlib/builtins.py:5968
 #, python-format
 msgid "Switched to branch: %s"
 msgstr ""
@@ -961,7 +1000,7 @@ msgstr ""
 msgid "Create a branch without a working tree."
 msgstr ""
 
-#: bzrlib/builtins.py:1843
+#: bzrlib/builtins.py:1843 bzrlib/push.py:108
 #, python-format
 msgid ""
 "Parent directory of %s does not exist.\n"
@@ -1242,39 +1281,40 @@ msgstr ""
 msgid "bzr diff --revision takes exactly one or two revision specifiers"
 msgstr ""
 
-#: bzrlib/builtins.py:2103
-msgid "--using and --format are mutually exclusive."
+#: bzrlib/builtins.py:2104 bzrlib/builtins.py:2502 bzrlib/builtins.py:2515
+#: bzrlib/builtins.py:2523 bzrlib/builtins.py:4663
+msgid "{0} and {1} are mutually exclusive"
 msgstr ""
 
-#: bzrlib/builtins.py:2123
+#: bzrlib/builtins.py:2124
 msgid ""
 "List files deleted in the working tree.\n"
 "    "
 msgstr ""
 
-#: bzrlib/builtins.py:2201
+#: bzrlib/builtins.py:2202
 msgid "Show the tree root directory."
 msgstr ""
 
-#: bzrlib/builtins.py:2203
+#: bzrlib/builtins.py:2204
 msgid ""
 "The root is the nearest enclosing directory with a .bzr control\n"
 "directory."
 msgstr ""
 
-#: bzrlib/builtins.py:2218
+#: bzrlib/builtins.py:2219
 msgid "The limit argument must be an integer."
 msgstr ""
 
-#: bzrlib/builtins.py:2226
+#: bzrlib/builtins.py:2227
 msgid "The levels argument must be an integer."
 msgstr ""
 
-#: bzrlib/builtins.py:2231
+#: bzrlib/builtins.py:2232
 msgid "Show historical log for a branch or subset of a branch."
 msgstr ""
 
-#: bzrlib/builtins.py:2233
+#: bzrlib/builtins.py:2234
 msgid ""
 "log is bzr's default tool for exploring the history of a branch.\n"
 "The branch to use is taken from the first parameter. If no parameters\n"
@@ -1282,14 +1322,14 @@ msgid ""
 "Here are some simple examples::"
 msgstr ""
 
-#: bzrlib/builtins.py:2238
+#: bzrlib/builtins.py:2239
 msgid ""
 "  bzr log                       log the current branch\n"
 "  bzr log foo.py                log a file in its branch\n"
 "  bzr log http://server/branch  log a branch on a server"
 msgstr ""
 
-#: bzrlib/builtins.py:2242
+#: bzrlib/builtins.py:2243
 msgid ""
 "The filtering, ordering and information shown for each revision can\n"
 "be controlled as explained below. By default, all revisions are\n"
@@ -1299,11 +1339,11 @@ msgid ""
 "were merged."
 msgstr ""
 
-#: bzrlib/builtins.py:2249
+#: bzrlib/builtins.py:2250
 msgid ":Output control:"
 msgstr ""
 
-#: bzrlib/builtins.py:2251
+#: bzrlib/builtins.py:2252
 msgid ""
 "  The log format controls how information about each revision is\n"
 "  displayed. The standard log formats are called ``long``, ``short``\n"
@@ -1311,13 +1351,13 @@ msgid ""
 "  for more details on log formats."
 msgstr ""
 
-#: bzrlib/builtins.py:2256
+#: bzrlib/builtins.py:2257
 msgid ""
 "  The following options can be used to control what information is\n"
 "  displayed::"
 msgstr ""
 
-#: bzrlib/builtins.py:2259
+#: bzrlib/builtins.py:2260
 msgid ""
 "    -l N        display a maximum of N revisions\n"
 "    -n N        display N levels of revisions (0 for all, 1 for collapsed)\n"
@@ -1326,25 +1366,25 @@ msgid ""
 "    --show-ids  display revision-ids (and file-ids), not just revnos"
 msgstr ""
 
-#: bzrlib/builtins.py:2265
+#: bzrlib/builtins.py:2266
 msgid ""
 "  Note that the default number of levels to display is a function of the\n"
 "  log format. If the -n option is not used, the standard log formats show\n"
 "  just the top level (mainline)."
 msgstr ""
 
-#: bzrlib/builtins.py:2269
+#: bzrlib/builtins.py:2270
 msgid ""
 "  Status summaries are shown using status flags like A, M, etc. To see\n"
 "  the changes explained using words like ``added`` and ``modified``\n"
 "  instead, use the -vv option."
 msgstr ""
 
-#: bzrlib/builtins.py:2273
+#: bzrlib/builtins.py:2274
 msgid ":Ordering control:"
 msgstr ""
 
-#: bzrlib/builtins.py:2275
+#: bzrlib/builtins.py:2276
 msgid ""
 "  To display revisions from oldest to newest, use the --forward option.\n"
 "  In most cases, using this option will have little impact on the total\n"
@@ -1352,17 +1392,17 @@ msgid ""
 "  display revisions like --reverse does when it can."
 msgstr ""
 
-#: bzrlib/builtins.py:2280
+#: bzrlib/builtins.py:2281
 msgid ":Revision filtering:"
 msgstr ""
 
-#: bzrlib/builtins.py:2282
+#: bzrlib/builtins.py:2283
 msgid ""
 "  The -r option can be used to specify what revision or range of revisions\n"
 "  to filter against. The various forms are shown below::"
 msgstr ""
 
-#: bzrlib/builtins.py:2285
+#: bzrlib/builtins.py:2286
 msgid ""
 "    -rX      display revision X\n"
 "    -rX..    display revision X and later\n"
@@ -1370,13 +1410,13 @@ msgid ""
 "    -rX..Y   display from X to Y inclusive"
 msgstr ""
 
-#: bzrlib/builtins.py:2290
+#: bzrlib/builtins.py:2291
 msgid ""
 "  See ``bzr help revisionspec`` for details on how to specify X and Y.\n"
 "  Some common examples are given below::"
 msgstr ""
 
-#: bzrlib/builtins.py:2293
+#: bzrlib/builtins.py:2294
 msgid ""
 "    -r-1                show just the tip\n"
 "    -r-10..             show the last 10 mainline revisions\n"
@@ -1386,7 +1426,7 @@ msgid ""
 "    -rdate:yesterday..  show changes since yesterday"
 msgstr ""
 
-#: bzrlib/builtins.py:2300
+#: bzrlib/builtins.py:2301
 msgid ""
 "  When logging a range of revisions using -rX..Y, log starts at\n"
 "  revision Y and searches back in history through the primary\n"
@@ -1396,73 +1436,73 @@ msgid ""
 "  a nested merge revision and the log will be truncated accordingly."
 msgstr ""
 
-#: bzrlib/builtins.py:2307
+#: bzrlib/builtins.py:2308
 msgid ":Path filtering:"
 msgstr ""
 
-#: bzrlib/builtins.py:2309
+#: bzrlib/builtins.py:2310
 msgid ""
 "  If parameters are given and the first one is not a branch, the log\n"
 "  will be filtered to show only those revisions that changed the\n"
 "  nominated files or directories."
 msgstr ""
 
-#: bzrlib/builtins.py:2313
+#: bzrlib/builtins.py:2314
 msgid ""
 "  Filenames are interpreted within their historical context. To log a\n"
 "  deleted file, specify a revision range so that the file existed at\n"
 "  the end or start of the range."
 msgstr ""
 
-#: bzrlib/builtins.py:2317
+#: bzrlib/builtins.py:2318
 msgid ""
 "  Historical context is also important when interpreting pathnames of\n"
 "  renamed files/directories. Consider the following example:"
 msgstr ""
 
-#: bzrlib/builtins.py:2320
+#: bzrlib/builtins.py:2321
 msgid ""
 "  * revision 1: add tutorial.txt\n"
 "  * revision 2: modify tutorial.txt\n"
 "  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt"
 msgstr ""
 
-#: bzrlib/builtins.py:2324
+#: bzrlib/builtins.py:2325
 msgid "  In this case:"
 msgstr ""
 
-#: bzrlib/builtins.py:2326
+#: bzrlib/builtins.py:2327
 msgid "  * ``bzr log guide.txt`` will log the file added in revision 1"
 msgstr ""
 
-#: bzrlib/builtins.py:2328
+#: bzrlib/builtins.py:2329
 msgid "  * ``bzr log tutorial.txt`` will log the new file added in revision 3"
 msgstr ""
 
-#: bzrlib/builtins.py:2330
+#: bzrlib/builtins.py:2331
 msgid ""
 "  * ``bzr log -r2 -p tutorial.txt`` will show the changes made to\n"
 "    the original file in revision 2."
 msgstr ""
 
-#: bzrlib/builtins.py:2333
+#: bzrlib/builtins.py:2334
 msgid ""
 "  * ``bzr log -r2 -p guide.txt`` will display an error message as there\n"
 "    was no file called guide.txt in revision 2."
 msgstr ""
 
-#: bzrlib/builtins.py:2336
+#: bzrlib/builtins.py:2337
 msgid ""
 "  Renames are always followed by log. By design, there is no need to\n"
 "  explicitly ask for this (and no way to stop logging a file back\n"
 "  until it was last renamed)."
 msgstr ""
 
-#: bzrlib/builtins.py:2340
+#: bzrlib/builtins.py:2341
 msgid ":Other filtering:"
 msgstr ""
 
-#: bzrlib/builtins.py:2342
+#: bzrlib/builtins.py:2343
 msgid ""
 "  The --match option can be used for finding revisions that match a\n"
 "  regular expression in a commit message, committer, author or bug.\n"
@@ -1471,11 +1511,11 @@ msgid ""
 "  --match-message can be used to only match a specific field."
 msgstr ""
 
-#: bzrlib/builtins.py:2348
+#: bzrlib/builtins.py:2349
 msgid ":Tips & tricks:"
 msgstr ""
 
-#: bzrlib/builtins.py:2350
+#: bzrlib/builtins.py:2351
 msgid ""
 "  GUI tools and IDEs are often better at exploring history than command\n"
 "  line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the\n"
@@ -1484,11 +1524,11 @@ msgid ""
 "  <http://wiki.bazaar.canonical.com/IDEIntegration>.  "
 msgstr ""
 
-#: bzrlib/builtins.py:2356
+#: bzrlib/builtins.py:2357
 msgid "  You may find it useful to add the aliases below to ``bazaar.conf``::"
 msgstr ""
 
-#: bzrlib/builtins.py:2358
+#: bzrlib/builtins.py:2359
 msgid ""
 "    [ALIASES]\n"
 "    tip = log -r-1\n"
@@ -1496,20 +1536,20 @@ msgid ""
 "    show = log -v -p"
 msgstr ""
 
-#: bzrlib/builtins.py:2363
+#: bzrlib/builtins.py:2364
 msgid ""
 "  ``bzr tip`` will then show the latest revision while ``bzr top``\n"
 "  will show the last 10 mainline revisions. To see the details of a\n"
 "  particular revision X,  ``bzr show -rX``."
 msgstr ""
 
-#: bzrlib/builtins.py:2367
+#: bzrlib/builtins.py:2368
 msgid ""
 "  If you are interested in looking deeper into a particular merge X,\n"
 "  use ``bzr log -n0 -rX``."
 msgstr ""
 
-#: bzrlib/builtins.py:2370
+#: bzrlib/builtins.py:2371
 msgid ""
 "  ``bzr log -v`` on a branch with lots of history is currently\n"
 "  very slow. A fix for this issue is currently under development.\n"
@@ -1517,7 +1557,7 @@ msgid ""
 "  be given when using the -v option."
 msgstr ""
 
-#: bzrlib/builtins.py:2375
+#: bzrlib/builtins.py:2376
 msgid ""
 "  bzr has a generic full-text matching plugin, bzr-search, that can be\n"
 "  used to find revisions matching user names, commit messages, etc.\n"
@@ -1525,7 +1565,7 @@ msgid ""
 "  a list of words but not others."
 msgstr ""
 
-#: bzrlib/builtins.py:2380
+#: bzrlib/builtins.py:2381
 msgid ""
 "  When exploring non-mainline history on large projects with deep\n"
 "  history, the performance of log can be greatly improved by installing\n"
@@ -1534,171 +1574,168 @@ msgid ""
 msgstr ""
 
 # help of 'forward' option of 'log' command
-#: bzrlib/builtins.py:2389
+#: bzrlib/builtins.py:2390
 msgid "Show from oldest to newest."
 msgstr ""
 
 # help of 'verbose' option of 'log' command
-#: bzrlib/builtins.py:2392
+#: bzrlib/builtins.py:2393
 msgid "Show files changed in each revision."
 msgstr ""
 
 # help of 'change' option of 'log' command
-#: bzrlib/builtins.py:2398
+#: bzrlib/builtins.py:2399
 msgid "Show just the specified revision. See also \"help revisionspec\"."
 msgstr ""
 
 # help of 'authors' option of 'log' command
-#: bzrlib/builtins.py:2402
+#: bzrlib/builtins.py:2403
 msgid "What names to list as authors - first, all or committer."
 msgstr ""
 
 # title of 'authors' option of 'log' command
-#: bzrlib/builtins.py:2403
+#: bzrlib/builtins.py:2404
 msgid "Authors"
 msgstr ""
 
 # help of 'levels' option of 'log' command
-#: bzrlib/builtins.py:2408
+#: bzrlib/builtins.py:2409
 msgid "Number of levels to display - 0 for all, 1 for flat."
 msgstr ""
 
 # help of 'limit' option of 'log' command
-#: bzrlib/builtins.py:2418
+#: bzrlib/builtins.py:2419
 msgid "Limit the output to the first N revisions."
 msgstr ""
 
 # help of 'show-diff' option of 'log' command
-#: bzrlib/builtins.py:2423
+#: bzrlib/builtins.py:2424
 msgid "Show changes made in each revision as a patch."
 msgstr ""
 
-# help of 'include-merges' option of 'log' command
-#: bzrlib/builtins.py:2425
+# help of 'include-merged' option of 'log' command
+#: bzrlib/builtins.py:2426
 msgid "Show merged revisions like --levels 0 does."
 msgstr ""
 
+# help of 'omit-merges' option of 'log' command
+#: bzrlib/builtins.py:2430
+msgid "Do not report commits with more than one parent."
+msgstr ""
+
 # help of 'exclude-common-ancestry' option of 'log' command
-#: bzrlib/builtins.py:2427
+#: bzrlib/builtins.py:2432
 msgid ""
 "Display only the revisions that are not part of both ancestries (require -"
 "rX..Y)"
 msgstr ""
 
 # help of 'signatures' option of 'log' command
-#: bzrlib/builtins.py:2431
+#: bzrlib/builtins.py:2436
 msgid "Show digital signature validity"
 msgstr ""
 
 # help of 'match' option of 'log' command
-#: bzrlib/builtins.py:2434
+#: bzrlib/builtins.py:2439
 msgid "Show revisions whose properties match this expression."
 msgstr ""
 
 # help of 'match-message' option of 'log' command
-#: bzrlib/builtins.py:2438
+#: bzrlib/builtins.py:2443
 msgid "Show revisions whose message matches this expression."
 msgstr ""
 
 # help of 'match-committer' option of 'log' command
-#: bzrlib/builtins.py:2442
+#: bzrlib/builtins.py:2447
 msgid "Show revisions whose committer matches this expression."
 msgstr ""
 
 # help of 'match-author' option of 'log' command
-#: bzrlib/builtins.py:2446
+#: bzrlib/builtins.py:2451
 msgid "Show revisions whose authors match this expression."
 msgstr ""
 
 # help of 'match-bugs' option of 'log' command
-#: bzrlib/builtins.py:2450
+#: bzrlib/builtins.py:2455
 msgid "Show revisions whose bugs match this expression."
 msgstr ""
 
-#: bzrlib/builtins.py:2487
+#: bzrlib/builtins.py:2509
 msgid "--exclude-common-ancestry requires -r with two revisions"
 msgstr ""
 
-#: bzrlib/builtins.py:2493
-msgid "--levels and --include-merges are mutually exclusive"
-msgstr ""
-
-#: bzrlib/builtins.py:2500
-msgid "--revision and --change are mutually exclusive"
-msgstr ""
-
-#: bzrlib/builtins.py:2513
+#: bzrlib/builtins.py:2537
 #, python-format
 msgid "Path unknown at end or start of revision range: %s"
 msgstr ""
 
-#: bzrlib/builtins.py:2630
+#: bzrlib/builtins.py:2654
 #, python-format
 msgid "bzr %s doesn't accept two revisions in different branches."
 msgstr ""
 
-#: bzrlib/builtins.py:2646
+#: bzrlib/builtins.py:2670
 #, python-format
 msgid "bzr %s --revision takes one or two values."
 msgstr ""
 
-#: bzrlib/builtins.py:2691
+#: bzrlib/builtins.py:2715
 msgid ""
 "List files in a tree.\n"
 "    "
 msgstr ""
 
 # help of 'recursive' option of 'ls' command
-#: bzrlib/builtins.py:2700
+#: bzrlib/builtins.py:2724
 msgid "Recurse into subdirectories."
 msgstr ""
 
 # help of 'from-root' option of 'ls' command
-#: bzrlib/builtins.py:2702
+#: bzrlib/builtins.py:2726
 msgid "Print paths relative to the root of the branch."
 msgstr ""
 
 # help of 'unknown' option of 'ls' command
-#: bzrlib/builtins.py:2704
+#: bzrlib/builtins.py:2728
 msgid "Print unknown files."
 msgstr ""
 
 # help of 'versioned' option of 'ls' command
-#: bzrlib/builtins.py:2705
+#: bzrlib/builtins.py:2729
 msgid "Print versioned files."
 msgstr ""
 
 # help of 'ignored' option of 'ls' command
-#: bzrlib/builtins.py:2708
+#: bzrlib/builtins.py:2732
 msgid "Print ignored files."
 msgstr ""
 
 # help of 'kind' option of 'ls' command
-#: bzrlib/builtins.py:2710
+#: bzrlib/builtins.py:2734
 msgid "List entries of a particular kind: file, directory, symlink."
 msgstr ""
 
-#: bzrlib/builtins.py:2723
+#: bzrlib/builtins.py:2747
 msgid "invalid kind specified"
 msgstr ""
 
-#: bzrlib/builtins.py:2726
+#: bzrlib/builtins.py:2750
 msgid "Cannot set both --verbose and --null"
 msgstr ""
 
-#: bzrlib/builtins.py:2735
+#: bzrlib/builtins.py:2759
 msgid "cannot specify both --from-root and PATH"
 msgstr ""
 
-#: bzrlib/builtins.py:2822
+#: bzrlib/builtins.py:2846
 msgid "Ignore specified files or patterns."
 msgstr ""
 
-#: bzrlib/builtins.py:2824
+#: bzrlib/builtins.py:2848
 msgid "See ``bzr help patterns`` for details on the syntax of patterns."
 msgstr ""
 
-#: bzrlib/builtins.py:2826
+#: bzrlib/builtins.py:2850
 msgid ""
 "If a .bzrignore file does not exist, the ignore command\n"
 "will create one and add the specified files or patterns to the newly\n"
@@ -1707,7 +1744,7 @@ msgid ""
 "the use of the ignore command will require an explicit add command."
 msgstr ""
 
-#: bzrlib/builtins.py:2832
+#: bzrlib/builtins.py:2856
 msgid ""
 "To remove patterns from the ignore list, edit the .bzrignore file.\n"
 "After adding, editing or deleting that file either indirectly by\n"
@@ -1715,7 +1752,7 @@ msgid ""
 "it."
 msgstr ""
 
-#: bzrlib/builtins.py:2837
+#: bzrlib/builtins.py:2861
 msgid ""
 "Bazaar also supports a global ignore file ~/.bazaar/ignore. On Windows\n"
 "the global ignore file can be found in the application data directory as\n"
@@ -1724,20 +1761,20 @@ msgid ""
 "can be edited directly using an editor."
 msgstr ""
 
-#: bzrlib/builtins.py:2843
+#: bzrlib/builtins.py:2867
 msgid ""
 "Patterns prefixed with '!' are exceptions to ignore patterns and take\n"
 "precedence over regular ignores.  Such exceptions are used to specify\n"
 "files that should be versioned which would otherwise be ignored."
 msgstr ""
 
-#: bzrlib/builtins.py:2847
+#: bzrlib/builtins.py:2871
 msgid ""
 "Patterns prefixed with '!!' act as regular ignore patterns, but have\n"
 "precedence over the '!' exception patterns."
 msgstr ""
 
-#: bzrlib/builtins.py:2850
+#: bzrlib/builtins.py:2874
 msgid ""
 ":Notes: \n"
 "    \n"
@@ -1745,63 +1782,63 @@ msgid ""
 "  the shell on Unix."
 msgstr ""
 
-#: bzrlib/builtins.py:2855
+#: bzrlib/builtins.py:2879
 msgid ""
 "* Ignore patterns starting with \"#\" act as comments in the ignore file.\n"
 "  To ignore patterns that begin with that character, use the \"RE:\" prefix."
 msgstr ""
 
-#: bzrlib/builtins.py:2858
+#: bzrlib/builtins.py:2882
 msgid ""
 ":Examples:\n"
 "    Ignore the top level Makefile::"
 msgstr ""
 
-#: bzrlib/builtins.py:2861
+#: bzrlib/builtins.py:2885
 msgid "        bzr ignore ./Makefile"
 msgstr ""
 
-#: bzrlib/builtins.py:2863
+#: bzrlib/builtins.py:2887
 msgid "    Ignore .class files in all directories...::"
 msgstr ""
 
-#: bzrlib/builtins.py:2865
+#: bzrlib/builtins.py:2889
 msgid "        bzr ignore \"*.class\""
 msgstr ""
 
-#: bzrlib/builtins.py:2867
+#: bzrlib/builtins.py:2891
 msgid "    ...but do not ignore \"special.class\"::"
 msgstr ""
 
-#: bzrlib/builtins.py:2869
+#: bzrlib/builtins.py:2893
 msgid "        bzr ignore \"!special.class\""
 msgstr ""
 
-#: bzrlib/builtins.py:2871
+#: bzrlib/builtins.py:2895
 msgid "    Ignore files whose name begins with the \"#\" character::"
 msgstr ""
 
-#: bzrlib/builtins.py:2873
+#: bzrlib/builtins.py:2897
 msgid "        bzr ignore \"RE:^#\""
 msgstr ""
 
-#: bzrlib/builtins.py:2875
+#: bzrlib/builtins.py:2899
 msgid "    Ignore .o files under the lib directory::"
 msgstr ""
 
-#: bzrlib/builtins.py:2877
+#: bzrlib/builtins.py:2901
 msgid "        bzr ignore \"lib/**/*.o\""
 msgstr ""
 
-#: bzrlib/builtins.py:2881
+#: bzrlib/builtins.py:2905
 msgid "        bzr ignore \"RE:lib/.*\\.o\""
 msgstr ""
 
-#: bzrlib/builtins.py:2883
+#: bzrlib/builtins.py:2907
 msgid "    Ignore everything but the \"debian\" toplevel directory::"
 msgstr ""
 
-#: bzrlib/builtins.py:2885
+#: bzrlib/builtins.py:2909
 msgid ""
 "        bzr ignore \"RE:(?!debian/).*\"\n"
 "    \n"
@@ -1814,19 +1851,26 @@ msgid ""
 msgstr ""
 
 # help of 'default-rules' option of 'ignore' command
-#: bzrlib/builtins.py:2899
+#: bzrlib/builtins.py:2923
 msgid "Display the default ignore rules that bzr uses."
 msgstr ""
 
-#: bzrlib/builtins.py:2911
+#: bzrlib/builtins.py:2935
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
 msgstr ""
 
-#: bzrlib/builtins.py:2927
+#: bzrlib/builtins.py:2946
+#, python-format
+msgid "Invalid ignore pattern found. %s"
+msgid_plural "Invalid ignore patterns found. %s"
+msgstr[0] ""
+msgstr[1] ""
+
+#: bzrlib/builtins.py:2955
 msgid "NAME_PATTERN should not be an absolute path"
 msgstr ""
 
-#: bzrlib/builtins.py:2940
+#: bzrlib/builtins.py:2968
 #, python-format
 msgid ""
 "Warning: the following files are version controlled and match your ignore "
@@ -1836,62 +1880,62 @@ msgid ""
 "them.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:2947
+#: bzrlib/builtins.py:2975
 msgid "List ignored files and the patterns that matched them."
 msgstr ""
 
-#: bzrlib/builtins.py:2949
+#: bzrlib/builtins.py:2977
 msgid ""
 "List all the ignored files and the ignore pattern that caused the file to\n"
 "be ignored."
 msgstr ""
 
-#: bzrlib/builtins.py:2952
+#: bzrlib/builtins.py:2980
 msgid "Alternatively, to list just the files::"
 msgstr ""
 
-#: bzrlib/builtins.py:2954
+#: bzrlib/builtins.py:2982
 msgid "    bzr ls --ignored"
 msgstr ""
 
-#: bzrlib/builtins.py:2988
+#: bzrlib/builtins.py:3016
 #, python-format
 msgid "not a valid revision-number: %r"
 msgstr ""
 
-#: bzrlib/builtins.py:2995
+#: bzrlib/builtins.py:3023
 msgid "Export current or past revision to a destination directory or archive."
 msgstr ""
 
-#: bzrlib/builtins.py:2997
+#: bzrlib/builtins.py:3025
 msgid "If no revision is specified this exports the last committed revision."
 msgstr ""
 
-#: bzrlib/builtins.py:2999
+#: bzrlib/builtins.py:3027
 msgid ""
 "Format may be an \"exporter\" name, such as tar, tgz, tbz2.  If none is\n"
 "given, try to find the format with the extension. If no extension\n"
 "is found exports to a directory (equivalent to --format=dir)."
 msgstr ""
 
-#: bzrlib/builtins.py:3003
+#: bzrlib/builtins.py:3031
 msgid ""
 "If root is supplied, it will be used as the root directory inside\n"
 "container formats (tar, zip, etc). If it is not supplied it will default\n"
 "to the exported filename. The root option has no effect for 'dir' format."
 msgstr ""
 
-#: bzrlib/builtins.py:3007
+#: bzrlib/builtins.py:3035
 msgid ""
 "If branch is omitted then the branch containing the current working\n"
 "directory will be used."
 msgstr ""
 
-#: bzrlib/builtins.py:3010
+#: bzrlib/builtins.py:3038
 msgid "Note: Export of tree with non-ASCII filenames to zip is not supported."
 msgstr ""
 
-#: bzrlib/builtins.py:3012
+#: bzrlib/builtins.py:3040
 msgid ""
 "  =================       =========================\n"
 "  Supported formats       Autodetected by extension\n"
@@ -1905,59 +1949,64 @@ msgid ""
 msgstr ""
 
 # help of 'format' option of 'export' command
-#: bzrlib/builtins.py:3026
+#: bzrlib/builtins.py:3054
 msgid "Type of file to export to."
 msgstr ""
 
 # help of 'filters' option of 'export' command
-#: bzrlib/builtins.py:3029
+#: bzrlib/builtins.py:3057
 msgid "Apply content filters to export the convenient form."
 msgstr ""
 
 # help of 'root' option of 'export' command
-#: bzrlib/builtins.py:3033
+#: bzrlib/builtins.py:3061
 msgid "Name of the root directory inside the exported file."
 msgstr ""
 
 # help of 'per-file-timestamps' option of 'export' command
-#: bzrlib/builtins.py:3035
+#: bzrlib/builtins.py:3063
 msgid ""
 "Set modification time of files to that of the last revision in which it was "
 "changed."
 msgstr ""
 
-#: bzrlib/builtins.py:3059
+#: bzrlib/builtins.py:3083
+#, python-format
+msgid "Unsupported export format: %s"
+msgstr ""
+
+#: bzrlib/builtins.py:3087
 msgid "Write the contents of a file as of a given revision to standard output."
 msgstr ""
 
-#: bzrlib/builtins.py:3061
+#: bzrlib/builtins.py:3089
 msgid "If no revision is nominated, the last revision is used."
 msgstr ""
 
-#: bzrlib/builtins.py:3063
+#: bzrlib/builtins.py:3091
 msgid ""
 "Note: Take care to redirect standard output when using this command on a\n"
 "binary file."
 msgstr ""
 
 # help of 'filters' option of 'cat' command
-#: bzrlib/builtins.py:3070
+#: bzrlib/builtins.py:3098
 msgid "Apply content filters to display the convenience form."
 msgstr ""
 
-#: bzrlib/builtins.py:3081
+#: bzrlib/builtins.py:3109
 msgid "bzr cat --revision takes exactly one revision specifier"
 msgstr ""
 
-#: bzrlib/builtins.py:3106 bzrlib/builtins.py:3118
+#: bzrlib/builtins.py:3134 bzrlib/builtins.py:3146
 msgid "{0!r} is not present in revision {1}"
 msgstr ""
 
-#: bzrlib/builtins.py:3141
+#: bzrlib/builtins.py:3169
 msgid "Commit changes into a new revision."
 msgstr ""
 
-#: bzrlib/builtins.py:3143
+#: bzrlib/builtins.py:3171
 msgid ""
 "An explanatory message needs to be given for each commit. This is\n"
 "often done by using the --message option (getting the message from the\n"
@@ -1967,44 +2016,44 @@ msgid ""
 "boilerplate text loaded into the editor, use the --show-diff option."
 msgstr ""
 
-#: bzrlib/builtins.py:3150
+#: bzrlib/builtins.py:3178
 msgid ""
 "By default, the entire tree is committed and the person doing the\n"
 "commit is assumed to be the author. These defaults can be overridden\n"
 "as explained below."
 msgstr ""
 
-#: bzrlib/builtins.py:3154
+#: bzrlib/builtins.py:3182
 msgid ":Selective commits:"
 msgstr ""
 
-#: bzrlib/builtins.py:3156
+#: bzrlib/builtins.py:3184
 msgid ""
 "  If selected files are specified, only changes to those files are\n"
 "  committed.  If a directory is specified then the directory and\n"
 "  everything within it is committed."
 msgstr ""
 
-#: bzrlib/builtins.py:3160
+#: bzrlib/builtins.py:3188
 msgid ""
 "  When excludes are given, they take precedence over selected files.\n"
 "  For example, to commit only changes within foo, but not changes\n"
 "  within foo/bar::"
 msgstr ""
 
-#: bzrlib/builtins.py:3164
+#: bzrlib/builtins.py:3192
 msgid "    bzr commit foo -x foo/bar"
 msgstr ""
 
-#: bzrlib/builtins.py:3166
+#: bzrlib/builtins.py:3194
 msgid "  A selective commit after a merge is not yet supported."
 msgstr ""
 
-#: bzrlib/builtins.py:3168
+#: bzrlib/builtins.py:3196
 msgid ":Custom authors:"
 msgstr ""
 
-#: bzrlib/builtins.py:3170
+#: bzrlib/builtins.py:3198
 msgid ""
 "  If the author of the change is not the same person as the committer,\n"
 "  you can specify the author's name using the --author option. The\n"
@@ -2014,11 +2063,11 @@ msgid ""
 "  author."
 msgstr ""
 
-#: bzrlib/builtins.py:3177
+#: bzrlib/builtins.py:3205
 msgid ":Checks:"
 msgstr ""
 
-#: bzrlib/builtins.py:3179
+#: bzrlib/builtins.py:3207
 msgid ""
 "  A common mistake is to forget to add a new file or directory before\n"
 "  running the commit command. The --strict option checks for unknown\n"
@@ -2027,18 +2076,18 @@ msgid ""
 "  for details."
 msgstr ""
 
-#: bzrlib/builtins.py:3185
+#: bzrlib/builtins.py:3213
 msgid ":Things to note:"
 msgstr ""
 
-#: bzrlib/builtins.py:3187
+#: bzrlib/builtins.py:3215
 msgid ""
 "  If you accidentially commit the wrong changes or make a spelling\n"
 "  mistake in the commit message say, you can use the uncommit command\n"
 "  to undo it. See ``bzr help uncommit`` for details."
 msgstr ""
 
-#: bzrlib/builtins.py:3191
+#: bzrlib/builtins.py:3219
 msgid ""
 "  Hooks can also be configured to run after a commit. This allows you\n"
 "  to trigger updates to external systems like bug trackers. The --fixes\n"
@@ -2047,69 +2096,69 @@ msgid ""
 msgstr ""
 
 # help of 'exclude' option of 'commit' command
-#: bzrlib/builtins.py:3201
+#: bzrlib/builtins.py:3229
 msgid "Do not consider changes made to a given path."
 msgstr ""
 
 # help of 'message' option of 'commit' command
-#: bzrlib/builtins.py:3204
+#: bzrlib/builtins.py:3232
 msgid "Description of the new revision."
 msgstr ""
 
 # help of 'unchanged' option of 'commit' command
-#: bzrlib/builtins.py:3207
+#: bzrlib/builtins.py:3235
 msgid "Commit even if nothing has changed."
 msgstr ""
 
 # help of 'file' option of 'commit' command
-#: bzrlib/builtins.py:3211
+#: bzrlib/builtins.py:3239
 msgid "Take commit message from this file."
 msgstr ""
 
 # help of 'strict' option of 'commit' command
-#: bzrlib/builtins.py:3213
+#: bzrlib/builtins.py:3241
 msgid "Refuse to commit if there are unknown files in the working tree."
 msgstr ""
 
 # help of 'commit-time' option of 'commit' command
-#: bzrlib/builtins.py:3216
+#: bzrlib/builtins.py:3244
 msgid ""
 "Manually set a commit time using commit date format, e.g. '2009-10-10 "
 "08:00:00 +0100'."
 msgstr ""
 
 # help of 'fixes' option of 'commit' command
-#: bzrlib/builtins.py:3219
+#: bzrlib/builtins.py:3247
 msgid "Mark a bug as being fixed by this revision (see \"bzr help bugs\")."
 msgstr ""
 
 # help of 'author' option of 'commit' command
-#: bzrlib/builtins.py:3222
+#: bzrlib/builtins.py:3250
 msgid "Set the author's name, if it's different from the committer."
 msgstr ""
 
 # help of 'local' option of 'commit' command
-#: bzrlib/builtins.py:3225
+#: bzrlib/builtins.py:3253
 msgid ""
 "Perform a local commit in a bound branch.  Local commits are not pushed to "
 "the master branch until a normal commit is performed."
 msgstr ""
 
 # help of 'show-diff' option of 'commit' command
-#: bzrlib/builtins.py:3231
+#: bzrlib/builtins.py:3259
 msgid ""
 "When no message is supplied, show the diff along with the status summary in "
 "the message editor."
 msgstr ""
 
 # help of 'lossy' option of 'commit' command
-#: bzrlib/builtins.py:3234
+#: bzrlib/builtins.py:3262
 msgid ""
 "When committing to a foreign version control system do not push data that "
 "can not be natively represented."
 msgstr ""
 
-#: bzrlib/builtins.py:3252
+#: bzrlib/builtins.py:3280
 #, python-format
 msgid ""
 "No tracker specified for bug %s. Use the form 'tracker:id' or specify a "
@@ -2117,7 +2166,7 @@ msgid ""
 "See \"bzr help bugs\" for more information on this feature. Commit refused."
 msgstr ""
 
-#: bzrlib/builtins.py:3261
+#: bzrlib/builtins.py:3289
 #, python-format
 msgid ""
 "Invalid bug %s. Must be in the form of 'tracker:id'. See \"bzr help bugs\" "
@@ -2125,91 +2174,91 @@ msgid ""
 "Commit refused."
 msgstr ""
 
-#: bzrlib/builtins.py:3270
+#: bzrlib/builtins.py:3298
 #, python-format
 msgid "Unrecognized bug %s. Commit refused."
 msgstr ""
 
-#: bzrlib/builtins.py:3273
+#: bzrlib/builtins.py:3301
 #, python-format
 msgid ""
 "%s\n"
 "Commit refused."
 msgstr ""
 
-#: bzrlib/builtins.py:3297
+#: bzrlib/builtins.py:3325
 msgid "Could not parse --commit-time: "
 msgstr ""
 
-#: bzrlib/builtins.py:3337
+#: bzrlib/builtins.py:3365
 msgid "please specify either --message or --file"
 msgstr ""
 
-#: bzrlib/builtins.py:3366
+#: bzrlib/builtins.py:3394
 msgid "please specify a commit message with either --message or --file"
 msgstr ""
 
-#: bzrlib/builtins.py:3369
+#: bzrlib/builtins.py:3397
 msgid ""
 "Empty commit message specified. Please specify a commit message with either "
 "--message or --file or leave a blank message with --message \"\"."
 msgstr ""
 
-#: bzrlib/builtins.py:3389
+#: bzrlib/builtins.py:3417
 msgid ""
 "No changes to commit. Please 'bzr add' the files you want to commit, or use "
 "--unchanged to force an empty commit."
 msgstr ""
 
-#: bzrlib/builtins.py:3393
+#: bzrlib/builtins.py:3421
 msgid ""
 "Conflicts detected in working tree.  Use \"bzr conflicts\" to list, \"bzr "
 "resolve FILE\" to resolve."
 msgstr ""
 
-#: bzrlib/builtins.py:3397
+#: bzrlib/builtins.py:3425
 msgid "Commit refused because there are unknown files in the working tree."
 msgstr ""
 
-#: bzrlib/builtins.py:3400
+#: bzrlib/builtins.py:3428
 msgid ""
 "\n"
 "To commit to master branch, run update and then commit.\n"
 "You can also pass --local to commit to continue working disconnected."
 msgstr ""
 
-#: bzrlib/builtins.py:3408
+#: bzrlib/builtins.py:3436
 msgid ""
 "Validate working tree structure, branch consistency and repository history."
 msgstr ""
 
-#: bzrlib/builtins.py:3410
+#: bzrlib/builtins.py:3438
 msgid ""
 "This command checks various invariants about branch and repository storage\n"
 "to detect data corruption or bzr bugs."
 msgstr ""
 
-#: bzrlib/builtins.py:3413
+#: bzrlib/builtins.py:3441
 msgid ""
 "The working tree and branch checks will only give output if a problem is\n"
 "detected. The output fields of the repository check are:"
 msgstr ""
 
-#: bzrlib/builtins.py:3416
+#: bzrlib/builtins.py:3444
 msgid ""
 "revisions\n"
 "    This is just the number of revisions checked.  It doesn't\n"
 "    indicate a problem."
 msgstr ""
 
-#: bzrlib/builtins.py:3420
+#: bzrlib/builtins.py:3448
 msgid ""
 "versionedfiles\n"
 "    This is just the number of versionedfiles checked.  It\n"
 "    doesn't indicate a problem."
 msgstr ""
 
-#: bzrlib/builtins.py:3424
+#: bzrlib/builtins.py:3452
 msgid ""
 "unreferenced ancestors\n"
 "    Texts that are ancestors of other texts, but\n"
@@ -2217,14 +2266,14 @@ msgid ""
 "    subtle problem that Bazaar can work around."
 msgstr ""
 
-#: bzrlib/builtins.py:3429
+#: bzrlib/builtins.py:3457
 msgid ""
 "unique file texts\n"
 "    This is the total number of unique file contents\n"
 "    seen in the checked revisions.  It does not indicate a problem."
 msgstr ""
 
-#: bzrlib/builtins.py:3433
+#: bzrlib/builtins.py:3461
 msgid ""
 "repeated file texts\n"
 "    This is the total number of repeated texts seen\n"
@@ -2233,61 +2282,61 @@ msgid ""
 "    indicate a problem."
 msgstr ""
 
-#: bzrlib/builtins.py:3439
+#: bzrlib/builtins.py:3467
 msgid ""
 "If no restrictions are specified, all Bazaar data that is found at the "
 "given\n"
 "location will be checked."
 msgstr ""
 
-#: bzrlib/builtins.py:3442
+#: bzrlib/builtins.py:3470
 msgid ":Examples:"
 msgstr ""
 
-#: bzrlib/builtins.py:3444
+#: bzrlib/builtins.py:3472
 msgid "    Check the tree and branch at 'foo'::"
 msgstr ""
 
-#: bzrlib/builtins.py:3446
+#: bzrlib/builtins.py:3474
 msgid "        bzr check --tree --branch foo"
 msgstr ""
 
-#: bzrlib/builtins.py:3448
+#: bzrlib/builtins.py:3476
 msgid "    Check only the repository at 'bar'::"
 msgstr ""
 
-#: bzrlib/builtins.py:3450
+#: bzrlib/builtins.py:3478
 msgid "        bzr check --repo bar"
 msgstr ""
 
-#: bzrlib/builtins.py:3452
+#: bzrlib/builtins.py:3480
 msgid "    Check everything at 'baz'::"
 msgstr ""
 
-#: bzrlib/builtins.py:3454
+#: bzrlib/builtins.py:3482
 msgid "        bzr check baz"
 msgstr ""
 
 # help of 'branch' option of 'check' command
-#: bzrlib/builtins.py:3460
+#: bzrlib/builtins.py:3488
 msgid "Check the branch related to the current directory."
 msgstr ""
 
 # help of 'repo' option of 'check' command
-#: bzrlib/builtins.py:3462
+#: bzrlib/builtins.py:3490
 msgid "Check the repository related to the current directory."
 msgstr ""
 
 # help of 'tree' option of 'check' command
-#: bzrlib/builtins.py:3464
+#: bzrlib/builtins.py:3492
 msgid "Check the working tree related to the current directory."
 msgstr ""
 
-#: bzrlib/builtins.py:3478
+#: bzrlib/builtins.py:3506
 msgid "Upgrade a repository, branch or working tree to a newer format."
 msgstr ""
 
-#: bzrlib/builtins.py:3480
+#: bzrlib/builtins.py:3508
 msgid ""
 "When the default format has changed after a major new release of\n"
 "Bazaar, you may be informed during certain operations that you\n"
@@ -2296,7 +2345,7 @@ msgid ""
 "with older repositories or with older versions of Bazaar."
 msgstr ""
 
-#: bzrlib/builtins.py:3486
+#: bzrlib/builtins.py:3514
 msgid ""
 "If you wish to upgrade to a particular format rather than the\n"
 "current default, that can be specified using the --format option.\n"
@@ -2306,7 +2355,7 @@ msgid ""
 "2.x default) so downgrading is not always possible."
 msgstr ""
 
-#: bzrlib/builtins.py:3493
+#: bzrlib/builtins.py:3521
 msgid ""
 "A backup.bzr.~#~ directory is created at the start of the conversion\n"
 "process (where # is a number). By default, this is left there on\n"
@@ -2317,7 +2366,7 @@ msgid ""
 "afterwards."
 msgstr ""
 
-#: bzrlib/builtins.py:3501
+#: bzrlib/builtins.py:3529
 msgid ""
 "If the location given is a shared repository, dependent branches\n"
 "are also converted provided the repository converts successfully.\n"
@@ -2325,158 +2374,158 @@ msgid ""
 "tried."
 msgstr ""
 
-#: bzrlib/builtins.py:3506
+#: bzrlib/builtins.py:3534
 msgid ""
 "For more information on upgrades, see the Bazaar Upgrade Guide,\n"
 "http://doc.bazaar.canonical.com/latest/en/upgrade-guide/."
 msgstr ""
 
 # help of 'format' option of 'upgrade' command
-#: bzrlib/builtins.py:3514
+#: bzrlib/builtins.py:3542
 msgid "Upgrade to a specific format.  See \"bzr help formats\" for details."
 msgstr ""
 
 # title of 'format' option of 'init' command
-#: bzrlib/builtins.py:3518
+#: bzrlib/builtins.py:3546
 msgid "Branch format"
 msgstr ""
 
 # help of 'clean' option of 'upgrade' command
-#: bzrlib/builtins.py:3520
+#: bzrlib/builtins.py:3548
 msgid "Remove the backup.bzr directory if successful."
 msgstr ""
 
-#: bzrlib/builtins.py:3537
+#: bzrlib/builtins.py:3565
 msgid "Show or set bzr user id."
 msgstr ""
 
-#: bzrlib/builtins.py:3539
+#: bzrlib/builtins.py:3567
 msgid ""
 ":Examples:\n"
 "    Show the email of the current user::"
 msgstr ""
 
-#: bzrlib/builtins.py:3542
+#: bzrlib/builtins.py:3570
 msgid "        bzr whoami --email"
 msgstr ""
 
-#: bzrlib/builtins.py:3544
+#: bzrlib/builtins.py:3572
 msgid "    Set the current user::"
 msgstr ""
 
-#: bzrlib/builtins.py:3546
+#: bzrlib/builtins.py:3574
 msgid "        bzr whoami \"Frank Chu <fchu@example.com>\""
 msgstr ""
 
 # help of 'email' option of 'whoami' command
-#: bzrlib/builtins.py:3550
+#: bzrlib/builtins.py:3578
 msgid "Display email address only."
 msgstr ""
 
 # help of 'branch' option of 'whoami' command
-#: bzrlib/builtins.py:3552
+#: bzrlib/builtins.py:3580
 msgid "Set identity for the current branch instead of globally."
 msgstr ""
 
-#: bzrlib/builtins.py:3576
+#: bzrlib/builtins.py:3604
 msgid "--email can only be used to display existing identity"
 msgstr ""
 
-#: bzrlib/builtins.py:3598
+#: bzrlib/builtins.py:3626
 msgid "Print or set the branch nickname."
 msgstr ""
 
-#: bzrlib/builtins.py:3600
+#: bzrlib/builtins.py:3628
 msgid ""
 "If unset, the tree root directory name is used as the nickname.\n"
 "To print the current nickname, execute with no argument."
 msgstr ""
 
-#: bzrlib/builtins.py:3603
+#: bzrlib/builtins.py:3631
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally."
 msgstr ""
 
-#: bzrlib/builtins.py:3623
+#: bzrlib/builtins.py:3651
 msgid "Set/unset and display aliases."
 msgstr ""
 
-#: bzrlib/builtins.py:3625
+#: bzrlib/builtins.py:3653
 msgid ""
 ":Examples:\n"
 "    Show the current aliases::"
 msgstr ""
 
-#: bzrlib/builtins.py:3628
+#: bzrlib/builtins.py:3656
 msgid "        bzr alias"
 msgstr ""
 
-#: bzrlib/builtins.py:3630
+#: bzrlib/builtins.py:3658
 msgid "    Show the alias specified for 'll'::"
 msgstr ""
 
-#: bzrlib/builtins.py:3632
+#: bzrlib/builtins.py:3660
 msgid "        bzr alias ll"
 msgstr ""
 
-#: bzrlib/builtins.py:3634
+#: bzrlib/builtins.py:3662
 msgid "    Set an alias for 'll'::"
 msgstr ""
 
-#: bzrlib/builtins.py:3636
+#: bzrlib/builtins.py:3664
 msgid "        bzr alias ll=\"log --line -r-10..-1\""
 msgstr ""
 
-#: bzrlib/builtins.py:3638
+#: bzrlib/builtins.py:3666
 msgid "    To remove an alias for 'll'::"
 msgstr ""
 
-#: bzrlib/builtins.py:3640
+#: bzrlib/builtins.py:3668
 msgid "        bzr alias --remove ll"
 msgstr ""
 
 # help of 'remove' option of 'alias' command
-#: bzrlib/builtins.py:3645
+#: bzrlib/builtins.py:3673
 msgid "Remove the alias."
 msgstr ""
 
-#: bzrlib/builtins.py:3663
+#: bzrlib/builtins.py:3691
 msgid "bzr alias --remove expects an alias to remove."
 msgstr ""
 
-#: bzrlib/builtins.py:3835
+#: bzrlib/builtins.py:3863
 msgid "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
 
-#: bzrlib/builtins.py:3852
+#: bzrlib/builtins.py:3880
 msgid ""
 "--benchmark is no longer supported from bzr 2.2; use bzr-usertest instead"
 msgstr ""
 
-#: bzrlib/builtins.py:3899
+#: bzrlib/builtins.py:3927
 msgid "Show version of bzr."
 msgstr ""
 
 # help of 'short' option of 'version' command
-#: bzrlib/builtins.py:3903
+#: bzrlib/builtins.py:3931
 msgid "Print just the version number."
 msgstr ""
 
-#: bzrlib/builtins.py:3922
+#: bzrlib/builtins.py:3950
 msgid "It sure does!\n"
 msgstr ""
 
-#: bzrlib/builtins.py:3946
+#: bzrlib/builtins.py:3974
 #, python-format
 msgid "merge base is revision %s\n"
 msgstr ""
 
-#: bzrlib/builtins.py:3950
+#: bzrlib/builtins.py:3978
 msgid "Perform a three-way merge."
 msgstr ""
 
-#: bzrlib/builtins.py:3952
+#: bzrlib/builtins.py:3980
 msgid ""
 "The source of the merge can be specified either in the form of a branch,\n"
 "or in the form of a path to a file containing a merge directive generated\n"
@@ -2487,20 +2536,20 @@ msgid ""
 "the current working tree."
 msgstr ""
 
-#: bzrlib/builtins.py:3960
+#: bzrlib/builtins.py:3988
 msgid ""
 "When merging from a branch, by default bzr will try to merge in all new\n"
 "work from the other branch, automatically determining an appropriate base\n"
 "revision.  If this fails, you may need to give an explicit base."
 msgstr ""
 
-#: bzrlib/builtins.py:3964
+#: bzrlib/builtins.py:3992
 msgid ""
 "To pick a different ending revision, pass \"--revision OTHER\".  bzr will\n"
 "try to merge in all new work up to and including revision OTHER."
 msgstr ""
 
-#: bzrlib/builtins.py:3967
+#: bzrlib/builtins.py:3995
 msgid ""
 "If you specify two values, \"--revision BASE..OTHER\", only revisions BASE\n"
 "through OTHER, excluding BASE but including OTHER, will be merged.  If this\n"
@@ -2511,15 +2560,15 @@ msgid ""
 "changes from the other branch is not stored in the commit."
 msgstr ""
 
-#: bzrlib/builtins.py:3975
+#: bzrlib/builtins.py:4003
 msgid "Revision numbers are always relative to the source branch."
 msgstr ""
 
-#: bzrlib/builtins.py:3982
+#: bzrlib/builtins.py:4010
 msgid "Use bzr resolve when you have fixed a problem.  See also bzr conflicts."
 msgstr ""
 
-#: bzrlib/builtins.py:3984
+#: bzrlib/builtins.py:4012
 msgid ""
 "If there is no default branch set, the first merge will set it (use\n"
 "--no-remember to avoid setting it). After that, you can omit the branch\n"
@@ -2527,14 +2576,14 @@ msgid ""
 "only be saved if the remote location can be accessed."
 msgstr ""
 
-#: bzrlib/builtins.py:3989
+#: bzrlib/builtins.py:4017
 msgid ""
 "The results of the merge are placed into the destination working\n"
 "directory, where they can be reviewed (with bzr diff), tested, and then\n"
 "committed to record the result of the merge."
 msgstr ""
 
-#: bzrlib/builtins.py:3993
+#: bzrlib/builtins.py:4021
 msgid ""
 "merge refuses to run if there are any uncommitted changes, unless\n"
 "--force is given.  If --force is given, then the changes from the source \n"
@@ -2543,60 +2592,60 @@ msgid ""
 "merge revision which has more than two parents."
 msgstr ""
 
-#: bzrlib/builtins.py:3999
+#: bzrlib/builtins.py:4027
 msgid ""
 "If one would like to merge changes from the working tree of the other\n"
 "branch without merging any committed revisions, the --uncommitted option\n"
 "can be given."
 msgstr ""
 
-#: bzrlib/builtins.py:4003
+#: bzrlib/builtins.py:4031
 msgid ""
 "To select only some changes to merge, use \"merge -i\", which will prompt\n"
 "you to apply each diff hunk and file change, similar to \"shelve\"."
 msgstr ""
 
-#: bzrlib/builtins.py:4006
+#: bzrlib/builtins.py:4034
 msgid ""
 ":Examples:\n"
 "    To merge all new revisions from bzr.dev::"
 msgstr ""
 
-#: bzrlib/builtins.py:4009
+#: bzrlib/builtins.py:4037
 msgid "        bzr merge ../bzr.dev"
 msgstr ""
 
-#: bzrlib/builtins.py:4011
+#: bzrlib/builtins.py:4039
 msgid "    To merge changes up to and including revision 82 from bzr.dev::"
 msgstr ""
 
-#: bzrlib/builtins.py:4013
+#: bzrlib/builtins.py:4041
 msgid "        bzr merge -r 82 ../bzr.dev"
 msgstr ""
 
-#: bzrlib/builtins.py:4015
+#: bzrlib/builtins.py:4043
 msgid "    To merge the changes introduced by 82, without previous changes::"
 msgstr ""
 
-#: bzrlib/builtins.py:4017
+#: bzrlib/builtins.py:4045
 msgid "        bzr merge -r 81..82 ../bzr.dev"
 msgstr ""
 
-#: bzrlib/builtins.py:4019
+#: bzrlib/builtins.py:4047
 msgid "    To apply a merge directive contained in /tmp/merge::"
 msgstr ""
 
-#: bzrlib/builtins.py:4021
+#: bzrlib/builtins.py:4049
 msgid "        bzr merge /tmp/merge"
 msgstr ""
 
-#: bzrlib/builtins.py:4023
+#: bzrlib/builtins.py:4051
 msgid ""
 "    To create a merge revision with three parents from two branches\n"
 "    feature1a and feature1b:"
 msgstr ""
 
-#: bzrlib/builtins.py:4026
+#: bzrlib/builtins.py:4054
 msgid ""
 "        bzr merge ../feature1a\n"
 "        bzr merge ../feature1b --force\n"
@@ -2604,18 +2653,18 @@ msgid ""
 msgstr ""
 
 # help of 'force' option of 'merge' command
-#: bzrlib/builtins.py:4038
+#: bzrlib/builtins.py:4066
 msgid "Merge even if the destination tree has uncommitted changes."
 msgstr ""
 
 # help of 'uncommitted' option of 'merge' command
-#: bzrlib/builtins.py:4044
+#: bzrlib/builtins.py:4072
 msgid ""
 "Apply uncommitted changes from a working copy, instead of branch changes."
 msgstr ""
 
 # help of 'pull' option of 'merge' command
-#: bzrlib/builtins.py:4046
+#: bzrlib/builtins.py:4074
 msgid ""
 "If the destination is already completely merged into the source, pull from "
 "the source rather than merging.  When this happens, you do not need to "
@@ -2623,135 +2672,135 @@ msgid ""
 msgstr ""
 
 # help of 'directory' option of 'merge' command
-#: bzrlib/builtins.py:4051
+#: bzrlib/builtins.py:4079
 msgid ""
 "Branch to merge into, rather than the one containing the working directory."
 msgstr ""
 
 # help of 'preview' option of 'merge' command
-#: bzrlib/builtins.py:4053
+#: bzrlib/builtins.py:4081
 msgid "Instead of merging, show a diff of the merge."
 msgstr ""
 
 # help of 'interactive' option of 'merge' command
-#: bzrlib/builtins.py:4055
+#: bzrlib/builtins.py:4083
 msgid "Select changes interactively."
 msgstr ""
 
-#: bzrlib/builtins.py:4077
+#: bzrlib/builtins.py:4105
 msgid ""
 "Merging into empty branches not currently supported, https://bugs.launchpad."
 "net/bzr/+bug/308562"
 msgstr ""
 
-#: bzrlib/builtins.py:4104
+#: bzrlib/builtins.py:4132
 msgid "Cannot use --uncommitted with bundles or merge directives."
 msgstr ""
 
-#: bzrlib/builtins.py:4115
+#: bzrlib/builtins.py:4143
 msgid "Cannot use --uncommitted and --revision at the same time."
 msgstr ""
 
-#: bzrlib/builtins.py:4135
+#: bzrlib/builtins.py:4163
 msgid "merger: "
 msgstr ""
 
-#: bzrlib/builtins.py:4137
+#: bzrlib/builtins.py:4165 bzrlib/bundle/apply_bundle.py:67
 msgid "Nothing to do."
 msgstr ""
 
-#: bzrlib/builtins.py:4141
+#: bzrlib/builtins.py:4169
 msgid "Cannot pull individual files"
 msgstr ""
 
-#: bzrlib/builtins.py:4149
+#: bzrlib/builtins.py:4177
 msgid "This branch has no commits. (perhaps you would prefer 'bzr pull')"
 msgstr ""
 
-#: bzrlib/builtins.py:4207
+#: bzrlib/builtins.py:4235
 #, python-format
 msgid "Show-base is not supported for this merge type. %s"
 msgstr ""
 
-#: bzrlib/builtins.py:4216
+#: bzrlib/builtins.py:4244
 #, python-format
 msgid "Conflict reduction is not supported for merge type %s."
 msgstr ""
 
-#: bzrlib/builtins.py:4220
+#: bzrlib/builtins.py:4248
 msgid "Cannot do conflict reduction and show base."
 msgstr ""
 
-#: bzrlib/builtins.py:4331
+#: bzrlib/builtins.py:4359
 msgid "No location specified or remembered"
 msgstr ""
 
-#: bzrlib/builtins.py:4333
+#: bzrlib/builtins.py:4361
 msgid "{0} remembered {1} location {2}"
 msgstr ""
 
-#: bzrlib/builtins.py:4339
+#: bzrlib/builtins.py:4367
 msgid "Redo a merge."
 msgstr ""
 
-#: bzrlib/builtins.py:4341
+#: bzrlib/builtins.py:4369
 msgid ""
 "Use this if you want to try a different merge technique while resolving\n"
 "conflicts.  Some merge techniques are better than others, and remerge\n"
 "lets you try different ones on different files."
 msgstr ""
 
-#: bzrlib/builtins.py:4345
+#: bzrlib/builtins.py:4373
 msgid ""
 "The options for remerge have the same meaning and defaults as the ones for\n"
 "merge.  The difference is that remerge can (only) be run when there is a\n"
 "pending merge, and it lets you specify particular files."
 msgstr ""
 
-#: bzrlib/builtins.py:4349
+#: bzrlib/builtins.py:4377
 msgid ""
 ":Examples:\n"
 "    Re-do the merge of all conflicted files, and show the base text in\n"
 "    conflict regions, in addition to the usual THIS and OTHER texts::"
 msgstr ""
 
-#: bzrlib/builtins.py:4353
+#: bzrlib/builtins.py:4381
 msgid "        bzr remerge --show-base"
 msgstr ""
 
-#: bzrlib/builtins.py:4355
+#: bzrlib/builtins.py:4383
 msgid ""
 "    Re-do the merge of \"foobar\", using the weave merge algorithm, with\n"
 "    additional processing to reduce the size of conflict regions::"
 msgstr ""
 
-#: bzrlib/builtins.py:4358
+#: bzrlib/builtins.py:4386
 msgid "        bzr remerge --merge-type weave --reprocess foobar"
 msgstr ""
 
 # help of 'show-base' option of 'merge' command
-#: bzrlib/builtins.py:4365
+#: bzrlib/builtins.py:4393
 msgid "Show base revision text in conflicts."
 msgstr ""
 
-#: bzrlib/builtins.py:4377
+#: bzrlib/builtins.py:4405
 msgid ""
 "Sorry, remerge only works after normal merges.  Not cherrypicking or multi-"
 "merges."
 msgstr ""
 
-#: bzrlib/builtins.py:4433
+#: bzrlib/builtins.py:4461
 msgid "Revert files to a previous revision."
 msgstr ""
 
-#: bzrlib/builtins.py:4435
+#: bzrlib/builtins.py:4463
 msgid ""
 "Giving a list of files will revert only those files.  Otherwise, all files\n"
 "will be reverted.  If the revision is not specified with '--revision', the\n"
 "last committed revision is used."
 msgstr ""
 
-#: bzrlib/builtins.py:4439
+#: bzrlib/builtins.py:4467
 msgid ""
 "To remove only some changes, without reverting to a prior version, use\n"
 "merge instead.  For example, \"merge . -r -2..-3\" (don't forget the \".\")\n"
@@ -2760,14 +2809,14 @@ msgid ""
 "certain changes on a hunk-by-hunk basis, see the shelve command."
 msgstr ""
 
-#: bzrlib/builtins.py:4445
+#: bzrlib/builtins.py:4473
 msgid ""
 "By default, any files that have been manually changed will be backed up\n"
 "first.  (Files changed only by merge are not backed up.)  Backup files have\n"
 "'.~#~' appended to their name, where # is a number."
 msgstr ""
 
-#: bzrlib/builtins.py:4449
+#: bzrlib/builtins.py:4477
 msgid ""
 "When you provide files, you can use their current pathname or the pathname\n"
 "from the target revision.  So you can use revert to \"undelete\" a file by\n"
@@ -2775,7 +2824,7 @@ msgid ""
 "reverted."
 msgstr ""
 
-#: bzrlib/builtins.py:4454
+#: bzrlib/builtins.py:4482
 msgid ""
 "If you have newly added files since the target revision, they will be\n"
 "removed.  If the files to be removed have been changed, backups will be\n"
@@ -2783,7 +2832,7 @@ msgid ""
 "deleted."
 msgstr ""
 
-#: bzrlib/builtins.py:4459
+#: bzrlib/builtins.py:4487
 msgid ""
 "The working tree contains a list of revisions that have been merged but\n"
 "not yet committed. These revisions will be included as additional parents\n"
@@ -2795,7 +2844,7 @@ msgid ""
 "reverting any files."
 msgstr ""
 
-#: bzrlib/builtins.py:4468
+#: bzrlib/builtins.py:4496
 msgid ""
 "Using \"bzr revert --forget-merges\", it is possible to apply all of the\n"
 "changes from a branch in a single revision.  To do this, perform the merge\n"
@@ -2810,35 +2859,35 @@ msgid ""
 msgstr ""
 
 # help of 'no-backup' option of 'revert' command
-#: bzrlib/builtins.py:4482
+#: bzrlib/builtins.py:4510
 msgid "Do not save backups of reverted files."
 msgstr ""
 
 # help of 'forget-merges' option of 'revert' command
-#: bzrlib/builtins.py:4484
+#: bzrlib/builtins.py:4512
 msgid "Remove pending merge marker, without changing any files."
 msgstr ""
 
-#: bzrlib/builtins.py:4515
+#: bzrlib/builtins.py:4543
 msgid ""
 "Show help on a command or other topic.\n"
 "    "
 msgstr ""
 
 # help of 'long' option of 'help' command
-#: bzrlib/builtins.py:4520
+#: bzrlib/builtins.py:4548
 msgid "Show help on all commands."
 msgstr ""
 
-#: bzrlib/builtins.py:4549
+#: bzrlib/builtins.py:4577
 msgid "Show unmerged/unpulled revisions between two branches."
 msgstr ""
 
-#: bzrlib/builtins.py:4551
+#: bzrlib/builtins.py:4579
 msgid "OTHER_BRANCH may be local or remote."
 msgstr ""
 
-#: bzrlib/builtins.py:4553
+#: bzrlib/builtins.py:4581
 msgid ""
 "To filter on a range of revisions, you can use the command -r begin..end\n"
 "-r revision requests a specific revision, -r ..end or -r begin.. are\n"
@@ -2849,130 +2898,134 @@ msgid ""
 "    0 - no missing revisions"
 msgstr ""
 
-#: bzrlib/builtins.py:4563
+#: bzrlib/builtins.py:4591
 msgid ""
 "    Determine the missing revisions between this and the branch at the\n"
 "    remembered pull location::"
 msgstr ""
 
-#: bzrlib/builtins.py:4566
+#: bzrlib/builtins.py:4594
 msgid "        bzr missing"
 msgstr ""
 
-#: bzrlib/builtins.py:4568
+#: bzrlib/builtins.py:4596
 msgid "    Determine the missing revisions between this and another branch::"
 msgstr ""
 
-#: bzrlib/builtins.py:4570
+#: bzrlib/builtins.py:4598
 msgid "        bzr missing http://server/branch"
 msgstr ""
 
-#: bzrlib/builtins.py:4572
+#: bzrlib/builtins.py:4600
 msgid ""
 "    Determine the missing revisions up to a specific revision on the other\n"
 "    branch::"
 msgstr ""
 
-#: bzrlib/builtins.py:4575
+#: bzrlib/builtins.py:4603
 msgid "        bzr missing -r ..-10"
 msgstr ""
 
-#: bzrlib/builtins.py:4577
+#: bzrlib/builtins.py:4605
 msgid ""
 "    Determine the missing revisions up to a specific revision on this\n"
 "    branch::"
 msgstr ""
 
-#: bzrlib/builtins.py:4580
+#: bzrlib/builtins.py:4608
 msgid "        bzr missing --my-revision ..-10"
 msgstr ""
 
 # help of 'reverse' option of 'missing' command
-#: bzrlib/builtins.py:4587
+#: bzrlib/builtins.py:4615
 msgid "Reverse the order of revisions."
 msgstr ""
 
 # help of 'mine-only' option of 'missing' command
-#: bzrlib/builtins.py:4589
+#: bzrlib/builtins.py:4617
 msgid "Display changes in the local branch only."
 msgstr ""
 
 # help of 'this' option of 'missing' command
-#: bzrlib/builtins.py:4590
+#: bzrlib/builtins.py:4618
 msgid "Same as --mine-only."
 msgstr ""
 
 # help of 'theirs-only' option of 'missing' command
-#: bzrlib/builtins.py:4592
+#: bzrlib/builtins.py:4620
 msgid "Display changes in the remote branch only."
 msgstr ""
 
 # help of 'other' option of 'missing' command
-#: bzrlib/builtins.py:4593
+#: bzrlib/builtins.py:4621
 msgid "Same as --theirs-only."
 msgstr ""
 
 # help of 'revision' option of 'missing' command
-#: bzrlib/builtins.py:4598
+#: bzrlib/builtins.py:4626
 msgid ""
 "Filter on other branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
 
 # help of 'my-revision' option of 'missing' command
-#: bzrlib/builtins.py:4602
+#: bzrlib/builtins.py:4630
 msgid ""
 "Filter on local branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
 
-# help of 'include-merges' option of 'missing' command
-#: bzrlib/builtins.py:4605
+# help of 'include-merged' option of 'missing' command
+#: bzrlib/builtins.py:4633
 msgid "Show all revisions in addition to the mainline ones."
 msgstr ""
 
-#: bzrlib/builtins.py:4641
+#: bzrlib/builtins.py:4687
 msgid "No peer location known or specified."
 msgstr ""
 
-#: bzrlib/builtins.py:4645
+#: bzrlib/builtins.py:4691
 msgid "Using saved parent location: {0}\n"
 msgstr ""
 
-#: bzrlib/builtins.py:4678
+#: bzrlib/builtins.py:4724
 #, python-format
-msgid "You have %d extra revision(s):\n"
-msgstr ""
+msgid "You have %d extra revision:\n"
+msgid_plural "You have %d extra revisions:\n"
+msgstr[0] ""
+msgstr[1] ""
 
-#: bzrlib/builtins.py:4692
+#: bzrlib/builtins.py:4740
 #, python-format
-msgid "You are missing %d revision(s):\n"
-msgstr ""
+msgid "You are missing %d revision:\n"
+msgid_plural "You are missing %d revisions:\n"
+msgstr[0] ""
+msgstr[1] ""
 
-#: bzrlib/builtins.py:4702
+#: bzrlib/builtins.py:4752
 msgid "This branch has no new revisions.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:4705
+#: bzrlib/builtins.py:4755
 msgid "Other branch has no new revisions.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:4710
+#: bzrlib/builtins.py:4760
 msgid "Branches are up to date.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:4721
+#: bzrlib/builtins.py:4771
 msgid "Compress the data within a repository."
 msgstr ""
 
-#: bzrlib/builtins.py:4723
+#: bzrlib/builtins.py:4773
 msgid ""
 "This operation compresses the data within a bazaar repository. As\n"
 "bazaar supports automatic packing of repository, this operation is\n"
 "normally not required to be done manually."
 msgstr ""
 
-#: bzrlib/builtins.py:4727
+#: bzrlib/builtins.py:4777
 msgid ""
 "During the pack operation, bazaar takes a backup of existing repository\n"
 "data, i.e. pack files. This backup is eventually removed by bazaar\n"
@@ -2981,7 +3034,7 @@ msgid ""
 "used."
 msgstr ""
 
-#: bzrlib/builtins.py:4733
+#: bzrlib/builtins.py:4783
 msgid ""
 "Warning: If you use --clean-obsolete-packs and your machine crashes\n"
 "during or immediately after repacking, you may be left with a state\n"
@@ -2990,25 +3043,25 @@ msgid ""
 msgstr ""
 
 # help of 'clean-obsolete-packs' option of 'pack' command
-#: bzrlib/builtins.py:4742
+#: bzrlib/builtins.py:4792
 msgid "Delete obsolete packs to save disk space."
 msgstr ""
 
-#: bzrlib/builtins.py:4756
+#: bzrlib/builtins.py:4806
 msgid "List the installed plugins."
 msgstr ""
 
-#: bzrlib/builtins.py:4758
+#: bzrlib/builtins.py:4808
 msgid ""
 "This command displays the list of installed plugins including\n"
 "version of plugin and a short description of each."
 msgstr ""
 
-#: bzrlib/builtins.py:4761
+#: bzrlib/builtins.py:4811
 msgid "--verbose shows the path where each plugin is located."
 msgstr ""
 
-#: bzrlib/builtins.py:4763
+#: bzrlib/builtins.py:4813
 msgid ""
 "A plugin is an external component for Bazaar that extends the\n"
 "revision control system, by adding or replacing code in Bazaar.\n"
@@ -3017,7 +3070,7 @@ msgid ""
 "customizing log output."
 msgstr ""
 
-#: bzrlib/builtins.py:4769
+#: bzrlib/builtins.py:4819
 msgid ""
 "See the Bazaar Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/>\n"
 "for further information on plugins including where to find them and how to\n"
@@ -3025,122 +3078,122 @@ msgid ""
 "plugins using the Python programming language."
 msgstr ""
 
-#: bzrlib/builtins.py:4785
+#: bzrlib/builtins.py:4835
 msgid "Show testament (signing-form) of a revision."
 msgstr ""
 
 # help of 'long' option of 'testament' command
-#: bzrlib/builtins.py:4788
+#: bzrlib/builtins.py:4838
 msgid "Produce long-format testament."
 msgstr ""
 
 # help of 'strict' option of 'testament' command
-#: bzrlib/builtins.py:4790
+#: bzrlib/builtins.py:4840
 msgid "Produce a strict-format testament."
 msgstr ""
 
-#: bzrlib/builtins.py:4816
+#: bzrlib/builtins.py:4866
 msgid "Show the origin of each line in a file."
 msgstr ""
 
-#: bzrlib/builtins.py:4818
+#: bzrlib/builtins.py:4868
 msgid ""
 "This prints out the given file with an annotation on the left side\n"
 "indicating which revision, author and date introduced the change."
 msgstr ""
 
-#: bzrlib/builtins.py:4821
+#: bzrlib/builtins.py:4871
 msgid ""
 "If the origin is the same for a run of consecutive lines, it is\n"
 "shown only at the top, unless the --all option is given."
 msgstr ""
 
 # help of 'all' option of 'annotate' command
-#: bzrlib/builtins.py:4829
+#: bzrlib/builtins.py:4879
 msgid "Show annotations on all lines."
 msgstr ""
 
 # help of 'long' option of 'annotate' command
-#: bzrlib/builtins.py:4830
+#: bzrlib/builtins.py:4880
 msgid "Show commit date in annotations."
 msgstr ""
 
-#: bzrlib/builtins.py:4917
+#: bzrlib/builtins.py:4967
 msgid "Cannot sign a range of non-revision-history revisions"
 msgstr ""
 
-#: bzrlib/builtins.py:4929
+#: bzrlib/builtins.py:4979
 msgid "Please supply either one revision, or a range."
 msgstr ""
 
-#: bzrlib/builtins.py:4933
+#: bzrlib/builtins.py:4983
 msgid ""
 "Convert the current branch into a checkout of the supplied branch.\n"
 "If no branch is supplied, rebind to the last bound location."
 msgstr ""
 
-#: bzrlib/builtins.py:4936
+#: bzrlib/builtins.py:4986
 msgid ""
 "Once converted into a checkout, commits must succeed on the master branch\n"
 "before they will be applied to the local branch."
 msgstr ""
 
-#: bzrlib/builtins.py:4939
+#: bzrlib/builtins.py:4989
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally, in which case binding will update the local nickname to be\n"
 "that of the master."
 msgstr ""
 
-#: bzrlib/builtins.py:4954
+#: bzrlib/builtins.py:5004
 msgid "No location supplied.  This format does not remember old locations."
 msgstr ""
 
-#: bzrlib/builtins.py:4959
+#: bzrlib/builtins.py:5009
 msgid "Branch is already bound"
 msgstr ""
 
-#: bzrlib/builtins.py:4961
+#: bzrlib/builtins.py:5011
 msgid "No location supplied and no previous location known"
 msgstr ""
 
-#: bzrlib/builtins.py:4967
+#: bzrlib/builtins.py:5017
 msgid "These branches have diverged. Try merging, and then bind again."
 msgstr ""
 
-#: bzrlib/builtins.py:4974
+#: bzrlib/builtins.py:5024
 msgid "Convert the current checkout into a regular branch."
 msgstr ""
 
-#: bzrlib/builtins.py:4976
+#: bzrlib/builtins.py:5026
 msgid ""
 "After unbinding, the local branch is considered independent and subsequent\n"
 "commits will be local only."
 msgstr ""
 
-#: bzrlib/builtins.py:4987
+#: bzrlib/builtins.py:5037
 msgid "Local branch is not bound"
 msgstr ""
 
-#: bzrlib/builtins.py:4991
+#: bzrlib/builtins.py:5041
 msgid "Remove the last committed revision."
 msgstr ""
 
-#: bzrlib/builtins.py:4993
+#: bzrlib/builtins.py:5043
 msgid ""
 "--verbose will print out what is being removed.\n"
 "--dry-run will go through all the motions, but not actually\n"
 "remove anything."
 msgstr ""
 
-#: bzrlib/builtins.py:4997
+#: bzrlib/builtins.py:5047
 msgid ""
 "If --revision is specified, uncommit revisions to leave the branch at the\n"
 "specified revision.  For example, \"bzr uncommit -r 15\" will leave the\n"
 "branch at revision 15."
 msgstr ""
 
-#: bzrlib/builtins.py:5001
+#: bzrlib/builtins.py:5051
 msgid ""
 "Uncommit leaves the working tree ready for a new commit.  The only change\n"
 "it may make is to restore any pending merges that were present before\n"
@@ -3148,75 +3201,75 @@ msgid ""
 msgstr ""
 
 # help of 'dry-run' option of 'uncommit' command
-#: bzrlib/builtins.py:5012
+#: bzrlib/builtins.py:5062
 msgid "Don't actually make changes."
 msgstr ""
 
 # help of 'force' option of 'uncommit' command
-#: bzrlib/builtins.py:5013
+#: bzrlib/builtins.py:5063
 msgid "Say yes to all questions."
 msgstr ""
 
 # help of 'keep-tags' option of 'uncommit' command
-#: bzrlib/builtins.py:5015
+#: bzrlib/builtins.py:5065
 msgid "Keep tags that point to removed revisions."
 msgstr ""
 
 # help of 'local' option of 'uncommit' command
-#: bzrlib/builtins.py:5017
+#: bzrlib/builtins.py:5067
 msgid "Only remove the commits from the local branch when in a checkout."
 msgstr ""
 
-#: bzrlib/builtins.py:5066
+#: bzrlib/builtins.py:5116
 msgid "No revisions to uncommit.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:5081
+#: bzrlib/builtins.py:5131
 msgid "Dry-run, pretending to remove the above revisions.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:5084
+#: bzrlib/builtins.py:5134
 msgid "The above revision(s) will be removed.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:5088
+#: bzrlib/builtins.py:5138
 msgid "Uncommit these revisions"
 msgstr ""
 
-#: bzrlib/builtins.py:5091
+#: bzrlib/builtins.py:5141
 msgid "Canceled\n"
 msgstr ""
 
-#: bzrlib/builtins.py:5098
+#: bzrlib/builtins.py:5148
 #, python-format
 msgid ""
 "You can restore the old tip by running:\n"
 "  bzr pull . -r revid:%s\n"
 msgstr ""
 
-#: bzrlib/builtins.py:5103
+#: bzrlib/builtins.py:5153
 msgid "Break a dead lock."
 msgstr ""
 
-#: bzrlib/builtins.py:5105
+#: bzrlib/builtins.py:5155
 msgid ""
 "This command breaks a lock on a repository, branch, working directory or\n"
 "config file."
 msgstr ""
 
-#: bzrlib/builtins.py:5108
+#: bzrlib/builtins.py:5158
 msgid ""
 "CAUTION: Locks should only be broken when you are sure that the process\n"
 "holding the lock has been stopped."
 msgstr ""
 
-#: bzrlib/builtins.py:5111
+#: bzrlib/builtins.py:5161
 msgid ""
 "You can get information on what locks are open via the 'bzr info\n"
 "[location]' command."
 msgstr ""
 
-#: bzrlib/builtins.py:5114
+#: bzrlib/builtins.py:5164
 msgid ""
 ":Examples:\n"
 "    bzr break-lock\n"
@@ -3225,36 +3278,36 @@ msgid ""
 msgstr ""
 
 # help of 'config' option of 'break-lock' command
-#: bzrlib/builtins.py:5123
+#: bzrlib/builtins.py:5173
 msgid "LOCATION is the directory where the config lock is."
 msgstr ""
 
 # help of 'force' option of 'break-lock' command
-#: bzrlib/builtins.py:5125
+#: bzrlib/builtins.py:5175
 msgid "Do not ask for confirmation before breaking the lock."
 msgstr ""
 
-#: bzrlib/builtins.py:5161
+#: bzrlib/builtins.py:5211
 msgid "Run the bzr server."
 msgstr ""
 
 # help of 'inet' option of 'serve' command
-#: bzrlib/builtins.py:5167
+#: bzrlib/builtins.py:5217
 msgid "Serve on stdin/out for use from inetd or sshd."
 msgstr ""
 
 # title of 'protocol' option of 'serve' command
-#: bzrlib/builtins.py:5168
+#: bzrlib/builtins.py:5218
 msgid "protocol"
 msgstr ""
 
 # help of 'protocol' option of 'serve' command
-#: bzrlib/builtins.py:5169
+#: bzrlib/builtins.py:5219
 msgid "Protocol to serve."
 msgstr ""
 
 # help of 'port' option of 'serve' command
-#: bzrlib/builtins.py:5173
+#: bzrlib/builtins.py:5223
 msgid ""
 "Listen for connections on nominated port of the form [hostname:]portnumber.  "
 "Passing 0 as the port number will result in a dynamically allocated port.  "
@@ -3262,12 +3315,12 @@ msgid ""
 msgstr ""
 
 # help of 'directory' option of 'serve' command
-#: bzrlib/builtins.py:5179
+#: bzrlib/builtins.py:5229
 msgid "Serve contents of this directory."
 msgstr ""
 
 # help of 'allow-writes' option of 'serve' command
-#: bzrlib/builtins.py:5181
+#: bzrlib/builtins.py:5231
 msgid ""
 "By default the server is a readonly server.  Supplying --allow-writes "
 "enables write access to the contents of the served directory and below.  "
@@ -3276,110 +3329,110 @@ msgid ""
 "uncontrolled write access to your file system."
 msgstr ""
 
-#: bzrlib/builtins.py:5226
+#: bzrlib/builtins.py:5276
 msgid "Combine a tree into its containing tree."
 msgstr ""
 
-#: bzrlib/builtins.py:5228
+#: bzrlib/builtins.py:5278
 msgid "This command requires the target tree to be in a rich-root format."
 msgstr ""
 
-#: bzrlib/builtins.py:5230
+#: bzrlib/builtins.py:5280
 msgid ""
 "The TREE argument should be an independent tree, inside another tree, but\n"
 "not part of it.  (Such trees can be produced by \"bzr split\", but also by\n"
 "running \"bzr branch\" with the target inside a tree.)"
 msgstr ""
 
-#: bzrlib/builtins.py:5234
+#: bzrlib/builtins.py:5284
 msgid ""
 "The result is a combined tree, with the subtree no longer an independent\n"
 "part.  This is marked as a merge of the subtree into the containing tree,\n"
 "and all history is preserved."
 msgstr ""
 
-#: bzrlib/builtins.py:5252
+#: bzrlib/builtins.py:5302
 #, python-format
 msgid ""
 "Can't join trees because %s doesn't support rich root data.\n"
 "You can use bzr upgrade on the repository."
 msgstr ""
 
-#: bzrlib/builtins.py:5262 bzrlib/builtins.py:5268
+#: bzrlib/builtins.py:5312 bzrlib/builtins.py:5318
 msgid "Cannot join {0}.  {1}"
 msgstr ""
 
-#: bzrlib/builtins.py:5272
+#: bzrlib/builtins.py:5322
 msgid "Split a subdirectory of a tree into a separate tree."
 msgstr ""
 
-#: bzrlib/builtins.py:5274
+#: bzrlib/builtins.py:5324
 msgid ""
 "This command will produce a target tree in a format that supports\n"
 "rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be\n"
 "converted into earlier formats like 'dirstate-tags'."
 msgstr ""
 
-#: bzrlib/builtins.py:5278
+#: bzrlib/builtins.py:5328
 msgid ""
 "The TREE argument should be a subdirectory of a working tree.  That\n"
 "subdirectory will be converted into an independent tree, with its own\n"
 "branch.  Commits in the top-level tree will not apply to the new subtree."
 msgstr ""
 
-#: bzrlib/builtins.py:5358
+#: bzrlib/builtins.py:5408
 msgid "No submit branch specified or known"
 msgstr ""
 
-#: bzrlib/builtins.py:5366
+#: bzrlib/builtins.py:5416 bzrlib/send.py:105
 msgid "No public branch specified or known"
 msgstr ""
 
-#: bzrlib/builtins.py:5371
+#: bzrlib/builtins.py:5421
 msgid "bzr merge-directive takes at most two one revision identifiers"
 msgstr ""
 
-#: bzrlib/builtins.py:5380
+#: bzrlib/builtins.py:5430
 msgid "No revisions to bundle."
 msgstr ""
 
-#: bzrlib/builtins.py:5399
+#: bzrlib/builtins.py:5449
 msgid "Mail or create a merge-directive for submitting changes."
 msgstr ""
 
-#: bzrlib/builtins.py:5401
+#: bzrlib/builtins.py:5451
 msgid "A merge directive provides many things needed for requesting merges:"
 msgstr ""
 
-#: bzrlib/builtins.py:5403
+#: bzrlib/builtins.py:5453
 msgid "* A machine-readable description of the merge to perform"
 msgstr ""
 
-#: bzrlib/builtins.py:5405
+#: bzrlib/builtins.py:5455
 msgid "* An optional patch that is a preview of the changes requested"
 msgstr ""
 
-#: bzrlib/builtins.py:5407
+#: bzrlib/builtins.py:5457
 msgid ""
 "* An optional bundle of revision data, so that the changes can be applied\n"
 "  directly from the merge directive, without retrieving data from a\n"
 "  branch."
 msgstr ""
 
-#: bzrlib/builtins.py:5411
+#: bzrlib/builtins.py:5461
 msgid ""
 "`bzr send` creates a compact data set that, when applied using bzr\n"
 "merge, has the same effect as merging from the source branch.  "
 msgstr ""
 
-#: bzrlib/builtins.py:5414
+#: bzrlib/builtins.py:5464
 msgid ""
 "By default the merge directive is self-contained and can be applied to any\n"
 "branch containing submit_branch in its ancestory without needing access to\n"
 "the source branch."
 msgstr ""
 
-#: bzrlib/builtins.py:5418
+#: bzrlib/builtins.py:5468
 msgid ""
 "If --no-bundle is specified, then Bazaar doesn't send the contents of the\n"
 "revisions, but only a structured request to merge from the\n"
@@ -3388,7 +3441,7 @@ msgid ""
 "included if known, so that people can check it later."
 msgstr ""
 
-#: bzrlib/builtins.py:5424
+#: bzrlib/builtins.py:5474
 msgid ""
 "The submit branch defaults to the parent of the source branch, but can be\n"
 "overridden.  Both submit branch and public branch will be remembered in\n"
@@ -3397,7 +3450,7 @@ msgid ""
 "be changed using --from."
 msgstr ""
 
-#: bzrlib/builtins.py:5430
+#: bzrlib/builtins.py:5480
 msgid ""
 "Both the submit branch and the public branch follow the usual behavior with\n"
 "respect to --remember: If there is no default location set, the first send\n"
@@ -3406,7 +3459,7 @@ msgid ""
 "--remember. The value will only be saved if the location can be accessed."
 msgstr ""
 
-#: bzrlib/builtins.py:5436
+#: bzrlib/builtins.py:5486
 msgid ""
 "In order to calculate those changes, bzr must analyse the submit branch.\n"
 "Therefore it is most efficient for the submit branch to be a local mirror.\n"
@@ -3414,20 +3467,20 @@ msgid ""
 "in the merge directive."
 msgstr ""
 
-#: bzrlib/builtins.py:5441
+#: bzrlib/builtins.py:5491
 msgid ""
 "The default behaviour is to send the merge directive by mail, unless -o is\n"
 "given, in which case it is sent to a file."
 msgstr ""
 
-#: bzrlib/builtins.py:5444
+#: bzrlib/builtins.py:5494
 msgid ""
 "Mail is sent using your preferred mail program.  This should be transparent\n"
 "on Windows (it uses MAPI).  On Unix, it requires the xdg-email utility.\n"
 "If the preferred client can't be found (or used), your editor will be used."
 msgstr ""
 
-#: bzrlib/builtins.py:5448
+#: bzrlib/builtins.py:5498
 msgid ""
 "To use a specific mail program, set the mail_client configuration option.\n"
 "(For Thunderbird 1.5, this works around some bugs.)  Supported values for\n"
@@ -3439,7 +3492,7 @@ msgid ""
 "supported clients."
 msgstr ""
 
-#: bzrlib/builtins.py:5455
+#: bzrlib/builtins.py:5505
 msgid ""
 "If mail is being sent, a to address is required.  This can be supplied\n"
 "either on the commandline, by setting the submit_to configuration\n"
@@ -3447,7 +3500,7 @@ msgid ""
 "in the submit branch."
 msgstr ""
 
-#: bzrlib/builtins.py:5460
+#: bzrlib/builtins.py:5510
 msgid ""
 "Two formats are currently supported: \"4\" uses revision bundle format 4 "
 "and\n"
@@ -3457,13 +3510,13 @@ msgid ""
 "format 1.  It is compatible with Bazaar 0.12 - 0.18."
 msgstr ""
 
-#: bzrlib/builtins.py:5466
+#: bzrlib/builtins.py:5516
 msgid ""
 "The merge directives created by bzr send may be applied using bzr merge or\n"
 "bzr pull by specifying a file containing a merge directive as the location."
 msgstr ""
 
-#: bzrlib/builtins.py:5469
+#: bzrlib/builtins.py:5519
 msgid ""
 "bzr send makes extensive use of public locations to map local locations "
 "into\n"
@@ -3472,90 +3525,90 @@ msgid ""
 msgstr ""
 
 # help of 'output' option of 'send' command
-#: bzrlib/builtins.py:5493
+#: bzrlib/builtins.py:5543
 msgid "Write merge directive to this file or directory; use - for stdout."
 msgstr ""
 
 # help of 'strict' option of 'send' command
-#: bzrlib/builtins.py:5497
+#: bzrlib/builtins.py:5547
 msgid ""
 "Refuse to send if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
 
 # help of 'mail-to' option of 'send' command
-#: bzrlib/builtins.py:5499
+#: bzrlib/builtins.py:5549
 msgid "Mail the request to this address."
 msgstr ""
 
 # help of 'body' option of 'send' command
-#: bzrlib/builtins.py:5503
+#: bzrlib/builtins.py:5553
 msgid "Body for the email."
 msgstr ""
 
 # help of 'no-bundle' option of 'send' command
-#: bzrlib/builtins.py:5556
+#: bzrlib/builtins.py:5606
 msgid "Do not include a bundle in the merge directive."
 msgstr ""
 
 # help of 'no-patch' option of 'send' command
-#: bzrlib/builtins.py:5557
+#: bzrlib/builtins.py:5607
 msgid "Do not include a preview patch in the merge directive."
 msgstr ""
 
 # help of 'remember' option of 'send' command
-#: bzrlib/builtins.py:5560
+#: bzrlib/builtins.py:5610
 msgid "Remember submit and public branch."
 msgstr ""
 
 # help of 'from' option of 'send' command
-#: bzrlib/builtins.py:5562
+#: bzrlib/builtins.py:5612
 msgid ""
 "Branch to generate the submission from, rather than the one containing the "
 "working directory."
 msgstr ""
 
 # title of 'format' option of 'send' command
-#: bzrlib/builtins.py:5572
+#: bzrlib/builtins.py:5622
 msgid "format"
 msgstr ""
 
 # help of 'format' option of 'send' command
-#: bzrlib/builtins.py:5573
+#: bzrlib/builtins.py:5623
 msgid "Use the specified output format."
 msgstr ""
 
-#: bzrlib/builtins.py:5595
+#: bzrlib/builtins.py:5645
 msgid "Create, remove or modify a tag naming a revision."
 msgstr ""
 
-#: bzrlib/builtins.py:5597
+#: bzrlib/builtins.py:5647
 msgid ""
 "Tags give human-meaningful names to revisions.  Commands that take a -r\n"
 "(--revision) option can be given -rtag:X, where X is any previously\n"
 "created tag."
 msgstr ""
 
-#: bzrlib/builtins.py:5601
+#: bzrlib/builtins.py:5651
 msgid ""
 "Tags are stored in the branch.  Tags are copied from one branch to another\n"
 "along when you branch, push, pull or merge."
 msgstr ""
 
-#: bzrlib/builtins.py:5604
+#: bzrlib/builtins.py:5654
 msgid ""
 "It is an error to give a tag name that already exists unless you pass\n"
 "--force, in which case the tag is moved to point to the new revision."
 msgstr ""
 
-#: bzrlib/builtins.py:5607
+#: bzrlib/builtins.py:5657
 msgid ""
 "To rename a tag (change the name but keep it on the same revsion), run "
 "``bzr\n"
 "tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``."
 msgstr ""
 
-#: bzrlib/builtins.py:5610
+#: bzrlib/builtins.py:5660
 msgid ""
 "If no tag name is specified it will be determined through the \n"
 "'automatic_tag_name' hook. This can e.g. be used to automatically tag\n"
@@ -3564,85 +3617,85 @@ msgid ""
 msgstr ""
 
 # help of 'delete' option of 'tag' command
-#: bzrlib/builtins.py:5620
+#: bzrlib/builtins.py:5670
 msgid "Delete this tag rather than placing it."
 msgstr ""
 
 # help of 'directory' option of 'tag' command
-#: bzrlib/builtins.py:5623
+#: bzrlib/builtins.py:5673
 msgid "Branch in which to place the tag."
 msgstr ""
 
 # help of 'force' option of 'tag' command
-#: bzrlib/builtins.py:5625
+#: bzrlib/builtins.py:5675
 msgid "Replace existing tags."
 msgstr ""
 
-#: bzrlib/builtins.py:5640
+#: bzrlib/builtins.py:5690
 msgid "No tag specified to delete."
 msgstr ""
 
-#: bzrlib/builtins.py:5642
+#: bzrlib/builtins.py:5692
 #, python-format
 msgid "Deleted tag %s."
 msgstr ""
 
-#: bzrlib/builtins.py:5647
+#: bzrlib/builtins.py:5697
 msgid "Tags can only be placed on a single revision, not on a range"
 msgstr ""
 
-#: bzrlib/builtins.py:5656
+#: bzrlib/builtins.py:5706
 msgid "Please specify a tag name."
 msgstr ""
 
-#: bzrlib/builtins.py:5664
+#: bzrlib/builtins.py:5714
 #, python-format
 msgid "Tag %s already exists for that revision."
 msgstr ""
 
-#: bzrlib/builtins.py:5668
+#: bzrlib/builtins.py:5718
 #, python-format
 msgid "Created tag %s."
 msgstr ""
 
-#: bzrlib/builtins.py:5670
+#: bzrlib/builtins.py:5720
 #, python-format
 msgid "Updated tag %s."
 msgstr ""
 
-#: bzrlib/builtins.py:5674
+#: bzrlib/builtins.py:5724
 msgid "List tags."
 msgstr ""
 
-#: bzrlib/builtins.py:5676
+#: bzrlib/builtins.py:5726
 msgid ""
 "This command shows a table of tag names and the revisions they reference."
 msgstr ""
 
 # help of 'directory' option of 'tags' command
-#: bzrlib/builtins.py:5682
+#: bzrlib/builtins.py:5732
 msgid "Branch whose tags should be displayed."
 msgstr ""
 
 # help of 'sort' option of 'tags' command
-#: bzrlib/builtins.py:5684
+#: bzrlib/builtins.py:5734
 msgid "Sort tags by different criteria."
 msgstr ""
 
 # title of 'sort' option of 'tags' command
-#: bzrlib/builtins.py:5684
+#: bzrlib/builtins.py:5734
 msgid "Sorting"
 msgstr ""
 
-#: bzrlib/builtins.py:5729
+#: bzrlib/builtins.py:5779
 msgid "Reconfigure the type of a bzr directory."
 msgstr ""
 
-#: bzrlib/builtins.py:5731
+#: bzrlib/builtins.py:5781
 msgid "A target configuration must be specified."
 msgstr ""
 
-#: bzrlib/builtins.py:5733
+#: bzrlib/builtins.py:5783
 msgid ""
 "For checkouts, the bind-to location will be auto-detected if not specified.\n"
 "The order of preference is\n"
@@ -3654,70 +3707,70 @@ msgid ""
 msgstr ""
 
 # title of 'tree_type' option of 'reconfigure' command
-#: bzrlib/builtins.py:5747
+#: bzrlib/builtins.py:5797
 msgid "Tree type"
 msgstr ""
 
 # help of 'tree_type' option of 'reconfigure' command
-#: bzrlib/builtins.py:5748
+#: bzrlib/builtins.py:5798
 msgid "The relation between branch and tree."
 msgstr ""
 
 # title of 'repository_type' option of 'reconfigure' command
-#: bzrlib/builtins.py:5758
+#: bzrlib/builtins.py:5808
 msgid "Repository type"
 msgstr ""
 
 # help of 'repository_type' option of 'reconfigure' command
-#: bzrlib/builtins.py:5759
+#: bzrlib/builtins.py:5809
 msgid "Location fo the repository."
 msgstr ""
 
 # title of 'repository_trees' option of 'reconfigure' command
-#: bzrlib/builtins.py:5767
+#: bzrlib/builtins.py:5817
 msgid "Trees in Repository"
 msgstr ""
 
 # help of 'repository_trees' option of 'reconfigure' command
-#: bzrlib/builtins.py:5768
+#: bzrlib/builtins.py:5818
 msgid "Whether new branches in the repository have trees."
 msgstr ""
 
 # help of 'bind-to' option of 'reconfigure' command
-#: bzrlib/builtins.py:5775
+#: bzrlib/builtins.py:5825
 msgid "Branch to bind checkout to."
 msgstr ""
 
 # help of 'force' option of 'reconfigure' command
-#: bzrlib/builtins.py:5777
+#: bzrlib/builtins.py:5827
 msgid "Perform reconfiguration even if local changes will be lost."
 msgstr ""
 
 # help of 'stacked-on' option of 'reconfigure' command
-#: bzrlib/builtins.py:5780
+#: bzrlib/builtins.py:5830
 msgid "Reconfigure a branch to be stacked on another branch."
 msgstr ""
 
 # help of 'unstacked' option of 'reconfigure' command
-#: bzrlib/builtins.py:5784
+#: bzrlib/builtins.py:5834
 msgid ""
 "Reconfigure a branch to be unstacked.  This may require copying substantial "
 "data into it."
 msgstr ""
 
-#: bzrlib/builtins.py:5794
+#: bzrlib/builtins.py:5844
 msgid "Can't use both --stacked-on and --unstacked"
 msgstr ""
 
-#: bzrlib/builtins.py:5808
+#: bzrlib/builtins.py:5858
 msgid "No target configuration specified"
 msgstr ""
 
-#: bzrlib/builtins.py:5843
+#: bzrlib/builtins.py:5893
 msgid "Set the branch of a checkout and update."
 msgstr ""
 
-#: bzrlib/builtins.py:5845
+#: bzrlib/builtins.py:5895
 msgid ""
 "For lightweight checkouts, this changes the branch being referenced.\n"
 "For heavyweight checkouts, this checks that there are no local commits\n"
@@ -3725,17 +3778,17 @@ msgid ""
 "of the new location and binds to it."
 msgstr ""
 
-#: bzrlib/builtins.py:5850
+#: bzrlib/builtins.py:5900
 msgid ""
 "In both cases, the working tree is updated and uncommitted changes\n"
 "are merged. The user can commit or revert these as they desire."
 msgstr ""
 
-#: bzrlib/builtins.py:5853
+#: bzrlib/builtins.py:5903
 msgid "Pending merges need to be committed or reverted before using switch."
 msgstr ""
 
-#: bzrlib/builtins.py:5855
+#: bzrlib/builtins.py:5905
 msgid ""
 "The path to the branch to switch to can be specified relative to the parent\n"
 "directory of the current branch. For example, if you are currently in a\n"
@@ -3743,7 +3796,7 @@ msgid ""
 "/path/to/newbranch."
 msgstr ""
 
-#: bzrlib/builtins.py:5860
+#: bzrlib/builtins.py:5910
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally, in which case switching will update the local nickname to be\n"
@@ -3751,28 +3804,28 @@ msgid ""
 msgstr ""
 
 # help of 'force' option of 'switch' command
-#: bzrlib/builtins.py:5868
+#: bzrlib/builtins.py:5918
 msgid "Switch even if local commits will be lost."
 msgstr ""
 
 # help of 'create-branch' option of 'switch' command
-#: bzrlib/builtins.py:5871
+#: bzrlib/builtins.py:5921
 msgid "Create the target branch from this one before switching to it."
 msgstr ""
 
-#: bzrlib/builtins.py:5883
+#: bzrlib/builtins.py:5933
 msgid "You must supply either a revision or a location"
 msgstr ""
 
-#: bzrlib/builtins.py:5894
+#: bzrlib/builtins.py:5944
 msgid "cannot create branch without source branch"
 msgstr ""
 
-#: bzrlib/builtins.py:5940
+#: bzrlib/builtins.py:5990
 msgid "Manage filtered views."
 msgstr ""
 
-#: bzrlib/builtins.py:5942
+#: bzrlib/builtins.py:5992
 msgid ""
 "Views provide a mask over the tree so that users can focus on\n"
 "a subset of a tree when doing their work. After creating a view,\n"
@@ -3782,7 +3835,7 @@ msgid ""
 "must be within the current view."
 msgstr ""
 
-#: bzrlib/builtins.py:5949
+#: bzrlib/builtins.py:5999
 msgid ""
 "In most cases, a view has a short life-span: it is created to make\n"
 "a selected change and is deleted once that change is committed.\n"
@@ -3790,7 +3843,7 @@ msgid ""
 "and switch between them."
 msgstr ""
 
-#: bzrlib/builtins.py:5954
+#: bzrlib/builtins.py:6004
 msgid ""
 "To disable the current view without deleting it, you can switch to\n"
 "the pseudo view called ``off``. This can be useful when you need\n"
@@ -3798,197 +3851,197 @@ msgid ""
 "want to switch back to your view after that."
 msgstr ""
 
-#: bzrlib/builtins.py:5959
+#: bzrlib/builtins.py:6009
 msgid ""
 ":Examples:\n"
 "  To define the current view::"
 msgstr ""
 
-#: bzrlib/builtins.py:5962
+#: bzrlib/builtins.py:6012
 msgid "    bzr view file1 dir1 ..."
 msgstr ""
 
-#: bzrlib/builtins.py:5964
+#: bzrlib/builtins.py:6014
 msgid "  To list the current view::"
 msgstr ""
 
-#: bzrlib/builtins.py:5966
+#: bzrlib/builtins.py:6016
 msgid "    bzr view"
 msgstr ""
 
-#: bzrlib/builtins.py:5968
+#: bzrlib/builtins.py:6018
 msgid "  To delete the current view::"
 msgstr ""
 
-#: bzrlib/builtins.py:5970
+#: bzrlib/builtins.py:6020
 msgid "    bzr view --delete"
 msgstr ""
 
-#: bzrlib/builtins.py:5972
+#: bzrlib/builtins.py:6022
 msgid "  To disable the current view without deleting it::"
 msgstr ""
 
-#: bzrlib/builtins.py:5974
+#: bzrlib/builtins.py:6024
 msgid "    bzr view --switch off"
 msgstr ""
 
-#: bzrlib/builtins.py:5976
+#: bzrlib/builtins.py:6026
 msgid "  To define a named view and switch to it::"
 msgstr ""
 
-#: bzrlib/builtins.py:5978
+#: bzrlib/builtins.py:6028
 msgid "    bzr view --name view-name file1 dir1 ..."
 msgstr ""
 
-#: bzrlib/builtins.py:5980
+#: bzrlib/builtins.py:6030
 msgid "  To list a named view::"
 msgstr ""
 
-#: bzrlib/builtins.py:5982
+#: bzrlib/builtins.py:6032
 msgid "    bzr view --name view-name"
 msgstr ""
 
-#: bzrlib/builtins.py:5984
+#: bzrlib/builtins.py:6034
 msgid "  To delete a named view::"
 msgstr ""
 
-#: bzrlib/builtins.py:5986
+#: bzrlib/builtins.py:6036
 msgid "    bzr view --name view-name --delete"
 msgstr ""
 
-#: bzrlib/builtins.py:5988
+#: bzrlib/builtins.py:6038
 msgid "  To switch to a named view::"
 msgstr ""
 
-#: bzrlib/builtins.py:5990
+#: bzrlib/builtins.py:6040
 msgid "    bzr view --switch view-name"
 msgstr ""
 
-#: bzrlib/builtins.py:5992
+#: bzrlib/builtins.py:6042
 msgid "  To list all views defined::"
 msgstr ""
 
-#: bzrlib/builtins.py:5994
+#: bzrlib/builtins.py:6044
 msgid "    bzr view --all"
 msgstr ""
 
-#: bzrlib/builtins.py:5996
+#: bzrlib/builtins.py:6046
 msgid "  To delete all views::"
 msgstr ""
 
-#: bzrlib/builtins.py:5998
+#: bzrlib/builtins.py:6048
 msgid "    bzr view --delete --all"
 msgstr ""
 
 # help of 'all' option of 'view' command
-#: bzrlib/builtins.py:6005
+#: bzrlib/builtins.py:6055
 msgid "Apply list or delete action to all views."
 msgstr ""
 
 # help of 'delete' option of 'view' command
-#: bzrlib/builtins.py:6008
+#: bzrlib/builtins.py:6058
 msgid "Delete the view."
 msgstr ""
 
 # help of 'name' option of 'view' command
-#: bzrlib/builtins.py:6011
+#: bzrlib/builtins.py:6061
 msgid "Name of the view to define, list or delete."
 msgstr ""
 
 # help of 'switch' option of 'view' command
-#: bzrlib/builtins.py:6015
+#: bzrlib/builtins.py:6065
 msgid "Name of the view to switch to."
 msgstr ""
 
-#: bzrlib/builtins.py:6034
+#: bzrlib/builtins.py:6084
 msgid "Both --delete and a file list specified"
 msgstr ""
 
-#: bzrlib/builtins.py:6037
+#: bzrlib/builtins.py:6087
 msgid "Both --delete and --switch specified"
 msgstr ""
 
-#: bzrlib/builtins.py:6040
+#: bzrlib/builtins.py:6090
 msgid "Deleted all views.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6042
+#: bzrlib/builtins.py:6092
 msgid "No current view to delete"
 msgstr ""
 
-#: bzrlib/builtins.py:6045
+#: bzrlib/builtins.py:6095
 #, python-format
 msgid "Deleted '%s' view.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6049
+#: bzrlib/builtins.py:6099
 msgid "Both --switch and a file list specified"
 msgstr ""
 
-#: bzrlib/builtins.py:6052
+#: bzrlib/builtins.py:6102
 msgid "Both --switch and --all specified"
 msgstr ""
 
-#: bzrlib/builtins.py:6055
+#: bzrlib/builtins.py:6105
 msgid "No current view to disable"
 msgstr ""
 
-#: bzrlib/builtins.py:6057
+#: bzrlib/builtins.py:6107
 #, python-format
 msgid "Disabled '%s' view.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6061 bzrlib/builtins.py:6083
+#: bzrlib/builtins.py:6111 bzrlib/builtins.py:6133
 msgid "Using '{0}' view: {1}\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6064
+#: bzrlib/builtins.py:6114
 msgid "Views defined:\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6073
+#: bzrlib/builtins.py:6123
 msgid "No views defined.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6080
+#: bzrlib/builtins.py:6130
 msgid "Cannot change the 'off' pseudo view"
 msgstr ""
 
-#: bzrlib/builtins.py:6088
+#: bzrlib/builtins.py:6138
 msgid "No current view.\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6091
+#: bzrlib/builtins.py:6141
 msgid "'{0}' view is: {1}\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6111
+#: bzrlib/builtins.py:6161
 msgid "    <no hooks installed>\n"
 msgstr ""
 
-#: bzrlib/builtins.py:6115
+#: bzrlib/builtins.py:6165
 msgid "Remove a branch."
 msgstr ""
 
-#: bzrlib/builtins.py:6117
+#: bzrlib/builtins.py:6167
 msgid ""
 "This will remove the branch from the specified location but \n"
 "will keep any working tree or repository in place."
 msgstr ""
 
-#: bzrlib/builtins.py:6122
+#: bzrlib/builtins.py:6172
 msgid "  Remove the branch at repo/trunk::"
 msgstr ""
 
-#: bzrlib/builtins.py:6124
+#: bzrlib/builtins.py:6174
 msgid "    bzr remove-branch repo/trunk"
 msgstr ""
 
-#: bzrlib/builtins.py:6140
+#: bzrlib/builtins.py:6190
 msgid "Temporarily set aside some changes from the current tree."
 msgstr ""
 
-#: bzrlib/builtins.py:6142
+#: bzrlib/builtins.py:6192
 msgid ""
 "Shelve allows you to temporarily put changes you've made \"on the shelf\",\n"
 "ie. out of the way, until a later time when you can bring them back from\n"
@@ -3997,11 +4050,11 @@ msgid ""
 "will they survive its deletion."
 msgstr ""
 
-#: bzrlib/builtins.py:6148
+#: bzrlib/builtins.py:6198
 msgid "If shelve --list is specified, previously-shelved changes are listed."
 msgstr ""
 
-#: bzrlib/builtins.py:6150
+#: bzrlib/builtins.py:6200
 msgid ""
 "Shelve is intended to help separate several sets of changes that have\n"
 "been inappropriately mingled.  If you just want to get rid of all changes\n"
@@ -4009,35 +4062,35 @@ msgid ""
 "shelve all text changes at once, use shelve --all."
 msgstr ""
 
-#: bzrlib/builtins.py:6155
+#: bzrlib/builtins.py:6205
 msgid ""
 "If filenames are specified, only the changes to those files will be\n"
 "shelved. Other files will be left untouched."
 msgstr ""
 
-#: bzrlib/builtins.py:6158
+#: bzrlib/builtins.py:6208
 msgid ""
 "If a revision is specified, changes since that revision will be shelved."
 msgstr ""
 
-#: bzrlib/builtins.py:6160
+#: bzrlib/builtins.py:6210
 msgid ""
 "You can put multiple items on the shelf, and by default, 'unshelve' will\n"
 "restore the most recently shelved changes."
 msgstr ""
 
-#: bzrlib/builtins.py:6163
+#: bzrlib/builtins.py:6213
 msgid ""
 "For complicated changes, it is possible to edit the changes in a separate\n"
 "editor program to decide what the file remaining in the working copy\n"
 "should look like.  To do this, add the configuration option"
 msgstr ""
 
-#: bzrlib/builtins.py:6167
+#: bzrlib/builtins.py:6217
 msgid "    change_editor = PROGRAM @new_path @old_path"
 msgstr ""
 
-#: bzrlib/builtins.py:6169
+#: bzrlib/builtins.py:6219
 msgid ""
 "where @new_path is replaced with the path of the new version of the \n"
 "file and @old_path is replaced with the path of the old version of \n"
@@ -4047,39 +4100,39 @@ msgid ""
 msgstr ""
 
 # help of 'all' option of 'shelve' command
-#: bzrlib/builtins.py:6181
+#: bzrlib/builtins.py:6231
 msgid "Shelve all changes."
 msgstr ""
 
 # help of 'writer' option of 'shelve' command
-#: bzrlib/builtins.py:6183
+#: bzrlib/builtins.py:6233
 msgid "Method to use for writing diffs."
 msgstr ""
 
 # title of 'writer' option of 'shelve' command
-#: bzrlib/builtins.py:6183
+#: bzrlib/builtins.py:6233
 msgid "writer"
 msgstr ""
 
 # help of 'list' option of 'shelve' command
-#: bzrlib/builtins.py:6187
+#: bzrlib/builtins.py:6237
 msgid "List shelved changes."
 msgstr ""
 
 # help of 'destroy' option of 'shelve' command
-#: bzrlib/builtins.py:6189
+#: bzrlib/builtins.py:6239
 msgid "Destroy removed changes instead of shelving them."
 msgstr ""
 
-#: bzrlib/builtins.py:6218
+#: bzrlib/builtins.py:6268
 msgid "No shelved changes."
 msgstr ""
 
-#: bzrlib/builtins.py:6229
+#: bzrlib/builtins.py:6279
 msgid "Restore shelved changes."
 msgstr ""
 
-#: bzrlib/builtins.py:6231
+#: bzrlib/builtins.py:6281
 msgid ""
 "By default, the most recently shelved changes are restored. However if you\n"
 "specify a shelf by id those changes will be restored instead.  This works\n"
@@ -4087,91 +4140,282 @@ msgid ""
 msgstr ""
 
 # help of 'action' option of 'unshelve' command
-#: bzrlib/builtins.py:6240
+#: bzrlib/builtins.py:6290
 msgid "The action to perform."
 msgstr ""
 
-#: bzrlib/builtins.py:6262
+#: bzrlib/builtins.py:6312
 msgid "Remove unwanted files from working tree."
 msgstr ""
 
-#: bzrlib/builtins.py:6264
+#: bzrlib/builtins.py:6314
 msgid ""
 "By default, only unknown files, not ignored files, are deleted.  Versioned\n"
 "files are never deleted."
 msgstr ""
 
-#: bzrlib/builtins.py:6267
+#: bzrlib/builtins.py:6317
 msgid ""
 "Another class is 'detritus', which includes files emitted by bzr during\n"
 "normal operations and selftests.  (The value of these files decreases with\n"
 "time.)"
 msgstr ""
 
-#: bzrlib/builtins.py:6271
+#: bzrlib/builtins.py:6321
 msgid ""
 "If no options are specified, unknown files are deleted.  Otherwise, option\n"
 "flags are respected, and may be combined."
 msgstr ""
 
-#: bzrlib/builtins.py:6274
+#: bzrlib/builtins.py:6324
 msgid "To check what clean-tree will do, use --dry-run."
 msgstr ""
 
 # help of 'ignored' option of 'clean-tree' command
-#: bzrlib/builtins.py:6277
+#: bzrlib/builtins.py:6327
 msgid "Delete all ignored files."
 msgstr ""
 
 # help of 'detritus' option of 'clean-tree' command
-#: bzrlib/builtins.py:6278
+#: bzrlib/builtins.py:6328
 msgid ""
 "Delete conflict files, merge and revert backups, and failed selftest dirs."
 msgstr ""
 
 # help of 'unknown' option of 'clean-tree' command
-#: bzrlib/builtins.py:6281
+#: bzrlib/builtins.py:6331
 msgid "Delete files unknown to bzr (default)."
 msgstr ""
 
 # help of 'dry-run' option of 'clean-tree' command
-#: bzrlib/builtins.py:6282
+#: bzrlib/builtins.py:6332
 msgid "Show files to delete instead of deleting them."
 msgstr ""
 
 # help of 'force' option of 'clean-tree' command
-#: bzrlib/builtins.py:6284
+#: bzrlib/builtins.py:6334
 msgid "Do not prompt before deleting."
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:50
+#: bzrlib/bundle/__init__.py:57
+msgid "A directory cannot be a bundle"
+msgstr ""
+
+#: bzrlib/bundle/serializer/v4.py:326
+#, python-format
+msgid "Bundling %d revision."
+msgid_plural "Bundling %d revisions."
+msgstr[0] ""
+msgstr[1] ""
+
+#: bzrlib/bzrdir.py:636
+msgid ""
+"making backup of {0}\n"
+"  to {1}"
+msgstr ""
+
+#: bzrlib/bzrdir.py:659
+msgid "renamed {0} to {1}"
+msgstr ""
+
+#: bzrlib/bzrdir.py:851
+msgid "{0} is{1} redirected to {2}"
+msgstr ""
+
+#: bzrlib/bzrdir.py:1727
+#, python-format
+msgid ""
+"Source repository format does not support stacking, using format:\n"
+"  %s"
+msgstr ""
+
+#: bzrlib/bzrdir.py:1747
+#, python-format
+msgid ""
+"Source branch format does not support stacking, using format:\n"
+"  %s"
+msgstr ""
+
+#: bzrlib/bzrdir.py:1858
+msgid "starting repository conversion"
+msgstr ""
+
+#: bzrlib/check.py:106
+msgid "check"
+msgstr ""
+
+#: bzrlib/check.py:108
+msgid "checking revisions"
+msgstr ""
+
+#: bzrlib/check.py:110
+msgid "checking commit contents"
+msgstr ""
+
+#: bzrlib/check.py:112
+msgid "checking file graphs"
+msgstr ""
+
+#: bzrlib/check.py:116
+msgid "checking branches and trees"
+msgstr ""
+
+#: bzrlib/check.py:203
+msgid "checked repository {0} format {1}"
+msgstr ""
+
+#: bzrlib/check.py:206
+#, python-format
+msgid "%6d revisions"
+msgstr ""
+
+#: bzrlib/check.py:207
+#, python-format
+msgid "%6d file-ids"
+msgstr ""
+
+#: bzrlib/check.py:209
+#, python-format
+msgid "%6d unreferenced text versions"
+msgstr ""
+
+#: bzrlib/check.py:213
+msgid "unreferenced version: {{{0}}} in {1}"
+msgstr ""
+
+#: bzrlib/check.py:216
+#, python-format
+msgid "%6d revisions are missing inventory_sha1"
+msgstr ""
+
+#: bzrlib/check.py:219
+#, python-format
+msgid "%6d revisions are mentioned but not present"
+msgstr ""
+
+#: bzrlib/check.py:222
+#, python-format
+msgid "%6d ghost revisions"
+msgstr ""
+
+#: bzrlib/check.py:227
+#, python-format
+msgid "%6d revisions missing parents in ancestry"
+msgstr ""
+
+#: bzrlib/check.py:231
+#, python-format
+msgid "      %s should be in the ancestry for:"
+msgstr ""
+
+#: bzrlib/check.py:235
+#, python-format
+msgid "%6d inconsistent parents"
+msgstr ""
+
+#: bzrlib/check.py:239
+msgid "      * {0} version {1} has parents {2!r} but should have {3!r}"
+msgstr ""
+
+#: bzrlib/check.py:245
+#, python-format
+msgid "%6d revisions have incorrect parents in the revision index"
+msgstr ""
+
+#: bzrlib/check.py:251
+msgid "       {0} has wrong parents in index: {1!r} should be {2!r}"
+msgstr ""
+
+#: bzrlib/check.py:265
+msgid "Mismatched internal revid {{{0}}} and index revid {{{1}}}"
+msgstr ""
+
+#: bzrlib/check.py:294
+msgid ""
+"Multiple expected sha1s for {0}. {{{1}}} expects {{{2}}}, {{{3}}} expects "
+"{{{4}}}"
+msgstr ""
+
+#: bzrlib/check.py:352
+#, python-format
+msgid "Checking branch at '%s'."
+msgstr ""
+
+#: bzrlib/check.py:372
+#, python-format
+msgid "Checking working tree at '%s'."
+msgstr ""
+
+#: bzrlib/check.py:425 bzrlib/check.py:439
+msgid "No branch found at specified location."
+msgstr ""
+
+#: bzrlib/check.py:427 bzrlib/check.py:437
+msgid "No working tree found at specified location."
+msgstr ""
+
+#: bzrlib/check.py:430
+#, python-format
+msgid "Checking repository at '%s'."
+msgstr ""
+
+#: bzrlib/check.py:441
+msgid "No repository found at specified location."
+msgstr ""
+
+#: bzrlib/clean_tree.py:62
+msgid "Nothing to delete."
+msgstr ""
+
+#: bzrlib/clean_tree.py:108
+#, python-format
+msgid "unable to remove %s"
+msgstr ""
+
+#: bzrlib/clean_tree.py:112
+msgid "deleting paths:"
+msgstr ""
+
+#: bzrlib/clean_tree.py:126
+msgid "unable to remove \"{0}\": {1}."
+msgstr ""
+
+#: bzrlib/clean_tree.py:131
+msgid "No files deleted."
+msgstr ""
+
+#: bzrlib/cmd_version_info.py:45
+msgid "No known version info format {0}. Supported types are: {1}"
+msgstr ""
+
+#: bzrlib/cmd_version_info.py:51
 msgid "Show version information about this tree."
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:52
+#: bzrlib/cmd_version_info.py:53
 msgid ""
 "You can use this command to add information about version into\n"
 "source code of an application. The output can be in one of the\n"
 "supported formats or in a custom format based on a template."
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:56
+#: bzrlib/cmd_version_info.py:57
 msgid "For example::"
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:58
+#: bzrlib/cmd_version_info.py:59
 msgid ""
 "  bzr version-info --custom \\\n"
 "    --template=\"#define VERSION_INFO \\\"Project 1.2.3 (r{revno})\\\"\\n\""
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:61
+#: bzrlib/cmd_version_info.py:62
 msgid ""
 "will produce a C header file with formatted string containing the\n"
 "current revision number. Other supported variables in templates are:"
 msgstr ""
 
-#: bzrlib/cmd_version_info.py:64
+#: bzrlib/cmd_version_info.py:65
 msgid ""
 "  * {date} - date of the last revision\n"
 "  * {build_date} - current date\n"
@@ -4183,33 +4427,38 @@ msgid ""
 msgstr ""
 
 # help of 'format' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:74
+#: bzrlib/cmd_version_info.py:75
 msgid "Select the output format."
 msgstr ""
 
 # help of 'all' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:78
+#: bzrlib/cmd_version_info.py:79
 msgid "Include all possible information."
 msgstr ""
 
 # help of 'check-clean' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:79
+#: bzrlib/cmd_version_info.py:80
 msgid "Check if tree is clean."
 msgstr ""
 
 # help of 'include-history' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:81
+#: bzrlib/cmd_version_info.py:82
 msgid "Include the revision-history."
 msgstr ""
 
 # help of 'include-file-revisions' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:83
+#: bzrlib/cmd_version_info.py:84
 msgid "Include the last revision for each file."
 msgstr ""
 
 # help of 'template' option of 'version-info' command
-#: bzrlib/cmd_version_info.py:84
+#: bzrlib/cmd_version_info.py:85
 msgid "Template for the output."
+msgstr ""
+
+#: bzrlib/commands.py:232
+#, python-format
+msgid "unknown command \"%s\""
 msgstr ""
 
 #: bzrlib/commands.py:479
@@ -4263,13 +4512,84 @@ msgid ":From:     plugin \"%s\"\n"
 msgstr ""
 
 #: bzrlib/commands.py:557
-#, python-format
-msgid ":doc:`%s <%s-help>`"
+msgid ":doc:`{0} <{1}-help>`"
 msgstr ""
 
-#: bzrlib/commands.py:560
+#: bzrlib/commands.py:561
 #, python-format
 msgid ":See also: %s"
+msgstr ""
+
+#: bzrlib/commands.py:819 bzrlib/gpg.py:317
+msgid "Only ASCII permitted in option names"
+msgstr ""
+
+#: bzrlib/commands.py:844 bzrlib/commands.py:852
+msgid "command {0!r} needs one or more {1}"
+msgstr ""
+
+#: bzrlib/commands.py:861
+msgid "command {0!r} requires argument {1}"
+msgstr ""
+
+#: bzrlib/commands.py:868
+msgid "extra argument to command {0}: {1}"
+msgstr ""
+
+#: bzrlib/commands.py:965
+#, python-format
+msgid "Profile data written to \"%s\"."
+msgstr ""
+
+#: bzrlib/commit.py:116 bzrlib/commit.py:709
+msgid "added"
+msgstr ""
+
+#: bzrlib/commit.py:116 bzrlib/commit.py:717
+msgid "modified"
+msgstr ""
+
+#: bzrlib/commit.py:130
+#, python-format
+msgid "Committing%s"
+msgstr ""
+
+#: bzrlib/commit.py:133
+#, python-format
+msgid "Committed revision %d."
+msgstr ""
+
+#: bzrlib/commit.py:142
+#, python-format
+msgid "deleted %s"
+msgstr ""
+
+#: bzrlib/commit.py:145
+#, python-format
+msgid "missing %s"
+msgstr ""
+
+#: bzrlib/commit.py:471
+msgid ""
+"Conflicting tags in bound branch:\n"
+"{0}"
+msgstr ""
+
+#: bzrlib/commit.py:711
+msgid "renamed"
+msgstr ""
+
+#: bzrlib/commit.py:946
+msgid "unchanged"
+msgstr ""
+
+#: bzrlib/commit.py:968
+msgid "{0} [{1}] - Stage"
+msgstr ""
+
+#: bzrlib/commit.py:971
+#, python-format
+msgid "%s - Stage"
 msgstr ""
 
 #: bzrlib/commit_signature_commands.py:34
@@ -4307,8 +4627,16 @@ msgid ""
 "verification."
 msgstr ""
 
+#: bzrlib/commit_signature_commands.py:145
+msgid "Cannot verify a range of non-revision-history revisions"
+msgstr ""
+
 #: bzrlib/commit_signature_commands.py:166
 msgid "All commits signed with verifiable keys"
+msgstr ""
+
+#: bzrlib/config.py:448
+msgid "Invalid config value for \"{0}\"  value {1!r} is not an SI unit."
 msgstr ""
 
 #: bzrlib/config.py:3293
@@ -4352,11 +4680,11 @@ msgstr ""
 msgid "Remove the option from the configuration file"
 msgstr ""
 
-#: bzrlib/conflicts.py:47
+#: bzrlib/conflicts.py:48
 msgid "List files with conflicts."
 msgstr ""
 
-#: bzrlib/conflicts.py:49
+#: bzrlib/conflicts.py:50
 msgid ""
 "Merge will do its best to combine the changes in two branches, but there\n"
 "are some kinds of problems only a human can fix.  When it encounters those,\n"
@@ -4364,32 +4692,32 @@ msgid ""
 "before you should commit."
 msgstr ""
 
-#: bzrlib/conflicts.py:54
+#: bzrlib/conflicts.py:55
 msgid ""
 "Conflicts normally are listed as short, human-readable messages.  If --text\n"
 "is supplied, the pathnames of files with text conflicts are listed,\n"
 "instead.  (This is useful for editing all files with text conflicts.)"
 msgstr ""
 
-#: bzrlib/conflicts.py:58
+#: bzrlib/conflicts.py:59
 msgid "Use bzr resolve when you have fixed a problem."
 msgstr ""
 
 # help of 'text' option of 'conflicts' command
-#: bzrlib/conflicts.py:63
+#: bzrlib/conflicts.py:64
 msgid "List paths of files with text conflicts."
 msgstr ""
 
 # help of 'action' option of 'resolve' command
-#: bzrlib/conflicts.py:95
+#: bzrlib/conflicts.py:96
 msgid "How to resolve the conflict."
 msgstr ""
 
-#: bzrlib/conflicts.py:101
+#: bzrlib/conflicts.py:102
 msgid "Mark a conflict as resolved."
 msgstr ""
 
-#: bzrlib/conflicts.py:108
+#: bzrlib/conflicts.py:109
 msgid ""
 "Once you have fixed a problem, use \"bzr resolve\" to automatically mark\n"
 "text conflicts as fixed, \"bzr resolve FILE\" to mark a specific conflict "
@@ -4398,13 +4726,43 @@ msgid ""
 msgstr ""
 
 # help of 'all' option of 'resolve' command
-#: bzrlib/conflicts.py:116
+#: bzrlib/conflicts.py:117
 msgid "Resolve all conflicts in this tree."
 msgstr ""
 
+#: bzrlib/conflicts.py:124
+msgid "If --all is specified, no FILE may be provided"
+msgstr ""
+
+#: bzrlib/conflicts.py:149
+#, python-format
+msgid "%d conflict auto-resolved."
+msgid_plural "%d conflicts auto-resolved."
+msgstr[0] ""
+msgstr[1] ""
+
+#: bzrlib/conflicts.py:152
+msgid "Remaining conflicts:"
+msgstr ""
+
+#: bzrlib/conflicts.py:157
+msgid "All conflicts resolved."
+msgstr ""
+
+#: bzrlib/conflicts.py:166
+msgid "{0} conflict resolved, {1} remaining"
+msgid_plural "{0} conflicts resolved, {1} remaining"
+msgstr[0] ""
+msgstr[1] ""
+
 # title of 'action' option of 'resolve' command
-#: bzrlib/conflicts.py:688
+#: bzrlib/conflicts.py:692
 msgid "action"
+msgstr ""
+
+#: bzrlib/diff.py:397
+#, python-format
+msgid "*** Ignoring files outside view. View is %s"
 msgstr ""
 
 #: bzrlib/errors.py:215
@@ -5611,6 +5969,44 @@ msgid ""
 "%(arguments)s."
 msgstr ""
 
+#: bzrlib/export_pot.py:123 bzrlib/export_pot.py:129
+#, python-format
+msgid "%r is not found in bzrlib/option.py"
+msgstr ""
+
+#: bzrlib/export_pot.py:185
+#, python-format
+msgid "Exporting messages from builtin command: %s"
+msgstr ""
+
+#: bzrlib/export_pot.py:201
+msgid "Exporting messages from plugin command: {0} in {1}"
+msgstr ""
+
+#: bzrlib/export_pot.py:226
+#, python-format
+msgid "Exporting message from error: %s"
+msgstr ""
+
+#: bzrlib/fetch.py:97
+msgid "Finding revisions"
+msgstr ""
+
+#: bzrlib/fetch.py:102
+msgid "Fetching revisions"
+msgstr ""
+
+#: bzrlib/foreign.py:311
+#, python-format
+msgid "Using saved location: %s\n"
+msgstr ""
+
+#: bzrlib/foreign.py:321
+msgid ""
+"{0!r} and {1!r} are in the same VCS, lossy push not necessary. Please use "
+"regular push."
+msgstr ""
+
 #: bzrlib/gpg.py:116 bzrlib/gpg.py:454
 msgid "{0} commits with valid signatures"
 msgstr ""
@@ -5666,6 +6062,76 @@ msgid "{0} commit by author {1} with key {2} now expired"
 msgid_plural "{0} commits by author {1} with key {2} now expired"
 msgstr[0] ""
 msgstr[1] ""
+
+#: bzrlib/groupcompress.py:1758
+#, python-format
+msgid "Insert claimed random_id=True, but then inserted %r two times"
+msgstr ""
+
+#: bzrlib/knit.py:1764 bzrlib/knit.py:1800
+msgid "Walking content"
+msgstr ""
+
+#: bzrlib/knit.py:3467
+msgid "annotating"
+msgstr ""
+
+#: bzrlib/lock.py:547
+msgid "{0!r} was {1} locked again"
+msgstr ""
+
+#: bzrlib/log.py:569
+msgid "--exclude-common-ancestry requires two different revisions"
+msgstr ""
+
+#: bzrlib/log.py:571
+#, python-format
+msgid "invalid direction %r"
+msgstr ""
+
+#: bzrlib/log.py:618
+msgid "Start revision not found in left-hand history of end revision."
+msgstr ""
+
+#: bzrlib/log.py:664
+msgid "Start revision not found in history of end revision."
+msgstr ""
+
+#: bzrlib/log.py:1082 bzrlib/log.py:1140
+msgid "Logging revision 0 is invalid."
+msgstr ""
+
+#: bzrlib/log.py:1084 bzrlib/log.py:1142
+msgid "Start revision must be older than the end revision."
+msgstr ""
+
+#: bzrlib/log.py:1828
+#, python-format
+msgid "unknown log formatter: %r"
+msgstr ""
+
+#: bzrlib/log.py:2123
+msgid "fixes bug"
+msgid_plural "fixes bugs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: bzrlib/merge.py:715
+msgid "All changes applied successfully."
+msgstr ""
+
+#: bzrlib/merge.py:717
+#, python-format
+msgid "%d conflicts encountered."
+msgstr ""
+
+#: bzrlib/merge.py:862 bzrlib/merge.py:1910
+msgid "Preparing file merge"
+msgstr ""
+
+#: bzrlib/multiparent.py:424
+msgid "Importing revisions"
+msgstr ""
 
 # help of 'help' option
 #: bzrlib/option.py:530
@@ -5787,6 +6253,24 @@ msgstr ""
 # help of 'directory' option
 #: bzrlib/option.py:600
 msgid "Branch to operate on, instead of working directory"
+msgstr ""
+
+#: bzrlib/osutils.py:93
+msgid "Parameter {0!r} encoding is unsupported by {1} application locale."
+msgstr ""
+
+#: bzrlib/osutils.py:194
+msgid "lstat/stat of ({0!r}): {1!r}"
+msgstr ""
+
+#: bzrlib/osutils.py:929 bzrlib/osutils.py:940
+#, python-format
+msgid "sorry, %r not allowed in path"
+msgstr ""
+
+#: bzrlib/osutils.py:1158
+#, python-format
+msgid "%r is too short to calculate a relative path"
 msgstr ""
 
 # help of 'plugin' option of 'bash-completion' command
@@ -6020,6 +6504,531 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:388
 msgid "  bzr lp-find-proposal -r annotate:README:1"
+msgstr ""
+
+#: bzrlib/push.py:54
+msgid "Created new branch."
+msgstr ""
+
+#: bzrlib/push.py:96
+#, python-format
+msgid ""
+"Target directory %s already contains a .bzr directory, but it is not valid."
+msgstr ""
+
+#: bzrlib/push.py:99
+#, python-format
+msgid ""
+"Target directory %s already exists, but does not have a .bzr directory. "
+"Supply --use-existing-dir to push there anyway."
+msgstr ""
+
+#: bzrlib/push.py:120
+#, python-format
+msgid "Too many redirections trying to make %s."
+msgstr ""
+
+#: bzrlib/push.py:145
+msgid ""
+"These branches have diverged.  See \"bzr help diverged-branches\" for more "
+"information."
+msgstr ""
+
+#: bzrlib/push.py:149
+#, python-format
+msgid ""
+"It is not possible to losslessly push to %s. You may want to use dpush "
+"instead."
+msgstr ""
+
+#: bzrlib/push.py:155
+#, python-format
+msgid ""
+"At %s you have a valid .bzr control directory, but not a branch or "
+"repository. This is an unsupported configuration. Please move the target "
+"directory out of the way and try again."
+msgstr ""
+
+#: bzrlib/reconcile.py:96
+#, python-format
+msgid "Reconciling branch %s"
+msgstr ""
+
+#: bzrlib/reconcile.py:102
+#, python-format
+msgid "Reconciling repository %s"
+msgstr ""
+
+#: bzrlib/reconcile.py:104
+msgid "Reconciling repository"
+msgstr ""
+
+#: bzrlib/reconcile.py:110
+#, python-format
+msgid "%s cannot canonicalize CHKs."
+msgstr ""
+
+#: bzrlib/reconcile.py:118
+msgid "Reconcile aborted: revision index has inconsistent parents."
+msgstr ""
+
+#: bzrlib/reconcile.py:120
+msgid "Run \"bzr check\" for more details."
+msgstr ""
+
+#: bzrlib/reconcile.py:122
+msgid "Reconciliation complete."
+msgstr ""
+
+#: bzrlib/reconcile.py:165
+msgid "Fixing last revision info {0}  => {1}"
+msgstr ""
+
+#: bzrlib/reconcile.py:172
+msgid "revision_history ok."
+msgstr ""
+
+#: bzrlib/reconcile.py:233
+msgid "Reading inventory data"
+msgstr ""
+
+#: bzrlib/reconcile.py:253 bzrlib/reconcile.py:383
+msgid "Inventory ok."
+msgstr ""
+
+#: bzrlib/reconcile.py:255 bzrlib/reconcile.py:385
+msgid "Backing up inventory"
+msgstr ""
+
+#: bzrlib/reconcile.py:257
+msgid "Backup inventory created."
+msgstr ""
+
+#: bzrlib/reconcile.py:273 bzrlib/reconcile.py:404
+msgid "Writing weave"
+msgstr ""
+
+#: bzrlib/reconcile.py:276 bzrlib/reconcile.py:407
+msgid "Inventory regenerated."
+msgstr ""
+
+#: bzrlib/reconcile.py:370 bzrlib/reconcile.py:372 bzrlib/reconcile.py:375
+msgid "Reading indexes"
+msgstr ""
+
+#: bzrlib/reconcile.py:379 bzrlib/reconcile.py:381
+msgid "Checking unused inventories"
+msgstr ""
+
+#: bzrlib/reconcile.py:387
+msgid "Backup Inventory created"
+msgstr ""
+
+#: bzrlib/reconcile.py:445
+msgid "Fixing text parents"
+msgstr ""
+
+#: bzrlib/reconfigure.py:52
+msgid "{0} is now stacked on {1}\n"
+msgstr ""
+
+#: bzrlib/reconfigure.py:67
+#, python-format
+msgid "%s is now not stacked\n"
+msgstr ""
+
+#: bzrlib/remote.py:1886
+msgid "Copying repository content as tarball..."
+msgstr ""
+
+#: bzrlib/rename_map.py:68
+msgid "Calculating hashes"
+msgstr ""
+
+#: bzrlib/rename_map.py:106
+msgid "Determining hash hits"
+msgstr ""
+
+#: bzrlib/rename_map.py:241
+msgid "{0} => {1}"
+msgstr ""
+
+#: bzrlib/repository.py:284
+#, python-format
+msgid "bzr: ERROR (ignored): %s"
+msgstr ""
+
+#: bzrlib/repository.py:1806
+msgid "Moving repository to repository.backup"
+msgstr ""
+
+#: bzrlib/repository.py:1813
+msgid "Creating new repository"
+msgstr ""
+
+#: bzrlib/repository.py:1818
+msgid "Copying content"
+msgstr ""
+
+#: bzrlib/repository.py:1822
+msgid "Deleting old repository content"
+msgstr ""
+
+#: bzrlib/repository.py:1824
+msgid "repository converted"
+msgstr ""
+
+#: bzrlib/revisionspec.py:914
+msgid "Using {0} {1}"
+msgstr ""
+
+#: bzrlib/send.py:56
+#, python-format
+msgid "Mail client \"%s\" does not support specifying body"
+msgstr ""
+
+#: bzrlib/send.py:60
+msgid "--remember requires a branch to be specified."
+msgstr ""
+
+#: bzrlib/send.py:74
+msgid "No submit branch known or specified"
+msgstr ""
+
+#: bzrlib/send.py:77
+msgid "Using saved {0} location \"{1}\" to determine what changes to submit."
+msgstr ""
+
+#: bzrlib/send.py:94
+#, python-format
+msgid "No such send format '%s'."
+msgstr ""
+
+#: bzrlib/send.py:111
+msgid "bzr send takes at most two one revision identifiers"
+msgstr ""
+
+#: bzrlib/send.py:124
+msgid "No revisions to submit."
+msgstr ""
+
+#: bzrlib/send.py:135
+msgid ""
+"- not supported for merge directives that use more than one output file."
+msgstr ""
+
+#: bzrlib/send.py:177
+msgid "Format 0.9 does not permit bundle with no patch"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:45
+#, python-format
+msgid "Shelve adding file \"%(path)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:46
+msgid "Shelve binary changes?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:47
+msgid "Shelve changing \"%s\" from %(other)s to %(this)s?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:49
+#, python-format
+msgid "Shelve removing file \"%(path)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:50
+#, python-format
+msgid "Shelve %d change(s)?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:51
+msgid "Shelve?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:52
+#, python-format
+msgid ""
+"Shelve changing target of \"%(path)s\" from \"%(other)s\" to \"%(this)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:54
+#, python-format
+msgid "Shelve renaming \"%(other)s\" => \"%(this)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:69
+#, python-format
+msgid "Changes shelved with id \"%d\"."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:73
+msgid "Selected changes destroyed."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:77
+msgid "Selected changes:"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:97
+#, python-format
+msgid "Delete file \"%(path)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:98
+msgid "Apply binary changes?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:99
+#, python-format
+msgid "Change \"%(path)s\" from %(this)s to %(other)s?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:101
+#, python-format
+msgid "Add file \"%(path)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:102
+#, python-format
+msgid "Apply %d change(s)?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:103
+msgid "Apply change?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:104
+#, python-format
+msgid "Change target of \"%(path)s\" from \"%(this)s\" to \"%(other)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:106
+#, python-format
+msgid "Rename \"%(this)s\" => \"%(other)s\"?"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:265
+msgid "You need a controlling terminal."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:415
+msgid "No changes are shelved."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:473
+#, python-format
+msgid "Using changes with id \"%d\"."
+msgstr ""
+
+#: bzrlib/shelf_ui.py:477
+#, python-format
+msgid "Message: %s"
+msgstr ""
+
+#: bzrlib/shelf_ui.py:489
+#, python-format
+msgid "Deleted changes with id \"%d\"."
+msgstr ""
+
+#: bzrlib/smart/medium.py:565
+msgid "HPSS calls: {0} ({1} vfs) {2}"
+msgstr ""
+
+#: bzrlib/smart/server.py:355
+#, python-format
+msgid "listening on port: %s"
+msgstr ""
+
+#: bzrlib/switch.py:67
+msgid "Pending merges must be committed or reverted before using switch."
+msgstr ""
+
+#: bzrlib/switch.py:94
+msgid ""
+"Cannot switch as local commits found in the checkout. Commit these to the "
+"bound branch or use --force to throw them away."
+msgstr ""
+
+#: bzrlib/switch.py:99
+#, python-format
+msgid ""
+"Unable to connect to current master branch %(target)s: %(error)s To switch "
+"anyway, use --force."
+msgstr ""
+
+#: bzrlib/switch.py:108
+msgid "Cannot switch a branch, only a checkout."
+msgstr ""
+
+#: bzrlib/switch.py:144
+#, python-format
+msgid "Tree is up to date at revision %d."
+msgstr ""
+
+#: bzrlib/switch.py:150
+#, python-format
+msgid "Updated to revision %d."
+msgstr ""
+
+#: bzrlib/transform.py:1730 bzrlib/transform.py:1741 bzrlib/transform.py:1743
+msgid "Apply phase"
+msgstr ""
+
+#: bzrlib/transform.py:1769 bzrlib/transform.py:1837
+msgid "removing file"
+msgstr ""
+
+#: bzrlib/transform.py:1787 bzrlib/transform.py:1872
+msgid "adding file"
+msgstr ""
+
+#: bzrlib/transform.py:2587
+msgid "Building tree"
+msgstr ""
+
+#: bzrlib/transform.py:2677 bzrlib/transform.py:2704
+msgid "Adding file contents"
+msgstr ""
+
+#: bzrlib/transform.py:3051
+msgid "Resolution pass"
+msgstr ""
+
+#: bzrlib/tree.py:635
+msgid "*** {0} content-filter: {1} => {2!r}"
+msgstr ""
+
+#: bzrlib/upgrade.py:76
+#, python-format
+msgid "This is a checkout. The branch (%s) needs to be upgraded separately."
+msgstr ""
+
+#: bzrlib/upgrade.py:99
+#, python-format
+msgid "cannot upgrade from bzrdir format %s"
+msgstr ""
+
+#: bzrlib/upgrade.py:102
+#, python-format
+msgid "starting upgrade of %s"
+msgstr ""
+
+#: bzrlib/upgrade.py:109
+msgid "finished"
+msgstr ""
+
+#: bzrlib/upgrade.py:119
+msgid "Deleting backup.bzr"
+msgstr ""
+
+#: bzrlib/upgrade.py:150
+msgid ""
+"\n"
+"SUMMARY: {0} upgrades attempted, {1} succeeded, {2} failed"
+msgstr ""
+
+#: bzrlib/upgrade.py:207
+#, python-format
+msgid "Found %d dependent branches - upgrading ..."
+msgstr ""
+
+#: bzrlib/upgrade.py:275
+msgid "Upgrading bzrdirs"
+msgstr ""
+
+#: bzrlib/upgrade.py:281
+#, python-format
+msgid "Upgrading %s"
+msgstr ""
+
+#: bzrlib/upgrade.py:282
+msgid "Upgrading {0} {1} ..."
+msgstr ""
+
+#: bzrlib/upgrade.py:296
+msgid "Removing backup ..."
+msgstr ""
+
+#: bzrlib/upgrade.py:300
+msgid "failed to clean-up {0}: {1}"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1091
+msgid "inventories"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1117
+msgid "texts"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1572 bzrlib/vf_repository.py:1581
+msgid "Calculating text parents"
+msgstr ""
+
+#: bzrlib/vf_repository.py:1657
+msgid "Fetch texts"
+msgstr ""
+
+#: bzrlib/vf_repository.py:2468
+msgid "loading text store"
+msgstr ""
+
+#: bzrlib/vf_repository.py:2474
+msgid "checking text graph"
+msgstr ""
+
+#: bzrlib/vf_repository.py:2924 bzrlib/vf_repository.py:2938
+#: bzrlib/vf_repository.py:3053
+msgid "Transferring revisions"
+msgstr ""
+
+#: bzrlib/win32utils.py:132
+msgid "Failed to GetProcessMemoryInfo()"
+msgstr ""
+
+#: bzrlib/win32utils.py:153
+msgid "Cannot debug memory on win32 without ctypes or win32process"
+msgstr ""
+
+#: bzrlib/win32utils.py:158
+msgid "WorkingSize {0:>7}KiB\tPeakWorking {1:>7}KiB\t{2}"
+msgstr ""
+
+#: bzrlib/win32utils.py:166
+#, python-format
+msgid "WorkingSize       %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:167
+#, python-format
+msgid "PeakWorking       %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:168
+#, python-format
+msgid "PagefileUsage     %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:169
+#, python-format
+msgid "PeakPagefileUsage %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:171
+#, python-format
+msgid "PrivateUsage      %8d KiB"
+msgstr ""
+
+#: bzrlib/win32utils.py:172
+#, python-format
+msgid "PageFaultCount    %8d"
+msgstr ""
+
+#: bzrlib/workingtree.py:1502
+msgid "Rerun update after fixing the conflicts."
 msgstr ""
 
 #: dummy/help_topics/authentication/summary.txt:1

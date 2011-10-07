@@ -48,6 +48,7 @@ from bzrlib import (
     errors,
     trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib import plugins as _mod_plugins
 """)
 
@@ -137,8 +138,8 @@ def _get_specific_plugin_paths(paths):
         try:
             name, path = spec.split('@')
         except ValueError:
-            raise errors.BzrCommandError(
-                '"%s" is not a valid <plugin_name>@<plugin_path> description '
+            raise errors.BzrCommandError(gettext(
+                '"%s" is not a valid <plugin_name>@<plugin_path> description ')
                 % spec)
         specs.append((name, path))
     return specs

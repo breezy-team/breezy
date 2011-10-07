@@ -17,6 +17,7 @@
 """Tests for commands related to tags"""
 
 from bzrlib import (
+    errors,
     tag,
     transform,
     )
@@ -267,6 +268,17 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tags -d branch2', encoding='utf-8')
         self.assertEquals(err, '')
         self.assertContainsRe(out, r'tagD  *3\n')
+
+    def test_list_tags_dotted_revnos_unsupported(self):
+        tree = self.make_branch_and_tree('branch')
+        rev1 = tree.commit("rev1")
+        tree.branch.tags.set_tag("mytag", rev1)
+        def revision_id_to_dotted_revno(self, revid):
+            raise errors.UnsupportedOperation(revision_id_to_dotted_revno, self)
+        self.overrideAttr(Branch, "revision_id_to_dotted_revno",
+            revision_id_to_dotted_revno)
+        out, err = self.run_bzr('tags -d branch', encoding='utf-8')
+        self.assertEquals(out, 'mytag                ?\n')
 
     def test_list_tags_revision_filtering(self):
         tree1 = self.make_branch_and_tree('.')

@@ -2562,12 +2562,17 @@ class TestSection(tests.TestCase):
 
 class TestMutableSection(tests.TestCase):
 
-    # FIXME: Parametrize so that all sections (including os.environ and the
-    # ones produced by Stores) run these tests -- vila 2011-04-01
+    scenarios = [('mutable',
+                  {'get_section':
+                       lambda opts: config.MutableSection('myID', opts)},),
+                 ('cmdline',
+                  {'get_section':
+                       lambda opts: config.CommandLineSection(opts)},),
+        ]
 
     def test_set(self):
         a_dict = dict(foo='bar')
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.set('foo', 'new_value')
         self.assertEquals('new_value', section.get('foo'))
         # The change appears in the shared section
@@ -2578,7 +2583,7 @@ class TestMutableSection(tests.TestCase):
 
     def test_set_preserve_original_once(self):
         a_dict = dict(foo='bar')
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.set('foo', 'first_value')
         section.set('foo', 'second_value')
         # We keep track of the original value
@@ -2587,7 +2592,7 @@ class TestMutableSection(tests.TestCase):
 
     def test_remove(self):
         a_dict = dict(foo='bar')
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.remove('foo')
         # We get None for unknown options via the default value
         self.assertEquals(None, section.get('foo'))
@@ -2600,7 +2605,7 @@ class TestMutableSection(tests.TestCase):
 
     def test_remove_new_option(self):
         a_dict = dict()
-        section = config.MutableSection('myID', a_dict)
+        section = self.get_section(a_dict)
         section.set('foo', 'bar')
         section.remove('foo')
         self.assertFalse('foo' in section.options)
@@ -2608,6 +2613,40 @@ class TestMutableSection(tests.TestCase):
         # with a special value
         self.assertTrue('foo' in section.orig)
         self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
+
+
+class TestCommandLineSection(tests.TestCase):
+
+    def setUp(self):
+        super(TestCommandLineSection, self).setUp()
+        self.section = config.CommandLineSection()
+
+    def test_no_override(self):
+        self.section._from_cmdline([])
+        # FIXME: we want some iterator over all options, failing that, we peek
+        # under the cover -- vila 2011-09026
+        self.assertLength(0, self.section.options)
+
+    def test_simple_override(self):
+        self.section._from_cmdline(['a=b'])
+        self.assertEqual('b', self.section.get('a'))
+
+    def test_list_override(self):
+        self.section._from_cmdline(['l=1,2,3'])
+        val = self.section.get('l')
+        self.assertEqual('1,2,3', val)
+        # Reminder: lists should registered as such explicitely, otherwise the
+        # conversion needs to be done afterwards.
+        self.assertEqual(['1', '2', '3'], config.list_from_store(val))
+
+    def test_multiple_overrides(self):
+        self.section._from_cmdline(['a=b', 'x=y'])
+        self.assertEquals('b', self.section.get('a'))
+        self.assertEquals('y', self.section.get('x'))
+
+    def test_wrong_syntax(self):
+        self.assertRaises(errors.BzrCommandError,
+                          self.section._from_cmdline, ['a=b', 'c'])
 
 
 class TestStore(tests.TestCaseWithTransport):
@@ -3068,17 +3107,19 @@ class TestSectionMatcher(TestStore):
     scenarios = [('location', {'matcher': config.LocationMatcher}),
                  ('id', {'matcher': config.NameMatcher}),]
 
-    def get_store(self, file_name):
-        return config.IniFileStore(self.get_readonly_transport(), file_name)
+    def setUp(self):
+        super(TestSectionMatcher, self).setUp()
+        # Any simple store is good enough
+        self.get_store = config.test_store_builder_registry.get('configobj')
 
     def test_no_matches_for_empty_stores(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('')
         matcher = self.matcher(store, '/bar')
         self.assertEquals([], list(matcher.get_sections()))
 
     def test_build_doesnt_load_store(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         matcher = self.matcher(store, '/bar')
         self.assertFalse(store.is_loaded())
 
@@ -3108,11 +3149,13 @@ class TestLocationSection(tests.TestCase):
 
 class TestLocationMatcher(TestStore):
 
-    def get_store(self, file_name):
-        return config.IniFileStore(self.get_readonly_transport(), file_name)
+    def setUp(self):
+        super(TestLocationMatcher, self).setUp()
+        # Any simple store is good enough
+        self.get_store = config.test_store_builder_registry.get('configobj')
 
     def test_unrelated_section_excluded(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('''
 [/foo]
 section=/foo
@@ -3138,7 +3181,7 @@ section=/quux/quux
                           [section.extra_path for section in sections])
 
     def test_more_specific_sections_first(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('''
 [/foo]
 section=/foo
@@ -3159,7 +3202,7 @@ section=/foo/bar
     def test_appendpath_in_no_name_section(self):
         # It's a bit weird to allow appendpath in a no-name section, but
         # someone may found a use for it
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('''
 foo=bar
 foo:policy = appendpath
@@ -3170,7 +3213,7 @@ foo:policy = appendpath
         self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
 
     def test_file_urls_are_normalized(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         if sys.platform == 'win32':
             expected_url = 'file:///C:/dir/subdir'
             expected_location = 'C:/dir/subdir'
@@ -3185,9 +3228,13 @@ class TestNameMatcher(TestStore):
 
     def setUp(self):
         super(TestNameMatcher, self).setUp()
-        self.store = config.IniFileStore(self.get_readonly_transport(),
-                                         'foo.conf')
-        self.store._load_from_string('''
+        self.matcher = config.NameMatcher
+        # Any simple store is good enough
+        self.get_store = config.test_store_builder_registry.get('configobj')
+
+    def get_matching_sections(self, name):
+        store = self.get_store(self)
+        store._load_from_string('''
 [foo]
 option=foo
 [foo/baz]
@@ -3195,9 +3242,7 @@ option=foo/baz
 [bar]
 option=bar
 ''')
-
-    def get_matching_sections(self, name):
-        matcher = config.NameMatcher(self.store, name)
+        matcher = self.matcher(store, name)
         return list(matcher.get_sections())
 
     def test_matching(self):
@@ -3593,7 +3638,7 @@ class TestStackRemove(TestStackWithTransport):
 
     def test_remove_existing(self):
         conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
+        conf.set('foo', 'bar')
         self.assertEquals('bar', conf.get('foo'))
         conf.remove('foo')
         # Did we get it back ?
@@ -3610,7 +3655,7 @@ class TestStackRemove(TestStackWithTransport):
         config.ConfigHooks.install_named_hook('remove', hook, None)
         self.assertLength(0, calls)
         conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
+        conf.set('foo', 'bar')
         conf.remove('foo')
         self.assertLength(1, calls)
         self.assertEquals((conf, 'foo'), calls[0])

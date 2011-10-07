@@ -37,6 +37,7 @@ from bzrlib import (
     errors,
     ui,
     )
+from bzrlib.i18n import gettext
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
@@ -93,12 +94,12 @@ class RepoFetcher(object):
         pb = ui.ui_factory.nested_progress_bar()
         pb.show_pct = pb.show_count = False
         try:
-            pb.update("Finding revisions", 0, 2)
+            pb.update(gettext("Finding revisions"), 0, 2)
             search_result = self._revids_to_fetch()
             mutter('fetching: %s', search_result)
             if search_result.is_empty():
                 return
-            pb.update("Fetching revisions", 1, 2)
+            pb.update(gettext("Fetching revisions"), 1, 2)
             self._fetch_everything_for_search(search_result)
         finally:
             pb.finished()

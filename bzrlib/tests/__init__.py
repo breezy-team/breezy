@@ -983,6 +983,8 @@ class TestCase(testtools.TestCase):
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
+        self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
+                          config.CommandLineSection())
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -2632,21 +2634,8 @@ class TestCaseWithMemoryTransport(TestCase):
         repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch(append_revisions_only=False)
 
-    def resolve_format(self, format):
-        """Resolve an object to a ControlDir format object.
-
-        The initial format object can either already be
-        a ControlDirFormat, None (for the default format),
-        or a string with the name of the control dir format.
-
-        :param format: Object to resolve
-        :return A ControlDirFormat instance
-        """
-        if format is None:
-            format = 'default'
-        if isinstance(format, basestring):
-            format = bzrdir.format_registry.make_bzrdir(format)
-        return format
+    def get_default_format(self):
+        return 'default'
 
     def resolve_format(self, format):
         """Resolve an object to a ControlDir format object.
@@ -2659,7 +2648,7 @@ class TestCaseWithMemoryTransport(TestCase):
         :return A ControlDirFormat instance
         """
         if format is None:
-            format = 'default'
+            format = self.get_default_format()
         if isinstance(format, basestring):
             format = bzrdir.format_registry.make_bzrdir(format)
         return format
@@ -2677,7 +2666,7 @@ class TestCaseWithMemoryTransport(TestCase):
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
-    def make_repository(self, relpath, shared=False, format=None):
+    def make_repository(self, relpath, shared=None, format=None):
         """Create a repository on our default transport at relpath.
 
         Note that relpath must be a relative path, not a full url.
@@ -2957,6 +2946,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # this obviously requires a format that supports branch references
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
+        format = self.resolve_format(format=format)
         b = self.make_branch(relpath, format=format)
         try:
             return b.bzrdir.create_workingtree()
@@ -4077,6 +4067,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_smart',
         'bzrlib.tests.test_smart_add',
         'bzrlib.tests.test_smart_request',
+        'bzrlib.tests.test_smart_signals',
         'bzrlib.tests.test_smart_transport',
         'bzrlib.tests.test_smtp_connection',
         'bzrlib.tests.test_source',

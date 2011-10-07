@@ -114,10 +114,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a.add('vla', 'file2')
         tree_a.commit('rev2', rev_id='rev2')
 
-        delta = tree_a.branch.get_revision_delta(1)
+        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
+            (2, 5, 0)), tree_a.branch.get_revision_delta, 1)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('foo', 'file1', 'file')], delta.added)
-        delta = tree_a.branch.get_revision_delta(2)
+        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
+            (2, 5, 0)), tree_a.branch.get_revision_delta, 2)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
@@ -215,6 +217,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
         self.assertEqual(['non:existent@rev--ision--0--2'],
@@ -228,6 +233,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_two_ghosts(self):
         """Recording with all ghosts works."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids([
                 'foo@azkhazan-123123-abcabc',
                 'wibble@fofof--20050401--1928390812',
@@ -308,15 +316,18 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
-    def test_nicks(self):
-        """Test explicit and implicit branch nicknames.
+    def test_nicks_bzr(self):
+        """Test the behaviour of branch nicks specific to bzr branches.
 
         Nicknames are implicitly the name of the branch's directory, unless an
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
+
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
+        if not isinstance(branch, _mod_branch.BzrBranch):
+            raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
         # Move the branch to a different directory, 'bzr.ab'.  Now that branch
@@ -334,6 +345,24 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = _mod_branch.Branch.open(self.get_url('integration'))
+        self.assertEqual(branch.nick, "Aaron's branch")
+        branch.nick = u"\u1234"
+        self.assertEqual(branch.nick, u"\u1234")
+
+    def test_nicks(self):
+        """Test explicit and implicit branch nicknames.
+
+        A nickname is always available, whether set explicitly or not.
+        """
+        t = self.get_transport()
+        branch = self.make_branch('bzr.dev')
+        # An implicit nick name is set; what it is exactly depends on the
+        # format.
+        self.assertIsInstance(branch.nick, basestring)
+        # Set the branch nick explicitly.
+        branch.nick = "Aaron's branch"
+        # Because the nick has been set explicitly, the nick is now always
+        # "Aaron's branch".
         self.assertEqual(branch.nick, "Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
@@ -397,10 +426,13 @@ class TestBranch(per_branch.TestCaseWithBranch):
         try:
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
-            return
+            raise tests.TestNotApplicable("requires shared repository support")
         child_transport = repo.bzrdir.root_transport.clone('child')
         child_transport.mkdir('.')
-        child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
+        try:
+            child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable("control dir format not initializable")
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -490,10 +522,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = tree.branch
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, ["rev1"])
-        self.assertEquals(br.revision_history(), ["rev1"])
+        self.assertEquals(br.last_revision(), "rev1")
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, [])
-        self.assertEquals(br.revision_history(), [])
+        self.assertEquals(br.last_revision(), 'null:')
 
     def test_heads_to_fetch(self):
         # heads_to_fetch is a method that returns a collection of revids that
@@ -536,6 +568,12 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
             registry = _mod_branch.network_format_registry
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)
+
+    def get_get_config_calls(self):
+        # Smoke test that all branch succeed getting a config
+        br = self.make_branch('.')
+        br.get_config()
+        br.get_config_stack()
 
 
 class ChrootedTests(per_branch.TestCaseWithBranch):
@@ -865,12 +903,14 @@ class TestIgnoreFallbacksParameter(per_branch.TestCaseWithBranch):
     def test_fallbacks_not_opened(self):
         stacked = self.make_branch_with_fallback()
         self.get_transport('').rename('fallback', 'moved')
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
 
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
 
 
@@ -1070,7 +1110,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
 class TestBranchControlComponent(per_branch.TestCaseWithBranch):
     """Branch implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         br = self.make_branch('branch')
         self.assertIsInstance(br.user_url, str)

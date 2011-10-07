@@ -71,6 +71,7 @@ from bzrlib import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.i18n import gettext
 from bzrlib.lock import LogicalLockResult
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -302,7 +303,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 if view_files:
                     file_list = view_files
                     view_str = views.view_display_str(view_files)
-                    note("Ignoring files outside view. View is %s" % view_str)
+                    note(gettext("Ignoring files outside view. View is %s") % view_str)
             return tree, file_list
         if default_directory == u'.':
             seed = file_list[0]
@@ -1498,7 +1499,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                              show_base=show_base)
             if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
-                note('Rerun update after fixing the conflicts.')
+                note(gettext('Rerun update after fixing the conflicts.'))
                 return nb_conflicts
 
         if last_rev != _mod_revision.ensure_null(revision):
@@ -2133,7 +2134,12 @@ class InventoryWorkingTree(WorkingTree,
         """See Tree.get_file_mtime."""
         if not path:
             path = self.inventory.id2path(file_id)
-        return os.lstat(self.abspath(path)).st_mtime
+        try:
+            return os.lstat(self.abspath(path)).st_mtime
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.FileTimestampUnavailable(path)
+            raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         file_id = self.path2id(path)
@@ -3084,6 +3090,14 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         symbol_versioning.deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
         format_registry.remove(format)
+
+    def get_controldir_for_branch(self):
+        """Get the control directory format for creating branches.
+
+        This is to support testing of working tree formats that can not exist
+        in the same control directory as a branch.
+        """
+        return self._matchingbzrdir
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",

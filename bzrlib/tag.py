@@ -344,11 +344,11 @@ class BasicTags(_Tags):
         updates = {}
         result = dict(dest_dict) # copy
         for name, target in source_dict.items():
-            if name not in result or overwrite:
-                result[name] = target
-                updates[name] = target
-            elif result[name] == target:
+            if result.get(name) == target:
                 pass
+            elif name not in result or overwrite:
+                updates[name] = target
+                result[name] = target
             else:
                 conflicts.append((name, target, result[name]))
         return result, updates, conflicts

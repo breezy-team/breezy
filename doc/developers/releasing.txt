@@ -206,6 +206,18 @@ Update the source code
    also mail the list to raise this issue in our process. Milestones are
    found at <https://launchpad.net/bzr/+milestone/x.y.z>.
 
+#. Merge into your branch all previous stable series fixes that haven't been
+   merged yet. For example, if you're releasing 2.5.x, make sure the fixes
+   on 2.4, 2.3, etc have already been merged up::
+
+     bzr merge lp:bzr/2.4
+
+   and commit that merge in its own commit. This should happen only if the
+   devs landing changes in previous releases forgot to merge them up. Since
+   this can slow down the freeze, feel free to gently remind them about
+   their duties ;) If you feel unsafe resolving the conflicts or it's too
+   time consuming, contact the related devs and skip this merge.
+ 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
    Make sure the corresponding milestone exists.
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
@@ -225,9 +237,16 @@ Update the source code
 
 #. Update the ``./doc/en/release-notes/`` section for this release.
 
+   Check that all news entries related to this release have been added in
+   the right section. For example, if you're releasing 2.5b2, the following
+   command should display a a single chuk diff for the 2.5b2 release::
+
+     bzr diff -rbzr-2.5b1.. doc/en/release-notes/bzr-2.5.txt
+
    Fill out the date and a description of the release under the existing
-   header. If there isn't one, follow the instructions above for using the
-   ``release-template.txt`` file.
+   header (the diff above will help you summarizing). If there isn't one,
+   follow the instructions above for using the ``release-template.txt`` file
+   and remind people that they should document their changes there ;)
 
    See *2.1.1* or similar for an example of what this looks like.
 
@@ -244,7 +263,8 @@ Update the source code
    Released' or setting a different milestone if the bug hasn't been
    fixed). A few false positives may remain in the older series, don't let
    this slow you down too much. This script accepts options you may find
-   useful, use ``./tools/check-newsbugs.py`` to display its usage.
+   useful, use ``./tools/check-newsbugs.py`` to display its usage (``-w``
+   will open each bug in your browser for example).
 
 #. For beta releases update the translation template::
 
@@ -474,12 +494,12 @@ translations for the new branch and inform translators.
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar`` list, saying that the source has been frozen
-   (gone gold). Be extra clear that this is only a *source* release
-   targeted at packagers and installer builders (see
-   <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue
-   for platform maintainers and plugin authors to update their code.  This
-   is done before the general public announcement of the release. 
+#. Post to the ``bazaar@lists.canonical.com`` list, saying that the source
+   has been frozen (gone gold). Be extra clear that this is only a *source*
+   release targeted at packagers and installer builders (see
+   <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
+   platform maintainers and plugin authors to update their code.  This is
+   done before the general public announcement of the release.
 
    The freeze announcement generally guess the date of the official public
    announcement, for the most recent stable series (the one supported by the
@@ -521,12 +541,8 @@ Now that the release is publicly available, tell people about it.
 
 #. Make an announcement mail.
 
-   For beta releases, this is sent to the ``bazaar@lists.canonical.com``
-   list only to inform plugin authors and people responsible for building
-   packages or installers.
-
-   Once the installers are available, the mail can be sent to the
-   ``bazaar-announce`` list too.
+   For beta releases, this is sent to the ``bazaar@lists.canonical.com`` and
+   ``bazaar-announce@lists.canonical.com`` lists.
 
    For stable releases (excluding SRUs which are for older stable releases),
    it should also be cc'd to ``info-gnu@gnu.org``,
@@ -542,8 +558,9 @@ Now that the release is publicly available, tell people about it.
       The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
 
-      Bazaar <http://bazaar.canonical.com/> is part of the GNU project
-      <http://gnu.org/> to produce a free operating system.
+      Bazaar <http://bazaar.canonical.com/> is a Canonical project and part
+      of the GNU project <http://gnu.org/> to produce a free operating
+      system.
 
       <<Summary paragraph from news>>
 

@@ -35,6 +35,7 @@ from bzrlib.tests import (
     blackbox,
     http_server,
     scenarios,
+    script,
     test_foreign,
     test_server,
     )
@@ -676,8 +677,8 @@ class TestPushStrictMixin(object):
     def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
-        conf = self.tree.branch.get_config()
-        conf.set_user_option('push_strict', value)
+        conf = self.tree.branch.get_config_stack()
+        conf.set('push_strict', value)
 
     _default_command = ['push', '../to']
     _default_wd = 'local'
@@ -842,3 +843,27 @@ class TestPushForeign(tests.TestCaseWithTransport):
         self.assertEquals("", output)
         self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
             " push to dummy. You may want to use dpush instead.\n")
+
+
+class TestPushOutput(script.TestCaseWithTransportAndScript):
+
+    def test_push_log_format(self):
+        self.run_script("""
+            $ bzr init trunk
+            Created a standalone tree (format: 2a)
+            $ cd trunk
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'we need some foo'
+            2>Committing to:...trunk/
+            2>added file
+            2>Committed revision 1.
+            $ bzr init ../feature
+            Created a standalone tree (format: 2a)
+            $ bzr push -v ../feature -Olog_format=line
+            Added Revisions:
+            1: jrandom@example.com ...we need some foo
+            2>All changes applied successfully.
+            2>Pushed up to revision 1.
+            """)

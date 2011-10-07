@@ -57,7 +57,7 @@ from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
-from bzrlib.i18n import gettext
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib.commands import (
@@ -653,6 +653,9 @@ class cmd_add(Command):
     are added.  This search proceeds recursively into versioned
     directories.  If no names are given '.' is assumed.
 
+    A warning will be printed when nested trees are encountered,
+    unless they are explicitly ignored.
+
     Therefore simply saying 'bzr add' will version all files that
     are currently unknown.
 
@@ -983,6 +986,10 @@ class cmd_pull(Command):
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
 
+    The --verbose option will display the revisions pulled using the log_format
+    configuration option. You can use a different format by overriding it with
+    -Olog_format=<other_format>.
+
     Note: The location can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
     with bzr send.
@@ -1118,6 +1125,10 @@ class cmd_push(Command):
     --no-remember to avoid setting it).  After that, you can omit the
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
+
+    The --verbose option will display the revisions pushed using the log_format
+    configuration option. You can use a different format by overriding it with
+    -Olog_format=<other_format>.
     """
 
     _see_also = ['pull', 'update', 'working-trees']
@@ -1325,7 +1336,7 @@ class cmd_branch(Command):
                 branch.get_stacked_on_url())
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
-            note(gettext('Branched %d revision(s).') % branch.revno())
+            note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
             # Bind to the parent
             parent_branch = Branch.open(from_location)
@@ -1342,18 +1353,34 @@ class cmd_branch(Command):
 class cmd_branches(Command):
     __doc__ = """List the branches available at the current location.
 
-    This command will print the names of all the branches at the current location.
+    This command will print the names of all the branches at the current
+    location.
     """
 
     takes_args = ['location?']
+    takes_options = [
+                  Option('recursive', short_name='R',
+                         help='Recursively scan for branches rather than '
+                              'just looking in the specified location.')]
 
-    def run(self, location="."):
-        dir = bzrdir.BzrDir.open_containing(location)[0]
-        for branch in dir.list_branches():
-            if branch.name is None:
-                self.outf.write(gettext(" (default)\n"))
-            else:
-                self.outf.write(" %s\n" % branch.name.encode(self.outf.encoding))
+    def run(self, location=".", recursive=False):
+        if recursive:
+            t = transport.get_transport(location)
+            if not t.listable():
+                raise errors.BzrCommandError(
+                    "Can't scan this type of location.")
+            for b in bzrdir.BzrDir.find_branches(t):
+                self.outf.write("%s\n" % urlutils.unescape_for_display(
+                    urlutils.relative_url(t.base, b.base),
+                    self.outf.encoding).rstrip("/"))
+        else:
+            dir = bzrdir.BzrDir.open_containing(location)[0]
+            for branch in dir.list_branches():
+                if branch.name is None:
+                    self.outf.write(gettext(" (default)\n"))
+                else:
+                    self.outf.write(" %s\n" % branch.name.encode(
+                        self.outf.encoding))
 
 
 class cmd_checkout(Command):
@@ -1461,20 +1488,33 @@ class cmd_renames(Command):
 
 
 class cmd_update(Command):
-    __doc__ = """Update a tree to have the latest code committed to its branch.
+    __doc__ = """Update a working tree to a new revision.
 
-    This will perform a merge into the working tree, and may generate
-    conflicts. If you have any local changes, you will still
-    need to commit them after the update for the update to be complete.
+    This will perform a merge of the destination revision (the tip of the
+    branch, or the specified revision) into the working tree, and then make
+    that revision the basis revision for the working tree.  
 
-    If you want to discard your local changes, you can just do a
-    'bzr revert' instead of 'bzr commit' after the update.
+    You can use this to visit an older revision, or to update a working tree
+    that is out of date from its branch.
+    
+    If there are any uncommitted changes in the tree, they will be carried
+    across and remain as uncommitted changes after the update.  To discard
+    these changes, use 'bzr revert'.  The uncommitted changes may conflict
+    with the changes brought in by the change in basis revision.
 
-    If you want to restore a file that has been removed locally, use
-    'bzr revert' instead of 'bzr update'.
-
-    If the tree's branch is bound to a master branch, it will also update
+    If the tree's branch is bound to a master branch, bzr will also update
     the branch from the master.
+
+    You cannot update just a single file or directory, because each Bazaar
+    working tree has just a single basis revision.  If you want to restore a
+    file that has been removed locally, use 'bzr revert' instead of 'bzr
+    update'.  If you want to restore a file to its state in a previous
+    revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write
+    out the old content of that file to a new location.
+
+    The 'dir' argument, if given, must be the location of the root of a
+    working tree to update.  By default, the working tree that contains the 
+    current working directory is used.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
@@ -1485,11 +1525,19 @@ class cmd_update(Command):
                      ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None, show_base=None):
+    def run(self, dir=None, revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(gettext(
-                        "bzr update --revision takes exactly one revision"))
-        tree = WorkingTree.open_containing(dir)[0]
+                "bzr update --revision takes exactly one revision"))
+        if dir is None:
+            tree = WorkingTree.open_containing('.')[0]
+        else:
+            tree, relpath = WorkingTree.open_containing(dir)
+            if relpath:
+                # See bug 557886.
+                raise errors.BzrCommandError(gettext(
+                    "bzr update can only update a whole tree, "
+                    "not a file or subdirectory"))
         branch = tree.branch
         possible_transports = []
         master = branch.get_master_branch(
@@ -1869,7 +1917,7 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             branch = a_bzrdir.create_branch()
-            if not no_tree:
+            if not no_tree and not a_bzrdir.has_workingtree():
                 a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:
@@ -2101,8 +2149,9 @@ class cmd_diff(Command):
                                          ' one or two revision specifiers'))
 
         if using is not None and format is not None:
-            raise errors.BzrCommandError(gettext('--using and --format are mutually '
-                'exclusive.'))
+            raise errors.BzrCommandError(gettext(
+                '{0} and {1} are mutually exclusive').format(
+                '--using', '--format'))
 
         (old_tree, new_tree,
          old_branch, new_branch,
@@ -2422,8 +2471,12 @@ class cmd_log(Command):
             Option('show-diff',
                    short_name='p',
                    help='Show changes made in each revision as a patch.'),
-            Option('include-merges',
+            Option('include-merged',
                    help='Show merged revisions like --levels 0 does.'),
+            Option('include-merges', hidden=True,
+                   help='Historical alias for --include-merged.'),
+            Option('omit-merges',
+                   help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
                    ' of both ancestries (require -rX..Y)'
@@ -2466,7 +2519,7 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False,
-            include_merges=False,
+            include_merged=None,
             authors=None,
             exclude_common_ancestry=False,
             signatures=False,
@@ -2475,6 +2528,8 @@ class cmd_log(Command):
             match_committer=None,
             match_author=None,
             match_bugs=None,
+            omit_merges=False,
+            include_merges=symbol_versioning.DEPRECATED_PARAMETER,
             ):
         from bzrlib.log import (
             Logger,
@@ -2482,23 +2537,40 @@ class cmd_log(Command):
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if symbol_versioning.deprecated_passed(include_merges):
+            ui.ui_factory.show_user_warning(
+                'deprecated_command_option',
+                deprecated_name='--include-merges',
+                recommended_name='--include-merged',
+                deprecated_in_version='2.5',
+                command=self.invoked_as)
+            if include_merged is None:
+                include_merged = include_merges
+            else:
+                raise errors.BzrCommandError(gettext(
+                    '{0} and {1} are mutually exclusive').format(
+                    '--include-merges', '--include-merged'))
+        if include_merged is None:
+            include_merged = False
         if (exclude_common_ancestry
             and (revision is None or len(revision) != 2)):
             raise errors.BzrCommandError(gettext(
                 '--exclude-common-ancestry requires -r with two revisions'))
-        if include_merges:
+        if include_merged:
             if levels is None:
                 levels = 0
             else:
                 raise errors.BzrCommandError(gettext(
-                    '--levels and --include-merges are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--levels', '--include-merged'))
 
         if change is not None:
             if len(change) > 1:
                 raise errors.RangeInChangeOption()
             if revision is not None:
                 raise errors.BzrCommandError(gettext(
-                    '--revision and --change are mutually exclusive'))
+                    '{0} and {1} are mutually exclusive').format(
+                    '--revision', '--change'))
             else:
                 revision = change
 
@@ -2594,7 +2666,7 @@ class cmd_log(Command):
             match_dict['author'] = match_author
         if match_bugs:
             match_dict['bugs'] = match_bugs
-            
+
         # Build the LogRequest and execute it
         if len(file_ids) == 0:
             file_ids = None
@@ -2604,7 +2676,7 @@ class cmd_log(Command):
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
             exclude_common_ancestry=exclude_common_ancestry, match=match_dict,
-            signature=signatures
+            signature=signatures, omit_merges=omit_merges,
             )
         Logger(b, rqst).show(lf)
 
@@ -2914,11 +2986,15 @@ class cmd_ignore(Command):
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
         bad_patterns = ''
+        bad_patterns_count = 0
         for p in name_pattern_list:
             if not globbing.Globster.is_pattern_valid(p):
+                bad_patterns_count += 1
                 bad_patterns += ('\n  %s' % p)
         if bad_patterns:
-            msg = ('Invalid ignore pattern(s) found. %s' % bad_patterns)
+            msg = (ngettext('Invalid ignore pattern found. %s', 
+                            'Invalid ignore patterns found. %s',
+                            bad_patterns_count) % bad_patterns)
             ui.ui_factory.show_error(msg)
             raise errors.InvalidPattern('')
         for name_pattern in name_pattern_list:
@@ -3053,7 +3129,7 @@ class cmd_export(Command):
             export(rev_tree, dest, format, root, subdir, filtered=filters,
                    per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat, e:
-            raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
+            raise errors.BzrCommandError(gettext('Unsupported export format: %s') % e.format)
 
 
 class cmd_cat(Command):
@@ -4602,8 +4678,10 @@ class cmd_missing(Command):
             type=_parse_revision_str,
             help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-        Option('include-merges',
+        Option('include-merged',
                'Show all revisions in addition to the mainline ones.'),
+        Option('include-merges', hidden=True,
+               help='Historical alias for --include-merged.'),
         ]
     encoding_type = 'replace'
 
@@ -4612,13 +4690,29 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, revision=None, my_revision=None,
-            directory=u'.'):
+            include_merged=None, revision=None, my_revision=None,
+            directory=u'.',
+            include_merges=symbol_versioning.DEPRECATED_PARAMETER):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
                 self.outf.write(s)
 
+        if symbol_versioning.deprecated_passed(include_merges):
+            ui.ui_factory.show_user_warning(
+                'deprecated_command_option',
+                deprecated_name='--include-merges',
+                recommended_name='--include-merged',
+                deprecated_in_version='2.5',
+                command=self.invoked_as)
+            if include_merged is None:
+                include_merged = include_merges
+            else:
+                raise errors.BzrCommandError(gettext(
+                    '{0} and {1} are mutually exclusive').format(
+                    '--include-merges', '--include-merged'))
+        if include_merged is None:
+            include_merged = False
         if this:
             mine_only = this
         if other:
@@ -4663,7 +4757,7 @@ class cmd_missing(Command):
         local_extra, remote_extra = find_unmerged(
             local_branch, remote_branch, restrict,
             backward=not reverse,
-            include_merges=include_merges,
+            include_merged=include_merged,
             local_revid_range=local_revid_range,
             remote_revid_range=remote_revid_range)
 
@@ -4676,7 +4770,9 @@ class cmd_missing(Command):
 
         status_code = 0
         if local_extra and not theirs_only:
-            message(gettext("You have %d extra revision(s):\n") %
+            message(ngettext("You have %d extra revision:\n",
+                             "You have %d extra revisions:\n", 
+                             len(local_extra)) %
                 len(local_extra))
             for revision in iter_log_revisions(local_extra,
                                 local_branch.repository,
@@ -4690,7 +4786,9 @@ class cmd_missing(Command):
         if remote_extra and not mine_only:
             if printed_local is True:
                 message("\n\n\n")
-            message(gettext("You are missing %d revision(s):\n") %
+            message(ngettext("You are missing %d revision:\n",
+                             "You are missing %d revisions:\n",
+                             len(remote_extra)) %
                 len(remote_extra))
             for revision in iter_log_revisions(remote_extra,
                                 remote_branch.repository,
@@ -5187,6 +5285,8 @@ class cmd_serve(Command):
                     'option leads to global uncontrolled write access to your '
                     'file system.'
                 ),
+        Option('client-timeout', type=float,
+               help='Override the default idle client timeout (5min).'),
         ]
 
     def get_host_and_port(self, port):
@@ -5209,7 +5309,7 @@ class cmd_serve(Command):
         return host, port
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
-            protocol=None):
+            protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
@@ -5220,7 +5320,19 @@ class cmd_serve(Command):
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport(url)
-        protocol(t, host, port, inet)
+        try:
+            protocol(t, host, port, inet, client_timeout)
+        except TypeError, e:
+            # We use symbol_versioning.deprecated_in just so that people
+            # grepping can find it here.
+            # symbol_versioning.deprecated_in((2, 5, 0))
+            symbol_versioning.warn(
+                'Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
+                'Most likely it needs to be updated to support a'
+                ' "timeout" parameter (added in bzr 2.5.0)'
+                % (e, protocol.__module__, protocol),
+                DeprecationWarning)
+            protocol(t, host, port, inet)
 
 
 class cmd_join(Command):
@@ -5700,12 +5812,8 @@ class cmd_tags(Command):
 
         self.add_cleanup(branch.lock_read().unlock)
         if revision:
-            graph = branch.repository.get_graph()
-            rev1, rev2 = _get_revision_range(revision, branch, self.name())
-            revid1, revid2 = rev1.rev_id, rev2.rev_id
-            # only show revisions between revid1 and revid2 (inclusive)
-            tags = [(tag, revid) for tag, revid in tags if
-                graph.is_between(revid, revid1, revid2)]
+            # Restrict to the specified range
+            tags = self._tags_for_range(branch, revision)
         if sort is None:
             sort = tag_sort_methods.get()
         sort(branch, tags)
@@ -5716,7 +5824,9 @@ class cmd_tags(Command):
                     revno = branch.revision_id_to_dotted_revno(revid)
                     if isinstance(revno, tuple):
                         revno = '.'.join(map(str, revno))
-                except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
+                except (errors.NoSuchRevision,
+                        errors.GhostRevisionsHaveNoRevno,
+                        errors.UnsupportedOperation):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
@@ -5724,6 +5834,32 @@ class cmd_tags(Command):
         self.cleanup_now()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
+
+    def _tags_for_range(self, branch, revision):
+        range_valid = True
+        rev1, rev2 = _get_revision_range(revision, branch, self.name())
+        revid1, revid2 = rev1.rev_id, rev2.rev_id
+        # _get_revision_range will always set revid2 if it's not specified.
+        # If revid1 is None, it means we want to start from the branch
+        # origin which is always a valid ancestor. If revid1 == revid2, the
+        # ancestry check is useless.
+        if revid1 and revid1 != revid2:
+            # FIXME: We really want to use the same graph than
+            # branch.iter_merge_sorted_revisions below, but this is not
+            # easily available -- vila 2011-09-23
+            if branch.repository.get_graph().is_ancestor(revid2, revid1):
+                # We don't want to output anything in this case...
+                return []
+        # only show revisions between revid1 and revid2 (inclusive)
+        tagged_revids = branch.tags.get_reverse_tag_dict()
+        found = []
+        for r in branch.iter_merge_sorted_revisions(
+            start_revision_id=revid2, stop_revision_id=revid1,
+            stop_rule='include'):
+            revid_tags = tagged_revids.get(r[0], None)
+            if revid_tags:
+                found.extend([(tag, r[0]) for tag in revid_tags])
+        return found
 
 
 class cmd_reconfigure(Command):
@@ -6345,10 +6481,14 @@ class cmd_export_pot(Command):
     __doc__ = """Export command helps and error messages in po format."""
 
     hidden = True
+    takes_options = [Option('plugin', 
+                            help='Export help text from named command '\
+                                 '(defaults to all built in commands).',
+                            type=str)]
 
-    def run(self):
+    def run(self, plugin=None):
         from bzrlib.export_pot import export_pot
-        export_pot(self.outf)
+        export_pot(self.outf, plugin)
 
 
 def _register_lazy_builtins():
