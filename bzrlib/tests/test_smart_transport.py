@@ -95,9 +95,10 @@ class FirstRejectedStringIOSSHVendor(StringIOSSHVendor):
     The second connection will succeed normally.
     """
 
-    def __init__(self, read_from, write_to):
+    def __init__(self, read_from, write_to, fail_at_write=True):
         super(FirstRejectedStringIOSSHVendor, self).__init__(read_from,
             write_to)
+        self.fail_at_write= fail_at_write
         self._first = True
 
     def connect_ssh(self, username, password, host, port, command):
@@ -135,10 +136,15 @@ class ClosedSSHConnection(object):
 
     def get_filelike_channels(self):
         # We create matching pipes, and then close the ssh side
-        ssh_read, bzr_write = create_file_pipes()
         bzr_read, ssh_write = create_file_pipes()
-        ssh_read.close()
+        # We always fail when bzr goes to read
         ssh_write.close()
+        if self.vendor.fail_at_write:
+            # If set, we'll also fail when bzr goes to write
+            ssh_read, bzr_write = create_file_pipes()
+            ssh_read.close()
+        else:
+            bzr_write = self.vendor.write_to
         return bzr_read, bzr_write
 
 
@@ -3401,7 +3407,7 @@ class Test_SmartClient(tests.TestCase):
         self.assertRaises(errors.ConnectionReset,
             handler.read_response_tuple, expect_body=False)
 
-    def test__send_request_retries(self):
+    def test__send_request_retries_on_write(self):
         response = StringIO()
         output = StringIO()
         vendor = FirstRejectedStringIOSSHVendor(response, output)
@@ -3422,6 +3428,25 @@ class Test_SmartClient(tests.TestCase):
             ],
             vendor.calls)
 
+    def test__send_request_doesnt_retry_read_failure(self):
+        response = StringIO()
+        output = StringIO()
+        vendor = FirstRejectedStringIOSSHVendor(response, output,
+                    fail_at_write=False)
+        client_medium = medium.SmartSSHClientMedium(
+            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
+            'bzr')
+        smart_client = client._SmartClient(client_medium)
+        handler = smart_client._send_request(3, 'hello', ())
+        message_sent = output.getvalue()
+        self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
+        self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ],
+            vendor.calls)
+        self.assertRaises(errors.ConnectionReset, handler.read_response_tuple)
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
