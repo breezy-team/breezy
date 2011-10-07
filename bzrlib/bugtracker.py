@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib import registry, help_topics
+from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import errors, urlutils
@@ -48,8 +48,14 @@ rather than a full URL. This looks like::
 
     bzr commit --fixes <tracker>:<id>
 
+or::
+
+    bzr commit --fixes <id>
+
 where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
 identifier for that bug within the bugtracker, usually the bug number.
+If "<tracker>" is not specified the ``bugtracker`` set in the branch
+or global configuration is used.
 
 Bazaar knows about a few bug trackers that have many users. If
 you use one of these bug trackers then there is no setup required to
@@ -93,7 +99,7 @@ If present, the location of the Bugzilla bug tracker referred to by
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
 example::
 
-    bugzilla_squid_url = http://www.squid-cache.org/bugs
+    bugzilla_squid_url = http://bugs.squid-cache.org
 
 would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
 fixed.
@@ -127,7 +133,13 @@ Roundup bug tracker as fixed, or::
 
     bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
 
-for CPAN's RT bug tracker.
+would allow ``bzr commit --fixes cpan:1234`` to mark bug 1234 in CPAN's
+RT bug tracker as fixed, or::
+
+    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}
+
+would allow ``bzr commit --fixes hudson:HUDSON-1234`` to mark bug HUDSON-1234
+in Hudson's JIRA bug tracker as fixed.
 """
 
 
@@ -225,23 +237,23 @@ tracker_registry.register(
 
 
 tracker_registry.register('gnome',
-    UniqueIntegerBugTracker('gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
+    UniqueIntegerBugTracker('gnome',
+                            'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
-class URLParametrizedIntegerBugTracker(IntegerBugTracker):
+class URLParametrizedBugTracker(BugTracker):
     """A type of bug tracker that can be found on a variety of different sites,
     and thus needs to have the base URL configured.
 
     Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
-    `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')
-    and `abbreviation` is a short name for the particular instance (e.g.
-    'squid' or 'apache').
+    `type_name` is the name of the type of tracker and `abbreviation`
+    is a short name for the particular instance.
     """
 
     def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "%s_%s_url" % (self.type_name, abbreviation))
+            "%s_%s_url" % (self.type_name, abbreviation), expand=False)
         if url is None:
             return None
         self._base_url = url
@@ -256,6 +268,19 @@ class URLParametrizedIntegerBugTracker(IntegerBugTracker):
         return urlutils.join(self._base_url, self._bug_area) + str(bug_id)
 
 
+class URLParametrizedIntegerBugTracker(IntegerBugTracker,
+                                       URLParametrizedBugTracker):
+    """A type of bug tracker that  only allows integer bug IDs.
+
+    This can be found on a variety of different sites, and thus needs to have
+    the base URL configured.
+
+    Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
+    `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')
+    and `abbreviation` is a short name for the particular instance (e.g.
+    'squid' or 'apache').
+    """
+
 tracker_registry.register(
     'trac', URLParametrizedIntegerBugTracker('trac', 'ticket/'))
 
@@ -264,7 +289,7 @@ tracker_registry.register(
     URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))
 
 
-class GenericBugTracker(URLParametrizedIntegerBugTracker):
+class GenericBugTracker(URLParametrizedBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):

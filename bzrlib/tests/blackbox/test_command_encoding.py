@@ -54,13 +54,12 @@ class TestCommandEncoding(TestCase):
         register_command(cmd_echo_exact)
         try:
             self.assertEqual('foo', bzr('echo-exact foo'))
-            # This is cheating a little bit, because 'foo\xb5' shouldn't
-            # get past main()
-            self.assertEqual('foo\xb5', bzr('echo-exact foo\xb5'))
             # Exact should fail to decode the string
             self.assertRaises(UnicodeEncodeError,
                 bzr,
                 ['echo-exact', u'foo\xb5'])
+            # Previously a non-ascii bytestring was also tested, as 'exact'
+            # outputs bytes untouched, but needed buggy argv parsing to work
         finally:
             plugin_cmds.remove('echo-exact')
 

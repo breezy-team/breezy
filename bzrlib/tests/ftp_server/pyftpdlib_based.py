@@ -28,9 +28,15 @@ import threading
 
 from bzrlib import (
     osutils,
+    tests,
     trace,
     )
 from bzrlib.tests import test_server
+
+
+# Convert the pyftplib string version into a tuple to avoid traps in string
+# comparison.
+pyftplib_version = tuple(map(int, ftpserver.__ver__.split('.')))
 
 
 class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
@@ -112,16 +118,34 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
             self.log('OK SITE CHMOD 0%03o "%s".' % (mode, ftp_path))
             self.respond('200 SITE CHMOD succesful.')
 
+    if pyftplib_version >= (0, 6, 0):
+        def log_cmd(self, cmd, arg, respcode, respstr):
+            # base class version choke on unicode, the alternative is to just
+            # provide an empty implementation and relies on the client to do
+            # the logging for debugging purposes. Not worth the trouble so far
+            # -- vila 20110607
+            if cmd in ("DELE", "RMD", "RNFR", "RNTO", "MKD"):
+                line = '"%s" %s' % (' '.join([cmd, unicode(arg)]).strip(),
+                                    respcode)
+                self.log(line)
 
-# pyftpdlib says to define SITE commands by declaring ftp_SITE_<CMD> methods,
-# but fails to recognize them.
-ftpserver.proto_cmds['SITE CHMOD'] = ftpserver._CommandProperty(
-    perm='w', # Best fit choice even if not exactly right (can be d, f or m too)
-    auth_needed=True, arg_needed=True, check_path=False,
-    help='Syntax: SITE CHMOD <SP>  octal_mode_bits file-name (chmod file)',
-    )
-# An empty password is valid, hence the arg is neither mandatory not forbidden
-ftpserver.proto_cmds['PASS'].arg_needed = None
+
+if pyftplib_version < (0, 6,0):
+    # pyftpdlib says to define SITE commands by declaring ftp_SITE_<CMD>
+    # methods, but fails to recognize them.
+    ftpserver.proto_cmds['SITE CHMOD'] = ftpserver._CommandProperty(
+        # Best fit choice even if not exactly right (can be d, f or m too)
+        perm='w',
+        auth_needed=True, arg_needed=True, check_path=False,
+        help='Syntax: SITE CHMOD <SP>  octal_mode_bits file-name (chmod file)',
+        )
+    # An empty password is valid, hence the arg is neither mandatory not
+    # forbidden
+    ftpserver.proto_cmds['PASS'].arg_needed = None
+else:
+    # Same rationale as above (the password should be optional), but the hole
+    # in pyftplib-0.6.0 is narrower
+    ftpserver.proto_cmds['PASS']['arg'] = None
 
 
 class ftp_server(ftpserver.FTPServer):
@@ -183,6 +207,9 @@ class FTPTestServer(test_server.TestServer):
         self._ftpd_starting.acquire() # So it can be released by the server
         self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread started: %s\n'
+                             % (self._ftpd_thread.ident,))
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
@@ -195,6 +222,9 @@ class FTPTestServer(test_server.TestServer):
         self._ftp_server.close()
         self._ftpd_running = False
         self._ftpd_thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread  joined: %s\n'
+                             % (self._ftpd_thread.ident,))
 
     def _run_server(self):
         """Run the server until stop_server is called, shut it down properly then.

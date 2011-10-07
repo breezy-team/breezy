@@ -1,0 +1,259 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.17
+########
+:Codename: so-late-its-brunch
+:1.17rc1: 2009-07-13
+:1.17: 2009-07-20
+
+
+Bazaar continues to blaze a straight and shining path to the 2.0 release and
+the elevation of the ``2a`` beta format to the full glory of "supported and
+stable".
+
+Highlights in this release include greatly reduced memory consumption during
+commits, faster ``ls``, faster ``annotate``, faster network operations if
+you're specifying a revision number and the final destruction of those
+annoying progress bar artifacts.
+
+
+Changes from 1.17rc1 to 1.17final
+*********************************
+
+* Change an extension to call the python ``frozenset()`` rather than the C
+  api ``PyFrozenSet_New``. It turns out that python2.4 did not expose the
+  C api. (John Arbash Meinel, #399366)
+
+* Fixes for the Makefile and the rename of ``generate_docs.py`` to
+  ``tools/generate_docs.py`` to allow everything to be built on Windows.
+  (John Arbash Meinel, #399356)
+
+* ``bzr serve`` once again applies a ``ChrootServer`` to the given
+  directory before serving it. (Andrew Bennetts, #400535)
+
+
+Compatibility Breaks
+********************
+
+* ``bzr register-branch`` from the Launchpad plugin now refers to "project"
+  instead of "product" which is the correct Launchpad terminology.  The
+  --product option is deprecated and users should switch to using --project.
+  (Neil Martinsen-Burrell, #238764)
+
+
+New Features
+************
+
+* ``bzr push`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree (if one is present) and no revision is
+  specified. The configuration option ``push_strict`` can be used to set the
+  default for this behavior.  (Vincent Ladeuil, #284038, #322808, #65286)
+
+* ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to
+  show revision info for the working tree instead of the branch.
+  (Matthew Fuller, John Arbash Meinel)
+
+* ``bzr send`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree and no revision is specified. The
+  configuration option ``send_strict`` can be used to set the default for this
+  behavior.
+  (Vincent Ladeuil, #206577)
+
+* ``bzr switch --create-branch/-b`` can now be used to create and switch
+  to a new branch. Supplying a name without a ``/`` will create the branch
+  relative to the existing branch. (similar to how ``bzr switch name``
+  works when the branch already exists.) (John Arbash Meinel)
+
+
+Bug Fixes
+*********
+
+* Accept uppercase "Y/N" to prompts such as from break lock. 
+  (#335182, Tim Powell, Martin Pool)
+
+* Add documentation about diverged branches and how to fix them in the
+  centralized workflow with local commits.  Mention ``bzr help
+  diverged-branches`` when a push fails because the branches have
+  diverged.  (Neil Martinsen-Burrell, #269477)
+
+* Annotate would sometimes 'latch on' to trivial lines, causing important
+  lines to be incorrectly annotated. (John Arbash Meinel, #387952)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
+* Avoid progress bar artifacts being left behind on the screen.
+  (Martin Pool, #321935)
+
+* Better message in ``bzr split`` error suggesting a rich root format.
+  (Neil Martinsen-Burrell, #220067)
+
+* ``Branch.set_append_revisions_only`` now works with branches on a smart
+  server. (Andrew Bennetts, #365865)
+
+* By default, ``bzr branch`` will fail if the target directory exists, but
+  does not already have a control directory.  The flag ``--use-existing-dir``
+  will allow operation to proceed.  (Alexander Belchenko, #307554)
+
+* ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
+  (Ian Clatworthy)
+
+* Fetch between repositories does not error if they have inconsistent data
+  that should be irrelevant to the fetch operation. (Aaron Bentley)
+
+* Fix ``AttributeError`` exception when reconfiguring lightweight checkout 
+  of a remote repository.
+  (Jelmer Vernooij, #332194)
+
+* Fix bug in decoding v3 smart server messages when receiving multiple
+  lots of excess bytes after an end-of-message.
+  (Andrew Bennetts)
+
+* Force deletion of readonly files during merge, update and other tree
+  transforms.
+  (Craig Hewetson, Martin Pool, #218206)
+
+* Force socket shutdown in threaded HTTP test servers to avoid client hangs
+  (pycurl).  (Vincent Ladeuil, #383920).
+
+* ``LRUCache`` will maintain the linked list pointers even if a nodes
+  cleanup function raises an exception. (John Arbash Meinel, #396838)
+
+* Progress bars are now suppressed again when the environment variable
+  ``BZR_PROGRESS_BAR`` is set to ``none``.
+  (Martin Pool, #339385)
+
+* Reduced memory consumption during ``bzr commit`` of large files. For
+  pre 2a formats, should be down to ~3x the size of a file.
+  For ``--2a`` format repositories, it is down to the size of the file
+  content plus the size of the compressed text.  Related to bug #109114.
+  (John Arbash Meinel)
+
+* Set hidden attribute on .bzr directory below unicode path should never
+  fail with error. The operation should succeed even if bzr unable to set 
+  the attribute.  (Alexander Belchenko, related to bug #335362).
+  
+* Stacking will no longer accept requests to stack on the same
+  branch/repository. Existing branches that incorrectly reference the same
+  repository in a stacking configuration will now raise
+  UnstackableLocationError when the branch is opened. This can be fixed by
+  removing the stacking location inside ``.bzr/branch``.
+  (Robert Collins, #376243)
+
+* The ``log+`` decorator, useful in debugging or profiling, could cause
+  "AttributeError: 'list' object has no attribute 'next'".  This is now
+  fixed.  The log decorator no longer shows the elapsed time or transfer
+  rate because they're available in the log prefixes and the transport
+  activity display respectively.
+  (Martin Pool, #340347)
+
+* Unshelve works correctly when multiple zero-length files are present on
+  the shelf. (Aaron Bentley, #363444)
+
+* Progress bars no longer show the network transport scheme or direction.
+  (Martin Pool)
+
+* launchpad-login now respects the 'verbose' option.
+  (Jonathan Lange, #217031)
+
+
+Internals
+*********
+
+* ``bzrlib.user_encoding`` is now officially deprecated. It is not
+  possible to write a deprecation wrapper, but the variable will be
+  removed in the near future. Use ``bzrlib.osutils.get_user_encoding()``
+  instead. (Alexander Belchenko)
+
+* Command lookup has had hooks added. ``bzrlib.Command.hooks`` has
+  three new hook points: ``get_command``, ``get_missing_command`` and
+  ``list_commands``, which allow just-in-time command name provision
+  rather than requiring all command names be known a-priori.
+  (Robert Collins)
+
+* ``get_app_path`` from win32utils.py now supports REG_EXPAND_SZ data type
+  and can read path to wordpad.exe. (Alexander Belchenko, #392046)
+
+* ``graph.KnownGraph`` has been added. This is a class that can give
+  answers to ``heads()`` very quickly. However, it has the assumption that
+  the whole graph has already been loaded. This is true during
+  ``annotate`` so it is used there with good success (as much as 2x faster
+  for files with long ancestry and 'cherrypicked' changes.)
+  (John Arbash Meinel, Vincent Ladeuil)
+
+* OS file locks are now taken out using ``CreateFile`` rather than
+  ``LockFileEx`` on Windows. The locking remains exclusive with
+  ``LockFileEx`` but now it also works on older versions of Windows (such
+  as Win98). (Martin <gzlist>)
+
+* pack <=> pack fetching is now done via a ``PackStreamSource`` rather
+  than the ``Packer`` code. The user visible change is that we now
+  properly fetch the minimum number of texts for non-smart fetching.
+  (John Arbash Meinel)
+
+
+* ``VersionedFiles._add_text`` is a new api that lets us insert text into
+  the repository as a single string, rather than a list of lines. This can
+  improve memory overhead and performance of committing large files.
+  (Currently a private api, used only by commit). (John Arbash Meinel)
+
+
+Improvements
+************
+
+* ``bzr annotate`` can now be significantly faster. The time for
+  ``bzr annotate NEWS`` is down to 7s from 22s in 1.16. Files with long
+  histories and lots of 'duplicate insertions' will be improved more than
+  others. (John Arbash Meinel, Vincent Ladeuil)
+
+* ``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
+  to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
+  substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
+
+* Improve "Path(s) are not versioned" error reporting for some commands.
+  (Benoît PIERRE)
+
+* Initial commit performance in ``--2a`` repositories has been improved by
+  making it cheaper to build the initial CHKMap. (John Arbash Meinel)
+
+* Resolving a revno to a revision id on a branch accessed via ``bzr://``
+  or ``bzr+ssh://`` is now much faster and involves no VFS operations.
+  This speeds up commands like ``bzr pull -r 123``.  (Andrew Bennetts)
+
+* ``revision-info`` now properly aligns the revnos/revids in the output
+  and doesn't traceback when given revisions not in the current branch.
+  Performance is also significantly improved when requesting multiple revs
+  at once.  (Matthew Fuller, John Arbash Meinel)
+
+* Tildes are no longer escaped by Transports. (Andy Kilner)
+
+
+Documentation
+*************
+
+* Avoid bad text wrapping in generated documentation.  Slightly better
+  formatting in the user reference.
+  (Martin Pool, #249908)
+
+* Minor clarifications to the help for End-Of-Line conversions.
+  (Ian Clatworthy)
+
+API Changes
+***********
+
+* Removed overspecific error class ``InvalidProgressBarType``.
+  (Martin Pool)
+
+* The method ``ProgressView._show_transport_activity`` is now
+  ``show_transport_activity`` because it's part of the contract between
+  this class and the UI.  (Martin Pool)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

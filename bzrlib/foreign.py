@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 
 from bzrlib.branch import (
     Branch,
-    InterBranch,
     )
 from bzrlib.commands import Command, Option
 from bzrlib.repository import Repository
@@ -29,7 +28,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     errors,
-    osutils,
     registry,
     transform,
     )
@@ -259,7 +257,7 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push into a different VCS without any custom bzr metadata.
+    __doc__ = """Push into a different VCS without any custom bzr metadata.
 
     This will afterwards rebase the local branch on the remote
     branch unless the --no-rebase option is used, in which case 
@@ -296,20 +294,11 @@ class cmd_dpush(Command):
         except NoWorkingTree:
             source_branch = Branch.open(directory)
             source_wt = None
-        if strict is None:
-            strict = source_branch.get_config(
-                ).get_user_option_as_bool('dpush_strict')
-        if strict is None: strict = True # default value
-        if strict and source_wt is not None:
-            if (source_wt.has_changes()):
-                raise errors.UncommittedChanges(
-                    source_wt, more='Use --no-strict to force the push.')
-            if source_wt.last_revision() != source_wt.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the push with --no-strict
-                raise errors.OutOfDateTree(
-                    source_wt, more='Use --no-strict to force the push.')
+        if source_wt is not None:
+            source_wt.check_changed_or_out_of_date(
+                strict, 'dpush_strict',
+                more_error='Use --no-strict to force the push.',
+                more_warning='Uncommitted changes will not be pushed.')
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:
@@ -325,7 +314,7 @@ class cmd_dpush(Command):
         target_branch.lock_write()
         try:
             try:
-                push_result = source_branch.lossy_push(target_branch)
+                push_result = source_branch.push(target_branch, lossy=True)
             except errors.LossyPushToSameVCS:
                 raise BzrCommandError("%r and %r are in the same VCS, lossy "
                     "push not necessary. Please use regular push." %
@@ -348,23 +337,3 @@ class cmd_dpush(Command):
             push_result.report(self.outf)
         finally:
             target_branch.unlock()
-
-
-class InterToForeignBranch(InterBranch):
-
-    def lossy_push(self, stop_revision=None):
-        """Push deltas into another branch.
-
-        :note: This does not, like push, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param target: Target branch
-        :param stop_revision: Revision to push, defaults to last revision.
-        :return: BranchPushResult with an extra member revidmap: 
-            A dictionary mapping revision ids from the target branch 
-            to new revision ids in the target branch, for each 
-            revision that was pushed.
-        """
-        raise NotImplementedError(self.lossy_push)

@@ -14,14 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Merge hook for bzr's NEWS file.
+__doc__ = """Merge hook for bzr's NEWS file.
 
 To enable this plugin, add a section to your branch.conf or location.conf
 like::
 
     [/home/user/code/bzr]
     news_merge_files = NEWS
-    news_merge_files:policy = recurse
 
 The news_merge_files config option takes a list of file paths, separated by
 commas.
@@ -34,26 +33,17 @@ Limitations:
 
 # Since we are a built-in plugin we share the bzrlib version
 from bzrlib import version_info
-
-# Put most of the code in a separate module that we lazy-import to keep the
-# overhead of this plugin as minimal as possible.
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-from bzrlib.plugins.news_merge import news_merge as _mod_news_merge
-""")
-
-from bzrlib.merge import Merger
+from bzrlib.hooks import install_lazy_named_hook
 
 
 def news_merge_hook(merger):
     """Merger.merge_file_content hook for bzr-format NEWS files."""
-    return _mod_news_merge.NewsMerger(merger)
+    from bzrlib.plugins.news_merge.news_merge import NewsMerger
+    return NewsMerger(merger)
 
 
-def install_hook():
-    Merger.hooks.install_named_hook(
-        'merge_file_content', news_merge_hook, 'NEWS file merge')
-install_hook()
+install_lazy_named_hook("bzrlib.merge", "Merger.hooks", "merge_file_content",
+    news_merge_hook, "NEWS file merge")
 
 
 def load_tests(basic_tests, module, loader):

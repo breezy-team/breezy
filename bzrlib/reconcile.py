@@ -29,15 +29,15 @@ __all__ = [
 from bzrlib import (
     cleanup,
     errors,
+    revision as _mod_revision,
     ui,
-    repository,
     )
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import AdapterFactory, FulltextContentFactory
 
 
-def reconcile(dir, other=None):
+def reconcile(dir, canonicalize_chks=False):
     """Reconcile the data in dir.
 
     Currently this is limited to a inventory 'reweave'.
@@ -47,30 +47,32 @@ def reconcile(dir, other=None):
     Directly using Reconciler is recommended for library users that
     desire fine grained control or analysis of the found issues.
 
-    :param other: another bzrdir to reconcile against.
+    :param canonicalize_chks: Make sure CHKs are in canonical form.
     """
-    reconciler = Reconciler(dir, other=other)
+    reconciler = Reconciler(dir, canonicalize_chks=canonicalize_chks)
     reconciler.reconcile()
 
 
 class Reconciler(object):
     """Reconcilers are used to reconcile existing data."""
 
-    def __init__(self, dir, other=None):
+    def __init__(self, dir, other=None, canonicalize_chks=False):
         """Create a Reconciler."""
         self.bzrdir = dir
+        self.canonicalize_chks = canonicalize_chks
 
     def reconcile(self):
         """Perform reconciliation.
 
         After reconciliation the following attributes document found issues:
-        inconsistent_parents: The number of revisions in the repository whose
-                              ancestry was being reported incorrectly.
-        garbage_inventories: The number of inventory objects without revisions
-                             that were garbage collected.
-        fixed_branch_history: None if there was no branch, False if the branch
-                              history was correct, True if the branch history
-                              needed to be re-normalized.
+
+        * `inconsistent_parents`: The number of revisions in the repository
+          whose ancestry was being reported incorrectly.
+        * `garbage_inventories`: The number of inventory objects without
+          revisions that were garbage collected.
+        * `fixed_branch_history`: None if there was no branch, False if the
+          branch history was correct, True if the branch history needed to be
+          re-normalized.
         """
         self.pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -97,9 +99,17 @@ class Reconciler(object):
     def _reconcile_repository(self):
         self.repo = self.bzrdir.find_repository()
         ui.ui_factory.note('Reconciling repository %s' %
-            self.repo.bzrdir.root_transport.base)
+            self.repo.user_url)
         self.pb.update("Reconciling repository", 0, 1)
-        repo_reconciler = self.repo.reconcile(thorough=True)
+        if self.canonicalize_chks:
+            try:
+                self.repo.reconcile_canonicalize_chks
+            except AttributeError:
+                raise errors.BzrError(
+                    "%s cannot canonicalize CHKs." % (self.repo,))
+            repo_reconciler = self.repo.reconcile_canonicalize_chks()
+        else:
+            repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
         if repo_reconciler.aborted:
@@ -135,12 +145,12 @@ class BranchReconciler(object):
         self._reconcile_revision_history()
 
     def _reconcile_revision_history(self):
-        repo = self.branch.repository
         last_revno, last_revision_id = self.branch.last_revision_info()
         real_history = []
+        graph = self.branch.repository.get_graph()
         try:
-            for revid in repo.iter_reverse_revision_history(
-                    last_revision_id):
+            for revid in graph.iter_lefthand_ancestry(
+                    last_revision_id, (_mod_revision.NULL_REVISION,)):
                 real_history.append(revid)
         except errors.RevisionNotPresent:
             pass # Hit a ghost left hand parent
@@ -188,10 +198,11 @@ class RepoReconciler(object):
         """Perform reconciliation.
 
         After reconciliation the following attributes document found issues:
-        inconsistent_parents: The number of revisions in the repository whose
-                              ancestry was being reported incorrectly.
-        garbage_inventories: The number of inventory objects without revisions
-                             that were garbage collected.
+
+        * `inconsistent_parents`: The number of revisions in the repository
+          whose ancestry was being reported incorrectly.
+        * `garbage_inventories`: The number of inventory objects without
+          revisions that were garbage collected.
         """
         operation = cleanup.OperationWithCleanups(self._reconcile)
         self.add_cleanup = operation.add_cleanup
@@ -216,8 +227,6 @@ class RepoReconciler(object):
         only data-loss causing issues (!self.thorough) or all issues
         (self.thorough) are treated as requiring the reweave.
         """
-        # local because needing to know about WeaveFile is a wart we want to hide
-        from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data')
         self.inventory = self.repo.inventories
@@ -495,7 +504,13 @@ class PackReconciler(RepoReconciler):
     #  - lock the names list
     #  - perform a customised pack() that regenerates data as needed
     #  - unlock the names list
-    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+    # https://bugs.launchpad.net/bzr/+bug/154173
+
+    def __init__(self, repo, other=None, thorough=False,
+            canonicalize_chks=False):
+        super(PackReconciler, self).__init__(repo, other=other,
+            thorough=thorough)
+        self.canonicalize_chks = canonicalize_chks
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
@@ -510,8 +525,12 @@ class PackReconciler(RepoReconciler):
         total_inventories = len(list(
             collection.inventory_index.combined_index.iter_all_entries()))
         if len(all_revisions):
-            new_pack =  self.repo._reconcile_pack(collection, packs,
-                ".reconcile", all_revisions, self.pb)
+            if self.canonicalize_chks:
+                reconcile_meth = self.repo._canonicalize_chks_pack
+            else:
+                reconcile_meth = self.repo._reconcile_pack
+            new_pack = reconcile_meth(collection, packs, ".reconcile",
+                all_revisions, self.pb)
             if new_pack is not None:
                 self._discard_and_save(packs)
         else:

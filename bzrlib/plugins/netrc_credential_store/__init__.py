@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Use ~/.netrc as a credential store for authentication.conf."""
+__doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the bzrlib version
 from bzrlib import version_info
@@ -25,12 +25,12 @@ from bzrlib import (
     )
 
 lazy_import.lazy_import(globals(), """
-    import errno
-    import netrc
+import errno
+import netrc
 
-    from bzrlib import (
-        errors,
-        )
+from bzrlib import (
+    errors,
+    )
 """)
 
 

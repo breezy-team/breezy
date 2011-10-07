@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 """Tests for versioning of bzrlib."""
 
 from cStringIO import StringIO
-import os
 import re
 
 from bzrlib import version, workingtree
@@ -47,4 +46,4 @@ class TestBzrlibVersioning(TestCase):
         out = sio.getvalue()
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
         self.assertIsNot(m, None)
-        self.failUnlessExists(m.group(1))
+        self.assertPathExists(m.group(1))

@@ -42,7 +42,7 @@ development mailing list.
 ``send`` without options will create a merge directive, fire up your email
 tool and attach it, ready for you to add the explanatory text bit.
 (See the online help for ``send`` and
-`Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
+`Configuration Settings <../user-reference/index.html#configuration-settings>`_
 in the User Reference for further details on how to configure this.)
 
 Most projects like people to add some explanation to the mail along with

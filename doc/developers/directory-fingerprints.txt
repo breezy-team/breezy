@@ -258,7 +258,7 @@ Open questions
      as stored, or change the sort order for the inventory, or synthesize
      per-directory inventories in memory for hashing.
 
-     However, xml is somewhat redundant and slow to parse/generate; and
+     However, XML is somewhat redundant and slow to parse/generate; and
      reading the whole thing before comparing some sections is only a
      partial win.  It may be a smaller change but we'd be preserving
      things we want to change.

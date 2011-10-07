@@ -20,10 +20,8 @@
 
 
 import os
-import sys
 
 from bzrlib.commands import Command
-from bzrlib.osutils import pathjoin
 
 
 class ExternalCommand(Command):

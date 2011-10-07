@@ -20,9 +20,6 @@ import time
 
 from bzrlib.osutils import local_time_offset, format_date
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    )
 
 
 def create_date_str(timestamp=None, offset=None):
@@ -161,6 +158,11 @@ class VersionInfoBuilder(object):
         if self._working_tree is not None:
             return self._working_tree.last_revision()
         return self._branch.last_revision()
+
+    def _get_revno_str(self, revision_id):
+        numbers = self._branch.revision_id_to_dotted_revno(revision_id)
+        revno_str = '.'.join([str(num) for num in numbers])
+        return revno_str
 
     def generate(self, to_file):
         """Output the version information to the supplied file.

@@ -16,11 +16,17 @@
 
 """Lazily compiled regex objects.
 
-This module defines a class which creates proxy objects for regex compilation.
-This allows overriding re.compile() to return lazily compiled objects.
+This module defines a class which creates proxy objects for regex
+compilation.  This allows overriding re.compile() to return lazily compiled
+objects.  
+
+We do this rather than just providing a new interface so that it will also
+be used by existing Python modules that create regexs.
 """
 
 import re
+
+from bzrlib import errors
 
 
 class LazyRegex(object):
@@ -42,8 +48,8 @@ class LazyRegex(object):
     def __init__(self, args=(), kwargs={}):
         """Create a new proxy object, passing in the args to pass to re.compile
 
-        :param args: The *args to pass to re.compile
-        :param kwargs: The **kwargs to pass to re.compile
+        :param args: The `*args` to pass to re.compile
+        :param kwargs: The `**kwargs` to pass to re.compile
         """
         self._real_regex = None
         self._regex_args = args
@@ -58,7 +64,12 @@ class LazyRegex(object):
 
     def _real_re_compile(self, *args, **kwargs):
         """Thunk over to the original re.compile"""
-        return _real_re_compile(*args, **kwargs)
+        try:
+            return _real_re_compile(*args, **kwargs)
+        except re.error, e:
+            # raise InvalidPattern instead of re.error as this gives a
+            # cleaner message to the user.
+            raise errors.InvalidPattern('"' + args[0] + '" ' +str(e))
 
     def __getattr__(self, attr):
         """Return a member from the proxied regex object.

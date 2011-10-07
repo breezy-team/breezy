@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,11 +46,11 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestCommands(ExternalBase):
+class TestCommands(TestCaseWithTransport):
 
     def test_invalid_commands(self):
         self.run_bzr("pants", retcode=3)
@@ -60,16 +60,16 @@ class TestCommands(ExternalBase):
     def test_revert(self):
         self.run_bzr('init')
 
-        file('hello', 'wt').write('foo')
+        with file('hello', 'wt') as f: f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup hello')
 
-        file('goodbye', 'wt').write('baz')
+        with file('goodbye', 'wt') as f: f.write('baz')
         self.run_bzr('add goodbye')
         self.run_bzr('commit -m setup goodbye')
 
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
+        with file('hello', 'wt') as f: f.write('bar')
+        with file('goodbye', 'wt') as f: f.write('qux')
         self.run_bzr('revert hello')
         self.check_file_contents('hello', 'foo')
         self.check_file_contents('goodbye', 'qux')
@@ -88,7 +88,7 @@ class TestCommands(ExternalBase):
             self.run_bzr('commit -m f')
             os.unlink('symlink')
             self.run_bzr('revert')
-            self.failUnlessExists('symlink')
+            self.assertPathExists('symlink')
             os.unlink('symlink')
             os.symlink('a-different-path', 'symlink')
             self.run_bzr('revert')
@@ -97,7 +97,7 @@ class TestCommands(ExternalBase):
         else:
             self.log("skipping revert symlink tests")
 
-        file('hello', 'wt').write('xyz')
+        with file('hello', 'wt') as f: f.write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
         self.check_file_contents('hello', 'foo')
@@ -109,10 +109,10 @@ class TestCommands(ExternalBase):
 
     def example_branch(test):
         test.run_bzr('init')
-        file('hello', 'wt').write('foo')
+        with file('hello', 'wt') as f: f.write('foo')
         test.run_bzr('add hello')
         test.run_bzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
+        with file('goodbye', 'wt') as f: f.write('baz')
         test.run_bzr('add goodbye')
         test.run_bzr('commit -m setup goodbye')
 
@@ -127,15 +127,15 @@ class TestCommands(ExternalBase):
         os.chdir('..')
         self.run_bzr('branch a b')
         os.chdir('b')
-        open('b', 'wb').write('else\n')
+        with open('b', 'wb') as f: f.write('else\n')
         self.run_bzr('add b')
         self.run_bzr(['commit', '-m', 'added b'])
 
         os.chdir('../a')
         out = self.run_bzr('pull --verbose ../b')[0]
-        self.failIfEqual(out.find('Added Revisions:'), -1)
-        self.failIfEqual(out.find('message:\n  added b'), -1)
-        self.failIfEqual(out.find('added b'), -1)
+        self.assertNotEqual(out.find('Added Revisions:'), -1)
+        self.assertNotEqual(out.find('message:\n  added b'), -1)
+        self.assertNotEqual(out.find('added b'), -1)
 
         # Check that --overwrite --verbose prints out the removed entries
         self.run_bzr('commit -m foo --unchanged')
@@ -145,17 +145,17 @@ class TestCommands(ExternalBase):
         out = self.run_bzr('pull --overwrite --verbose ../a')[0]
 
         remove_loc = out.find('Removed Revisions:')
-        self.failIfEqual(remove_loc, -1)
+        self.assertNotEqual(remove_loc, -1)
         added_loc = out.find('Added Revisions:')
-        self.failIfEqual(added_loc, -1)
+        self.assertNotEqual(added_loc, -1)
 
         removed_message = out.find('message:\n  baz')
-        self.failIfEqual(removed_message, -1)
-        self.failUnless(remove_loc < removed_message < added_loc)
+        self.assertNotEqual(removed_message, -1)
+        self.assertTrue(remove_loc < removed_message < added_loc)
 
         added_message = out.find('message:\n  foo')
-        self.failIfEqual(added_message, -1)
-        self.failUnless(added_loc < added_message)
+        self.assertNotEqual(added_message, -1)
+        self.assertTrue(added_loc < added_message)
 
     def test_locations(self):
         """Using and remembering different locations"""
@@ -195,21 +195,21 @@ class TestCommands(ExternalBase):
         """Create a conflicted tree"""
         os.mkdir('base')
         os.chdir('base')
-        file('hello', 'wb').write("hi world")
-        file('answer', 'wb').write("42")
+        with file('hello', 'wb') as f: f.write("hi world")
+        with file('answer', 'wb') as f: f.write("42")
         self.run_bzr('init')
         self.run_bzr('add')
         self.run_bzr('commit -m base')
         self.run_bzr('branch . ../other')
         self.run_bzr('branch . ../this')
         os.chdir('../other')
-        file('hello', 'wb').write("Hello.")
-        file('answer', 'wb').write("Is anyone there?")
+        with file('hello', 'wb') as f: f.write("Hello.")
+        with file('answer', 'wb') as f: f.write("Is anyone there?")
         self.run_bzr('commit -m other')
         os.chdir('../this')
-        file('hello', 'wb').write("Hello, world")
+        with file('hello', 'wb') as f: f.write("Hello, world")
         self.run_bzr('mv answer question')
-        file('question', 'wb').write("What do you get when you multiply six"
+        with file('question', 'wb') as f: f.write("What do you get when you multiply six"
                                    "times nine?")
         self.run_bzr('commit -m this')
 
@@ -315,37 +315,28 @@ class TestCommands(ExternalBase):
         cmd_name = 'test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-        oldpath = os.environ.get('BZRPATH', None)
-        try:
-            if 'BZRPATH' in os.environ:
-                del os.environ['BZRPATH']
+        self.overrideEnv('BZRPATH', None)
 
-            f = file(cmd_name, 'wb')
-            if sys.platform == 'win32':
-                f.write('@echo off\n')
-            else:
-                f.write('#!/bin/sh\n')
-            # f.write('echo Hello from test-command')
-            f.close()
-            os.chmod(cmd_name, 0755)
+        f = file(cmd_name, 'wb')
+        if sys.platform == 'win32':
+            f.write('@echo off\n')
+        else:
+            f.write('#!/bin/sh\n')
+        # f.write('echo Hello from test-command')
+        f.close()
+        os.chmod(cmd_name, 0755)
 
-            # It should not find the command in the local
-            # directory by default, since it is not in my path
-            self.run_bzr(cmd_name, retcode=3)
+        # It should not find the command in the local
+        # directory by default, since it is not in my path
+        self.run_bzr(cmd_name, retcode=3)
 
-            # Now put it into my path
-            os.environ['BZRPATH'] = '.'
+        # Now put it into my path
+        self.overrideEnv('BZRPATH', '.')
+        self.run_bzr(cmd_name)
 
-            self.run_bzr(cmd_name)
-
-            # Make sure empty path elements are ignored
-            os.environ['BZRPATH'] = os.pathsep
-
-            self.run_bzr(cmd_name, retcode=3)
-
-        finally:
-            if oldpath:
-                os.environ['BZRPATH'] = oldpath
+        # Make sure empty path elements are ignored
+        self.overrideEnv('BZRPATH', os.pathsep)
+        self.run_bzr(cmd_name, retcode=3)
 
 
 def listdir_sorted(dir):
@@ -354,7 +345,7 @@ def listdir_sorted(dir):
     return L
 
 
-class OldTests(ExternalBase):
+class OldTests(TestCaseWithTransport):
     """old tests moved from ./testbzr."""
 
     def test_bzr(self):
@@ -447,7 +438,7 @@ class OldTests(ExternalBase):
 
         progress("file with spaces in name")
         mkdir('sub directory')
-        file('sub directory/file with spaces ', 'wt').write('see how this works\n')
+        with file('sub directory/file with spaces ', 'wt') as f: f.write('see how this works\n')
         self.run_bzr('add .')
         self.run_bzr('diff', retcode=1)
         self.run_bzr('commit -m add-spaces')
@@ -599,7 +590,7 @@ class RemoteTests(object):
         os.mkdir('my-branch')
         os.chdir('my-branch')
         self.run_bzr('init')
-        file('hello', 'wt').write('foo')
+        with file('hello', 'wt') as f: f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup')
 

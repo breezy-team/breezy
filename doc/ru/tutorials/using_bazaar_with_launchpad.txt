@@ -93,7 +93,7 @@ Launchpad: Больше разработки, меньше трений
 -------------------------------------------
 
 Кроме спонсорства разработки `Ubuntu <http://www.ubuntu.com>`_ и `Bazaar
-<http://bazaar-vcs.org>`_, Canonical так же предоставляет Launchpad,
+<http://bazaar.canonical.com>`_, Canonical так же предоставляет Launchpad,
 https://launchpad.net, как бесплатный сервис для сообществ с открытым исходным
 кодом. Launchpad является одной из самых интересных сред совместной разработки
 по следующим причинам:

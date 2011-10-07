@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,10 @@
 from bzrlib import (
     osutils,
     symbol_versioning,
+    i18n,
+    trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib.patches import (
     MalformedHunkHeader,
     MalformedLine,
@@ -54,12 +57,12 @@ class BzrError(StandardError):
     Base class for errors raised by bzrlib.
 
     :cvar internal_error: if True this was probably caused by a bzr bug and
-    should be displayed with a traceback; if False (or absent) this was
-    probably a user or environment error and they don't need the gory details.
-    (That can be overridden by -Derror on the command line.)
+        should be displayed with a traceback; if False (or absent) this was
+        probably a user or environment error and they don't need the gory
+        details.  (That can be overridden by -Derror on the command line.)
 
     :cvar _fmt: Format string to display the error; this is expanded
-    by the instance's dict.
+        by the instance's dict.
     """
 
     internal_error = False
@@ -140,7 +143,11 @@ class BzrError(StandardError):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
-            return fmt
+            i18n.install()
+            unicode_fmt = unicode(fmt) #_fmt strings should be ascii
+            if type(fmt) == unicode:
+                trace.mutter("Unicode strings in error.fmt are deprecated")
+            return gettext(unicode_fmt)
         fmt = getattr(self, '__doc__', None)
         if fmt is not None:
             symbol_versioning.warn("%s uses its docstring as a format, "
@@ -304,7 +311,7 @@ class ReservedId(BzrError):
 class RootMissing(InternalBzrError):
 
     _fmt = ("The root entry of a tree must be the first entry supplied to "
-        "record_entry_contents.")
+        "the commit builder.")
 
 
 class NoPublicBranch(BzrError):
@@ -621,7 +628,7 @@ class UnsupportedProtocol(PathError):
 
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
 
-    def __init__(self, url, extra):
+    def __init__(self, url, extra=""):
         PathError.__init__(self, url, extra=extra)
 
 
@@ -680,7 +687,7 @@ class PathNotChild(PathError):
 
     _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'
 
-    internal_error = True
+    internal_error = False
 
     def __init__(self, path, base, extra=None):
         BzrError.__init__(self)
@@ -713,6 +720,9 @@ class NotBranchError(PathError):
        self.bzrdir = bzrdir
        PathError.__init__(self, path=path)
 
+    def __repr__(self):
+        return '<%s %r>' % (self.__class__.__name__, self.__dict__)
+
     def _format(self):
         # XXX: Ideally self.detail would be a property, but Exceptions in
         # Python 2.4 have to be old-style classes so properties don't work.
@@ -722,6 +732,15 @@ class NotBranchError(PathError):
                 try:
                     self.bzrdir.open_repository()
                 except NoRepositoryPresent:
+                    self.detail = ''
+                except Exception:
+                    # Just ignore unexpected errors.  Raising arbitrary errors
+                    # during str(err) can provoke strange bugs.  Concretely
+                    # Launchpad's codehosting managed to raise NotBranchError
+                    # here, and then get stuck in an infinite loop/recursion
+                    # trying to str() that error.  All this error really cares
+                    # about that there's no working repository there, and if
+                    # open_repository() fails, there probably isn't.
                     self.detail = ''
                 else:
                     self.detail = ': location is a repository'
@@ -782,6 +801,8 @@ class FileInWrongBranch(BzrError):
 
     _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
+    # use PathNotChild instead
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 3, 0)))
     def __init__(self, branch, path):
         BzrError.__init__(self)
         self.branch = branch
@@ -850,9 +871,9 @@ class AlreadyVersionedError(BzrError):
         """Construct a new AlreadyVersionedError.
 
         :param path: This is the path which is versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to not be versioned.
+            which could explain why this is expected to not be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -871,9 +892,9 @@ class NotVersionedError(BzrError):
         """Construct a new NotVersionedError.
 
         :param path: This is the path which is not versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to be versioned.
+            which could explain why this is expected to be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -947,11 +968,8 @@ class LockError(InternalBzrError):
     # original exception is available as e.original_error
     #
     # New code should prefer to raise specific subclasses
-    def __init__(self, message):
-        # Python 2.5 uses a slot for StandardError.message,
-        # so use a different variable name.  We now work around this in
-        # BzrError.__str__, but this member name is kept for compatability.
-        self.msg = message
+    def __init__(self, msg):
+        self.msg = msg
 
 
 class LockActive(LockError):
@@ -1041,8 +1059,6 @@ class UnlockableTransport(LockError):
 class LockContention(LockError):
 
     _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
-    # TODO: show full url for lock, combining the transport and relative
-    # bits?
 
     internal_error = False
 
@@ -1073,6 +1089,18 @@ class LockBreakMismatch(LockError):
         self.lock = lock
         self.holder = holder
         self.target = target
+
+
+class LockCorrupt(LockError):
+
+    _fmt = ("Lock is apparently held, but corrupted: %(corruption_info)s\n"
+            "Use 'bzr break-lock' to clear it")
+
+    internal_error = False
+
+    def __init__(self, corruption_info, file_data=None):
+        self.corruption_info = corruption_info
+        self.file_data = file_data
 
 
 class LockNotHeld(LockError):
@@ -1117,6 +1145,15 @@ class CannotCommitSelectedFileMerge(BzrError):
     def __init__(self, files):
         files_str = ', '.join(files)
         BzrError.__init__(self, files=files, files_str=files_str)
+
+
+class ExcludesUnsupported(BzrError):
+
+    _fmt = ('Excluding paths during commit is not supported by '
+            'repository at %(repository)r.')
+
+    def __init__(self, repository):
+        BzrError.__init__(self, repository=repository)
 
 
 class BadCommitMessageEncoding(BzrError):
@@ -1179,11 +1216,12 @@ class NoSuchRevisionInTree(NoSuchRevision):
 
 class InvalidRevisionSpec(BzrError):
 
-    _fmt = ("Requested revision: %(spec)r does not exist in branch:"
-            " %(branch)s%(extra)s")
+    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
+            " %(branch_url)s%(extra)s")
 
     def __init__(self, spec, branch, extra=None):
         BzrError.__init__(self, branch=branch, spec=spec)
+        self.branch_url = getattr(branch, 'user_url', str(branch))
         if extra:
             self.extra = '\n' + str(extra)
         else:
@@ -1297,12 +1335,13 @@ class UnlistableBranch(BzrError):
 class BoundBranchOutOfDate(BzrError):
 
     _fmt = ("Bound branch %(branch)s is out of date with master branch"
-            " %(master)s.")
+            " %(master)s.%(extra_help)s")
 
     def __init__(self, branch, master):
         BzrError.__init__(self)
         self.branch = branch
         self.master = master
+        self.extra_help = ''
 
 
 class CommitToDoubleBoundBranch(BzrError):
@@ -1379,12 +1418,12 @@ class WeaveFormatError(WeaveError):
 
 class WeaveParentMismatch(WeaveError):
 
-    _fmt = "Parents are mismatched between two revisions. %(message)s"
+    _fmt = "Parents are mismatched between two revisions. %(msg)s"
 
 
 class WeaveInvalidChecksum(WeaveError):
 
-    _fmt = "Text did not match it's checksum: %(message)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class WeaveTextDiffers(WeaveError):
@@ -1438,7 +1477,7 @@ class RevisionAlreadyPresent(VersionedFileError):
 
 class VersionedFileInvalidChecksum(VersionedFileError):
 
-    _fmt = "Text did not match its checksum: %(message)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class KnitError(InternalBzrError):
@@ -1683,10 +1722,16 @@ class InvalidRange(TransportError):
 
 class InvalidHttpResponse(TransportError):
 
-    _fmt = "Invalid http response for %(path)s: %(msg)s"
+    _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
 
     def __init__(self, path, msg, orig_error=None):
         self.path = path
+        if orig_error is None:
+            orig_error = ''
+        else:
+            # This is reached for obscure and unusual errors so we want to
+            # preserve as much info as possible to ease debug.
+            orig_error = ': %r' % (orig_error,)
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
@@ -1696,6 +1741,19 @@ class InvalidHttpRange(InvalidHttpResponse):
 
     def __init__(self, path, range, msg):
         self.range = range
+        InvalidHttpResponse.__init__(self, path, msg)
+
+
+class HttpBoundaryMissing(InvalidHttpResponse):
+    """A multipart response ends with no boundary marker.
+
+    This is a special case caused by buggy proxies, described in
+    <https://bugs.launchpad.net/bzr/+bug/198646>.
+    """
+
+    _fmt = "HTTP MIME Boundary missing for %(path)s: %(msg)s"
+
+    def __init__(self, path, msg):
         InvalidHttpResponse.__init__(self, path, msg)
 
 
@@ -1732,14 +1790,31 @@ class ConflictsInTree(BzrError):
     _fmt = "Working tree has conflicts."
 
 
+class ConfigContentError(BzrError):
+
+    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
+
+    def __init__(self, filename):
+        BzrError.__init__(self)
+        self.filename = filename
+
+
 class ParseConfigError(BzrError):
 
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
     def __init__(self, errors, filename):
-        if filename is None:
-            filename = ""
-        message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.msg for e in errors)))
-        BzrError.__init__(self, message)
+        BzrError.__init__(self)
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
+
+
+class ConfigOptionValueError(BzrError):
+
+    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
 
 
 class NoEmailInUsername(BzrError):
@@ -1753,10 +1828,34 @@ class NoEmailInUsername(BzrError):
 
 class SigningFailed(BzrError):
 
-    _fmt = 'Failed to gpg sign data with command "%(command_line)s"'
+    _fmt = 'Failed to GPG sign data with command "%(command_line)s"'
 
     def __init__(self, command_line):
         BzrError.__init__(self, command_line=command_line)
+
+
+class SignatureVerificationFailed(BzrError):
+
+    _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)
+
+
+class DependencyNotPresent(BzrError):
+
+    _fmt = 'Unable to import library "%(library)s": %(error)s'
+
+    def __init__(self, library, error):
+        BzrError.__init__(self, library=library, error=error)
+
+
+class GpgmeNotInstalled(DependencyNotPresent):
+
+    _fmt = 'python-gpgme is not installed, it is needed to verify signatures'
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'gpgme', error)
 
 
 class WorkingTreeNotRevision(BzrError):
@@ -1924,17 +2023,29 @@ class CantMoveRoot(BzrError):
     _fmt = "Moving the root directory is not supported at this time"
 
 
+class TransformRenameFailed(BzrError):
+
+    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
+
+    def __init__(self, from_path, to_path, why, errno):
+        self.from_path = from_path
+        self.to_path = to_path
+        self.why = why
+        self.errno = errno
+
+
 class BzrMoveFailedError(BzrError):
 
-    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not move %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path='', to_path='', extra=None):
         from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
-            self.extra = ': ' + str(extra)
+            self.extra, self._has_extra = extra, ': '
         else:
-            self.extra = ''
+            self.extra = self._has_extra = ''
 
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
@@ -1961,10 +2072,12 @@ class BzrMoveFailedError(BzrError):
 
 class BzrRenameFailedError(BzrMoveFailedError):
 
-    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not rename %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
 
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
@@ -1974,6 +2087,8 @@ class BzrRemoveChangedFilesError(BzrError):
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
+        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 3, 0)) %
+            "BzrRemoveChangedFilesError", DeprecationWarning, stacklevel=2)
         BzrError.__init__(self)
         self.changes_as_text = tree_delta.get_changes_as_text()
         #self.paths_as_string = '\n'.join(changed_files)
@@ -1987,7 +2102,7 @@ class BzrBadParameterNotString(BzrBadParameter):
 
 class BzrBadParameterMissing(BzrBadParameter):
 
-    _fmt = "Parameter $(param)s is required but not present."
+    _fmt = "Parameter %(param)s is required but not present."
 
 
 class BzrBadParameterUnicode(BzrBadParameter):
@@ -1999,14 +2114,6 @@ class BzrBadParameterUnicode(BzrBadParameter):
 class BzrBadParameterContainsNewline(BzrBadParameter):
 
     _fmt = "Parameter %(param)s contains a newline."
-
-
-class DependencyNotPresent(BzrError):
-
-    _fmt = 'Unable to import library "%(library)s": %(error)s'
-
-    def __init__(self, library, error):
-        BzrError.__init__(self, library=library, error=error)
 
 
 class ParamikoNotPresent(DependencyNotPresent):
@@ -2175,7 +2282,7 @@ class CorruptRepository(BzrError):
 
     def __init__(self, repo):
         BzrError.__init__(self)
-        self.repo_path = repo.bzrdir.root_transport.base
+        self.repo_path = repo.user_url
 
 
 class InconsistentDelta(BzrError):
@@ -2247,6 +2354,14 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """Raised when a commit is attempting to set a non-ascii revision id
        but cant.
     """
+
+
+class GhostTagsNotSupported(BzrError):
+
+    _fmt = "Ghost tags not supported by format %(format)r."
+
+    def __init__(self, format):
+        self.format = format
 
 
 class BinaryFile(BzrError):
@@ -2617,11 +2732,12 @@ class UnknownErrorFromSmartServer(BzrError):
 
     This is distinct from ErrorFromSmartServer so that it is possible to
     distinguish between the following two cases:
-      - ErrorFromSmartServer was uncaught.  This is logic error in the client
-        and so should provoke a traceback to the user.
-      - ErrorFromSmartServer was caught but its error_tuple could not be
-        translated.  This is probably because the server sent us garbage, and
-        should not provoke a traceback.
+
+    - ErrorFromSmartServer was uncaught.  This is logic error in the client
+      and so should provoke a traceback to the user.
+    - ErrorFromSmartServer was caught but its error_tuple could not be
+      translated.  This is probably because the server sent us garbage, and
+      should not provoke a traceback.
     """
 
     _fmt = "Server sent an unexpected error: %(error_tuple)r"
@@ -2683,7 +2799,7 @@ class DuplicateRecordNameError(ContainerError):
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
-        self.name = name
+        self.name = name.decode("utf-8")
 
 
 class NoDestinationAddress(InternalBzrError):
@@ -2753,7 +2869,7 @@ class BzrDirError(BzrError):
 
     def __init__(self, bzrdir):
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+        display_url = urlutils.unescape_for_display(bzrdir.user_url,
                                                     'ascii')
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
@@ -2833,9 +2949,18 @@ class UncommittedChanges(BzrError):
         else:
             more = ' ' + more
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(
-            tree.bzrdir.root_transport.base, 'ascii')
+        user_url = getattr(tree, "user_url", None)
+        if user_url is None:
+            display_url = str(tree)
+        else:
+            display_url = urlutils.unescape_for_display(user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
+
+
+class ShelvedChanges(UncommittedChanges):
+
+    _fmt = ('Working tree "%(display_url)s" has shelved changes'
+            ' (See bzr shelve --list).%(more)s')
 
 
 class MissingTemplateVariable(BzrError):
@@ -2910,6 +3035,22 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchConfig(BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        BzrError.__init__(self, option_name=option_name)
 
 
 class NoSuchAlias(BzrError):
@@ -2999,6 +3140,18 @@ class TipChangeRejected(BzrError):
 class ShelfCorrupt(BzrError):
 
     _fmt = "Shelf corrupt."
+
+
+class DecompressCorruption(BzrError):
+
+    _fmt = "Corruption while decompressing repository file%(orig_error)s"
+
+    def __init__(self, orig_error=None):
+        if orig_error is not None:
+            self.orig_error = ", %s" % (orig_error,)
+        else:
+            self.orig_error = ""
+        BzrError.__init__(self)
 
 
 class NoSuchShelfId(BzrError):
@@ -3124,3 +3277,75 @@ class FileTimestampUnavailable(BzrError):
 
     def __init__(self, path):
         self.path = path
+
+
+class NoColocatedBranchSupport(BzrError):
+
+    _fmt = ("%(bzrdir)r does not support co-located branches.")
+
+    def __init__(self, bzrdir):
+        self.bzrdir = bzrdir
+
+
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. bzr whoami "Your Name <name@example.com>"')
+
+
+class InvalidPattern(BzrError):
+
+    _fmt = ('Invalid pattern(s) found. %(msg)s')
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class RecursiveBind(BzrError):
+
+    _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '
+        'Please use `bzr unbind` to fix.')
+
+    def __init__(self, branch_url):
+        self.branch_url = branch_url
+
+
+# FIXME: I would prefer to define the config related exception classes in
+# config.py but the lazy import mechanism proscribes this -- vila 20101222
+class OptionExpansionLoop(BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(BzrError):
+
+    _fmt = 'Option %(name)s is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string
+
+
+class NoCompatibleInter(BzrError):
+
+    _fmt = ('No compatible object available for operations from %(source)r '
+            'to %(target)r.')
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+
+
+class HpssVfsRequestNotAllowed(BzrError):
+
+    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
+            "%(method)s, %(arguments)s.")
+
+    def __init__(self, method, arguments):
+        self.method = method
+        self.arguments = arguments

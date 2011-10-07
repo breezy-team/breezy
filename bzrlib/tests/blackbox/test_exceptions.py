@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,25 +16,22 @@
 
 """Tests for display of exceptions."""
 
-from cStringIO import StringIO
 import os
-import sys
+import re
 
 from bzrlib import (
     bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     repository,
     tests,
-    trace,
     )
-
-from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.errors import NotBranchError
+from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 
 
-class TestExceptionReporting(TestCase):
+class TestExceptionReporting(tests.TestCaseInTempDir):
 
     def test_exception_exitcode(self):
         # we must use a subprocess, because the normal in-memory mechanism
@@ -46,6 +43,41 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err,
                 r'exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'Bazaar has encountered an internal error')
+
+    def test_undecodable_argv(self):
+        """A user error must be reported if argv is not in the locale encoding
+
+        A subprocess with an environment ascii-only setting is used so the test
+        can run without worrying about the locale the test suite is using.
+        """
+        if os.name != "posix":
+            raise tests.TestNotApplicable("Needs system beholden to C locales")
+        out, err = self.run_bzr_subprocess(["\xa0"],
+            env_changes={"LANG": "C", "LC_ALL": "C"},
+            universal_newlines=True,
+            retcode=errors.EXIT_ERROR)
+        self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported",
+            flags=re.MULTILINE)
+        self.assertEquals(out, "")
+
+
+class TestOptParseBugHandling(tests.TestCase):
+    "Test that we handle http://bugs.python.org/issue2931"
+
+    def test_nonascii_optparse(self):
+        """Reasonable error raised when non-ascii in option name"""
+        error_re = 'Only ASCII permitted in option names'
+        out = self.run_bzr_error([error_re], ['st',u'-\xe4'])
+
+
+class TestObsoleteRepoFormat(RepositoryFormat2a):
+
+    @classmethod
+    def get_format_string(cls):
+        return "Test Obsolete Repository Format"
+
+    def is_deprecated(self):
+        return True
 
 
 class TestDeprecationWarning(tests.TestCaseWithTransport):
@@ -59,6 +91,16 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestDeprecationWarning, self).setUp()
+        self.addCleanup(repository.format_registry.remove,
+            TestObsoleteRepoFormat)
+        repository.format_registry.register(TestObsoleteRepoFormat)
+        self.addCleanup(controldir.format_registry.remove, "testobsolete")
+        bzrdir.register_metadir(controldir.format_registry, "testobsolete",
+            "bzrlib.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
+            branch_format='bzrlib.branch.BzrBranchFormat7',
+            tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
+            deprecated=True,
+            help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()
 
     def enable_deprecation_warning(self, repo=None):
@@ -71,7 +113,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def make_obsolete_repo(self, path):
         # We don't want the deprecation raising during the repo creation
-        tree = self.make_branch_and_tree(path, format=bzrdir.BzrDirFormat5())
+        format = controldir.format_registry.make_bzrdir("testobsolete")
+        tree = self.make_branch_and_tree(path, format=format)
         return tree
 
     def check_warning(self, present):
@@ -79,7 +122,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
             check = self.assertContainsRe
         else:
             check = self.assertNotContainsRe
-        check(self._get_log(keep_log_file=True), 'WARNING.*bzr upgrade')
+        check(self.get_log(), 'WARNING.*bzr upgrade')
 
     def test_repository_deprecation_warning(self):
         """Old formats give a warning"""

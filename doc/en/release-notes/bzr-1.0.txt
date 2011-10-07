@@ -1,0 +1,429 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.0
+#######
+
+:Released: 2007-12-14
+
+Documentation
+*************
+
+* More improvements and fixes to the User Guide.  (Ian Clatworthy)
+
+* Add information on cherrypicking/rebasing to the User Guide.
+  (Ian Clatworthy)
+
+* Improve bug tracker integration documentation. (Ian Clatworthy)
+
+* Minor edits to ``Bazaar in five minutes`` from David Roberts and
+  to the rebasing section of the User Guide from Aaron Bentley.
+  (Ian Clatworthy)
+
+
+bzr 1.0rc3
+##########
+
+:Released: 2007-12-11
+
+Changes
+*******
+
+* If a traceback occurs, users are now asked to report the bug
+  through Launchpad (https://bugs.launchpad.net/bzr/), rather than
+  by mail to the mailing list.
+  (Martin Pool)
+
+Bugfixes
+********
+
+* Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
+
+* Give more feedback during long HTTP downloads by making readv deliver data
+  as it arrives for urllib, and issue more requests for pycurl. High latency
+  networks are better handled by urllib, the pycurl implementation give more
+  feedback but also incur more latency.
+  (Vincent Ladeuil, #173010)
+
+* Implement _make_parents_provider on RemoteRepository, allowing generating
+  bundles against branches on a smart server.  (Andrew Bennetts, #147836)
+
+Documentation
+*************
+
+* Improved user guide.  (Ian Clatworthy)
+
+* The single-page quick reference guide is now available as a PDF.
+  (Ian Clatworthy)
+
+Internals
+*********
+
+* readv urllib HTTP implementation is now a real iterator above the
+  underlying socket and deliver data as soon as it arrives. 'get' still
+  wraps its output in a StringIO.
+  (Vincent Ladeuil)
+
+
+bzr 1.0rc2
+##########
+
+:Released: 2007-12-07
+
+Improvements
+************
+
+* Added a --coverage option to selftest. (Andrew Bennetts)
+
+* Annotate merge (merge-type=weave) now supports cherrypicking.
+  (Aaron Bentley)
+
+* ``bzr commit`` now doesn't print the revision number twice. (Matt
+  Nordhoff, #172612)
+
+* New configuration option ``bugtracker_<tracker_abbrevation>_url`` to
+  define locations of bug trackers that are not directly supported by
+  bzr or a plugin. The URL will be treated as a template and ``{id}``
+  placeholders will be replaced by specific bug IDs.  (Lukáš Lalinský)
+
+* Support logging single merge revisions with short and line log formatters.
+  (Kent Gibson)
+
+* User Guide enhanced with suggested readability improvements from
+  Matt Revell and corrections from John Arbash Meinel. (Ian Clatworthy)
+
+* Quick Start Guide renamed to Quick Start Card, moved down in
+  the catalog, provided in pdf and png format and updated to refer
+  to ``send`` instead of ``bundle``. (Ian Clatworthy, #165080)
+
+* ``switch`` can now be used on heavyweight checkouts as well as
+  lightweight ones. After switching a heavyweight checkout, the
+  local branch is a mirror/cache of the new bound branch and
+  uncommitted changes in the working tree are merged. As a safety
+  check, if there are local commits in a checkout which have not
+  been committed to the previously bound branch, then ``switch``
+  fails unless the ``--force`` option is given. This option is
+  now also required if the branch a lightweight checkout is pointing
+  to has been moved. (Ian Clatworthy)
+
+Internals
+*********
+
+* New -Dhttp debug option reports HTTP connections, requests and responses.
+  (Vincent Ladeuil)
+
+* New -Dmerge debug option, which emits merge plans for merge-type=weave.
+
+Bugfixes
+********
+
+* Better error message when running ``bzr cat`` on a non-existant branch.
+  (Lukáš Lalinský, #133782)
+
+* Catch OSError 17 (file exists) in final phase of tree transform and show
+  filename to user.
+  (Alexander Belchenko, #111758)
+
+* Catch ShortReadvErrors while using pycurl. Also make readv more robust by
+  allowing multiple GET requests to be issued if too many ranges are
+  required.
+  (Vincent Ladeuil, #172701)
+
+* Check for missing basis texts when fetching from packs to packs.
+  (John Arbash Meinel, #165290)
+
+* Fall back to showing e-mail in ``log --short/--line`` if the
+  committer/author has only e-mail. (Lukáš Lalinský, #157026)
+
+API Breaks
+**********
+
+* Deprecate not passing a ``location`` argument to commit reporters'
+  ``started`` methods. (Matt Nordhoff)
+
+
+bzr 1.0rc1
+##########
+
+:Released: 2007-11-30
+
+Notes When Upgrading
+********************
+
+* The default repository format is now ``pack-0.92``.  This
+  default is used when creating new repositories with ``init`` and
+  ``init-repo``, and when branching over bzr+ssh or bzr+hpss.
+  (See https://bugs.launchpad.net/bugs/164626)
+
+  This format can be read and written by Bazaar 0.92 and later, and
+  data can be transferred to and from older formats.
+
+  To upgrade, please reconcile your repository (``bzr reconcile``), and then
+  upgrade (``bzr upgrade``).
+
+  ``pack-0.92`` offers substantially better scaling and performance than the
+  previous knits format. Some operations are slower where the code already
+  had bad scaling characteristics under knits, the pack format makes such
+  operations more visible as part of being more scalable overall. We will
+  correct such operations over the coming releases and encourage the filing
+  of bugs on any operation which you observe to be slower in a packs
+  repository. One particular case that we do not intend to fix is pulling
+  data from a pack repository into a knit repository over a high latency
+  link;  downgrading such data requires reinsertion of the file texts, and
+  this is a classic space/time tradeoff. The current implementation is
+  conservative on memory usage because we need to support converting data
+  from any tree without problems.
+  (Robert Collins, Martin Pool, #164476)
+
+Changes
+*******
+
+* Disable detection of plink.exe as possible SSH vendor. Plink vendor
+  still available if user selects it explicitly with BZR_SSH environment
+  variable. (Alexander Belchenko, workaround for bug #107593)
+
+* The pack format is now accessible as "pack-0.92", or "pack-0.92-subtree"
+  to enable the subtree functions (for example, for bzr-svn).
+  (Martin Pool)
+
+Features
+********
+
+* New ``authentication.conf`` file holding the password or other credentials
+  for remote servers. This can be used for SSH, SFTP, SMTP and other
+  supported transports.
+  (Vincent Ladeuil)
+
+* New rich-root and rich-root-pack formats, recording the same data about
+  tree roots that's recorded for all other directories.
+  (Aaron Bentley, #164639)
+
+* ``pack-0.92`` repositories can now be reconciled.
+  (Robert Collins, #154173)
+
+* ``switch`` command added for changing the branch a lightweight checkout
+  is associated with and updating the tree to reflect the latest content
+  accordingly. This command was previously part of the BzrTools plug-in.
+  (Ian Clatworthy, Aaron Bentley, David Allouche)
+
+* ``reconfigure`` command can now convert branches, trees, or checkouts to
+  lightweight checkouts.  (Aaron Bentley)
+
+Performance
+***********
+
+* Commit updates the state of the working tree via a delta rather than
+  supplying entirely new basis trees. For commit of a single specified file
+  this reduces the wall clock time for commit by roughly a 30%.
+  (Robert Collins, Martin Pool)
+
+* Commit with many automatically found deleted paths no longer performs
+  linear scanning for the children of those paths during inventory
+  iteration. This should fix commit performance blowing out when many such
+  paths occur during commit. (Robert Collins, #156491)
+
+* Fetch with pack repositories will no longer read the entire history graph.
+  (Robert Collins, #88319)
+
+* Revert takes out an appropriate lock when reverting to a basis tree, and
+  does not read the basis inventory twice. (Robert Collins)
+
+* Diff does not require an inventory to be generated on dirstate trees.
+  (Aaron Bentley, #149254)
+
+* New annotate merge (--merge-type=weave) implementation is fast on
+  versionedfiles withough cached annotations, e.g. pack-0.92.
+  (Aaron Bentley)
+
+Improvements
+************
+
+* ``bzr merge`` now warns when it encounters a criss-cross merge.
+  (Aaron Bentley)
+
+* ``bzr send`` now doesn't require the target e-mail address to be
+  specified on the command line if an interactive e-mail client is used.
+  (Lukáš Lalinský)
+
+* ``bzr tags`` now prints the revision number for each tag, instead of
+  the revision id, unless --show-ids is passed. In addition, tags can be
+  sorted chronologically instead of lexicographically with --sort=time.
+  (Adeodato Simó, #120231)
+
+* Windows standalone version of bzr is able to load system-wide plugins from
+  "plugins" subdirectory in installation directory. In addition standalone
+  installer write to the registry (HKLM\SOFTWARE\Bazaar) useful info
+  about paths and bzr version. (Alexander Belchenko, #129298)
+
+Documentation
+*************
+
+Bug Fixes
+*********
+
+* A progress bar has been added for knitpack -> knitpack fetching.
+  (Robert Collins, #157789, #159147)
+
+* Branching from a branch via smart server now preserves the repository
+  format. (Andrew Bennetts,  #164626)
+
+* ``commit`` is now able to invoke an external editor in a non-ascii
+  directory. (Daniel Watkins, #84043)
+
+* Catch connection errors for FTP.
+  (Vincent Ladeuil, #164567)
+
+* ``check`` no longer reports spurious unreferenced text versions.
+  (Robert Collins, John A Meinel, #162931, #165071)
+
+* Conflicts are now resolved recursively by ``revert``.
+  (Aaron Bentley, #102739)
+
+* Detect invalid transport reuse attempts by catching invalid URLs.
+  (Vincent Ladeuil, #161819)
+
+* Deleting a file without removing it shows a correct diff, not a traceback.
+  (Aaron Bentley)
+
+* Do no use timeout in HttpServer anymore.
+  (Vincent Ladeuil, #158972).
+
+* Don't catch the exceptions related to the HTTP pipeline status before
+  retrying an HTTP request or some programming errors may be masked.
+  (Vincent Ladeuil, #160012)
+
+* Fix ``bzr rm`` to not delete modified and ignored files.
+  (Lukáš Lalinský, #172598)
+
+* Fix exception when revisionspec contains merge revisons but log
+  formatter doesn't support merge revisions. (Kent Gibson, #148908)
+
+* Fix exception when ScopeReplacer is assigned to before any members have
+  been retrieved.  (Aaron Bentley)
+
+* Fix multiple connections during checkout --lightweight.
+  (Vincent Ladeuil, #159150)
+
+* Fix possible error in insert_data_stream when copying between
+  pack repositories over bzr+ssh or bzr+http.
+  KnitVersionedFile.get_data_stream now makes sure that requested
+  compression parents are sent before any delta hunks that depend
+  on them.
+  (Martin Pool, #164637)
+
+* Fix typo in limiting offsets coalescing for HTTP, leading to
+  whole files being downloaded instead of parts.
+  (Vincent Ladeuil, #165061)
+
+* FTP server errors don't error in the error handling code.
+  (Robert Collins, #161240)
+
+* Give a clearer message when a pull fails because the source needs
+  to be reconciled.
+  (Martin Pool, #164443)
+
+* It is clearer when a plugin cannot be loaded because of its name, and a
+  suggestion for an acceptable name is given. (Daniel Watkins, #103023)
+
+* Leave port as None in transport objects if user doesn't
+  specify a port in URLs.
+  (vincent Ladeuil, #150860)
+
+* Make sure Repository.fetch(self) is properly a no-op for all
+  Repository implementations. (John Arbash Meinel, #158333)
+
+* Mark .bzr directories as "hidden" on Windows.
+  (Alexander Belchenko, #71147)
+
+* ``merge --uncommitted`` can now operate on a single file.
+  (Aaron Bentley, Lukáš Lalinský, #136890)
+
+* Obsolete packs are now cleaned up by pack and autopack operations.
+  (Robert Collins, #153789)
+
+* Operations pulling data from a smart server where the underlying
+  repositories are not both annotated/both unannotated will now work.
+  (Robert Collins, #165304).
+
+* Reconcile now shows progress bars. (Robert Collins, #159351)
+
+* ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
+  properly. (John Arbash Meinel, #162486)
+
+* Removing an already-removed file reports the file does not exist. (Daniel
+  Watkins, #152811)
+
+* Rename on Windows is able to change filename case.
+  (Alexander Belchenko, #77740)
+
+* Return error instead of a traceback for ``bzr log -r0``.
+  (Kent Gibson, #133751)
+
+* Return error instead of a traceback when bzr is unable to create
+  symlink on some platforms (e.g. on Windows).
+  (Alexander Belchenko, workaround for #81689)
+
+* Revert doesn't crash when restoring a single file from a deleted
+  directory. (Aaron Bentley)
+
+* Stderr output via logging mechanism now goes through encoded wrapper
+  and no more uses utf-8, but terminal encoding instead. So all unicode
+  strings now should be readable in non-utf-8 terminal.
+  (Alexander Belchenko, #54173)
+
+* The error message when ``move --after`` should be used makes how to do so
+  clearer. (Daniel Watkins, #85237)
+
+* Unicode-safe output from ``bzr info``. The output will be encoded
+  using the terminal encoding and unrepresentable characters will be
+  replaced by '?'. (Lukáš Lalinský, #151844)
+
+* Working trees are no longer created when pushing into a local no-trees
+  repo. (Daniel Watkins, #50582)
+
+* Upgrade util/configobj to version 4.4.0.
+  (Vincent Ladeuil, #151208).
+
+* Wrap medusa FTP test server as an FTPServer feature.
+  (Vincent Ladeuil, #157752)
+
+API Breaks
+**********
+
+* ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
+  during very long time. (Alexander Belchenko)
+
+* The return value of
+  ``VersionedFile.iter_lines_added_or_present_in_versions`` has been
+  changed. Previously it was an iterator of lines, now it is an iterator of
+  (line, version_id) tuples. This change has been made to aid reconcile and
+  fetch operations. (Robert Collins)
+
+* ``bzrlib.repository.get_versioned_file_checker`` is now private.
+  (Robert Collins)
+
+* The Repository format registry default has been removed; it was previously
+  obsoleted by the bzrdir format default, which implies a default repository
+  format.
+  (Martin Pool)
+
+Internals
+*********
+
+* Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
+  ``bzrlib.pack``.  These classes provide more convenient APIs for generating
+  and parsing containers from streams rather than from files.  (Andrew
+  Bennetts)
+
+* New module ``lru_cache`` providing a cache for use by tasks that need
+  semi-random access to large amounts of data. (John A Meinel)
+
+* InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

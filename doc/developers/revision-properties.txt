@@ -28,7 +28,7 @@ Well-known properties
 At the moment, three standardized revision properties are recognized and used
 by bzrlib:
 
- * ``authors`` - Authors of the change. This value is a "\n" separated set
+ * ``authors`` - Authors of the change. This value is a "\\n" separated set
    of values in the same format as the committer-id. This property can be
    set by passing a list to the keyword argument ``authors`` of the function
    ``MutableTree.commit``.
@@ -39,7 +39,7 @@ by bzrlib:
    or manually set by ``bzr nick``. The value is set automatically in
    ``MutableTree.commit``.
  * ``bugs`` - A list of bug URLs and their statuses. The list is separated
-   by the new-line character (\n) and each entry is in format
+   by the new-line character (\\n) and each entry is in format
    '<URL> <status>'. Currently, bzrlib uses only status 'fixed'. See
    `Bug Trackers`_ for more details about using this feature.
 

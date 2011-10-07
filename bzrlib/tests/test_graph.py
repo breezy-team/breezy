@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,10 @@
 from bzrlib import (
     errors,
     graph as _mod_graph,
-    symbol_versioning,
     tests,
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
-from bzrlib.symbol_versioning import deprecated_in
 
 
 # Ancestry 1:
@@ -426,10 +424,40 @@ class InstrumentedParentsProvider(object):
     def __init__(self, parents_provider):
         self.calls = []
         self._real_parents_provider = parents_provider
+        get_cached = getattr(parents_provider, 'get_cached_parent_map', None)
+        if get_cached is not None:
+            # Only expose the underlying 'get_cached_parent_map' function if
+            # the wrapped provider has it.
+            self.get_cached_parent_map = self._get_cached_parent_map
 
     def get_parent_map(self, nodes):
         self.calls.extend(nodes)
         return self._real_parents_provider.get_parent_map(nodes)
+
+    def _get_cached_parent_map(self, nodes):
+        self.calls.append(('cached', sorted(nodes)))
+        return self._real_parents_provider.get_cached_parent_map(nodes)
+
+
+class SharedInstrumentedParentsProvider(object):
+
+    def __init__(self, parents_provider, calls, info):
+        self.calls = calls
+        self.info = info
+        self._real_parents_provider = parents_provider
+        get_cached = getattr(parents_provider, 'get_cached_parent_map', None)
+        if get_cached is not None:
+            # Only expose the underlying 'get_cached_parent_map' function if
+            # the wrapped provider has it.
+            self.get_cached_parent_map = self._get_cached_parent_map
+
+    def get_parent_map(self, nodes):
+        self.calls.append((self.info, sorted(nodes)))
+        return self._real_parents_provider.get_parent_map(nodes)
+
+    def _get_cached_parent_map(self, nodes):
+        self.calls.append((self.info, 'cached', sorted(nodes)))
+        return self._real_parents_provider.get_cached_parent_map(nodes)
 
 
 class TestGraphBase(tests.TestCase):
@@ -674,45 +702,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = self.make_graph(shortcut_extra_root)
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
-
-
-    def test_stacked_parents_provider(self):
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
-                         stacked.get_parent_map(['rev1', 'rev2']))
-        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
-                         stacked.get_parent_map(['rev2', 'rev1']))
-        self.assertEqual({'rev2':['rev3']},
-                         stacked.get_parent_map(['rev2', 'rev2']))
-        self.assertEqual({'rev1':['rev4']},
-                         stacked.get_parent_map(['rev1', 'rev1']))
-    
-    def test_stacked_parents_provider_overlapping(self):
-        # rev2 is availible in both providers.
-        # 1
-        # |
-        # 2
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
-        parents2 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
-        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({'rev2': ['rev1']},
-                         stacked.get_parent_map(['rev2']))
-
-    def test__stacked_parents_provider_deprecated(self):
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = self.applyDeprecated(deprecated_in((1, 16, 0)),
-                    _mod_graph._StackedParentsProvider, [parents1, parents2])
-        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
-                         stacked.get_parent_map(['rev1', 'rev2']))
-        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
-                         stacked.get_parent_map(['rev2', 'rev1']))
-        self.assertEqual({'rev2':['rev3']},
-                         stacked.get_parent_map(['rev2', 'rev2']))
-        self.assertEqual({'rev1':['rev4']},
-                         stacked.get_parent_map(['rev1', 'rev1']))
 
     def test_iter_topo_order(self):
         graph = self.make_graph(ancestry_1)
@@ -1424,6 +1413,61 @@ class TestFindMergeOrder(TestGraphBase):
         self.assertMergeOrder(['rev3', 'rev1'], graph, 'rev4', ['rev1', 'rev3'])
 
 
+class TestFindDescendants(TestGraphBase):
+
+    def test_find_descendants_rev1_rev3(self):
+        graph = self.make_graph(ancestry_1)
+        descendants = graph.find_descendants('rev1', 'rev3')
+        self.assertEqual(set(['rev1', 'rev2a', 'rev3']), descendants)
+
+    def test_find_descendants_rev1_rev4(self):
+        graph = self.make_graph(ancestry_1)
+        descendants = graph.find_descendants('rev1', 'rev4')
+        self.assertEqual(set(['rev1', 'rev2a', 'rev2b', 'rev3', 'rev4']),
+                         descendants)
+
+    def test_find_descendants_rev2a_rev4(self):
+        graph = self.make_graph(ancestry_1)
+        descendants = graph.find_descendants('rev2a', 'rev4')
+        self.assertEqual(set(['rev2a', 'rev3', 'rev4']), descendants)
+
+class TestFindLefthandMerger(TestGraphBase):
+
+    def check_merger(self, result, ancestry, merged, tip):
+        graph = self.make_graph(ancestry)
+        self.assertEqual(result, graph.find_lefthand_merger(merged, tip))
+
+    def test_find_lefthand_merger_rev2b(self):
+        self.check_merger('rev4', ancestry_1, 'rev2b', 'rev4')
+
+    def test_find_lefthand_merger_rev2a(self):
+        self.check_merger('rev2a', ancestry_1, 'rev2a', 'rev4')
+
+    def test_find_lefthand_merger_rev4(self):
+        self.check_merger(None, ancestry_1, 'rev4', 'rev2a')
+
+    def test_find_lefthand_merger_f(self):
+        self.check_merger('i', complex_shortcut, 'f', 'm')
+
+    def test_find_lefthand_merger_g(self):
+        self.check_merger('i', complex_shortcut, 'g', 'm')
+
+    def test_find_lefthand_merger_h(self):
+        self.check_merger('n', complex_shortcut, 'h', 'n')
+
+
+class TestGetChildMap(TestGraphBase):
+
+    def test_get_child_map(self):
+        graph = self.make_graph(ancestry_1)
+        child_map = graph.get_child_map(['rev4', 'rev3', 'rev2a', 'rev2b'])
+        self.assertEqual({'rev1': ['rev2a', 'rev2b'],
+                          'rev2a': ['rev3'],
+                          'rev2b': ['rev4'],
+                          'rev3': ['rev4']},
+                          child_map)
+
+
 class TestCachingParentsProvider(tests.TestCase):
     """These tests run with:
 
@@ -1434,7 +1478,7 @@ class TestCachingParentsProvider(tests.TestCase):
 
     def setUp(self):
         super(TestCachingParentsProvider, self).setUp()
-        dict_pp = _mod_graph.DictParentsProvider({'a':('b',)})
+        dict_pp = _mod_graph.DictParentsProvider({'a': ('b',)})
         self.inst_pp = InstrumentedParentsProvider(dict_pp)
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
 
@@ -1478,6 +1522,14 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         self.assertEqual([], self.inst_pp.calls)
         self.assertEqual(set(['b']), self.caching_pp.missing_keys)
+
+    def test_get_cached_parent_map(self):
+        self.assertEqual({}, self.caching_pp.get_cached_parent_map(['a']))
+        self.assertEqual([], self.inst_pp.calls)
+        self.assertEqual({'a': ('b',)}, self.caching_pp.get_parent_map(['a']))
+        self.assertEqual(['a'], self.inst_pp.calls)
+        self.assertEqual({'a': ('b',)},
+                         self.caching_pp.get_cached_parent_map(['a']))
 
 
 class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
@@ -1543,6 +1595,14 @@ class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
                          self.caching_pp.get_parent_map(['rev2']))
         self.assertEqual(['rev3'], self.inst_pp.calls)
 
+    def test_extras_using_cached(self):
+        self.assertEqual({}, self.caching_pp.get_cached_parent_map(['rev3']))
+        self.assertEqual({}, self.caching_pp.get_parent_map(['rev3']))
+        self.assertEqual({'rev2': ['rev1']},
+                         self.caching_pp.get_cached_parent_map(['rev2']))
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+
 
 class TestCollapseLinearRegions(tests.TestCase):
 
@@ -1598,6 +1658,23 @@ class TestGraphThunkIdsToKeys(tests.TestCase):
         self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'B'])))
         self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'C'])))
         self.assertEqual(['B', 'C'], sorted(graph_thunk.heads(['B', 'C'])))
+
+    def test_add_node(self):
+        d = {('C',):[('A',)], ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.KnownGraph(d)
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        graph_thunk.add_node("D", ["A", "C"])
+        self.assertEqual(['B', 'D'],
+            sorted(graph_thunk.heads(['D', 'B', 'A'])))
+
+    def test_merge_sort(self):
+        d = {('C',):[('A',)], ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.KnownGraph(d)
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        graph_thunk.add_node("D", ["A", "C"])
+        self.assertEqual([('C', 0, (2,), False), ('A', 0, (1,), True)],
+            [(n.key, n.merge_depth, n.revno, n.end_of_merge)
+                 for n in graph_thunk.merge_sort('C')])
 
 
 class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):
@@ -1688,3 +1765,141 @@ class TestSearchResultRefine(TestGraphBase):
         self.assertEqual(set([NULL_REVISION, 'tip', 'tag', 'mid']), recipe[2])
         self.assertEqual(0, recipe[3])
         self.assertTrue(result.is_empty())
+
+
+class TestSearchResultFromParentMap(TestGraphBase):
+
+    def assertSearchResult(self, start_keys, stop_keys, key_count, parent_map,
+                           missing_keys=()):
+        (start, stop, count) = _mod_graph.search_result_from_parent_map(
+            parent_map, missing_keys)
+        self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
+                         (sorted(start), sorted(stop), count))
+
+    def test_no_parents(self):
+        self.assertSearchResult([], [], 0, {})
+        self.assertSearchResult([], [], 0, None)
+
+    def test_ancestry_1(self):
+        self.assertSearchResult(['rev4'], [NULL_REVISION], len(ancestry_1),
+                                ancestry_1)
+
+    def test_ancestry_2(self):
+        self.assertSearchResult(['rev1b', 'rev4a'], [NULL_REVISION],
+                                len(ancestry_2), ancestry_2)
+        self.assertSearchResult(['rev1b', 'rev4a'], [],
+                                len(ancestry_2)+1, ancestry_2,
+                                missing_keys=[NULL_REVISION])
+
+    def test_partial_search(self):
+        parent_map = dict((k,extended_history_shortcut[k])
+                          for k in ['e', 'f'])
+        self.assertSearchResult(['e', 'f'], ['d', 'a'], 2,
+                                parent_map)
+        parent_map.update((k,extended_history_shortcut[k])
+                          for k in ['d', 'a'])
+        self.assertSearchResult(['e', 'f'], ['c', NULL_REVISION], 4,
+                                parent_map)
+        parent_map['c'] = extended_history_shortcut['c']
+        self.assertSearchResult(['e', 'f'], ['b'], 6,
+                                parent_map, missing_keys=[NULL_REVISION])
+        parent_map['b'] = extended_history_shortcut['b']
+        self.assertSearchResult(['e', 'f'], [], 7,
+                                parent_map, missing_keys=[NULL_REVISION])
+
+
+class TestLimitedSearchResultFromParentMap(TestGraphBase):
+
+    def assertSearchResult(self, start_keys, stop_keys, key_count, parent_map,
+                           missing_keys, tip_keys, depth):
+        (start, stop, count) = _mod_graph.limited_search_result_from_parent_map(
+            parent_map, missing_keys, tip_keys, depth)
+        self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
+                         (sorted(start), sorted(stop), count))
+
+    def test_empty_ancestry(self):
+        self.assertSearchResult([], [], 0, {}, (), ['tip-rev-id'], 10)
+
+    def test_ancestry_1(self):
+        self.assertSearchResult(['rev4'], ['rev1'], 4,
+                                ancestry_1, (), ['rev1'], 10)
+        self.assertSearchResult(['rev2a', 'rev2b'], ['rev1'], 2,
+                                ancestry_1, (), ['rev1'], 1)
+
+
+    def test_multiple_heads(self):
+        self.assertSearchResult(['e', 'f'], ['a'], 5,
+                                extended_history_shortcut, (), ['a'], 10)
+        # Note that even though we only take 1 step back, we find 'f', which
+        # means the described search will still find d and c.
+        self.assertSearchResult(['f'], ['a'], 4,
+                                extended_history_shortcut, (), ['a'], 1)
+        self.assertSearchResult(['f'], ['a'], 4,
+                                extended_history_shortcut, (), ['a'], 2)
+
+
+class TestStackedParentsProvider(tests.TestCase):
+
+    def setUp(self):
+        super(TestStackedParentsProvider, self).setUp()
+        self.calls = []
+
+    def get_shared_provider(self, info, ancestry, has_cached):
+        pp = _mod_graph.DictParentsProvider(ancestry)
+        if has_cached:
+            pp.get_cached_parent_map = pp.get_parent_map
+        return SharedInstrumentedParentsProvider(pp, self.calls, info)
+
+    def test_stacked_parents_provider(self):
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
+        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
+                         stacked.get_parent_map(['rev1', 'rev2']))
+        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
+                         stacked.get_parent_map(['rev2', 'rev1']))
+        self.assertEqual({'rev2':['rev3']},
+                         stacked.get_parent_map(['rev2', 'rev2']))
+        self.assertEqual({'rev1':['rev4']},
+                         stacked.get_parent_map(['rev1', 'rev1']))
+
+    def test_stacked_parents_provider_overlapping(self):
+        # rev2 is availible in both providers.
+        # 1
+        # |
+        # 2
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        parents2 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev2': ['rev1']},
+                         stacked.get_parent_map(['rev2']))
+
+    def test_handles_no_get_cached_parent_map(self):
+        # this shows that we both handle when a provider doesn't implement
+        # get_cached_parent_map
+        pp1 = self.get_shared_provider('pp1', {'rev2': ('rev1',)},
+                                       has_cached=False)
+        pp2 = self.get_shared_provider('pp2', {'rev2': ('rev1',)},
+                                       has_cached=True)
+        stacked = _mod_graph.StackedParentsProvider([pp1, pp2])
+        self.assertEqual({'rev2': ('rev1',)}, stacked.get_parent_map(['rev2']))
+        # No call on 'pp1' because it doesn't provide get_cached_parent_map
+        self.assertEqual([('pp2', 'cached', ['rev2'])], self.calls)
+
+    def test_query_order(self):
+        # We should call get_cached_parent_map on all providers before we call
+        # get_parent_map. Further, we should track what entries we have found,
+        # and not re-try them.
+        pp1 = self.get_shared_provider('pp1', {'a': ()}, has_cached=True)
+        pp2 = self.get_shared_provider('pp2', {'c': ('b',)}, has_cached=False)
+        pp3 = self.get_shared_provider('pp3', {'b': ('a',)}, has_cached=True)
+        stacked = _mod_graph.StackedParentsProvider([pp1, pp2, pp3])
+        self.assertEqual({'a': (), 'b': ('a',), 'c': ('b',)},
+                         stacked.get_parent_map(['a', 'b', 'c', 'd']))
+        self.assertEqual([('pp1', 'cached', ['a', 'b', 'c', 'd']),
+                          # No call to pp2, because it doesn't have cached
+                          ('pp3', 'cached', ['b', 'c', 'd']),
+                          ('pp1', ['c', 'd']),
+                          ('pp2', ['c', 'd']),
+                          ('pp3', ['d']),
+                         ], self.calls)

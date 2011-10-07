@@ -16,8 +16,10 @@
 
 """Tests for the test trees used by the per_tree tests."""
 
-from bzrlib import tests
 from bzrlib.tests import per_tree
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestTreeShapes(per_tree.TestCaseWithTree):
@@ -30,7 +32,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
-        self.assertEqual(['empty-root-id'], list(iter(tree)))
+        self.assertEqual(['empty-root-id'], list(tree.all_file_ids()))
         self.assertEqual(
             [('', 'empty-root-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -46,7 +48,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         self.assertEqual(
             set(['root-id', 'a-id', 'b-id', 'c-id']),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -64,7 +66,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         self.assertEqual(
             set(['root-id', 'a-id', 'b-id', 'c-id']),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -82,7 +84,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         self.assertEqual(
             set(['root-id', 'a-id', 'b-id', 'c-id']),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -100,7 +102,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         self.assertEqual(
             set(['root-id', 'a-id', 'b-id', 'c-id']),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -118,7 +120,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         self.assertEqual(
             set(['root-id', 'a-id', 'b-id', 'c-id']),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -136,7 +138,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         self.assertEqual(
             set(['root-id', 'a-id', 'b-id', 'c-id']),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('e', 'c-id')],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
@@ -147,7 +149,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -165,7 +167,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                  u'0utf\u1234file'.encode('utf8'),
                 'symlink',
                  ]),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         # note that the order of the paths and fileids is deliberately
         # mismatched to ensure that the result order is path based.
         self.assertEqual(
@@ -198,7 +200,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 '0dir-in-1topdir',
                  u'0utf\u1234file'.encode('utf8'),
                  ]),
-            set(iter(tree)))
+            set(tree.all_file_ids()))
         # note that the order of the paths and fileids is deliberately
         # mismatched to ensure that the result order is path based.
         self.assertEqual(

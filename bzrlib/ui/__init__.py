@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,26 +42,17 @@ bzrlib.ui.text.TextUIFactory
 """
 
 
-import os
-import sys
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
-
 from bzrlib import (
-    errors,
+    config,
     osutils,
     progress,
     trace,
     )
 """)
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 _valid_boolean_strings = dict(yes=True, no=False,
@@ -100,16 +91,99 @@ def bool_from_string(s, accepted_values=None):
     return val
 
 
+class ConfirmationUserInterfacePolicy(object):
+    """Wrapper for a UIFactory that allows or denies all confirmed actions."""
+
+    def __init__(self, wrapped_ui, default_answer, specific_answers):
+        """Generate a proxy UI that does no confirmations.
+
+        :param wrapped_ui: Underlying UIFactory.
+        :param default_answer: Bool for whether requests for
+            confirmation from the user should be noninteractively accepted or
+            denied.
+        :param specific_answers: Map from confirmation_id to bool answer.
+        """
+        self.wrapped_ui = wrapped_ui
+        self.default_answer = default_answer
+        self.specific_answers = specific_answers
+
+    def __getattr__(self, name):
+        return getattr(self.wrapped_ui, name)
+
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (
+            self.__class__.__name__,
+            self.wrapped_ui,
+            self.default_answer, 
+            self.specific_answers)
+
+    def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        if confirmation_id in self.specific_answers:
+            return self.specific_answers[confirmation_id]
+        elif self.default_answer is not None:
+            return self.default_answer
+        else:
+            return self.wrapped_ui.confirm_action(
+                prompt, confirmation_id, prompt_kwargs)
+
+
 class UIFactory(object):
     """UI abstraction.
 
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
+
+    UI Factories are also context managers, for some syntactic sugar some users
+    need.
+
+    :ivar suppressed_warnings: Identifiers for user warnings that should 
+        no be emitted.
     """
+
+    _user_warning_templates = dict(
+        cross_format_fetch=("Doing on-the-fly conversion from "
+            "%(from_format)s to %(to_format)s.\n"
+            "This may take some time. Upgrade the repositories to the "
+            "same format for better performance."
+            ),
+        experimental_format_fetch=("Fetching into experimental format "
+            "%(to_format)s.\n"
+            "This format may be unreliable or change in the future "
+            "without an upgrade path.\n"),
+        deprecated_command=(
+            "The command 'bzr %(deprecated_name)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use 'bzr %(recommended_name)s' instead."),
+        recommend_upgrade=("%(current_format_name)s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  bzr upgrade %(basedir)s"),
+        locks_steal_dead=(
+            u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
+        )
 
     def __init__(self):
         self._task_stack = []
+        self.suppressed_warnings = set()
         self._quiet = False
+
+    def __enter__(self):
+        """Context manager entry support.
+
+        Override in a concrete factory class if initialisation before use is
+        needed.
+        """
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit support.
+
+        Override in a concrete factory class if more cleanup than a simple
+        self.clear_term() is needed when the UIFactory is finished with.
+        """
+        self.clear_term()
+        return False # propogate exceptions.
 
     def be_quiet(self, state):
         """Tell the UI to be more quiet, or not.
@@ -119,10 +193,28 @@ class UIFactory(object):
         """
         self._quiet = state
 
-    def get_password(self, prompt='', **kwargs):
+    def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        """Seek user confirmation for an action.
+
+        If the UI is noninteractive, or the user does not want to be asked
+        about this action, True is returned, indicating bzr should just
+        proceed.
+
+        The confirmation id allows the user to configure certain actions to
+        always be confirmed or always denied, and for UIs to specialize the
+        display of particular confirmations.
+
+        :param prompt: Suggested text to display to the user.
+        :param prompt_kwargs: A dictionary of arguments that can be
+            string-interpolated into the prompt.
+        :param confirmation_id: Unique string identifier for the confirmation.
+        """
+        return self.get_boolean(prompt % prompt_kwargs)
+
+    def get_password(self, prompt=u'', **kwargs):
         """Prompt the user for a password.
 
-        :param prompt: The prompt to present the user
+        :param prompt: The prompt to present the user (must be unicode)
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
@@ -146,8 +238,9 @@ class UIFactory(object):
         version of stdout, but in a GUI it might be appropriate to send it to a 
         window displaying the text.
      
-        :param encoding: Unicode encoding for output; default is the 
-            terminal encoding, which may be different from the user encoding.
+        :param encoding: Unicode encoding for output; if not specified 
+            uses the configured 'output_encoding' if any; otherwise the 
+            terminal encoding. 
             (See get_terminal_encoding.)
 
         :param encoding_type: How to handle encoding errors:
@@ -155,7 +248,9 @@ class UIFactory(object):
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            encoding = osutils.get_terminal_encoding()
+            encoding = config.GlobalStack().get('output_encoding')
+        if encoding is None:
+            encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:
             encoding_type = 'replace'
         out_stream = self._make_output_stream_explicit(encoding, encoding_type)
@@ -210,11 +305,26 @@ class UIFactory(object):
         """
         pass
 
+    def format_user_warning(self, warning_id, message_args):
+        try:
+            template = self._user_warning_templates[warning_id]
+        except KeyError:
+            fail = "bzr warning: %r, %r" % (warning_id, message_args)
+            warnings.warn("no template for warning: " + fail)   # so tests will fail etc
+            return fail
+        try:
+            return template % message_args
+        except ValueError, e:
+            fail = "bzr unprintable warning: %r, %r, %s" % (
+                warning_id, message_args, e)
+            warnings.warn(fail)   # so tests will fail etc
+            return fail
+
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user.
 
         :param prompt: a message to prompt the user with. Should be a single
-        line without terminating \n.
+            line without terminating \\n.
         :return: True or False for y/yes or n/no.
         """
         raise NotImplementedError(self.get_boolean)
@@ -223,7 +333,7 @@ class UIFactory(object):
         """Get an integer from the user.
 
         :param prompt: a message to prompt the user with. Could be a multi-line
-            prompt but without a terminating \n.
+            prompt but without a terminating \\n.
 
         :return: A signed integer.
         """
@@ -237,18 +347,14 @@ class UIFactory(object):
         """
         return NullProgressView()
 
-    def recommend_upgrade(self,
-        current_format_name,
-        basedir):
-        # this should perhaps be in the TextUIFactory and the default can do
-        # nothing
-        trace.warning("%s is deprecated "
-            "and a better format is available.\n"
-            "It is recommended that you upgrade by "
-            "running the command\n"
-            "  bzr upgrade %s",
-            current_format_name,
-            basedir)
+    def recommend_upgrade(self, current_format_name, basedir):
+        """Recommend the user upgrade a control directory.
+
+        :param current_format_name: Description of the current format
+        :param basedir: Location of the control dir
+        """
+        self.show_user_warning('recommend_upgrade',
+            current_format_name=current_format_name, basedir=basedir)
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -271,6 +377,24 @@ class UIFactory(object):
         # Default implementation just does nothing
         pass
 
+    def show_user_warning(self, warning_id, **message_args):
+        """Show a warning to the user.
+
+        This is specifically for things that are under the user's control (eg
+        outdated formats), not for internal program warnings like deprecated
+        APIs.
+
+        This can be overridden by UIFactory subclasses to show it in some 
+        appropriate way; the default UIFactory is noninteractive and does
+        nothing.  format_user_warning maps it to a string, though other
+        presentations can be used for particular UIs.
+
+        :param warning_id: An identifier like 'cross_format_fetch' used to 
+            check if the message is suppressed and to look up the string.
+        :param message_args: Arguments to be interpolated into the message.
+        """
+        pass
+
     def show_error(self, msg):
         """Show an error message (not an exception) to the user.
         
@@ -287,24 +411,18 @@ class UIFactory(object):
         """Show a warning to the user."""
         raise NotImplementedError(self.show_warning)
 
-    def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer"""
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        trace.warning("Doing on-the-fly conversion from %s to %s.\n"
-            "This may take some time. Upgrade the repositories to the "
-            "same format for better performance.\n" %
-            (from_format, to_format))
 
-    def warn_experimental_format_fetch(self, inter):
-        """Warn about fetching into experimental repository formats."""
-        if inter.target._format.experimental:
-            trace.warning("Fetching into experimental format %s.\n"
-                "This format may be unreliable or change in the future "
-                "without an upgrade path.\n" % (inter.target._format,))
+class NoninteractiveUIFactory(UIFactory):
+    """Base class for UIs with no user."""
+
+    def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        return True
+
+    def __repr__(self):
+        return '%s()' % (self.__class__.__name__, )
 
 
-
-class SilentUIFactory(UIFactory):
+class SilentUIFactory(NoninteractiveUIFactory):
     """A UI Factory which never prints anything.
 
     This is the default UI, if another one is never registered by a program
@@ -345,13 +463,16 @@ class CannedInputUIFactory(SilentUIFactory):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.responses)
 
+    def confirm_action(self, prompt, confirmation_id, args):
+        return self.get_boolean(prompt % args)
+
     def get_boolean(self, prompt):
         return self.responses.pop(0)
 
     def get_integer(self, prompt):
         return self.responses.pop(0)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):

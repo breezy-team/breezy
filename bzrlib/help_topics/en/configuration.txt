@@ -14,12 +14,14 @@ Override the email id used by Bazaar.  Typical format::
 
   "John Doe <jdoe@example.com>"
 
-See also the ``email`` configuration value.
+See also the ``email`` configuration option.
 
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
 
-Override the progress display.  Possible values are "none", "dots", "tty"
+Override the progress display.  Possible values are "none" or "text".  If
+the value is "none" then no progress bar is displayed.  The value "text" draws
+the ordinary command line progress bar.
 
 BZR_SIGQUIT_PDB
 ~~~~~~~~~~~~~~~
@@ -52,12 +54,25 @@ BZR_REMOTE_PATH
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
-See also the ``bzr_remote_path`` configuration value.
+See also the ``bzr_remote_path`` configuration option.
 
 BZR_EDITOR
 ~~~~~~~~~~
 
 Path to the editor Bazaar should use for commit messages, etc.
+
+BZR_LOG
+~~~~~~~
+
+Location of the Bazaar log file. You can check the current location by
+running ``bzr version``.
+
+The log file contains debug information that is useful for diagnosing or
+reporting problems with Bazaar.
+
+Setting this to ``NUL`` on Windows or ``/dev/null`` on other platforms
+will disable logging.
+
 
 BZR_PLUGIN_PATH
 ~~~~~~~~~~~~~~~
@@ -77,7 +92,7 @@ the way the plugin are searched.
 
 As for the ``PATH`` variables, if multiple directories are
 specified in ``BZR_PLUGIN_PATH`` they should be separated by the
-platform specific appropriate character (':' on Unix/Linux/etc,
+platform specific appropriate character (':' on Unix,
 ';' on windows)
 
 By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
@@ -98,30 +113,81 @@ Note that the special values 'user', 'core' and 'site' should be
 used literally, they will be substituted by the corresponding,
 platform specific, values.
 
-Examples:
-^^^^^^^^^
-
-The examples below uses ':' as the separator, windows users
+The examples below use ':' as the separator, windows users
 should use ';'.
 
-Overriding the default user plugin directory:
-``BZR_PLUGIN_PATH='/path/to/my/other/plugins'``
+Overriding the default user plugin directory::
 
-Disabling the site directory while retaining the user directory:
-``BZR_PLUGIN_PATH='-site:+user'``
+  BZR_PLUGIN_PATH='/path/to/my/other/plugins'
 
-Disabling all plugins (better achieved with --no-plugins):
-``BZR_PLUGIN_PATH='-user:-core:-site'``
+Disabling the site directory while retaining the user directory::
 
-Overriding the default site plugin directory:
-``BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user``
+  BZR_PLUGIN_PATH='-site:+user'
 
+Disabling all plugins (better achieved with --no-plugins)::
 
+  BZR_PLUGIN_PATH='-user:-core:-site'
+
+Overriding the default site plugin directory::
+
+  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user
+
+BZR_DISABLE_PLUGINS
+~~~~~~~~~~~~~~~~~~~
+
+Under special circumstances (mostly when trying to diagnose a
+bug), it's better to disable a plugin (or several) rather than
+uninstalling them completely. Such plugins can be specified in
+the ``BZR_DISABLE_PLUGINS`` environment variable.
+
+In that case, ``bzr`` will stop loading the specified plugins and
+will raise an import error if they are explicitly imported (by
+another plugin that depends on them for example).
+
+Disabling ``myplugin`` and ``yourplugin`` is achieved by::
+
+  BZR_DISABLE_PLUGINS='myplugin:yourplugin'
+
+BZR_PLUGINS_AT
+~~~~~~~~~~~~~~
+
+When adding a new feature or working on a bug in a plugin,
+developers often need to use a specific version of a given
+plugin. Since python requires that the directory containing the
+code is named like the plugin itself this make it impossible to
+use arbitrary directory names (using a two-level directory scheme
+is inconvenient). ``BZR_PLUGINS_AT`` allows such directories even
+if they don't appear in ``BZR_PLUGIN_PATH`` .
+
+Plugins specified in this environment variable takes precedence
+over the ones in ``BZR_PLUGIN_PATH``.
+
+The variable specified a list of ``plugin_name@plugin path``,
+``plugin_name`` being the name of the plugin as it appears in
+python module paths, ``plugin_path`` being the path to the
+directory containing the plugin code itself
+(i.e. ``plugins/myplugin`` not ``plugins``).  Use ':' as the list
+separator, use ';' on windows.
+
+Example:
+~~~~~~~~
+
+Using a specific version of ``myplugin``:
+``BZR_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``
 
 BZRPATH
 ~~~~~~~
 
 The path where Bazaar should look for shell plugin external commands.
+
+
+http_proxy, https_proxy
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Specifies the network proxy for outgoing connections, for example::
+
+  http_proxy=http://proxy.example.com:3128/ 
+  https_proxy=http://proxy.example.com:3128/
 
 
 Configuration files
@@ -130,7 +196,7 @@ Configuration files
 Location
 ~~~~~~~~
 
-Configuration files are located in ``$HOME/.bazaar`` on Linux/Unix and
+Configuration files are located in ``$HOME/.bazaar`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
 Windows. (You can check the location for your system by using
 ``bzr version``.)
@@ -192,7 +258,14 @@ A section variable resides within a section. A section variable contains a
 variable name, an equals sign and a value.  For example::
 
     email            = John Doe <jdoe@isp.com>
-    check_signatures = require
+    gpg_signing_key  = Amy Pond <amy@example.com>
+
+A variable can reference other variables **in the same configuration file** by
+enclosing them in curly brackets::
+
+    my_branch_name = feature_x
+    my_server      = bzr+ssh://example.com
+    push_location   = {my_server}/project/{my_branch_name}
 
 
 Variable policies
@@ -238,7 +311,6 @@ A typical ``bazaar.conf`` section often looks like the following::
     [DEFAULT]
     email             = John Doe <jdoe@isp.com>
     editor            = /usr/bin/vim
-    check_signatures  = check-available
     create_signatures = when-required
 
 
@@ -256,10 +328,6 @@ for. The '?' and '*' wildcards are supported::
 
     [http://hypothetical.site.com/branches/devel-branch]
     create_signatures = always
-    check_signatures  = always
-
-    [http://bazaar-vcs.org/bzr/*]
-    check_signatures  = require
 
 The authentication configuration file, authentication.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -287,6 +355,10 @@ For example::
 
     debug_flags = hpss
 
+or::
+
+    debug_flags = hpss,evil
+
 email
 ~~~~~
 
@@ -313,7 +385,8 @@ value is ``long``.
 check_signatures
 ~~~~~~~~~~~~~~~~
 
-Defines the behavior for signatures.
+Reserved for future use.  These options will allow a policy for branches to
+require signatures.
 
 require
     The gnupg signature for revisions must be present and must be valid.
@@ -329,18 +402,36 @@ check-available
 create_signatures
 ~~~~~~~~~~~~~~~~~
 
-Defines the behaviour of signing revisions.
+Defines the behaviour of signing revisions on commits.  By default bzr will not
+sign new commits.
 
 always
-    Sign every new revision that is committed.
+    Sign every new revision that is committed.  If the signing fails then the
+    commit will not be made.
 
 when-required
-    (default) Sign newly committed revisions only when the branch requires
-    signed revisions.
+    Reserved for future use.
 
 never
-    Refuse to sign newly committed revisions, even if the branch
-    requires signatures.
+    Reserved for future use.
+
+In future it is planned that ``when-required`` will sign newly
+committed revisions only when the branch requires them.  ``never`` will refuse
+to sign newly committed revisions, even if the branch requires signatures.
+
+dirstate.fdatasync
+~~~~~~~~~~~~~~~~~~
+
+If true (default), working tree metadata changes are flushed through the
+OS buffers to physical disk.  This is somewhat slower, but means data
+should not be lost if the machine crashes.  See also repository.fdatasync.
+
+gpg_signing_key
+~~~~~~~~~~~~~~~
+
+The GnuPG user identity to use when signing commits.  Can be an e-mail
+address, key fingerprint or full key ID.  When unset or when set to
+"default" Bazaar will use the user e-mail set with ``whoami``.
 
 recurse
 ~~~~~~~
@@ -362,6 +453,8 @@ gpg_signing_command
 For example::
 
     gpg_signing_command = /usr/bin/gnpg
+
+The specified command must accept the options "--clearsign" and "-u <email>".
 
 bzr_remote_path
 ~~~~~~~~~~~~~~~
@@ -389,6 +482,14 @@ is set, and smtp_password is not, Bazaar will prompt for a password.
 These settings are only needed if the SMTP server requires authentication
 to send mail.
 
+locks.steal_dead
+~~~~~~~~~~~~~~~~
+
+If set to true, bzr will automatically break locks held by processes from
+the same machine and user that are no longer alive.  Otherwise, it will
+print a message and you can break the lock manually, if you are satisfied
+the object is no longer in use.
+
 mail_client
 ~~~~~~~~~~~
 
@@ -415,6 +516,13 @@ Supported generic values are:
 :mapi: Use your preferred e-mail client on Windows.
 :xdg-email: Use xdg-email to run your preferred mail program
 
+repository.fdatasync
+~~~~~~~~~~~~~~~~~~~~
+
+If true (default), repository changes are flushed through the OS buffers
+to physical disk.  This is somewhat slower, but means data should not be
+lost if the machine crashes.  See also dirstate.fdatasync.
+
 submit_branch
 ~~~~~~~~~~~~~
 
@@ -440,6 +548,23 @@ Valid values:
     whether the format deprecation warning is shown on repositories that are
     using deprecated formats.
 
+default_format
+~~~~~~~~~~~~~~
+
+A format name for the default format used when creating branches.  See ``bzr
+help formats`` for possible values.
+
+
+Unicode options
+---------------
+
+output_encoding
+~~~~~~~~~~~~~~~
+
+A Python unicode encoding name for text output from bzr, such as log
+information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default
+is the terminal encoding prefered by the operating system.
+
 
 Branch type specific options
 ----------------------------
@@ -453,22 +578,24 @@ append_revisions_only
 ~~~~~~~~~~~~~~~~~~~~~
 
 If set to "True" then revisions can only be appended to the log, not
-removed.  A branch with this setting enabled can only pull from
-another branch if the other branch's log is a longer version of its
-own.  This is normally set by ``bzr init --append-revisions-only``.
+removed.  A branch with this setting enabled can only pull from another
+branch if the other branch's log is a longer version of its own.  This is
+normally set by ``bzr init --append-revisions-only``. If you set it
+manually, use either 'True' or 'False' (case-sensitive) to maintain
+compatibility with previous bzr versions (older than 2.2).
 
 parent_location
 ~~~~~~~~~~~~~~~
 
-If present, the location of the default branch for pull or merge.
-This option is normally set by ``pull --remember`` or ``merge
+If present, the location of the default branch for pull or merge.  This option
+is normally set when creating a branch, the first ``pull`` or by ``pull
 --remember``.
 
 push_location
 ~~~~~~~~~~~~~
 
 If present, the location of the default branch for push.  This option
-is normally set by ``push --remember``.
+is normally set by the first ``push`` or ``push --remember``.
 
 push_strict
 ~~~~~~~~~~~
@@ -501,3 +628,45 @@ send_strict
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before sending a merge directive.
 
+add.maximum_file_size
+~~~~~~~~~~~~~~~~~~~~~
+
+Defines the maximum file size the command line "add" operation will allow
+in recursive mode, with files larger than this value being skipped. You may 
+specify this value as an integer (in which case it is interpreted as bytes), 
+or you may specify the value using SI units, i.e. 10KB, 20MB, 1G. A value of 0 
+will disable skipping.
+
+External Merge Tools
+--------------------
+
+bzr.mergetool.<name>
+~~~~~~~~~~~~~~~~~~~~
+
+Defines an external merge tool called <name> with the given command-line.
+Arguments containing spaces should be quoted using single or double quotes. The
+executable may omit its path if it can be found on the PATH.
+
+The following markers can be used in the command-line to substitute filenames
+involved in the merge conflict::
+
+  {base}      file.BASE
+  {this}      file.THIS
+  {other}     file.OTHER
+  {result}    output file
+  {this_temp} temp copy of file.THIS, used to overwrite output file if merge
+              succeeds.
+
+For example::
+
+  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
+
+bzr.default_mergetool
+~~~~~~~~~~~~~~~~~~~~~
+
+Specifies which external merge tool (as defined above) should be selected by
+default in tools such as ``bzr qconflicts``.
+
+For example::
+
+  bzr.default_mergetool = kdiff3

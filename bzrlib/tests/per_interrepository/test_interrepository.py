@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,57 +19,24 @@
 import sys
 
 import bzrlib
-import bzrlib.bzrdir as bzrdir
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 import bzrlib.gpg
 from bzrlib.inventory import Inventory
-import bzrlib.repofmt.weaverepo as weaverepo
-import bzrlib.repository as repository
-from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import (
-    TestCase,
-    TestCaseWithTransport,
     TestNotApplicable,
     TestSkipped,
     )
+from bzrlib.tests.matchers import MatchesAncestry
 from bzrlib.tests.per_interrepository import (
     TestCaseWithInterRepository,
     )
 
 
-def check_old_format_lock_error(repository_format):
-    """Potentially ignore LockError on old formats.
-
-    On win32, with the old OS locks, we get a failure of double-lock when
-    we open a object in 2 objects and try to lock both.
-
-    On new formats, LockError would be invalid, but for old formats
-    this was not supported on Win32.
-    """
-    if sys.platform != 'win32':
-        raise
-
-    description = repository_format.get_format_description()
-    if description in ("Repository format 4",
-                       "Weave repository format 5",
-                       "Weave repository format 6"):
-        # jam 20060701
-        # win32 OS locks are not re-entrant. So one process cannot
-        # open the same repository twice and lock them both.
-        raise TestSkipped('%s on win32 cannot open the same'
-                          ' repository twice in different objects'
-                          % description)
-    raise
-
-
 def check_repo_format_for_funky_id_on_win32(repo):
-    if (isinstance(repo, (weaverepo.AllInOneRepository,
-                          weaverepo.WeaveMetaDirRepository))
-        and sys.platform == 'win32'):
-            raise TestSkipped("funky chars does not permitted"
-                              " on this platform in repository"
-                              " %s" % repo.__class__.__name__)
+    if not repo._format.supports_funky_characters and sys.platform == 'win32':
+        raise TestSkipped("funky chars not allowed on this platform in repository"
+                          " %s" % repo.__class__.__name__)
 
 
 class TestInterRepository(TestCaseWithInterRepository):
@@ -110,7 +77,8 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # and sign 'rev2'
         tree_a.branch.repository.lock_write()
         tree_a.branch.repository.start_write_group()
-        tree_a.branch.repository.sign_revision('rev2', bzrlib.gpg.LoopbackGPGStrategy(None))
+        tree_a.branch.repository.sign_revision('rev2',
+            bzrlib.gpg.LoopbackGPGStrategy(None))
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
 
@@ -139,9 +107,15 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertFalse(repo_b.has_revision('pizza'))
         # Asking specifically for an absent revision errors.
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
             find_ghosts=True)
         self.assertRaises(errors.NoSuchRevision,
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
+            find_ghosts=False)
+        self.callDeprecated(
+            ['search_missing_revision_ids(revision_id=...) was deprecated in '
+             '2.4.  Use revision_ids=[...] instead.'],
+            self.assertRaises, errors.NoSuchRevision,
             repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
             find_ghosts=False)
 
@@ -151,9 +125,21 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # make a repository to compare against that is empty
         repo_b = self.make_to_repository('empty')
         repo_a = self.bzrdir.open_repository()
-        result = repo_b.search_missing_revision_ids(repo_a, revision_id='rev1')
+        result = repo_b.search_missing_revision_ids(
+            repo_a, revision_ids=['rev1'])
         self.assertEqual(set(['rev1']), result.get_keys())
         self.assertEqual(('search', set(['rev1']), set([NULL_REVISION]), 1),
+            result.get_recipe())
+
+    def test_search_missing_revision_ids_limit(self):
+        # The limit= argument makes fetch() limit
+        # the results to the first X topo-sorted revisions.
+        repo_b = self.make_to_repository('rev1_only')
+        repo_a = self.bzrdir.open_repository()
+        # check the test will be valid
+        self.assertFalse(repo_b.has_revision('rev2'))
+        result = repo_b.search_missing_revision_ids(repo_a, limit=1)
+        self.assertEqual(('search', set(['rev1']), set(['null:']), 1),
             result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
@@ -215,5 +201,5 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         rev = missing_ghost.get_revision('ghost')
         inv = missing_ghost.get_inventory('ghost')
         # rev must not be corrupt now
-        self.assertEqual([None, 'ghost', 'references', 'tip'],
-            missing_ghost.get_ancestry('tip'))
+        self.assertThat(['ghost', 'references', 'tip'],
+            MatchesAncestry(missing_ghost, 'tip'))

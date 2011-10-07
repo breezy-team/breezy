@@ -1,0 +1,367 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.5b2
+#########
+
+:2.5b2: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.5b1
+#########
+
+:2.5b1: 2011-09-15
+
+This is the first beta of the 2.5 series, leading up to a 2.5.0
+release in February 2012.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.5b1.
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
+
+* A ``from_unicode`` parameter can be specified when registering a config
+  option. This implements boolean, integer and list config options when the
+  provided ``bool_from_store``, ``int_from_store`` and ``list_from_store``
+  are used for this parameter.  (Vincent Ladeuil)
+
+* Accessing a packaging branch on Launchpad (eg, ``lp:ubuntu/bzr``) now
+  checks to see if the most recent published source package version for
+  that project is present in the branch tags. This should help developers
+  trust whether the packaging branch is up-to-date and can be used for new
+  changes. The level of verbosity is controlled by the config item
+  ``launchpad.packaging_verbosity``. It can be set to one of
+
+  off
+    disable all checks
+
+
+  minimal
+    only display if the branch is out-of-date
+
+  short
+    also display single-line up-to-date and missing,
+
+
+  all
+    (default) display multi-line content for all states
+
+
+  (John Arbash Meinel, #609187, #812928)
+
+* Add a config option gpg_signing_key for setting which GPG key should
+  be used to sign commits. Also default to using the gpg user identity
+  which matches user_email() as set by whoami.
+  (Jonathan Riddell, #68501)
+
+* An ``invalid`` parameter can be specified when registering a config option
+  to decide what should be done when invalid values are
+  encountered. 'warning' and 'error' will respectively emit a warning and
+  ignore the value or errors out. (Vincent Ladeuil)
+
+* bzr add now skips large files in recursive mode. The default "large"
+  size is 20MB, and is configurable via the add.maximum_file_size
+  option. A value of 0 disables skipping. Named items passed to add are
+  never skipped. (Shannon Weyrick, #54624)
+
+* ``bzr help configuration/<option>`` display the help for ``option`` for
+  all registered configuration options. (Vincent Ladeuil, #747050)
+
+* ``bzr log -m`` now matches message, author, committer and bugs instead
+  of just matching the message.  ``--message`` keeps its original meaning,
+  while ``--match-message, --match-author, --match-committer`` and
+  ``--match-bugs`` match each of those fields. (Jacek Sieka)
+
+* ``config.Option`` can now declare ``default_from_env``, a list of
+  environment variables to get a default value from. (Vincent Ladeuil)
+
+* ``config.NameMatcher`` can be used to implement config stores and stacks
+  that need to provide specific option values for arbitrary unique IDs (svn
+  repository UUIDs, etc).  (Vincent Ladeuil, #843638)
+
+* New builtin ``bzr branches`` command, which lists all colocated branches
+  in a directory. (Jelmer Vernooij, #826820)
+
+* Relative local paths can now be specified in URL syntax by using the
+  "file:" prefix.  (Jelmer Vernooij)
+
+* Report commits signed with expired keys in ``verify-signatures``.
+  (Jonathan Riddell, #804254)
+
+* Translations are now enabled for command help, errors and globally
+  for any message using gettext given on output.  (Jonathan Riddell,
+  INADA Naoki, #83941)
+
+Improvements
+************
+
+* ``bzr add`` will now warn about nested subtrees that are skipped.
+  (Jelmer Vernooij, #187342)
+
+* ``bzr commit -m ''`` can now be used to force an empty commit message.
+  Entering an empty commit message in the message editor still triggers
+  an error. (Jelmer Vernooij)
+
+* ``bzr pull`` will now mention how many tags it has updated.
+  (Jelmer Vernooij, #164450)
+
+* ``bzr tag`` no longer errors if a tag already exists but refers to the
+  same revision, and will mention when a tag has been updated
+  rather than created. (Jelmer Vernooij, #381203)
+
+* ``bzr uncommit`` will now remove tags that refer to removed revisions.
+  The ``--keep-tags`` option can be used to prevent this behaviour.
+  (Jelmer Vernooij, #605814)
+
+* Do not run i18n initialisation twice. (Jonathan Riddell)
+
+* Install translation .mo files. (Jonathan Riddell)
+
+* Locations printed by ``bzr upgrade`` are now formatted before display.
+  (Jelmer Vernooij)
+
+* ``Repository.get_parent_map`` now estimates the size of the returned
+  content more accurately. This means that we get closer to the desired
+  64kB/request. For repositories converted from svn, this can be an
+  improvement of approx 5:1 in round trips to discover the whole history.
+  (John Arbash Meinel)
+
+* Support a ``bugtracker`` option which is used by ``bzr commit --fixes``
+  if no bug tracker was specified on the command line.
+  (Jelmer Vernooij, #334860)
+
+* Use gettext.NullTranslations in i18n to allow use of i18n even when
+  translations are not turned on. (Jonathan Riddell)
+
+Bug Fixes
+*********
+
+* ``bzr commit`` now correctly reports missing files as "removed", not
+  "modified". (Jelmer Vernooij, #553955)
+
+* ``bzr reconfigure`` will now allow multiple non-conflicting requests
+  in a single invocation, e.g. ``--branch`` and ``--use-shared``.
+  (Martin von Gagern, #842993)
+
+* A call to CHKInventory's filter-method will not result in a
+  DuplicateFileId error, if you move a subfolder and change a file in
+  that subfolder.
+  (Bastian Bowe, #809901)
+
+* Branching from a stacked branch no longer does a ``get_parent_map``
+  request for each revisions that is in the stacked-on repository while
+  determining what revisions need to be fetched. This mostly impacts
+  branching initialy into an empty shared repository when the source is
+  not the development focus.  (John Arbash Meinel, #388269)
+
+* Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
+  errors.  (Vincent Ladeuil, #822571)
+
+* Fix fallout from URL handling changes in 2.5 that caused an IndexError to be
+  raised whenever a transport at the drive root was opened on windows.
+  (Martin [gz], #841322)
+
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+* Rather than an error being raised, a warning is now printed when the
+  current user does not have permission to read a configuration file.
+  (Jelmer Vernooij, #837324)
+
+* The pull command will now always use separate connections for the
+  case where the destination is a heavyweight checkout of some remote
+  branch on the same host as the source branch.
+  (Martin von Gagern, #483661)
+
+* TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
+  operations that use it, like merge, can now create trees without a root.
+  (Aaron Bentley)
+
+Documentation
+*************
+
+* Release instructions refreshed. (Vincent Ladeuil)
+
+API Changes
+***********
+
+* ``BranchFormat.initialize`` now takes a ``append_revisions_only``
+  argument. (Jelmer Vernooij)
+
+* ``Branch._get_checkout_format`` now takes a ``lightweight`` argument
+  which indicates if the format should be for a lightweight or a
+  heavyweight checkout. (Jelmer Vernooij)
+
+* ``ControlDir.create_branch`` now takes a ``append_revisions_only`` argument.
+  (Jelmer Vernooij)
+
+* New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
+  (Jelmer Vernooij)
+
+* New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
+  value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
+  (Shannon Weyrick)
+
+* New method ``InterTree.file_content_matches`` which checks that
+  two files in different trees have the same contents.
+  (Jelmer Vernooij)
+
+* New method ``Tree.get_file_verifier`` which allows tree implementations
+  to return non-sha1 checksums to verify files.
+  (Jelmer Vernooij, #720831)
+
+* New methods ``get_transport_from_path`` and ``get_transport_from_url``
+  have been added that only support opening from a path or a URL,
+  unlike ``get_transport``. (Jelmer Vernooij)
+
+* New registry ``OptionRegistry`` specialized for configuration options.
+  (Vincent Ladeuil)
+
+* Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
+  (Vincent Ladeuil)
+
+* Remove ``commands._builtin_commands``, ``commands.shlex_split_unicode``,
+  ``Command._maybe_expand_globs`` and ``Command.run_direct`` deprecated in
+  2.10 and 2.2.0. (Vincent Ladeuil)
+
+* Remove ``diff.get_trees_and_branches_to_diff`` deprecated in 2.2.0.
+
+* Remove ``log.calculate_view_revisions``, ``log._filter_revision_range``,
+  ``log.get_view_revisions`` which have been deprecated in bzr 2.1.0. Also
+  remove ``log.show_one_log`` which was never properly deprecated but wasn't
+  used and is easy to inline if needed. (Vincent Ladeuil)
+
+* Remove ``trace.info``, ``trace.error`` and ``trace.show_log_error``
+  deprecated in 2.1.0. (Vincent Ladeuil)
+
+* Remove ``TransportListRegistry.set_default_transport``, as the concept of
+  a default transport is currently unused. (Jelmer Vernooij)
+
+* Remove ``UIFactory.warn_cross_format_fetch`` and
+  ``UIFactory.warn_experimental_format_fetch`` in favor of
+  ``UIFactory.show_user_warning``. (Jelmer Vernooij)
+
+* ``Tags`` containers can now declare whether they support versioned
+  tags and whether tags can refer to ghost tags.
+  (Jelmer Vernooij)
+
+* ``Tags.merge_to`` now returns a dictionary with the updated tags
+  and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
+
+* There is a new class `ContentFilterTree` that provides a facade for 
+  content filtering.  The `filtered` parameter to `export` is deprecated 
+  in favor of passing a filtered tree, and the specific exporter plugins
+  no longer support it.
+  (Martin Pool)
+
+* ``Transport`` now has a ``_parsed_url`` attribute instead of
+  separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
+  and ``_path`` attributes. Proxies are provided for the moment but
+  may be removed in the future. (Jelmer Vernooij)
+
+
+Internals
+*********
+
+* A new debug flag ``hpss_client_no_vfs`` will now cause the HPSS client
+  to raise a ``HpssVfsRequestNotAllowed`` exception when a VFS request
+  is attempted. (Jelmer Vernooij)
+
+* New method ``ControlDir._get_selected_branch`` which returns the
+  colocated branch selected using path segment parameters.
+  (Jelmer Vernooij, #380871)
+
+Testing
+*******
+
+* Blackbox tests (including test scripts) can be debugged interactively (see
+  bzrlib.debug.BzrPdb for details). (Vincent Ladeuil)
+
+* `BranchBuilder.build_snapshot` now supports a "flush" action.  This
+  cleanly and reliably allows tests using `BranchBuilder` to construct
+  branches that e.g. rename files out of a directory and unversion that
+  directory in the same revision.  Previously some changes were impossible
+  due to the order that `build_snapshot` performs its actions.
+  (Andrew Bennetts)
+
+* Don't require ``os.fdatasync`` to be defined on all supported OSes
+  (BSD-based OSes don't define it).  (Vincent Ladeuil, #822649)
+
+* Fix compatibility with testtools 0.9.12. (Jelmer Vernooij, #815423)
+
+* ``LockDir`` can now be run when the local hostname is ``localhost``.
+  (Jelmer Vernooij, #825994)
+
+* ``ModuleAvailableFeature`` won't try to import already imported modules,
+  allowing it to be used for modules with side-effects.
+  (Vincent Ladeuil, #712474)
+
+* Output time stamps while running ``make check`` to get better timings from
+  pqm.  (Vincent Ladeuil, #837926)
+
+* `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
+  just compares the bytes in the dirstate file to its pristine state,
+  rather than opening the WorkingTree and calling ``last_revision()``.
+  This reduces the overall test suite time by about 10% on my laptop.
+  (Andrew Bennetts)
+
+* Update `TestCase.knownFailure` to the testtools way of handling expected
+  failures to resolve Python 2.7 incompatibility. (Martin [gz], #607400)
+
+..
+   vim: tw=74 ft=rst ff=unix

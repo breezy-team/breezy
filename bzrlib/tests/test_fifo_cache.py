@@ -229,11 +229,11 @@ class TestFIFOCache(tests.TestCase):
         c = fifo_cache.FIFOCache()
         c.add(1, 2, cleanup=logging_cleanup)
         del c
-        # TODO: We currently don't support calling the cleanup() funcs during
-        #       __del__. We might want to consider implementing this.
-        self.expectFailure("we don't call cleanups during __del__",
-                           self.assertEqual, [(1, 2)], log)
-        self.assertEqual([(1, 2)], log)
+        # As a matter of design, bzr does not (can not) count on anything
+        # being run from Python __del__ methods, because they may not run for
+        # a long time, and because in cPython merely having them defined
+        # interferes with garbage collection.
+        self.assertEqual([], log)
 
 
 class TestFIFOSizeCache(tests.TestCase):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,29 +31,26 @@
 # from _curl_perform.  Not done because we may deprecate pycurl in the
 # future -- vila 20070212
 
-import os
 from cStringIO import StringIO
 import httplib
-import sys
 
+import bzrlib
 from bzrlib import (
     debug,
     errors,
     trace,
-    __version__ as bzrlib_version,
     )
-import bzrlib
-from bzrlib.trace import mutter
 from bzrlib.transport.http import (
     ca_bundle,
     HttpTransportBase,
     response,
+    unhtml_roughly,
     )
 
 try:
     import pycurl
 except ImportError, e:
-    mutter("failed to import pycurl: %s", e)
+    trace.mutter("failed to import pycurl: %s", e)
     raise errors.DependencyNotPresent('pycurl', e)
 
 try:
@@ -68,7 +65,7 @@ try:
     # reported by Alexander Belchenko, 2006-04-26
     pycurl.Curl()
 except pycurl.error, e:
-    mutter("failed to initialize pycurl: %s", e)
+    trace.mutter("failed to initialize pycurl: %s", e)
     raise errors.DependencyNotPresent('pycurl', e)
 
 
@@ -131,6 +128,11 @@ class PyCurlTransport(HttpTransportBase):
             # Proxy handling is out of reach, so we punt
             self._set_connection(connection, auth)
         return connection
+
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
 
     def has(self, relpath):
         """See Transport.has()"""
@@ -266,7 +268,9 @@ class PyCurlTransport(HttpTransportBase):
         # We override the Expect: header so that pycurl will send the POST
         # body immediately.
         try:
-            self._curl_perform(curl, header, ['Expect: '])
+            self._curl_perform(curl, header,
+                               ['Expect: ',
+                                'Content-Type: application/octet-stream'])
         except pycurl.error, e:
             if e[0] == CURLE_SEND_ERROR:
                 # When talking to an HTTP/1.0 server, getting a 400+ error code
@@ -278,8 +282,8 @@ class PyCurlTransport(HttpTransportBase):
                 # error code and the headers are known to be available, we just
                 # swallow the exception, leaving the upper levels handle the
                 # 400+ error.
-                mutter('got pycurl error in POST: %s, %s, %s, url: %s ',
-                       e[0], e[1], e, abspath)
+                trace.mutter('got pycurl error in POST: %s, %s, %s, url: %s ',
+                             e[0], e[1], e, abspath)
             else:
                 # Re-raise otherwise
                 raise
@@ -289,38 +293,67 @@ class PyCurlTransport(HttpTransportBase):
         return code, response.handle_response(abspath, code, msg, data)
 
 
-    def _raise_curl_http_error(self, curl, info=None):
+    def _raise_curl_http_error(self, curl, info=None, body=None):
+        """Common curl->bzrlib error translation.
+
+        Some methods may choose to override this for particular cases.
+
+        The URL and code are automatically included as appropriate.
+
+        :param info: Extra information to include in the message.
+
+        :param body: File-like object from which the body of the page can be
+            read.
+        """
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
-        # Some error codes can be handled the same way for all
-        # requests
+        if body is not None:
+            response_body = body.read()
+            plaintext_body = unhtml_roughly(response_body)
+        else:
+            response_body = None
+            plaintext_body = ''
         if code == 403:
             raise errors.TransportError(
                 'Server refuses to fulfill the request (403 Forbidden)'
-                ' for %s' % url)
+                ' for %s: %s' % (url, plaintext_body))
         else:
             if info is None:
                 msg = ''
             else:
                 msg = ': ' + info
             raise errors.InvalidHttpResponse(
-                url, 'Unable to handle http code %d%s' % (code,msg))
+                url, 'Unable to handle http code %d%s: %s'
+                % (code, msg, plaintext_body))
 
     def _debug_cb(self, kind, text):
-        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN,
-                    pycurl.INFOTYPE_SSL_DATA_IN):
+        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN):
             self._report_activity(len(text), 'read')
             if (kind == pycurl.INFOTYPE_HEADER_IN
                 and 'http' in debug.debug_flags):
-                mutter('< %s' % text)
-        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT,
-                      pycurl.INFOTYPE_SSL_DATA_OUT):
+                trace.mutter('< %s' % (text.rstrip(),))
+        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT):
             self._report_activity(len(text), 'write')
             if (kind == pycurl.INFOTYPE_HEADER_OUT
                 and 'http' in debug.debug_flags):
-                mutter('> %s' % text)
+                lines = []
+                for line in text.rstrip().splitlines():
+                    # People are often told to paste -Dhttp output to help
+                    # debug. Don't compromise credentials.
+                    try:
+                        header, details = line.split(':', 1)
+                    except ValueError:
+                        header = None
+                    if header in ('Authorization', 'Proxy-Authorization'):
+                        line = '%s: <masked>' % (header,)
+                    lines.append(line)
+                trace.mutter('> ' + '\n> '.join(lines))
         elif kind == pycurl.INFOTYPE_TEXT and 'http' in debug.debug_flags:
-            mutter('* %s' % text)
+            trace.mutter('* %s' % text.rstrip())
+        elif (kind in (pycurl.INFOTYPE_TEXT, pycurl.INFOTYPE_SSL_DATA_IN,
+                       pycurl.INFOTYPE_SSL_DATA_OUT)
+              and 'http' in debug.debug_flags):
+            trace.mutter('* %s' % text)
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
@@ -357,8 +390,8 @@ class PyCurlTransport(HttpTransportBase):
             curl.perform()
         except pycurl.error, e:
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
-            mutter('got pycurl error: %s, %s, %s, url: %s ',
-                    e[0], e[1], e, url)
+            trace.mutter('got pycurl error: %s, %s, %s, url: %s ',
+                         e[0], e[1], e, url)
             if e[0] in (CURLE_COULDNT_RESOLVE_HOST,
                         CURLE_COULDNT_RESOLVE_PROXY,
                         CURLE_COULDNT_CONNECT,
@@ -392,10 +425,10 @@ class PyCurlTransport(HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
+    from bzrlib.tests import features
     from bzrlib.tests import http_server
     permutations = [(PyCurlTransport, http_server.HttpServer_PyCurl),]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         from bzrlib.tests import (
             https_server,
             ssl_certs,

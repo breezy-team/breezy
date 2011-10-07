@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import os
 
 from bzrlib import (
@@ -26,67 +25,11 @@ from bzrlib import (
     mutabletree,
     osutils,
     revision as _mod_revision,
+    tests,
     ui,
-    uncommit,
-    workingtree,
     )
-from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           UnsupportedOperation)
-from bzrlib.osutils import pathjoin, getcwd
-from bzrlib.tests import TestCase
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib.trace import mutter
-from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
-
-
-class CapturingUIFactory(ui.UIFactory):
-    """A UI Factory for testing - capture the updates made through it."""
-
-    def __init__(self):
-        super(CapturingUIFactory, self).__init__()
-        self._calls = []
-        self.depth = 0
-
-    def clear(self):
-        """See progress.ProgressTask.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressTask.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressTask.finished()."""
-        self.depth -= 1
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressTask.note()."""
-
-    def progress_bar(self):
-        return self
-
-    def nested_progress_bar(self):
-        self.depth += 1
-        return self
-
-    def update(self, message, count=None, total=None):
-        """See progress.ProgressTask.update()."""
-        if self.depth == 1:
-            self._calls.append(("update", count, total, message))
-
-
-class TestCapturingUI(TestCase):
-
-    def test_nested_ignore_depth_beyond_one(self):
-        # we only want to capture the first level out progress, not
-        # want sub-components might do. So we have nested bars ignored.
-        factory = CapturingUIFactory()
-        pb1 = factory.nested_progress_bar()
-        pb1.update('foo', 0, 1)
-        pb2 = factory.nested_progress_bar()
-        pb2.update('foo', 0, 1)
-        pb2.finished()
-        pb1.finished()
-        self.assertEqual([("update", 0, 1, 'foo')], factory._calls)
+from bzrlib.tests.testui import ProgressRecordingUIFactory
 
 
 class TestCommit(TestCaseWithWorkingTree):
@@ -168,7 +111,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_a.commit('change n in A')
 
         # Merging from A should introduce conflicts because 'n' was modified
-        # and removed, so 'a' needs to be restored.
+        # (in A) and removed (in B), so 'a' needs to be restored.
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual(3, num_conflicts)
         paths = [(path, ie.file_id)
@@ -204,8 +147,12 @@ class TestCommit(TestCaseWithWorkingTree):
         wt2 = wt.bzrdir.sprout('to').open_workingtree()
         wt2.commit('change_right')
         wt.merge_from_branch(wt2.branch)
-        self.assertRaises(errors.CannotCommitSelectedFileMerge,
-            wt.commit, 'test', exclude=['foo'])
+        try:
+            self.assertRaises(errors.CannotCommitSelectedFileMerge,
+                wt.commit, 'test', exclude=['foo'])
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
 
     def test_commit_exclude_exclude_changed_is_pointless(self):
         tree = self.make_branch_and_tree('.')
@@ -213,14 +160,22 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.smart_add(['.'])
         tree.commit('setup test')
         self.build_tree_contents([('a', 'new contents for "a"\n')])
-        self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
-            exclude=['a'], allow_pointless=False)
+        try:
+            self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
+                exclude=['a'], allow_pointless=False)
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
 
     def test_commit_exclude_excludes_modified_files(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
         tree.smart_add(['.'])
-        tree.commit('test', exclude=['b', 'c'])
+        try:
+            tree.commit('test', exclude=['b', 'c'])
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
         # If b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -233,7 +188,11 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         tree.smart_add(['.'])
-        tree.commit('test', specific_files=['a'], exclude=['a/b'])
+        try:
+            tree.commit('test', specific_files=['a'], exclude=['a/b'])
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
         # If a/b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -321,7 +280,7 @@ class TestCommit(TestCaseWithWorkingTree):
             # older format.
             return
         tree.commit('foo', rev_id='foo', local=True)
-        self.failIf(master.repository.has_revision('foo'))
+        self.assertFalse(master.repository.has_revision('foo'))
         self.assertEqual(_mod_revision.NULL_REVISION,
                          (_mod_revision.ensure_null(master.last_revision())))
 
@@ -507,7 +466,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestCommitProgress, self).setUp()
-        ui.ui_factory = CapturingUIFactory()
+        ui.ui_factory = ProgressRecordingUIFactory()
 
     def test_commit_progress_steps(self):
         # during commit we one progress update for every entry in the
@@ -526,7 +485,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f.close()
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         # TODO RBC 20060421 it would be nice to merge the reporter output
         # into the factory for this test - just make the test ui factory
@@ -547,7 +506,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
@@ -570,7 +529,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass

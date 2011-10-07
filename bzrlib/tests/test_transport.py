@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,14 +28,18 @@ from bzrlib import (
     transport,
     urlutils,
     )
+from bzrlib.directory_service import directories
 from bzrlib.transport import (
     chroot,
     fakenfs,
+    http,
     local,
+    location_to_url,
     memory,
     pathfilter,
     readonly,
     )
+import bzrlib.transport.trace
 from bzrlib.tests import (
     features,
     test_server,
@@ -48,83 +52,72 @@ from bzrlib.tests import (
 class TestTransport(tests.TestCase):
     """Test the non transport-concrete class functionality."""
 
-    # FIXME: These tests should use addCleanup() and/or overrideAttr() instead
-    # of try/finally -- vila 20100205
-
     def test__get_set_protocol_handlers(self):
         handlers = transport._get_protocol_handlers()
-        self.assertNotEqual([], handlers.keys( ))
-        try:
-            transport._clear_protocol_handlers()
-            self.assertEqual([], transport._get_protocol_handlers().keys())
-        finally:
-            transport._set_protocol_handlers(handlers)
+        self.assertNotEqual([], handlers.keys())
+        transport._clear_protocol_handlers()
+        self.addCleanup(transport._set_protocol_handlers, handlers)
+        self.assertEqual([], transport._get_protocol_handlers().keys())
 
     def test_get_transport_modules(self):
         handlers = transport._get_protocol_handlers()
+        self.addCleanup(transport._set_protocol_handlers, handlers)
         # don't pollute the current handlers
         transport._clear_protocol_handlers()
+
         class SampleHandler(object):
             """I exist, isnt that enough?"""
-        try:
-            transport._clear_protocol_handlers()
-            transport.register_transport_proto('foo')
-            transport.register_lazy_transport('foo',
-                                              'bzrlib.tests.test_transport',
-                                              'TestTransport.SampleHandler')
-            transport.register_transport_proto('bar')
-            transport.register_lazy_transport('bar',
-                                              'bzrlib.tests.test_transport',
-                                              'TestTransport.SampleHandler')
-            self.assertEqual([SampleHandler.__module__,
-                              'bzrlib.transport.chroot',
-                              'bzrlib.transport.pathfilter'],
-                             transport._get_transport_modules())
-        finally:
-            transport._set_protocol_handlers(handlers)
+        transport._clear_protocol_handlers()
+        transport.register_transport_proto('foo')
+        transport.register_lazy_transport('foo',
+                                            'bzrlib.tests.test_transport',
+                                            'TestTransport.SampleHandler')
+        transport.register_transport_proto('bar')
+        transport.register_lazy_transport('bar',
+                                            'bzrlib.tests.test_transport',
+                                            'TestTransport.SampleHandler')
+        self.assertEqual([SampleHandler.__module__,
+                            'bzrlib.transport.chroot',
+                            'bzrlib.transport.pathfilter'],
+                            transport._get_transport_modules())
 
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = transport._get_protocol_handlers()
+        self.addCleanup(transport._set_protocol_handlers, saved_handlers)
         # don't pollute the current handlers
         transport._clear_protocol_handlers()
+        transport.register_transport_proto('foo')
+        transport.register_lazy_transport(
+            'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
         try:
-            transport.register_transport_proto('foo')
-            transport.register_lazy_transport(
-                'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
-            try:
-                transport.get_transport('foo://fooserver/foo')
-            except errors.UnsupportedProtocol, e:
-                e_str = str(e)
-                self.assertEquals('Unsupported protocol'
-                                  ' for url "foo://fooserver/foo":'
-                                  ' Unable to import library "some_lib":'
-                                  ' testing missing dependency', str(e))
-            else:
-                self.fail('Did not raise UnsupportedProtocol')
-        finally:
-            # restore original values
-            transport._set_protocol_handlers(saved_handlers)
+            transport.get_transport_from_url('foo://fooserver/foo')
+        except errors.UnsupportedProtocol, e:
+            e_str = str(e)
+            self.assertEquals('Unsupported protocol'
+                                ' for url "foo://fooserver/foo":'
+                                ' Unable to import library "some_lib":'
+                                ' testing missing dependency', str(e))
+        else:
+            self.fail('Did not raise UnsupportedProtocol')
 
     def test_transport_fallback(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = transport._get_protocol_handlers()
-        try:
-            transport._clear_protocol_handlers()
-            transport.register_transport_proto('foo')
-            transport.register_lazy_transport(
-                'foo', 'bzrlib.tests.test_transport', 'BackupTransportHandler')
-            transport.register_lazy_transport(
-                'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
-            t = transport.get_transport('foo://fooserver/foo')
-            self.assertTrue(isinstance(t, BackupTransportHandler))
-        finally:
-            transport._set_protocol_handlers(saved_handlers)
+        self.addCleanup(transport._set_protocol_handlers, saved_handlers)
+        transport._clear_protocol_handlers()
+        transport.register_transport_proto('foo')
+        transport.register_lazy_transport(
+            'foo', 'bzrlib.tests.test_transport', 'BackupTransportHandler')
+        transport.register_lazy_transport(
+            'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
+        t = transport.get_transport_from_url('foo://fooserver/foo')
+        self.assertTrue(isinstance(t, BackupTransportHandler))
 
     def test_ssh_hints(self):
         """Transport ssh:// should raise an error pointing out bzr+ssh://"""
         try:
-            transport.get_transport('ssh://fooserver/foo')
+            transport.get_transport_from_url('ssh://fooserver/foo')
         except errors.UnsupportedProtocol, e:
             e_str = str(e)
             self.assertEquals('Unsupported protocol'
@@ -144,17 +137,6 @@ class TestTransport(tests.TestCase):
             self.assertEqual('a path', error.path)
         self.assertRaises(errors.ReadError, a_file.read, 40)
         a_file.close()
-
-    def test__combine_paths(self):
-        t = transport.Transport('/')
-        self.assertEqual('/home/sarah/project/foo',
-                         t._combine_paths('/home/sarah', 'project/foo'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '../../etc'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '../../../etc'))
-        self.assertEqual('/etc',
-                         t._combine_paths('/home/sarah', '/etc'))
 
     def test_local_abspath_non_local_transport(self):
         # the base implementation should throw
@@ -218,33 +200,32 @@ class TestCoalesceOffsets(tests.TestCase):
 
     def test_coalesce_fudge(self):
         self.check([(10, 30, [(0, 10), (20, 10)]),
-                    (100, 10, [(0, 10),]),
+                    (100, 10, [(0, 10)]),
                    ], [(10, 10), (30, 10), (100, 10)],
-                   fudge=10
-                  )
+                   fudge=10)
+
     def test_coalesce_max_size(self):
         self.check([(10, 20, [(0, 10), (10, 10)]),
                     (30, 50, [(0, 50)]),
                     # If one range is above max_size, it gets its own coalesced
                     # offset
-                    (100, 80, [(0, 80),]),],
+                    (100, 80, [(0, 80)]),],
                    [(10, 10), (20, 10), (30, 50), (100, 80)],
-                   max_size=50
-                  )
+                   max_size=50)
 
     def test_coalesce_no_max_size(self):
-        self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)]),],
+        self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)])],
                    [(10, 10), (20, 10), (30, 50), (80, 100)],
                   )
 
     def test_coalesce_default_limit(self):
         # By default we use a 100MB max size.
-        ten_mb = 10*1024*1024
-        self.check([(0, 10*ten_mb, [(i*ten_mb, ten_mb) for i in range(10)]),
+        ten_mb = 10 * 1024 * 1024
+        self.check([(0, 10 * ten_mb, [(i * ten_mb, ten_mb) for i in range(10)]),
                     (10*ten_mb, ten_mb, [(0, ten_mb)])],
                    [(i*ten_mb, ten_mb) for i in range(11)])
-        self.check([(0, 11*ten_mb, [(i*ten_mb, ten_mb) for i in range(11)]),],
-                   [(i*ten_mb, ten_mb) for i in range(11)],
+        self.check([(0, 11 * ten_mb, [(i * ten_mb, ten_mb) for i in range(11)])],
+                   [(i * ten_mb, ten_mb) for i in range(11)],
                    max_size=1*1024*1024*1024)
 
 
@@ -255,7 +236,7 @@ class TestMemoryServer(tests.TestCase):
         server.start_server()
         url = server.get_url()
         self.assertTrue(url in transport.transport_list_registry)
-        t = transport.get_transport(url)
+        t = transport.get_transport_from_url(url)
         del t
         server.stop_server()
         self.assertFalse(url in transport.transport_list_registry)
@@ -376,9 +357,9 @@ class ChrootDecoratorTransportTest(tests.TestCase):
     def test_abspath(self):
         # The abspath is always relative to the chroot_url.
         server = chroot.ChrootServer(
-            transport.get_transport('memory:///foo/bar/'))
+            transport.get_transport_from_url('memory:///foo/bar/'))
         self.start_server(server)
-        t = transport.get_transport(server.get_url())
+        t = transport.get_transport_from_url(server.get_url())
         self.assertEqual(server.get_url(), t.abspath('/'))
 
         subdir_t = t.clone('subdir')
@@ -386,9 +367,9 @@ class ChrootDecoratorTransportTest(tests.TestCase):
 
     def test_clone(self):
         server = chroot.ChrootServer(
-            transport.get_transport('memory:///foo/bar/'))
+            transport.get_transport_from_url('memory:///foo/bar/'))
         self.start_server(server)
-        t = transport.get_transport(server.get_url())
+        t = transport.get_transport_from_url(server.get_url())
         # relpath from root and root path are the same
         relpath_cloned = t.clone('foo')
         abspath_cloned = t.clone('/foo')
@@ -403,13 +384,13 @@ class ChrootDecoratorTransportTest(tests.TestCase):
         This is so that it is not possible to escape a chroot by doing::
             url = chroot_transport.base
             parent_url = urlutils.join(url, '..')
-            new_t = transport.get_transport(parent_url)
+            new_t = transport.get_transport_from_url(parent_url)
         """
         server = chroot.ChrootServer(
-            transport.get_transport('memory:///path/subpath'))
+            transport.get_transport_from_url('memory:///path/subpath'))
         self.start_server(server)
-        t = transport.get_transport(server.get_url())
-        new_t = transport.get_transport(t.base)
+        t = transport.get_transport_from_url(server.get_url())
+        new_t = transport.get_transport_from_url(t.base)
         self.assertEqual(t.server, new_t.server)
         self.assertEqual(t.base, new_t.base)
 
@@ -420,11 +401,12 @@ class ChrootDecoratorTransportTest(tests.TestCase):
         This is so that it is not possible to escape a chroot by doing::
             url = chroot_transport.base
             parent_url = urlutils.join(url, '..')
-            new_t = transport.get_transport(parent_url)
+            new_t = transport.get_transport_from_url(parent_url)
         """
-        server = chroot.ChrootServer(transport.get_transport('memory:///path/'))
+        server = chroot.ChrootServer(
+            transport.get_transport_from_url('memory:///path/'))
         self.start_server(server)
-        t = transport.get_transport(server.get_url())
+        t = transport.get_transport_from_url(server.get_url())
         self.assertRaises(
             errors.InvalidURLJoin, urlutils.join, t.base, '..')
 
@@ -440,11 +422,9 @@ class TestChrootServer(tests.TestCase):
         backing_transport = memory.MemoryTransport()
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
-        try:
-            self.assertTrue(server.scheme
-                            in transport._get_protocol_handlers().keys())
-        finally:
-            server.stop_server()
+        self.addCleanup(server.stop_server)
+        self.assertTrue(server.scheme
+                        in transport._get_protocol_handlers().keys())
 
     def test_stop_server(self):
         backing_transport = memory.MemoryTransport()
@@ -458,10 +438,8 @@ class TestChrootServer(tests.TestCase):
         backing_transport = memory.MemoryTransport()
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
-        try:
-            self.assertEqual('chroot-%d:///' % id(server), server.get_url())
-        finally:
-            server.stop_server()
+        self.addCleanup(server.stop_server)
+        self.assertEqual('chroot-%d:///' % id(server), server.get_url())
 
 
 class PathFilteringDecoratorTransportTest(tests.TestCase):
@@ -470,10 +448,10 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
     def test_abspath(self):
         # The abspath is always relative to the base of the backing transport.
         server = pathfilter.PathFilteringServer(
-            transport.get_transport('memory:///foo/bar/'),
+            transport.get_transport_from_url('memory:///foo/bar/'),
             lambda x: x)
         server.start_server()
-        t = transport.get_transport(server.get_url())
+        t = transport.get_transport_from_url(server.get_url())
         self.assertEqual(server.get_url(), t.abspath('/'))
 
         subdir_t = t.clone('subdir')
@@ -482,16 +460,16 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
 
     def make_pf_transport(self, filter_func=None):
         """Make a PathFilteringTransport backed by a MemoryTransport.
-        
+
         :param filter_func: by default this will be a no-op function.  Use this
             parameter to override it."""
         if filter_func is None:
             filter_func = lambda x: x
         server = pathfilter.PathFilteringServer(
-            transport.get_transport('memory:///foo/bar/'), filter_func)
+            transport.get_transport_from_url('memory:///foo/bar/'), filter_func)
         server.start_server()
         self.addCleanup(server.stop_server)
-        return transport.get_transport(server.get_url())
+        return transport.get_transport_from_url(server.get_url())
 
     def test__filter(self):
         # _filter (with an identity func as filter_func) always returns
@@ -510,6 +488,7 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
 
     def test_filter_invocation(self):
         filter_log = []
+
         def filter(path):
             filter_log.append(path)
             return path
@@ -540,10 +519,10 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         otherwise) the filtering by doing::
             url = filtered_transport.base
             parent_url = urlutils.join(url, '..')
-            new_t = transport.get_transport(parent_url)
+            new_t = transport.get_transport_from_url(parent_url)
         """
         t = self.make_pf_transport()
-        new_t = transport.get_transport(t.base)
+        new_t = transport.get_transport_from_url(t.base)
         self.assertEqual(t.server, new_t.server)
         self.assertEqual(t.base, new_t.base)
 
@@ -562,8 +541,8 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
         # connect to '.' via http which is not listable
         server = HttpServer()
         self.start_server(server)
-        t = transport.get_transport('readonly+' + server.get_url())
-        self.failUnless(isinstance(t, readonly.ReadonlyTransportDecorator))
+        t = transport.get_transport_from_url('readonly+' + server.get_url())
+        self.assertIsInstance(t, readonly.ReadonlyTransportDecorator)
         self.assertEqual(False, t.listable())
         self.assertEqual(True, t.is_readonly())
 
@@ -601,7 +580,7 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
         # the url should be decorated appropriately
         self.assertStartsWith(server.get_url(), 'fakenfs+')
         # and we should be able to get a transport for it
-        t = transport.get_transport(server.get_url())
+        t = transport.get_transport_from_url(server.get_url())
         # which must be a FakeNFSTransportDecorator instance.
         self.assertIsInstance(t, fakenfs.FakeNFSTransportDecorator)
 
@@ -684,7 +663,7 @@ class TestTransportImplementation(tests.TestCaseInTempDir):
         base_url = self._server.get_url()
         url = self._adjust_url(base_url, relpath)
         # try getting the transport via the regular interface:
-        t = transport.get_transport(url)
+        t = transport.get_transport_from_url(url)
         # vila--20070607 if the following are commented out the test suite
         # still pass. Is this really still needed or was it a forgotten
         # temporary fix ?
@@ -693,6 +672,43 @@ class TestTransportImplementation(tests.TestCaseInTempDir):
             # regular connection behaviour by direct construction.
             t = self.transport_class(url)
         return t
+
+
+class TestTransportFromPath(tests.TestCaseInTempDir):
+
+    def test_with_path(self):
+        t = transport.get_transport_from_path(self.test_dir)
+        self.assertIsInstance(t, local.LocalTransport)
+        self.assertEquals(t.base.rstrip("/"),
+            urlutils.local_path_to_url(self.test_dir))
+
+    def test_with_url(self):
+        t = transport.get_transport_from_path("file:")
+        self.assertIsInstance(t, local.LocalTransport)
+        self.assertEquals(t.base.rstrip("/"),
+            urlutils.local_path_to_url(os.path.join(self.test_dir, "file:")))
+
+
+class TestTransportFromUrl(tests.TestCaseInTempDir):
+
+    def test_with_path(self):
+        self.assertRaises(errors.InvalidURL, transport.get_transport_from_url,
+            self.test_dir)
+
+    def test_with_url(self):
+        url = urlutils.local_path_to_url(self.test_dir)
+        t = transport.get_transport_from_url(url)
+        self.assertIsInstance(t, local.LocalTransport)
+        self.assertEquals(t.base.rstrip("/"), url)
+
+    def test_with_url_and_segment_parameters(self):
+        url = urlutils.local_path_to_url(self.test_dir)+",branch=foo"
+        t = transport.get_transport_from_url(url)
+        self.assertIsInstance(t, local.LocalTransport)
+        self.assertEquals(t.base.rstrip("/"), url)
+        with open(os.path.join(self.test_dir, "afile"), 'w') as f:
+            f.write("data")
+        self.assertTrue(t.has("afile"))
 
 
 class TestLocalTransports(tests.TestCase):
@@ -722,6 +738,33 @@ class TestLocalTransports(tests.TestCase):
         self.assertEquals(t.local_abspath(''), here)
 
 
+class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
+
+    def test_local_fdatasync_calls_fdatasync(self):
+        """Check fdatasync on a stream tries to flush the data to the OS.
+        
+        We can't easily observe the external effect but we can at least see
+        it's called.
+        """
+        sentinel = object()
+        fdatasync = getattr(os, 'fdatasync', sentinel)
+        if fdatasync is sentinel:
+            raise tests.TestNotApplicable('fdatasync not supported')
+        t = self.get_transport('.')
+        calls = self.recordCalls(os, 'fdatasync')
+        w = t.open_write_stream('out')
+        w.write('foo')
+        w.fdatasync()
+        with open('out', 'rb') as f:
+            # Should have been flushed.
+            self.assertEquals(f.read(), 'foo')
+        self.assertEquals(len(calls), 1, calls)
+
+    def test_missing_directory(self):
+        t = self.get_transport('.')
+        self.assertRaises(errors.NoSuchFile, t.open_write_stream, 'dir/foo')
+
+
 class TestWin32LocalTransport(tests.TestCase):
 
     def test_unc_clone_to_root(self):
@@ -743,30 +786,30 @@ class TestConnectedTransport(tests.TestCase):
     def test_parse_url(self):
         t = transport.ConnectedTransport(
             'http://simple.example.com/home/source')
-        self.assertEquals(t._host, 'simple.example.com')
-        self.assertEquals(t._port, None)
-        self.assertEquals(t._path, '/home/source/')
-        self.failUnless(t._user is None)
-        self.failUnless(t._password is None)
+        self.assertEquals(t._parsed_url.host, 'simple.example.com')
+        self.assertEquals(t._parsed_url.port, None)
+        self.assertEquals(t._parsed_url.path, '/home/source/')
+        self.assertTrue(t._parsed_url.user is None)
+        self.assertTrue(t._parsed_url.password is None)
 
         self.assertEquals(t.base, 'http://simple.example.com/home/source/')
 
     def test_parse_url_with_at_in_user(self):
         # Bug 228058
         t = transport.ConnectedTransport('ftp://user@host.com@www.host.com/')
-        self.assertEquals(t._user, 'user@host.com')
+        self.assertEquals(t._parsed_url.user, 'user@host.com')
 
     def test_parse_quoted_url(self):
         t = transport.ConnectedTransport(
             'http://ro%62ey:h%40t@ex%41mple.com:2222/path')
-        self.assertEquals(t._host, 'exAmple.com')
-        self.assertEquals(t._port, 2222)
-        self.assertEquals(t._user, 'robey')
-        self.assertEquals(t._password, 'h@t')
-        self.assertEquals(t._path, '/path/')
+        self.assertEquals(t._parsed_url.host, 'exAmple.com')
+        self.assertEquals(t._parsed_url.port, 2222)
+        self.assertEquals(t._parsed_url.user, 'robey')
+        self.assertEquals(t._parsed_url.password, 'h@t')
+        self.assertEquals(t._parsed_url.path, '/path/')
 
         # Base should not keep track of the password
-        self.assertEquals(t.base, 'http://robey@exAmple.com:2222/path/')
+        self.assertEquals(t.base, 'http://ro%62ey@ex%41mple.com:2222/path/')
 
     def test_parse_invalid_url(self):
         self.assertRaises(errors.InvalidURL,
@@ -776,7 +819,8 @@ class TestConnectedTransport(tests.TestCase):
     def test_relpath(self):
         t = transport.ConnectedTransport('sftp://user@host.com/abs/path')
 
-        self.assertEquals(t.relpath('sftp://user@host.com/abs/path/sub'), 'sub')
+        self.assertEquals(t.relpath('sftp://user@host.com/abs/path/sub'),
+            'sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
                           'http://user@host.com/abs/path/sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
@@ -795,13 +839,13 @@ class TestConnectedTransport(tests.TestCase):
 
     def test_connection_sharing_propagate_credentials(self):
         t = transport.ConnectedTransport('ftp://user@host.com/abs/path')
-        self.assertEquals('user', t._user)
-        self.assertEquals('host.com', t._host)
+        self.assertEquals('user', t._parsed_url.user)
+        self.assertEquals('host.com', t._parsed_url.host)
         self.assertIs(None, t._get_connection())
-        self.assertIs(None, t._password)
+        self.assertIs(None, t._parsed_url.password)
         c = t.clone('subdir')
         self.assertIs(None, c._get_connection())
-        self.assertIs(None, t._password)
+        self.assertIs(None, t._parsed_url.password)
 
         # Simulate the user entering a password
         password = 'secret'
@@ -826,39 +870,40 @@ class TestReusedTransports(tests.TestCase):
 
     def test_reuse_same_transport(self):
         possible_transports = []
-        t1 = transport.get_transport('http://foo/',
+        t1 = transport.get_transport_from_url('http://foo/',
                                      possible_transports=possible_transports)
         self.assertEqual([t1], possible_transports)
-        t2 = transport.get_transport('http://foo/',
+        t2 = transport.get_transport_from_url('http://foo/',
                                      possible_transports=[t1])
         self.assertIs(t1, t2)
 
         # Also check that final '/' are handled correctly
-        t3 = transport.get_transport('http://foo/path/')
-        t4 = transport.get_transport('http://foo/path',
+        t3 = transport.get_transport_from_url('http://foo/path/')
+        t4 = transport.get_transport_from_url('http://foo/path',
                                      possible_transports=[t3])
         self.assertIs(t3, t4)
 
-        t5 = transport.get_transport('http://foo/path')
-        t6 = transport.get_transport('http://foo/path/',
+        t5 = transport.get_transport_from_url('http://foo/path')
+        t6 = transport.get_transport_from_url('http://foo/path/',
                                      possible_transports=[t5])
         self.assertIs(t5, t6)
 
     def test_don_t_reuse_different_transport(self):
-        t1 = transport.get_transport('http://foo/path')
-        t2 = transport.get_transport('http://bar/path',
+        t1 = transport.get_transport_from_url('http://foo/path')
+        t2 = transport.get_transport_from_url('http://bar/path',
                                      possible_transports=[t1])
         self.assertIsNot(t1, t2)
 
 
 class TestTransportTrace(tests.TestCase):
 
-    def test_get(self):
-        t = transport.get_transport('trace+memory://')
-        self.assertIsInstance(t, bzrlib.transport.trace.TransportTraceDecorator)
+    def test_decorator(self):
+        t = transport.get_transport_from_url('trace+memory://')
+        self.assertIsInstance(
+            t, bzrlib.transport.trace.TransportTraceDecorator)
 
     def test_clone_preserves_activity(self):
-        t = transport.get_transport('trace+memory://')
+        t = transport.get_transport_from_url('trace+memory://')
         t2 = t.clone('.')
         self.assertTrue(t is not t2)
         self.assertTrue(t._activity is t2._activity)
@@ -868,7 +913,7 @@ class TestTransportTrace(tests.TestCase):
     # still won't cause a test failure when the top level Transport API
     # changes; so there is little return doing that.
     def test_get(self):
-        t = transport.get_transport('trace+memory:///')
+        t = transport.get_transport_from_url('trace+memory:///')
         t.put_bytes('foo', 'barish')
         t.get('foo')
         expected_result = []
@@ -880,7 +925,7 @@ class TestTransportTrace(tests.TestCase):
         self.assertEqual(expected_result, t._activity)
 
     def test_readv(self):
-        t = transport.get_transport('trace+memory:///')
+        t = transport.get_transport_from_url('trace+memory:///')
         t.put_bytes('foo', 'barish')
         list(t.readv('foo', [(0, 1), (3, 2)],
                      adjust_for_latency=True, upper_limit=6))
@@ -896,7 +941,7 @@ class TestTransportTrace(tests.TestCase):
 class TestSSHConnections(tests.TestCaseWithTransport):
 
     def test_bzr_connect_to_bzr_ssh(self):
-        """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
+        """get_transport of a bzr+ssh:// behaves correctly.
 
         bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
         """
@@ -918,6 +963,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # SSH channel ourselves.  Surely this has already been implemented
         # elsewhere?
         started = []
+
         class StubSSHServer(stub_sftp.StubServer):
 
             test = self
@@ -929,8 +975,8 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 # XXX: horribly inefficient, not to mention ugly.
-                # Start a thread for each of stdin/out/err, and relay bytes from
-                # the subprocess to channel and vice versa.
+                # Start a thread for each of stdin/out/err, and relay bytes
+                # from the subprocess to channel and vice versa.
                 def ferry_bytes(read, write, close):
                     while True:
                         bytes = read(1)
@@ -955,14 +1001,18 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         ssh_server = stub_sftp.SFTPFullAbsoluteServer(StubSSHServer)
         # We *don't* want to override the default SSH vendor: the detected one
         # is the one to use.
+
+        # FIXME: I don't understand the above comment, SFTPFullAbsoluteServer
+        # inherits from SFTPServer which forces the SSH vendor to
+        # ssh.ParamikoVendor(). So it's forced, not detected. --vila 20100623
         self.start_server(ssh_server)
-        port = ssh_server._listener.port
+        port = ssh_server.port
 
         if sys.platform == 'win32':
             bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
         else:
             bzr_remote_path = self.get_bzr_path()
-        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
+        self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
@@ -989,3 +1039,62 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
+
+
+class TestUnhtml(tests.TestCase):
+
+    """Tests for unhtml_roughly"""
+
+    def test_truncation(self):
+        fake_html = "<p>something!\n" * 1000
+        result = http.unhtml_roughly(fake_html)
+        self.assertEquals(len(result), 1000)
+        self.assertStartsWith(result, " something!")
+
+
+class SomeDirectory(object):
+
+    def look_up(self, name, url):
+        return "http://bar"
+
+
+class TestLocationToUrl(tests.TestCase):
+
+    def get_base_location(self):
+        path = osutils.abspath('/foo/bar')
+        if path.startswith('/'):
+            url = 'file://%s' % (path,)
+        else:
+            # On Windows, abspaths start with the drive letter, so we have to
+            # add in the extra '/'
+            url = 'file:///%s' % (path,)
+        return path, url
+
+    def test_regular_url(self):
+        self.assertEquals("file://foo", location_to_url("file://foo"))
+
+    def test_directory(self):
+        directories.register("bar:", SomeDirectory, "Dummy directory")
+        self.addCleanup(directories.remove, "bar:")
+        self.assertEquals("http://bar", location_to_url("bar:"))
+
+    def test_unicode_url(self):
+        self.assertRaises(errors.InvalidURL, location_to_url,
+            "http://fo/\xc3\xaf".decode("utf-8"))
+
+    def test_unicode_path(self):
+        path, url = self.get_base_location()
+        location = path + "\xc3\xaf".decode("utf-8")
+        url += '%C3%AF'
+        self.assertEquals(url, location_to_url(location))
+
+    def test_path(self):
+        path, url = self.get_base_location()
+        self.assertEquals(url, location_to_url(path))
+
+    def test_relative_file_url(self):
+        self.assertEquals(urlutils.local_path_to_url(".") + "/bar",
+            location_to_url("file:bar"))
+
+    def test_absolute_file_url(self):
+        self.assertEquals("file:///bar", location_to_url("file:/bar"))

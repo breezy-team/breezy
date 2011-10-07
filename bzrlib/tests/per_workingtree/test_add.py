@@ -16,32 +16,20 @@
 
 """Tests for interface conformance of 'WorkingTree.add'"""
 
-import os
-
 from bzrlib import (
     errors,
     inventory,
-    osutils,
     tests,
     )
+from bzrlib.tests.matchers import HasLayout
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestAdd(TestCaseWithWorkingTree):
 
-    def get_tree_layout(self, tree):
-        """Get the (path, file_id) pairs for the current tree."""
-        tree.lock_read()
-        try:
-            return [(path, ie.file_id) for path, ie
-                    in tree.iter_entries_by_dir()]
-        finally:
-            tree.unlock()
-
     def assertTreeLayout(self, expected, tree):
         """Check that the tree has the correct layout."""
-        actual = self.get_tree_layout(tree)
-        self.assertEqual(expected, actual)
+        self.assertThat(tree, HasLayout(expected))
 
     def test_add_one(self):
         tree = self.make_branch_and_tree('.')
@@ -113,8 +101,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(['dir/subdir/foo'], ['foo-id'])
         root_id = tree.get_root_id()
 
-        self.assertTreeLayout([('', root_id), ('dir', 'dir-id'),
-                               ('dir/subdir', 'subdir-id'),
+        self.assertTreeLayout([('', root_id), ('dir/', 'dir-id'),
+                               ('dir/subdir/', 'subdir-id'),
                                ('dir/subdir/foo', 'foo-id')], tree)
 
     def test_add_multiple(self):
@@ -125,7 +113,7 @@ class TestAdd(TestCaseWithWorkingTree):
         root_id = tree.get_root_id()
 
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
-                               ('dir', 'dir-id'), ('dir/subdir', 'subdir-id'),
+                               ('dir/', 'dir-id'), ('dir/subdir/', 'subdir-id'),
                                ('dir/subdir/foo', 'foo-id')], tree)
 
     def test_add_invalid(self):
@@ -153,7 +141,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         tree.add('')
-        self.assertEqual([tree.path2id('')], list(tree))
+        self.assertEqual([tree.path2id('')], list(tree.all_file_ids()))
         # the root should have been changed to be a new unique root.
         self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
         tree.unlock()

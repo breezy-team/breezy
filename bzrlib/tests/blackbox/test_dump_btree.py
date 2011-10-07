@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,3 +78,53 @@ class TestDumpBtree(tests.TestCaseWithTransport):
             'test2\0key3\0ref\0entry3\0value3\n'
             '\n',
             out)
+
+    def test_dump_btree_no_refs_smoke(self):
+        # A BTree index with no ref lists (such as *.cix) can be dumped without
+        # errors.
+        builder = btree_index.BTreeBuilder(
+            reference_lists=0, key_elements=2)
+        builder.add_node(('test', 'key1'), 'value')
+        out_f = builder.finish()
+        try:
+            self.build_tree_contents([('test.btree', out_f.read())])
+        finally:
+            out_f.close()
+        out, err = self.run_bzr('dump-btree test.btree')
+
+    def create_sample_empty_btree_index(self):
+        builder = btree_index.BTreeBuilder(
+            reference_lists=1, key_elements=2)
+        out_f = builder.finish()
+        try:
+            self.build_tree_contents([('test.btree', out_f.read())])
+        finally:
+            out_f.close()
+
+    def test_dump_empty_btree_smoke(self):
+        self.create_sample_empty_btree_index()
+        out, err = self.run_bzr('dump-btree test.btree')
+        self.assertEqualDiff("", out)
+
+    def test_dump_empty_btree_http_smoke(self):
+        self.transport_readonly_server = http_server.HttpServer
+        self.create_sample_empty_btree_index()
+        url = self.get_readonly_url('test.btree')
+        out, err = self.run_bzr(['dump-btree', url])
+        self.assertEqualDiff("", out)
+
+    def test_dump_empty_btree_raw_smoke(self):
+        self.create_sample_empty_btree_index()
+        out, err = self.run_bzr('dump-btree test.btree --raw')
+        self.assertEqualDiff(
+            'Root node:\n'
+            'B+Tree Graph Index 2\n'
+            'node_ref_lists=1\n'
+            'key_elements=2\n'
+            'len=0\n'
+            'row_lengths=\n'
+            '\n'
+            'Page 0\n'
+            '(empty)\n',
+            out)
+

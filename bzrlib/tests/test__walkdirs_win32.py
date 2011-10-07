@@ -22,9 +22,12 @@ from bzrlib import (
     osutils,
     tests,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
-win32_readdir_feature = tests.ModuleAvailableFeature('bzrlib._walkdirs_win32')
+win32_readdir_feature = features.ModuleAvailableFeature('bzrlib._walkdirs_win32')
 
 
 class TestWin32Finder(tests.TestCaseInTempDir):
@@ -74,7 +77,7 @@ class TestWin32Finder(tests.TestCaseInTempDir):
         self.assertReadDir([('foo', 'foo', 'file', u'./foo')],
             '', u'.')
 
-    def test_dir(self):
+    def test_directory(self):
         self.build_tree(['bar/'])
         self.assertReadDir([('bar', 'bar', 'directory', u'./bar')],
             '', u'.')

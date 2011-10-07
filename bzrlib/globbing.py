@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,8 +22,13 @@ expressions.
 
 import re
 
+from bzrlib import (
+    errors,
+    lazy_regex,
+    )
 from bzrlib.trace import (
-    warning
+    mutter,
+    warning,
     )
 
 
@@ -36,7 +41,7 @@ class Replacer(object):
     must not contain capturing groups.
     """
 
-    _expand = re.compile(ur'\\&')
+    _expand = lazy_regex.lazy_compile(ur'\\&')
 
     def __init__(self, source=None):
         self._pat = None
@@ -72,7 +77,7 @@ class Replacer(object):
 
     def __call__(self, text):
         if not self._pat:
-            self._pat = re.compile(
+            self._pat = lazy_regex.lazy_compile(
                     u'|'.join([u'(%s)' % p for p in self._pats]),
                     re.UNICODE)
         return self._pat.sub(self._do_sub, text)
@@ -177,30 +182,51 @@ class Globster(object):
     so are matched first, then the basename patterns, then the fullpath
     patterns.
     """
+    # We want to _add_patterns in a specific order (as per type_list below)
+    # starting with the shortest and going to the longest.
+    # As some Python version don't support ordered dicts the list below is
+    # used to select inputs for _add_pattern in a specific order.
+    pattern_types = [ "extension", "basename", "fullpath" ]
+
+    pattern_info = {
+        "extension" : {
+            "translator" : _sub_extension,
+            "prefix" : r'(?:.*/)?(?!.*/)(?:.*\.)'
+        },
+        "basename" : {
+            "translator" : _sub_basename,
+            "prefix" : r'(?:.*/)?(?!.*/)'
+        },
+        "fullpath" : {
+            "translator" : _sub_fullpath,
+            "prefix" : r''
+        },
+    }
+
     def __init__(self, patterns):
         self._regex_patterns = []
-        path_patterns = []
-        base_patterns = []
-        ext_patterns = []
+        pattern_lists = {
+            "extension" : [],
+            "basename" : [],
+            "fullpath" : [],
+        }
         for pat in patterns:
             pat = normalize_pattern(pat)
-            if pat.startswith(u'RE:') or u'/' in pat:
-                path_patterns.append(pat)
-            elif pat.startswith(u'*.'):
-                ext_patterns.append(pat)
-            else:
-                base_patterns.append(pat)
-        self._add_patterns(ext_patterns,_sub_extension,
-            prefix=r'(?:.*/)?(?!.*/)(?:.*\.)')
-        self._add_patterns(base_patterns,_sub_basename,
-            prefix=r'(?:.*/)?(?!.*/)')
-        self._add_patterns(path_patterns,_sub_fullpath)
+            pattern_lists[Globster.identify(pat)].append(pat)
+        pi = Globster.pattern_info
+        for t in Globster.pattern_types:
+            self._add_patterns(pattern_lists[t], pi[t]["translator"],
+                pi[t]["prefix"])
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
-            grouped_rules = ['(%s)' % translator(pat) for pat in patterns[:99]]
+            grouped_rules = [
+                '(%s)' % translator(pat) for pat in patterns[:99]]
             joined_rule = '%s(?:%s)$' % (prefix, '|'.join(grouped_rules))
-            self._regex_patterns.append((re.compile(joined_rule, re.UNICODE),
+            # Explicitly use lazy_compile here, because we count on its
+            # nicer error reporting.
+            self._regex_patterns.append((
+                lazy_regex.lazy_compile(joined_rule, re.UNICODE),
                 patterns[:99]))
             patterns = patterns[99:]
 
@@ -209,11 +235,59 @@ class Globster(object):
 
         :return A matching pattern or None if there is no matching pattern.
         """
-        for regex, patterns in self._regex_patterns:
-            match = regex.match(filename)
-            if match:
-                return patterns[match.lastindex -1]
+        try:
+            for regex, patterns in self._regex_patterns:
+                match = regex.match(filename)
+                if match:
+                    return patterns[match.lastindex -1]
+        except errors.InvalidPattern, e:
+            # We can't show the default e.msg to the user as thats for
+            # the combined pattern we sent to regex. Instead we indicate to
+            # the user that an ignore file needs fixing.
+            mutter('Invalid pattern found in regex: %s.', e.msg)
+            e.msg = "File ~/.bazaar/ignore or .bzrignore contains error(s)."
+            bad_patterns = ''
+            for _, patterns in self._regex_patterns:
+                for p in patterns:
+                    if not Globster.is_pattern_valid(p):
+                        bad_patterns += ('\n  %s' % p)
+            e.msg += bad_patterns
+            raise e
         return None
+
+    @staticmethod
+    def identify(pattern):
+        """Returns pattern category.
+
+        :param pattern: normalized pattern.
+        Identify if a pattern is fullpath, basename or extension
+        and returns the appropriate type.
+        """
+        if pattern.startswith(u'RE:') or u'/' in pattern:
+            return "fullpath"
+        elif pattern.startswith(u'*.'):
+            return "extension"
+        else:
+            return "basename"
+
+    @staticmethod
+    def is_pattern_valid(pattern):
+        """Returns True if pattern is valid.
+
+        :param pattern: Normalized pattern.
+        is_pattern_valid() assumes pattern to be normalized.
+        see: globbing.normalize_pattern
+        """
+        result = True
+        translator = Globster.pattern_info[Globster.identify(pattern)]["translator"]
+        tpattern = '(%s)' % translator(pattern)
+        try:
+            re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
+            re_obj.search("") # force compile
+        except errors.InvalidPattern, e:
+            result = False
+        return result
+
 
 class ExceptionGlobster(object):
     """A Globster that supports exception patterns.
@@ -262,17 +336,12 @@ class _OrderedGlobster(Globster):
         self._regex_patterns = []
         for pat in patterns:
             pat = normalize_pattern(pat)
-            if pat.startswith(u'RE:') or u'/' in pat:
-                self._add_patterns([pat], _sub_fullpath)
-            elif pat.startswith(u'*.'):
-                self._add_patterns([pat], _sub_extension,
-                    prefix=r'(?:.*/)?(?!.*/)(?:.*\.)')
-            else:
-                self._add_patterns([pat], _sub_basename,
-                    prefix=r'(?:.*/)?(?!.*/)')
+            t = Globster.identify(pat)
+            self._add_patterns([pat], Globster.pattern_info[t]["translator"],
+                Globster.pattern_info[t]["prefix"])
 
 
-_slashes = re.compile(r'[\\/]+')
+_slashes = lazy_regex.lazy_compile(r'[\\/]+')
 def normalize_pattern(pattern):
     """Converts backslashes in path patterns to forward slashes.
 

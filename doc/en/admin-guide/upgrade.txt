@@ -28,9 +28,9 @@ Software upgrades
 
 Upgrading the Bazaar software is as simple as re-installing the Python package
 using either the latest binary package for Windows or Mac OS X, the binary
-package provided by your Linux distribution, or installing from the source
-release.  See http://bazaar-vcs.org/Downloads for the latest releases for all
-supported platforms.
+package provided by your GNU/Linux distribution, or installing from the source
+release.  See http://wiki.bazaar.canonical.com/Downloads for the latest
+releases for all supported platforms.
 
 Bazaar's later versions support all of the earlier disk formats (back to the
 very first one), so there is no need to upgrade the branches on the disk when

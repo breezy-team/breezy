@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,61 +17,58 @@
 """Tests for Knit data structure"""
 
 from cStringIO import StringIO
-import difflib
 import gzip
 import sys
 
 from bzrlib import (
     errors,
-    generate_ids,
     knit,
     multiparent,
     osutils,
     pack,
     tests,
+    transport,
     )
 from bzrlib.errors import (
-    RevisionAlreadyPresent,
     KnitHeaderError,
-    RevisionNotPresent,
     NoSuchFile,
     )
 from bzrlib.index import *
 from bzrlib.knit import (
     AnnotatedKnitContent,
     KnitContent,
-    KnitSequenceMatcher,
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
-    _DirectPackAccess,
     _KndxIndex,
     _KnitGraphIndex,
     _KnitKeyAccess,
     make_file_factory,
     )
-from bzrlib.repofmt import pack_repo
+from bzrlib.patiencediff import PatienceSequenceMatcher
+from bzrlib.repofmt import (
+    knitpack_repo,
+    pack_repo,
+    )
 from bzrlib.tests import (
-    Feature,
-    KnownFailure,
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestNotApplicable,
     )
-from bzrlib.transport import get_transport
-from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tuned_gzip import GzipFile
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
     network_bytes_to_kind_and_offset,
     RecordingVersionedFilesDecorator,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
-compiled_knit_feature = tests.ModuleAvailableFeature(
-                            'bzrlib._knit_load_data_pyx')
+compiled_knit_feature = features.ModuleAvailableFeature(
+    'bzrlib._knit_load_data_pyx')
 
 
 class KnitContentTestsMixin(object):
@@ -106,8 +103,8 @@ class KnitContentTestsMixin(object):
         line_delta = source_content.line_delta(target_content)
         delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
             source_lines, target_lines))
-        matcher = KnitSequenceMatcher(None, source_lines, target_lines)
-        matcher_blocks = list(list(matcher.get_matching_blocks()))
+        matcher = PatienceSequenceMatcher(None, source_lines, target_lines)
+        matcher_blocks = list(matcher.get_matching_blocks())
         self.assertEqual(matcher_blocks, delta_blocks)
 
     def test_get_line_delta_blocks(self):
@@ -333,7 +330,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             transport.append_bytes(packname, bytes)
         writer = pack.ContainerWriter(write_data)
         writer.begin()
-        access = _DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, index, (transport, packname))
         return access, writer
 
@@ -345,6 +342,33 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos.extend(access.add_raw_records([('key2', 5)], '12345'))
         writer.end()
         return memos
+
+    def test_pack_collection_pack_retries(self):
+        """An explicit pack of a pack collection succeeds even when a
+        concurrent pack happens.
+        """
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
+            ])
+        builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('file-id', 'content\nrev 2\n')),
+            ])
+        builder.build_snapshot('rev-3', ['rev-2'], [
+            ('modify', ('file-id', 'content\nrev 3\n')),
+            ])
+        self.addCleanup(builder.finish_series)
+        b = builder.get_branch()
+        self.addCleanup(b.lock_write().unlock)
+        repo = b.repository
+        collection = repo._pack_collection
+        # Concurrently repack the repo.
+        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo.pack()
+        # Pack the new pack.
+        collection.pack()
 
     def make_vf_for_retrying(self):
         """Create 3 packs and a reload function.
@@ -378,7 +402,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         collection = repo._pack_collection
         collection.ensure_loaded()
         orig_packs = collection.packs
-        packer = pack_repo.Packer(collection, orig_packs, '.testpack')
+        packer = knitpack_repo.KnitPacker(collection, orig_packs, '.testpack')
         new_pack = packer.pack()
         # forget about the new pack
         collection.reset()
@@ -423,6 +447,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         except _TestException, e:
             retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
+        # GZ 2010-08-10: Cycle with exc_info affects 3 tests
         return retry_exc
 
     def test_read_from_several_packs(self):
@@ -437,7 +462,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos.extend(access.add_raw_records([('key', 5)], 'alpha'))
         writer.end()
         transport = self.get_transport()
-        access = _DirectPackAccess({"FOO":(transport, 'packfile'),
+        access = pack_repo._DirectPackAccess({"FOO":(transport, 'packfile'),
             "FOOBAR":(transport, 'pack2'),
             "BAZ":(transport, 'pack3')})
         self.assertEqual(['1234567890', '12345', 'alpha'],
@@ -453,7 +478,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test_set_writer(self):
         """The writer should be settable post construction."""
-        access = _DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         transport = self.get_transport()
         packname = 'packfile'
         index = 'foo'
@@ -471,7 +496,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         reload_called, reload_func = self.make_reload_func()
         # Note that the index key has changed from 'foo' to 'bar'
-        access = _DirectPackAccess({'bar':(transport, 'packname')},
+        access = pack_repo._DirectPackAccess({'bar':(transport, 'packname')},
                                    reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
@@ -486,7 +511,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         # Note that the index key has changed from 'foo' to 'bar'
-        access = _DirectPackAccess({'bar':(transport, 'packname')})
+        access = pack_repo._DirectPackAccess({'bar':(transport, 'packname')})
         e = self.assertListRaises(KeyError, access.get_raw_records, memos)
 
     def test_missing_file_raises_retry(self):
@@ -494,8 +519,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         reload_called, reload_func = self.make_reload_func()
         # Note that the 'filename' has been changed to 'different-packname'
-        access = _DirectPackAccess({'foo':(transport, 'different-packname')},
-                                   reload_func=reload_func)
+        access = pack_repo._DirectPackAccess(
+            {'foo':(transport, 'different-packname')},
+            reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
@@ -509,7 +535,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         # Note that the 'filename' has been changed to 'different-packname'
-        access = _DirectPackAccess({'foo':(transport, 'different-packname')})
+        access = pack_repo._DirectPackAccess(
+            {'foo': (transport, 'different-packname')})
         e = self.assertListRaises(errors.NoSuchFile,
                                   access.get_raw_records, memos)
 
@@ -519,8 +546,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         failing_transport = MockReadvFailingTransport(
                                 [transport.get_bytes('packname')])
         reload_called, reload_func = self.make_reload_func()
-        access = _DirectPackAccess({'foo':(failing_transport, 'packname')},
-                                   reload_func=reload_func)
+        access = pack_repo._DirectPackAccess(
+            {'foo': (failing_transport, 'packname')},
+            reload_func=reload_func)
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual(['1234567890'],
             list(access.get_raw_records(memos[:1])))
@@ -542,7 +570,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         failing_transport = MockReadvFailingTransport(
                                 [transport.get_bytes('packname')])
         reload_called, reload_func = self.make_reload_func()
-        access = _DirectPackAccess({'foo':(failing_transport, 'packname')})
+        access = pack_repo._DirectPackAccess(
+            {'foo':(failing_transport, 'packname')})
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual(['1234567890'],
             list(access.get_raw_records(memos[:1])))
@@ -553,14 +582,14 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
                                   access.get_raw_records, memos)
 
     def test_reload_or_raise_no_reload(self):
-        access = _DirectPackAccess({}, reload_func=None)
+        access = pack_repo._DirectPackAccess({}, reload_func=None)
         retry_exc = self.make_retry_exception()
         # Without a reload_func, we will just re-raise the original exception
         self.assertRaises(_TestException, access.reload_or_raise, retry_exc)
 
     def test_reload_or_raise_reload_changed(self):
         reload_called, reload_func = self.make_reload_func(return_val=True)
-        access = _DirectPackAccess({}, reload_func=reload_func)
+        access = pack_repo._DirectPackAccess({}, reload_func=reload_func)
         retry_exc = self.make_retry_exception()
         access.reload_or_raise(retry_exc)
         self.assertEqual([1], reload_called)
@@ -570,7 +599,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test_reload_or_raise_reload_no_change(self):
         reload_called, reload_func = self.make_reload_func(return_val=False)
-        access = _DirectPackAccess({}, reload_func=reload_func)
+        access = pack_repo._DirectPackAccess({}, reload_func=reload_func)
         retry_exc = self.make_retry_exception()
         # If reload_occurred is False, then we consider it an error to have
         # reload_func() return False (no changes).
@@ -707,7 +736,7 @@ class LowLevelKnitDataTests(TestCase):
 
     def make_multiple_records(self):
         """Create the content for multiple records."""
-        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha_string('foo\nbar\n')
         total_txt = []
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
@@ -716,7 +745,7 @@ class LowLevelKnitDataTests(TestCase):
                                         % (sha1sum,))
         record_1 = (0, len(gz_txt), sha1sum)
         total_txt.append(gz_txt)
-        sha1sum = osutils.sha('baz\n').hexdigest()
+        sha1sum = osutils.sha_string('baz\n')
         gz_txt = self.create_gz_content('version rev-id-2 1 %s\n'
                                         'baz\n'
                                         'end rev-id-2\n'
@@ -726,7 +755,7 @@ class LowLevelKnitDataTests(TestCase):
         return total_txt, record_1, record_2
 
     def test_valid_knit_data(self):
-        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha_string('foo\nbar\n')
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -763,7 +792,7 @@ class LowLevelKnitDataTests(TestCase):
                          raw_contents)
 
     def test_not_enough_lines(self):
-        sha1sum = osutils.sha('foo\n').hexdigest()
+        sha1sum = osutils.sha_string('foo\n')
         # record says 2 lines data says 1
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
@@ -781,7 +810,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([(('rev-id-1',),  gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
-        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha_string('foo\nbar\n')
         # record says 1 lines data says 2
         gz_txt = self.create_gz_content('version rev-id-1 1 %s\n'
                                         'foo\n'
@@ -800,7 +829,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
     def test_mismatched_version_id(self):
-        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha_string('foo\nbar\n')
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -819,7 +848,7 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_uncompressed_data(self):
-        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha_string('foo\nbar\n')
         txt = ('version rev-id-1 2 %s\n'
                'foo\n'
                'bar\n'
@@ -839,7 +868,7 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_corrupted_data(self):
-        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha_string('foo\nbar\n')
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -1167,8 +1196,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.IndexError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.IndexError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1187,8 +1215,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1207,8 +1234,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1225,8 +1251,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1243,8 +1268,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1579,13 +1603,13 @@ class TestKnitIndex(KnitTests):
         # could leave an empty .kndx file, which bzr would later claim was a
         # corrupted file since the header was not present. In reality, the file
         # just wasn't created, so it should be ignored.
-        t = get_transport('.')
+        t = transport.get_transport_from_path('.')
         t.put_bytes('test.kndx', '')
 
         knit = self.make_test_knit()
 
     def test_knit_index_checks_header(self):
-        t = get_transport('.')
+        t = transport.get_transport_from_path('.')
         t.put_bytes('test.kndx', '# not really a knit header\n\n')
         k = self.make_test_knit()
         self.assertRaises(KnitHeaderError, k.keys)
@@ -2419,7 +2443,7 @@ class TestStacking(KnitTests):
         key_basis = ('bar',)
         key_missing = ('missing',)
         test.add_lines(key, (), ['foo\n'])
-        key_sha1sum = osutils.sha('foo\n').hexdigest()
+        key_sha1sum = osutils.sha_string('foo\n')
         sha1s = test.get_sha1s([key])
         self.assertEqual({key: key_sha1sum}, sha1s)
         self.assertEqual([], basis.calls)
@@ -2427,7 +2451,7 @@ class TestStacking(KnitTests):
         # directly (rather than via text reconstruction) so that remote servers
         # etc don't have to answer with full content.
         basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
-        basis_sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        basis_sha1sum = osutils.sha_string('foo\nbar\n')
         basis.calls = []
         sha1s = test.get_sha1s([key, key_missing, key_basis])
         self.assertEqual({key: key_sha1sum,

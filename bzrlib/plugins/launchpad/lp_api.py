@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 import os
 import re
+import urlparse
 
 from bzrlib import (
     branch,
@@ -34,7 +35,6 @@ from bzrlib import (
     )
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
-    NotLaunchpadBranch,
     )
 
 try:
@@ -43,7 +43,6 @@ except ImportError, e:
     raise errors.DependencyNotPresent('launchpadlib', e)
 
 from launchpadlib.launchpad import (
-    EDGE_SERVICE_ROOT,
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
@@ -74,19 +73,35 @@ def check_launchpadlib_compatibility():
             installed_version, installed_version)
 
 
+# The older versions of launchpadlib only provided service root constants for
+# edge and staging, whilst newer versions drop edge. Therefore service root
+# URIs for which we do not always have constants are derived from the staging
+# one, which does always exist.
+#
+# It is necessary to derive, rather than use hardcoded URIs because
+# launchpadlib <= 1.5.4 requires service root URIs that end in a path of
+# /beta/, whilst launchpadlib >= 1.5.5 requires service root URIs with no path
+# info.
+#
+# Once we have a hard dependency on launchpadlib >= 1.5.4 we can replace all of
+# bzr's local knowledge of individual Launchpad instances with use of the
+# launchpadlib.uris module.
 LAUNCHPAD_API_URLS = {
-    'production': 'https://api.launchpad.net/beta/',
-    'edge': EDGE_SERVICE_ROOT,
+    'production': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
+        'api.launchpad.net'),
+    'qastaging': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
+        'api.qastaging.launchpad.net'),
     'staging': STAGING_SERVICE_ROOT,
-    'dev': 'https://api.launchpad.dev/beta/',
+    'dev': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
+        'api.launchpad.dev'),
     }
 
 
 def _get_api_url(service):
     """Return the root URL of the Launchpad API.
 
-    e.g. For the 'edge' Launchpad service, this function returns
-    launchpadlib.launchpad.EDGE_SERVICE_ROOT.
+    e.g. For the 'staging' Launchpad service, this function returns
+    launchpadlib.launchpad.STAGING_SERVICE_ROOT.
 
     :param service: A `LaunchpadService` object.
     :return: A URL as a string.
@@ -99,6 +114,13 @@ def _get_api_url(service):
         return LAUNCHPAD_API_URLS[lp_instance]
     except KeyError:
         raise InvalidLaunchpadInstance(lp_instance)
+
+
+class NoLaunchpadBranch(errors.BzrError):
+    _fmt = 'No launchpad branch could be found for branch "%(url)s".'
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
 def login(service, timeout=None, proxy_info=None):
@@ -174,20 +196,24 @@ class LaunchpadBranch(object):
         url = bzr_branch.get_push_location()
         if url is not None:
             yield url
+        url = bzr_branch.get_parent()
+        if url is not None:
+            yield url
         yield bzr_branch.base
 
     @staticmethod
     def tweak_url(url, launchpad):
         """Adjust a URL to work with staging, if needed."""
-        if str(launchpad._root_uri) != STAGING_SERVICE_ROOT:
-            return url
-        if url is None:
-            return None
-        return url.replace('bazaar.launchpad.net',
-                           'bazaar.staging.launchpad.net')
+        if str(launchpad._root_uri) == STAGING_SERVICE_ROOT:
+            return url.replace('bazaar.launchpad.net',
+                               'bazaar.staging.launchpad.net')
+        elif str(launchpad._root_uri) == LAUNCHPAD_API_URLS['qastaging']:
+            return url.replace('bazaar.launchpad.net',
+                               'bazaar.qastaging.launchpad.net')
+        return url
 
     @classmethod
-    def from_bzr(cls, launchpad, bzr_branch):
+    def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
         """Find a Launchpad branch from a bzr branch."""
         check_update = True
         for url in cls.candidate_urls(bzr_branch):
@@ -198,6 +224,8 @@ class LaunchpadBranch(object):
             if lp_branch is not None:
                 break
         else:
+            if not create_missing:
+                raise NoLaunchpadBranch(bzr_branch)
             lp_branch = cls.create_now(launchpad, bzr_branch)
             check_update = False
         return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
@@ -215,17 +243,26 @@ class LaunchpadBranch(object):
             raise errors.BzrError('%s is not registered on Launchpad' % url)
         return lp_branch
 
-    def get_dev_focus(self):
-        """Return the 'LaunchpadBranch' for the dev focus of this one."""
+    def get_target(self):
+        """Return the 'LaunchpadBranch' for the target of this one."""
         lp_branch = self.lp
-        if lp_branch.project is None:
-            raise errors.BzrError('%s has no product.' %
+        if lp_branch.project is not None:
+            dev_focus = lp_branch.project.development_focus
+            if dev_focus is None:
+                raise errors.BzrError('%s has no development focus.' %
                                   lp_branch.bzr_identity)
-        dev_focus = lp_branch.project.development_focus.branch
-        if dev_focus is None:
-            raise errors.BzrError('%s has no development focus.' %
+            target = dev_focus.branch
+            if target is None:
+                raise errors.BzrError('development focus %s has no branch.' % dev_focus)
+        elif lp_branch.sourcepackage is not None:
+            target = lp_branch.sourcepackage.getBranch(pocket="Release")
+            if target is None:
+                raise errors.BzrError('source package %s has no branch.' %
+                                      lp_branch.sourcepackage)
+        else:
+            raise errors.BzrError('%s has no associated product or source package.' %
                                   lp_branch.bzr_identity)
-        return LaunchpadBranch(dev_focus, dev_focus.bzr_identity)
+        return LaunchpadBranch(target, target.bzr_identity)
 
     def update_lp(self):
         """Update the Launchpad copy of this branch."""
@@ -259,24 +296,11 @@ class LaunchpadBranch(object):
         return self.bzr.repository.revision_tree(lca)
 
 
-def load_branch(launchpad, branch):
-    """Return the launchpadlib Branch object corresponding to 'branch'.
-
-    :param launchpad: The root `Launchpad` object from launchpadlib.
-    :param branch: A `bzrlib.branch.Branch`.
-    :raise NotLaunchpadBranch: If we cannot determine the Launchpad URL of
-        `branch`.
-    :return: A launchpadlib Branch object.
-    """
-    # XXX: This duplicates the "What are possible URLs for the branch that
-    # Launchpad might recognize" logic found in cmd_lp_open.
-
-    # XXX: This makes multiple roundtrips to Launchpad for what is
-    # conceptually a single operation -- get me the branches that match these
-    # URLs. Unfortunately, Launchpad's support for such operations is poor, so
-    # we have to allow multiple roundtrips.
-    for url in branch.get_public_branch(), branch.get_push_location():
-        lp_branch = launchpad.branches.getByUrl(url=url)
-        if lp_branch:
-            return lp_branch
-    raise NotLaunchpadBranch(url)
+def canonical_url(object):
+    """Return the canonical URL for a branch."""
+    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlparse.urlunparse((scheme, netloc, path, params, query,
+                                fragment))

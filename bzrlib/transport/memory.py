@@ -81,7 +81,7 @@ class MemoryTransport(transport.Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        path = self._combine_paths(self._cwd, offset)
+        path = urlutils.URL._combine_paths(self._cwd, offset)
         if len(path) == 0 or path[-1] != '/':
             path += '/'
         url = self._scheme + path
@@ -288,12 +288,6 @@ class _MemoryLock(object):
         if self.path in self.transport._locks:
             raise LockError('File %r already locked' % (self.path,))
         self.transport._locks[self.path] = self
-
-    def __del__(self):
-        # Should this warn, or actually try to cleanup?
-        if self.transport:
-            warnings.warn("MemoryLock %r not explicitly unlocked" % (self.path,))
-            self.unlock()
 
     def unlock(self):
         del self.transport._locks[self.path]

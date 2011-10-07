@@ -25,6 +25,9 @@ from bzrlib import (
     revision as _mod_revision,
     tests,
     )
+from bzrlib.tests import (
+    features,
+    )
 from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
@@ -53,7 +56,7 @@ class TestSprout(TestCaseWithBranch):
         # Start with a format that is unlikely to be the target format
         # We call the super class to allow overriding the format of creation)
         source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
-                                                         format='metaweave')
+                                                         format='knit')
         target_bzrdir = self.make_bzrdir('target')
         target_bzrdir.create_repository()
         result_format = self.branch_format
@@ -111,6 +114,25 @@ class TestSprout(TestCaseWithBranch):
         self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
         self.assertEqual(['rev1', 'rev2-alt'], branch2.revision_history())
 
+    def test_sprout_preserves_tags(self):
+        """Sprout preserves tags, even tags of absent revisions."""
+        try:
+            builder = self.make_branch_builder('source')
+        except errors.UninitializableFormat:
+            raise tests.TestSkipped('Uninitializable branch format')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        source = builder.get_branch()
+        try:
+            source.tags.set_tag('tag-a', 'missing-rev')
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+            raise tests.TestNotApplicable(
+                'Branch format does not support tags or tags to ghosts.')
+        # Now source has a tag pointing to an absent revision.  Sprout it.
+        target_bzrdir = self.make_repository('target').bzrdir
+        new_branch = source.sprout(target_bzrdir)
+        # The tag is present in the target
+        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+
     def test_sprout_from_any_repo_revision(self):
         """We should be able to sprout from any revision."""
         wt = self.make_branch_and_tree('source')
@@ -125,15 +147,15 @@ class TestSprout(TestCaseWithBranch):
         wt2 = wt.bzrdir.sprout('target',
             revision_id='rev1a').open_workingtree()
         self.assertEqual('rev1a', wt2.last_revision())
-        self.failUnlessExists('target/a')
+        self.assertPathExists('target/a')
 
     def test_sprout_with_unicode_symlink(self):
         # this tests bug #272444
         # Since the trigger function seems to be set_parent_trees, there exists
         # also a similar test, with name test_unicode_symlink, in class
         # TestSetParents at file per_workingtree/test_parents.py
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
@@ -182,9 +204,9 @@ class TestSprout(TestCaseWithBranch):
                 source.last_revision(), possible_transports=[target_transport],
                 source_branch=source, stacked=True)
         except errors.UnstackableBranchFormat:
-            if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
-                raise tests.KnownFailure(
-                    "Format 4 doesn't auto stack successfully.")
+            if not self.branch_format.supports_stacking():
+                raise tests.TestNotApplicable(
+                    "Format doesn't auto stack successfully.")
             else:
                 raise
         result = dir.open_branch()

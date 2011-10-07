@@ -18,11 +18,14 @@
 
 import os
 
-from bzrlib import uncommit, workingtree
+from bzrlib import uncommit
 from bzrlib.bzrdir import BzrDirMetaFormat1
-from bzrlib.errors import BzrError, BoundBranchOutOfDate
+from bzrlib.errors import BoundBranchOutOfDate
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.script import ScriptRunner
+from bzrlib.tests.script import (
+    run_script,
+    ScriptRunner,
+    )
 
 
 class TestUncommit(TestCaseWithTransport):
@@ -60,6 +63,20 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual(['a1'], wt.get_parent_ids())
         out, err = self.run_bzr('status')
         self.assertEquals(out, 'modified:\n  a\n')
+
+    def test_uncommit_interactive(self):
+        """Uncommit seeks confirmation, and doesn't proceed without it."""
+        wt = self.create_simple_tree()
+        os.chdir('tree')
+        run_script(self, """    
+        $ bzr uncommit
+        ...
+        The above revision(s) will be removed.
+        2>Uncommit these revisions? [y/n]: 
+        <n
+        Canceled
+        """)
+        self.assertEqual(['a2'], wt.get_parent_ids())
 
     def test_uncommit_no_history(self):
         wt = self.make_branch_and_tree('tree')
@@ -263,3 +280,17 @@ You can restore the old tip by running:
         tree.commit(u'\u1234 message')
         out, err = self.run_bzr('uncommit --force tree', encoding='ascii')
         self.assertContainsRe(out, r'\? message')
+
+    def test_uncommit_removes_tags(self):
+        tree = self.make_branch_and_tree('tree')
+        revid = tree.commit('message')
+        tree.branch.tags.set_tag("atag", revid)
+        out, err = self.run_bzr('uncommit --force tree')
+        self.assertEquals({}, tree.branch.tags.get_tag_dict())
+
+    def test_uncommit_keep_tags(self):
+        tree = self.make_branch_and_tree('tree')
+        revid = tree.commit('message')
+        tree.branch.tags.set_tag("atag", revid)
+        out, err = self.run_bzr('uncommit --keep-tags --force tree')
+        self.assertEquals({"atag": revid}, tree.branch.tags.get_tag_dict())

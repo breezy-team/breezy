@@ -18,48 +18,14 @@
 """Tests of bound branches (binding, unbinding, commit, etc) command."""
 
 import os
-from cStringIO import StringIO
 
 from bzrlib import (
-    bzrdir,
     errors,
     tests,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
-from bzrlib.osutils import getcwd
+from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import script
-import bzrlib.urlutils as urlutils
-from bzrlib.workingtree import WorkingTree
-
-
-class TestLegacyFormats(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        super(TestLegacyFormats, self).setUp()
-        self.build_tree(['master/', 'child/'])
-        self.make_branch_and_tree('master')
-        self.make_branch_and_tree('child',
-                        format=bzrdir.format_registry.make_bzrdir('weave'))
-        os.chdir('child')
-
-    def test_bind_format_6_bzrdir(self):
-        # bind on a format 6 bzrdir should error
-        out,err = self.run_bzr('bind ../master', retcode=3)
-        self.assertEqual('', out)
-        # TODO: jam 20060427 Probably something like this really should
-        #       print out the actual path, rather than the URL
-        cwd = urlutils.local_path_to_url(getcwd())
-        self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % cwd, err)
-
-    def test_unbind_format_6_bzrdir(self):
-        # bind on a format 6 bzrdir should error
-        out,err = self.run_bzr('unbind', retcode=3)
-        self.assertEqual('', out)
-        cwd = urlutils.local_path_to_url(getcwd())
-        self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % cwd, err)
 
 
 class TestBoundBranches(tests.TestCaseWithTransport):
@@ -371,7 +337,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         child_tree.merge_from_branch(other_branch)
 
-        self.failUnlessExists('child/c')
+        self.assertPathExists('child/c')
         self.assertEqual([new_rev_id], child_tree.get_parent_ids()[1:])
 
         # Make sure the local branch has the installed revision
@@ -422,13 +388,30 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.check_revno(4)
         self.check_revno(4, '../base')
 
+    def test_bind_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b'])
+        tree.add('a', 'b')
+        tree.commit(message='init')
+        branch = tree.branch
+        tree.bzrdir.sprout('child')
+        self.run_bzr('bind --directory=child base')
+        d = BzrDir.open('child')
+        self.assertNotEqual(None, d.open_branch().get_master_branch())
+        self.run_bzr('unbind -d child')
+        self.assertEqual(None, d.open_branch().get_master_branch())
+        self.run_bzr('unbind --directory child', retcode=3)
+
 
 class TestBind(script.TestCaseWithTransportAndScript):
 
     def test_bind_when_bound(self):
         self.run_script("""
 $ bzr init trunk
+...
 $ bzr init copy
+...
 $ cd copy
 $ bzr bind ../trunk
 $ bzr bind
@@ -438,6 +421,7 @@ $ bzr bind
     def test_bind_before_bound(self):
         self.run_script("""
 $ bzr init trunk
+...
 $ cd trunk
 $ bzr bind
 2>bzr: ERROR: No location supplied and no previous location known

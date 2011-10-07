@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,20 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for bzrlib.tag."""
+
 
 from bzrlib import (
-    branch,
     bzrdir,
     errors,
-    tag,
     )
 from bzrlib.tag import (
     BasicTags,
-    _merge_tags_if_possible,
     DisabledTags,
     )
 from bzrlib.tests import (
-    KnownFailure,
     TestCase,
     TestCaseWithTransport,
     )
@@ -111,16 +109,21 @@ class TestTagMerging(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchTag, a.tags.lookup_tag, 'tag-2')
         # conflicting merge
         a.tags.set_tag('tag-2', 'z')
-        conflicts = a.tags.merge_to(b.tags)
-        self.assertEqual(conflicts, [('tag-2', 'z', 'y')])
+        updates, conflicts = a.tags.merge_to(b.tags)
+        self.assertEqual({}, updates)
+        self.assertEqual(list(conflicts), [('tag-2', 'z', 'y')])
         self.assertEqual('y', b.tags.lookup_tag('tag-2'))
         # overwrite conflicts
-        conflicts = a.tags.merge_to(b.tags, overwrite=True)
-        self.assertEqual(conflicts, [])
+        updates, conflicts = a.tags.merge_to(b.tags, overwrite=True)
+        self.assertEqual(list(conflicts), [])
+        self.assertEqual({u'tag-1': 'x', u'tag-2': 'z'}, updates)
         self.assertEqual('z', b.tags.lookup_tag('tag-2'))
 
 
 class TestTagsInCheckouts(TestCaseWithTransport):
+    """Tests for how tags are synchronised between the master and child branch
+    of a checkout.
+    """
 
     def test_update_tag_into_checkout(self):
         # checkouts are directly connected to the tags of their master branch:
@@ -166,7 +169,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.update()
         # and deletion of tags should also propagate
         master.tags.delete_tag('foo')
-        raise KnownFailure("tag deletion does not propagate: "
+        self.knownFailure("tag deletion does not propagate: "
             "https://bugs.launchpad.net/bzr/+bug/138802")
         self.assertRaises(errors.NoSuchTag,
             child.tags.lookup_tag, 'foo')
@@ -184,3 +187,6 @@ class DisabledTagsTests(TestCaseWithTransport):
 
     def test_get_reverse_tag_dict(self):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
+
+
+

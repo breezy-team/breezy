@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Test that bzr handles locales in a reasonable way"""
 
-import os
 import sys
 
 from bzrlib import (
@@ -44,10 +43,13 @@ class TestLocale(tests.TestCaseWithTransport):
 
     def test_log_C(self):
         self.disable_missing_extensions_warning()
+        # C is not necessarily the default locale, so set both LANG and LC_ALL
+        # explicitly because LC_ALL is preferred on (some?) Linux systems but
+        # only LANG is respected on Windows.
         out, err = self.run_bzr_subprocess(
             '--no-aliases --no-plugins log -q --log-format=long tree',
-               env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',
-                            'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
+               env_changes={'LANG': 'C', 'BZR_PROGRESS_BAR':'none',
+                            'LC_ALL': 'C', 'LC_CTYPE':None, 'LANGUAGE':None})
         self.assertEqual('', err)
         self.assertEqualDiff("""\
 ------------------------------------------------------------
@@ -74,3 +76,14 @@ timestamp: Thu 2006-08-24 20:28:17 +0000
 message:
   Unicode ? commit
 """, out)
+
+
+class TestMultibyteCodecs(tests.TestCaseWithTransport):
+    """Tests for quirks of multibyte encodings and their python codecs"""
+
+    def test_plugins_mbcs(self):
+        """Ensure the plugins command works with cjkcodecs, see lp:754082"""
+        self.disable_missing_extensions_warning()
+        out, err = self.run_bzr(["plugins"], encoding="EUC-JP")
+        # The output is tested in bt.test_plugins rather than here
+        self.assertEqual("", err)

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,10 @@
 
 
 import os
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import stat
-import socket
 import warnings
 
 from bzrlib import (
@@ -60,7 +58,7 @@ class AtomicFile(object):
 
         self.realfilename = filename
 
-        flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
+        flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY | osutils.O_NOINHERIT
         if mode == 'wb':
             flags |= osutils.O_BINARY
         elif mode != 'wt':
@@ -81,13 +79,6 @@ class AtomicFile(object):
             st = os.fstat(self._fd)
             if stat.S_IMODE(st.st_mode) != new_mode:
                 os.chmod(self.tmpfilename, new_mode)
-
-    def _get_closed(self):
-        symbol_versioning.warn('AtomicFile.closed deprecated in bzr 0.10',
-                               DeprecationWarning, stacklevel=2)
-        return self._fd is None
-
-    closed = property(_get_closed)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -120,7 +111,3 @@ class AtomicFile(object):
         """Discard the file unless already committed."""
         if self._fd is not None:
             self.abort()
-
-    def __del__(self):
-        if self._fd is not None:
-            warnings.warn("%r leaked" % self)

@@ -27,6 +27,9 @@ from bzrlib import (
     tests,
 )
 from bzrlib.tests import script
+from bzrlib.tests import (
+    features,
+    )
 
 
 class ExpectShelver(shelf_ui.Shelver):
@@ -63,7 +66,7 @@ LINES_ZY = 'z\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 LINES_AY = 'a\nb\nc\nd\ne\nf\ng\nh\ni\ny\n'
 
 
-class TestShelver(tests.TestCaseWithTransport):
+class ShelfTestCase(tests.TestCaseWithTransport):
 
     def create_shelvable_tree(self):
         tree = self.make_branch_and_tree('tree')
@@ -72,6 +75,9 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.commit('added foo')
         self.build_tree_contents([('tree/foo', LINES_ZY)])
         return tree
+
+
+class TestShelver(ShelfTestCase):
 
     def test_unexpected_prompt_failure(self):
         tree = self.create_shelvable_tree()
@@ -190,7 +196,7 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve adding file "foo"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
-        self.failIfExists('tree/foo')
+        self.assertPathDoesNotExist('tree/foo')
 
     def test_shelve_kind_change(self):
         tree = self.create_shelvable_tree()
@@ -205,7 +211,7 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
 
     def test_shelve_modify_target(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
         tree.add('baz', 'baz-id')
@@ -299,19 +305,27 @@ class TestShelver(tests.TestCaseWithTransport):
         finally:
             tree.unlock()
 
-    def test_shelve_old_root_deleted(self):
+    def test_shelve_old_root_preserved(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree1.commit('add root')
+        tree1_root_id = tree1.get_root_id()
         tree2 = self.make_branch_and_tree('tree2')
         rev2 = tree2.commit('add root')
+        self.assertNotEquals(tree1_root_id, tree2.get_root_id())
         tree1.merge_from_branch(tree2.branch,
                                 from_revision=revision.NULL_REVISION)
-        tree1.commit('Replaced root entry')
+        tree1.commit('merging in tree2')
+        self.assertEquals(tree1_root_id, tree1.get_root_id())
         # This is essentially assertNotRaises(InconsistentDelta)
-        self.expectFailure('Cannot shelve replacing a root entry',
-                           self.assertRaises, AssertionError,
-                           self.assertRaises, errors.InconsistentDelta,
-                           self.shelve_all, tree1, rev2)
+        # With testtools 0.9.9, it can be rewritten as:
+        # with ExpectedException(AssertionError,
+        #                        'InconsistentDelta not raised'):
+        #     with ExpectedException(errors.InconsistentDelta, ''):
+        #         self.shelve_all(tree1, rev2)
+        e = self.assertRaises(AssertionError, self.assertRaises,
+                              errors.InconsistentDelta, self.shelve_all, tree1,
+                              rev2)
+        self.assertContainsRe('InconsistentDelta not raised', str(e))
 
     def test_shelve_split(self):
         outer_tree = self.make_branch_and_tree('outer')
@@ -327,7 +341,7 @@ class TestShelver(tests.TestCaseWithTransport):
                            outer_tree, rev2)
 
 
-class TestApplyReporter(TestShelver):
+class TestApplyReporter(ShelfTestCase):
 
     def test_shelve_not_diff(self):
         tree = self.create_shelvable_tree()
@@ -422,7 +436,7 @@ class TestApplyReporter(TestShelver):
         shelver.expect('Delete file "foo"? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
-        self.failIfExists('tree/foo')
+        self.assertPathDoesNotExist('tree/foo')
 
     def test_shelve_kind_change(self):
         tree = self.create_shelvable_tree()
@@ -437,7 +451,7 @@ class TestApplyReporter(TestShelver):
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
 
     def test_shelve_modify_target(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
         tree.add('baz', 'baz-id')

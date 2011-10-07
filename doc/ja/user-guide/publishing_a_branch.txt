@@ -1,3 +1,5 @@
+.. _publishing_a_branch:
+
 ブランチを公開する
 ===================
 
@@ -16,7 +18,7 @@
 なので、そのような共有リポジトリを作るときには通常 ``no-trees``
 オプションを使います::
 
-  bzr init-repo --no-trees sftp://centralhost/srv/bzr/PROJECT
+  bzr init-repo --no-trees bzr+ssh://centralhost/srv/bzr/PROJECT
 
 この手順をcvsrootもしくはSubversionのリポジトリのセットアップとして\
 似たようなものとして考えることができます。
@@ -43,20 +45,19 @@
   bzr add                (リポジトリを投入する; バージョン管理を始める)
   bzr commit -m "Initial import"
                          (中心リポジトリに公開する)
-  bzr push sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr push bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
 
 2番目のやり方の例です::
 
   bzr init-repo PROJECT  (ローカルリポジトリを準備する)
   cd PROJECT
-  bzr init sftp://centralhost/srv/bzr/PROJECT/trunk
-  bzr checkout sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr init bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
+  bzr checkout bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
   cd trunk
   cp -ar ~/PROJECT .     (OS固有のツールを使用してファイルをコピーする)
   bzr add                (リポジトリを投入する; バージョン管理を始める)
   bzr commit -m "Initial import"
                          (中心リポジトリに公開する)
-  bzr push sftp://centralhost/srv/bzr/project/trunk
 
 ``checkout`` コミットを使って作られた作業ツリー内部でコミットすると\
 ローカルと同様に内容は暗黙の内に中心位置にコミットされることに注意してください。

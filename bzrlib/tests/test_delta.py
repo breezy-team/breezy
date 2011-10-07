@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,8 +65,7 @@ class TestReportChanges(tests.TestCase):
         reporter.report(file_id, (old_path, path), versioned_change, renamed,
             modified, exe_change, kind)
         if expected_lines is not None:
-            for i in range(len(expected_lines)):
-                self.assertEqualDiff(expected_lines[i], result[i])
+            self.assertEqualDiff('\n'.join(expected_lines), '\n'.join(result))
         else:
             self.assertEqual([], result)
 
@@ -122,6 +121,12 @@ class TestReportChanges(tests.TestCase):
             old_path=None, versioned_change='unversioned',
             renamed=False, modified='created', exe_change=False,
             kind=(None, 'file'), unversioned_filter=lambda x:True)
+
+    def test_missing(self):
+        self.assertReport('+!  missing.c', file_id=None, path='missing.c',
+             old_path=None, versioned_change='added',
+             renamed=False, modified='missing', exe_change=False,
+             kind=(None, None))
 
     def test_view_filtering(self):
         # If a file in within the view, it should appear in the output
@@ -221,7 +226,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
 
     def show_string(self, delta, *args,  **kwargs):
         to_file = StringIO()
-        delta.show(to_file, *args, **kwargs)
+        _mod_delta.report_delta(to_file, delta, *args, **kwargs)
         return to_file.getvalue()
 
     def test_kind_change(self):
@@ -280,11 +285,16 @@ class TestDeltaShow(tests.TestCaseWithTransport):
                                   ('branch/f2', '2\n'),
                                   ('branch/f3', '3\n'),
                                   ('branch/f4', '4\n'),
+                                  ('branch/f5', '5\n'),
                                   ('branch/dir/',),
                                  ])
         wt.add(['f1', 'f2', 'f3', 'f4', 'dir'],
                ['f1-id', 'f2-id', 'f3-id', 'f4-id', 'dir-id'])
         wt.commit('commit one', rev_id='1')
+
+        # TODO add rename,removed,etc. here?
+        wt.add('f5')
+        os.unlink('branch/f5')
 
         long_status = """added:
   dir/
@@ -292,12 +302,15 @@ class TestDeltaShow(tests.TestCaseWithTransport):
   f2
   f3
   f4
+missing:
+  f5
 """
         short_status = """A  dir/
 A  f1
 A  f2
 A  f3
 A  f4
+!  f5
 """
 
         repo = wt.branch.repository
@@ -307,13 +320,13 @@ A  f4
     def test_delta_show_short_status_no_filter(self):
         d, long_status, short_status = self._get_delta()
         out = StringIO()
-        d.show(out, short_status=True)
+        _mod_delta.report_delta(out, d, short_status=True)
         self.assertEquals(short_status, out.getvalue())
 
     def test_delta_show_long_status_no_filter(self):
         d, long_status, short_status = self._get_delta()
         out = StringIO()
-        d.show(out, short_status=False)
+        _mod_delta.report_delta(out, d, short_status=False)
         self.assertEquals(long_status, out.getvalue())
 
     def test_delta_show_no_filter(self):
@@ -321,7 +334,7 @@ A  f4
         out = StringIO()
         def not_a_filter(path, file_id):
             return True
-        d.show(out, short_status=True, filter=not_a_filter)
+        _mod_delta.report_delta(out, d, short_status=True, filter=not_a_filter)
         self.assertEquals(short_status, out.getvalue())
 
     def test_delta_show_short_status_single_file_filter(self):
@@ -329,7 +342,7 @@ A  f4
         out = StringIO()
         def only_f2(path, file_id):
             return path == 'f2'
-        d.show(out, short_status=True, filter=only_f2)
+        _mod_delta.report_delta(out, d, short_status=True, filter=only_f2)
         self.assertEquals("A  f2\n", out.getvalue())
 
     def test_delta_show_long_status_single_file_filter(self):
@@ -337,7 +350,7 @@ A  f4
         out = StringIO()
         def only_f2(path, file_id):
             return path == 'f2'
-        d.show(out, short_status=False, filter=only_f2)
+        _mod_delta.report_delta(out, d, short_status=False, filter=only_f2)
         self.assertEquals("added:\n  f2\n", out.getvalue())
 
     def test_delta_show_short_status_single_file_id_filter(self):
@@ -345,6 +358,6 @@ A  f4
         out = StringIO()
         def only_f2_id(path, file_id):
             return file_id == 'f2-id'
-        d.show(out, short_status=True, filter=only_f2_id)
+        _mod_delta.report_delta(out, d, short_status=True, filter=only_f2_id)
         self.assertEquals("A  f2\n", out.getvalue())
 

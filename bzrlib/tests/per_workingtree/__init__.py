@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,17 +17,17 @@
 
 """WorkingTree implementation tests for bzr.
 
-These test the conformance of all the workingtre variations to the expected API.
+This test the conformance of all the workingtre variations to the expected API.
 Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/per_workingtree/*.py.
 """
 
 from bzrlib import (
-    errors,
+    branchbuilder,
     tests,
     workingtree,
     )
-from bzrlib.tests import per_bzrdir
+from bzrlib.tests import per_controldir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -50,7 +50,23 @@ def make_scenario(transport_server, transport_readonly_server,
         }
 
 
-class TestCaseWithWorkingTree(per_bzrdir.TestCaseWithBzrDir):
+def wt_scenarios():
+    """Returns the scenarios for all registered working trees.
+
+    This can used by plugins that want to define tests against these working
+    trees.
+    """
+    scenarios = make_scenarios(
+        tests.default_transport,
+        # None here will cause a readonly decorator to be created
+        # by the TestCaseWithTransport.get_readonly_transport method.
+        None,
+        workingtree.format_registry._get_all()
+        )
+    return scenarios
+
+
+class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
@@ -58,11 +74,12 @@ class TestCaseWithWorkingTree(per_bzrdir.TestCaseWithBzrDir):
         made_control.create_branch()
         return self.workingtree_format.initialize(made_control)
 
-
-def workingtree_formats():
-    """The known working tree formats."""
-    return (workingtree.WorkingTreeFormat._formats.values() +
-        workingtree._legacy_formats)
+    def make_branch_builder(self, relpath, format=None):
+        if format is None:
+            format = self.bzrdir_format
+        builder = branchbuilder.BranchBuilder(self.get_transport(relpath),
+                                              format=format)
+        return builder
 
 
 def load_tests(standard_tests, module, loader):
@@ -75,6 +92,7 @@ def load_tests(standard_tests, module, loader):
         'break_lock',
         'changes_from',
         'check',
+        'check_state',
         'content_filters',
         'commit',
         'eol_conversion',
@@ -101,6 +119,7 @@ def load_tests(standard_tests, module, loader):
         'revision_tree',
         'set_root_id',
         'smart_add',
+        'symlinks',
         'uncommit',
         'unversion',
         'views',
@@ -111,15 +130,16 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_workingtree.test_' + name for
         name in test_names]
 
-    scenarios = make_scenarios(
-        tests.default_transport,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        workingtree_formats()
-        )
+    scenarios = wt_scenarios()
 
     # add the tests for the sub modules
     return tests.multiply_tests(
         loader.loadTestsFromModuleNames(test_workingtree_implementations),
         scenarios, standard_tests)
+
+
+class TestWtScenarios(tests.TestCase):
+
+    def test_protect_wt_scenarios(self):
+        # Just make sure we don't accidentally delete the helper again
+        scenarios = wt_scenarios()

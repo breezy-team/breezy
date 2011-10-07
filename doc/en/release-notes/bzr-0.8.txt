@@ -1,0 +1,340 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.8.2
+#########
+
+:Released:  2006-05-17
+
+Bug Fixes
+*********
+
+* setup.py failed to install launchpad plugin.  (Martin Pool)
+
+bzr 0.8.1
+#########
+
+:Released:  2006-05-16
+
+Bug Fixes
+*********
+
+* Fix failure to commit a merge in a checkout.  (Martin Pool,
+  Robert Collins, Erik Bågfors, #43959)
+
+* Nicer messages from 'commit' in the case of renames, and correct
+  messages when a merge has occured. (Robert Collins, Martin Pool)
+
+* Separate functionality from assert statements as they are skipped in
+  optimized mode of python. Add the same check to pending merges.
+  (Olaf Conradi, #44443)
+
+Changes
+*******
+
+* Do not show the None revision in output of bzr ancestry. (Olaf Conradi)
+
+* Add info on standalone branches without a working tree.
+  (Olaf Conradi, #44155)
+
+* Fix bug in knits when raising InvalidRevisionId. (Olaf Conradi, #44284)
+
+Changes
+*******
+
+* Make editor invocation comply with Debian Policy. First check
+  environment variables VISUAL and EDITOR, then try editor from
+  alternatives system. If that all fails, fall back to the pre-defined
+  list of editors. (Olaf Conradi, #42904)
+
+New Features
+************
+
+* New 'register-branch' command registers a public branch into
+  Launchpad.net, where it can be associated with bugs, etc.
+  (Martin Pool, Bjorn Tillenius, Robert Collins)
+
+Internals
+*********
+
+* New public api in InventoryEntry - ``describe_change(old, new)`` which
+  provides a human description of the changes between two old and
+  new. (Robert Collins, Martin Pool)
+
+Testing
+*******
+
+* Fix test case for bzr info in upgrading a standalone branch to metadir,
+  uses bzrlib api now. (Olaf Conradi)
+
+bzr 0.8
+#######
+
+:Released:  2006-05-08
+
+Notes When Upgrading
+********************
+
+Release 0.8 of bzr introduces a new format for history storage, called
+'knit', as an evolution of to the 'weave' format used in 0.7.  Local
+and remote operations are faster using knits than weaves.  Several
+operations including 'init', 'init-repo', and 'upgrade' take a
+--format option that controls this.  Branching from an existing branch
+will keep the same format.
+
+It is possible to merge, pull and push between branches of different
+formats but this is slower than moving data between homogenous
+branches.  It is therefore recommended (but not required) that you
+upgrade all branches for a project at the same time.  Information on
+formats is shown by 'bzr info'.
+
+bzr 0.8 now allows creation of 'repositories', which hold the history
+of files and revisions for several branches.  Previously bzr kept all
+the history for a branch within the .bzr directory at the root of the
+branch, and this is still the default.  To create a repository, use
+the new 'bzr init-repo' command.  Branches exist as directories under
+the repository and contain just a small amount of information
+indicating the current revision of the branch.
+
+bzr 0.8 also supports 'checkouts', which are similar to in cvs and
+subversion.  Checkouts are associated with a branch (optionally in a
+repository), which contains all the historical information.  The
+result is that a checkout can be deleted without losing any
+already-committed revisions.  A new 'update' command is also available.
+
+Repositories and checkouts are not supported with the 0.7 storage
+format.  To use them you must upgrad to either knits, or to the
+'metaweave' format, which uses weaves but changes the .bzr directory
+arrangement.
+
+
+Improvements
+************
+
+* SFTP paths can now be relative, or local, according to the lftp
+  convention. Paths now take the form::
+
+      sftp://user:pass@host:port/~/relative/path
+      or
+      sftp://user:pass@host:port/absolute/path
+
+* The FTP transport now tries to reconnect after a temporary
+  failure. FTP put is made atomic. (Matthieu Moy)
+
+* The FTP transport now maintains a pool of connections, and
+  reuses them to avoid multiple connections to the same host (like
+  SFTP did). (Daniel Silverstone)
+
+* The ``bzr_man.py`` file has been removed. To create the man page now,
+  use ``./generate_docs.py man``. The new program can also create other files.
+  Run ``python generate_docs.py --help`` for usage information.
+  (Hans Ulrich Niedermann & James Blackwell).
+
+* Man Page now gives full help (James Blackwell).
+  Help also updated to reflect user config now being stored in .bazaar
+  (Hans Ulrich Niedermann)
+
+* It's now possible to set aliases in bazaar.conf (Erik Bågfors)
+
+* Pull now accepts a --revision argument (Erik Bågfors)
+
+* ``bzr re-sign`` now allows multiple revisions to be supplied on the command
+  line. You can now use the following command to sign all of your old
+  commits::
+
+    find .bzr/revision-store// -name my@email-* \
+      | sed 's/.*\/\/..\///' \
+      | xargs bzr re-sign
+
+* Upgrade can now upgrade over the network. (Robert Collins)
+
+* Two new commands 'bzr checkout' and 'bzr update' allow for CVS/SVN-alike
+  behaviour.  By default they will cache history in the checkout, but
+  with --lightweight almost all data is kept in the master branch.
+  (Robert Collins)
+
+* 'revert' unversions newly-versioned files, instead of deleting them.
+
+* 'merge' is more robust.  Conflict messages have changed.
+
+* 'merge' and 'revert' no longer clobber existing files that end in '~' or
+  '.moved'.
+
+* Default log format can be set in configuration and plugins can register
+  their own formatters. (Erik Bågfors)
+
+* New 'reconcile' command will check branch consistency and repair indexes
+  that can become out of sync in pre 0.8 formats. (Robert Collins,
+  Daniel Silverstone)
+
+* New 'bzr init --format' and 'bzr upgrade --format' option to control
+  what storage format is created or produced.  (Robert Collins,
+  Martin Pool)
+
+* Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
+
+* New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
+
+* New 'init-repository' command, plus support for repositories in 'init'
+  and 'branch' (Aaron Bentley, Erik Bågfors, Robert Collins)
+
+* Improve output of 'info' command. Show all relevant locations related to
+  working tree, branch and repository. Use kibibytes for binary quantities.
+  Fix off-by-one error in missing revisions of working tree.  Make 'info'
+  work on branches, repositories and remote locations.  Show locations
+  relative to the shared repository, if applicable.  Show locking status
+  of locations.  (Olaf Conradi)
+
+* Diff and merge now safely handle binary files. (Aaron Bentley)
+
+* 'pull' and 'push' now normalise the revision history, so that any two
+  branches with the same tip revision will have the same output from 'log'.
+  (Robert Collins)
+
+* 'merge' accepts --remember option to store parent location, like 'push'
+  and 'pull'. (Olaf Conradi)
+
+* bzr status and diff when files given as arguments do not exist
+  in the relevant trees.  (Martin Pool, #3619)
+
+* Add '.hg' to the default ignore list.  (Martin Pool)
+
+* 'knit' is now the default disk format. This improves disk performance and
+  utilization, increases incremental pull performance, robustness with SFTP
+  and allows checkouts over SFTP to perform acceptably.
+  The initial Knit code was contributed by Johan Rydberg based on a
+  specification by Martin Pool.
+  (Robert Collins, Aaron Bentley, Johan Rydberg, Martin Pool).
+
+* New tool to generate all-in-one html version of the manual.  (Alexander
+  Belchenko)
+
+* Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
+  to be left in the SFTP repository. (Robert Collins, Martin Pool).
+
+* New option 'diff --prefix' to control how files are named in diff
+  output, with shortcuts '-p0' and '-p1' corresponding to the options for
+  GNU patch.  (Alexander Belchenko, Goffredo Baroncelli, Martin Pool)
+
+* Add --revision option to 'annotate' command.  (Olaf Conradi)
+
+* If bzr shows an unexpected revision-history after pulling (perhaps due
+  to a reweave) it can now be corrected by 'bzr reconcile'.
+  (Robert Collins)
+
+Changes
+*******
+
+* Commit is now verbose by default, and shows changed filenames and the
+  new revision number.  (Robert Collins, Martin Pool)
+
+* Unify 'mv', 'move', 'rename'.  (Matthew Fuller, #5379)
+
+* 'bzr -h' shows help.  (Martin Pool, Ian Bicking, #35940)
+
+* Make 'pull' and 'push' remember location on failure using --remember.
+  (Olaf Conradi)
+
+* For compatibility, make old format for using weaves inside metadir
+  available as 'metaweave' format.  Rename format 'metadir' to 'default'.
+  Clean up help for option --format in commands 'init', 'init-repo' and
+  'upgrade'.  (Olaf Conradi)
+
+Internals
+*********
+
+* The internal storage of history, and logical branch identity have now
+  been split into Branch, and Repository. The common locking and file
+  management routines are now in bzrlib.lockablefiles.
+  (Aaron Bentley, Robert Collins, Martin Pool)
+
+* Transports can now raise DependencyNotPresent if they need a library
+  which is not installed, and then another implementation will be
+  tried.  (Martin Pool)
+
+* Remove obsolete (and no-op) `decode` parameter to `Transport.get`.
+  (Martin Pool)
+
+* Using Tree Transform for merge, revert, tree-building
+
+* WorkingTree.create, Branch.create, ``WorkingTree.create_standalone``,
+  Branch.initialize are now deprecated. Please see ``BzrDir.create_*`` for
+  replacement API's. (Robert Collins)
+
+* New BzrDir class represents the .bzr control directory and manages
+  formatting issues. (Robert Collins)
+
+* New repository.InterRepository class encapsulates Repository to
+  Repository actions and allows for clean selection of optimised code
+  paths. (Robert Collins)
+
+* ``bzrlib.fetch.fetch`` and ``bzrlib.fetch.greedy_fetch`` are now
+  deprecated, please use ``branch.fetch`` or ``repository.fetch``
+  depending on your needs. (Robert Collins)
+
+* deprecated methods now have a ``is_deprecated`` flag on them that can
+  be checked, if you need to determine whether a given callable is
+  deprecated at runtime. (Robert Collins)
+
+* Progress bars are now nested - see
+  ``bzrlib.ui.ui_factory.nested_progress_bar``.
+  (Robert Collins, Robey Pointer)
+
+* New API call ``get_format_description()`` for each type of format.
+  (Olaf Conradi)
+
+* Changed ``branch.set_parent()`` to accept None to remove parent.
+  (Olaf Conradi)
+
+* Deprecated BzrError AmbiguousBase.  (Olaf Conradi)
+
+* WorkingTree.branch is now a read only property.  (Robert Collins)
+
+* bzrlib.ui.text.TextUIFactory now accepts a ``bar_type`` parameter which
+  can be None or a factory that will create a progress bar. This is
+  useful for testing or for overriding the bzrlib.progress heuristic.
+  (Robert Collins)
+
+* New API method ``get_physical_lock_status()`` to query locks present on a
+  transport.  (Olaf Conradi)
+
+* Repository.reconcile now takes a thorough keyword parameter to allow
+  requesting an indepth reconciliation, rather than just a data-loss
+  check. (Robert Collins)
+
+* ``bzrlib.ui.ui_factory protocol`` now supports ``get_boolean`` to prompt
+  the user for yes/no style input. (Robert Collins)
+
+Testing
+*******
+
+* SFTP tests now shortcut the SSH negotiation, reducing test overhead
+  for testing SFTP protocol support. (Robey Pointer)
+
+* Branch formats are now tested once per implementation (see ``bzrlib.
+  tests.branch_implementations``. This is analagous to the transport
+  interface tests, and has been followed up with working tree,
+  repository and BzrDir tests. (Robert Collins)
+
+* New test base class TestCaseWithTransport provides a transport aware
+  test environment, useful for testing any transport-interface using
+  code. The test suite option --transport controls the transport used
+  by this class (when its not being used as part of implementation
+  contract testing). (Robert Collins)
+
+* Close logging handler on disabling the test log. This will remove the
+  handler from the internal list inside python's logging module,
+  preventing shutdown from closing it twice.  (Olaf Conradi)
+
+* Move test case for uncommit to blackbox tests.  (Olaf Conradi)
+
+* ``run_bzr`` and ``run_bzr_captured`` now accept a 'stdin="foo"'
+  parameter which will provide String("foo") to the command as its stdin.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

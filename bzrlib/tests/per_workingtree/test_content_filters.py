@@ -223,7 +223,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_path_content_summary(self):
         """path_content_summary should always talk about the canonical form."""
-        # see https://bugs.edge.launchpad.net/bzr/+bug/415508
+        # see https://bugs.launchpad.net/bzr/+bug/415508
         #
         # set up a tree where the canonical form has a string added to the
         # end

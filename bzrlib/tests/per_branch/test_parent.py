@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ class TestParent(TestCaseWithTransport):
     def test_set_get_parent(self):
         """Set, re-get and reset the parent"""
         b = self.make_branch('subdir')
-        url = 'http://bazaar-vcs.org/bzr/bzr.dev'
+        url = 'http://example.com/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEqual(url, b.get_parent())
         self.assertEqual(url, b._get_parent_location())

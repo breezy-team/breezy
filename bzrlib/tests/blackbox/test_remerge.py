@@ -17,11 +17,11 @@
 
 import os
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestRemerge(ExternalBase):
+class TestRemerge(TestCaseWithTransport):
 
     def make_file(self, name, contents):
         f = open(name, 'wb')
@@ -74,8 +74,8 @@ class TestRemerge(ExternalBase):
                            'remerge hello --merge-type weave',
                            retcode=1)
 
-        self.failUnlessExists('hello.OTHER')
-        self.failIfExists('question.OTHER')
+        self.assertPathExists('hello.OTHER')
+        self.assertPathDoesNotExist('question.OTHER')
 
         file_id = self.run_bzr('file-id hello')[0]
         self.run_bzr_error(['hello.THIS is not versioned'],
@@ -84,8 +84,8 @@ class TestRemerge(ExternalBase):
         self.run_bzr_error(['conflicts encountered'],
                            'remerge --merge-type weave', retcode=1)
 
-        self.failUnlessExists('hello.OTHER')
-        self.failUnless('hello.BASE')
+        self.assertPathExists('hello.OTHER')
+        self.assertTrue('hello.BASE')
         self.assertFalse('|||||||' in conflict_text)
         self.assertFalse('hi world' in conflict_text)
 

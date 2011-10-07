@@ -69,8 +69,6 @@
 from copy import copy
 from cStringIO import StringIO
 import os
-import time
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -79,14 +77,11 @@ from bzrlib import tsort
 from bzrlib import (
     errors,
     osutils,
-    progress,
     )
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         RevisionAlreadyPresent,
         RevisionNotPresent,
         UnavailableRepresentation,
-        WeaveRevisionAlreadyPresent,
-        WeaveRevisionNotPresent,
         )
 from bzrlib.osutils import dirname, sha, sha_strings, split_lines
 import bzrlib.patiencediff

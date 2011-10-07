@@ -62,7 +62,13 @@ def _decode_tuple(req_line):
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    return '\x01'.join(args) + '\n'
+    joined = '\x01'.join(args) + '\n'
+    if type(joined) is unicode:
+        # XXX: We should fix things so this never happens!  -AJB, 20100304
+        mutter('response args contain unicode, should be only bytes: %r',
+               joined)
+        joined = joined.encode('ascii')
+    return joined
 
 
 class Requester(object):
@@ -648,7 +654,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         """Make a remote call with a readv array.
 
         The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \n is emitted.
+        each pair are separated by a comma, and no trailing \\n is emitted.
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
@@ -1225,6 +1231,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                     if first_chunk is None:
                         first_chunk = chunk
                     self._write_prefixed_body(chunk)
+                    self.flush()
                     if 'hpssdetail' in debug.debug_flags:
                         # Not worth timing separately, as _write_func is
                         # actually buffered
@@ -1325,7 +1332,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         """Make a remote call with a readv array.
 
         The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \n is emitted.
+        each pair are separated by a comma, and no trailing \\n is emitted.
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %s', repr(args)[1:-1])

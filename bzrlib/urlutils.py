@@ -101,7 +101,12 @@ def _find_scheme_and_separator(url):
     first_path_slash = path.find('/')
     if first_path_slash == -1:
         return len(scheme), None
-    return len(scheme), first_path_slash+len(scheme)+3
+    return len(scheme), first_path_slash+m.start('path')
+
+
+def is_url(url):
+    """Tests whether a URL is in actual fact a URL."""
+    return _url_scheme_re.match(url) is not None
 
 
 def join(base, *args):
@@ -118,67 +123,26 @@ def join(base, *args):
     """
     if not args:
         return base
-    match = _url_scheme_re.match(base)
-    scheme = None
-    if match:
-        scheme = match.group('scheme')
-        path = match.group('path').split('/')
-        if path[-1:] == ['']:
-            # Strip off a trailing slash
-            # This helps both when we are at the root, and when
-            # 'base' has an extra slash at the end
-            path = path[:-1]
-    else:
-        path = base.split('/')
-
-    if scheme is not None and len(path) >= 1:
-        host = path[:1]
-        # the path should be represented as an abs path.
-        # we know this must be absolute because of the presence of a URL scheme.
-        remove_root = True
-        path = [''] + path[1:]
-    else:
-        # create an empty host, but dont alter the path - this might be a
-        # relative url fragment.
-        host = []
-        remove_root = False
-
+    scheme_end, path_start = _find_scheme_and_separator(base)
+    if scheme_end is None and path_start is None:
+        path_start = 0
+    elif path_start is None:
+        path_start = len(base)
+    path = base[path_start:]
     for arg in args:
-        match = _url_scheme_re.match(arg)
-        if match:
-            # Absolute URL
-            scheme = match.group('scheme')
-            # this skips .. normalisation, making http://host/../../..
-            # be rather strange.
-            path = match.group('path').split('/')
-            # set the host and path according to new absolute URL, discarding
-            # any previous values.
-            # XXX: duplicates mess from earlier in this function.  This URL
-            # manipulation code needs some cleaning up.
-            if scheme is not None and len(path) >= 1:
-                host = path[:1]
-                path = path[1:]
-                # url scheme implies absolute path.
-                path = [''] + path
-            else:
-                # no url scheme we take the path as is.
-                host = []
+        arg_scheme_end, arg_path_start = _find_scheme_and_separator(arg)
+        if arg_scheme_end is None and arg_path_start is None:
+            arg_path_start = 0
+        elif arg_path_start is None:
+            arg_path_start = len(arg)
+        if arg_scheme_end is not None:
+            base = arg
+            path = arg[arg_path_start:]
+            scheme_end = arg_scheme_end
+            path_start = arg_path_start
         else:
-            path = '/'.join(path)
             path = joinpath(path, arg)
-            path = path.split('/')
-    if remove_root and path[0:1] == ['']:
-        del path[0]
-    if host:
-        # Remove the leading slash from the path, so long as it isn't also the
-        # trailing slash, which we want to keep if present.
-        if path and path[0] == '' and len(path) > 1:
-            del path[0]
-        path = host + path
-
-    if scheme is None:
-        return '/'.join(path)
-    return scheme + '://' + '/'.join(path)
+    return base[:path_start] + path
 
 
 def joinpath(base, *args):
@@ -217,6 +181,7 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
+    url = split_segment_parameters_raw(url)[0]
     file_localhost_prefix = 'file://localhost/'
     if url.startswith(file_localhost_prefix):
         path = url[len(file_localhost_prefix) - 1:]
@@ -245,6 +210,7 @@ def _win32_local_path_from_url(url):
     if not url.startswith('file://'):
         raise errors.InvalidURL(url, 'local urls must start with file:///, '
                                      'UNC path urls must start with file://')
+    url = split_segment_parameters_raw(url)[0]
     # We strip off all 3 slashes
     win32_url = url[len('file:'):]
     # check for UNC path: //HOST/path
@@ -260,8 +226,9 @@ def _win32_local_path_from_url(url):
         return '/'
 
     # usual local path with drive letter
-    if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
-                             'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    if (len(win32_url) < 6
+        or win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
+                                'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         or win32_url[4] not in  '|:'
         or win32_url[5] != '/'):
         raise errors.InvalidURL(url, 'Win32 file urls start with'
@@ -278,7 +245,7 @@ def _win32_local_path_to_url(path):
     # on non-win32 platform
     # FIXME: It turns out that on nt, ntpath.abspath uses nt._getfullpathname
     #       which actually strips trailing space characters.
-    #       The worst part is that under linux ntpath.abspath has different
+    #       The worst part is that on linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
     if path == '/':
         return 'file:///'
@@ -303,7 +270,7 @@ if sys.platform == 'win32':
     MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
 
 
-_url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
+_url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,}):(//)?(?P<path>.*)$')
 _url_hex_escapes_re = re.compile(r'(%[0-9a-fA-F]{2})')
 
 
@@ -339,18 +306,18 @@ def normalize_url(url):
     :param url: Either a hybrid URL or a local path
     :return: A normalized URL which only includes 7-bit ASCII characters.
     """
-    m = _url_scheme_re.match(url)
-    if not m:
+    scheme_end, path_start = _find_scheme_and_separator(url)
+    if scheme_end is None:
         return local_path_to_url(url)
-    scheme = m.group('scheme')
-    path = m.group('path')
+    prefix = url[:path_start]
+    path = url[path_start:]
     if not isinstance(url, unicode):
         for c in url:
             if c not in _url_safe_characters:
                 raise errors.InvalidURL(url, 'URLs can only contain specific'
                                             ' safe characters (not %r)' % c)
         path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
-        return str(scheme + '://' + ''.join(path))
+        return str(prefix + ''.join(path))
 
     # We have a unicode (hybrid) url
     path_chars = list(path)
@@ -362,7 +329,7 @@ def normalize_url(url):
                 ['%%%02X' % ord(c) for c in path_chars[i].encode('utf-8')])
     path = ''.join(path_chars)
     path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
-    return str(scheme + '://' + path)
+    return str(prefix + path)
 
 
 def relative_url(base, other):
@@ -421,7 +388,7 @@ def _win32_extract_drive_letter(url_base, path):
     """On win32 the drive letter needs to be added to the url base."""
     # Strip off the drive letter
     # path is currently /C:/foo
-    if len(path) < 3 or path[2] not in ':|' or path[3] != '/':
+    if len(path) < 4 or path[2] not in ':|' or path[3] != '/':
         raise errors.InvalidURL(url_base + path,
             'win32 file:/// paths need a drive letter')
     url_base += path[0:3] # file:// + /C:
@@ -467,6 +434,78 @@ def split(url, exclude_trailing_slash=True):
         path = path[:-1]
     head, tail = _posix_split(path)
     return url_base + head, tail
+
+
+def split_segment_parameters_raw(url):
+    """Split the subsegment of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, subsegments)
+    """
+    (parent_url, child_dir) = split(url)
+    subsegments = child_dir.split(",")
+    if len(subsegments) == 1:
+        return (url, [])
+    return (join(parent_url, subsegments[0]), subsegments[1:])
+
+
+def split_segment_parameters(url):
+    """Split the segment parameters of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, segment_parameters)
+    """
+    (base_url, subsegments) = split_segment_parameters_raw(url)
+    parameters = {}
+    for subsegment in subsegments:
+        (key, value) = subsegment.split("=", 1)
+        parameters[key] = value
+    return (base_url, parameters)
+
+
+def join_segment_parameters_raw(base, *subsegments):
+    """Create a new URL by adding subsegments to an existing one. 
+
+    This adds the specified subsegments to the last path in the specified
+    base URL. The subsegments should be bytestrings.
+
+    :note: You probably want to use join_segment_parameters instead.
+    """
+    if not subsegments:
+        return base
+    for subsegment in subsegments:
+        if type(subsegment) is not str:
+            raise TypeError("Subsegment %r is not a bytestring" % subsegment)
+        if "," in subsegment:
+            raise errors.InvalidURLJoin(", exists in subsegments",
+                                        base, subsegments)
+    return ",".join((base,) + subsegments)
+
+
+def join_segment_parameters(url, parameters):
+    """Create a new URL by adding segment parameters to an existing one.
+
+    The parameters of the last segment in the URL will be updated; if a
+    parameter with the same key already exists it will be overwritten.
+
+    :param url: A URL, as string
+    :param parameters: Dictionary of parameters, keys and values as bytestrings
+    """
+    (base, existing_parameters) = split_segment_parameters(url)
+    new_parameters = {}
+    new_parameters.update(existing_parameters)
+    for key, value in parameters.iteritems():
+        if type(key) is not str:
+            raise TypeError("parameter key %r is not a bytestring" % key)
+        if type(value) is not str:
+            raise TypeError("parameter value %r for %s is not a bytestring" %
+                (key, value))
+        if "=" in key:
+            raise errors.InvalidURLJoin("= exists in parameter key", url,
+                parameters)
+        new_parameters[key] = value
+    return join_segment_parameters_raw(base, 
+        *["%s=%s" % item for item in sorted(new_parameters.items())])
 
 
 def _win32_strip_local_trailing_slash(url):
@@ -693,6 +732,148 @@ def determine_relative_path(from_path, to_path):
     return osutils.pathjoin(*segments)
 
 
+class URL(object):
+    """Parsed URL."""
+
+    def __init__(self, scheme, quoted_user, quoted_password, quoted_host,
+            port, quoted_path):
+        self.scheme = scheme
+        self.quoted_host = quoted_host
+        self.host = urllib.unquote(self.quoted_host)
+        self.quoted_user = quoted_user
+        if self.quoted_user is not None:
+            self.user = urllib.unquote(self.quoted_user)
+        else:
+            self.user = None
+        self.quoted_password = quoted_password
+        if self.quoted_password is not None:
+            self.password = urllib.unquote(self.quoted_password)
+        else:
+            self.password = None
+        self.port = port
+        self.quoted_path = quoted_path
+        self.path = urllib.unquote(self.quoted_path)
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                self.scheme == other.scheme and
+                self.host == other.host and
+                self.user == other.user and
+                self.password == other.password and
+                self.path == other.path)
+
+    def __repr__(self):
+        return "<%s(%r, %r, %r, %r, %r, %r)>" % (
+            self.__class__.__name__,
+            self.scheme, self.quoted_user, self.quoted_password,
+            self.quoted_host, self.port, self.quoted_path)
+
+    @classmethod
+    def from_string(cls, url):
+        """Create a URL object from a string.
+
+        :param url: URL as bytestring
+        """
+        if isinstance(url, unicode):
+            raise errors.InvalidURL('should be ascii:\n%r' % url)
+        url = url.encode('utf-8')
+        (scheme, netloc, path, params,
+         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        user = password = host = port = None
+        if '@' in netloc:
+            user, host = netloc.rsplit('@', 1)
+            if ':' in user:
+                user, password = user.split(':', 1)
+        else:
+            host = netloc
+
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'):
+            # there *is* port
+            host, port = host.rsplit(':',1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
+            host = host[1:-1]
+
+        return cls(scheme, user, password, host, port, path)
+
+    def __str__(self):
+        netloc = self.quoted_host
+        if ":" in netloc:
+            netloc = "[%s]" % netloc
+        if self.quoted_user is not None:
+            # Note that we don't put the password back even if we
+            # have one so that it doesn't get accidentally
+            # exposed.
+            netloc = '%s@%s' % (self.quoted_user, netloc)
+        if self.port is not None:
+            netloc = '%s:%d' % (netloc, self.port)
+        return urlparse.urlunparse(
+            (self.scheme, netloc, self.quoted_path, None, None, None))
+
+    @staticmethod
+    def _combine_paths(base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            t._combine_paths('/home/sarah', 'project/foo')
+                => '/home/sarah/project/foo'
+            t._combine_paths('/home/sarah', '../../etc')
+                => '/etc'
+            t._combine_paths('/home/sarah', '/etc')
+                => '/etc'
+
+        :param base_path: base path
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL(relpath)
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        if not path.startswith('/'):
+            path = '/' + path
+        return path
+
+    def clone(self, offset=None):
+        """Return a new URL for a path relative to this URL.
+
+        :param offset: A relative path, already urlencoded
+        :return: `URL` instance
+        """
+        if offset is not None:
+            relative = unescape(offset).encode('utf-8')
+            path = self._combine_paths(self.path, relative)
+            path = urllib.quote(path)
+        else:
+            path = self.quoted_path
+        return self.__class__(self.scheme, self.quoted_user,
+                self.quoted_password, self.quoted_host, self.port,
+                path)
+
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.
@@ -701,36 +882,9 @@ def parse_url(url):
     chars.
 
     :param url: an quoted url
-
     :return: (scheme, user, password, host, port, path) tuple, all fields
         are unquoted.
     """
-    if isinstance(url, unicode):
-        raise errors.InvalidURL('should be ascii:\n%r' % url)
-    url = url.encode('utf-8')
-    (scheme, netloc, path, params,
-     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-    user = password = host = port = None
-    if '@' in netloc:
-        user, host = netloc.rsplit('@', 1)
-        if ':' in user:
-            user, password = user.split(':', 1)
-            password = urllib.unquote(password)
-        user = urllib.unquote(user)
-    else:
-        host = netloc
-
-    if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
-        host, port = host.rsplit(':',1)
-        try:
-            port = int(port)
-        except ValueError:
-            raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                    (port, url))
-    if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
-        host = host[1:-1]
-
-    host = urllib.unquote(host)
-    path = urllib.unquote(path)
-
-    return (scheme, user, password, host, port, path)
+    parsed_url = URL.from_string(url)
+    return (parsed_url.scheme, parsed_url.user, parsed_url.password,
+        parsed_url.host, parsed_url.port, parsed_url.path)

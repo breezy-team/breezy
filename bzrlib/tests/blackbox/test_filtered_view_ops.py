@@ -28,10 +28,7 @@ from bzrlib import (
 class TestViewFileOperations(tests.TestCaseWithTransport):
 
     def make_abc_tree_with_ab_view(self):
-        # we need to use a specific format because the default format
-        # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('development6-rich-root')
-        wt = self.make_branch_and_tree( '.', format=format)
+        wt = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
         wt.views.set_view('my', ['a', 'b'])
         return wt
@@ -156,11 +153,8 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
 class TestViewTreeOperations(tests.TestCaseWithTransport):
 
     def make_abc_tree_and_clone_with_ab_view(self):
-        # we need to use a specific format because the default format
-        # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('development6-rich-root')
         # Build the first tree
-        wt1 = self.make_branch_and_tree('tree_1', format=format)
+        wt1 = self.make_branch_and_tree('tree_1')
         self.build_tree(['tree_1/a', 'tree_1/b', 'tree_1/c'])
         wt1.add(['a', 'b', 'c'])
         wt1.commit("adding a b c")

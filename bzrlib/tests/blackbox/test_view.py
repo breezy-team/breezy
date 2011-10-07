@@ -23,19 +23,12 @@ from bzrlib.workingtree import WorkingTree
 
 class TestViewUI(TestCaseWithTransport):
 
-    def make_branch_and_tree(self):
-        # we need to use a specific format because the default format
-        # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('development6-rich-root')
-        return TestCaseWithTransport.make_branch_and_tree(self, '.',
-            format=format)
-
     def test_view_command_help(self):
         out, err = self.run_bzr('help view')
         self.assertContainsRe(out, 'Manage filtered views')
 
     def test_define_view(self):
-        wt = self.make_branch_and_tree()
+        wt = self.make_branch_and_tree('.')
         # Check definition of a new view
         out, err = self.run_bzr('view a b c')
         self.assertEquals(out, "Using 'my' view: a, b, c\n")
@@ -51,7 +44,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertContainsRe(err, "Cannot change the 'off' pseudo view")
 
     def test_list_view(self):
-        wt = self.make_branch_and_tree()
+        wt = self.make_branch_and_tree('.')
         # Check list of the current view
         out, err = self.run_bzr('view')
         self.assertEquals(out, "No current view.\n")
@@ -76,7 +69,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertContainsRe(err, "No such view")
 
     def test_delete_view(self):
-        wt = self.make_branch_and_tree()
+        wt = self.make_branch_and_tree('.')
         # Check delete of the current view
         out, err = self.run_bzr('view --delete', retcode=3)
         self.assertContainsRe(err, "No current view to delete")
@@ -101,7 +94,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertContainsRe(err, "Both --delete and a file list specified")
 
     def test_switch_view(self):
-        wt = self.make_branch_and_tree()
+        wt = self.make_branch_and_tree('.')
         # Check switching to a named view
         self.run_bzr('view a b c')
         self.run_bzr('view e f --name foo')

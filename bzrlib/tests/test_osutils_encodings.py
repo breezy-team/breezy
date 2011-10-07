@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,9 @@
 
 import codecs
 import locale
-import os
 import sys
 
 from bzrlib import (
-    errors,
     osutils,
     )
 from bzrlib.tests import (
@@ -114,6 +112,26 @@ class TestTerminalEncoding(TestCase):
         # and in the worst case, use osutils.get_user_encoding()
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
+    def test_get_terminal_encoding_silent(self):
+        self.make_wrapped_streams('stdout_encoding',
+                                  'stderr_encoding',
+                                  'stdin_encoding')
+        # Calling get_terminal_encoding should not mutter when silent=True is
+        # passed.
+        log = self.get_log()
+        osutils.get_terminal_encoding()
+        self.assertEqual(log, self.get_log())
+
+    def test_get_terminal_encoding_trace(self):
+        self.make_wrapped_streams('stdout_encoding',
+                                  'stderr_encoding',
+                                  'stdin_encoding')
+        # Calling get_terminal_encoding should not mutter when silent=True is
+        # passed.
+        log = self.get_log()
+        osutils.get_terminal_encoding(trace=True)
+        self.assertNotEqual(log, self.get_log())
+
     def test_terminal_cp0(self):
         # test cp0 encoding (Windows returns cp0 when there is no encoding)
         self.make_wrapped_streams('cp0',
@@ -151,8 +169,6 @@ class TestUserEncoding(TestCase):
     def setUp(self):
         TestCase.setUp(self)
         self.overrideAttr(locale, 'getpreferredencoding')
-        self.addCleanup(osutils.set_or_unset_env,
-                        'LANG', os.environ.get('LANG'))
         self.overrideAttr(sys, 'stderr', StringIOWrapper())
 
     def test_get_user_encoding(self):
@@ -161,7 +177,8 @@ class TestUserEncoding(TestCase):
 
         locale.getpreferredencoding = f
         fake_codec.add('user_encoding')
-        self.assertEquals('user_encoding', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('user_encoding',
+                          osutils.get_user_encoding(use_cache=False))
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp0(self):
@@ -196,7 +213,7 @@ class TestUserEncoding(TestCase):
             raise locale.Error, 'unsupported locale'
 
         locale.getpreferredencoding = f
-        os.environ['LANG'] = 'BOGUS'
+        self.overrideEnv('LANG', 'BOGUS')
         self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
         self.assertEquals('bzr: warning: unsupported locale\n'
                           '  Could not determine what text encoding to use.\n'

@@ -23,7 +23,7 @@
   branch-nick: bzr.dev
 
 オペレーティングシステムツールもしくはスクリプトを使用して出力を簡単にフィルタリングできます。
-例です(Linux/Unix)::
+例です::
 
   $ bzr version-info | grep ^date
   date: 2007-12-11 17:51:18 +0000
@@ -56,7 +56,7 @@ Pythonのプロジェクト
 
   * `file_revisions`: プロジェクトのすべてのファイルに対する最終修正のリビジョンのリストを示すディクショナリ。
     これは ``$Id$`` キーワードがCVSで管理されたファイルと同じように使われます。
-    最終修正の日付は ``revisions`` マップで探すことで決定されます。
+    最終修正の日付は ``revisions`` マップで探すことで決定されます。 
     デフォルトではこれは空で、 ``--all`` もしくは ``--include-file-revisions`` によってのみ有効になります
 
 
@@ -74,11 +74,11 @@ Pythonのプロジェクト
       > version_info.h
 
 ``{revno}`` は作業ツリーのリビジョン番号に置き換えされます。
-(上記の例があなたのOSで動作しない場合、一行ですべてのコマンドを入力してみてください)
+(上記の例があなたのOSで動作しない場合、一行ですべてのコマンドを入力してみてください) 
 テンプレートの中で利用できる変数の詳細な情報に関しては、
 Bazaarのユーザーリファレンスの `Version Info`_ を参照してください。
 
-.. _Version Info: ../user-reference/bzr_man.html#version-info
+.. _Version Info: ../user-reference/index.html#version-info
 
 特定の言語でバージョン情報をダンプするために予め定義されるフォーマットはは現在開発段階にあります。
 この領域の要求に関してはメーリングリストで私達開発者に連絡して下さるようお願いします。
@@ -93,5 +93,5 @@ Bazaarのユーザーリファレンスの `Version Info`_ を参照してくだ
 ``version_info`` ``clean`` を設定します。
 同様に ``modified`` が適切である場合に ``file_revisions`` でエントリを設定します。
 
-..
+.. 
    vim: tw=74 ft=rst spell spelllang=en_us

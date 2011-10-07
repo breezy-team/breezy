@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ from bzrlib import (
     revision,
     trace,
     )
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -59,21 +58,23 @@ class DictParentsProvider(object):
     def __repr__(self):
         return 'DictParentsProvider(%r)' % self.ancestry
 
+    # Note: DictParentsProvider does not implement get_cached_parent_map
+    #       Arguably, the data is clearly cached in memory. However, this class
+    #       is mostly used for testing, and it keeps the tests clean to not
+    #       change it.
+
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
-        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+        return dict([(k, ancestry[k]) for k in keys if k in ancestry])
 
-@deprecated_function(deprecated_in((1, 16, 0)))
-def _StackedParentsProvider(*args, **kwargs):
-    return StackedParentsProvider(*args, **kwargs)
 
 class StackedParentsProvider(object):
     """A parents provider which stacks (or unions) multiple providers.
-    
+
     The providers are queries in the order of the provided parent_providers.
     """
-    
+
     def __init__(self, parent_providers):
         self._parent_providers = parent_providers
 
@@ -95,6 +96,22 @@ class StackedParentsProvider(object):
         """
         found = {}
         remaining = set(keys)
+        # This adds getattr() overhead to each get_parent_map call. However,
+        # this is StackedParentsProvider, which means we're dealing with I/O
+        # (either local indexes, or remote RPCs), so CPU overhead should be
+        # minimal.
+        for parents_provider in self._parent_providers:
+            get_cached = getattr(parents_provider, 'get_cached_parent_map',
+                                 None)
+            if get_cached is None:
+                continue
+            new_found = get_cached(remaining)
+            found.update(new_found)
+            remaining.difference_update(new_found)
+            if not remaining:
+                break
+        if not remaining:
+            return found
         for parents_provider in self._parent_providers:
             new_found = parents_provider.get_parent_map(remaining)
             found.update(new_found)
@@ -154,6 +171,17 @@ class CachingParentsProvider(object):
             return None
         return dict(self._cache)
 
+    def get_cached_parent_map(self, keys):
+        """Return items from the cache.
+
+        This returns the same info as get_parent_map, but explicitly does not
+        invoke the supplied ParentsProvider to search for uncached values.
+        """
+        cache = self._cache
+        if cache is None:
+            return {}
+        return dict([(key, cache[key]) for key in keys if key in cache])
+
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map."""
         cache = self._cache
@@ -181,6 +209,23 @@ class CachingParentsProvider(object):
         """Note that key is a missing key."""
         if self._cache_misses:
             self.missing_keys.add(key)
+
+
+class CallableToParentsProviderAdapter(object):
+    """A parents provider that adapts any callable to the parents provider API.
+
+    i.e. it accepts calls to self.get_parent_map and relays them to the
+    callable it was constructed with.
+    """
+
+    def __init__(self, a_callable):
+        self.callable = a_callable
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.callable)
+
+    def get_parent_map(self, keys):
+        return self.callable(keys)
 
 
 class Graph(object):
@@ -237,7 +282,8 @@ class Graph(object):
         common ancestor of all border ancestors, because this shows that it
         cannot be a descendant of any border ancestor.
 
-        The scaling of this operation should be proportional to
+        The scaling of this operation should be proportional to:
+
         1. The number of uncommon ancestors
         2. The number of border ancestors
         3. The length of the shortest path between a border ancestor and an
@@ -257,6 +303,40 @@ class Graph(object):
         left = searchers[0].seen
         right = searchers[1].seen
         return (left.difference(right), right.difference(left))
+
+    def find_descendants(self, old_key, new_key):
+        """Find descendants of old_key that are ancestors of new_key."""
+        child_map = self.get_child_map(self._find_descendant_ancestors(
+            old_key, new_key))
+        graph = Graph(DictParentsProvider(child_map))
+        searcher = graph._make_breadth_first_searcher([old_key])
+        list(searcher)
+        return searcher.seen
+
+    def _find_descendant_ancestors(self, old_key, new_key):
+        """Find ancestors of new_key that may be descendants of old_key."""
+        stop = self._make_breadth_first_searcher([old_key])
+        descendants = self._make_breadth_first_searcher([new_key])
+        for revisions in descendants:
+            old_stop = stop.seen.intersection(revisions)
+            descendants.stop_searching_any(old_stop)
+            seen_stop = descendants.find_seen_ancestors(stop.step())
+            descendants.stop_searching_any(seen_stop)
+        return descendants.seen.difference(stop.seen)
+
+    def get_child_map(self, keys):
+        """Get a mapping from parents to children of the specified keys.
+
+        This is simply the inversion of get_parent_map.  Only supplied keys
+        will be discovered as children.
+        :return: a dict of key:child_list for keys.
+        """
+        parent_map = self._parents_provider.get_parent_map(keys)
+        parent_child = {}
+        for child, parents in sorted(parent_map.items()):
+            for parent in parents:
+                parent_child.setdefault(parent, []).append(child)
+        return parent_child
 
     def find_distance_to_null(self, target_revision_id, known_revision_ids):
         """Find the left-hand distance to the NULL_REVISION.
@@ -341,8 +421,8 @@ class Graph(object):
 
         :param unique_revision: The revision_id whose ancestry we are
             interested in.
-            XXX: Would this API be better if we allowed multiple revisions on
-                 to be searched here?
+            (XXX: Would this API be better if we allowed multiple revisions on
+            to be searched here?)
         :param common_revisions: Revision_ids of ancestries to exclude.
         :return: A set of revisions in the ancestry of unique_revision
         """
@@ -862,6 +942,26 @@ class Graph(object):
                 stop.add(parent_id)
         return found
 
+    def find_lefthand_merger(self, merged_key, tip_key):
+        """Find the first lefthand ancestor of tip_key that merged merged_key.
+
+        We do this by first finding the descendants of merged_key, then
+        walking through the lefthand ancestry of tip_key until we find a key
+        that doesn't descend from merged_key.  Its child is the key that
+        merged merged_key.
+
+        :return: The first lefthand ancestor of tip_key to merge merged_key.
+            merged_key if it is a lefthand ancestor of tip_key.
+            None if no ancestor of tip_key merged merged_key.
+        """
+        descendants = self.find_descendants(merged_key, tip_key)
+        candidate_iterator = self.iter_lefthand_ancestry(tip_key)
+        last_candidate = None
+        for candidate in candidate_iterator:
+            if candidate not in descendants:
+                return last_candidate
+            last_candidate = candidate
+
     def find_unique_lca(self, left_revision, right_revision,
                         count_steps=False):
         """Find a unique LCA.
@@ -918,6 +1018,25 @@ class Graph(object):
             for ghost in ghosts:
                 yield (ghost, None)
             pending = next_pending
+
+    def iter_lefthand_ancestry(self, start_key, stop_keys=None):
+        if stop_keys is None:
+            stop_keys = ()
+        next_key = start_key
+        def get_parents(key):
+            try:
+                return self._parents_provider.get_parent_map([key])[key]
+            except KeyError:
+                raise errors.RevisionNotPresent(next_key, self)
+        while True:
+            if next_key in stop_keys:
+                return
+            parents = get_parents(next_key)
+            yield next_key
+            if len(parents) == 0:
+                return
+            else:
+                next_key = parents[0]
 
     def iter_topo_order(self, revisions):
         """Iterate through the input revisions in topological order.
@@ -1332,13 +1451,14 @@ class _BreadthFirstSearcher(object):
         parents_of_found = set()
         # revisions may contain nodes that point to other nodes in revisions:
         # we want to filter them out.
-        self.seen.update(revisions)
+        seen = self.seen
+        seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
             if parents is None:
                 continue
-            new_found_parents = [p for p in parents if p not in self.seen]
+            new_found_parents = [p for p in parents if p not in seen]
             if new_found_parents:
                 # Calling set.update() with an empty generator is actually
                 # rather expensive.
@@ -1463,7 +1583,69 @@ class _BreadthFirstSearcher(object):
             return revs, ghosts
 
 
-class SearchResult(object):
+class AbstractSearchResult(object):
+    """The result of a search, describing a set of keys.
+    
+    Search results are typically used as the 'fetch_spec' parameter when
+    fetching revisions.
+
+    :seealso: AbstractSearch
+    """
+
+    def get_recipe(self):
+        """Return a recipe that can be used to replay this search.
+
+        The recipe allows reconstruction of the same results at a later date.
+
+        :return: A tuple of `(search_kind_str, *details)`.  The details vary by
+            kind of search result.
+        """
+        raise NotImplementedError(self.get_recipe)
+
+    def get_network_struct(self):
+        """Return a tuple that can be transmitted via the HPSS protocol."""
+        raise NotImplementedError(self.get_network_struct)
+
+    def get_keys(self):
+        """Return the keys found in this search.
+
+        :return: A set of keys.
+        """
+        raise NotImplementedError(self.get_keys)
+
+    def is_empty(self):
+        """Return false if the search lists 1 or more revisions."""
+        raise NotImplementedError(self.is_empty)
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        :return: A search result.
+        """
+        raise NotImplementedError(self.refine)
+
+
+class AbstractSearch(object):
+    """A search that can be executed, producing a search result.
+
+    :seealso: AbstractSearchResult
+    """
+
+    def execute(self):
+        """Construct a network-ready search result from this search description.
+
+        This may take some time to search repositories, etc.
+
+        :return: A search result (an object that implements
+            AbstractSearchResult's API).
+        """
+        raise NotImplementedError(self.execute)
+
+
+class SearchResult(AbstractSearchResult):
     """The result of a breadth first search.
 
     A SearchResult provides the ability to reconstruct the search or access a
@@ -1483,6 +1665,19 @@ class SearchResult(object):
         """
         self._recipe = ('search', start_keys, exclude_keys, key_count)
         self._keys = frozenset(keys)
+
+    def __repr__(self):
+        kind, start_keys, exclude_keys, key_count = self._recipe
+        if len(start_keys) > 5:
+            start_keys_repr = repr(list(start_keys)[:5])[:-1] + ', ...]'
+        else:
+            start_keys_repr = repr(start_keys)
+        if len(exclude_keys) > 5:
+            exclude_keys_repr = repr(list(exclude_keys)[:5])[:-1] + ', ...]'
+        else:
+            exclude_keys_repr = repr(exclude_keys)
+        return '<%s %s:(%s, %s, %d)>' % (self.__class__.__name__,
+            kind, start_keys_repr, exclude_keys_repr, key_count)
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -1506,6 +1701,12 @@ class SearchResult(object):
             time.
         """
         return self._recipe
+
+    def get_network_struct(self):
+        start_keys = ' '.join(self._recipe[1])
+        stop_keys = ' '.join(self._recipe[2])
+        count = str(self._recipe[3])
+        return (self._recipe[0], '\n'.join((start_keys, stop_keys, count)))
 
     def get_keys(self):
         """Return the keys found in this search.
@@ -1544,7 +1745,7 @@ class SearchResult(object):
         return SearchResult(pending_refs, exclude, count, keys)
 
 
-class PendingAncestryResult(object):
+class PendingAncestryResult(AbstractSearchResult):
     """A search result that will reconstruct the ancestry for some graph heads.
 
     Unlike SearchResult, this doesn't hold the complete search result in
@@ -1561,6 +1762,15 @@ class PendingAncestryResult(object):
         self.heads = frozenset(heads)
         self.repo = repo
 
+    def __repr__(self):
+        if len(self.heads) > 5:
+            heads_repr = repr(list(self.heads)[:5])[:-1]
+            heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
+        else:
+            heads_repr = repr(self.heads)
+        return '<%s heads:%s repo:%r>' % (
+            self.__class__.__name__, heads_repr, self.repo)
+
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
 
@@ -1573,6 +1783,11 @@ class PendingAncestryResult(object):
             start_keys_set.
         """
         return ('proxy-search', self.heads, set(), -1)
+
+    def get_network_struct(self):
+        parts = ['ancestry-of']
+        parts.extend(self.heads)
+        return parts
 
     def get_keys(self):
         """See SearchResult.get_keys.
@@ -1604,6 +1819,263 @@ class PendingAncestryResult(object):
         """
         referenced = self.heads.union(referenced)
         return PendingAncestryResult(referenced - seen, self.repo)
+
+
+class EmptySearchResult(AbstractSearchResult):
+    """An empty search result."""
+
+    def is_empty(self):
+        return True
+    
+
+class EverythingResult(AbstractSearchResult):
+    """A search result that simply requests everything in the repository."""
+
+    def __init__(self, repo):
+        self._repo = repo
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._repo)
+
+    def get_recipe(self):
+        raise NotImplementedError(self.get_recipe)
+
+    def get_network_struct(self):
+        return ('everything',)
+
+    def get_keys(self):
+        if 'evil' in debug.debug_flags:
+            from bzrlib import remote
+            if isinstance(self._repo, remote.RemoteRepository):
+                # warn developers (not users) not to do this
+                trace.mutter_callsite(
+                    2, "EverythingResult(RemoteRepository).get_keys() is slow.")
+        return self._repo.all_revision_ids()
+
+    def is_empty(self):
+        # It's ok for this to wrongly return False: the worst that can happen
+        # is that RemoteStreamSource will initiate a get_stream on an empty
+        # repository.  And almost all repositories are non-empty.
+        return False
+
+    def refine(self, seen, referenced):
+        heads = set(self._repo.all_revision_ids())
+        heads.difference_update(seen)
+        heads.update(referenced)
+        return PendingAncestryResult(heads, self._repo)
+
+
+class EverythingNotInOther(AbstractSearch):
+    """Find all revisions in that are in one repo but not the other."""
+
+    def __init__(self, to_repo, from_repo, find_ghosts=False):
+        self.to_repo = to_repo
+        self.from_repo = from_repo
+        self.find_ghosts = find_ghosts
+
+    def execute(self):
+        return self.to_repo.search_missing_revision_ids(
+            self.from_repo, find_ghosts=self.find_ghosts)
+
+
+class NotInOtherForRevs(AbstractSearch):
+    """Find all revisions missing in one repo for a some specific heads."""
+
+    def __init__(self, to_repo, from_repo, required_ids, if_present_ids=None,
+            find_ghosts=False, limit=None):
+        """Constructor.
+
+        :param required_ids: revision IDs of heads that must be found, or else
+            the search will fail with NoSuchRevision.  All revisions in their
+            ancestry not already in the other repository will be included in
+            the search result.
+        :param if_present_ids: revision IDs of heads that may be absent in the
+            source repository.  If present, then their ancestry not already
+            found in other will be included in the search result.
+        :param limit: maximum number of revisions to fetch
+        """
+        self.to_repo = to_repo
+        self.from_repo = from_repo
+        self.find_ghosts = find_ghosts
+        self.required_ids = required_ids
+        self.if_present_ids = if_present_ids
+        self.limit = limit
+
+    def __repr__(self):
+        if len(self.required_ids) > 5:
+            reqd_revs_repr = repr(list(self.required_ids)[:5])[:-1] + ', ...]'
+        else:
+            reqd_revs_repr = repr(self.required_ids)
+        if self.if_present_ids and len(self.if_present_ids) > 5:
+            ifp_revs_repr = repr(list(self.if_present_ids)[:5])[:-1] + ', ...]'
+        else:
+            ifp_revs_repr = repr(self.if_present_ids)
+
+        return ("<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r"
+                "limit:%r>") % (
+                self.__class__.__name__, self.from_repo, self.to_repo,
+                self.find_ghosts, reqd_revs_repr, ifp_revs_repr,
+                self.limit)
+
+    def execute(self):
+        return self.to_repo.search_missing_revision_ids(
+            self.from_repo, revision_ids=self.required_ids,
+            if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts,
+            limit=self.limit)
+
+
+def invert_parent_map(parent_map):
+    """Given a map from child => parents, create a map of parent=>children"""
+    child_map = {}
+    for child, parents in parent_map.iteritems():
+        for p in parents:
+            # Any given parent is likely to have only a small handful
+            # of children, many will have only one. So we avoid mem overhead of
+            # a list, in exchange for extra copying of tuples
+            if p not in child_map:
+                child_map[p] = (child,)
+            else:
+                child_map[p] = child_map[p] + (child,)
+    return child_map
+
+
+def _find_possible_heads(parent_map, tip_keys, depth):
+    """Walk backwards (towards children) through the parent_map.
+
+    This finds 'heads' that will hopefully succinctly describe our search
+    graph.
+    """
+    child_map = invert_parent_map(parent_map)
+    heads = set()
+    current_roots = tip_keys
+    walked = set(current_roots)
+    while current_roots and depth > 0:
+        depth -= 1
+        children = set()
+        children_update = children.update
+        for p in current_roots:
+            # Is it better to pre- or post- filter the children?
+            try:
+                children_update(child_map[p])
+            except KeyError:
+                heads.add(p)
+        # If we've seen a key before, we don't want to walk it again. Note that
+        # 'children' stays relatively small while 'walked' grows large. So
+        # don't use 'difference_update' here which has to walk all of 'walked'.
+        # '.difference' is smart enough to walk only children and compare it to
+        # walked.
+        children = children.difference(walked)
+        walked.update(children)
+        current_roots = children
+    if current_roots:
+        # We walked to the end of depth, so these are the new tips.
+        heads.update(current_roots)
+    return heads
+
+
+def _run_search(parent_map, heads, exclude_keys):
+    """Given a parent map, run a _BreadthFirstSearcher on it.
+
+    Start at heads, walk until you hit exclude_keys. As a further improvement,
+    watch for any heads that you encounter while walking, which means they were
+    not heads of the search.
+
+    This is mostly used to generate a succinct recipe for how to walk through
+    most of parent_map.
+
+    :return: (_BreadthFirstSearcher, set(heads_encountered_by_walking))
+    """
+    g = Graph(DictParentsProvider(parent_map))
+    s = g._make_breadth_first_searcher(heads)
+    found_heads = set()
+    while True:
+        try:
+            next_revs = s.next()
+        except StopIteration:
+            break
+        for parents in s._current_parents.itervalues():
+            f_heads = heads.intersection(parents)
+            if f_heads:
+                found_heads.update(f_heads)
+        stop_keys = exclude_keys.intersection(next_revs)
+        if stop_keys:
+            s.stop_searching_any(stop_keys)
+    for parents in s._current_parents.itervalues():
+        f_heads = heads.intersection(parents)
+        if f_heads:
+            found_heads.update(f_heads)
+    return s, found_heads
+
+
+def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
+                                          depth):
+    """Transform a parent_map that is searching 'tip_keys' into an
+    approximate SearchResult.
+
+    We should be able to generate a SearchResult from a given set of starting
+    keys, that covers a subset of parent_map that has the last step pointing at
+    tip_keys. This is to handle the case that really-long-searches shouldn't be
+    started from scratch on each get_parent_map request, but we *do* want to
+    filter out some of the keys that we've already seen, so we don't get
+    information that we already know about on every request.
+
+    The server will validate the search (that starting at start_keys and
+    stopping at stop_keys yields the exact key_count), so we have to be careful
+    to give an exact recipe.
+
+    Basic algorithm is:
+        1) Invert parent_map to get child_map (todo: have it cached and pass it
+           in)
+        2) Starting at tip_keys, walk towards children for 'depth' steps.
+        3) At that point, we have the 'start' keys.
+        4) Start walking parent_map from 'start' keys, counting how many keys
+           are seen, and generating stop_keys for anything that would walk
+           outside of the parent_map.
+
+    :param parent_map: A map from {child_id: (parent_ids,)}
+    :param missing_keys: parent_ids that we know are unavailable
+    :param tip_keys: the revision_ids that we are searching
+    :param depth: How far back to walk.
+    """
+    if not parent_map:
+        # No search to send, because we haven't done any searching yet.
+        return [], [], 0
+    heads = _find_possible_heads(parent_map, tip_keys, depth)
+    s, found_heads = _run_search(parent_map, heads, set(tip_keys))
+    _, start_keys, exclude_keys, key_count = s.get_result().get_recipe()
+    if found_heads:
+        # Anything in found_heads are redundant start_keys, we hit them while
+        # walking, so we can exclude them from the start list.
+        start_keys = set(start_keys).difference(found_heads)
+    return start_keys, exclude_keys, key_count
+
+
+def search_result_from_parent_map(parent_map, missing_keys):
+    """Transform a parent_map into SearchResult information."""
+    if not parent_map:
+        # parent_map is empty or None, simple search result
+        return [], [], 0
+    # start_set is all the keys in the cache
+    start_set = set(parent_map)
+    # result set is all the references to keys in the cache
+    result_parents = set()
+    for parents in parent_map.itervalues():
+        result_parents.update(parents)
+    stop_keys = result_parents.difference(start_set)
+    # We don't need to send ghosts back to the server as a position to
+    # stop either.
+    stop_keys.difference_update(missing_keys)
+    key_count = len(parent_map)
+    if (revision.NULL_REVISION in result_parents
+        and revision.NULL_REVISION in missing_keys):
+        # If we pruned NULL_REVISION from the stop_keys because it's also
+        # in our cache of "missing" keys we need to increment our key count
+        # by 1, because the reconsitituted SearchResult on the server will
+        # still consider NULL_REVISION to be an included key.
+        key_count += 1
+    included_keys = start_set.intersection(result_parents)
+    start_set.difference_update(included_keys)
+    return start_set, stop_keys, key_count
 
 
 def collapse_linear_regions(parent_map):
@@ -1685,11 +2157,23 @@ class GraphThunkIdsToKeys(object):
     def __init__(self, graph):
         self._graph = graph
 
+    def topo_sort(self):
+        return [r for (r,) in self._graph.topo_sort()]
+
     def heads(self, ids):
         """See Graph.heads()"""
         as_keys = [(i,) for i in ids]
         head_keys = self._graph.heads(as_keys)
         return set([h[0] for h in head_keys])
+
+    def merge_sort(self, tip_revision):
+        nodes = self._graph.merge_sort((tip_revision,))
+        for node in nodes:
+            node.key = node.key[0]
+        return nodes
+
+    def add_node(self, revision, parents):
+        self._graph.add_node((revision,), [(p,) for p in parents])
 
 
 _counters = [0,0,0,0,0,0,0]

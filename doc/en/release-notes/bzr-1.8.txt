@@ -1,0 +1,234 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.8
+#######
+
+:Released: 2008-10-16
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  The bzr testsuite now passes on OS
+X and Python 2.6, and almost completely passes on Windows.  The
+smartserver code has gained several bug fixes and performance
+improvements, and can now run server-side hooks within an HTTP server.
+
+Bug Fixes
+*********
+
+* Fix "Must end write group" error when another error occurs during
+  ``bzr push``.  (Andrew Bennetts, #230902)
+
+Portability
+***********
+
+* Some Pyrex versions require the WIN32 macro defined to compile on
+  that platform.  (Alexander Belchenko, Martin Pool, #277481)
+
+
+bzr 1.8rc1
+##########
+
+:Released: 2008-10-07
+
+Changes
+*******
+
+* ``bzr log file`` has been changed. It now uses a different method
+  for determining which revisions to show as merging the changes to
+  the file. It now only shows revisions which merged the change
+  towards your mainline. This simplifies the output, makes it faster,
+  and reduces memory consumption.  (John Arbash Meinel)
+
+* ``bzr merge`` now defaults to having ``--reprocess`` set, whenever
+  ``--show-base`` is not supplied.  (John Arbash Meinel)
+
+* ``bzr+http//`` will now optionally load plugins and write logs on the
+  server. (Marius Kruger)
+
+* ``bzrlib._dirstate_helpers_c.pyx`` does not compile correctly with
+  Pyrex 0.9.4.1 (it generates C code which causes segfaults). We
+  explicitly blacklist that version of the compiler for that
+  extension. Packaged versions will include .c files created with
+  pyrex >= 0.9.6 so it doesn't effect releases, only users running
+  from the source tree. (John Arbash Meinel, #276868)
+
+Features
+********
+
+* bzr is now compatible with python-2.6. python-2.6 is not yet officially
+  supported (nor released, tests were conducted with the dev version of
+  python-2.6rc2), but all known problems have been fixed.  Feedback
+  welcome.
+  (Vincent Ladeuil, #269535)
+
+Improvements
+************
+
+* ``bzr annotate`` will now include uncommitted changes from the local
+  working tree by default. Such uncommitted changes are given the
+  revision number they would get if a commit was done, followed with a
+  ? to indicate that its not actually known. (Robert Collins, #3439)
+
+* ``bzr branch`` now accepts a ``--standalone`` option, which creates a
+  standalone branch regardless of the presence of shared repositories.
+  (Daniel Watkins)
+
+* ``bzr push`` is faster in the case there are no new revisions to
+  push.  It is also faster if there are no tags in the local branch.
+  (Andrew Bennetts)
+
+* File changes during a commit will update the tree stat cache.
+  (Robert Collins)
+
+* Location aliases can now accept a trailing path.  (Micheal Hudson)
+
+* New hooks ``Lock.hooks`` when LockDirs are acquired and released.
+  (Robert Collins, MartinPool)
+
+* Switching in heavyweight checkouts uses the master branch's context, not
+  the checkout's context.  (Adrian Wilkins)
+
+* ``status`` on large trees is now faster, due to optimisations in the
+  walkdirs code. Of particular note, the walkdirs code now performs
+  a temporary ``chdir()`` while reading a single directory; if your
+  platform has non thread-local current working directories (and is
+  not windows which has its own implementation), this may introduce a
+  race condition during concurrent uses of bzrlib. The bzrlib CLI
+  will not encounter this as it is single threaded for working tree
+  operations. (Robert Collins)
+
+* The C extensions now build on python 2.4 (Robert Collins, #271939)
+
+* The ``-Dhpss`` debug flag now reports the number of smart server
+  calls per medium to stderr.  This is in addition to the existing
+  detailed logging to the .bzr.log trace file.  (Andrew Bennetts)
+
+Bug Fixes
+*********
+
+* Avoid random failures arising from misinterpreted ``errno`` values
+  in ``_readdir_pyx.read_dir``.
+  (Martin Pool, #279381)
+
+* Branching from a shared repository on a smart server into a new
+  repository now preserves the repository format.
+  (Andrew Bennetts, #269214)
+
+* ``bzr log`` now accepts a ``--change`` option.
+  (Vincent Ladeuil, #248427)
+
+* ``bzr missing`` now accepts an ``--include-merges`` option.
+  (Vincent Ladeuil, #233817)
+
+* Don't try to filter (internally) '.bzr' from the files to be deleted if
+  it's not there.
+  (Vincent Ladeuil, #272648)
+
+* Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+  (Andrew Bennetts)
+
+* Fix TooManyConcurrentRequests errors caused by a connection failure
+  when doing ``bzr pull`` or ``bzr merge`` from a ``bzr+ssh`` URL.
+  (Andrew Bennetts, #246233)
+
+* Fixed ``bzr st -r branch:PATH_TO_BRANCH`` where the other branch
+  is in a different repository than the current one.
+  (Lukáš Lalinský, #144421)
+
+* Make the first line of the manpage preamble a comment again.
+  (David Futcher, #242106)
+
+* Remove use of optional parameter in GSSAPI FTP support, since
+  it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)
+
+* The autopacking logic will now always create a single new pack from
+  all of the content which it deems is worth moving. This avoids the
+  'repack a single pack' bug and should result in better packing
+  overall.  (John Arbash Meinel, #242510, #172644)
+
+* Trivial documentation fix.
+  (John Arbash Meinel, #270471)
+
+* ``bzr switch`` and ``bzr bind`` will now update the branch nickname if
+  it was previously set. All checkouts will now refer to the bound branch
+  for a nickname if one was not explicitly set.
+  (Marius Kruger, #230903)
+
+Documentation
+*************
+
+* Explain revision/range identifiers. (Daniel Clemente)
+
+API Changes
+***********
+
+* ``CommitBuilder.record_entry_contents`` returns one more element in
+  its result tuple - an optional file system hash for the hash cache
+  to use. (Robert Collins)
+
+* ``dirstate.DirState.update_entry`` will now only calculate the sha1
+  of a file if it is likely to be needed in determining the output
+  of iter_changes. (Robert Collins)
+
+* The PackRepository, RepositoryPackCollection, NewPack classes have a
+  slightly changed interface to support different index types; as a
+  result other users of these classes need to supply the index types
+  they want. (Robert Collins)
+
+Testing
+*******
+
+* ``bzrlib.tests.repository_implementations`` has been renamed to
+  ``bzrlib.tests.per_repository`` so that we have a common structure
+  (and it is shorter). (John Arbash Meinel, #239343)
+
+* ``LocalTransport.abspath()`` now returns a drive letter if the
+  transport has one, fixing numerous tests on Windows.
+  (Mark Hammond)
+
+* PreviewTree is now tested via intertree_implementations.
+  (Aaron Bentley)
+
+* The full test suite is passing again on OSX.
+  (Guillermo Gonzalez, Vincent Ladeuil)
+
+* The full test suite passes when run with ``-Eallow_debug``.
+  (Andrew Bennetts)
+
+Internals
+*********
+
+* A new hook, ``Branch.open``, has been added, which is called when
+  branch objects are opened. (Robert Collins)
+
+* ``bzrlib.osutils._walkdirs_utf8`` has been refactored into common
+  tree walking, and modular directory listing code to aid future
+  performance optimisations and refactoring. (Robert Collins)
+
+* ``bzrlib.trace.debug_memory`` can be used to get a quick memory dump
+  in the middle of processing. It only reports memory if
+  ``/proc/PID/status`` is available. (John Arbash Meinel)
+
+* New method ``RevisionSpec.as_tree`` for representing the revision
+  specifier as a revision tree object. (Lukáš Lalinský)
+
+* New race-free method on MutableTree ``get_file_with_stat`` for use
+  when generating stat cache results. (Robert Collins)
+
+* New win32utils.get_local_appdata_location() provides access to a local
+  directory for storing data.  (Mark Hammond)
+
+* To be compatible with python-2.6 a few new rules should be
+  observed. 'message' attribute can't be used anymore in exception
+  classes, 'sha' and 'md5' modules have been deprecated (use
+  osutils.[md5|sha]), object__init__ and object.__new__ don't accept
+  parameters anymore.
+  (Vincent Ladeuil)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

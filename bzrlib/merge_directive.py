@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,9 +18,12 @@
 from StringIO import StringIO
 import re
 
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
     diff,
+    email_message,
     errors,
     gpg,
     hooks,
@@ -34,7 +37,7 @@ from bzrlib import (
 from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
-from bzrlib.email_message import EmailMessage
+""")
 
 
 class MergeRequestBodyParams(object):
@@ -56,17 +59,27 @@ class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('merge_request_body',
+        hooks.Hooks.__init__(self, "bzrlib.merge_directive", "BaseMergeDirective.hooks")
+        self.add_hook('merge_request_body',
             "Called with a MergeRequestBodyParams when a body is needed for"
             " a merge request.  Callbacks must return a body.  If more"
             " than one callback is registered, the output of one callback is"
-            " provided to the next.", (1, 15, 0), False))
+            " provided to the next.", (1, 15, 0))
 
 
-class _BaseMergeDirective(object):
+class BaseMergeDirective(object):
+    """A request to perform a merge into a branch.
+
+    This is the base class that all merge directive implementations 
+    should derive from.
+
+    :cvar multiple_output_files: Whether or not this merge directive 
+        stores a set of revisions in more than one file
+    """
 
     hooks = MergeDirectiveHooks()
+
+    multiple_output_files = False
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
@@ -92,6 +105,27 @@ class _BaseMergeDirective(object):
         self.source_branch = source_branch
         self.message = message
 
+    def to_lines(self):
+        """Serialize as a list of lines
+
+        :return: a list of lines
+        """
+        raise NotImplementedError(self.to_lines)
+
+    def to_files(self):
+        """Serialize as a set of files.
+
+        :return: List of tuples with filename and contents as lines
+        """
+        raise NotImplementedError(self.to_files)
+
+    def get_raw_bundle(self):
+        """Return the bundle for this merge directive.
+
+        :return: bundle text or None if there is no bundle
+        """
+        return None
+
     def _to_lines(self, base_revision=False):
         """Serialize as a list of lines
 
@@ -110,6 +144,13 @@ class _BaseMergeDirective(object):
         lines.extend(rio.to_patch_lines(stanza))
         lines.append('# \n')
         return lines
+
+    def write_to_directory(self, path):
+        """Write this merge directive to a series of files in a directory.
+
+        :param path: Filesystem path to write to
+        """
+        raise NotImplementedError(self.write_to_directory)
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
@@ -225,7 +266,8 @@ class _BaseMergeDirective(object):
             body = self.to_signed(branch)
         else:
             body = ''.join(self.to_lines())
-        message = EmailMessage(mail_from, mail_to, subject, body)
+        message = email_message.EmailMessage(mail_from, mail_to, subject,
+            body)
         return message
 
     def install_revisions(self, target_repo):
@@ -303,7 +345,7 @@ class _BaseMergeDirective(object):
                                           basename, body)
 
 
-class MergeDirective(_BaseMergeDirective):
+class MergeDirective(BaseMergeDirective):
 
     """A request to perform a merge into a branch.
 
@@ -338,7 +380,7 @@ class MergeDirective(_BaseMergeDirective):
         :param source_branch: A public location to merge the revision from
         :param message: The message to use when committing this merge
         """
-        _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
+        BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
         if patch_type not in (None, 'diff', 'bundle'):
             raise ValueError(patch_type)
@@ -428,7 +470,7 @@ class MergeDirective(_BaseMergeDirective):
         return None, self.revision_id, 'inapplicable'
 
 
-class MergeDirective2(_BaseMergeDirective):
+class MergeDirective2(BaseMergeDirective):
 
     _format_string = 'Bazaar merge directive format 2 (Bazaar 0.90)'
 
@@ -437,7 +479,7 @@ class MergeDirective2(_BaseMergeDirective):
                  bundle=None, base_revision_id=None):
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
-        _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
+        BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
         self.bundle = bundle
         self.base_revision_id = base_revision_id

@@ -27,23 +27,21 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
-    osutils,
-    progress,
     tests,
     transform,
     )
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.tests.per_workingtree import (
     make_scenarios as wt_make_scenarios,
     make_scenario as wt_make_scenario,
     )
-from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
+from bzrlib.tests import (
+    features,
+    )
 from bzrlib.workingtree import (
-    WorkingTreeFormat,
-    WorkingTreeFormat3,
-    _legacy_formats,
+    format_registry,
     )
 from bzrlib.workingtree_4 import (
     DirStateRevisionTree,
@@ -98,7 +96,7 @@ class TestTreeImplementationSupport(tests.TestCaseWithTransport):
         self.assertIsInstance(tree, RevisionTree)
 
 
-class TestCaseWithTree(TestCaseWithBzrDir):
+class TestCaseWithTree(TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath):
         made_control = self.make_bzrdir(relpath, format=
@@ -247,7 +245,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         note that the order of the paths and fileids is deliberately
         mismatched to ensure that the result order is path based.
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
             '1top-dir/',
@@ -279,7 +277,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def _create_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # We avoid combining characters in file names here, normalization
         # checks (as performed by some file systems (OSX) are outside the scope
         # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
@@ -337,7 +335,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
         # for working tree format tests, preserve the tree
         scenario[1]["_workingtree_to_test_tree"] = return_parameter
     # add RevisionTree scenario
-    workingtree_format = WorkingTreeFormat._default_format
+    workingtree_format = format_registry.get_default()
     scenarios.append((RevisionTree.__name__,
         create_tree_scenario(transport_server, transport_readonly_server,
         workingtree_format, revision_tree_from_workingtree,)))
@@ -379,13 +377,16 @@ def create_tree_scenario(transport_server, transport_readonly_server,
 def load_tests(standard_tests, module, loader):
     per_tree_mod_names = [
         'annotate_iter',
+        'export',
         'get_file_mtime',
         'get_file_with_stat',
         'get_root_id',
         'get_symlink_target',
         'inv',
         'iter_search_rules',
+        'is_executable',
         'list_files',
+        'locking',
         'path_content_summary',
         'revision_tree',
         'test_trees',
@@ -400,6 +401,6 @@ def load_tests(standard_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        WorkingTreeFormat._formats.values() + _legacy_formats)
+        format_registry._get_all())
     # add the tests for the sub modules
     return tests.multiply_tests(submod_tests, scenarios, standard_tests)

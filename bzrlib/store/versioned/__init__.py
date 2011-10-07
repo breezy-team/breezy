@@ -18,21 +18,14 @@
 # files whose id differs only in case.  That should probably be forbidden.
 
 
-import errno
 import os
-from cStringIO import StringIO
 from warnings import warn
 
 from bzrlib import (
     errors,
     osutils,
     )
-from bzrlib.weavefile import read_weave, write_weave_v5
-from bzrlib.weave import WeaveFile, Weave
 from bzrlib.store import TransportStore
-from bzrlib.atomicfile import AtomicFile
-from bzrlib.symbol_versioning import (deprecated_method,
-        )
 from bzrlib.trace import mutter
 import bzrlib.ui
 
@@ -44,7 +37,7 @@ class VersionedFileStore(TransportStore):
     # transport factory callable?
     def __init__(self, transport, prefixed=False, precious=False,
                  dir_mode=None, file_mode=None,
-                 versionedfile_class=WeaveFile,
+                 versionedfile_class=None,
                  versionedfile_kwargs={},
                  escaped=False):
         super(VersionedFileStore, self).__init__(transport,
@@ -213,14 +206,14 @@ class VersionedFileStore(TransportStore):
         """
         from bzrlib.transactions import PassThroughTransaction
         if from_transaction is None:
-            warn("WeaveStore.copy_multi without a from_transaction parameter "
+            warn("VersionedFileStore.copy_multi without a from_transaction parameter "
                  "is deprecated. Please provide a from_transaction.",
                  DeprecationWarning,
                  stacklevel=2)
             # we are reading one object - caching is irrelevant.
             from_transaction = PassThroughTransaction()
         if to_transaction is None:
-            warn("WeaveStore.copy_multi without a to_transaction parameter "
+            warn("VersionedFileStore.copy_multi without a to_transaction parameter "
                  "is deprecated. Please provide a to_transaction.",
                  DeprecationWarning,
                  stacklevel=2)
@@ -246,5 +239,3 @@ class VersionedFileStore(TransportStore):
     def total_size(self):
         count, bytes =  super(VersionedFileStore, self).total_size()
         return (count / len(self._versionedfile_class.get_suffixes())), bytes
-
-WeaveStore = VersionedFileStore

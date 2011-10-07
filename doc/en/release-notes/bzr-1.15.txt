@@ -1,0 +1,230 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.15
+########
+:1.15rc1: 2009-05-16
+:1.15: 2009-05-22
+:1.15.1: 2009-06-09
+
+The smart server will no longer raise 'NoSuchRevision' when streaming content
+with a size mismatch in a reconstructed graph search. New command ``bzr
+dpush``. Plugins can now define their own annotation tie-breaker when two
+revisions introduce the exact same line.
+
+Changes from 1.15.1 to 1.15.2
+*****************************
+
+* Use zdll on Windows to build ``_chk_map_pyx`` extension.
+  (Alexander Belchenko)
+
+Changes from 1.15final to 1.15.1
+*********************************
+
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
+
+Changes from 1.15rc1 to 1.15final
+*********************************
+
+* No changes
+
+Compatibility Breaks
+********************
+
+* ``bzr ls`` is no longer recursive by default. To recurse, use the
+  new ``-R`` option. The old ``--non-recursive`` option has been removed.
+  If you alias ``ls`` to ``ls -R``, you can disable recursion using
+  ``--no-recursive`` instead.  (Ian Clatworthy)
+
+New Features
+************
+
+* New command ``bzr dpush`` that can push changes to foreign 
+  branches (svn, git) without setting custom bzr-specific metadata.
+  (Jelmer Vernooij)
+
+* The new development format ``--development6-rich-root`` now supports
+  stacking. We chose not to use a new format marker, since old clients
+  will just fail to open stacked branches, the same as if we used a new
+  format flag. (John Arbash Meinel, #373455)
+
+* Plugins can now define their own annotation tie-breaker when two revisions
+  introduce the exact same line. See ``bzrlib.annotate._break_annotation_tie``
+  Be aware though that this is temporary, private (as indicated by the leading
+  '_') and a first step to address the problem. (Vincent Ladeuil, #348459)
+
+* New command ``bzr dpush`` that can push changes to foreign 
+  branches (svn, git) without setting custom bzr-specific metadata.
+  (Jelmer Vernooij)
+
+* ``bzr send`` will now check the ``child_submit_format`` setting in
+  the submit branch to determine what format to use, if none was 
+  specified on the command-line.  (Jelmer Vernooij)
+
+Improvements
+************
+
+* -Dhpss output now includes the number of VFS calls made to the remote
+  server. (Jonathan Lange)
+
+* ``--coverage`` works for code running in threads too.
+  (Andrew Bennets, Vincent Ladeuil)
+
+* ``bzr pull`` now has a ``--local`` option to only make changes to the
+  local branch, and not the bound master branch.
+  (Gary van der Merwe, #194716)
+
+* ``bzr rm *`` is now as fast as ``bzr rm * --keep``. (Johan Walles, #180116)
+
+Bug Fixes
+*********
+
+* Adding now works properly when path contains a symbolic link.
+  (Geoff Bache, #183831)
+
+* An error is now raised for unknown eol values. (Brian de Alwis, #358199)
+
+* ``bzr merge --weave`` will now generate a conflict if one side deletes a
+  line, and the other side modifies the line. (John Arbash Meinel, #328171)
+
+* ``bzr reconfigure --standalone`` no longer raises IncompatibleRepositories.
+  (Martin von Gagern, #248932)
+
+* ``bzr send`` works to send emails again using MAPI.
+  (Neil Martinsen-Burrell, #346998)
+
+* Check for missing parent inventories in StreamSink.  This prevents
+  incomplete stacked branches being created by 1.13 bzr:// and
+  bzr+ssh:// clients (which have bug #354036).  Instead, the server now
+  causes those clients to send the missing records.  (Andrew Bennetts)
+
+* Correctly handle HTTP servers proposing multiple authentication schemes.
+  (Vincent Ladeuil, #366107)
+
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
+
+* Fix a bug in the pure-python ``GroupCompress`` code when handling copies
+  longer than 64KiB. (John Arbash Meinel, #364900)
+
+* Fix TypeError in running ``bzr break-lock`` on some URLs.
+  (Alexander Belchenko, Martin Pool, #365891)
+
+* Non-recursive ``bzr ls`` now works properly when a path is specified.
+  (Jelmer Vernooij, #357863)
+
+* SSH usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
+  (Vincent Ladeuil, #367726)
+
+* Several bugs related to unicode symlinks have been fixed and the test suite
+  enhanced to better catch regressions for them. (Vincent Ladeuil)
+
+* The smart server will no longer raise 'NoSuchRevision' when streaming
+  content with a size mismatch in a reconstructed graph search: it assumes
+  that the client will make sure it is happy with what it got, and this
+  sort of mismatch is normal for stacked environments.
+  bzr 1.13.0/1 will stream from unstacked branches only - in that case not
+  getting all the content expected would be a bug. However the graph
+  search is how we figured out what we wanted, so a mismatch is both odd
+  and unrecoverable without starting over, and starting over will end up
+  with the same data as if we just permitted the mismatch. If data is
+  gc'd, doing a new search will find only the truncated data, so sending
+  only the truncated data seems reasonable. bzr versions newer than this
+  will stream from stacked branches and check the stream to find missing
+  content in the stacked-on branch, and thus will handle the situation
+  implicitly.  (Robert Collins, #360791)
+
+* Upgrading to, or fetching into a 'rich-root' format will now correctly
+  set the root data the same way that reconcile does.
+  (Robert Collins, #368921)
+
+* Using unicode Windows API to obtain command-line arguments.
+  (Alexander Belchenko, #375934)
+
+Documentation
+*************
+
+API Changes
+***********
+
+* ``InterPackRepo.fetch`` and ``RepoFetcher`` now raise ``NoSuchRevision``
+  instead of ``InstallFailed`` when they detect a missing revision.
+  ``InstallFailed`` itself has been deleted. (Jonathan Lange)
+
+* Not passing arguments to ``bzrlib.commands.main()`` will now grab the
+  arguments from ``osutils.get_unicode_argv()`` which has proper support
+  for unicode arguments on windows. Further, the supplied arguments are now 
+  required to be unicode strings, rather than user_encoded strings.
+  (Alexander Belchenko)
+
+Internals
+*********
+
+* ``bzrlib.branch.Branch.set_parent`` is now present on the base branch
+  class and will call ``_set_parent_location`` after doing unicode 
+  encoding. (Robert Collins)
+
+* ``bzrlib.remote.RemoteBranch._set_parent_location`` will use a new verb
+  ``Branch.set_parent_location`` removing further VFS operations.
+  (Robert Collins)
+
+* ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
+  or similar when the dir supports configuration settings. The base class
+  defaults to None. There is a matching new server verb
+  ``BzrDir.get-config_file`` to reduce roundtrips for getting BzrDir
+  configuration. (Robert Collins)
+
+* ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
+  called before the first test is started, ``done`` called after the last
+  test completes, and a new parameter ``strict``. (Robert Collins)
+
+* ``-Dhpss`` when passed to bzr will cause a backtrace to be printed when
+  VFS operations are started on a smart server repository. This should not
+  occur on regular push and pull operations, and is a key indicator for
+  performance regressions. (Robert Collins)
+
+* ``-Dlock`` when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
+  cause mismatched physical locks to cause test errors rather than just
+  reporting to the screen. (Robert Collins)
+
+* -Dprogress will cause pdb to start up if a progress view jumps
+  backwards. (Robert Collins)
+
+* Fallback ``CredentialStore`` instances registered with ``fallback=True``
+  are now be able to provide credentials if obtaining credentials 
+  via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
+  Vincent Ladeuil, #321918)
+
+* New hook ``Lock.lock_broken`` which runs when a lock is
+  broken. This is mainly for testing that lock/unlock are
+  balanced in tests. (Vincent Ladeuil)
+
+* New MergeDirective hook 'merge_request_body' allows hooks to supply or
+  alter a body for the message produced by ``bzr send``.
+
+* New smart server verb ``BzrDir.initialize_ex`` which implements a
+  refactoring to the core of clone allowing less round trips on new
+  branches. (Robert Collins)
+
+* New method ``Tags.rename_revisions`` that can rename revision ids tags
+  are pointing at. (Jelmer Vernooij)
+
+* Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
+
+Testing
+*******
+
+* ``bzr selftest`` will now fail if lock/unlock are not correctly balanced in
+  tests. Using ``-Dlock`` will turn the related failures into warnings.
+  (Vincent Ladeuil, Robert Collins)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

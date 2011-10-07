@@ -2,8 +2,8 @@
 Bazaarのメインドキュメント
 ===========================
 
-これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.bazaar-vcs.org/ から入手可能で、
-詳しい情報は http://bazaar-vcs.org/Documentation のページからリンクされています。
+これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.bazaar.canonical.com/ から入手可能で、
+詳しい情報は http://wiki.bazaar.canonical.com/Documentation のページからリンクされています。
 
 
 コアドキュメント
@@ -42,15 +42,15 @@ Developer Documentation
 ウェブリンク
 =============
 
-* `切り替えガイド <http://bazaar-vcs.org/BzrSwitching>`_
+* `切り替えガイド <http://wiki.bazaar.canonical.com/BzrSwitching>`_
   |--| 別のVCSツールから移ってきたユーザー用
 
-* `移行ガイド <http://bazaar-vcs.org/BzrMigration>`_
+* `移行ガイド <http://wiki.bazaar.canonical.com/BzrMigration>`_
   |--| 別のVCSツールから履歴を移行するチーム用
 
-* `用語 <http://bazaar-vcs.org/BzrGlossary>`_
+* `用語 <http://wiki.bazaar.canonical.com/BzrGlossary>`_
 
-* `よく聞かれる質問 <http://bazaar-vcs.org/FAQ>`_
+* `よく聞かれる質問 <http://wiki.bazaar.canonical.com/FAQ>`_
 
 
 TortoiseBzrをインストールするには？

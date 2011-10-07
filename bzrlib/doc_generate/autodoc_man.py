@@ -186,10 +186,14 @@ man_head = """\
 .B "help"
 .I "command"
 .SH "DESCRIPTION"
-Bazaar (or %(bzrcmd)s) is a project of Canonical to develop an open source
-distributed version control system that is powerful, friendly, and scalable.
-Version control means a system that keeps track of previous revisions
-of software source code or similar information and helps people work on it in teams.
+
+Bazaar (or %(bzrcmd)s) is a distributed version control system that is powerful, 
+friendly, and scalable.  Bazaar is a project of Canonical Ltd and part of 
+the GNU Project to develop a free operating system.
+
+Bazaar keeps track of changes to software source code (or similar information);
+lets you explore who changed it, when, and why; merges concurrent changes; and
+helps people work together in a team.
 """
 
 man_foot = """\
@@ -241,7 +245,7 @@ commit = commit --strict
 .br
 log10 = log --short -r -10..-1
 .SH "SEE ALSO"
-.UR http://www.bazaar.canonical.com/
-.BR http://www.bazaar.canonical.com/
+.UR http://bazaar.canonical.com/
+.BR http://bazaar.canonical.com/
 """
 

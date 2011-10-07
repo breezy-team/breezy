@@ -3,7 +3,7 @@ Indice de Documentacion de Bazaar
 ==================================
 
 Las ultimas versiones de estos documentos se encuentran disponibles
-en la pagina de  Bazaar, http://doc.bazaar-vcs.org.
+en la pagina de  Bazaar, http://doc.bazaar.canonical.com/.
 
 Documentacion Principal
 =======================
@@ -26,19 +26,19 @@ Otra Documentacion
 
 Mudandose a Bazaar (enlances web):
 
-* `Guias de Mudanzas <http://bazaar-vcs.org/BzrSwitching>`_
+* `Guias de Mudanzas <http://wiki.bazaar.canonical.com/BzrSwitching>`_
   - para los usuarios que se mudan de otros SCV
 
-* `Guias de Migracion <http://bazaar-vcs.org/BzrMigration>`_
+* `Guias de Migracion <http://wiki.bazaar.canonical.com/BzrMigration>`_
   - para equipos que mudan el historial de otros SCV
 
 Otros Documentos (enlances web):
 
-* `Glosario <http://bazaar-vcs.org/BzrGlossary>`_
+* `Glosario <http://wiki.bazaar.canonical.com/BzrGlossary>`_
 
-* `Preguntas Frecuentes <http://bazaar-vcs.org/FAQ>`_
+* `Preguntas Frecuentes <http://wiki.bazaar.canonical.com/FAQ>`_
 
-* `Referencia del API bzrlib <http://bazaar-vcs.org/BzrLib>`_
+* `Referencia del API bzrlib <http://wiki.bazaar.canonical.com/BzrLib>`_
 
 Especificaciones tecnicas, planes a futuro y varias
 notas tecnicas varias en Ingles:

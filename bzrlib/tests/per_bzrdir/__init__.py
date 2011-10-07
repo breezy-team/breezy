@@ -1,5 +1,6 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
+#          Jelmer Vernooij <jelmer.vernooij@canonical.com>
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,39 +22,20 @@
 
 These test the conformance of all the bzrdir variations to the expected API.
 Specific tests for individual formats are in the tests/test_bzrdir.py file
-rather than in tests/per_branch/*.py.
+rather than in tests/per_branch/*.py. Generic control directory tests not
+specific to BzrDir are in tests/per_controldir/*.py.
 """
 
 from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.controldir import ControlDirFormat
 from bzrlib.tests import (
     default_transport,
     multiply_tests,
     test_server,
     TestCaseWithTransport,
     )
+from bzrlib.tests.per_controldir import make_scenarios
 from bzrlib.transport import memory
-
-
-def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
-    formats, name_suffix=''):
-    """Transform the input to a list of scenarios.
-
-    :param formats: A list of bzrdir_format objects.
-    :param vfs_server: A factory to create a Transport Server which has
-        all the VFS methods working, and is writable.
-    """
-    result = []
-    for format in formats:
-        scenario_name = format.__class__.__name__
-        scenario_name += name_suffix
-        scenario = (scenario_name, {
-            "vfs_transport_factory": vfs_factory,
-            "transport_server": transport_server,
-            "transport_readonly_server": transport_readonly_server,
-            "bzrdir_format": format,
-            })
-        result.append(scenario)
-    return result
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
@@ -77,10 +59,10 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
 def load_tests(standard_tests, module, loader):
     test_per_bzrdir = [
         'bzrlib.tests.per_bzrdir.test_bzrdir',
-        'bzrlib.tests.per_bzrdir.test_push',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_bzrdir)
-    formats = BzrDirFormat.known_formats()
+    formats = [format for format in ControlDirFormat.known_formats()
+               if isinstance(format, BzrDirFormat)]
     scenarios = make_scenarios(
         default_transport,
         None,

@@ -16,8 +16,6 @@
 
 """Tests for maps built on a CHK versionedfiles facility."""
 
-from itertools import izip
-
 from bzrlib import (
     chk_map,
     errors,
@@ -226,7 +224,7 @@ class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
             "      ('ddd',) 'initial ddd content'\n",
             c_map._dump_tree())
 
-    def test_one_deep_map_16(self):
+    def test_root_only_aaa_ddd_16(self):
         c_map = self.make_root_only_aaa_ddd_map(
                 search_key_func=chk_map._search_key_16)
         # We use 'aaa' and 'ddd' because they happen to map to 'F' when using
@@ -466,6 +464,25 @@ class TestMap(TestCaseWithStore):
         # The update should have left us with an in memory root node, with an
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
+
+    def test_apply_delete_to_internal_node(self):
+        # applying a delta should be convert an internal root node to a leaf
+        # node if the delta shrinks the map enough.
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Add three items: 2 small enough to fit in one node, and one huge to
+        # force multiple nodes.
+        chkmap._root_node.set_maximum_size(100)
+        chkmap.map(('small',), 'value')
+        chkmap.map(('little',), 'value')
+        chkmap.map(('very-big',), 'x' * 100)
+        # (Check that we have constructed the scenario we want to test)
+        self.assertIsInstance(chkmap._root_node, InternalNode)
+        # Delete the huge item so that the map fits in one node again.
+        delta = [(('very-big',), None, None)]
+        chkmap.apply_delta(delta)
+        self.assertCanonicalForm(chkmap)
+        self.assertIsInstance(chkmap._root_node, LeafNode)
 
     def test_apply_new_keys_must_be_new(self):
         # applying a delta (None, "a", "b") to a map with 'a' in it generates
@@ -1091,7 +1108,7 @@ class TestMap(TestCaseWithStore):
         basis_get = basis._store.get_record_stream
         def get_record_stream(keys, order, fulltext):
             if ('sha1:1adf7c0d1b9140ab5f33bb64c6275fa78b1580b7',) in keys:
-                self.fail("'aaa' pointer was followed %r" % keys)
+                raise AssertionError("'aaa' pointer was followed %r" % keys)
             return basis_get(keys, order, fulltext)
         basis._store.get_record_stream = get_record_stream
         result = sorted(list(target.iter_changes(basis)))

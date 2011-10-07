@@ -20,7 +20,6 @@
 
 from bzrlib import (
     errors,
-    osutils,
     )
 
 

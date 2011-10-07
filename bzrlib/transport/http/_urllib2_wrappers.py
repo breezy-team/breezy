@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,9 +70,28 @@ from bzrlib import (
     osutils,
     trace,
     transport,
-    ui,
     urlutils,
     )
+
+
+class addinfourl(urllib2.addinfourl):
+    '''Replacement addinfourl class compatible with python-2.7's xmlrpclib
+
+    In python-2.7, xmlrpclib expects that the response object that it receives
+    has a getheader method.  httplib.HTTPResponse provides this but
+    urllib2.addinfourl does not.  Add the necessary functions here, ported to
+    use the internal data structures of addinfourl.
+    '''
+
+    def getheader(self, name, default=None):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.getheader(name, default)
+
+    def getheaders(self):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.items()
 
 
 class _ReportingFileSocket(object):
@@ -90,13 +109,8 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
-    def readline(self):
-        # This should be readline(self, size=-1), but httplib in python 2.4 and
-        #  2.5 defines a SSLFile wrapper whose readline method lacks the size
-        #  parameter.  So until we drop support for 2.4 and 2.5 and since we
-        #  don't *need* the size parameter we'll stay with readline(self)
-        #  --  vila 20090209
-        s = self.filesock.readline()
+    def readline(self, size=-1):
+        s = self.filesock.readline(size)
         self.report_activity(len(s), 'read')
         return s
 
@@ -145,7 +159,7 @@ class Response(httplib.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
+    _body_ignored_responses = [301,302, 303, 307, 400, 401, 403, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -246,17 +260,27 @@ class AbstractHTTPConnection:
     def cleanup_pipe(self):
         """Read the remaining bytes of the last response if any."""
         if self._response is not None:
-            pending = self._response.finish()
-            # Warn the user (once)
-            if (self._ranges_received_whole_file is None
-                and self._response.status == 200
-                and pending and pending > self._range_warning_thresold
-                ):
-                self._ranges_received_whole_file = True
-                trace.warning(
-                    'Got a 200 response when asking for multiple ranges,'
-                    ' does your server at %s:%s support range requests?',
-                    self.host, self.port)
+            try:
+                pending = self._response.finish()
+                # Warn the user (once)
+                if (self._ranges_received_whole_file is None
+                    and self._response.status == 200
+                    and pending and pending > self._range_warning_thresold
+                    ):
+                    self._ranges_received_whole_file = True
+                    trace.warning(
+                        'Got a 200 response when asking for multiple ranges,'
+                        ' does your server at %s:%s support range requests?',
+                        self.host, self.port)
+            except socket.error, e:
+                # It's conceivable that the socket is in a bad state here
+                # (including some test cases) and in this case, it doesn't need
+                # cleaning anymore, so no need to fail, we just get rid of the
+                # socket and let callers reconnect
+                if (len(e.args) == 0
+                    or e.args[0] not in (errno.ECONNRESET, errno.ECONNABORTED)):
+                    raise
+                self.close()
             self._response = None
         # Preserve our preciousss
         sock = self.sock
@@ -378,6 +402,11 @@ class Request(urllib2.Request):
             port = conn_class.default_port
         self.proxied_host = '%s:%s' % (host, port)
         urllib2.Request.set_proxy(self, proxy, type)
+        # When urllib2 makes a https request with our wrapper code and a proxy,
+        # it sets Host to the https proxy, not the host we want to talk to.
+        # I'm fairly sure this is our fault, but what is the cause is an open
+        # question. -- Robert Collins May 8 2010.
+        self.add_unredirected_header('Host', self.proxied_host)
 
 
 class _ConnectRequest(Request):
@@ -559,7 +588,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         'Bad status line received',
                         orig_error=exc_val)
                 elif (isinstance(exc_val, socket.error) and len(exc_val.args)
-                      and exc_val.args[0] in (errno.ECONNRESET, 10054)):
+                      and exc_val.args[0] in (errno.ECONNRESET, 10053, 10054)):
+                      # 10053 == WSAECONNABORTED
+                      # 10054 == WSAECONNRESET
                     raise errors.ConnectionReset(
                         "Connection lost while sending request.")
                 else:
@@ -616,7 +647,13 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                                      headers)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
-                hdrs = ['%s: %s' % (k, v) for k,v in headers.items()]
+                hdrs = []
+                for k,v in headers.iteritems():
+                    # People are often told to paste -Dhttp output to help
+                    # debug. Don't compromise credentials.
+                    if k in ('Authorization', 'Proxy-Authorization'):
+                        v = '<masked>'
+                    hdrs.append('%s: %s' % (k, v))
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
                 print 'Request sent: [%r] from (%s)' \
@@ -651,7 +688,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             r = response
             r.recv = r.read
             fp = socket._fileobject(r, bufsize=65536)
-            resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
+            resp = addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
             resp.version = r.version
@@ -711,7 +748,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             connect = _ConnectRequest(request)
             response = self.parent.open(connect)
             if response.code != 200:
-                raise ConnectionError("Can't connect to %s via proxy %s" % (
+                raise errors.ConnectionError("Can't connect to %s via proxy %s" % (
                         connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
@@ -868,21 +905,19 @@ class ProxyHandler(urllib2.ProxyHandler):
                 print 'Will unbind %s_open for %r' % (type, proxy)
             delattr(self, '%s_open' % type)
 
+        def bind_scheme_request(proxy, scheme):
+            if proxy is None:
+                return
+            scheme_request = scheme + '_request'
+            if self._debuglevel >= 3:
+                print 'Will bind %s for %r' % (scheme_request, proxy)
+            setattr(self, scheme_request,
+                lambda request: self.set_proxy(request, scheme))
         # We are interested only by the http[s] proxies
         http_proxy = self.get_proxy_env_var('http')
+        bind_scheme_request(http_proxy, 'http')
         https_proxy = self.get_proxy_env_var('https')
-
-        if http_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % http_proxy
-            setattr(self, 'http_request',
-                    lambda request: self.set_proxy(request, 'http'))
-
-        if https_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % https_proxy
-            setattr(self, 'https_request',
-                    lambda request: self.set_proxy(request, 'https'))
+        bind_scheme_request(https_proxy, 'https')
 
     def get_proxy_env_var(self, name, default_to='all'):
         """Get a proxy env var.
@@ -903,9 +938,31 @@ class ProxyHandler(urllib2.ProxyHandler):
         return None
 
     def proxy_bypass(self, host):
-        """Check if host should be proxied or not"""
+        """Check if host should be proxied or not.
+
+        :returns: True to skip the proxy, False otherwise.
+        """
         no_proxy = self.get_proxy_env_var('no', default_to=None)
+        bypass = self.evaluate_proxy_bypass(host, no_proxy)
+        if bypass is None:
+            # Nevertheless, there are platform-specific ways to
+            # ignore proxies...
+            return urllib.proxy_bypass(host)
+        else:
+            return bypass
+
+    def evaluate_proxy_bypass(self, host, no_proxy):
+        """Check the host against a comma-separated no_proxy list as a string.
+
+        :param host: ``host:port`` being requested
+
+        :param no_proxy: comma-separated list of hosts to access directly.
+
+        :returns: True to skip the proxy, False not to, or None to
+            leave it to urllib.
+        """
         if no_proxy is None:
+            # All hosts are proxied
             return False
         hhost, hport = urllib.splitport(host)
         # Does host match any of the domains mentioned in
@@ -913,6 +970,9 @@ class ProxyHandler(urllib2.ProxyHandler):
         # are fuzzy (to say the least). We try to allow most
         # commonly seen values.
         for domain in no_proxy.split(','):
+            domain = domain.strip()
+            if domain == '':
+                continue
             dhost, dport = urllib.splitport(domain)
             if hport == dport or dport is None:
                 # Protect glob chars
@@ -921,9 +981,8 @@ class ProxyHandler(urllib2.ProxyHandler):
                 dhost = dhost.replace("?", r".")
                 if re.match(dhost, hhost, re.IGNORECASE):
                     return True
-        # Nevertheless, there are platform-specific ways to
-        # ignore proxies...
-        return urllib.proxy_bypass(host)
+        # Nothing explicitly avoid the host
+        return None
 
     def set_proxy(self, request, type):
         if self.proxy_bypass(request.get_host()):
@@ -936,9 +995,8 @@ class ProxyHandler(urllib2.ProxyHandler):
         # grok user:password@host:port as well as
         # http://user:password@host:port
 
-        (scheme, user, password,
-         host, port, path) = transport.ConnectedTransport._split_url(proxy)
-        if not host:
+        parsed_url = transport.ConnectedTransport._split_url(proxy)
+        if not parsed_url.host:
             raise errors.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
@@ -946,15 +1004,17 @@ class ProxyHandler(urllib2.ProxyHandler):
             # proxied request, intialize.  scheme (the authentication scheme)
             # and realm will be set by the AuthHandler
             request.proxy_auth = {
-                                  'host': host, 'port': port,
-                                  'user': user, 'password': password,
-                                  'protocol': scheme,
+                                  'host': parsed_url.host,
+                                  'port': parsed_url.port,
+                                  'user': parsed_url.user,
+                                  'password': parsed_url.password,
+                                  'protocol': parsed_url.scheme,
                                    # We ignore path since we connect to a proxy
                                   'path': None}
-        if port is None:
-            phost = host
+        if parsed_url.port is None:
+            phost = parsed_url.host
         else:
-            phost = host + ':%d' % port
+            phost = parsed_url.host + ':%d' % parsed_url.port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
             print 'set_proxy: proxy set to %s://%s' % (type, phost)
@@ -1069,12 +1129,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         auth['modified'] = False
         # Put some common info in auth if the caller didn't
         if auth.get('path', None) is None:
-            (protocol, _, _,
-             host, port, path) = urlutils.parse_url(request.get_full_url())
-            self.update_auth(auth, 'protocol', protocol)
-            self.update_auth(auth, 'host', host)
-            self.update_auth(auth, 'port', port)
-            self.update_auth(auth, 'path', path)
+            parsed_url = urlutils.URL.from_string(request.get_full_url())
+            self.update_auth(auth, 'protocol', parsed_url.scheme)
+            self.update_auth(auth, 'host', parsed_url.host)
+            self.update_auth(auth, 'port', parsed_url.port)
+            self.update_auth(auth, 'path', parsed_url.path)
         # FIXME: the auth handler should be selected at a single place instead
         # of letting all handlers try to match all headers, but the current
         # design doesn't allow a simple implementation.
@@ -1179,15 +1238,17 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user = auth.get('user', None)
         password = auth.get('password', None)
         realm = auth['realm']
+        port = auth.get('port', None)
 
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
-                                      port=auth['port'], path=auth['path'],
+                                      port=port, path=auth['path'],
                                       realm=realm, ask=True,
                                       prompt=self.build_username_prompt(auth))
         if user is not None and password is None:
             password = auth_conf.get_password(
-                auth['protocol'], auth['host'], user, port=auth['port'],
+                auth['protocol'], auth['host'], user,
+                port=port,
                 path=auth['path'], realm=realm,
                 prompt=self.build_password_prompt(auth))
 
@@ -1204,11 +1265,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_password_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(user)s@%(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' password'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' password'
         return prompt
 
     def _build_username_prompt(self, auth):
@@ -1222,11 +1283,11 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user. The daughter classes should implements a public
         build_username_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        prompt = u'%s' % auth['protocol'].upper() + u' %(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
-        prompt += ' username'
+            prompt += u", Realm: '%s'" % realm.decode('utf8')
+        prompt += u' username'
         return prompt
 
     def http_request(self, request):
@@ -1337,7 +1398,7 @@ def get_digest_algorithm_impls(algorithm):
     if algorithm == 'MD5':
         H = lambda x: osutils.md5(x).hexdigest()
     elif algorithm == 'SHA':
-        H = lambda x: osutils.sha(x).hexdigest()
+        H = osutils.sha_string
     if H is not None:
         KD = lambda secret, data: H("%s:%s" % (secret, data))
     return H, KD
@@ -1346,7 +1407,7 @@ def get_digest_algorithm_impls(algorithm):
 def get_new_cnonce(nonce, nonce_count):
     raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
                            urllib2.randombytes(8))
-    return osutils.sha(raw).hexdigest()[:16]
+    return osutils.sha_string(raw)[:16]
 
 
 class DigestAuthHandler(AbstractAuthHandler):
@@ -1496,12 +1557,12 @@ class ProxyAuthHandler(AbstractAuthHandler):
 
     def build_password_prompt(self, auth):
         prompt = self._build_password_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def build_username_prompt(self, auth):
         prompt = self._build_username_prompt(auth)
-        prompt = 'Proxy ' + prompt
+        prompt = u'Proxy ' + prompt
         return prompt
 
     def http_error_407(self, req, fp, code, msg, headers):

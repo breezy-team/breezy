@@ -25,12 +25,14 @@ import threading
 
 from bzrlib import (
     bencode,
+    commands,
     errors,
+    estimate_compressed_size,
     graph,
     osutils,
     pack,
+    trace,
     ui,
-    versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -82,6 +84,8 @@ class SmartServerRepositoryRequest(SmartServerRequest):
             recreate_search trusts that clients will look for missing things
             they expected and get it from elsewhere.
         """
+        if search_bytes == 'everything':
+            return graph.EverythingResult(repository), None
         lines = search_bytes.split('\n')
         if lines[0] == 'ancestry-of':
             heads = lines[1:]
@@ -140,6 +144,7 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
+_lsprof_count = 0
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     """Bzr 1.2+ - get parent data for revisions during a graph search."""
@@ -179,27 +184,11 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
-    def _do_repository_request(self, body_bytes):
-        repository = self._repository
-        revision_ids = set(self._revision_ids)
-        include_missing = 'include-missing:' in revision_ids
-        if include_missing:
-            revision_ids.remove('include-missing:')
-        body_lines = body_bytes.split('\n')
-        search_result, error = self.recreate_search_from_recipe(
-            repository, body_lines)
-        if error is not None:
-            return error
-        # TODO might be nice to start up the search again; but thats not
-        # written or tested yet.
-        client_seen_revs = set(search_result.get_keys())
-        # Always include the requested ids.
-        client_seen_revs.difference_update(revision_ids)
-        lines = []
-        repo_graph = repository.get_graph()
+    def _expand_requested_revs(self, repo_graph, revision_ids, client_seen_revs,
+                               include_missing, max_size=65536):
         result = {}
         queried_revs = set()
-        size_so_far = 0
+        estimator = estimate_compressed_size.ZLibEstimator(max_size)
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
@@ -227,21 +216,47 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     # add parents to the result
                     result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
-                    size_so_far += 2 + len(encoded_id) + sum(map(len, parents))
+                    line = '%s %s\n' % (encoded_id, ' '.join(parents))
+                    estimator.add_content(line)
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
-            if self.no_extra_results or (
-                first_loop_done and size_so_far > 250000):
+            if self.no_extra_results or (first_loop_done and estimator.full()):
+                trace.mutter('size: %d, z_size: %d'
+                             % (estimator._uncompressed_size_added,
+                                estimator._compressed_size_added))
                 next_revs = set()
                 break
             # don't query things we've already queried
-            next_revs.difference_update(queried_revs)
+            next_revs = next_revs.difference(queried_revs)
             first_loop_done = True
+        return result
+
+    def _do_repository_request(self, body_bytes):
+        repository = self._repository
+        revision_ids = set(self._revision_ids)
+        include_missing = 'include-missing:' in revision_ids
+        if include_missing:
+            revision_ids.remove('include-missing:')
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
+        if error is not None:
+            return error
+        # TODO might be nice to start up the search again; but thats not
+        # written or tested yet.
+        client_seen_revs = set(search_result.get_keys())
+        # Always include the requested ids.
+        client_seen_revs.difference_update(revision_ids)
+
+        repo_graph = repository.get_graph()
+        result = self._expand_requested_revs(repo_graph, revision_ids,
+                                             client_seen_revs, include_missing)
 
         # sorting trivially puts lexographically similar revision ids together.
         # Compression FTW.
+        lines = []
         for revision, parents in sorted(result.items()):
             lines.append(' '.join((revision, ) + tuple(parents)))
 
@@ -392,7 +407,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         if token == '':
             token = None
         try:
-            token = repository.lock_write(token=token)
+            token = repository.lock_write(token=token).repository_token
         except errors.LockContention, e:
             return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
@@ -412,6 +427,13 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, to_network_name):
         """Get a stream for inserting into a to_format repository.
+
+        The request body is 'search_bytes', a description of the revisions
+        being requested.
+
+        In 2.3 this verb added support for search_bytes == 'everything'.  Older
+        implementations will respond with a BadSearch error, and clients should
+        catch this and fallback appropriately.
 
         :param repository: The repository to stream from.
         :param to_network_name: The network name of the format of the target
@@ -490,6 +512,13 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryGetStream_1_19(SmartServerRepositoryGetStream):
+    """The same as Repository.get_stream, but will return stream CHK formats to
+    clients.
+
+    See SmartServerRepositoryGetStream._should_fake_unknown.
+    
+    New in 1.19.
+    """
 
     def _should_fake_unknown(self):
         """Returns False; we don't need to workaround bugs in 1.19+ clients."""
@@ -502,18 +531,9 @@ def _stream_to_byte_stream(stream, src_format):
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), '')
     for substream_type, substream in stream:
-        if substream_type == 'inventory-deltas':
-            # This doesn't feel like the ideal place to issue this warning;
-            # however we don't want to do it in the Repository that's
-            # generating the stream, because that might be on the server.
-            # Instead we try to observe it as the stream goes by.
-            ui.ui_factory.warn_cross_format_fetch(src_format,
-                '(remote)')
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
-            elif record.storage_kind == 'inventory-delta':
-                serialised = record_to_inventory_delta_bytes(record)
             elif record.storage_kind == 'absent':
                 raise ValueError("Absent factory for %s" % (record.key,))
             else:
@@ -551,12 +571,14 @@ class _ByteStreamDecoder(object):
     :ivar first_bytes: The first bytes to give the next NetworkRecordStream.
     """
 
-    def __init__(self, byte_stream):
+    def __init__(self, byte_stream, record_counter):
         """Create a _ByteStreamDecoder."""
         self.stream_decoder = pack.ContainerPushParser()
         self.current_type = None
         self.first_bytes = None
         self.byte_stream = byte_stream
+        self._record_counter = record_counter
+        self.key_count = 0
 
     def iter_stream_decoder(self):
         """Iterate the contents of the pack from stream_decoder."""
@@ -587,13 +609,46 @@ class _ByteStreamDecoder(object):
 
     def record_stream(self):
         """Yield substream_type, substream from the byte stream."""
+        def wrap_and_count(pb, rc, substream):
+            """Yield records from stream while showing progress."""
+            counter = 0
+            if rc:
+                if self.current_type != 'revisions' and self.key_count != 0:
+                    # As we know the number of revisions now (in self.key_count)
+                    # we can setup and use record_counter (rc).
+                    if not rc.is_initialized():
+                        rc.setup(self.key_count, self.key_count)
+            for record in substream.read():
+                if rc:
+                    if rc.is_initialized() and counter == rc.STEP:
+                        rc.increment(counter)
+                        pb.update('Estimate', rc.current, rc.max)
+                        counter = 0
+                    if self.current_type == 'revisions':
+                        # Total records is proportional to number of revs
+                        # to fetch. With remote, we used self.key_count to
+                        # track the number of revs. Once we have the revs
+                        # counts in self.key_count, the progress bar changes
+                        # from 'Estimating..' to 'Estimate' above.
+                        self.key_count += 1
+                        if counter == rc.STEP:
+                            pb.update('Estimating..', self.key_count)
+                            counter = 0
+                counter += 1
+                yield record
+
         self.seed_state()
+        pb = ui.ui_factory.nested_progress_bar()
+        rc = self._record_counter
         # Make and consume sub generators, one per substream type:
         while self.first_bytes is not None:
             substream = NetworkRecordStream(self.iter_substream_bytes())
             # after substream is fully consumed, self.current_type is set to
             # the next type, and self.first_bytes is set to the matching bytes.
-            yield self.current_type, substream.read()
+            yield self.current_type, wrap_and_count(pb, rc, substream)
+        if rc:
+            pb.update('Done', rc.max, rc.max)
+        pb.finished()
 
     def seed_state(self):
         """Prepare the _ByteStreamDecoder to decode from the pack stream."""
@@ -604,13 +659,13 @@ class _ByteStreamDecoder(object):
         list(self.iter_substream_bytes())
 
 
-def _byte_stream_to_stream(byte_stream):
+def _byte_stream_to_stream(byte_stream, record_counter=None):
     """Convert a byte stream into a format and a stream.
 
     :param byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
     :return: (RepositoryFormat, stream_generator)
     """
-    decoder = _ByteStreamDecoder(byte_stream)
+    decoder = _ByteStreamDecoder(byte_stream, record_counter)
     for bytes in byte_stream:
         decoder.stream_decoder.accept_bytes(bytes)
         for record in decoder.stream_decoder.read_pending_records(max=1):

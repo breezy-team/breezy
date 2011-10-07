@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,11 @@
 # mbp: "you know that thing where cvs gives you conflict markers?"
 # s: "i hate that."
 
-
-from bzrlib.errors import CantReprocessAndShowBase
-import bzrlib.patiencediff
-from bzrlib.textfile import check_text_lines
+from bzrlib import (
+    errors,
+    patiencediff,
+    textfile,
+    )
 
 
 def intersect(ra, rb):
@@ -66,10 +67,24 @@ class Merge3(object):
     Given BASE, OTHER, THIS, tries to produce a combined text
     incorporating the changes from both BASE->OTHER and BASE->THIS.
     All three will typically be sequences of lines."""
-    def __init__(self, base, a, b, is_cherrypick=False):
-        check_text_lines(base)
-        check_text_lines(a)
-        check_text_lines(b)
+
+    def __init__(self, base, a, b, is_cherrypick=False, allow_objects=False):
+        """Constructor.
+
+        :param base: lines in BASE
+        :param a: lines in A
+        :param b: lines in B
+        :param is_cherrypick: flag indicating if this merge is a cherrypick.
+            When cherrypicking b => a, matches with b and base do not conflict.
+        :param allow_objects: if True, do not require that base, a and b are
+            plain Python strs.  Also prevents BinaryFile from being raised.
+            Lines can be any sequence of comparable and hashable Python
+            objects.
+        """
+        if not allow_objects:
+            textfile.check_text_lines(base)
+            textfile.check_text_lines(a)
+            textfile.check_text_lines(b)
         self.base = base
         self.a = a
         self.b = b
@@ -93,7 +108,7 @@ class Merge3(object):
             elif self.a[0].endswith('\r'):
                 newline = '\r'
         if base_marker and reprocess:
-            raise CantReprocessAndShowBase()
+            raise errors.CantReprocessAndShowBase()
         if name_a:
             start_marker = start_marker + ' ' + name_a
         if name_b:
@@ -284,7 +299,7 @@ class Merge3(object):
     def _refine_cherrypick_conflict(self, zstart, zend, astart, aend, bstart, bend):
         """When cherrypicking b => a, ignore matches with b and base."""
         # Do not emit regions which match, only regions which do not match
-        matches = bzrlib.patiencediff.PatienceSequenceMatcher(None,
+        matches = patiencediff.PatienceSequenceMatcher(None,
             self.base[zstart:zend], self.b[bstart:bend]).get_matching_blocks()
         last_base_idx = 0
         last_b_idx = 0
@@ -334,7 +349,7 @@ class Merge3(object):
             type, iz, zmatch, ia, amatch, ib, bmatch = region
             a_region = self.a[ia:amatch]
             b_region = self.b[ib:bmatch]
-            matches = bzrlib.patiencediff.PatienceSequenceMatcher(
+            matches = patiencediff.PatienceSequenceMatcher(
                     None, a_region, b_region).get_matching_blocks()
             next_a = ia
             next_b = ib
@@ -365,9 +380,9 @@ class Merge3(object):
         """
 
         ia = ib = 0
-        amatches = bzrlib.patiencediff.PatienceSequenceMatcher(
+        amatches = patiencediff.PatienceSequenceMatcher(
                 None, self.base, self.a).get_matching_blocks()
-        bmatches = bzrlib.patiencediff.PatienceSequenceMatcher(
+        bmatches = patiencediff.PatienceSequenceMatcher(
                 None, self.base, self.b).get_matching_blocks()
         len_a = len(amatches)
         len_b = len(bmatches)
@@ -420,9 +435,9 @@ class Merge3(object):
 
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""
-        am = bzrlib.patiencediff.PatienceSequenceMatcher(
+        am = patiencediff.PatienceSequenceMatcher(
                 None, self.base, self.a).get_matching_blocks()
-        bm = bzrlib.patiencediff.PatienceSequenceMatcher(
+        bm = patiencediff.PatienceSequenceMatcher(
                 None, self.base, self.b).get_matching_blocks()
 
         unc = []
