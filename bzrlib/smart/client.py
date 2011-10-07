@@ -97,46 +97,44 @@ class _SmartClient(object):
         for hook in _SmartClient.hooks['call']:
             hook(params)
 
+    def _determine_protocol_version(self, method, args, body=None,
+        readv_body=None, body_stream=None, expect_response_body=True):
+        for protocol_version in [3, 2]:
+            if protocol_version == 2:
+                # If v3 doesn't work, the remote side is older than 1.6.
+                self._medium._remember_remote_is_before((1, 6))
+            response_handler = self._send_request(
+                protocol_version, method, args, body=body,
+                readv_body=readv_body, body_stream=body_stream)
+            try:
+                response_tuple = response_handler.read_response_tuple(
+                    expect_body=expect_response_body)
+            except errors.UnexpectedProtocolVersionMarker, err:
+                # TODO: We could recover from this without disconnecting if
+                # we recognise the protocol version.
+                warning(
+                    'Server does not understand Bazaar network protocol %d,'
+                    ' reconnecting.  (Upgrade the server to avoid this.)'
+                    % (protocol_version,))
+                self._medium.disconnect()
+                continue
+            except errors.ErrorFromSmartServer:
+                # If we received an error reply from the server, then it
+                # must be ok with this protocol version.
+                self._medium._protocol_version = protocol_version
+                raise
+            else:
+                self._medium._protocol_version = protocol_version
+                return response_tuple, response_handler
+        raise errors.SmartProtocolError(
+            'Server is not a Bazaar server: ' + str(err))
+
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             body_stream=None, expect_response_body=True):
-        self._run_call_hooks(method, args, body, readv_body)
-        if self._medium._protocol_version is not None:
-            response_handler = self._send_request(
-                self._medium._protocol_version, method, args, body=body,
-                readv_body=readv_body, body_stream=body_stream)
-            return (response_handler.read_response_tuple(
-                        expect_body=expect_response_body),
-                    response_handler)
-        else:
-            for protocol_version in [3, 2]:
-                if protocol_version == 2:
-                    # If v3 doesn't work, the remote side is older than 1.6.
-                    self._medium._remember_remote_is_before((1, 6))
-                response_handler = self._send_request(
-                    protocol_version, method, args, body=body,
-                    readv_body=readv_body, body_stream=body_stream)
-                try:
-                    response_tuple = response_handler.read_response_tuple(
-                        expect_body=expect_response_body)
-                except errors.UnexpectedProtocolVersionMarker, err:
-                    # TODO: We could recover from this without disconnecting if
-                    # we recognise the protocol version.
-                    warning(
-                        'Server does not understand Bazaar network protocol %d,'
-                        ' reconnecting.  (Upgrade the server to avoid this.)'
-                        % (protocol_version,))
-                    self._medium.disconnect()
-                    continue
-                except errors.ErrorFromSmartServer:
-                    # If we received an error reply from the server, then it
-                    # must be ok with this protocol version.
-                    self._medium._protocol_version = protocol_version
-                    raise
-                else:
-                    self._medium._protocol_version = protocol_version
-                    return response_tuple, response_handler
-            raise errors.SmartProtocolError(
-                'Server is not a Bazaar server: ' + str(err))
+        request = _SmartClientRequest(self, method, args, body=body,
+            readv_body=readv_body, body_stream=body_stream,
+            expect_response_body=expect_response_body)
+        return request.call_and_read_response()
 
     def _construct_protocol(self, version):
         request = self._medium.get_request()
@@ -216,6 +214,68 @@ class _SmartClient(object):
         the medium from the matching transport.
         """
         return self._medium.remote_path_from_transport(transport)
+
+
+class _SmartClientRequest(object):
+    """Encapsulate the logic for a single request."""
+
+    def __init__(self, client, method, args, body=None, readv_body=None,
+                 body_stream=None, expect_response_body=True):
+        self.client = client
+        self.method = method
+        self.args = args
+        self.body = body
+        self.readv_body = readv_body
+        self.body_stream = body_stream
+        self.expect_response_body = expect_response_body
+
+    def call_and_read_response(self):
+        self.client._run_call_hooks(self.method, self.args, self.body,
+                                    self.readv_body)
+        if self.client._medium._protocol_version is None:
+            return self._call_determining_protocol_version()
+        else:
+            return self._call()
+
+    def _call(self):
+        response_handler = self.client._send_request(
+            self.client._medium._protocol_version, self.method, self.args,
+            body=self.body, readv_body=self.readv_body,
+            body_stream=self.body_stream)
+        response_tuple = response_handler.read_response_tuple(
+            expect_body=self.expect_response_body)
+        return (response_tuple, response_handler)
+
+    def _call_determining_protocol_version(self):
+        for protocol_version in [3, 2]:
+            if protocol_version == 2:
+                # If v3 doesn't work, the remote side is older than 1.6.
+                self.client._medium._remember_remote_is_before((1, 6))
+            response_handler = self.client._send_request(
+                protocol_version, self.method, self.args, body=self.body,
+                readv_body=self.readv_body, body_stream=self.body_stream)
+            try:
+                response_tuple = response_handler.read_response_tuple(
+                    expect_body=self.expect_response_body)
+            except errors.UnexpectedProtocolVersionMarker, err:
+                # TODO: We could recover from this without disconnecting if
+                # we recognise the protocol version.
+                warning(
+                    'Server does not understand Bazaar network protocol %d,'
+                    ' reconnecting.  (Upgrade the server to avoid this.)'
+                    % (protocol_version,))
+                self.client._medium.disconnect()
+                continue
+            except errors.ErrorFromSmartServer:
+                # If we received an error reply from the server, then it
+                # must be ok with this protocol version.
+                self.client._medium._protocol_version = protocol_version
+                raise
+            else:
+                self.client._medium._protocol_version = protocol_version
+                return response_tuple, response_handler
+        raise errors.SmartProtocolError(
+            'Server is not a Bazaar server: ' + str(err))
 
 
 class SmartClientHooks(hooks.Hooks):
