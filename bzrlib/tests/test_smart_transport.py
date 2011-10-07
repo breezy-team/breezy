@@ -89,6 +89,26 @@ class StringIOSSHVendor(object):
         return StringIOSSHConnection(self)
 
 
+class FirstRejectedStringIOSSHVendor(StringIOSSHVendor):
+    """The first connection will be considered closed.
+
+    The second connection will succeed normally.
+    """
+
+    def __init__(self, read_from, write_to):
+        super(FirstRejectedStringIOSSHVendor, self).__init__(read_from,
+            write_to)
+        self._first = True
+
+    def connect_ssh(self, username, password, host, port, command):
+        self.calls.append(('connect_ssh', username, password, host, port,
+            command))
+        if self._first:
+            self._first = False
+            return ClosedSSHConnection(self)
+        return StringIOSSHConnection(self)
+
+
 class StringIOSSHConnection(object):
     """A SSH connection that uses StringIO to buffer writes and answer reads."""
 
@@ -102,6 +122,24 @@ class StringIOSSHConnection(object):
 
     def get_filelike_channels(self):
         return self.vendor.read_from, self.vendor.write_to
+
+
+class ClosedSSHConnection(object):
+    """An SSH connection that just has closed channels."""
+
+    def __init__(self, vendor):
+        self.vendor = vendor
+
+    def close(self):
+        self.vendor.calls.append(('close', ))
+
+    def get_filelike_channels(self):
+        # We create matching pipes, and then close the ssh side
+        ssh_read, bzr_write = create_file_pipes()
+        bzr_read, ssh_write = create_file_pipes()
+        ssh_read.close()
+        ssh_write.close()
+        return bzr_read, bzr_write
 
 
 class _InvalidHostnameFeature(tests.Feature):
@@ -3362,6 +3400,27 @@ class Test_SmartClient(tests.TestCase):
         handler = smart_client._send_request(3, 'hello', ())
         self.assertRaises(errors.ConnectionReset,
             handler.read_response_tuple, expect_body=False)
+
+    def test__send_request_retries(self):
+        response = StringIO()
+        output = StringIO()
+        vendor = FirstRejectedStringIOSSHVendor(response, output)
+        client_medium = medium.SmartSSHClientMedium(
+            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
+            'bzr')
+        smart_client = client._SmartClient(client_medium)
+        handler = smart_client._send_request(3, 'hello', ())
+        message_sent = output.getvalue()
+        self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
+        self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+             ('close',),
+             ('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ],
+            vendor.calls)
 
 
 
