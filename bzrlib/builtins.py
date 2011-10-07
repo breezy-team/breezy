@@ -705,7 +705,8 @@ class cmd_mkdir(Command):
             if id != None:
                 os.mkdir(d)
                 wt.add([dd])
-                self.outf.write('added %s\n' % d)
+                if not is_quiet():
+                    self.outf.write('added %s\n' % d)
             else:
                 raise errors.NotVersionedError(path=base)
 
