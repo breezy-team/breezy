@@ -393,8 +393,7 @@ class TestControlDir(TestCaseWithControlDir):
             repo.set_make_working_trees(False)
             self.assertFalse(repo.make_working_trees())
 
-        dir = tree.bzrdir
-        a_dir = dir.clone(self.get_url('repo/a'))
+        a_dir = tree.bzrdir.clone(self.get_url('repo/a'))
         a_dir.open_branch()
         self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
 
