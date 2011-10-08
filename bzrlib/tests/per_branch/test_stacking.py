@@ -572,7 +572,7 @@ class TestStackingConnections(
         stacked.set_last_revision_info(1, 'rev-base')
         stacked_relative = self.make_branch('stacked_relative',
                                             format=self.bzrdir_format)
-        stacked_relative.set_stacked_on_url('../base')
+        stacked_relative.set_stacked_on_url(base_tree.branch.user_url)
         stacked.set_last_revision_info(1, 'rev-base')
         self.start_logging_connections()
 
