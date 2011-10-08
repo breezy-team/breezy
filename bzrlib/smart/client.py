@@ -16,7 +16,6 @@
 
 import bzrlib
 from bzrlib.smart import message, protocol
-from bzrlib.trace import warning
 from bzrlib import (
     errors,
     hooks,
@@ -112,7 +111,17 @@ class _SmartClient(object):
 
 
 class _SmartClientRequest(object):
-    """Encapsulate the logic for a single request."""
+    """Encapsulate the logic for a single request.
+
+    This class handles things like reconnecting and sending the request a
+    second time when the connection is reset in the middle. It also handles the
+    multiple requests that get made if we don't know what protocol the server
+    supports yet.
+
+    Generally, you build up one of these objects, passing in the arguments that
+    you want to send to the server, and then use 'call_and_read_response' to
+    get the response from the server.
+    """
 
     def __init__(self, client, method, args, body=None, readv_body=None,
                  body_stream=None, expect_response_body=True):
@@ -125,11 +134,19 @@ class _SmartClientRequest(object):
         self.expect_response_body = expect_response_body
 
     def call_and_read_response(self):
+        """Send the request to the server, and read the initial response.
+
+        This doesn't read all of the body content of the response, instead it
+        returns (response_tuple, response_handler). response_tuple is the 'ok',
+        or 'error' information, and 'response_handler' can be used to get the
+        content stream out.
+        """
         self._run_call_hooks()
-        if self.client._medium._protocol_version is None:
+        protocol_version = self.client._medium._protocol_version
+        if protocol_version is None:
             return self._call_determining_protocol_version()
         else:
-            return self._call()
+            return self._call(protocol_version)
 
     def _run_call_hooks(self):
         if not _SmartClient.hooks['call']:
@@ -139,27 +156,33 @@ class _SmartClientRequest(object):
         for hook in _SmartClient.hooks['call']:
             hook(params)
 
+    def _call(self, protocol_version):
+        """We know the protocol version.
 
-    def _call(self):
-        response_handler = self._send(
-            self.client._medium._protocol_version)
+        So this just sends the request, and then reads the response. This is
+        where the code will be to retry requests if the connection is closed.
+        """
+        response_handler = self._send(protocol_version)
         response_tuple = response_handler.read_response_tuple(
             expect_body=self.expect_response_body)
         return (response_tuple, response_handler)
 
     def _call_determining_protocol_version(self):
+        """Determine what protocol the remote server supports.
+
+        We do this by placing a request in the most recent protocol, and
+        handling the UnexpectedProtocolVersionMarker from the server.
+        """
         for protocol_version in [3, 2]:
             if protocol_version == 2:
                 # If v3 doesn't work, the remote side is older than 1.6.
                 self.client._medium._remember_remote_is_before((1, 6))
-            response_handler = self._send(protocol_version)
             try:
-                response_tuple = response_handler.read_response_tuple(
-                    expect_body=self.expect_response_body)
+                response_tuple, response_handler = self._call(protocol_version)
             except errors.UnexpectedProtocolVersionMarker, err:
                 # TODO: We could recover from this without disconnecting if
                 # we recognise the protocol version.
-                warning(
+                trace.warning(
                     'Server does not understand Bazaar network protocol %d,'
                     ' reconnecting.  (Upgrade the server to avoid this.)'
                     % (protocol_version,))
@@ -177,6 +200,7 @@ class _SmartClientRequest(object):
             'Server is not a Bazaar server: ' + str(err))
 
     def _construct_protocol(self, version):
+        """Build the encoding stack for a given protocol version."""
         request = self.client._medium.get_request()
         if version == 3:
             request_encoder = protocol.ProtocolThreeRequester(request)
@@ -193,6 +217,14 @@ class _SmartClientRequest(object):
         return request_encoder, response_handler
 
     def _send(self, protocol_version):
+        """Encode the request, and send it to the server.
+
+        This will retry a request if we get a ConnectionReset while sending the
+        request to the server. (Unless we have a body_stream that we have
+        already started consuming, since we can't restart body_streams)
+
+        :return: response_handler as defined by _construct_protocol
+        """
         encoder, response_handler = self._construct_protocol(protocol_version)
         try:
             self._send_no_retry(encoder)
@@ -206,9 +238,8 @@ class _SmartClientRequest(object):
             # Connection is dead, so close our end of it.
             self.client._medium.reset()
             if self.body_stream is not None:
-                # We can't determine how much of body_stream got consumed
-                # before we noticed the connection is down, so we don't retry
-                # here.
+                # We can't restart a body_stream that has been partially
+                # consumed, so we don't retry.
                 raise
             trace.log_exception_quietly()
             trace.warning('ConnectionReset calling %s, retrying'
@@ -219,6 +250,7 @@ class _SmartClientRequest(object):
         return response_handler
 
     def _send_no_retry(self, encoder):
+        """Just encode the request and try to send it."""
         encoder.set_headers(self.client._headers)
         if self.body is not None:
             if self.readv_body is not None:
