@@ -147,6 +147,19 @@ class TestTextUIFactory(tests.TestCase):
         # duplicated shortcut
         self.assertRaises(ValueError, factory.choose, u"", u"&choice1\nchoi&ce2")
 
+    def test_text_ui_choose_prompt(self):
+        stdin = tests.StringIOWrapper()
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        # choices with explicit shortcuts
+        factory.choose(u"prompt", u"&yes\n&No\nmore &info")
+        self.assertEqual("prompt ([y]es, [N]o, more [i]nfo): \n", factory.stderr.getvalue())
+        # automatic shortcuts
+        factory.stderr.truncate(0)
+        factory.choose(u"prompt", u"yes\nNo\nmore info")
+        self.assertEqual("prompt ([y]es, [N]o, [m]ore info): \n", factory.stderr.getvalue())
+
     def test_text_ui_choose_return_values(self):
         choose = lambda: factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
         stdin = tests.StringIOWrapper("y\n" # 0
