@@ -166,6 +166,7 @@ class TestTextUIFactory(tests.TestCase):
                                       "n\n" # 1
                                       " \n" # default: 3
                                       " no \n" # 1
+                                      "b\na\nd \n" # bad shortcuts, all ignored
                                       "yes with garbage\nY\n" # 0
                                       "not an answer\nno\n" # 1
                                       "info\nmore info\n" # 3
