@@ -35,7 +35,7 @@ Improvements
   (Jelmer Vernooij, #238705)
 
 * ``bzr revno`` now takes a ``--revision`` argument.
-  (Jelmer Vernooij)
+  (Jelmer Vernooij, #870649)
 
 Bug Fixes
 *********
