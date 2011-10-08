@@ -98,9 +98,14 @@ class TextUIFactory(UIFactory):
             index = 0
             help_list = []
             self.alternatives = {}
-            for c in choices.split('\n'):
+            choices = choices.split('\n')
+            if default is not None and default not in range(0, len(choices)):
+                raise ValueError("invalid default index")
+            for c in choices:
                 name = c.replace('&', '').lower()
                 choice = (name, index)
+                if name in self.alternatives:
+                    raise ValueError("duplicated choice: %s" % name)
                 self.alternatives[name] = choice
                 shortcut = c.find('&')
                 if -1 != shortcut and (shortcut + 1) < len(c):
@@ -112,6 +117,8 @@ class TextUIFactory(UIFactory):
                     help = c.replace('&', '')
                     shortcut = c[0]
                 shortcut = shortcut.lower()
+                if shortcut in self.alternatives:
+                    raise ValueError("duplicated shortcut: %s" % shortcut)
                 self.alternatives[shortcut] = choice
                 # Add redirections for default.
                 if index == default:
