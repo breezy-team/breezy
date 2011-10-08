@@ -787,7 +787,7 @@ class DistributionBranchTests(BuilddebTestCase):
                 element in contents]
         self.build_tree_contents(contents)
         self.db1.import_upstream(basedir, "package", version.upstream_version,
-            [], [(None, None, None)])
+              {}, [(None, None, None)])
         return version
 
     def test_import_upstream(self):
@@ -821,7 +821,7 @@ class DistributionBranchTests(BuilddebTestCase):
         write_to_file(os.path.join(basedir, "README"), "Hi\n")
         write_to_file(os.path.join(basedir, "BUGS"), "")
         write_to_file(os.path.join(basedir, "COPYING"), "")
-        self.db1.import_upstream(basedir, "package", version1.upstream_version, [],
+        self.db1.import_upstream(basedir, "package", version1.upstream_version, {},
             [(None, None, None)])
         basedir = name + "-" + str(version2.upstream_version)
         os.mkdir(basedir)
@@ -829,7 +829,7 @@ class DistributionBranchTests(BuilddebTestCase):
         write_to_file(os.path.join(basedir, "BUGS"), "")
         write_to_file(os.path.join(basedir, "NEWS"), "")
         self.db1.import_upstream(basedir, "package", version2.upstream_version,
-                [self.up_tree1.branch.last_revision()], [(None, None, None)])
+                { None: [self.up_tree1.branch.last_revision()] }, [(None, None, None)])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -862,7 +862,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add(basedir)
         finally:
             tf.close()
-        self.db1.import_upstream(basedir, "package", version.upstream_version, [],
+        self.db1.import_upstream(basedir, "package", version.upstream_version, {},
                 upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
@@ -891,7 +891,7 @@ class DistributionBranchTests(BuilddebTestCase):
         finally:
             tf.close()
         self.db1.import_upstream(basedir, "package", version.upstream_version,
-            [], upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
+            {}, upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -940,7 +940,7 @@ class DistributionBranchTests(BuilddebTestCase):
         finally:
             f.close()
         self.db1.import_upstream(basedir, "package", version.upstream_version,
-            [], upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
+            {}, upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()

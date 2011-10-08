@@ -784,8 +784,8 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            upstream_revids = self.pristine_upstream_source.version_as_revisions(package,
-                version.upstream_version, tarballs)
+            upstream_revids = self.pristine_upstream_source.version_as_revisions(
+                package, version.upstream_version, tarballs)
             def key(a):
                 if a is None:
                     return None
@@ -829,13 +829,14 @@ class DistributionBranch(object):
         # TODO: this method needs a lot of work for when we will make
         # the branches writeable by others.
         assert isinstance(version, str)
-        mutter("Importing upstream version %s from %s with parents %s" \
-                % (version, upstream_part, str(upstream_parents)))
+        mutter("Importing upstream version %s from %s with parents %r" \
+                % (version, upstream_part, upstream_parents))
         assert self.pristine_upstream_tree is not None, \
             "Can't import upstream with no tree"
         other_branches = self.get_other_branches()
         ret = []
         for (tarball, component, md5) in upstream_tarballs:
+            parents = upstream_parents.get(component, [])
             if upstream_revisions is not None:
                 revid = upstream_revisions[component]
             else:
@@ -850,7 +851,7 @@ class DistributionBranch(object):
                 self.pristine_upstream_branch.fetch(upstream_branch,
                         last_revision=revid)
                 upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
-                upstream_parents.append(revid)
+                parents.append(revid)
                 target_tree = self.pristine_upstream_branch.repository.revision_tree(
                             revid)
             if file_ids_from is not None:
@@ -861,8 +862,8 @@ class DistributionBranch(object):
             else:
                 self_tree = self.branch.basis_tree()
                 self_tree.lock_read()
-            if len(upstream_parents) > 0:
-                parent_revid = upstream_parents[0]
+            if len(parents) > 0:
+                parent_revid = parents[0]
             else:
                 parent_revid = NULL_REVISION
             self.pristine_upstream_tree.pull(self.pristine_upstream_tree.branch,
@@ -878,7 +879,7 @@ class DistributionBranch(object):
             finally:
                 self_tree.unlock()
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
-                package, version, self.pristine_upstream_tree, upstream_parents,
+                package, version, self.pristine_upstream_tree, parents,
                 component, md5, tarball, author=author, timestamp=timestamp)
             self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
@@ -1086,7 +1087,8 @@ class DistributionBranch(object):
                         last_revision=pull_revid)
                 pull_branch.pristine_upstream_branch.tags.merge_to(
                         self.pristine_upstream_branch.tags)
-        return parents
+        # FIXME: What about other versions ?
+        return { None: parents }
 
     def get_changelog_from_source(self, dir):
         cl_filename = os.path.join(dir, "debian", "changelog")
@@ -1384,11 +1386,12 @@ class DistributionBranch(object):
                 tarball_dir = self._extract_tarballs_to_tempdir(upstream_tarballs)
                 try:
                     # FIXME: should use upstream_parents()?
-                    parents = []
+                    parents = { None: [] }
                     if self.pristine_upstream_branch.last_revision() != NULL_REVISION:
-                        parents = [self.pristine_upstream_branch.last_revision()]
+                        parents = { None: [self.pristine_upstream_branch.last_revision()] }
                     for (component, tag, revid) in self.import_upstream(tarball_dir,
-                            package, version, parents, upstream_tarballs=upstream_tarballs,
+                            package, version, parents,
+                            upstream_tarballs=upstream_tarballs,
                             upstream_branch=upstream_branch,
                             upstream_revisions=upstream_revisions):
                         self._fetch_upstream_to_branch(revid)
@@ -1403,10 +1406,10 @@ class DistributionBranch(object):
                         # missing a proper history link and a criss-cross merge
                         # then recurses and finds no deeper ancestor.
                         # Use the previous upstream import as the from revision
-                        if len(parents) == 0:
+                        if len(parents[None]) == 0:
                             from_revision = NULL_REVISION
                         else:
-                            from_revision = parents[0]
+                            from_revision = parents[None][0]
                         conflicts = self.tree.merge_from_branch(
                                 self.pristine_upstream_branch, merge_type=merge_type,
                                 from_revision=from_revision)

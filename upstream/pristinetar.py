@@ -160,35 +160,6 @@ class PristineTarSource(UpstreamSource):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
 
-    def import_tarballs(self, package, version, tree, parent_ids, tarballs,
-            timestamp=None, author=None):
-        """Import the upstream tarballs.
-
-        :param package: Package name
-        :param version: Package version
-        :param path: Path with tree to import
-        :param parent_ids: Parent revisions
-        :param tarballs: List of (path, component, md5)
-        :param timestamp: Optional timestamp for new commits
-        :param author: Optional author for new commitscopmone
-        :return: List of tuples with (component, tag, revid)
-        """
-        ret = []
-        component_paths = [cp for (_, cp, _) in tarballs if cp is not None]
-        for (tarball, component, md5) in tarballs:
-            if component is None:
-                exclude = component_paths
-            else:
-                exclude = []
-            (tag, revid) = self.import_component_tarball(
-                    package, version, tree, parent_ids, component,
-                    md5, tarball, author=author, timestamp=timestamp,
-                    exclude=exclude)
-            ret.append((component, tag, revid))
-        # FIXME: Handle multiple components
-        tree.branch.generate_revision_history(revid)
-        return ret
-
     def import_component_tarball(self, package, version, tree, parent_ids,
             component=None, md5=None, tarball=None, author=None, timestamp=None,
             subdir=None, exclude=None):
@@ -196,6 +167,7 @@ class PristineTarSource(UpstreamSource):
 
         :param package: Package name
         :param version: Upstream version
+        :param parent_ids: Dictionary mapping component names to revision ids
         :param component: Component name (None for base)
         :param exclude: Exclude directories
         """
@@ -418,10 +390,13 @@ class PristineTarSource(UpstreamSource):
 
         :return: Iterator over (tag_name, version, revid) tuples
         """
+        ret = {}
         for tag_name, tag_revid in self.branch.tags.get_tag_dict().iteritems():
             if not is_upstream_tag(tag_name):
                 continue
-            yield (tag_name, upstream_tag_version(tag_name), tag_revid)
+            (component, version) = upstream_tag_version(tag_name)
+            ret.setdefault(version, {})[component] = tag_revid
+        return ret.iteritems()
 
 
 def is_upstream_tag(tag):
@@ -437,7 +412,7 @@ def upstream_tag_version(tag):
     """Return the upstream version portion of an upstream tag name.
 
     :param tag: The string name of the tag.
-    :return: The version portion of the tag.
+    :return: tuple with version portion of the tag and component name
     """
     assert is_upstream_tag(tag), "Not an upstream tag: %s" % tag
     if tag.startswith('upstream/'):
@@ -448,4 +423,9 @@ def upstream_tag_version(tag):
             tag = tag[len('debian-'):]
         elif tag.startswith('ubuntu-'):
             tag = tag[len('ubuntu-'):]
-    return tag
+    if not '/' in tag:
+        return (None, tag)
+    (version, component) = tag.rsplit('/', 1)
+    if component == "":
+        component = None
+    return (component, version)

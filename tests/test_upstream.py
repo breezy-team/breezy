@@ -25,7 +25,6 @@
 from base64 import standard_b64encode
 
 import bz2
-import gzip
 import os
 import tarfile
 import zipfile
@@ -713,14 +712,24 @@ class TestIsUpstreamTag(TestCase):
 class TestUpstreamTagVersion(TestCase):
 
     def test_simple_upstream(self):
-        self.assertEqual('2.1', upstream_tag_version('upstream-2.1'))
+        self.assertEqual((None, '2.1'), upstream_tag_version('upstream-2.1'))
 
     def test_distro_upstream(self):
-        self.assertEqual('2.1',
+        self.assertEqual((None, '2.1'),
             upstream_tag_version('upstream-debian-2.1'))
 
     def test_git_upstream(self):
-        self.assertEqual('2.1', upstream_tag_version('upstream/2.1'))
+        self.assertEqual((None, '2.1'), upstream_tag_version('upstream/2.1'))
+
+    def test_git_upstream_component(self):
+        self.assertEqual(("lib", '2.1'), upstream_tag_version('upstream/2.1/lib'))
+
+    def test_simple_upstream_component(self):
+        self.assertEqual(("lib", '2.1'), upstream_tag_version('upstream-2.1/lib'))
+
+    def test_distro_upstream_component(self):
+        self.assertEqual(("lib", '2.1'),
+            upstream_tag_version('upstream-debian-2.1/lib'))
 
 
 class PristineTarSourceTests(TestCaseWithTransport):
