@@ -135,6 +135,34 @@ class TestTextUIFactory(tests.TestCase):
         # return false on EOF
         self.assertEqual(False, factory.get_boolean(u""))
 
+    def test_text_ui_choose_return_values(self):
+        choose = lambda: factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
+        stdin = tests.StringIOWrapper("y\n" # 0
+                                      "n\n" # 1
+                                      " \n" # default: 3
+                                      " no \n" # 1
+                                      "yes with garbage\nY\n" # 0
+                                      "not an answer\nno\n" # 1
+                                      "info\nmore info\n" # 3
+                                      "Maybe\n" # 2
+                                      "foo\n")
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        self.assertEqual(0, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(3, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(0, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(3, choose())
+        self.assertEqual(2, choose())
+        self.assertEqual("foo\n", factory.stdin.read())
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+        # return None on EOF
+        self.assertEqual(None, choose())
+
     def test_text_ui_get_integer(self):
         stdin = tests.StringIOWrapper(
             "1\n"
