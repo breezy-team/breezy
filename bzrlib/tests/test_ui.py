@@ -135,6 +135,18 @@ class TestTextUIFactory(tests.TestCase):
         # return false on EOF
         self.assertEqual(False, factory.get_boolean(u""))
 
+    def test_text_ui_choose_bad_parameters(self):
+        stdin = tests.StringIOWrapper()
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        # invalid default index
+        self.assertRaises(ValueError, factory.choose, u"", u"&Yes\n&No", 3)
+        # duplicated choice
+        self.assertRaises(ValueError, factory.choose, u"", u"&choice\n&ChOiCe")
+        # duplicated shortcut
+        self.assertRaises(ValueError, factory.choose, u"", u"&choice1\nchoi&ce2")
+
     def test_text_ui_choose_return_values(self):
         choose = lambda: factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
         stdin = tests.StringIOWrapper("y\n" # 0
