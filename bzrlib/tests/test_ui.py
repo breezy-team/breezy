@@ -163,6 +163,16 @@ class TestTextUIFactory(tests.TestCase):
         # return None on EOF
         self.assertEqual(None, choose())
 
+    def test_text_ui_choose_no_default(self):
+        stdin = tests.StringIOWrapper(" \n" # no default, invalid!
+                                      " yes \n" # 0
+                                      "foo\n")
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        self.assertEqual(0, factory.choose(u"", u"&Yes\n&No"))
+        self.assertEqual("foo\n", factory.stdin.read())
+
     def test_text_ui_get_integer(self):
         stdin = tests.StringIOWrapper(
             "1\n"
