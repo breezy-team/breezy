@@ -99,7 +99,7 @@ class TextUIFactory(UIFactory):
             help_list = []
             self.alternatives = {}
             for c in choices.split('\n'):
-                name = c.strip('&').lower()
+                name = c.replace('&', '').lower()
                 choice = (name, index)
                 self.alternatives[name] = choice
                 shortcut = c.find('&')
@@ -109,7 +109,7 @@ class TextUIFactory(UIFactory):
                     help += c[(shortcut + 2):]
                     shortcut = c[shortcut + 1]
                 else:
-                    help = c.strip('&')
+                    help = c.replace('&', '')
                     shortcut = c[0]
                 shortcut = shortcut.lower()
                 self.alternatives[shortcut] = choice
