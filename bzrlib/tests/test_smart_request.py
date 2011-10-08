@@ -109,6 +109,17 @@ class TestSmartRequest(TestCase):
         self.assertEqual(
             [[transport]] * 3, handler._command.jail_transports_log)
 
+    def test_all_registered_requests_are_safety_qualified(self):
+        unclassified_requests = []
+        for key in request.request_handlers.keys():
+            info = request.request_handlers.get_info(key)
+            if info is None or info not in ('safe', 'unsafe', 'semi', 'stream'):
+                unclassified_requests.append(key)
+        if unclassified_requests:
+            self.fail('These requests were not categorized as safe/unsafe'
+                      ' to retry: %s'  % (unclassified_requests,))
+        
+
 
 
 class TestSmartRequestHandlerErrorTranslation(TestCase):
