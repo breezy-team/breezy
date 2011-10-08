@@ -135,7 +135,7 @@ class TextUIFactory(UIFactory):
             line = self.ui.stdin.readline()
             if '' == line:
                 raise self.InputEOF
-            return line.strip().lower()
+            return line.strip()
 
         def _getchar(self):
             char = osutils.getchar()
@@ -143,7 +143,7 @@ class TextUIFactory(UIFactory):
                 raise KeyboardInterrupt
             if char == chr(4): # EOF (^d, C-d)
                 raise self.InputEOF
-            return char.lower()
+            return char
 
         def interact(self):
             """Keep asking the user until a valid choice is made.
@@ -165,6 +165,7 @@ class TextUIFactory(UIFactory):
                 except KeyboardInterrupt:
                     self.ui.stderr.write('\n')
                     raise KeyboardInterrupt
+                choice = choice.lower()
                 if choice not in self.alternatives:
                     # Not a valid choice, keep on asking.
                     continue
