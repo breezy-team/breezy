@@ -40,13 +40,6 @@ class _SmartClient(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self._medium)
 
-    def _run_call_hooks(self, method, args, body, readv_body):
-        if not _SmartClient.hooks['call']:
-            return
-        params = CallHookParams(method, args, body, readv_body, self._medium)
-        for hook in _SmartClient.hooks['call']:
-            hook(params)
-
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             body_stream=None, expect_response_body=True):
         request = _SmartClientRequest(self, method, args, body=body,
@@ -132,12 +125,20 @@ class _SmartClientRequest(object):
         self.expect_response_body = expect_response_body
 
     def call_and_read_response(self):
-        self.client._run_call_hooks(self.method, self.args, self.body,
-                                    self.readv_body)
+        self._run_call_hooks()
         if self.client._medium._protocol_version is None:
             return self._call_determining_protocol_version()
         else:
             return self._call()
+
+    def _run_call_hooks(self):
+        if not _SmartClient.hooks['call']:
+            return
+        params = CallHookParams(self.method, self.args, self.body,
+                                self.readv_body, self.client._medium)
+        for hook in _SmartClient.hooks['call']:
+            hook(params)
+
 
     def _call(self):
         response_handler = self._send(
