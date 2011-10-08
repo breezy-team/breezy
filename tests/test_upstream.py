@@ -432,6 +432,20 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
 
+    def test_version_as_revisions(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
+        config = DebBuildConfig(
+            [('user.conf', True), ('default.conf', False)],
+            branch=self.tree.branch)
+        source = UpstreamBranchSource(self.tree.branch,
+            {"2.1": self.tree.branch.last_revision()},
+            config=config)
+        revid2 = self.tree.commit("msg")
+        self.assertEquals(revid2,
+            source.version_as_revision("foo", "2.1+bzr2"))
+        self.assertEquals({None: revid1}, source.version_as_revisions("foo", "2.1"))
+
     def test_version_as_revision(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
@@ -766,14 +780,31 @@ class PristineTarSourceTests(TestCaseWithTransport):
         rev.properties["deb-pristine-delta"] = standard_b64encode("bla")
         self.assertEquals("bla", self.source.pristine_tar_delta(rev))
 
-    def test_version_as_revision_missing(self):
+    def test_version_as_revisions_missing(self):
         self.assertRaises(PackageVersionNotPresent,
-            self.source.version_as_revision, None, "1.2")
+            self.source.version_as_revisions, None, "1.2")
 
-    def test_version_as_revision(self):
+    def test_version_as_revisions_single(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
-        self.assertEquals(revid1, self.source.version_as_revision(None, "2.1"))
+        self.assertEquals({None: revid1},
+            self.source.version_as_revisions(None, "2.1"))
+
+    def test_version_component_as_revision(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1/lib", revid1)
+        self.assertEquals(revid1,
+            self.source.version_component_as_revision(None, "2.1", "lib"))
+
+    def test_version_as_revisions(self):
+        revid1 = self.tree.commit("msg")
+        revid2 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
+        self.assertEquals({ None: revid1, "lib": revid2 },
+                self.source.version_as_revisions(None, "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
 
 
 class TarfileSourceTests(TestCaseWithTransport):

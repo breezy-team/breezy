@@ -28,7 +28,10 @@ from bzrlib.errors import (
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
 
-from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
+from bzrlib.plugins.builddeb.errors import (
+    MultipleUpstreamTarballsNotSupported,
+    PackageVersionNotPresent,
+    )
 from bzrlib.plugins.builddeb.upstream import UpstreamSource
 from bzrlib.plugins.builddeb.util import (
     export,
@@ -228,7 +231,7 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             self.upstream_revision_map = upstream_revision_map
 
-    def version_as_revision(self, package, version):
+    def version_as_revision(self, package, version, tarballs=None):
         assert isinstance(version, str)
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]
@@ -241,6 +244,13 @@ class UpstreamBranchSource(UpstreamSource):
             except InvalidRevisionSpec:
                 raise PackageVersionNotPresent(package, version, self)
         raise PackageVersionNotPresent(package, version, self)
+
+    def version_as_revisions(self, package, version, tarballs=None):
+        # FIXME: Support multiple upstream locations if there are multiple
+        # components
+        if tarballs is not None and tarballs.keys() != [None]:
+            raise MultipleUpstreamTarballsNotSupported()
+        return { None: self.version_as_revision(package, version, tarballs) }
 
     def get_latest_version(self, package, current_version):
         return self.get_version(package, current_version,

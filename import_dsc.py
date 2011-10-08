@@ -60,6 +60,7 @@ from bzrlib.transport import (
 
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
+    MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
@@ -556,6 +557,7 @@ class DistributionBranch(object):
                 tarballs=upstream_tarballs):
             return False
 
+
         up_branch = self.pristine_upstream_branch
         up_branch.lock_read()
         try:
@@ -563,10 +565,14 @@ class DistributionBranch(object):
             other_up_branch = branch.pristine_upstream_branch
             other_up_branch.lock_read()
             try:
+                pristine_upstream_revids = branch.pristine_upstream_source.version_as_revisions(package, version)
+                if pristine_upstream_revids.keys() != [None]:
+                    raise MultipleUpstreamTarballsNotSupported()
+                pristine_upstream_revid = pristine_upstream_revids[None]
                 graph = other_up_branch.repository.get_graph(
                         up_branch.repository)
                 return graph.is_ancestor(up_branch.last_revision(),
-                        branch.pristine_upstream_source.version_as_revision(package, version))
+                        pristine_upstream_revid)
             finally:
                 other_up_branch.unlock()
         finally:
@@ -680,7 +686,11 @@ class DistributionBranch(object):
         :param version: the upstream version string
         """
         assert isinstance(version, str)
-        pull_revision = pull_branch.pristine_upstream_source.version_as_revision(package, version)
+        pull_revisions = pull_branch.pristine_upstream_source.version_as_revisions(
+            package, version)
+        if pull_revisions.keys() != [None]:
+            raise MultipleUpstreamTarballsNotSupported()
+        pull_revision = pull_revisions[None]
         mutter("Pulling upstream part of %s from revision %s" % \
                 (version, pull_revision))
         assert self.pristine_upstream_tree is not None, \
@@ -774,12 +784,17 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            parent_revid = self.pristine_upstream_source.version_as_revision(package,
+            upstream_revids = self.pristine_upstream_source.version_as_revisions(package,
                 version.upstream_version, tarballs)
-            if len(parents) > 0:
-                real_parents.insert(1, parent_revid)
-            else:
-                real_parents = [parent_revid]
+            def key(a):
+                if a is None:
+                    return None
+                return a
+            for component in sorted(upstream_revids.keys(), key=key):
+                if len(real_parents) > 0:
+                    real_parents.insert(1, upstream_revids[component])
+                else:
+                    real_parents = [upstream_revids[component]]
         return real_parents
 
     def _fetch_upstream_to_branch(self, revid):
@@ -793,7 +808,7 @@ class DistributionBranch(object):
 
     def import_upstream(self, upstream_part, package, version, upstream_parents,
             upstream_tarballs, upstream_branch=None,
-            upstream_revision=None, timestamp=None, author=None,
+            upstream_revisions=None, timestamp=None, author=None,
             file_ids_from=None):
         """Import an upstream part on to the upstream branch.
 
@@ -821,18 +836,23 @@ class DistributionBranch(object):
         other_branches = self.get_other_branches()
         ret = []
         for (tarball, component, md5) in upstream_tarballs:
+            if upstream_revisions is not None:
+                revid = upstream_revisions[component]
+            else:
+                revid = None
             upstream_trees = [o.pristine_upstream_branch.basis_tree()
                 for o in other_branches]
             target_tree = None
             if upstream_branch is not None:
-                if upstream_revision is None:
-                    upstream_revision = upstream_branch.last_revision()
+                if revid is None:
+                    # FIXME: This is wrong for component tarballs
+                    revid = upstream_branch.last_revision()
                 self.pristine_upstream_branch.fetch(upstream_branch,
-                        last_revision=upstream_revision)
+                        last_revision=revid)
                 upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
-                upstream_parents.append(upstream_revision)
+                upstream_parents.append(revid)
                 target_tree = self.pristine_upstream_branch.repository.revision_tree(
-                            upstream_revision)
+                            revid)
             if file_ids_from is not None:
                 upstream_trees = file_ids_from + upstream_trees
             if self.tree:
@@ -858,15 +878,16 @@ class DistributionBranch(object):
             finally:
                 self_tree.unlock()
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
-                package, version, self.pristine_upstream_tree, upstream_parents, component,
-                md5, tarball, author=author, timestamp=timestamp)
+                package, version, self.pristine_upstream_tree, upstream_parents,
+                component, md5, tarball, author=author, timestamp=timestamp)
+            self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
             self.branch.tags.set_tag(tag, revid)
         return ret
 
     def import_upstream_tarballs(self, tarballs, package, version, parents,
-        upstream_branch=None, upstream_revision=None):
+        upstream_branch=None, upstream_revisions=None):
         """Import an upstream part to the upstream branch.
 
         :param tarballs: List of tarballs / components to extract
@@ -876,7 +897,7 @@ class DistributionBranch(object):
             parents.
         :param upstream_branch: An upstream branch to associate with the
             tarball.
-        :param upstream_revision: Upstream revision id
+        :param upstream_revisions: Upstream revision ids dictionary
         :param md5sum: hex digest of the md5sum of the tarball, if known.
         :return: list with (component, tag, revid) tuples
         """
@@ -885,7 +906,7 @@ class DistributionBranch(object):
             return self.import_upstream(tarball_dir, package, version, parents,
                 tarballs,
                 upstream_branch=upstream_branch,
-                upstream_revision=upstream_revision)
+                upstream_revisions=upstream_revisions)
         finally:
             shutil.rmtree(tarball_dir)
 
@@ -1052,8 +1073,11 @@ class DistributionBranch(object):
                 pull_branch = pull_parents[1][0]
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
-                pull_revid = pull_branch.pristine_upstream_source.version_as_revision(
+                pull_revids = pull_branch.pristine_upstream_source.version_as_revisions(
                     package, pull_version.upstream_version)
+                if pull_revids.keys() != [None]:
+                    raise MultipleUpstreamTarballsNotSupported()
+                pull_revid = pull_revids[None]
                 mutter("Initialising upstream from %s, version %s",
                     str(pull_branch), str(pull_version))
                 parents.append(pull_revid)
@@ -1245,16 +1269,16 @@ class DistributionBranch(object):
         finally:
             extractor.cleanup()
 
-    def extract_upstream_tree(self, upstream_tip, basedir):
+    def extract_upstream_tree(self, upstream_tips, basedir):
         """Extract upstream_tip to a tempdir as a working tree."""
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
-        # TODO: remove the _extract_upstream_tree alias below.
         to_location = os.path.join(basedir, "upstream")
         # Use upstream_branch if it has been set, otherwise self.branch.
         source_branch = self.pristine_upstream_branch or self.branch
+        assert upstream_tips.keys() == [None]
         dir_to = source_branch.bzrdir.sprout(to_location,
-                revision_id=upstream_tip,
+                revision_id=upstream_tips[None],
                 accelerator_tree=self.tree)
         try:
             self.pristine_upstream_tree = dir_to.open_workingtree()
@@ -1262,8 +1286,6 @@ class DistributionBranch(object):
             # Handle shared treeless repo's.
             self.pristine_upstream_tree = dir_to.create_workingtree()
         self.pristine_upstream_branch = self.pristine_upstream_tree.branch
-
-    _extract_upstream_tree = extract_upstream_tree
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
@@ -1314,7 +1336,7 @@ class DistributionBranch(object):
         assert isinstance(previous_version, str), \
             "Should pass upstream version as str, not Version."
         try:
-            upstream_tip = self.pristine_upstream_source.version_as_revision(
+            upstream_tips = self.pristine_upstream_source.version_as_revisions(
                     package, previous_version)
         except PackageVersionNotPresent:
             raise BzrCommandError("Unable to find the tag for the "
@@ -1322,10 +1344,16 @@ class DistributionBranch(object):
                     "%s" % (
                 previous_version,
                 self.pristine_upstream_source.tag_name(previous_version)))
-        self.extract_upstream_tree(upstream_tip, tempdir)
+        self.extract_upstream_tree(upstream_tips, tempdir)
+
+    def has_merged_upstream_revisions(self, this_revision, upstream_repository, upstream_revisions):
+        graph = self.branch.repository.get_graph(
+            other_repository=upstream_repository)
+        return all(graph.is_ancestor(upstream_revision, this_revision)
+                for upstream_revision in upstream_revisions.values())
 
     def merge_upstream(self, tarball_filenames, package, version, previous_version,
-            upstream_branch=None, upstream_revision=None, merge_type=None,
+            upstream_branch=None, upstream_revisions=None, merge_type=None,
             force=False):
         assert isinstance(version, str), \
             "Should pass version as str not %s" % str(type(version))
@@ -1344,12 +1372,10 @@ class DistributionBranch(object):
                 upstream_branch.lock_read()
             try:
                 if upstream_branch is not None:
-                    if upstream_revision is None:
-                        upstream_revision = upstream_branch.last_revision()
-                    graph = self.branch.repository.get_graph(
-                            other_repository=upstream_branch.repository)
-                    if not force and graph.is_ancestor(upstream_revision,
-                            self.branch.last_revision()):
+                    if upstream_revisions is None:
+                        upstream_revisions = { None: upstream_branch.last_revision() }
+                    if (not force and
+                        self.has_merged_upstream_revisions(self.branch.last_revision(), upstream_branch.repository, upstream_revisions)):
                         raise UpstreamBranchAlreadyMerged
                 upstream_tarballs = [
                     (os.path.abspath(fn), component, md5sum_filename(fn)) for
@@ -1364,7 +1390,7 @@ class DistributionBranch(object):
                     for (component, tag, revid) in self.import_upstream(tarball_dir,
                             package, version, parents, upstream_tarballs=upstream_tarballs,
                             upstream_branch=upstream_branch,
-                            upstream_revision=upstream_revision):
+                            upstream_revisions=upstream_revisions):
                         self._fetch_upstream_to_branch(revid)
                 finally:
                     shutil.rmtree(tarball_dir)

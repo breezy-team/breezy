@@ -583,7 +583,7 @@ class cmd_merge_upstream(Command):
                     'entry yourself, review the merge, and then commit.')
 
     def _do_merge(self, tree, tarball_filenames, package, version,
-            current_version, upstream_branch, upstream_revision, merge_type,
+            current_version, upstream_branch, upstream_revisions, merge_type,
             force):
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
@@ -592,7 +592,7 @@ class cmd_merge_upstream(Command):
                 in tarball_filenames]
         conflicts = db.merge_upstream(tarballs, package, version,
                 current_version, upstream_branch=upstream_branch,
-                upstream_revision=upstream_revision,
+                upstream_revisions=upstream_revisions,
                 merge_type=merge_type, force=force)
         return conflicts
 
@@ -739,15 +739,15 @@ class cmd_merge_upstream(Command):
                     raise BzrCommandError("merge-upstream takes only a "
                         "single --revision")
                 upstream_revspec = revision[0]
-                upstream_revision = upstream_revspec.as_revision_id(
-                    upstream_branch)
+                upstream_revisions = { None: upstream_revspec.as_revision_id(
+                    upstream_branch) }
             else:
-                upstream_revision = None
+                upstream_revisions = None
 
-            if version is None and upstream_revision is not None:
+            if version is None and upstream_revisions is not None:
                 # Look up the version from the upstream revision
                 version = upstream_branch_source.get_version(package,
-                    current_version, upstream_revision)
+                    current_version, upstream_revisions)
             elif version is None and primary_upstream_source is not None:
                 version = primary_upstream_source.get_latest_version(
                     package, current_version)
@@ -762,9 +762,9 @@ class cmd_merge_upstream(Command):
             assert isinstance(version, str)
             note("Using version string %s." % (version))
             # Look up the revision id from the version string
-            if upstream_revision is None and upstream_branch_source is not None:
+            if upstream_revisions is None and upstream_branch_source is not None:
                 try:
-                    upstream_revision = upstream_branch_source.version_as_revision(
+                    upstream_revisions = upstream_branch_source.version_as_revisions(
                         package, version)
                 except PackageVersionNotPresent:
                     raise BzrCommandError(
@@ -780,10 +780,10 @@ class cmd_merge_upstream(Command):
                 v3 = (source_format in [
                     FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
                 tarball_filenames = self._get_tarballs(config, tree, package,
-                    version, upstream_branch, upstream_revision, v3,
+                    version, upstream_branch, upstream_revisions, v3,
                     locations)
                 conflicts = self._do_merge(tree, tarball_filenames, package,
-                    version, current_version, upstream_branch, upstream_revision,
+                    version, current_version, upstream_branch, upstream_revisions,
                     merge_type, force)
             if (current_version is not None and
                 Version(current_version) >= Version(version)):
@@ -913,9 +913,9 @@ class cmd_import_dsc(Command):
                             "sure it is tagged as %r." % (last_version,
                                     db.pristine_upstream_source.tag_name(
                                         last_version.upstream_version)))
-                    upstream_tip = db.pristine_upstream_source.version_as_revision(
+                    upstream_tips = db.pristine_upstream_source.version_as_revisions(
                         changelog.package, last_version.upstream_version)
-                    db.extract_upstream_tree(upstream_tip, tempdir)
+                    db.extract_upstream_tree(upstream_tips, tempdir)
                 else:
                     db._create_empty_upstream_tree(tempdir)
                 self.import_many(db, files_list, orig_target)
@@ -993,7 +993,7 @@ class cmd_import_upstream(Command):
             if upstream is not None:
                 # See bug lp:309682
                 upstream.repository.fetch(branch.repository, parents[0])
-            db.extract_upstream_tree(parents[0], tempdir)
+            db.extract_upstream_tree({ None: parents[0] }, tempdir)
         else:
             db._create_empty_upstream_tree(tempdir)
         tree = db.branch.basis_tree()
@@ -1010,7 +1010,7 @@ class cmd_import_upstream(Command):
         tarballs = [(location, None, md5sum_filename(location))]
         for (component, tag_name, revid) in db.import_upstream_tarballs(
                 tarballs, None, version, parents, upstream_branch=upstream,
-                upstream_revision=upstream_revid):
+                upstream_revisions={ None: upstream_revid }):
             if component is None:
                 self.outf.write('Imported %s as tag:%s.\n' % (
                     location, tag_name))

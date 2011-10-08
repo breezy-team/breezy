@@ -39,13 +39,17 @@ from bzrlib.plugins.builddeb.util import (
     subprocess_setup,
     )
 
-from bzrlib import osutils
+from bzrlib import (
+    osutils,
+    revision as _mod_revision,
+    )
 from bzrlib.errors import (
     BzrError,
     NoSuchRevision,
     NoSuchTag,
     )
 from bzrlib.trace import (
+    mutter,
     note,
     warning,
     )
@@ -166,32 +170,43 @@ class PristineTarSource(UpstreamSource):
         :param parent_ids: Parent revisions
         :param tarballs: List of (path, component, md5)
         :param timestamp: Optional timestamp for new commits
-        :param author: Optional author for new commits
+        :param author: Optional author for new commitscopmone
         :return: List of tuples with (component, tag, revid)
         """
         ret = []
+        component_paths = [cp for (_, cp, _) in tarballs if cp is not None]
         for (tarball, component, md5) in tarballs:
+            if component is None:
+                exclude = component_paths
+            else:
+                exclude = []
             (tag, revid) = self.import_component_tarball(
-                package, version, tree, parent_ids, component,
-                md5, tarball, author=author, timestamp=timestamp)
+                    package, version, tree, parent_ids, component,
+                    md5, tarball, author=author, timestamp=timestamp,
+                    exclude=exclude)
             ret.append((component, tag, revid))
+        # FIXME: Handle multiple components
+        tree.branch.generate_revision_history(revid)
         return ret
 
     def import_component_tarball(self, package, version, tree, parent_ids,
-            component=None, md5=None, tarball=None, author=None, timestamp=None):
+            component=None, md5=None, tarball=None, author=None, timestamp=None,
+            subdir=None, exclude=None):
         """Import a tarball.
 
         :param package: Package name
         :param version: Upstream version
         :param component: Component name (None for base)
+        :param exclude: Exclude directories
         """
-        if component is not None:
-            raise BzrError("Importing non-base tarballs not yet supported")
-        tree.set_parent_ids(parent_ids)
+        if exclude is not None or subdir is not None:
+            raise NotImplementedError
+        if exclude is None:
+            exclude = []
         revprops = {}
         if md5 is not None:
             revprops["deb-md5"] = md5
-            delta = self.make_pristine_tar_delta(tree, tarball)
+            delta = self.make_pristine_tar_delta(tree, tarball, subdir=subdir)
             uuencoded = standard_b64encode(delta)
             if tarball.endswith(".tar.bz2"):
                 revprops["deb-pristine-delta-bz2"] = uuencoded
@@ -208,9 +223,31 @@ class PristineTarSource(UpstreamSource):
         message = "Import upstream version %s" % (version,)
         if component is not None:
             message += ", component %s" % component
-        revid = tree.commit(message, revprops=revprops, timestamp=timestamp,
-            timezone=timezone)
-        tag_name, _ = self.tag_version(version, revid=revid)
+        if len(parent_ids) == 0:
+            base_revid = _mod_revision.NULL_REVISION
+        else:
+            base_revid = parent_ids[0]
+        basis_tree = tree.branch.repository.revision_tree(base_revid)
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder(parents=parent_ids,
+                revprops=revprops, timestamp=timestamp, timezone=timezone)
+            builder.will_record_deletes()
+            try:
+                list(builder.record_iter_changes(tree, base_revid,
+                    tree.iter_changes(basis_tree)))
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
+            revid = builder.commit(message)
+            tag_name, _ = self.tag_version(version, revid=revid, component=component)
+            tree.update_basis_by_delta(revid, builder.get_basis_delta())
+        finally:
+            tree.unlock()
+        mutter(
+            'imported %s version %s component %r as revid %s, tagged %s',
+            package, version, component, revid, tag_name)
         return tag_name, revid
 
     def fetch_component_tarball(self, package, version, component, target_dir):
@@ -256,14 +293,16 @@ class PristineTarSource(UpstreamSource):
                 "revision %s", revid)
             return True
 
-    def version_as_revision(self, package, version, tarballs=None):
+    def version_as_revisions(self, package, version, tarballs=None):
         if tarballs is None:
-            return self.version_component_as_revision(package, version, component=None)
-        elif len(tarballs) > 1:
-            raise MultipleUpstreamTarballsNotSupported()
-        else:
-            return self.version_component_as_revision(package, version, tarballs[0][1],
-                tarballs[0][2])
+            # FIXME: What if there are multiple tarballs?
+            return {
+                None: self.version_component_as_revision(package, version, component=None) }
+        ret = {}
+        for (tarball, component, md5) in tarballs:
+            ret[component] = self.version_component_as_revision(
+                package, version, component, md5)
+        return ret
 
     def version_component_as_revision(self, package, version, component, md5=None):
         assert isinstance(version, str)
@@ -359,7 +398,7 @@ class PristineTarSource(UpstreamSource):
         finally:
             shutil.rmtree(tmpdir)
 
-    def make_pristine_tar_delta(self, tree, tarball_path):
+    def make_pristine_tar_delta(self, tree, tarball_path, subdir=None):
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
@@ -367,7 +406,7 @@ class PristineTarSource(UpstreamSource):
             try:
                 for (dp, ie) in tree.inventory.iter_entries():
                     ie._read_tree_state(dp, tree)
-                export(tree, dest, format='dir')
+                export(tree, dest, format='dir', subdir=subdir)
             finally:
                 tree.unlock()
             return make_pristine_tar_delta(dest, tarball_path)
