@@ -40,56 +40,6 @@ class _SmartClient(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self._medium)
 
-    def _send_request_no_retry(self, encoder, method, args, body=None,
-                               readv_body=None, body_stream=None):
-        encoder.set_headers(self._headers)
-        if body is not None:
-            if readv_body is not None:
-                raise AssertionError(
-                    "body and readv_body are mutually exclusive.")
-            if body_stream is not None:
-                raise AssertionError(
-                    "body and body_stream are mutually exclusive.")
-            encoder.call_with_body_bytes((method, ) + args, body)
-        elif readv_body is not None:
-            if body_stream is not None:
-                raise AssertionError(
-                    "readv_body and body_stream are mutually exclusive.")
-            encoder.call_with_body_readv_array((method, ) + args, readv_body)
-        elif body_stream is not None:
-            encoder.call_with_body_stream((method, ) + args, body_stream)
-        else:
-            encoder.call(method, *args)
-
-    def _send_request(self, protocol_version, method, args, body=None,
-                      readv_body=None, body_stream=None):
-        encoder, response_handler = self._construct_protocol(
-            protocol_version)
-        try:
-            self._send_request_no_retry(encoder, method, args, body=body,
-                readv_body=readv_body, body_stream=body_stream)
-        except errors.ConnectionReset, e:
-            # If we fail during the _send_request_no_retry phase, then we can
-            # be confident that the server did not get our request, because we
-            # haven't started waiting for the reply yet. So try the request
-            # again. We only issue a single retry, because if the connection
-            # really is down, there is no reason to loop endlessly.
-
-            # Connection is dead, so close our end of it.
-            self._medium.reset()
-            if body_stream is not None:
-                # We can't determine how much of body_stream got consumed
-                # before we noticed the connection is down, so we don't retry
-                # here.
-                raise
-            trace.log_exception_quietly()
-            trace.warning('ConnectionReset calling %s, retrying' % (method,))
-            encoder, response_handler = self._construct_protocol(
-                protocol_version)
-            self._send_request_no_retry(encoder, method, args, body=body,
-                readv_body=readv_body, body_stream=body_stream)
-        return response_handler
-
     def _run_call_hooks(self, method, args, body, readv_body):
         if not _SmartClient.hooks['call']:
             return
@@ -97,60 +47,12 @@ class _SmartClient(object):
         for hook in _SmartClient.hooks['call']:
             hook(params)
 
-    def _determine_protocol_version(self, method, args, body=None,
-        readv_body=None, body_stream=None, expect_response_body=True):
-        for protocol_version in [3, 2]:
-            if protocol_version == 2:
-                # If v3 doesn't work, the remote side is older than 1.6.
-                self._medium._remember_remote_is_before((1, 6))
-            response_handler = self._send_request(
-                protocol_version, method, args, body=body,
-                readv_body=readv_body, body_stream=body_stream)
-            try:
-                response_tuple = response_handler.read_response_tuple(
-                    expect_body=expect_response_body)
-            except errors.UnexpectedProtocolVersionMarker, err:
-                # TODO: We could recover from this without disconnecting if
-                # we recognise the protocol version.
-                warning(
-                    'Server does not understand Bazaar network protocol %d,'
-                    ' reconnecting.  (Upgrade the server to avoid this.)'
-                    % (protocol_version,))
-                self._medium.disconnect()
-                continue
-            except errors.ErrorFromSmartServer:
-                # If we received an error reply from the server, then it
-                # must be ok with this protocol version.
-                self._medium._protocol_version = protocol_version
-                raise
-            else:
-                self._medium._protocol_version = protocol_version
-                return response_tuple, response_handler
-        raise errors.SmartProtocolError(
-            'Server is not a Bazaar server: ' + str(err))
-
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             body_stream=None, expect_response_body=True):
         request = _SmartClientRequest(self, method, args, body=body,
             readv_body=readv_body, body_stream=body_stream,
             expect_response_body=expect_response_body)
         return request.call_and_read_response()
-
-    def _construct_protocol(self, version):
-        request = self._medium.get_request()
-        if version == 3:
-            request_encoder = protocol.ProtocolThreeRequester(request)
-            response_handler = message.ConventionalResponseHandler()
-            response_proto = protocol.ProtocolThreeDecoder(
-                response_handler, expect_version_marker=True)
-            response_handler.setProtoAndMediumRequest(response_proto, request)
-        elif version == 2:
-            request_encoder = protocol.SmartClientRequestProtocolTwo(request)
-            response_handler = request_encoder
-        else:
-            request_encoder = protocol.SmartClientRequestProtocolOne(request)
-            response_handler = request_encoder
-        return request_encoder, response_handler
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -238,10 +140,8 @@ class _SmartClientRequest(object):
             return self._call()
 
     def _call(self):
-        response_handler = self.client._send_request(
-            self.client._medium._protocol_version, self.method, self.args,
-            body=self.body, readv_body=self.readv_body,
-            body_stream=self.body_stream)
+        response_handler = self._send(
+            self.client._medium._protocol_version)
         response_tuple = response_handler.read_response_tuple(
             expect_body=self.expect_response_body)
         return (response_tuple, response_handler)
@@ -251,9 +151,7 @@ class _SmartClientRequest(object):
             if protocol_version == 2:
                 # If v3 doesn't work, the remote side is older than 1.6.
                 self.client._medium._remember_remote_is_before((1, 6))
-            response_handler = self.client._send_request(
-                protocol_version, self.method, self.args, body=self.body,
-                readv_body=self.readv_body, body_stream=self.body_stream)
+            response_handler = self._send(protocol_version)
             try:
                 response_tuple = response_handler.read_response_tuple(
                     expect_body=self.expect_response_body)
@@ -276,6 +174,70 @@ class _SmartClientRequest(object):
                 return response_tuple, response_handler
         raise errors.SmartProtocolError(
             'Server is not a Bazaar server: ' + str(err))
+
+    def _construct_protocol(self, version):
+        request = self.client._medium.get_request()
+        if version == 3:
+            request_encoder = protocol.ProtocolThreeRequester(request)
+            response_handler = message.ConventionalResponseHandler()
+            response_proto = protocol.ProtocolThreeDecoder(
+                response_handler, expect_version_marker=True)
+            response_handler.setProtoAndMediumRequest(response_proto, request)
+        elif version == 2:
+            request_encoder = protocol.SmartClientRequestProtocolTwo(request)
+            response_handler = request_encoder
+        else:
+            request_encoder = protocol.SmartClientRequestProtocolOne(request)
+            response_handler = request_encoder
+        return request_encoder, response_handler
+
+    def _send(self, protocol_version):
+        encoder, response_handler = self._construct_protocol(protocol_version)
+        try:
+            self._send_no_retry(encoder)
+        except errors.ConnectionReset, e:
+            # If we fail during the _send_no_retry phase, then we can
+            # be confident that the server did not get our request, because we
+            # haven't started waiting for the reply yet. So try the request
+            # again. We only issue a single retry, because if the connection
+            # really is down, there is no reason to loop endlessly.
+
+            # Connection is dead, so close our end of it.
+            self.client._medium.reset()
+            if self.body_stream is not None:
+                # We can't determine how much of body_stream got consumed
+                # before we noticed the connection is down, so we don't retry
+                # here.
+                raise
+            trace.log_exception_quietly()
+            trace.warning('ConnectionReset calling %s, retrying'
+                          % (self.method,))
+            encoder, response_handler = self._construct_protocol(
+                protocol_version)
+            self._send_no_retry(encoder)
+        return response_handler
+
+    def _send_no_retry(self, encoder):
+        encoder.set_headers(self.client._headers)
+        if self.body is not None:
+            if self.readv_body is not None:
+                raise AssertionError(
+                    "body and readv_body are mutually exclusive.")
+            if self.body_stream is not None:
+                raise AssertionError(
+                    "body and body_stream are mutually exclusive.")
+            encoder.call_with_body_bytes((self.method, ) + self.args, self.body)
+        elif self.readv_body is not None:
+            if self.body_stream is not None:
+                raise AssertionError(
+                    "readv_body and body_stream are mutually exclusive.")
+            encoder.call_with_body_readv_array((self.method, ) + self.args,
+                                               self.readv_body)
+        elif self.body_stream is not None:
+            encoder.call_with_body_stream((self.method, ) + self.args,
+                                          self.body_stream)
+        else:
+            encoder.call(self.method, *self.args)
 
 
 class SmartClientHooks(hooks.Hooks):

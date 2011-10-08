@@ -3378,19 +3378,24 @@ class Test_SmartClient(tests.TestCase):
         # XXX: need a test that smart_client._headers is passed to the request
         # encoder.
 
-    def test__send_request_no_retry_pipes(self):
+
+class Test_SmartClientRequest(tests.TestCase):
+
+    def test__send_no_retry_pipes(self):
         client_read, server_write = create_file_pipes()
         server_read, client_write = create_file_pipes()
         client_medium = medium.SmartSimplePipesClientMedium(client_read,
             client_write, base='/')
         smart_client = client._SmartClient(client_medium)
+        smart_request = client._SmartClientRequest(smart_client,
+            'hello', ())
         # Close the server side
         server_read.close()
-        encoder, response_handler = smart_client._construct_protocol(3)
+        encoder, response_handler = smart_request._construct_protocol(3)
         self.assertRaises(errors.ConnectionReset,
-            smart_client._send_request_no_retry, encoder, 'hello', ())
+            smart_request._send_no_retry, encoder)
 
-    def test__send_request_read_response_sockets(self):
+    def test__send_read_response_sockets(self):
         listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listen_sock.bind(('127.0.0.1', 0))
         listen_sock.listen(1)
@@ -3398,16 +3403,17 @@ class Test_SmartClient(tests.TestCase):
         client_medium = medium.SmartTCPClientMedium(host, port, '/')
         client_medium._ensure_connection()
         smart_client = client._SmartClient(client_medium)
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
         # Accept the connection, but don't actually talk to the client.
         server_sock, _ = listen_sock.accept()
         server_sock.close()
         # Sockets buffer and don't really notice that the server has closed the
         # connection until we try to read again.
-        handler = smart_client._send_request(3, 'hello', ())
+        handler = smart_request._send(3)
         self.assertRaises(errors.ConnectionReset,
             handler.read_response_tuple, expect_body=False)
 
-    def test__send_request_retries_on_write(self):
+    def test__send_retries_on_write(self):
         response = StringIO()
         output = StringIO()
         vendor = FirstRejectedStringIOSSHVendor(response, output)
@@ -3415,7 +3421,8 @@ class Test_SmartClient(tests.TestCase):
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
         smart_client = client._SmartClient(client_medium)
-        handler = smart_client._send_request(3, 'hello', ())
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        handler = smart_request._send(3)
         message_sent = output.getvalue()
         self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
         self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
@@ -3428,7 +3435,7 @@ class Test_SmartClient(tests.TestCase):
             ],
             vendor.calls)
 
-    def test__send_request_doesnt_retry_read_failure(self):
+    def test__send_doesnt_retry_read_failure(self):
         response = StringIO()
         output = StringIO()
         vendor = FirstRejectedStringIOSSHVendor(response, output,
@@ -3437,7 +3444,8 @@ class Test_SmartClient(tests.TestCase):
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
         smart_client = client._SmartClient(client_medium)
-        handler = smart_client._send_request(3, 'hello', ())
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        handler = smart_request._send(3)
         message_sent = output.getvalue()
         self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
         self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
@@ -3448,9 +3456,9 @@ class Test_SmartClient(tests.TestCase):
             vendor.calls)
         self.assertRaises(errors.ConnectionReset, handler.read_response_tuple)
 
-    def test__send_request_doesnt_retry_body_stream(self):
+    def test__send_doesnt_retry_body_stream(self):
         # We don't know how much of body_stream would get iterated as part of
-        # _send_request before it failed to actually send the request, so we
+        # _send before it failed to actually send the request, so we
         # just always fail in this condition.
         response = StringIO()
         output = StringIO()
@@ -3459,8 +3467,9 @@ class Test_SmartClient(tests.TestCase):
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
         smart_client = client._SmartClient(client_medium)
-        self.assertRaises(errors.ConnectionReset,
-            smart_client._send_request, 3, 'hello', (), body_stream=['a', 'b'])
+        smart_request = client._SmartClientRequest(smart_client, 'hello', (),
+            body_stream=['a', 'b'])
+        self.assertRaises(errors.ConnectionReset, smart_request._send, 3)
         # We got one connect, but it fails, so we disconnect, but we don't
         # retry it
         self.assertEqual(
