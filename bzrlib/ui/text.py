@@ -114,8 +114,9 @@ class TextUIFactory(UIFactory):
                     help += c[(shortcut + 2):]
                     shortcut = c[shortcut + 1]
                 else:
-                    help = c.replace('&', '')
+                    c = c.replace('&', '')
                     shortcut = c[0]
+                    help = '[%s]%s' % (shortcut, c[1:])
                 shortcut = shortcut.lower()
                 if shortcut in self.alternatives:
                     raise ValueError("duplicated shortcut: %s" % shortcut)
