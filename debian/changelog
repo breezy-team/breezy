@@ -7,7 +7,11 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
   * Add commit-message-from-changelog option for those who do not
     want commit message set automatically
 
- -- Jonathan Riddell <jriddell@ubuntu.com>  Mon, 03 Oct 2011 12:28:54 +0100
+  [ Jelmer Vernooij ]
+  * Support importing and building packages with multiple upstream
+    tarballs. LP: #653757, LP: #664834
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 27 Sep 2011 02:40:03 +0200
 
 bzr-builddeb (2.7.9) unstable; urgency=low
 
