@@ -394,7 +394,11 @@ class TestControlDir(TestCaseWithControlDir):
             self.assertFalse(repo.make_working_trees())
 
         a_dir = tree.bzrdir.clone(self.get_url('repo/a'))
-        a_dir.open_branch()
+        a_branch = a_dir.open_branch()
+        # If the new control dir actually uses the repository, it should
+        # not have a working tree.
+        if not a_branch.repository.has_same_location(repo):
+            raise TestNotApplicable('new control dir does not use repository')
         self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
 
     def test_clone_respects_stacked(self):
