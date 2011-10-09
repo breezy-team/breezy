@@ -557,28 +557,41 @@ class cmd_revno(Command):
     takes_args = ['location?']
     takes_options = [
         Option('tree', help='Show revno of working tree'),
+        'revision',
         ]
 
     @display_command
-    def run(self, tree=False, location=u'.'):
+    def run(self, tree=False, location=u'.', revision=None):
+        if revision is not None and tree:
+            raise errors.BzrCommandError(gettext("--tree and --revision can "
+                "not be used together"))
+
         if tree:
             try:
                 wt = WorkingTree.open_containing(location)[0]
                 self.add_cleanup(wt.lock_read().unlock)
             except (errors.NoWorkingTree, errors.NotLocalUrl):
                 raise errors.NoWorkingTree(location)
+            b = wt.branch
             revid = wt.last_revision()
-            try:
-                revno_t = wt.branch.revision_id_to_dotted_revno(revid)
-            except errors.NoSuchRevision:
-                revno_t = ('???',)
-            revno = ".".join(str(n) for n in revno_t)
         else:
             b = Branch.open_containing(location)[0]
             self.add_cleanup(b.lock_read().unlock)
-            revno = b.revno()
+            if revision:
+                if len(revision) != 1:
+                    raise errors.BzrCommandError(gettext(
+                        "Tags can only be placed on a single revision, "
+                        "not on a range"))
+                revid = revision[0].as_revision_id(b)
+            else:
+                revid = b.last_revision()
+        try:
+            revno_t = b.revision_id_to_dotted_revno(revid)
+        except errors.NoSuchRevision:
+            revno_t = ('???',)
+        revno = ".".join(str(n) for n in revno_t)
         self.cleanup_now()
-        self.outf.write(str(revno) + '\n')
+        self.outf.write(revno + '\n')
 
 
 class cmd_revision_info(Command):

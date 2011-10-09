@@ -34,6 +34,9 @@ Improvements
 * ``bzr version-info`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #238705)
 
+* ``bzr revno`` now takes a ``--revision`` argument.
+  (Jelmer Vernooij, #870649)
+
 Bug Fixes
 *********
 
