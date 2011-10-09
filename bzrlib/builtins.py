@@ -985,6 +985,10 @@ class cmd_pull(Command):
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
 
+    The --verbose option will display the revisions pulled using the log_format
+    configuration option. You can use a different format by overriding it with
+    -Olog_format=<other_format>.
+
     Note: The location can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
     with bzr send.
@@ -1120,6 +1124,10 @@ class cmd_push(Command):
     --no-remember to avoid setting it).  After that, you can omit the
     location to use the default.  To change the default, use --remember. The
     value will only be saved if the remote location can be accessed.
+
+    The --verbose option will display the revisions pushed using the log_format
+    configuration option. You can use a different format by overriding it with
+    -Olog_format=<other_format>.
     """
 
     _see_also = ['pull', 'update', 'working-trees']

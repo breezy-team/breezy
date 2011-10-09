@@ -32,13 +32,25 @@ Improvements
 Bug Fixes
 *********
 
+* Fixed an infinite loop when creating a repo at the root of the filesystem, 
+  i.e. "/", due to posixpath.normpath() not collapsing 2 leading slashes into 
+  one, thus respecting the POSIX standard, but making relpath() loop infinitely.
+  (Florian Vichot, #861008)
+
 * Fixed loading of external merge tools from config to properly decode
   command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+* Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
+  pyrex code with new Cython versions. (Denys Duchier, #837221)
 
 * Prevent several kinds of OverflowError and other fallout from failing to fit
   stat fields into four bytes in dirstate pack_stat implementations.
   (Martin Packman, #683191 #706957)
 
+* Return early from create_delta_index_from_delta given tiny inputs. This
+  avoids raising a spurious MemoryError on certain platforms such as AIX.
+  (John Arbash Meinel, #856731)
+  
 Documentation
 *************
 
@@ -62,6 +74,9 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Really corrupt the pack file without depending on a special length or value.
+  (Vincent Ladeuil, #807032)
 
 
 bzr 2.4.1

@@ -121,6 +121,17 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu',
                            'lp:ubuntu')
 
+    def test_ubuntu_invalid(self):
+        """Invalid ubuntu urls don't crash.
+
+        :seealso: http://pad.lv/843900
+        """
+        # This ought to be natty-updates.
+        self.assertRaises(errors.InvalidURL,
+            self.assertResolve,
+            '',
+            'ubuntu:natty/updates/smartpm')
+
     def test_ubuntu_apt(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/apt',
                            'lp:ubuntu/apt')

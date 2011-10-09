@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5b2
+bzr 2.5b3
 #########
 
-:2.5b2: NOT RELEASED YET
+:2.5b3: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -20,21 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* A new ``-O`` standard option (common to all commands) have been added. It
-  provides a value for a config option in the ``-Oname=value`` form that
-  takes precedence over all definitions found in config files.  It can be
-  used multiple times to override different options.
-  (Vincent Ladeuil, #491196)
-
-* ``bzr serve`` will now disconnect clients if they have not issued an RPC
-  request after 5minutes. On POSIX platforms, this will also happen for
-  ``bzr serve --inet``. This can be overridden with the configuration
-  variable ``serve.client_timeout`` or in the command line parameter
-  ``bzr serve --client-timeout=X``. Further, it is possible to request
-  ``bzr serve [--inet]`` to shutdown gracefully by sending SIGHUP. It will
-  finish the current request, and then close the connection.
-  (John Arbash Meinel, #824797, #795025)
-
+* The ``log_format`` configuration can be used with ``-Olog_format=line`` to
+  change the format ``push`` and ``pull`` use to display the
+  revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
+  format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
 
 Improvements
 ************
@@ -42,43 +31,14 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
-  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
-
-* ``bzr info -v`` can now be run against branches that don't support
-  ``last_revision_info``, in which case the branch information will simply
-  not be displayed. (Jelmer Vernooij)
+* ``bzr version-info`` now takes a ``--revision`` argument.
+  (Jelmer Vernooij, #238705)
 
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
-
-* ``bzr shelve`` can now be used in emacs shells as the input handling is
-  turned into a line-basde one when ``INSIDE_EMACS`` is set (which is the
-  case for all recent emacs versions). (Vincent Ladeuil, #856261)
-
-* ``bzr tags`` can now be used against remote repositories that do
-  not provide access to the revision graph. (Jelmer Vernooij, #858942)
-
-* ``bzr update PATH`` will stop if you seem to be asking it to update
-  anything less than a whole tree, because that's not supported by bzr's
-  concept that the whole tree has a single basis revision.  Previously, it
-  would go ahead and update the whole tree, which was surprising.
-  (Martin Pool, #557886)
-
-* Don't crash if bzrlib.initialize() has not been called while accessing
-  configs.  (Vincent Ladeuil, #863401)
-
-* Redirects between http and https no longer discard path information
-  in some cases. (Jelmer Vernooij, #853765)
-
-* The ``--overwrite`` argument to ``bzr push`` and ``bzr pull`` no longer
-  reports all tags as changed. (Jelmer Vernooij, #845396)
-
-* ``WorkingTree.get_file_mtime`` now raises NoSuchId if a file id is
-  specified that is unknown. (Jelmer Vernooij, #847435)
 
 Documentation
 *************
@@ -91,12 +51,132 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.5b2
+#########
+
+This is the second beta of the 2.5 series, leading to a 2.5.0 release in
+February 2012. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+This release includes more filtering options for ``bzr log``, idle
+connections handling for ``bzr serve``, a ``development-colo`` experimental
+format to flesh out the colocated branches UI, better support for foreign
+formats, enhancements to the config framework and more.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
+:2.5b2: 2011-10-06
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
+
+* A new ``-O`` standard option (common to all commands) have been added. It
+  provides a value for a config option in the ``-Oname=value`` form that
+  takes precedence over all definitions found in config files.  It can be
+  used multiple times to override different options.
+  (Vincent Ladeuil, #491196)
+
+* ``bzr log`` now has an option called ``--omit-merges`` to omit
+  those commits that merged branches, i.e. those having more than one
+  parent.
+  In order to avoid confusion, the previous command line option
+  ``--include-merges`` has been renamed to ``--include-merged``.
+  The old name of the command line option will still be accepted.
+  The name change also affects ``bzr missing``.
+  (Martin von Gagern)
+
+* ``bzr serve`` will now disconnect clients if they have not issued an RPC
+  request after 5minutes. On POSIX platforms, this will also happen for
+  ``bzr serve --inet``. This can be overridden with the configuration
+  variable ``serve.client_timeout`` or in the command line parameter
+  ``bzr serve --client-timeout=X``. Further, it is possible to request
+  ``bzr serve [--inet]`` to shutdown gracefully by sending SIGHUP. It will
+  finish the current request, and then close the connection.
+  (John Arbash Meinel, #824797, #795025)
+
+* The new experimental format ``development-colo`` supports colocated
+  branches. This format will eventually be merged back into the ``2a``
+  format when it has stabilized and there is adequate UI support for
+  colocated branches.
+  (Jelmer Vernooij, #831481)
+
+Improvements
+************
+
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
+* ``bzr info -v`` can now be run against branches that don't support
+  ``last_revision_info``, in which case the branch information will simply
+  not be displayed. (Jelmer Vernooij)
+
+Bug Fixes
+*********
+
+* ``bzr shelve`` can now be used in emacs shells as the input handling is
+  turned into a line-based one when ``INSIDE_EMACS`` is set (which is the
+  case for all recent emacs versions). (Vincent Ladeuil, #856261)
+
+* ``bzr tags`` can now be used against remote repositories that do
+  not provide access to the revision graph. (Jelmer Vernooij, #858942)
+
+* ``bzr update PATH`` will stop if you seem to be asking it to update
+  anything less than a whole tree, because that's not supported by ``bzr``'s
+  concept that the whole tree has a single basis revision.  Previously, it
+  would go ahead and update the whole tree, which was surprising.
+  (Martin Pool, #557886)
+
+* Don't crash if ``bzrlib.initialize()`` has not been called while accessing
+  configs.  (Vincent Ladeuil, #863401)
+
+* Redirects between http and https no longer discard path information
+  in some cases. (Jelmer Vernooij, #853765)
+
+* The ``--overwrite`` argument to ``bzr push`` and ``bzr pull`` no longer
+  reports all tags as changed. (Jelmer Vernooij, #845396)
+
+* ``WorkingTree.get_file_mtime`` now raises NoSuchId if a file id is
+  specified that is unknown. (Jelmer Vernooij, #847435)
+
+
+API Changes
+***********
+
 * ``Branch.get_revision_delta`` has been deprecated. Use
   ``Repository.get_revision_delta`` instead. (Jelmer Vernooij, #859712)
+
+* Plugins that implement custom protocols for ``bzr serve`` should now
+  also take an argument ``timeout``. This is used by the the bzr protocol
+  to close a connection if a client has been idle for more than X seconds.
+  (Default 5minutes). (John Arbash Meinel)
 
 * ``Repository.fileids_altered_by_revision_ids`` has been moved to
   ``VersionedFileRepository`` and is no longer part of the standard
   ``Repository`` interface. (Jelmer Vernooij)
+
+* The argument ``include_merges`` to ``missing.find_unmerged`` has
+  been renamed to ``include_merged``. The old name is still supported
+  for now but will cause a deprecation warning. (Martin von Gagern)
 
 * The new method ``ControlDirFormat.is_initializable()`` returns a boolean
   indicating whether or not it is possible to use any of the
@@ -105,9 +185,6 @@ API Changes
 
 Internals
 *********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
 
 * ``Branch`` objects can now use a config stack with the newly introduced
   ``get_config_stack()``. Both ``get_config`` and ``get_config_stack`` can
@@ -120,10 +197,6 @@ Testing
 * Test scripts can now use ``bzr shelve`` and provide their input as
   complete lines. (Vincent Ladeuil, #856261)
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
 * Really corrupt the pack file without depending on a special length or value.
   (Vincent Ladeuil, #807032)
 
@@ -134,9 +207,18 @@ bzr 2.5b1
 :2.5b1: 2011-09-15
 
 This is the first beta of the 2.5 series, leading up to a 2.5.0
-release in February 2012.  Beta releases are suitable for everyday use
-but may cause some incompatibilities with plugins.  Some plugins may need
-small updates to work with 2.5b1.
+release in February 2012.
+
+This release includes better support for gpg signing, better support for
+i18n (mostly command help and error messages), more options to filter ``bzr
+log`` output, more support for colocated branches ("location,branch=XXX"
+syntax), better feedback on updated tags for various commands, faster
+branching into an empty repository, enhancements to the config framework and
+more.
+
+Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.  Some plugins may need small updates to work
+with 2.5b1.
 
 External Compatibility Breaks
 *****************************
@@ -198,15 +280,6 @@ New Features
   while ``--match-message, --match-author, --match-committer`` and
   ``--match-bugs`` match each of those fields. (Jacek Sieka)
 
-* ``bzr log`` now has an option called ``--omit-merges`` to ommit
-  those commits that merged branches, i.e. those having more than one
-  parent.
-  In order to avoid confusion, the previous command line option
-  ``--include-merges`` has been renamed to ``--include-merged``.
-  The old name of the command line option will still be accepted.
-  The name change also affects ``bzr missing``.
-  (Martin von Gagern)
-
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
 
@@ -224,14 +297,8 @@ New Features
   (Jonathan Riddell, #804254)
 
 * Translations are now enabled for command help, errors and globally
-  for any message using gettext given on output.  (Jonathan Riddell,
+  for any message using ``gettext`` given on output.  (Jonathan Riddell,
   INADA Naoki, #83941)
-
-* The new experimental format ``development-colo`` supports colocated
-  branches. This format will eventually be merged back into the ``2a``
-  format when it has stabilized and there is adequate UI support for
-  colocated branches.
-  (Jelmer Vernooij, #831481)
 
 Improvements
 ************
@@ -271,7 +338,7 @@ Improvements
   if no bug tracker was specified on the command line.
   (Jelmer Vernooij, #334860)
 
-* Use gettext.NullTranslations in i18n to allow use of i18n even when
+* Use ``gettext.NullTranslations`` in i18n to allow use of i18n even when
   translations are not turned on. (Jonathan Riddell)
 
 Bug Fixes
@@ -358,11 +425,6 @@ API Changes
 * New registry ``OptionRegistry`` specialized for configuration options.
   (Vincent Ladeuil)
 
-* Plugins that implement custom protocols for ``bzr serve`` should now
-  also take an argument ``timeout``. This is used by the the bzr protocol
-  to close a connection if a client has been idle for more than X seconds.
-  (Default 5minutes). (John Arbash Meinel)
-
 * Remove ``AtomicFile.closed`` which has been deprecated in bzr 0.10.
   (Vincent Ladeuil)
 
@@ -404,11 +466,6 @@ API Changes
   separate ``_user``, ``_password``, ``_port``, ``_scheme``, ``_host``
   and ``_path`` attributes. Proxies are provided for the moment but
   may be removed in the future. (Jelmer Vernooij)
-
-* The argument ``include_merges`` to ``missing.find_unmerged`` has
-  been renamed to ``include_merged``. The old name is still supported
-  for now but will cause a deprecation warning. (Martin von Gagern)
-
 
 Internals
 *********
