@@ -66,9 +66,6 @@ class TextUIFactory(UIFactory):
         """ Helper class for choose implementation.
         """
 
-        class InputEOF(StandardError):
-            pass
-
         def __init__(self, ui, msg, choices, default):
             self.ui = ui
             self._setup_mode()
@@ -134,7 +131,7 @@ class TextUIFactory(UIFactory):
         def _getline(self):
             line = self.ui.stdin.readline()
             if '' == line:
-                raise self.InputEOF
+                raise EOFError
             return line.strip()
 
         def _getchar(self):
@@ -142,7 +139,7 @@ class TextUIFactory(UIFactory):
             if char == chr(3): # INTR
                 raise KeyboardInterrupt
             if char == chr(4): # EOF (^d, C-d)
-                raise self.InputEOF
+                raise EOFError
             return char
 
         def interact(self):
@@ -159,7 +156,7 @@ class TextUIFactory(UIFactory):
                     self.ui.prompt(self.prompt)
                 try:
                     choice = getchoice()
-                except self.InputEOF:
+                except EOFError:
                     self.ui.stderr.write('\n')
                     return None
                 except KeyboardInterrupt:
