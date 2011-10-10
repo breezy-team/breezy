@@ -104,7 +104,6 @@ class _ChooseUI(object):
             if index == default:
                 self.alternatives[''] = choice
                 self.alternatives['\r'] = choice
-                self.alternatives['\n'] = choice
             help_list.append(help)
             index += 1
 
