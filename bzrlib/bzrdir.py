@@ -1728,6 +1728,10 @@ class BzrDirFormat(controldir.ControlDirFormat):
         :return: None.
         """
 
+    def supports_transport(self, transport):
+        # bzr formats can be opened over all known transports
+        return True
+
 
 class BzrDirMetaFormat1(BzrDirFormat):
     """Bzr meta control format 1

@@ -63,6 +63,10 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``ControlDirFormat`` now has a new method ``supports_transport``
+  which format implementations can use whether or not they can access
+  a control dir over a particular transport. (Jelmer Vernooij)
+
 Testing
 *******
 
