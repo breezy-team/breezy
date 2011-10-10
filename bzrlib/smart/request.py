@@ -491,9 +491,6 @@ class SmartServerIsReadonly(SmartServerRequest):
 #   read    This is purely a read request, so retrying it is perfectly ok.
 #   idem    An idempotent write request. Something like 'put' where if you put
 #           the same bytes twice you end up with the same final bytes.
-#   mutate  State is updated in a way that replaying that request results in a
-#           different state. For example 'append' writes more bytes to a given
-#           file. If append succeeds, it moves the file pointer.
 #   semi    This is a request that isn't strictly idempotent, but doesn't
 #           result in corruption if it is retried. This is for things like
 #           'lock' and 'unlock'. If you call lock, it updates the disk
@@ -510,6 +507,9 @@ class SmartServerIsReadonly(SmartServerRequest):
 #           consumed. This request is 'safe' in that if we determine the
 #           connection is closed before we consume the stream, we can try
 #           again.
+#   mutate  State is updated in a way that replaying that request results in a
+#           different state. For example 'append' writes more bytes to a given
+#           file. If append succeeds, it moves the file pointer.
 request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest', info='mutate')
