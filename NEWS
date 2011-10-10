@@ -27,6 +27,9 @@
   * Cope with tags pointing at trees when cloning local git repositories.
     (Jelmer Vernooij, #861973)
 
+  * Remove pending entries when converting directory into tree reference.
+    (Jelmer Vernooij, #871595)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)

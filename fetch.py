@@ -193,16 +193,20 @@ def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
     file_id = lookup_file_id(path)
+    invdelta = []
     ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
-    if base_hexsha is None:
-        oldpath = None
+    if base_hexsha is not None:
+        old_path = path.decode("utf-8") # Renames are not supported yet
+        if stat.S_ISDIR(base_mode):
+            invdelta.extend(remove_disappeared_children(base_inv, old_path,
+                lookup_object(base_hexsha), [], lookup_object))
     else:
-        oldpath = path
+        old_path = None
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream([
         ChunkedContentFactory((file_id, ie.revision), (), None, [])])
-    invdelta = [(oldpath, path, file_id, ie)]
+    invdelta.append((old_path, path, file_id, ie))
     return invdelta, {}
 
 

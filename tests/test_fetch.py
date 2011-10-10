@@ -19,6 +19,7 @@ from dulwich.objects import (
     Blob,
     Tag,
     Tree,
+    S_IFGITLINK,
     )
 from dulwich.repo import (
     Repo as GitRepo,
@@ -51,6 +52,7 @@ from bzrlib.tests import (
 from bzrlib.plugins.git.fetch import (
     import_git_blob,
     import_git_tree,
+    import_git_submodule,
     )
 from bzrlib.plugins.git.mapping import (
     BzrGitMappingv1,
@@ -451,3 +453,23 @@ class ImportObjects(TestCaseWithTransport):
         ie = ret[1][3]
         self.assertEquals("file", ie.kind)
         self.assertEquals(True, ie.executable)
+
+    def test_directory_converted_to_submodule(self):
+        base_inv = Inventory()
+        base_inv.add_path("foo", "directory")
+        base_inv.add_path("foo/bar", "file")
+        othertree = Blob.from_string("someotherthing")
+        blob = Blob.from_string("bar")
+        tree = Tree()
+        tree.add("bar", 0160000, blob.id)
+        objects = { tree.id: tree }
+        ret, child_modes = import_git_submodule(self._texts, self._mapping, "foo", "foo",
+                (tree.id, othertree.id), base_inv, base_inv.root.file_id, "somerevid", [],
+                objects.__getitem__, (stat.S_IFDIR | 0755, S_IFGITLINK), DummyStoreUpdater(),
+                self._mapping.generate_file_id)
+        self.assertEquals(child_modes, {})
+        self.assertEquals(2, len(ret))
+        self.assertEquals(ret[0], ("foo/bar", None, base_inv.path2id("foo/bar"), None))
+        self.assertEquals(ret[1][:3], ("foo", "foo", self._mapping.generate_file_id("foo")))
+        ie = ret[1][3]
+        self.assertEquals(ie.kind, "tree-reference")
