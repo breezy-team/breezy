@@ -738,8 +738,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         except IOError, e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
-                    "Error trying to write to subprocess:\n%s"
-                    % (e,))
+                    "Error trying to write to subprocess:\n%s" % (e,))
             raise
         self._report_activity(len(bytes), 'write')
 

@@ -1289,6 +1289,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         _ProtocolThreeEncoder.__init__(self, medium_request.accept_bytes)
         self._medium_request = medium_request
         self._headers = {}
+        self.body_stream_started = None
 
     def set_headers(self, headers):
         self._headers = headers.copy()
@@ -1354,6 +1355,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             if path is not None:
                 mutter('                  (to %s)', path)
             self._request_start_time = osutils.timer_func()
+        self.body_stream_started = False
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
@@ -1361,6 +1363,9 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         #       have finished sending the stream.  We would notice at the end
         #       anyway, but if the medium can deliver it early then it's good
         #       to short-circuit the whole request...
+        # Provoke any ConnectionReset failures before we start the body stream.
+        self.flush()
+        self.body_stream_started = True
         for exc_info, part in _iter_with_errors(stream):
             if exc_info is not None:
                 # Iterating the stream failed.  Cleanly abort the request.

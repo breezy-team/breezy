@@ -273,9 +273,13 @@ class _SmartClientRequest(object):
             # Connection is dead, so close our end of it.
             self.client._medium.reset()
             if (('noretry' in debug.debug_flags)
-                or self.body_stream is not None):
+                or (self.body_stream is not None
+                    and encoder.body_stream_started)):
                 # We can't restart a body_stream that has been partially
                 # consumed, so we don't retry.
+                # Note: We don't have to worry about
+                #   SmartClientRequestProtocolOne or Two, because they don't
+                #   support client-side body streams.
                 raise
             trace.warning('ConnectionReset calling %r, retrying'
                           % (self.method,))
