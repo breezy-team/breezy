@@ -28,6 +28,7 @@ import threading
 import bzrlib
 from bzrlib import (
         bzrdir,
+        debug,
         errors,
         osutils,
         tests,
@@ -3546,6 +3547,18 @@ class Test_SmartClientRequest(tests.TestCase):
                          '\x00\x00\x00\x02de'   # empty headers
                          's\x00\x00\x00\tl5:helloe',
                          output.getvalue())
+
+    def test__send_disabled_retry(self):
+        debug.debug_flags.add('noretry')
+        output, vendor, smart_client = self.make_client_with_failing_medium()
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        self.assertRaises(errors.ConnectionReset, smart_request._send, 3)
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+             ('close',),
+            ],
+            vendor.calls)
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
