@@ -75,6 +75,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Fix the race for TestingThreadingTCPServer in
+  test_server_crash_while_responding. (Vincent Ladeuil, #869366)
+
 * Really corrupt the pack file without depending on a special length or value.
   (Vincent Ladeuil, #807032)
 
