@@ -81,7 +81,7 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
 
 class TestTCPServerInAThread(tests.TestCase):
 
-    scenarios = [ 
+    scenarios = [
         (name, {'server_class': getattr(test_server, name)})
         for name in
         ('TestingTCPServer', 'TestingThreadingTCPServer')]
@@ -182,10 +182,12 @@ class TestTCPServerInAThread(tests.TestCase):
 
         class FailingDuringResponseHandler(TCPConnectionHandler):
 
+            # We use 'request' instead of 'self' below because the test matters
+            # more and we need a container to properly set connection_thread.
             def handle_connection(request):
                 req = request.rfile.readline()
                 # Capture the thread and make it use 'caught' so we can wait on
-                # the even that will be set when the exception is caught. We
+                # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
                 self.connection_thread = threading.currentThread()
                 self.connection_thread.set_sync_event(caught)
@@ -229,9 +231,11 @@ class TestTCPServerInAThread(tests.TestCase):
 
         class FailingWhileServingConnectionHandler(TCPConnectionHandler):
 
+            # We use 'request' instead of 'self' below because the test matters
+            # more and we need a container to properly set connection_thread.
             def handle(request):
                 # Capture the thread and make it use 'caught' so we can wait on
-                # the even that will be set when the exception is caught. We
+                # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
                 self.connection_thread = threading.currentThread()
                 self.connection_thread.set_sync_event(caught)
@@ -239,6 +243,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
         server = self.get_server(
             connection_handler_class=FailingWhileServingConnectionHandler)
+        self.assertEquals(True, server.server.serving)
         # Install the exception swallower
         server.set_ignored_exceptions(CantServe)
         client = self.get_client()
@@ -252,5 +257,5 @@ class TestTCPServerInAThread(tests.TestCase):
         # here). More precisely, the exception *has* been caught and captured
         # but it is cleared when joining the thread (or trying to acquire the
         # exception) and as such won't propagate to the server thread.
-        self.connection_thread.pending_exception()
-        server.pending_exception()
+        self.assertIs(None, self.connection_thread.pending_exception())
+        self.assertIs(None, server.pending_exception())
