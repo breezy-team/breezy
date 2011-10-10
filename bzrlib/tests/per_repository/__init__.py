@@ -98,7 +98,7 @@ class TestCaseWithRepository(TestCaseWithControlDir):
         self.assertEquals(format.repository_format, self.repository_format)
         return format
 
-    def make_repository(self, relpath, shared=False, format=None):
+    def make_repository(self, relpath, shared=None, format=None):
         format = self.resolve_format(format)
         repo = super(TestCaseWithRepository, self).make_repository(
             relpath, shared=shared, format=format)

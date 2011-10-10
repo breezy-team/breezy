@@ -34,11 +34,17 @@ Improvements
 * ``bzr version-info`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #238705)
 
+* ``bzr revno`` now takes a ``--revision`` argument.
+  (Jelmer Vernooij, #870649)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr mkdir --quiet`` now does not print a line for every created
+  directory. (Martin von Gagern, #869915)
 
 Documentation
 *************
