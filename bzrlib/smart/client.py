@@ -22,6 +22,7 @@ from bzrlib.smart import request as _mod_request
 import bzrlib
 from bzrlib.smart import message, protocol
 from bzrlib import (
+    debug,
     errors,
     hooks,
     trace,
@@ -155,7 +156,7 @@ class _SmartClientRequest(object):
 
     def _is_safe_to_send_twice(self):
         """Check if the current method is re-entrant safe."""
-        if self.body_stream is not None:
+        if self.body_stream is not None or 'noretry' in debug.debug_flags:
             # We can't restart a body stream that has already been consumed.
             return False
         request_type = _mod_request.request_handlers.get_info(self.method)
@@ -269,13 +270,14 @@ class _SmartClientRequest(object):
 
             # Connection is dead, so close our end of it.
             self.client._medium.reset()
-            if self.body_stream is not None:
+            if (('noretry' in debug.debug_flags)
+                or self.body_stream is not None):
                 # We can't restart a body_stream that has been partially
                 # consumed, so we don't retry.
                 raise
-            trace.log_exception_quietly()
-            trace.warning('ConnectionReset calling %s, retrying'
+            trace.warning('ConnectionReset calling %r, retrying'
                           % (self.method,))
+            trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(
                 protocol_version)
             self._send_no_retry(encoder)
