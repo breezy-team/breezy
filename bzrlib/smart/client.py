@@ -195,7 +195,9 @@ class _SmartClientRequest(object):
             trace.warning('ConnectionReset reading response for %r, retrying'
                           % (self.method,))
             trace.log_exception_quietly()
-            response_handler = self._send(protocol_version)
+            encoder, response_handler = self._construct_protocol(
+                protocol_version)
+            self._send_no_retry(encoder)
             response_tuple = response_handler.read_response_tuple(
                 expect_body=self.expect_response_body)
         return (response_tuple, response_handler)
