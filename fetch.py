@@ -362,6 +362,14 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
             old_obj, new_obj))
 
 
+def ensure_inventories_in_repo(repo, trees):
+    real_inv_vf = repo.inventories.without_fallbacks()
+    for t in trees:
+        revid = t.get_revision_id()
+        if not real_inv_vf.get_parent_map([(revid, )]):
+            repo.add_inventory(revid, t.inventory, t.get_parent_ids())
+
+
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
@@ -377,6 +385,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
     parent_trees = trees_cache.revision_trees(rev.parent_ids)
+    ensure_inventories_in_repo(repo, parent_trees)
     if parent_trees == []:
         base_inv = Inventory(root_id=None)
         base_tree = None
