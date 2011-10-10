@@ -163,8 +163,17 @@ class _SmartClientRequest(object):
         where the code will be to retry requests if the connection is closed.
         """
         response_handler = self._send(protocol_version)
-        response_tuple = response_handler.read_response_tuple(
-            expect_body=self.expect_response_body)
+        try:
+            response_tuple = response_handler.read_response_tuple(
+                expect_body=self.expect_response_body)
+        except errors.ConnectionReset, e:
+            self.client._medium.reset()
+            trace.warning('ConnectionReset reading response for %r, retrying'
+                          % (self.method,))
+            trace.log_exception_quietly()
+            response_handler = self._send(protocol_version)
+            response_tuple = response_handler.read_response_tuple(
+                expect_body=self.expect_response_body)
         return (response_tuple, response_handler)
 
     def _call_determining_protocol_version(self):
