@@ -1081,9 +1081,6 @@ class _ProtocolThreeEncoder(object):
         self._real_write_func = write_func
 
     def _write_func(self, bytes):
-        # TODO: It is probably more appropriate to use sum(map(len, _buf))
-        #       for total number of bytes to write, rather than buffer based on
-        #       the number of write() calls
         # TODO: Another possibility would be to turn this into an async model.
         #       Where we let another thread know that we have some bytes if
         #       they want it, but we don't actually block for it
