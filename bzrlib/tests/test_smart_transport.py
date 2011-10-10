@@ -3389,7 +3389,7 @@ class Test_SmartClientRequest(tests.TestCase):
         client_medium = medium.SmartSSHClientMedium(
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
-        smart_client = client._SmartClient(client_medium)
+        smart_client = client._SmartClient(client_medium, headers={})
         return output, vendor, smart_client
 
     def test__send_no_retry_pipes(self):
