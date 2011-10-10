@@ -3408,6 +3408,17 @@ class Test_SmartClient(tests.TestCase):
 
 class Test_SmartClientRequest(tests.TestCase):
 
+    def make_client_with_failing_medium(self, fail_at_write=True):
+        response = StringIO()
+        output = StringIO()
+        vendor = FirstRejectedStringIOSSHVendor(response, output,
+                    fail_at_write=fail_at_write)
+        client_medium = medium.SmartSSHClientMedium(
+            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
+            'bzr')
+        smart_client = client._SmartClient(client_medium, headers={})
+        return output, vendor, smart_client
+
     def test__send_no_retry_pipes(self):
         client_read, server_write = create_file_pipes()
         server_read, client_write = create_file_pipes()
@@ -3441,13 +3452,7 @@ class Test_SmartClientRequest(tests.TestCase):
             handler.read_response_tuple, expect_body=False)
 
     def test__send_retries_on_write(self):
-        response = StringIO()
-        output = StringIO()
-        vendor = FirstRejectedStringIOSSHVendor(response, output)
-        client_medium = medium.SmartSSHClientMedium(
-            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
-            'bzr')
-        smart_client = client._SmartClient(client_medium, headers={})
+        output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(smart_client, 'hello', ())
         handler = smart_request._send(3)
         self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
@@ -3464,14 +3469,8 @@ class Test_SmartClientRequest(tests.TestCase):
             vendor.calls)
 
     def test__send_doesnt_retry_read_failure(self):
-        response = StringIO()
-        output = StringIO()
-        vendor = FirstRejectedStringIOSSHVendor(response, output,
-                    fail_at_write=False)
-        client_medium = medium.SmartSSHClientMedium(
-            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
-            'bzr')
-        smart_client = client._SmartClient(client_medium, headers={})
+        output, vendor, smart_client = self.make_client_with_failing_medium(
+            fail_at_write=False)
         smart_request = client._SmartClientRequest(smart_client, 'hello', ())
         handler = smart_request._send(3)
         self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
@@ -3486,13 +3485,7 @@ class Test_SmartClientRequest(tests.TestCase):
         self.assertRaises(errors.ConnectionReset, handler.read_response_tuple)
 
     def test__send_request_retries_body_stream_if_not_started(self):
-        response = StringIO()
-        output = StringIO()
-        vendor = FirstRejectedStringIOSSHVendor(response, output)
-        client_medium = medium.SmartSSHClientMedium(
-            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
-            'bzr')
-        smart_client = client._SmartClient(client_medium, headers={})
+        output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(smart_client, 'hello', (),
             body_stream=['a', 'b'])
         response_handler = smart_request._send(3)
