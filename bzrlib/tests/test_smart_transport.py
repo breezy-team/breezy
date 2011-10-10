@@ -3428,9 +3428,10 @@ class Test_SmartClientRequest(tests.TestCase):
         output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(smart_client, 'hello', ())
         handler = smart_request._send(3)
-        message_sent = output.getvalue()
-        self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
-        self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloee',
+                         output.getvalue())
         self.assertEqual(
             [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
               ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
@@ -3445,9 +3446,10 @@ class Test_SmartClientRequest(tests.TestCase):
             fail_at_write=False)
         smart_request = client._SmartClientRequest(smart_client, 'hello', ())
         handler = smart_request._send(3)
-        message_sent = output.getvalue()
-        self.assertStartsWith(message_sent, 'bzr message 3 (bzr 1.6)\n')
-        self.assertEndsWith(message_sent, 's\x00\x00\x00\tl5:helloee')
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloee',
+                         output.getvalue())
         self.assertEqual(
             [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
               ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
