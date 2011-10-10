@@ -30,6 +30,9 @@
   * Remove pending entries when converting directory into tree reference.
     (Jelmer Vernooij, #871595)
 
+  * Fix fetching into repositories with fallback repositories.
+    (Jelmer Vernooij, #866028)
+
  FEATURES
 
   * Support the git http smart server protocol. (Jelmer Vernooij, #581933)
