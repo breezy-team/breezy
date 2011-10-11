@@ -895,7 +895,6 @@ class DistributionBranch(object):
         poss_native_tree = self.branch.basis_tree()
         config_fileid, current_config = self._default_config_for_tree(poss_native_tree)
         current_native = self._is_tree_native(current_config)
-        dirname = os.path.join(self.tree.basedir, '.bzr-builddeb')
         if current_config is not None:
             # Add that back to the current tree
             current_config.filename = os.path.join(self.tree.basedir,
@@ -927,10 +926,8 @@ class DistributionBranch(object):
                             'debian/bzr-builddeb.conf'],
                             keep_files=False)
                 else:
-                    if needs_add:
-                        os.mkdir(dirname)
-                    current_config.filename = os.path.join(self.tree.basedir, 'debian',
-                            'bzr-builddeb.conf')
+                    current_config.filename = os.path.join(
+                        self.tree.basedir, 'debian', 'bzr-builddeb.conf')
                     current_config.write()
                     if needs_add:
                         self.tree.add(['debian', 'debian/bzr-builddeb.conf'])
