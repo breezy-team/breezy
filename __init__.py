@@ -57,6 +57,8 @@ def global_conf():
     from bzrlib.config import config_dir
     return os.path.join(config_dir(), 'builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
+new_local_conf = 'debian/local.conf.local'
+new_conf = 'debian/bzr-builddeb.conf'
 
 default_build_dir = '../build-area'
 default_orig_dir = '..'

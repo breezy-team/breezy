@@ -53,14 +53,13 @@ the command
 
 Now you have a branch that you will create the package in you need to tell
 `bzr-builddeb` that it will be a native package. To do this you need to
-create the configuration file ``.bzr-builddeb/default.conf``. This contains
+create the configuration file ``debian/bzr-builddeb.conf``. This contains
 the default options for the package. The file starts with a ``[BUILDDEB]``
 header which states that the file is for use by `bzr-builddeb`. The option
 we are interested in is the ``native`` option. The commands to do this are::
 
-  $ mkdir .bzr-builddeb/
-  $ echo -e '[BUILDDEB]\nnative = True' > .bzr-builddeb/default.conf
-  $ bzr add .bzr-builddeb/default.conf
+  $ echo -e '[BUILDDEB]\nnative = True' > debian/bzr-builddeb.conf
+  $ bzr add dbian/bzr-builddeb.conf
 
 Now you are ready to create the package. Add all of the files for the
 package, and the packaging in ``debian/``, and then you can add the files

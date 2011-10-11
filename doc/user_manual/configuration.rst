@@ -6,7 +6,8 @@ that values will be used if found::
 
   * .bzr-builddeb/local.conf (in the package directory)
   * ~/.bazaar/builddeb.conf
-  * .bzr-builddeb/default.conf (in the package directory)
+  * debian/bzr-builddeb.conf (in the package directory)
+  * .bzr-builddeb/default.conf (in the package directory, deprecated)
 
 The last of these should be used for values that will be used by all users of
 the package, for instance 'merge = True'. The others are for the user to add
@@ -138,7 +139,7 @@ situations.
     (Defaults to ``fakeroot debian/rules binary``). Will only be read from
     the config file in your home directory.
 
-The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
+The idea is that certain options can be set in ``debian/bzr-builddeb.conf`` 
 that apply to the package on all systems, or that there is a default that is 
 wanted that differs from the default provided. ``merge = True`` is a perfect 
 example of this.

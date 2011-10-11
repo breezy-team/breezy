@@ -56,7 +56,9 @@ class SvnBuildPackageMappedConfig(object):
 class DebBuildConfig(object):
   """Holds the configuration settings for builddeb. These are taken from
   a hierarchy of config files. .bzr-builddeb/local.conf then 
-  ~/.bazaar/builddeb.conf, finally .bzr-builddeb/default.conf. The value is 
+  debian/bzr-builddeb.conf.local, 
+  ~/.bazaar/builddeb.conf, debian/bzr-builddeb.conf, 
+  finally .bzr-builddeb/default.conf. The value is 
   taken from the first file in which it is specified."""
 
   section = 'BUILDDEB'

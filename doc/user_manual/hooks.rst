@@ -48,7 +48,7 @@ Setting hooks
 Hooks are set by editing the configuration files. The normal precedence
 rules for these files are followed (see `configuration`_ for details). This
 means that you should set hooks needed to build the package in
-``.bzr-builddeb/default.conf``, and any hooks that you would like to run
+``debian/bzr-builddeb.conf``, and any hooks that you would like to run
 that would not be appropriate for everyone in ``.bzr-builddeb/local.conf``.
 Note however that the latter overrides the formula, so your local hooks should
 run all necessary commands from the default hooks that are necessary to build

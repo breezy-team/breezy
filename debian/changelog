@@ -10,6 +10,8 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
   [ Jelmer Vernooij ]
   * Support importing and building packages with multiple upstream
     tarballs. LP: #653757, LP: #664834
+  * Move .bzr-builddeb/default.conf to debian/bzr-builddeb.conf. LP:
+    #793137
 
  -- Jelmer Vernooij <jelmer@debian.org>  Tue, 27 Sep 2011 02:40:03 +0200
 

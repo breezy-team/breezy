@@ -451,23 +451,24 @@ class DistributionBranch(object):
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
-        path = '.bzr-builddeb/default.conf'
-        c_fileid = tree.path2id(path)
-        config = None
-        if c_fileid is not None:
-            tree.lock_read()
+        for path in ('debian/bzr-builddeb.conf', '.bzr-builddeb/default.conf',):
+            c_fileid = tree.path2id(path)
+            if c_fileid is not None:
+                break
+        else:
+            return None, None
+        tree.lock_read()
+        try:
+            config = ConfigObj(tree.get_file(c_fileid, path))
             try:
-                config = ConfigObj(tree.get_file(c_fileid, path))
-                try:
-                    config['BUILDDEB']
-                except KeyError:
-                    config['BUILDDEB'] = {}
-            finally:
-                tree.unlock()
-        return config
+                config['BUILDDEB']
+            except KeyError:
+                config['BUILDDEB'] = {}
+        finally:
+            tree.unlock()
+        return c_fileid, config
 
-    def _is_tree_native(self, tree):
-        config = self._default_config_for_tree(tree)
+    def _is_tree_native(self, config):
         if config is not None:
             try:
                 current_value = config['BUILDDEB']['native']
@@ -486,7 +487,8 @@ class DistributionBranch(object):
         """
         revid = self.revid_of_version(version)
         rev_tree = self.branch.repository.revision_tree(revid)
-        if self._is_tree_native(rev_tree):
+        config_fileid, current_config = self._default_config_for_tree(rev_tree)
+        if self._is_tree_native(current_config):
             return True
         rev = self.branch.repository.get_revision(revid)
         try:
@@ -918,22 +920,20 @@ class DistributionBranch(object):
 
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.basis_tree()
-        current_native = self._is_tree_native(poss_native_tree)
-        current_config = self._default_config_for_tree(poss_native_tree)
-        dirname = os.path.join(self.tree.basedir, '.bzr-builddeb')
+        config_fileid, current_config = self._default_config_for_tree(poss_native_tree)
+        current_native = self._is_tree_native(current_config)
         if current_config is not None:
             # Add that back to the current tree
-            if not os.path.exists(dirname):
-                os.mkdir(dirname)
-            current_config.filename = os.path.join(dirname,
-                    'default.conf')
+            current_config.filename = os.path.join(self.tree.basedir,
+                poss_native_tree.id2path(config_fileid))
+            dir_path = osutils.dirname(current_config.filename)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
             current_config.write()
-            dir_id = poss_native_tree.path2id('.bzr-builddeb')
-            file_id = poss_native_tree.path2id(
-                    '.bzr-builddeb/default.conf')
-            self.tree.add(['.bzr-builddeb/',
-                    '.bzr-builddeb/default.conf'],
-                    ids=[dir_id, file_id])
+            dirname = osutils.dirname(poss_native_tree.id2path(config_fileid))
+            dir_id = poss_native_tree.path2id(dirname)
+            self.tree.add([dirname, poss_native_tree.id2path(config_fileid)],
+                    ids=[dir_id, config_fileid])
         if native != current_native:
             if current_config is None:
                 needs_add = True
@@ -949,17 +949,15 @@ class DistributionBranch(object):
                         del current_config['BUILDDEB']
                 if len(current_config) == 0:
                     self.tree.remove(['.bzr-builddeb',
-                            '.bzr-builddeb/default.conf'],
+                            '.bzr-builddeb/default.conf',
+                            'debian/bzr-builddeb.conf'],
                             keep_files=False)
                 else:
-                    if needs_add:
-                        os.mkdir(dirname)
-                    current_config.filename = os.path.join(dirname,
-                            'default.conf')
+                    current_config.filename = os.path.join(
+                        self.tree.basedir, 'debian', 'bzr-builddeb.conf')
                     current_config.write()
                     if needs_add:
-                        self.tree.add(['.bzr-builddeb/',
-                                '.bzr-builddeb/default.conf'])
+                        self.tree.add(['debian', 'debian/bzr-builddeb.conf'])
 
     def import_debian(self, debian_part, version, parents, md5,
             native=False, timestamp=None, file_ids_from=None):
