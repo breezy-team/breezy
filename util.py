@@ -533,12 +533,20 @@ def debuild_config(tree, working_tree):
     """
     config_files = []
     user_config = None
+    if (working_tree and tree.has_filename(new_local_conf)):
+        if tree.path2id(new_local_conf) is None:
+            config_files.append((tree.get_file_byname(new_local_conf), True,
+                        "local.conf"))
+        else:
+            warning('Not using configuration from %s as it is versioned.',
+                    new_local_conf)
     if (working_tree and tree.has_filename(local_conf)):
         if tree.path2id(local_conf) is None:
             config_files.append((tree.get_file_byname(local_conf), True,
                         "local.conf"))
         else:
-            warning('Not using configuration from %s as it is versioned.')
+            warning('Not using configuration from %s as it is versioned.',
+                    local_conf)
     config_files.append((global_conf(), True))
     user_config = global_conf()
     if tree.path2id(new_conf):
