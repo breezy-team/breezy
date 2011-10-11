@@ -56,6 +56,7 @@ from bzrlib.plugins.builddeb import (
     local_conf,
     global_conf,
     new_conf,
+    new_local_conf,
     )
 from bzrlib.plugins.builddeb.config import (
     DebBuildConfig,
