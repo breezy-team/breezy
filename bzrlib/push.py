@@ -17,7 +17,7 @@
 """UI helper for the push command."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     revision as _mod_revision,
     transport,
@@ -79,7 +79,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     """
     to_transport = transport.get_transport(location)
     try:
-        dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
+        dir_to = controldir.ControlDir.open_from_transport(to_transport)
     except errors.NotBranchError:
         # Didn't find anything
         dir_to = None
@@ -150,7 +150,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 "push to %s. You may want to use dpush instead.") % 
                     e.target_branch.mapping.vcs.abbreviation)
         except errors.NoRepositoryPresent:
-            # we have a bzrdir but no branch or repository
+            # we have a controldir but no branch or repository
             # XXX: Figure out what to do other than complain.
             raise errors.BzrCommandError(gettext("At %s you have a valid .bzr"
                 " control directory, but not a branch or repository. This"

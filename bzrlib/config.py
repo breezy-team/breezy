@@ -87,7 +87,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     atomicfile,
-    bzrdir,
+    controldir,
     debug,
     errors,
     lazy_regex,
@@ -3453,13 +3453,15 @@ class cmd_config(commands.Command):
             elif scope == 'locations':
                 yield LocationConfig(directory)
             elif scope == 'branch':
-                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
-                    directory)
+                (_, br, _) = (
+                    controldir.ControlDir.open_containing_tree_or_branch(
+                        directory))
                 yield br.get_config()
         else:
             try:
-                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
-                    directory)
+                (_, br, _) = (
+                    controldir.ControlDir.open_containing_tree_or_branch(
+                        directory))
                 yield br.get_config()
             except errors.NotBranchError:
                 yield LocationConfig(directory)

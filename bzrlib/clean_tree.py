@@ -20,7 +20,7 @@ import os
 import shutil
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     ui,
     )
@@ -85,7 +85,7 @@ def _filter_out_nested_bzrdirs(deletables):
         # directory and therefore delete it. (worth to FIXME?)
         if isdir(path):
             try:
-                bzrdir.BzrDir.open(path)
+                controldir.ControlDir.open(path)
             except errors.NotBranchError:
                 result.append((path,subp))
             else:

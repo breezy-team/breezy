@@ -259,7 +259,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control = bzrdir.BzrDir.open(path, _unsupported)
+        control = controldir.ControlDir.open(path, _unsupported)
         return control.open_workingtree(_unsupported)
 
     @staticmethod
@@ -277,7 +277,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control, relpath = bzrdir.BzrDir.open_containing(path)
+        control, relpath = controldir.ControlDir.open_containing(path)
         return control.open_workingtree(), relpath
 
     @staticmethod
@@ -366,7 +366,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             else:
                 return True, tree
         t = transport.get_transport(location)
-        iterator = bzrdir.BzrDir.find_bzrdirs(t, evaluate=evaluate,
+        iterator = controldir.ControlDir.find_bzrdirs(t, evaluate=evaluate,
                                               list_current=list_current)
         return [tr for tr in iterator if tr is not None]
 
@@ -2982,29 +2982,29 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     supports_versioned_directories = None
 
     @classmethod
-    def find_format_string(klass, a_bzrdir):
-        """Return format name for the working tree object in a_bzrdir."""
+    def find_format_string(klass, controldir):
+        """Return format name for the working tree object in controldir."""
         try:
-            transport = a_bzrdir.get_workingtree_transport(None)
+            transport = controldir.get_workingtree_transport(None)
             return transport.get_bytes("format")
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
 
     @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the working tree object in a_bzrdir."""
+    def find_format(klass, controldir):
+        """Return the format for the working tree object in controldir."""
         try:
-            format_string = klass.find_format_string(a_bzrdir)
+            format_string = klass.find_format_string(controldir)
             return format_registry.get(format_string)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string,
                                             kind="working tree")
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
-        """Initialize a new working tree in a_bzrdir.
+        """Initialize a new working tree in controldir.
 
-        :param a_bzrdir: BzrDir to initialize the working tree in.
+        :param controldir: ControlDir to initialize the working tree in.
         :param revision_id: allows creating a working tree at a different
             revision than the branch is at.
         :param from_branch: Branch to checkout

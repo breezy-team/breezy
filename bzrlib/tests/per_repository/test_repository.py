@@ -663,7 +663,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         format = remote_backing_repo.bzrdir.cloning_metadir()
         format._branch_format = BzrBranchFormat5()
         remote_transport = remote_repo.bzrdir.root_transport.clone('branch')
-        remote_backing_repo.bzrdir.create_branch_convenience(
+        controldir.ControlDir.create_branch_convenience(
             remote_transport.base, force_new_repo=False, format=format)
         remote_branch = bzrdir.BzrDir.open_from_transport(
             remote_transport).open_branch()

@@ -767,46 +767,10 @@ class BzrDir(controldir.ControlDir):
             can be reused to share a remote connection.
         """
         if cls is not BzrDir:
-            raise AssertionError("BzrDir.create always creates the"
+            raise AssertionError("BzrDir.create always creates the "
                 "default format, not one of %r" % cls)
         return controldir.ControlDir.create(base, format=format,
                 possible_transports=possible_transports)
-
-
-class RepoInitHookParams(object):
-    """Object holding parameters passed to `*_repo_init` hooks.
-
-    There are 4 fields that hooks may wish to access:
-
-    :ivar repository: Repository created
-    :ivar format: Repository format
-    :ivar bzrdir: The bzrdir for the repository
-    :ivar shared: The repository is shared
-    """
-
-    def __init__(self, repository, format, a_bzrdir, shared):
-        """Create a group of RepoInitHook parameters.
-
-        :param repository: Repository created
-        :param format: Repository format
-        :param bzrdir: The bzrdir for the repository
-        :param shared: The repository is shared
-        """
-        self.repository = repository
-        self.format = format
-        self.bzrdir = a_bzrdir
-        self.shared = shared
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-
-    def __repr__(self):
-        if self.repository:
-            return "<%s for %s>" % (self.__class__.__name__,
-                self.repository)
-        else:
-            return "<%s for %s>" % (self.__class__.__name__,
-                self.bzrdir)
 
 
 class BzrDirMeta1(BzrDir):

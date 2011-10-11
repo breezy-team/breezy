@@ -34,6 +34,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.transport import local
 from bzrlib.push import (
     PushResult,
     )
@@ -198,7 +199,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
     def find_branch_format(self, name=None):
-        """Find the branch 'format' for this bzrdir.
+        """Find the branch 'format' for this controldir.
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
@@ -416,7 +417,7 @@ class ControlDir(ControlComponent):
         return push_result
 
     def _get_tree_branch(self, name=None):
-        """Return the branch and tree, if any, for this bzrdir.
+        """Return the branch and tree, if any, for this controldir.
 
         :param name: Name of colocated branch to open.
 
@@ -441,12 +442,12 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.get_config)
 
     def check_conversion_target(self, target_format):
-        """Check that a bzrdir as a whole can be converted to a new format."""
+        """Check that a controldir as a whole can be converted to a new format."""
         raise NotImplementedError(self.check_conversion_target)
 
     def clone(self, url, revision_id=None, force_new_repo=False,
               preserve_stacking=False):
-        """Clone this bzrdir and its contents to url verbatim.
+        """Clone this controldir and its contents to url verbatim.
 
         :param url: The url create the clone at.  If url's last component does
             not exist, it will be created.
@@ -466,7 +467,7 @@ class ControlDir(ControlComponent):
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
-        """Clone this bzrdir and its contents to transport verbatim.
+        """Clone this controldir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
             at.  If the target directory does not exist, it will be created.
@@ -486,16 +487,16 @@ class ControlDir(ControlComponent):
 
     @classmethod
     def find_bzrdirs(cls, transport, evaluate=None, list_current=None):
-        """Find bzrdirs recursively from current location.
+        """Find control dirs recursively from current location.
 
         This is intended primarily as a building block for more sophisticated
         functionality, like finding trees under a directory, or finding
         branches that use a given repository.
 
         :param evaluate: An optional callable that yields recurse, value,
-            where recurse controls whether this bzrdir is recursed into
+            where recurse controls whether this controldir is recursed into
             and value is the value to yield.  By default, all bzrdirs
-            are recursed into, and the return value is the bzrdir.
+            are recursed into, and the return value is the controldir.
         :param list_current: if supplied, use this function to list the current
             directory, instead of Transport.list_dir
         :return: a generator of found bzrdirs, or whatever evaluate returns.
@@ -504,19 +505,19 @@ class ControlDir(ControlComponent):
             def list_current(transport):
                 return transport.list_dir('')
         if evaluate is None:
-            def evaluate(bzrdir):
-                return True, bzrdir
+            def evaluate(controldir):
+                return True, controldir
 
         pending = [transport]
         while len(pending) > 0:
             current_transport = pending.pop()
             recurse = True
             try:
-                bzrdir = cls.open_from_transport(current_transport)
+                controldir = cls.open_from_transport(current_transport)
             except (errors.NotBranchError, errors.PermissionDenied):
                 pass
             else:
-                recurse, value = evaluate(bzrdir)
+                recurse, value = evaluate(controldir)
                 yield value
             try:
                 subdirs = list_current(current_transport)
@@ -537,14 +538,14 @@ class ControlDir(ControlComponent):
         To list all the branches that use a particular Repository, see
         Repository.find_branches
         """
-        def evaluate(bzrdir):
+        def evaluate(controldir):
             try:
-                repository = bzrdir.open_repository()
+                repository = controldir.open_repository()
             except errors.NoRepositoryPresent:
                 pass
             else:
                 return False, ([], repository)
-            return True, (bzrdir.list_branches(), None)
+            return True, (controldir.list_branches(), None)
         ret = []
         for branches, repo in cls.find_bzrdirs(
                 transport, evaluate=evaluate):
@@ -560,7 +561,7 @@ class ControlDir(ControlComponent):
 
         This will use the current default ControlDirFormat unless one is
         specified, and use whatever
-        repository format that that uses via bzrdir.create_branch and
+        repository format that that uses via controldir.create_branch and
         create_repository. If a shared repository is available that is used
         preferentially.
 
@@ -571,9 +572,9 @@ class ControlDir(ControlComponent):
         :param format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
         """
-        bzrdir = cls.create(base, format)
-        bzrdir._find_or_create_repository(force_new_repo)
-        return bzrdir.create_branch()
+        controldir = cls.create(base, format)
+        controldir._find_or_create_repository(force_new_repo)
+        return controldir.create_branch()
 
     @classmethod
     def create_branch_convenience(cls, base, force_new_repo=False,
@@ -587,7 +588,7 @@ class ControlDir(ControlComponent):
 
         This will use the current default ControlDirFormat unless one is
         specified, and use whatever
-        repository format that that uses via bzrdir.create_branch and
+        repository format that that uses via ControlDir.create_branch and
         create_repository. If a shared repository is available that is used
         preferentially. Whatever repository is used, its tree creation policy
         is followed.
@@ -601,7 +602,7 @@ class ControlDir(ControlComponent):
         :param force_new_repo: If True a new repository is always created.
         :param force_new_tree: If True or False force creation of a tree or
                                prevent such creation respectively.
-        :param format: Override for the bzrdir format to create.
+        :param format: Override for the controldir format to create.
         :param possible_transports: An optional reusable transports list.
         """
         if force_new_tree:
@@ -609,13 +610,13 @@ class ControlDir(ControlComponent):
             t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):
                 raise errors.NotLocalUrl(base)
-        bzrdir = cls.create(base, format, possible_transports)
-        repo = bzrdir._find_or_create_repository(force_new_repo)
-        result = bzrdir.create_branch()
+        controldir = cls.create(base, format, possible_transports)
+        repo = controldir._find_or_create_repository(force_new_repo)
+        result = controldir.create_branch()
         if force_new_tree or (repo.make_working_trees() and
                               force_new_tree is None):
             try:
-                bzrdir.create_workingtree()
+                controldir.create_workingtree()
             except errors.NotLocalUrl:
                 pass
         return result
@@ -631,17 +632,16 @@ class ControlDir(ControlComponent):
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
-        :param format: Override for the bzrdir format to create.
+        :param format: Override for the controldir format to create.
         :return: The WorkingTree object.
         """
-        from bzrlib.transport import local
         t = _mod_transport.get_transport(base)
         if not isinstance(t, local.LocalTransport):
             raise errors.NotLocalUrl(base)
-        bzrdir = cls.create_branch_and_repo(base,
+        controldir = cls.create_branch_and_repo(base,
                                                force_new_repo=True,
                                                format=format).bzrdir
-        return bzrdir.create_workingtree()
+        return controldir.create_workingtree()
 
     @classmethod
     def open_unsupported(cls, base):
@@ -650,7 +650,7 @@ class ControlDir(ControlComponent):
 
     @classmethod
     def open(cls, base, _unsupported=False, possible_transports=None):
-        """Open an existing bzrdir, rooted at 'base' (url).
+        """Open an existing controldir, rooted at 'base' (url).
 
         :param _unsupported: a private parameter to the ControlDir class.
         """
@@ -660,9 +660,9 @@ class ControlDir(ControlComponent):
     @classmethod
     def open_from_transport(cls, transport, _unsupported=False,
                             _server_formats=True):
-        """Open a bzrdir within a particular directory.
+        """Open a controldir within a particular directory.
 
-        :param transport: Transport containing the bzrdir.
+        :param transport: Transport containing the controldir.
         :param _unsupported: private.
         """
         for hook in cls.hooks['pre_open']:
@@ -744,8 +744,8 @@ class ControlDir(ControlComponent):
         raised
         :return: (tree, branch)
         """
-        bzrdir = klass.open(location)
-        return bzrdir._get_tree_branch()
+        controldir = klass.open(location)
+        return controldir._get_tree_branch()
 
     @classmethod
     def open_containing_tree_or_branch(klass, location):
@@ -757,8 +757,8 @@ class ControlDir(ControlComponent):
         raised
         relpath is the portion of the path that is contained by the branch.
         """
-        bzrdir, relpath = klass.open_containing(location)
-        tree, branch = bzrdir._get_tree_branch()
+        controldir, relpath = klass.open_containing(location)
+        tree, branch = controldir._get_tree_branch()
         return tree, branch, relpath
 
     @classmethod
@@ -775,12 +775,12 @@ class ControlDir(ControlComponent):
 
         If no tree, branch or repository is found, a NotBranchError is raised.
         """
-        bzrdir, relpath = klass.open_containing(location)
+        controldir, relpath = klass.open_containing(location)
         try:
-            tree, branch = bzrdir._get_tree_branch()
+            tree, branch = controldir._get_tree_branch()
         except errors.NotBranchError:
             try:
-                repo = bzrdir.find_repository()
+                repo = controldir.find_repository()
                 return None, None, repo, relpath
             except (errors.NoRepositoryPresent):
                 raise errors.NotBranchError(location)
@@ -1366,6 +1366,42 @@ class ControlDirFormatRegistry(registry.Registry):
             return other_output
         else:
             return output
+
+
+class RepoInitHookParams(object):
+    """Object holding parameters passed to `*_repo_init` hooks.
+
+    There are 4 fields that hooks may wish to access:
+
+    :ivar repository: Repository created
+    :ivar format: Repository format
+    :ivar bzrdir: The controldir for the repository
+    :ivar shared: The repository is shared
+    """
+
+    def __init__(self, repository, format, controldir, shared):
+        """Create a group of RepoInitHook parameters.
+
+        :param repository: Repository created
+        :param format: Repository format
+        :param controldir: The controldir for the repository
+        :param shared: The repository is shared
+        """
+        self.repository = repository
+        self.format = format
+        self.bzrdir = controldir
+        self.shared = shared
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        if self.repository:
+            return "<%s for %s>" % (self.__class__.__name__,
+                self.repository)
+        else:
+            return "<%s for %s>" % (self.__class__.__name__,
+                self.bzrdir)
 
 
 # Please register new formats after old formats so that formats
