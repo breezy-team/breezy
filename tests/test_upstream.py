@@ -307,7 +307,7 @@ class RecordingSource(UpstreamSource):
     def get_latest_version(self, package, current_version):
         return self._latest
 
-    def fetch_tarballs(self, package, version, target_dir):
+    def fetch_tarballs(self, package, version, target_dir, components=None):
         self._specific_versions.append((package, version, target_dir))
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)

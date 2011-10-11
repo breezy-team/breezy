@@ -352,7 +352,8 @@ class StackedUpstreamSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir, components=None):
         for source in self._sources:
             try:
-                paths = source.fetch_tarballs(package, version, target_dir, components)
+                paths = source.fetch_tarballs(package, version, target_dir,
+                    components)
             except PackageVersionNotPresent:
                 pass
             else:
