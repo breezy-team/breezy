@@ -46,7 +46,7 @@
 # set new_git_branch to the previously used name)
 
 from email.Utils import parseaddr
-import sys, time
+import sys, time, re
 
 import bzrlib.branch
 import bzrlib.revision
@@ -111,7 +111,42 @@ def check_ref_format(refname):
         return False
     return True
 
+def sanitize_ref_name_for_git(name_dict, refname):
+    """Rewrite refname so that it will be accepted by git-fast-import.
+    For the detailed rules see check_ref_format.
 
+    By rewriting the refname we are breaking uniqueness guarantees provided by bzr
+    so we have to manually
+    verify that resulting ref names are unique.
+
+    :param name_dict: additional dictionary used to enforce uniqueness of resulting refname's
+    :param refname: refname to rewrite
+    :return: new refname
+    """
+    newRefname = re.sub(
+        # '/.' in refname or startswith '.'
+        r"/\.|^\."
+        # '..' in refname
+        r"|\.\."
+        # ord(c) < 040
+        r"|[" + "".join([chr(x) for x in range(040)]) + r"]"
+        # c in '\177 ~^:?*['
+        r"|[\177 ~^:?*[]"
+        # last char in "/."
+        r"|[/.]$"
+        # endswith '.lock'
+        r"|.lock$"
+        # "@{" in refname
+        r"|@{"
+        # "\\" in refname
+        r"|\\",
+        "_", refname)
+    idx = name_dict.get(newRefname, 1)
+    name_dict[newRefname] = idx + 1
+    if idx != 1:
+        # append index to the resulting refname if it's not unique
+        newRefname += "_" + str(idx)
+    return newRefname
 
 class BzrFastExporter(object):
 
