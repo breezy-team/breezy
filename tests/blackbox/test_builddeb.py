@@ -184,8 +184,8 @@ class TestBuilddeb(BuilddebTestCase):
     open("debian/changelog", "w").close()
     tree.commit("Prepare for release", rev_id="prerel")
     c = self.make_changelog()
-    c.add_change(u"")
-    c.add_change(u"  *  \u2026and another thing")
+    c.add_change("")
+    c.add_change("  *  \xe2\x80\xa6and another thing")
     self.write_changelog(c, "debian/changelog")
     self.run_bzr(['commit'])
     branch = tree.branch
