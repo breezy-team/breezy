@@ -997,8 +997,9 @@ class TestCase(testtools.TestCase):
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
-        self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
-                          config.CommandLineSection())
+        if bzrlib.global_state is not None:
+            self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
+                              config.CommandLineSection())
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
