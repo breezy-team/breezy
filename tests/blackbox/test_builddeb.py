@@ -183,13 +183,16 @@ class TestBuilddeb(BuilddebTestCase):
     # is then changed, so need to clear it, commit, then set the contents.
     open("debian/changelog", "w").close()
     tree.commit("Prepare for release", rev_id="prerel")
-    c = self.make_changelog()
-    c.add_change(u"")
-    c.add_change(u"  *  \u2026and another thing")
-    self.write_changelog(c, "debian/changelog")
+    # Would be nice to use debian.changelog to make one, but it's changed
+    # across versions as to how it wants non-ascii bytes provided.
+    f = open("debian/changelog", "w")
+    try:
+      f.write("  * \xe2\x80\xa6and another thing")
+    finally:
+      f.close()
     self.run_bzr(['commit'])
     branch = tree.branch
-    self.assertEqual(u"*  test build\n*  \u2026and another thing\n",
+    self.assertEqual(u"\u2026and another thing",
       branch.repository.get_revision(branch.last_revision()).message)
 
 # vim: ts=2 sts=2 sw=2
