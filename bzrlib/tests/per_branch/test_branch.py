@@ -254,69 +254,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
                           self.get_branch().repository.get_revision,
                           None)
 
-# TODO 20051003 RBC:
-# compare the gpg-to-sign info for a commit with a ghost and
-#     an identical tree without a ghost
-# fetch missing should rewrite the TOC of weaves to list newly available parents.
-
-    def test_sign_existing_revision(self):
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        from bzrlib.testament import Testament
-        strategy = gpg.LoopbackGPGStrategy(None)
-        branch.repository.lock_write()
-        branch.repository.start_write_group()
-        branch.repository.sign_revision('A', strategy)
-        branch.repository.commit_write_group()
-        branch.repository.unlock()
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(branch.repository,
-                         'A').as_short_text() +
-                         '-----END PSEUDO-SIGNED CONTENT-----\n',
-                         branch.repository.get_signature_text('A'))
-
-    def test_store_signature(self):
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        branch.lock_write()
-        try:
-            branch.repository.start_write_group()
-            try:
-                branch.repository.store_revision_signature(
-                    gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
-            except:
-                branch.repository.abort_write_group()
-                raise
-            else:
-                branch.repository.commit_write_group()
-        finally:
-            branch.unlock()
-        # A signature without a revision should not be accessible.
-        self.assertRaises(errors.NoSuchRevision,
-                          branch.repository.has_signature_for_revision_id,
-                          'A')
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
-                         'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
-                         branch.repository.get_signature_text('A'))
-
-    def test_branch_keeps_signatures(self):
-        wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
-        repo = wt.branch.repository
-        repo.lock_write()
-        repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
-        repo.commit_write_group()
-        repo.unlock()
-        #FIXME: clone should work to urls,
-        # wt.clone should work to disks.
-        self.build_tree(['target/'])
-        d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
-        self.assertEqual(repo.get_signature_text('A'),
-                         d2.open_repository().get_signature_text('A'))
-
     def test_nicks_bzr(self):
         """Test the behaviour of branch nicks specific to bzr branches.
 
@@ -511,9 +448,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
         # open the branch via a readonly transport
-        source_branch = _mod_branch.Branch.open(
-            self.get_readonly_url(
-                osutils.basename(tree_a.branch.base.rstrip('/'))))
+        url = self.get_readonly_url(
+            osutils.basename(tree_a.branch.base.rstrip('/')))
+        t = transport.get_transport_from_url(url)
+        if not tree_a.branch.bzrdir._format.supports_transport(t):
+            raise tests.TestNotApplicable("format does not support transport")
+        source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
@@ -601,6 +541,9 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
                           _mod_branch.Branch.open_containing,
                           self.get_readonly_url('g/p/q'))
         branch = self.make_branch('.')
+        if not branch.bzrdir._format.supports_transport(
+            transport.get_transport_from_url(self.get_readonly_url('.'))):
+            raise tests.TestNotApplicable("format does not support transport")
         branch, relpath = _mod_branch.Branch.open_containing(
             self.get_readonly_url(''))
         self.assertEqual('', relpath)

@@ -63,12 +63,21 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``ControlDirFormat`` now has a new method ``supports_transport``
+  which format implementations can use whether or not they can access
+  a control dir over a particular transport. (Jelmer Vernooij)
+
 Testing
 *******
 
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+*  Ensure TestCase instances are deallocated immediately after running where
+   possible. This greatly reduces the peak resource needs of a full test suite
+   run. The new ``-Euncollected_cases`` selftest flag will add failures if any
+   case which persists pasts its expected lifetime. (Martin Packman, #613247)
 
 
 bzr 2.5b2

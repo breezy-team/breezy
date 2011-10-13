@@ -128,6 +128,7 @@ def load_tests(standard_tests, module, loader):
         'test_refresh_data',
         'test_repository',
         'test_revision',
+        'test_signatures',
         'test_statistics',
         'test_write_group',
         ]
