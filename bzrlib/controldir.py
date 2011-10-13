@@ -486,7 +486,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.clone_on_transport)
 
     @classmethod
-    def find_bzrdirs(cls, transport, evaluate=None, list_current=None):
+    def find_bzrdirs(klass, transport, evaluate=None, list_current=None):
         """Find control dirs recursively from current location.
 
         This is intended primarily as a building block for more sophisticated
@@ -513,7 +513,7 @@ class ControlDir(ControlComponent):
             current_transport = pending.pop()
             recurse = True
             try:
-                controldir = cls.open_from_transport(current_transport)
+                controldir = klass.open_from_transport(current_transport)
             except (errors.NotBranchError, errors.PermissionDenied):
                 pass
             else:
@@ -528,7 +528,7 @@ class ControlDir(ControlComponent):
                     pending.append(current_transport.clone(subdir))
 
     @classmethod
-    def find_branches(cls, transport):
+    def find_branches(klass, transport):
         """Find all branches under a transport.
 
         This will find all branches below the transport, including branches
@@ -547,7 +547,7 @@ class ControlDir(ControlComponent):
                 return False, ([], repository)
             return True, (controldir.list_branches(), None)
         ret = []
-        for branches, repo in cls.find_bzrdirs(
+        for branches, repo in klass.find_bzrdirs(
                 transport, evaluate=evaluate):
             if repo is not None:
                 ret.extend(repo.find_branches())
@@ -556,7 +556,7 @@ class ControlDir(ControlComponent):
         return ret
 
     @classmethod
-    def create_branch_and_repo(cls, base, force_new_repo=False, format=None):
+    def create_branch_and_repo(klass, base, force_new_repo=False, format=None):
         """Create a new ControlDir, Branch and Repository at the url 'base'.
 
         This will use the current default ControlDirFormat unless one is
@@ -572,12 +572,12 @@ class ControlDir(ControlComponent):
         :param format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
         """
-        controldir = cls.create(base, format)
+        controldir = klass.create(base, format)
         controldir._find_or_create_repository(force_new_repo)
         return controldir.create_branch()
 
     @classmethod
-    def create_branch_convenience(cls, base, force_new_repo=False,
+    def create_branch_convenience(klass, base, force_new_repo=False,
                                   force_new_tree=None, format=None,
                                   possible_transports=None):
         """Create a new ControlDir, Branch and Repository at the url 'base'.
@@ -610,7 +610,7 @@ class ControlDir(ControlComponent):
             t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):
                 raise errors.NotLocalUrl(base)
-        controldir = cls.create(base, format, possible_transports)
+        controldir = klass.create(base, format, possible_transports)
         repo = controldir._find_or_create_repository(force_new_repo)
         result = controldir.create_branch()
         if force_new_tree or (repo.make_working_trees() and
@@ -622,7 +622,7 @@ class ControlDir(ControlComponent):
         return result
 
     @classmethod
-    def create_standalone_workingtree(cls, base, format=None):
+    def create_standalone_workingtree(klass, base, format=None):
         """Create a new ControlDir, WorkingTree, Branch and Repository at 'base'.
 
         'base' must be a local path or a file:// url.
@@ -638,34 +638,34 @@ class ControlDir(ControlComponent):
         t = _mod_transport.get_transport(base)
         if not isinstance(t, local.LocalTransport):
             raise errors.NotLocalUrl(base)
-        controldir = cls.create_branch_and_repo(base,
+        controldir = klass.create_branch_and_repo(base,
                                                force_new_repo=True,
                                                format=format).bzrdir
         return controldir.create_workingtree()
 
     @classmethod
-    def open_unsupported(cls, base):
+    def open_unsupported(klass, base):
         """Open a branch which is not supported."""
-        return cls.open(base, _unsupported=True)
+        return klass.open(base, _unsupported=True)
 
     @classmethod
-    def open(cls, base, _unsupported=False, possible_transports=None):
+    def open(klass, base, _unsupported=False, possible_transports=None):
         """Open an existing controldir, rooted at 'base' (url).
 
         :param _unsupported: a private parameter to the ControlDir class.
         """
         t = _mod_transport.get_transport(base, possible_transports)
-        return cls.open_from_transport(t, _unsupported=_unsupported)
+        return klass.open_from_transport(t, _unsupported=_unsupported)
 
     @classmethod
-    def open_from_transport(cls, transport, _unsupported=False,
+    def open_from_transport(klass, transport, _unsupported=False,
                             _server_formats=True):
         """Open a controldir within a particular directory.
 
         :param transport: Transport containing the controldir.
         :param _unsupported: private.
         """
-        for hook in cls.hooks['pre_open']:
+        for hook in klass.hooks['pre_open']:
             hook(transport)
         # Keep initial base since 'transport' may be modified while following
         # the redirections.
@@ -692,7 +692,7 @@ class ControlDir(ControlComponent):
         return format.open(transport, _found=True)
 
     @classmethod
-    def open_containing(cls, url, possible_transports=None):
+    def open_containing(klass, url, possible_transports=None):
         """Open an existing branch which contains url.
 
         :param url: url to search from.
@@ -700,10 +700,10 @@ class ControlDir(ControlComponent):
         See open_containing_from_transport for more detail.
         """
         transport = _mod_transport.get_transport(url, possible_transports)
-        return cls.open_containing_from_transport(transport)
+        return klass.open_containing_from_transport(transport)
 
     @classmethod
-    def open_containing_from_transport(cls, a_transport):
+    def open_containing_from_transport(klass, a_transport):
         """Open an existing branch which contains a_transport.base.
 
         This probes for a branch at a_transport, and searches upwards from there.
@@ -721,7 +721,7 @@ class ControlDir(ControlComponent):
         url = a_transport.base
         while True:
             try:
-                result = cls.open_from_transport(a_transport)
+                result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
                 pass
@@ -787,7 +787,7 @@ class ControlDir(ControlComponent):
         return tree, branch, branch.repository, relpath
 
     @classmethod
-    def create(cls, base, format=None, possible_transports=None):
+    def create(klass, base, format=None, possible_transports=None):
         """Create a new ControlDir at the url 'base'.
 
         :param format: If supplied, the format of branch to create.  If not
@@ -795,9 +795,9 @@ class ControlDir(ControlComponent):
         :param possible_transports: If supplied, a list of transports that
             can be reused to share a remote connection.
         """
-        if cls is not ControlDir:
+        if klass is not ControlDir:
             raise AssertionError("ControlDir.create always creates the"
-                "default format, not one of %r" % cls)
+                "default format, not one of %r" % klass)
         t = _mod_transport.get_transport(base, possible_transports)
         t.ensure_base()
         if format is None:
@@ -1226,7 +1226,7 @@ class Prober(object):
         raise NotImplementedError(self.probe_transport)
 
     @classmethod
-    def known_formats(cls):
+    def known_formats(klass):
         """Return the control dir formats known by this prober.
 
         Multiple probers can return the same formats, so this should
@@ -1234,7 +1234,7 @@ class Prober(object):
 
         :return: A set of known formats.
         """
-        raise NotImplementedError(cls.known_formats)
+        raise NotImplementedError(klass.known_formats)
 
 
 class ControlDirFormatInfo(object):
