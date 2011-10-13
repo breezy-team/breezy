@@ -64,6 +64,23 @@ class TestBranch(TestCaseWithTransport):
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
+    def test_into_colocated(self):
+        """Branch from a branch into a colocated branch."""
+        self.example_branch('a')
+        out, err = self.run_bzr(
+            'init --format=development-colo file:b,branch=orig')
+        self.assertEqual(
+            """Created a standalone tree (format: development-colo)\n""",
+            out)
+        self.assertEqual('', err)
+        out, err = self.run_bzr(
+            'branch --use-existing-dir a file:b,branch=thiswasa')
+        self.assertEqual('', out)
+        self.assertEqual('Branched 2 revisions.\n', err)
+        out, err = self.run_bzr('branches b')
+        self.assertEqual(" orig\n thiswasa\n", out)
+        self.assertEqual('', err)
+
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
         self.example_branch('a')

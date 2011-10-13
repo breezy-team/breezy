@@ -909,7 +909,8 @@ class BzrDirMeta1(BzrDir):
 
     def needs_format_conversion(self, format):
         """See BzrDir.needs_format_conversion()."""
-        if not isinstance(self._format, format.__class__):
+        if (not isinstance(self._format, format.__class__) or
+            self._format.get_format_string() != format.get_format_string()):
             # it is not a meta dir format, conversion is needed.
             return True
         # we might want to push this down to the repository?
@@ -1368,6 +1369,10 @@ class BzrDirFormat(controldir.ControlDirFormat):
         :return: None.
         """
 
+    def supports_transport(self, transport):
+        # bzr formats can be opened over all known transports
+        return True
+
 
 class BzrDirMetaFormat1(BzrDirFormat):
     """Bzr meta control format 1
@@ -1511,6 +1516,12 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         if format is None:
             format = BzrDirFormat.get_default_format()
+        if (type(self) is BzrDirMetaFormat1 and
+            type(format) is BzrDirMetaFormat1Colo):
+            return ConvertMetaToColo(format)
+        if (type(self) is BzrDirMetaFormat1Colo and
+            type(format) is BzrDirMetaFormat1):
+            return ConvertMetaRemoveColo(format)
         if not isinstance(self, format.__class__):
             # converting away from metadir is not implemented
             raise NotImplementedError(self.get_converter)
@@ -1694,6 +1705,49 @@ class ConvertMetaToMeta(controldir.Converter):
                 workingtree_4.Converter4or5to6().convert(tree)
         self.pb.finished()
         return to_convert
+
+
+class ConvertMetaToColo(controldir.Converter):
+    """Add colocated branch support."""
+
+    def __init__(self, target_format):
+        """Create a converter.that upgrades a metadir to the colo format.
+
+        :param target_format: The final metadir format that is desired.
+        """
+        self.target_format = target_format
+
+    def convert(self, to_convert, pb):
+        """See Converter.convert()."""
+        to_convert.transport.put_bytes('branch-format',
+            self.target_format.get_format_string())
+        return BzrDir.open_from_transport(to_convert.root_transport)
+
+
+class ConvertMetaRemoveColo(controldir.Converter):
+    """Remove colocated branch support from a bzrdir."""
+
+    def __init__(self, target_format):
+        """Create a converter.that downgrades a colocated branch metadir
+        to a regular metadir.
+
+        :param target_format: The final metadir format that is desired.
+        """
+        self.target_format = target_format
+
+    def convert(self, to_convert, pb):
+        """See Converter.convert()."""
+        to_convert.control_files.lock_write()
+        try:
+            branches = to_convert.list_branches()
+            if len(branches) > 1:
+                raise errors.BzrError("remove all but a single "
+                    "colocated branch when downgrading")
+        finally:
+            to_convert.control_files.unlock()
+        to_convert.transport.put_bytes('branch-format',
+            self.target_format.get_format_string())
+        return BzrDir.open_from_transport(to_convert.root_transport)
 
 
 controldir.ControlDirFormat.register_server_prober(RemoteBzrProber)

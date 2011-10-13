@@ -17,6 +17,7 @@
 """Tests for the test framework."""
 
 from cStringIO import StringIO
+import gc
 import doctest
 import os
 import signal
@@ -3312,6 +3313,113 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
+
+
+class TestUncollectedWarnings(tests.TestCase):
+    """Check a test case still alive after being run emits a warning"""
+
+    class Test(tests.TestCase):
+        def test_pass(self):
+            pass
+        def test_self_ref(self):
+            self.also_self = self.test_self_ref
+        def test_skip(self):
+            self.skip("Don't need")
+
+    def _get_suite(self):
+        return TestUtil.TestSuite([
+            self.Test("test_pass"),
+            self.Test("test_self_ref"),
+            self.Test("test_skip"),
+            ])
+
+    def _inject_stream_into_subunit(self, stream):
+        """To be overridden by subclasses that run tests out of process"""
+
+    def _run_selftest_with_suite(self, **kwargs):
+        sio = StringIO()
+        self._inject_stream_into_subunit(sio)
+        old_flags = tests.selftest_debug_flags
+        tests.selftest_debug_flags = old_flags.union(["uncollected_cases"])
+        gc_on = gc.isenabled()
+        if gc_on:
+            gc.disable()
+        try:
+            tests.selftest(test_suite_factory=self._get_suite, stream=sio,
+                stop_on_failure=False, **kwargs)
+        finally:
+            if gc_on:
+                gc.enable()
+            tests.selftest_debug_flags = old_flags
+        output = sio.getvalue()
+        self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
+        self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
+        return output
+
+    def test_testsuite(self):
+        self._run_selftest_with_suite()
+
+    def test_pattern(self):
+        out = self._run_selftest_with_suite(pattern="test_(?:pass|self_ref)$")
+        self.assertNotContainsRe(out, "test_skip")
+
+    def test_exclude_pattern(self):
+        out = self._run_selftest_with_suite(exclude_pattern="test_skip$")
+        self.assertNotContainsRe(out, "test_skip")
+
+    def test_random_seed(self):
+        self._run_selftest_with_suite(random_seed="now")
+
+    def test_matching_tests_first(self):
+        self._run_selftest_with_suite(matching_tests_first=True,
+            pattern="test_self_ref$")
+
+    def test_starting_with_and_exclude(self):
+        out = self._run_selftest_with_suite(starting_with=["bt."],
+            exclude_pattern="test_skip$")
+        self.assertNotContainsRe(out, "test_skip")
+
+    def test_additonal_decorator(self):
+        out = self._run_selftest_with_suite(
+            suite_decorators=[tests.TestDecorator])
+
+
+class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
+    """Check warnings from tests staying alive are emitted with subunit"""
+
+    _test_needs_features = [features.subunit]
+
+    def _run_selftest_with_suite(self, **kwargs):
+        return TestUncollectedWarnings._run_selftest_with_suite(self,
+            runner_class=tests.SubUnitBzrRunner, **kwargs)
+
+
+class TestUncollectedWarningsForking(TestUncollectedWarnings):
+    """Check warnings from tests staying alive are emitted when forking"""
+
+    _test_needs_features = [features.subunit]
+
+    def _inject_stream_into_subunit(self, stream):
+        """Monkey-patch subunit so the extra output goes to stream not stdout
+
+        Some APIs need rewriting so this kind of bogus hackery can be replaced
+        by passing the stream param from run_tests down into ProtocolTestCase.
+        """
+        from subunit import ProtocolTestCase
+        _original_init = ProtocolTestCase.__init__
+        def _init_with_passthrough(self, *args, **kwargs):
+            _original_init(self, *args, **kwargs)
+            self._passthrough = stream
+        self.overrideAttr(ProtocolTestCase, "__init__", _init_with_passthrough)
+
+    def _run_selftest_with_suite(self, **kwargs):
+        # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
+        if getattr(os, "fork", None) is None:
+            raise tests.TestNotApplicable("Platform doesn't support forking")
+        # Make sure the fork code is actually invoked by claiming two cores
+        self.overrideAttr(osutils, "local_concurrency", lambda: 2)
+        kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
+        return TestUncollectedWarnings._run_selftest_with_suite(self, **kwargs)
 
 
 class TestEnvironHandling(tests.TestCase):

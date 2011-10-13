@@ -1317,29 +1317,40 @@ class cmd_branch(Command):
                     'already exists.') % to_location)
             else:
                 try:
-                    controldir.ControlDir.open_from_transport(to_transport)
+                    to_dir = controldir.ControlDir.open_from_transport(
+                        to_transport)
                 except errors.NotBranchError:
-                    pass
+                    to_dir = None
                 else:
-                    raise errors.AlreadyBranchError(to_location)
+                    try:
+                        to_dir.open_branch()
+                    except errors.NotBranchError:
+                        pass
+                    else:
+                        raise errors.AlreadyBranchError(to_location)
         except errors.NoSuchFile:
             raise errors.BzrCommandError(gettext('Parent of "%s" does not exist.')
                                          % to_location)
-        try:
-            # preserve whatever source format we have.
-            dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                        possible_transports=[to_transport],
-                                        accelerator_tree=accelerator_tree,
-                                        hardlink=hardlink, stacked=stacked,
-                                        force_new_repo=standalone,
-                                        create_tree_if_local=not no_tree,
-                                        source_branch=br_from)
-            branch = dir.open_branch()
-        except errors.NoSuchRevision:
-            to_transport.delete_tree('.')
-            msg = gettext("The branch {0} has no revision {1}.").format(
-                from_location, revision)
-            raise errors.BzrCommandError(msg)
+        else:
+            to_dir = None
+        if to_dir is None:
+            try:
+                # preserve whatever source format we have.
+                to_dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
+                                            possible_transports=[to_transport],
+                                            accelerator_tree=accelerator_tree,
+                                            hardlink=hardlink, stacked=stacked,
+                                            force_new_repo=standalone,
+                                            create_tree_if_local=not no_tree,
+                                            source_branch=br_from)
+                branch = to_dir.open_branch()
+            except errors.NoSuchRevision:
+                to_transport.delete_tree('.')
+                msg = gettext("The branch {0} has no revision {1}.").format(
+                    from_location, revision)
+                raise errors.BzrCommandError(msg)
+        else:
+            branch = br_from.sprout(to_dir, revision_id=revision_id)
         _merge_tags_if_possible(br_from, branch)
         # If the source branch is stacked, the new branch may
         # be stacked whether we asked for that explicitly or not.

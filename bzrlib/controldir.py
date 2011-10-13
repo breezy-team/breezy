@@ -1193,6 +1193,11 @@ class ControlDirFormat(object):
         """Return the current default format."""
         return klass._default_format
 
+    def supports_transport(self, transport):
+        """Check if this format can be opened over a particular transport.
+        """
+        raise NotImplementedError(self.supports_transport)
+
 
 class Prober(object):
     """Abstract class that can be used to detect a particular kind of
