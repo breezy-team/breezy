@@ -494,13 +494,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         raise NotImplementedError(self.get_root_id)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None):
+    def clone(self, to_controldir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
 
         Specifically modified files are kept as modified, but
         ignored and unknown files are discarded.
 
-        If you want to make a new line of development, see bzrdir.sprout()
+        If you want to make a new line of development, see ControlDir.sprout()
 
         revision
             If not None, the cloned tree will have its last revision set to
@@ -508,7 +508,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
-        result = to_bzrdir.create_workingtree()
+        result = to_controldir.create_workingtree()
         self.copy_content_into(result, revision_id)
         return result
 
