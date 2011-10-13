@@ -530,8 +530,8 @@ Repository:
 
         # Create branch inside shared repository
         repo.bzrdir.root_transport.mkdir('branch')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch',
-            format=format)
+        branch1 = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=format)
         out, err = self.run_bzr('info -v repo/branch')
         self.assertEqualDiff(
 """Repository branch (format: dirstate or knit)
@@ -1227,8 +1227,8 @@ Repository:
         # Do a heavy checkout
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
-        co_branch = controldir.Controldir.create_branch_convenience('tree/checkout',
-            format=bzrdir.BzrDirMetaFormat1())
+        co_branch = controldir.ControlDir.create_branch_convenience(
+            'tree/checkout', format=bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
