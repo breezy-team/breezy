@@ -16,7 +16,6 @@
 
 """Tests for all_revision_ids on a repository with external references."""
 
-from bzrlib import errors
 from bzrlib.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -26,20 +25,20 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
 
     def test_all_revision_ids_empty(self):
         base = self.make_repository('base')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', base)
         self.assertEqual(set([]), set(repo.all_revision_ids()))
 
     def test_all_revision_ids_from_base(self):
         tree = self.make_branch_and_tree('base')
         revid = tree.commit('one')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', tree.branch.repository)
         self.assertEqual(set([revid]), set(repo.all_revision_ids()))
 
     def test_all_revision_ids_from_repo(self):
         tree = self.make_branch_and_tree('spare')
         revid = tree.commit('one')
         base = self.make_repository('base')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', base)
         repo.fetch(tree.branch.repository, revid)
         self.assertEqual(set([revid]), set(repo.all_revision_ids()))
 
@@ -48,7 +47,7 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
         revid = tree.commit('one')
         base_tree = self.make_branch_and_tree('base')
         revid2 = base_tree.commit('two')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', base_tree.branch.repository)
         repo.fetch(tree.branch.repository, revid)
         self.assertEqual(set([revid, revid2]), set(repo.all_revision_ids()))
 
@@ -56,7 +55,7 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('spare')
         revid = tree.commit('one')
         base = self.make_repository('base')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', base)
         repo.fetch(tree.branch.repository, revid)
         base.fetch(tree.branch.repository, revid)
         self.assertEqual(set([revid]), set(repo.all_revision_ids()))

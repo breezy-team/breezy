@@ -2962,6 +2962,9 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
         format = self.resolve_format(format=format)
+        if not format.supports_workingtrees:
+            b = self.make_branch(relpath+'.branch', format=format)
+            return b.create_checkout(relpath, lightweight=True)
         b = self.make_branch(relpath, format=format)
         try:
             return b.bzrdir.create_workingtree()

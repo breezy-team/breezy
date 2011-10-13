@@ -222,7 +222,7 @@ class BzrDir(controldir.ControlDir):
             # the tree and fail.
             result.root_transport.local_abspath('.')
             if result_repo is None or result_repo.make_working_trees():
-                self.open_workingtree().clone(result)
+                self.open_workingtree().clone(result, revision_id=revision_id)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         return result
