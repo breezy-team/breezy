@@ -37,6 +37,10 @@ from bzrlib import (
     )
 from bzrlib.plugins import builddeb
 from bzrlib.plugins.builddeb import merge_changelog
+from bzrlib.tests.features import ExecutableFeature
+
+
+dpkg_mergechangelogs_feature = ExecutableFeature('dpkg-mergechangelogs')
 
 
 v_111_2 = """\
@@ -139,6 +143,8 @@ def text_content(text):
 
 
 class TestMergeChangelog(tests.TestCase):
+
+    _test_needs_features = [dpkg_mergechangelogs_feature]
 
     def setUp(self):
         super(tests.TestCase, self).setUp()

@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import errno
 import logging
 import os.path
 import re
@@ -60,9 +61,15 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
         writelines(base_filename, base_lines)
         writelines(this_filename, this_lines)
         writelines(other_filename, other_lines)
-        proc = subprocess.Popen(['dpkg-mergechangelogs', base_filename,
-            this_filename, other_filename], stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        try:
+            proc = subprocess.Popen(['dpkg-mergechangelogs', base_filename,
+                this_filename, other_filename], stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                # No dpkg-mergechangelogs command available
+                return 'not_applicable'
+            raise
         stdout, stderr = proc.communicate()
         retcode = proc.returncode
         if stderr:
