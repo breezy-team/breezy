@@ -446,7 +446,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
         # open the branch via a readonly transport
-        source_branch = _mod_branch.Branch.open(self.get_readonly_url('a'))
+        url = self.get_readonly_url('a')
+        t = transport.get_transport_from_url(url)
+        if not tree_a.branch.bzrdir._format.supports_transport(t):
+            raise tests.TestNotApplicable("format does not support transport")
+        source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
@@ -534,6 +538,9 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
                           _mod_branch.Branch.open_containing,
                           self.get_readonly_url('g/p/q'))
         branch = self.make_branch('.')
+        if not branch.bzrdir._format.supports_transport(
+            transport.get_transport_from_url(self.get_readonly_url('.'))):
+            raise tests.TestNotApplicable("format does not support transport")
         branch, relpath = _mod_branch.Branch.open_containing(
             self.get_readonly_url(''))
         self.assertEqual('', relpath)
