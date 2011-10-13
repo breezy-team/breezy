@@ -31,6 +31,7 @@ from bzrlib import (
     hooks,
     revision as _mod_revision,
     transport as _mod_transport,
+    trace,
     ui,
     urlutils,
     )
@@ -39,6 +40,7 @@ from bzrlib.push import (
     PushResult,
     )
 
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib import registry
@@ -678,7 +680,7 @@ class ControlDir(ControlComponent):
             redirected_transport = transport._redirected_to(e.source, e.target)
             if redirected_transport is None:
                 raise errors.NotBranchError(base)
-            note(gettext('{0} is{1} redirected to {2}').format(
+            trace.note(gettext('{0} is{1} redirected to {2}').format(
                  transport.base, e.permanently, redirected_transport.base))
             return redirected_transport
 
