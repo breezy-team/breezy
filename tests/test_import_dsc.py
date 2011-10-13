@@ -1885,7 +1885,8 @@ class OneZeroSourceExtractorTests(tests.TestCaseInTempDir):
             self.assertEquals(3, len(extractor.upstream_tarballs[0]))
             self.assertTrue(os.path.exists(extractor.upstream_tarballs[0][0]))
             self.assertIs(None, extractor.upstream_tarballs[0][1])
-            self.assertIsInstance(extractor.upstream_tarballs[0][2], unicode) # md5sum
+            self.assertIsInstance(
+                extractor.upstream_tarballs[0][2], basestring) # md5sum
         finally:
             extractor.cleanup()
 
@@ -1970,7 +1971,8 @@ class OneZeroSourceExtractorTests(tests.TestCaseInTempDir):
             self.assertEquals(3, len(extractor.upstream_tarballs[0]))
             self.assertTrue(os.path.exists(extractor.upstream_tarballs[0][0]))
             self.assertIs(None, extractor.upstream_tarballs[0][1])
-            self.assertIsInstance(extractor.upstream_tarballs[0][2], unicode) # md5sum
+            self.assertIsInstance(
+                extractor.upstream_tarballs[0][2], basestring) # md5sum
         finally:
             extractor.cleanup()
 
