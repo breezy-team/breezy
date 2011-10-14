@@ -26,14 +26,13 @@ _null_key = object()
 class _LRUNode(object):
     """This maintains the linked-list which is the lru internals."""
 
-    __slots__ = ('prev', 'next_key', 'key', 'value', 'cleanup')
+    __slots__ = ('prev', 'next_key', 'key', 'value')
 
-    def __init__(self, key, value, cleanup=None):
+    def __init__(self, key, value):
         self.prev = None
         self.next_key = _null_key
         self.key = key
         self.value = value
-        self.cleanup = cleanup
 
     def __repr__(self):
         if self.prev is None:
@@ -42,16 +41,6 @@ class _LRUNode(object):
             prev_key = self.prev.key
         return '%s(%r n:%r p:%r)' % (self.__class__.__name__, self.key,
                                      self.next_key, prev_key)
-
-    def run_cleanup(self):
-        try:
-            if self.cleanup is not None:
-                self.cleanup(self.key, self.value)
-        finally:
-            # cleanup might raise an exception, but we want to make sure
-            # to break refcycles, etc
-            self.cleanup = None
-            self.value = None
 
 
 class LRUCache(object):
@@ -102,31 +91,23 @@ class LRUCache(object):
     def __len__(self):
         return len(self._cache)
 
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 5, 0)))
     def add(self, key, value, cleanup=None):
-        """Add a new value to the cache.
+        if cleanup is not None:
+            raise ValueError("Per-node cleanup functions no longer supported")
+        return self.__setitem__(key, value)
 
-        Also, if the entry is ever removed from the cache, call
-        cleanup(key, value).
-
-        :param key: The key to store it under
-        :param value: The object to store
-        :param cleanup: None or a function taking (key, value) to indicate
-                        'value' should be cleaned up.
-        """
+    def __setitem__(self, key, value):
+        """Add a new value to the cache"""
         if key is _null_key:
             raise ValueError('cannot use _null_key as a key')
         if key in self._cache:
             node = self._cache[key]
-            try:
-                node.run_cleanup()
-            finally:
-                # Maintain the LRU properties, even if cleanup raises an
-                # exception
-                node.value = value
-                node.cleanup = cleanup
-                self._record_access(node)
+            node.value = value
+            self._record_access(node)
         else:
-            node = _LRUNode(key, value, cleanup=cleanup)
+            node = _LRUNode(key, value)
             self._cache[key] = node
             self._record_access(node)
 
@@ -173,10 +154,6 @@ class LRUCache(object):
         while len(self._cache) > self._after_cleanup_count:
             self._remove_lru()
 
-    def __setitem__(self, key, value):
-        """Add a value to the cache, there will be no cleanup function."""
-        self.add(key, value, cleanup=None)
-
     def _record_access(self, node):
         """Record that key was accessed."""
         # Move 'node' to the front of the queue
@@ -210,19 +187,14 @@ class LRUCache(object):
         # If we have removed all entries, remove the head pointer as well
         if self._least_recently_used is None:
             self._most_recently_used = None
-        try:
-            node.run_cleanup()
-        finally:
-            # cleanup might raise an exception, but we want to make sure to
-            # maintain the linked list
-            if node.prev is not None:
-                node.prev.next_key = node.next_key
-            if node.next_key is not _null_key:
-                node_next = self._cache[node.next_key]
-                node_next.prev = node.prev
-            # And remove this node's pointers
-            node.prev = None
-            node.next_key = _null_key
+        if node.prev is not None:
+            node.prev.next_key = node.next_key
+        if node.next_key is not _null_key:
+            node_next = self._cache[node.next_key]
+            node_next.prev = node.prev
+        # And remove this node's pointers
+        node.prev = None
+        node.next_key = _null_key
 
     def _remove_lru(self):
         """Remove one entry from the lru, and handle consequences.
@@ -285,17 +257,8 @@ class LRUSizeCache(LRUCache):
         self._update_max_size(max_size, after_cleanup_size=after_cleanup_size)
         LRUCache.__init__(self, max_cache=max(int(max_size/512), 1))
 
-    def add(self, key, value, cleanup=None):
-        """Add a new value to the cache.
-
-        Also, if the entry is ever removed from the cache, call
-        cleanup(key, value).
-
-        :param key: The key to store it under
-        :param value: The object to store
-        :param cleanup: None or a function taking (key, value) to indicate
-                        'value' should be cleaned up.
-        """
+    def __setitem__(self, key, value):
+        """Add a new value to the cache"""
         if key is _null_key:
             raise ValueError('cannot use _null_key as a key')
         node = self._cache.get(key, None)
@@ -310,11 +273,9 @@ class LRUSizeCache(LRUCache):
             if node is not None:
                 # We won't be replacing the old node, so just remove it
                 self._remove_node(node)
-            if cleanup is not None:
-                cleanup(key, value)
             return
         if node is None:
-            node = _LRUNode(key, value, cleanup=cleanup)
+            node = _LRUNode(key, value)
             self._cache[key] = node
         else:
             self._value_size -= self._compute_size(node.value)
