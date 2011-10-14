@@ -57,6 +57,8 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
+
 * Methods ``add`` and ``items`` of ``LRUCache`` and ``LRUSizeCache`` are
   deprecated. Use normal dict-style access instead. (Martin Packman)
 

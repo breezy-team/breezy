@@ -105,7 +105,10 @@ def find_touching_revisions(branch, file_id):
     last_ie = None
     last_path = None
     revno = 1
-    for revision_id in branch.revision_history():
+    graph = branch.repository.get_graph()
+    history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+        [_mod_revision.NULL_REVISION]))
+    for revision_id in reversed(history):
         this_inv = branch.repository.get_inventory(revision_id)
         if this_inv.has_id(file_id):
             this_ie = this_inv[file_id]
