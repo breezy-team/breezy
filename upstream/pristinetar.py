@@ -340,6 +340,8 @@ class PristineTarSource(UpstreamSource):
         if component is None:
             # compatibility with git-buildpackage
             tags += ["upstream/%s" % version]
+            # compatibility with svn-buildpackage
+            tags += ["upstream_%s" % version]
         return tags
 
     def has_pristine_tar_delta(self, rev):
