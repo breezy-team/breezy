@@ -71,7 +71,7 @@ class KnownHooksRegistry(registry.Registry):
 
 _builtin_known_hooks = (
     ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
-    ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
+    ('bzrlib.controldir', 'ControlDir.hooks', 'ControlDirHooks'),
     ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
     ('bzrlib.config', 'ConfigHooks', '_ConfigHooks'),
     ('bzrlib.info', 'hooks', 'InfoHooks'),

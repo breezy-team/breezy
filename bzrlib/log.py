@@ -65,8 +65,8 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     foreign,
@@ -2026,7 +2026,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
       branch will be read-locked.
     """
     from builtins import _get_revision_range
-    tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
+    tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
+        file_list[0])
     add_cleanup(b.lock_read().unlock)
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive

@@ -33,7 +33,7 @@ def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
 def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
     """Switch the branch associated with a checkout.
 
-    :param control_dir: BzrDir of the checkout to change
+    :param control_dir: ControlDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
     :param revision_id: revision ID to switch to.
@@ -51,7 +51,7 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
 def _check_pending_merges(control, force=False):
     """Check that there are no outstanding pending merges before switching.
 
-    :param control: BzrDir of the branch to check
+    :param control: ControlDir of the branch to check
     """
     try:
         tree = control.open_workingtree()
@@ -71,7 +71,7 @@ def _check_pending_merges(control, force=False):
 def _set_branch_location(control, to_branch, force=False):
     """Set location value of a branch reference.
 
-    :param control: BzrDir of the checkout to change
+    :param control: ControlDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
     """

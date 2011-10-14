@@ -17,7 +17,7 @@
 """Utility for create branches with particular contents."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     commit,
     errors,
     memorytree,
@@ -64,7 +64,7 @@ class BranchBuilder(object):
             If the path of the transport does not exist but its parent does
             it will be created.
         :param format: Either a BzrDirFormat, or the name of a format in the
-            bzrdir format registry for the branch to be built.
+            controldir format registry for the branch to be built.
         :param branch: An already constructed branch to use.  This param is
             mutually exclusive with the transport and format params.
         """
@@ -82,8 +82,8 @@ class BranchBuilder(object):
             if format is None:
                 format = 'default'
             if isinstance(format, str):
-                format = bzrdir.format_registry.make_bzrdir(format)
-            self._branch = bzrdir.BzrDir.create_branch_convenience(
+                format = controldir.format_registry.make_bzrdir(format)
+            self._branch = controldir.ControlDir.create_branch_convenience(
                 transport.base, format=format, force_new_tree=False)
         self._tree = None
 
