@@ -218,7 +218,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # on deserialisation, but thats all the current contract guarantees
         # anyway.
         self.assertEqual(revision_id,
-            tree.branch.repository.get_inventory(revision_id).revision_id)
+            tree.branch.repository.revision_tree(revision_id).get_revision_id())
 
     def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")
@@ -233,6 +233,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 except:
                     builder.abort()
                     raise
+                else:
+                    builder.commit("msg")
             self.assertRaises(errors.RootMissing, do_commit)
         finally:
             tree.unlock()
@@ -523,7 +525,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # Just a couple simple tests to ensure that it actually follows
             # the RevisionTree api.
             self.assertEqual(rev_id, rev_tree.get_revision_id())
-            self.assertEqual([], rev_tree.get_parent_ids())
+            self.assertEqual((), tuple(rev_tree.get_parent_ids()))
         finally:
             tree.unlock()
 
@@ -1278,7 +1280,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            osutils.delete_any(path)
+            if osutils.file_kind(path) == "directory":
+                osutils.rmtree(path)
+            else:
+                osutils.delete_any(path)
             make_after(path)
 
         self._add_commit_change_check_changed(tree, path, change_kind,

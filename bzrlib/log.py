@@ -74,8 +74,8 @@ from bzrlib import (
     revision as _mod_revision,
     revisionspec,
     tsort,
-    i18n,
     )
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib import (
@@ -215,7 +215,7 @@ def show_log(branch,
     Logger(branch, rqst).show(lf)
 
 
-# Note: This needs to be kept this in sync with the defaults in
+# Note: This needs to be kept in sync with the defaults in
 # make_log_request_dict() below
 _DEFAULT_REQUEST_PARAMS = {
     'direction': 'reverse',
@@ -232,7 +232,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
                           delta_type=None,
                           diff_type=None, _match_using_deltas=True,
                           exclude_common_ancestry=False, match=None,
-                          signature=False,
+                          signature=False, omit_merges=False,
                           ):
     """Convenience function for making a logging request dictionary.
 
@@ -288,6 +288,9 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
       revisions. Keys can be 'message', 'author', 'committer', 'bugs' or
       the empty string to match any of the preceding properties.
 
+    :param omit_merges: If True, commits with more than one parent are
+      omitted.
+
     """
     # Take care of old style message_search parameter
     if message_search:
@@ -311,6 +314,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
         'exclude_common_ancestry': exclude_common_ancestry,
         'signature': signature,
         'match': match,
+        'omit_merges': omit_merges,
         # Add 'private' attributes for features that may be deprecated
         '_match_using_deltas': _match_using_deltas,
     }
@@ -447,12 +451,15 @@ class _DefaultLogGenerator(LogGenerator):
         limit = rqst.get('limit')
         diff_type = rqst.get('diff_type')
         show_signature = rqst.get('signature')
+        omit_merges = rqst.get('omit_merges')
         log_count = 0
         revision_iterator = self._create_log_revision_iterator()
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
                 if levels != 0 and merge_depth >= levels:
+                    continue
+                if omit_merges and len(rev.parent_ids) > 1:
                     continue
                 if diff_type is None:
                     diff = None
@@ -558,10 +565,10 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
              a list of the same tuples.
     """
     if (exclude_common_ancestry and start_rev_id == end_rev_id):
-        raise errors.BzrCommandError(
-            '--exclude-common-ancestry requires two different revisions')
+        raise errors.BzrCommandError(gettext(
+            '--exclude-common-ancestry requires two different revisions'))
     if direction not in ('reverse', 'forward'):
-        raise ValueError('invalid direction %r' % direction)
+        raise ValueError(gettext('invalid direction %r') % direction)
     br_revno, br_rev_id = branch.last_revision_info()
     if br_revno == 0:
         return []
@@ -608,8 +615,8 @@ def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction,
         try:
             result = list(result)
         except _StartNotLinearAncestor:
-            raise errors.BzrCommandError('Start revision not found in'
-                ' left-hand history of end revision.')
+            raise errors.BzrCommandError(gettext('Start revision not found in'
+                ' left-hand history of end revision.'))
     return result
 
 
@@ -654,8 +661,8 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
         except _StartNotLinearAncestor:
             # A merge was never detected so the lower revision limit can't
             # be nested down somewhere
-            raise errors.BzrCommandError('Start revision not found in'
-                ' history of end revision.')
+            raise errors.BzrCommandError(gettext('Start revision not found in'
+                ' history of end revision.'))
 
     # We exit the loop above because we encounter a revision with merges, from
     # this revision, we need to switch to _graph_view_revisions.
@@ -1072,10 +1079,10 @@ def _get_revision_limits(branch, start_revision, end_revision):
     if branch_revno != 0:
         if (start_rev_id == _mod_revision.NULL_REVISION
             or end_rev_id == _mod_revision.NULL_REVISION):
-            raise errors.BzrCommandError('Logging revision 0 is invalid.')
+            raise errors.BzrCommandError(gettext('Logging revision 0 is invalid.'))
         if start_revno > end_revno:
-            raise errors.BzrCommandError("Start revision must be older than "
-                                         "the end revision.")
+            raise errors.BzrCommandError(gettext("Start revision must be "
+                                         "older than the end revision."))
     return (start_rev_id, end_rev_id)
 
 
@@ -1130,10 +1137,10 @@ def _get_mainline_revs(branch, start_revision, end_revision):
 
     if ((start_rev_id == _mod_revision.NULL_REVISION)
         or (end_rev_id == _mod_revision.NULL_REVISION)):
-        raise errors.BzrCommandError('Logging revision 0 is invalid.')
+        raise errors.BzrCommandError(gettext('Logging revision 0 is invalid.'))
     if start_revno > end_revno:
-        raise errors.BzrCommandError("Start revision must be older than "
-                                     "the end revision.")
+        raise errors.BzrCommandError(gettext("Start revision must be older "
+                                     "than the end revision."))
 
     if end_revno < start_revno:
         return None, None, None, None
@@ -1405,7 +1412,7 @@ class LogFormatter(object):
             if advice_sep:
                 self.to_file.write(advice_sep)
             self.to_file.write(
-                "Use --include-merges or -n0 to see merged revisions.\n")
+                "Use --include-merged or -n0 to see merged revisions.\n")
 
     def get_advice_separator(self):
         """Get the text separating the log from the closing advice."""
@@ -1789,7 +1796,8 @@ class LogFormatterRegistry(registry.Registry):
         return self.get(name)(*args, **kwargs)
 
     def get_default(self, branch):
-        return self.get(branch.get_config().log_format())
+        c = branch.get_config_stack()
+        return self.get(c.get('log_format'))
 
 
 log_formatter_registry = LogFormatterRegistry()
@@ -1818,7 +1826,7 @@ def log_formatter(name, *args, **kwargs):
     try:
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
     except KeyError:
-        raise errors.BzrCommandError("unknown log formatter: %r" % name)
+        raise errors.BzrCommandError(gettext("unknown log formatter: %r") % name)
 
 
 def author_list_all(rev):
@@ -2113,7 +2121,8 @@ def _bugs_properties_handler(revision):
                           len(row) > 1 and row[1] == 'fixed']
 
         if fixed_bug_urls:
-            return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
+            return {ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls)):\
+                    ' '.join(fixed_bug_urls)}
     return {}
 
 properties_handler_registry.register('bugs_properties_handler',

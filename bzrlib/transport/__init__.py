@@ -310,8 +310,7 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-        self._segment_parameters = urlutils.split_segment_parameters(
-            base.rstrip("/"))[1]
+        self._segment_parameters = urlutils.split_segment_parameters(base)[1]
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -322,7 +321,7 @@ class Transport(object):
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise errors.NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
-                mutter("EINVAL returned on path %s: %s" % (path, e))
+                mutter("EINVAL returned on path %s: %r" % (path, e))
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267

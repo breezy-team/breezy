@@ -180,7 +180,7 @@ class SFTPNonServerTest(TestCase):
         server.start_server()
         self.addCleanup(server.stop_server)
 
-        transport = _mod_transport.get_transport(server.get_url())
+        transport = _mod_transport.get_transport_from_url(server.get_url())
         self.assertFalse(transport.abspath('/').endswith('/~/'))
         self.assertTrue(transport.abspath('/').endswith('/'))
         del transport
@@ -199,13 +199,13 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b2 = bzrdir.BzrDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1'])
+        self.assertEquals(b2.last_revision(), 'a1')
 
         open('a/foo', 'wt').write('something new in foo\n')
         t.commit('new', rev_id='a2')
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1', 'a2'])
+        self.assertEquals(b2.last_revision(), 'a2')
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
@@ -287,7 +287,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         """Test that a real connection attempt raises the right error"""
         from bzrlib.transport import ssh
         self.set_vendor(ssh.ParamikoVendor())
-        t = _mod_transport.get_transport(self.bogus_url)
+        t = _mod_transport.get_transport_from_url(self.bogus_url)
         self.assertRaises(errors.ConnectionError, t.get, 'foobar')
 
     def test_bad_connection_ssh(self):
@@ -488,7 +488,8 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
             conf._get_config().update(
                 {'sftptest': {'scheme': 'ssh', 'port': port, 'user': 'bar'}})
             conf._save()
-        t = _mod_transport.get_transport('sftp://localhost:%d' % port)
+        t = _mod_transport.get_transport_from_url(
+            'sftp://localhost:%d' % port)
         # force a connection to be performed.
         t.has('foo')
         return t

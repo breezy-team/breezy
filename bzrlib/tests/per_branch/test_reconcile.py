@@ -19,6 +19,7 @@
 from bzrlib import errors, reconcile
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests.per_branch import TestCaseWithBranch
+from bzrlib.tests import TestNotApplicable
 
 
 class TestBranchReconcile(TestCaseWithBranch):
@@ -75,10 +76,12 @@ class TestBranchReconcile(TestCaseWithBranch):
 
     def test_reconcile_handles_ghosts_in_revhistory(self):
         tree = self.make_branch_and_tree('test')
+        if not tree.branch.repository._format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support ghosts")
         tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
         r1 = tree.commit('one')
         r2 = tree.commit('two')
         tree.branch.set_last_revision_info(2, r2)
 
         reconciler = tree.branch.reconcile()
-        self.assertEquals([r1, r2], tree.branch.revision_history())
+        self.assertEquals(r2, tree.branch.last_revision())

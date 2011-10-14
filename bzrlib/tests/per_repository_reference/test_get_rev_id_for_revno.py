@@ -31,7 +31,8 @@ class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
         spare_tree = tree.bzrdir.sprout('spare').open_workingtree()
         revid3 = spare_tree.commit('three')
         branch = spare_tree.branch.create_clone_on_transport(
-            self.get_transport('referring'), stacked_on=self.get_url('base'))
+            self.get_transport('referring'),
+            stacked_on=tree.branch.base)
         repo = branch.repository
         # Sanity check: now repo has 'revid3', and base has 'revid' + 'revid2'
         self.assertEqual(set([revid3]),

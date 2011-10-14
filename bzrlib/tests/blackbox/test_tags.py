@@ -17,7 +17,7 @@
 """Tests for commands related to tags"""
 
 from bzrlib import (
-    branchbuilder,
+    errors,
     tag,
     transform,
     )
@@ -75,10 +75,25 @@ class TestTagging(TestCaseWithTransport):
         # can also delete an existing tag
         out, err = self.run_bzr('tag --delete -d branch tag2')
         # cannot replace an existing tag normally
-        out, err = self.run_bzr('tag -d branch NEWTAG', retcode=3)
+        out, err = self.run_bzr('tag -d branch NEWTAG -r0', retcode=3)
         self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
-        out, err = self.run_bzr('tag -d branch NEWTAG --force')
+        out, err = self.run_bzr('tag -d branch NEWTAG --force -r0')
+        self.assertEquals("Updated tag NEWTAG.\n", err)
+
+    def test_tag_same_revision(self):
+        t = self.make_branch_and_tree('branch')
+        t.commit(allow_pointless=True, message='initial commit',
+            rev_id='first-revid')
+        t.commit(allow_pointless=True, message='second commit',
+            rev_id='second-revid')
+        out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
+        out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
+        self.assertContainsRe(err,
+            'Tag NEWTAG already exists for that revision\\.')
+        out, err = self.run_bzr('tag -rrevid:second-revid -d branch NEWTAG',
+            retcode=3)
+        self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
 
     def test_tag_delete_requires_name(self):
         out, err = self.run_bzr('tag -d branch', retcode=3)
@@ -253,6 +268,17 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tags -d branch2', encoding='utf-8')
         self.assertEquals(err, '')
         self.assertContainsRe(out, r'tagD  *3\n')
+
+    def test_list_tags_dotted_revnos_unsupported(self):
+        tree = self.make_branch_and_tree('branch')
+        rev1 = tree.commit("rev1")
+        tree.branch.tags.set_tag("mytag", rev1)
+        def revision_id_to_dotted_revno(self, revid):
+            raise errors.UnsupportedOperation(revision_id_to_dotted_revno, self)
+        self.overrideAttr(Branch, "revision_id_to_dotted_revno",
+            revision_id_to_dotted_revno)
+        out, err = self.run_bzr('tags -d branch', encoding='utf-8')
+        self.assertEquals(out, 'mytag                ?\n')
 
     def test_list_tags_revision_filtering(self):
         tree1 = self.make_branch_and_tree('.')

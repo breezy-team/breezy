@@ -45,7 +45,8 @@ class VersionInfoBuilder(object):
                 check_for_clean=False,
                 include_revision_history=False,
                 include_file_revisions=False,
-                template=None):
+                template=None,
+                revision_id=None):
         """Build up information about the given branch.
         If working_tree is given, it can be checked for changes.
 
@@ -61,6 +62,7 @@ class VersionInfoBuilder(object):
             include the explicit last-changed revision for each file.
         :param template: Template for the output formatting, not used by
             all builders.
+        :param revision_id: Revision id to print version for (optional)
         """
         self._branch = branch
         self._working_tree = working_tree
@@ -72,6 +74,8 @@ class VersionInfoBuilder(object):
         self._clean = None
         self._file_revisions = {}
         self._revision_history_info= []
+
+        self._revision_id = revision_id
 
     def _extract_file_revisions(self):
         """Extract the working revisions for all files"""
@@ -155,6 +159,8 @@ class VersionInfoBuilder(object):
 
     def _get_revision_id(self):
         """Get the revision id we are working on."""
+        if self._revision_id is not None:
+            return self._revision_id
         if self._working_tree is not None:
             return self._working_tree.last_revision()
         return self._branch.last_revision()

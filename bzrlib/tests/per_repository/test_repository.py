@@ -68,6 +68,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """Test the format.fast_deltas attribute."""
         self.assertFormatAttribute('fast_deltas', (True, False))
 
+    def test_attribute_supports_nesting_repositories(self):
+        """Test the format.supports_nesting_repositories."""
+        self.assertFormatAttribute('supports_nesting_repositories',
+            (True, False))
+
     def test_attribute__fetch_reconcile(self):
         """Test the _fetch_reconcile attribute."""
         self.assertFormatAttribute('_fetch_reconcile', (True, False))
@@ -347,7 +352,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         try:
             made_repo.set_make_working_trees(False)
-        except NotImplementedError:
+        except errors.UnsupportedOperation:
             # the repository does not support having its tree-making flag
             # toggled.
             return
@@ -369,7 +374,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             self.assertFalse(repo._format.supports_revision_signatures)
-            raise TestNotApplicable("signatures not supported by repository format")
+            raise tests.TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text('A')
@@ -598,14 +603,17 @@ class TestRepository(per_repository.TestCaseWithRepository):
                 'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository
-    def make_remote_repository(self, path, shared=False):
+    def make_remote_repository(self, path, shared=None):
         """Make a RemoteRepository object backed by a real repository that will
         be created at the given path."""
         repo = self.make_repository(path, shared=shared)
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
-        remote_transport = transport.get_transport(
+        remote_transport = transport.get_transport_from_url(
             smart_server.get_url()).clone(path)
+        if not repo.bzrdir._format.supports_transport(remote_transport):
+            raise tests.TestNotApplicable(
+                "format does not support transport")
         remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
         remote_repo = remote_bzrdir.open_repository()
         return remote_repo
@@ -747,9 +755,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         repo._make_parents_provider().get_parent_map
 
-    def make_repository_and_foo_bar(self, shared):
+    def make_repository_and_foo_bar(self, shared=None):
         made_control = self.make_bzrdir('repository')
         repo = made_control.create_repository(shared=shared)
+        if not repo._format.supports_nesting_repositories:
+            raise tests.TestNotApplicable("repository does not support "
+                "nesting repositories")
         bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
                                                 force_new_repo=False)
         bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
@@ -760,7 +771,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         return repo
 
     def test_find_branches(self):
-        repo = self.make_repository_and_foo_bar(shared=False)
+        repo = self.make_repository_and_foo_bar()
         branches = repo.find_branches()
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
         self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
@@ -789,6 +800,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_find_branches_using_standalone(self):
         branch = self.make_branch('branch')
+        if not branch.repository._format.supports_nesting_repositories:
+            raise tests.TestNotApplicable("format does not support nesting "
+                "repositories")
         contained = self.make_branch('branch/contained')
         branches = branch.repository.find_branches(using=True)
         self.assertEqual([branch.base], [b.base for b in branches])
@@ -797,8 +811,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
                          [b.base for b in branches])
 
     def test_find_branches_using_empty_standalone_repo(self):
-        repo = self.make_repository('repo')
-        self.assertFalse(repo.is_shared())
+        try:
+            repo = self.make_repository('repo', shared=False)
+        except errors.IncompatibleFormat:
+            raise tests.TestNotApplicable("format does not support standalone "
+                "repositories")
         try:
             repo.bzrdir.open_branch()
         except errors.NotBranchError:
@@ -811,7 +828,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(True)
-        except errors.RepositoryUpgradeRequired, e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertTrue(repo.make_working_trees())
 
@@ -819,7 +836,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(False)
-        except errors.RepositoryUpgradeRequired, e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertFalse(repo.make_working_trees())
 

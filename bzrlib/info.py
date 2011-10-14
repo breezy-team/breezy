@@ -221,7 +221,10 @@ def _show_missing_revisions_working(working, outfile):
     """Show missing revisions in working tree."""
     branch = working.branch
     basis = working.basis_tree()
-    branch_revno, branch_last_revision = branch.last_revision_info()
+    try:
+        branch_revno, branch_last_revision = branch.last_revision_info()
+    except errors.UnsupportedOperation:
+        return
     try:
         tree_last_id = working.get_parent_ids()[0]
     except IndexError:
@@ -268,7 +271,10 @@ def _show_working_stats(working, outfile):
 
 def _show_branch_stats(branch, verbose, outfile):
     """Show statistics about a branch."""
-    revno, head = branch.last_revision_info()
+    try:
+        revno, head = branch.last_revision_info()
+    except errors.UnsupportedOperation:
+        return {}
     outfile.write('\n')
     outfile.write('Branch history:\n')
     outfile.write('  %8d revision%s\n' % (revno, plural(revno)))

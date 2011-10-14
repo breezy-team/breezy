@@ -141,8 +141,8 @@ class cmd_verify_signatures(Command):
                 if to_revid is None:
                     to_revno = branch.revno()
                 if from_revno is None or to_revno is None:
-                    raise errors.BzrCommandError('Cannot verify a range of '\
-                                               'non-revision-history revisions')
+                    raise errors.BzrCommandError(gettext(
+                    'Cannot verify a range of non-revision-history revisions'))
                 for revno in range(from_revno, to_revno + 1):
                     revisions.append(branch.get_rev_id(revno))
         else:
@@ -171,6 +171,11 @@ class cmd_verify_signatures(Command):
             write(gpg_strategy.valid_commits_message(count))
             if verbose:
                for message in gpg_strategy.verbose_valid_message(result):
+                   write_verbose(message)
+            write(gpg_strategy.expired_commit_message(count))
+            if verbose:
+               for message in gpg_strategy.verbose_expired_key_message(result,
+                                                                          repo):
                    write_verbose(message)
             write(gpg_strategy.unknown_key_message(count))
             if verbose:

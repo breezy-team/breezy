@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5b1
+bzr 2.5b3
 #########
 
-:2.5b1: NOT RELEASED YET
+:2.5b3: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -20,10 +20,228 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* A ``from_unicode`` parameter can be specified when registering a config
-  option. This implements boolean and integer config options when the
-  provided ``bool_from_store`` and ``int_from_store`` are used.
-  (Vincent Ladeuil)
+* The ``log_format`` configuration can be used with ``-Olog_format=line`` to
+  change the format ``push`` and ``pull`` use to display the
+  revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
+  format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+* ``bzr version-info`` now takes a ``--revision`` argument.
+  (Jelmer Vernooij, #238705)
+
+* ``bzr revno`` now takes a ``--revision`` argument.
+  (Jelmer Vernooij, #870649)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* ``bzr mkdir --quiet`` now does not print a line for every created
+  directory. (Martin von Gagern, #869915)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+* ``ControlDirFormat`` now has a new method ``supports_transport``
+  which format implementations can use whether or not they can access
+  a control dir over a particular transport. (Jelmer Vernooij)
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+*  Ensure TestCase instances are deallocated immediately after running where
+   possible. This greatly reduces the peak resource needs of a full test suite
+   run. The new ``-Euncollected_cases`` selftest flag will add failures if any
+   case which persists pasts its expected lifetime. (Martin Packman, #613247)
+
+
+bzr 2.5b2
+#########
+
+This is the second beta of the 2.5 series, leading to a 2.5.0 release in
+February 2012. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+This release includes more filtering options for ``bzr log``, idle
+connections handling for ``bzr serve``, a ``development-colo`` experimental
+format to flesh out the colocated branches UI, better support for foreign
+formats, enhancements to the config framework and more.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
+:2.5b2: 2011-10-06
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
+
+* A new ``-O`` standard option (common to all commands) have been added. It
+  provides a value for a config option in the ``-Oname=value`` form that
+  takes precedence over all definitions found in config files.  It can be
+  used multiple times to override different options.
+  (Vincent Ladeuil, #491196)
+
+* ``bzr log`` now has an option called ``--omit-merges`` to omit
+  those commits that merged branches, i.e. those having more than one
+  parent.
+  In order to avoid confusion, the previous command line option
+  ``--include-merges`` has been renamed to ``--include-merged``.
+  The old name of the command line option will still be accepted.
+  The name change also affects ``bzr missing``.
+  (Martin von Gagern)
+
+* ``bzr serve`` will now disconnect clients if they have not issued an RPC
+  request after 5minutes. On POSIX platforms, this will also happen for
+  ``bzr serve --inet``. This can be overridden with the configuration
+  variable ``serve.client_timeout`` or in the command line parameter
+  ``bzr serve --client-timeout=X``. Further, it is possible to request
+  ``bzr serve [--inet]`` to shutdown gracefully by sending SIGHUP. It will
+  finish the current request, and then close the connection.
+  (John Arbash Meinel, #824797, #795025)
+
+* The new experimental format ``development-colo`` supports colocated
+  branches. This format will eventually be merged back into the ``2a``
+  format when it has stabilized and there is adequate UI support for
+  colocated branches.
+  (Jelmer Vernooij, #831481)
+
+Improvements
+************
+
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
+* ``bzr info -v`` can now be run against branches that don't support
+  ``last_revision_info``, in which case the branch information will simply
+  not be displayed. (Jelmer Vernooij)
+
+Bug Fixes
+*********
+
+* ``bzr shelve`` can now be used in emacs shells as the input handling is
+  turned into a line-based one when ``INSIDE_EMACS`` is set (which is the
+  case for all recent emacs versions). (Vincent Ladeuil, #856261)
+
+* ``bzr tags`` can now be used against remote repositories that do
+  not provide access to the revision graph. (Jelmer Vernooij, #858942)
+
+* ``bzr update PATH`` will stop if you seem to be asking it to update
+  anything less than a whole tree, because that's not supported by ``bzr``'s
+  concept that the whole tree has a single basis revision.  Previously, it
+  would go ahead and update the whole tree, which was surprising.
+  (Martin Pool, #557886)
+
+* Don't crash if ``bzrlib.initialize()`` has not been called while accessing
+  configs.  (Vincent Ladeuil, #863401)
+
+* Redirects between http and https no longer discard path information
+  in some cases. (Jelmer Vernooij, #853765)
+
+* The ``--overwrite`` argument to ``bzr push`` and ``bzr pull`` no longer
+  reports all tags as changed. (Jelmer Vernooij, #845396)
+
+* ``WorkingTree.get_file_mtime`` now raises NoSuchId if a file id is
+  specified that is unknown. (Jelmer Vernooij, #847435)
+
+
+API Changes
+***********
+
+* ``Branch.get_revision_delta`` has been deprecated. Use
+  ``Repository.get_revision_delta`` instead. (Jelmer Vernooij, #859712)
+
+* Plugins that implement custom protocols for ``bzr serve`` should now
+  also take an argument ``timeout``. This is used by the the bzr protocol
+  to close a connection if a client has been idle for more than X seconds.
+  (Default 5minutes). (John Arbash Meinel)
+
+* ``Repository.fileids_altered_by_revision_ids`` has been moved to
+  ``VersionedFileRepository`` and is no longer part of the standard
+  ``Repository`` interface. (Jelmer Vernooij)
+
+* The argument ``include_merges`` to ``missing.find_unmerged`` has
+  been renamed to ``include_merged``. The old name is still supported
+  for now but will cause a deprecation warning. (Martin von Gagern)
+
+* The new method ``ControlDirFormat.is_initializable()`` returns a boolean
+  indicating whether or not it is possible to use any of the
+  initialization methods of that format to create a new control dir.
+  (Jelmer Vernooij)
+
+Internals
+*********
+
+* ``Branch`` objects can now use a config stack with the newly introduced
+  ``get_config_stack()``. Both ``get_config`` and ``get_config_stack`` can
+  be used for the same branch but it's recommended to stick to one for a
+  given option.
+
+Testing
+*******
+
+* Test scripts can now use ``bzr shelve`` and provide their input as
+  complete lines. (Vincent Ladeuil, #856261)
+
+* Really corrupt the pack file without depending on a special length or value.
+  (Vincent Ladeuil, #807032)
+
+
+bzr 2.5b1
+#########
+
+:2.5b1: 2011-09-15
+
+This is the first beta of the 2.5 series, leading up to a 2.5.0
+release in February 2012.
+
+This release includes better support for gpg signing, better support for
+i18n (mostly command help and error messages), more options to filter ``bzr
+log`` output, more support for colocated branches ("location,branch=XXX"
+syntax), better feedback on updated tags for various commands, faster
+branching into an empty repository, enhancements to the config framework and
+more.
+
+Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.  Some plugins may need small updates to work
+with 2.5b1.
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
 
 * A ``from_unicode`` parameter can be specified when registering a config
   option. This implements boolean, integer and list config options when the
@@ -56,46 +274,130 @@ New Features
 
 * Add a config option gpg_signing_key for setting which GPG key should
   be used to sign commits. Also default to using the gpg user identity
-  which matches user_email() as set by whoami. (Jonathan Riddell,
-  #68501)
+  which matches user_email() as set by whoami.
+  (Jonathan Riddell, #68501)
 
 * An ``invalid`` parameter can be specified when registering a config option
   to decide what should be done when invalid values are
-  encountered. 'warning' and 'eeror' will respectively emit a warning and
+  encountered. 'warning' and 'error' will respectively emit a warning and
   ignore the value or errors out. (Vincent Ladeuil)
 
-* bzr log -m now matches message, author, committer and bugs instead
-  of just matching the message.  --message keeps its original meaning,
-  while --match-message, --match-author, --match-committer and
-  --match-bugs match each of those fields.
+* bzr add now skips large files in recursive mode. The default "large"
+  size is 20MB, and is configurable via the add.maximum_file_size
+  option. A value of 0 disables skipping. Named items passed to add are
+  never skipped. (Shannon Weyrick, #54624)
 
-* Relative local paths can now be specified in URL syntax by using the
-  "file:" prefix.  (Jelmer Vernooij)
+* ``bzr help configuration/<option>`` display the help for ``option`` for
+  all registered configuration options. (Vincent Ladeuil, #747050)
+
+* ``bzr log -m`` now matches message, author, committer and bugs instead
+  of just matching the message.  ``--message`` keeps its original meaning,
+  while ``--match-message, --match-author, --match-committer`` and
+  ``--match-bugs`` match each of those fields. (Jacek Sieka)
 
 * ``bzr switch`` will now look up and switch to colocated branches.
   (Jelmer Vernooij, #826814)
 
+* ``config.Option`` can now declare ``default_from_env``, a list of
+  environment variables to get a default value from. (Vincent Ladeuil)
+
+* ``config.NameMatcher`` can be used to implement config stores and stacks
+  that need to provide specific option values for arbitrary unique IDs (svn
+  repository UUIDs, etc).  (Vincent Ladeuil, #843638)
+
+* New builtin ``bzr branches`` command, which lists all colocated branches
+  in a directory. (Jelmer Vernooij, #826820)
+
+* Relative local paths can now be specified in URL syntax by using the
+  "file:" prefix.  (Jelmer Vernooij)
+
+* Report commits signed with expired keys in ``verify-signatures``.
+  (Jonathan Riddell, #804254)
+
+* Translations are now enabled for command help, errors and globally
+  for any message using ``gettext`` given on output.  (Jonathan Riddell,
+  INADA Naoki, #83941)
+
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
+* ``bzr add`` will now warn about nested subtrees that are skipped.
+  (Jelmer Vernooij, #187342)
+
+* ``bzr commit -m ''`` can now be used to force an empty commit message.
+  Entering an empty commit message in the message editor still triggers
+  an error. (Jelmer Vernooij)
+
+* ``bzr pull`` will now mention how many tags it has updated.
+  (Jelmer Vernooij, #164450)
+
+* ``bzr tag`` no longer errors if a tag already exists but refers to the
+  same revision, and will mention when a tag has been updated
+  rather than created. (Jelmer Vernooij, #381203)
+
+* ``bzr uncommit`` will now remove tags that refer to removed revisions.
+  The ``--keep-tags`` option can be used to prevent this behaviour.
+  (Jelmer Vernooij, #605814)
+
+* Do not run i18n initialisation twice. (Jonathan Riddell)
+
+* Install translation .mo files. (Jonathan Riddell)
+
+* Locations printed by ``bzr upgrade`` are now formatted before display.
+  (Jelmer Vernooij)
+
+* ``Repository.get_parent_map`` now estimates the size of the returned
+  content more accurately. This means that we get closer to the desired
+  64kB/request. For repositories converted from svn, this can be an
+  improvement of approx 5:1 in round trips to discover the whole history.
+  (John Arbash Meinel)
+
+* Support a ``bugtracker`` option which is used by ``bzr commit --fixes``
+  if no bug tracker was specified on the command line.
+  (Jelmer Vernooij, #334860)
+
+* Use ``gettext.NullTranslations`` in i18n to allow use of i18n even when
+  translations are not turned on. (Jonathan Riddell)
 
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
+* ``bzr commit`` now correctly reports missing files as "removed", not
+  "modified". (Jelmer Vernooij, #553955)
+
+* ``bzr reconfigure`` will now allow multiple non-conflicting requests
+  in a single invocation, e.g. ``--branch`` and ``--use-shared``.
+  (Martin von Gagern, #842993)
 
 * A call to CHKInventory's filter-method will not result in a
   DuplicateFileId error, if you move a subfolder and change a file in
   that subfolder.
   (Bastian Bowe, #809901)
 
+* Branching from a stacked branch no longer does a ``get_parent_map``
+  request for each revisions that is in the stacked-on repository while
+  determining what revisions need to be fetched. This mostly impacts
+  branching initialy into an empty shared repository when the source is
+  not the development focus.  (John Arbash Meinel, #388269)
+
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode
   errors.  (Vincent Ladeuil, #822571)
 
-* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+* Fix fallout from URL handling changes in 2.5 that caused an IndexError to be
+  raised whenever a transport at the drive root was opened on windows.
+  (Martin [gz], #841322)
+
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+* Rather than an error being raised, a warning is now printed when the
+  current user does not have permission to read a configuration file.
+  (Jelmer Vernooij, #837324)
+
+* The pull command will now always use separate connections for the
+  case where the destination is a heavyweight checkout of some remote
+  branch on the same host as the source branch.
+  (Martin von Gagern, #483661)
 
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
@@ -104,30 +406,39 @@ Bug Fixes
 Documentation
 *************
 
-.. Improved or updated documentation.
-
 * Release instructions refreshed. (Vincent Ladeuil)
 
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+* ``BranchFormat.initialize`` now takes a ``append_revisions_only``
+  argument. (Jelmer Vernooij)
+
+* ``Branch._get_checkout_format`` now takes a ``lightweight`` argument
+  which indicates if the format should be for a lightweight or a
+  heavyweight checkout. (Jelmer Vernooij)
+
+* ``ControlDir.create_branch`` now takes a ``append_revisions_only`` argument.
+  (Jelmer Vernooij)
 
 * New class ``URL`` in ``bzrlib.utils`` for managing parsed URLs.
   (Jelmer Vernooij)
 
-* New methods ``get_transport_from_path`` and ``get_transport_from_url``
-  have been added that only support opening from a path or a URL,
-  unlike ``get_transport``. (Jelmer Vernooij)
+* New method ``Config.get_user_option_as_int_from_SI`` added for expanding a
+  value in SI format (i.e. "20MB", "1GB") into its integer equivalent. 
+  (Shannon Weyrick)
+
+* New method ``InterTree.file_content_matches`` which checks that
+  two files in different trees have the same contents.
+  (Jelmer Vernooij)
 
 * New method ``Tree.get_file_verifier`` which allows tree implementations
   to return non-sha1 checksums to verify files.
   (Jelmer Vernooij, #720831)
 
-* New method ``InterTree.file_content_matches`` which checks that
-  two files in different trees have the same contents.
-  (Jelmer Vernooij)
+* New methods ``get_transport_from_path`` and ``get_transport_from_url``
+  have been added that only support opening from a path or a URL,
+  unlike ``get_transport``. (Jelmer Vernooij)
 
 * New registry ``OptionRegistry`` specialized for configuration options.
   (Vincent Ladeuil)
@@ -156,6 +467,13 @@ API Changes
   ``UIFactory.warn_experimental_format_fetch`` in favor of
   ``UIFactory.show_user_warning``. (Jelmer Vernooij)
 
+* ``Tags`` containers can now declare whether they support versioned
+  tags and whether tags can refer to ghost tags.
+  (Jelmer Vernooij)
+
+* ``Tags.merge_to`` now returns a dictionary with the updated tags
+  and a set of conflicts, rather than just conflicts. (Jelmer Vernooij)
+
 * There is a new class `ContentFilterTree` that provides a facade for 
   content filtering.  The `filtered` parameter to `export` is deprecated 
   in favor of passing a filtered tree, and the specific exporter plugins
@@ -167,12 +485,12 @@ API Changes
   and ``_path`` attributes. Proxies are provided for the moment but
   may be removed in the future. (Jelmer Vernooij)
 
-
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+* A new debug flag ``hpss_client_no_vfs`` will now cause the HPSS client
+  to raise a ``HpssVfsRequestNotAllowed`` exception when a VFS request
+  is attempted. (Jelmer Vernooij)
 
 * New method ``ControlDir._get_selected_branch`` which returns the
   colocated branch selected using path segment parameters.
@@ -181,9 +499,8 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
+* Blackbox tests (including test scripts) can be debugged interactively (see
+  bzrlib.debug.BzrPdb for details). (Vincent Ladeuil)
 
 * `BranchBuilder.build_snapshot` now supports a "flush" action.  This
   cleanly and reliably allows tests using `BranchBuilder` to construct
@@ -199,6 +516,13 @@ Testing
 
 * ``LockDir`` can now be run when the local hostname is ``localhost``.
   (Jelmer Vernooij, #825994)
+
+* ``ModuleAvailableFeature`` won't try to import already imported modules,
+  allowing it to be used for modules with side-effects.
+  (Vincent Ladeuil, #712474)
+
+* Output time stamps while running ``make check`` to get better timings from
+  pqm.  (Vincent Ladeuil, #837926)
 
 * `TestCaseWithMemoryTransport` is faster now: `_check_safety_net` now
   just compares the bytes in the dirstate file to its pristine state,

@@ -75,7 +75,6 @@ class ControlComponent(object):
         return self.user_transport.base
 
 
-
 class ControlDir(ControlComponent):
     """A control directory.
 
@@ -146,11 +145,14 @@ class ControlDir(ControlComponent):
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self, name=None, repository=None):
+    def create_branch(self, name=None, repository=None,
+                      append_revisions_only=None):
         """Create a branch in this ControlDir.
 
         :param name: Name of the colocated branch to create, None for
             the default branch.
+        :param append_revisions_only: Whether this branch should only allow
+            appending new revisions to its history.
 
         The controldirs format will control what branch format is created.
         For more control see BranchFormatXX.create(a_controldir).
@@ -679,11 +681,16 @@ class ControlDirFormat(object):
     def is_supported(self):
         """Is this format supported?
 
-        Supported formats must be initializable and openable.
+        Supported formats must be openable.
         Unsupported formats may not support initialization or committing or
         some other features depending on the reason for not being supported.
         """
         return True
+
+    def is_initializable(self):
+        """Whether new control directories of this format can be initialized.
+        """
+        return self.is_supported()
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
         basedir=None):
@@ -845,6 +852,11 @@ class ControlDirFormat(object):
     def get_default_format(klass):
         """Return the current default format."""
         return klass._default_format
+
+    def supports_transport(self, transport):
+        """Check if this format can be opened over a particular transport.
+        """
+        raise NotImplementedError(self.supports_transport)
 
 
 class Prober(object):

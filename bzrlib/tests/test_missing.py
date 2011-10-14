@@ -134,12 +134,12 @@ class TestMissing(TestCaseWithTransport):
 class TestFindUnmerged(tests.TestCaseWithTransport):
 
     def assertUnmerged(self, local, remote, local_branch, remote_branch,
-            restrict='all', include_merges=False, backward=False,
+            restrict='all', include_merged=False, backward=False,
             local_revid_range=None, remote_revid_range=None):
         """Check the output of find_unmerged_mainline_revisions"""
         local_extra, remote_extra = missing.find_unmerged(
             local_branch, remote_branch, restrict,
-            include_merges=include_merges, backward=backward,
+            include_merged=include_merged, backward=backward,
             local_revid_range=local_revid_range,
             remote_revid_range=remote_revid_range)
         self.assertEqual(local, local_extra)
@@ -187,7 +187,7 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         self.assertUnmerged([], [], tree.branch, tree2.branch,
             local_revid_range=(rev1, rev1))
 
-    def test_include_merges(self):
+    def test_include_merged(self):
         tree = self.make_branch_and_tree('tree')
         rev1 = tree.commit('one', rev_id='rev1')
 
@@ -207,27 +207,27 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
                                  ('3.1.1', 'rev4', 1), ('3.1.2', 'rev5', 1),
                                  ],
                             tree.branch, tree2.branch,
-                            include_merges=True)
+                            include_merged=True)
 
         self.assertUnmerged([], [('4', 'rev6', 0),
                                  ('3.1.2', 'rev5', 1), ('3.1.1', 'rev4', 1),
                                  ('3', 'rev3', 0), ('2', 'rev2', 0),
                                  ],
                             tree.branch, tree2.branch,
-                            include_merges=True,
+                            include_merged=True,
                             backward=True)
 
         self.assertUnmerged([], [('4', 'rev6', 0)],
             tree.branch, tree2.branch,
-            include_merges=True, remote_revid_range=(rev6, rev6))
+            include_merged=True, remote_revid_range=(rev6, rev6))
 
         self.assertUnmerged([], [('3', 'rev3', 0), ('3.1.1', 'rev4', 1)],
                     tree.branch, tree2.branch,
-                    include_merges=True, remote_revid_range=(rev3, rev4))
+                    include_merged=True, remote_revid_range=(rev3, rev4))
 
         self.assertUnmerged([], [('4', 'rev6', 0), ('3.1.2', 'rev5', 1)],
                     tree.branch, tree2.branch,
-                    include_merges=True, remote_revid_range=(rev5, rev6))
+                    include_merged=True, remote_revid_range=(rev5, rev6))
 
     def test_revision_range(self):
         local = self.make_branch_and_tree('local')

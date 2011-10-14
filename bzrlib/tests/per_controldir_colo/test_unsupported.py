@@ -23,7 +23,6 @@ and attributes colocated branch support added should fail in known ways.
 from bzrlib import (
     errors,
     tests,
-    transport,
     )
 from bzrlib.tests import (
     per_controldir,
@@ -40,7 +39,10 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
             # they may not be initializable.
             raise tests.TestNotApplicable('Control dir format not supported')
         t = self.get_transport()
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('Control dir format not initializable')
         made_repo = made_control.create_repository()
         return made_control
 

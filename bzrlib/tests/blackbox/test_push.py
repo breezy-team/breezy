@@ -35,6 +35,7 @@ from bzrlib.tests import (
     blackbox,
     http_server,
     scenarios,
+    script,
     test_foreign,
     test_server,
     )
@@ -104,12 +105,11 @@ class TestPush(tests.TestCaseWithTransport):
         transport.delete('branch_b/c')
         out, err = self.run_bzr('push', working_dir='branch_a')
         path = branch_a.get_push_location()
-        self.assertEquals(out,
-                          'Using saved push location: %s\n'
-                          % urlutils.local_path_from_url(path))
         self.assertEqual(err,
+                         'Using saved push location: %s\n'
                          'All changes applied successfully.\n'
-                         'Pushed up to revision 2.\n')
+                         'Pushed up to revision 2.\n'
+                         % urlutils.local_path_from_url(path))
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
@@ -148,6 +148,22 @@ class TestPush(tests.TestCaseWithTransport):
         out, err = self.run_bzr('push -d tree pushed-to')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
+
+    def test_push_quiet(self):
+        # test that using -q makes output quiet
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        t.add('file')
+        t.commit('commit 1')
+        self.run_bzr('push -d tree pushed-to')
+        path = t.branch.get_push_location()
+        out, err = self.run_bzr('push', working_dir="tree")
+        self.assertEqual('Using saved push location: %s\n'
+                         'No new revisions or tags to push.\n' %
+                         urlutils.local_path_from_url(path), err)
+        out, err = self.run_bzr('push -q', working_dir="tree")
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_push_only_pushes_history(self):
         # Knit branches should only push the history for the current revision.
@@ -661,8 +677,8 @@ class TestPushStrictMixin(object):
     def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
-        conf = self.tree.branch.get_config()
-        conf.set_user_option('push_strict', value)
+        conf = self.tree.branch.get_config_stack()
+        conf.set('push_strict', value)
 
     _default_command = ['push', '../to']
     _default_wd = 'local'
@@ -827,3 +843,27 @@ class TestPushForeign(tests.TestCaseWithTransport):
         self.assertEquals("", output)
         self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
             " push to dummy. You may want to use dpush instead.\n")
+
+
+class TestPushOutput(script.TestCaseWithTransportAndScript):
+
+    def test_push_log_format(self):
+        self.run_script("""
+            $ bzr init trunk
+            Created a standalone tree (format: 2a)
+            $ cd trunk
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'we need some foo'
+            2>Committing to:...trunk/
+            2>added file
+            2>Committed revision 1.
+            $ bzr init ../feature
+            Created a standalone tree (format: 2a)
+            $ bzr push -v ../feature -Olog_format=line
+            Added Revisions:
+            1: jrandom@example.com ...we need some foo
+            2>All changes applied successfully.
+            2>Pushed up to revision 1.
+            """)

@@ -6,7 +6,7 @@ A configuration option has:
 * a name: a valid python identifier (even if it's not used as an
   identifier in python itself)
 
-* a value: a unicode string
+* a value: a unicode string or a list of unicode strings.
 
 Option
 ------
@@ -18,6 +18,10 @@ The Option object is used to define its properties:
 
 * default: the default value that Stack.get() should return if no
   value can be found for the option.
+
+* default_from_env: a list of environment variables. The first variable set
+  will provide a default value overriding 'default' which remains the
+  default value if *no* environment variable is set.
 
 * help: a doc string describing the option, the first line should be a
   summary and can be followed by a blank line and a more detailed
@@ -82,12 +86,24 @@ of the associated store as long as possible. The constructor should collect
 all data needed for the selection and uses it while processing the sections in
 ``get_sections``.
 
-Only ``ReadOnlySection`` objects are manipulated here but a ``SectionMatcher``
-can return dedicated ``Section`` to provide additional context (the
-``LocationSection`` add an ``extra_path`` attribute to implement the
-``appendpath`` policy for example).
+Only ``ReadOnlySection`` objects are manipulated here but a
+``SectionMatcher`` can return dedicated ``Section`` objects to provide
+additional context (the ``LocationSection`` add an ``extra_path`` attribute
+to implement the ``appendpath`` policy for example). If no sections match,
+an empty list is returned.
 
 .. FIXME: Replace the appendpath example if/when it's deprecated ;)
+
+Specific section matchers can be implemented by overriding ``get_sections``
+or just ``match``.
+
+``bzrlib`` provides:
+
+* ``LocationMatcher(store, location)``: To select all sections that match
+  ``location``.
+
+* ``NameMatcher(store, unique_id)``: To select a single section matching
+  ``unique_id``.
 
 Stacks
 ------

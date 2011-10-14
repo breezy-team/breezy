@@ -87,6 +87,11 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Tweak an RPC implementation for ``Repository.get_parent_map``, it was
+  doing an inefficient ``small_set.difference_update(large_set)`` when we
+  can do ``small_set = small_set.difference(large_set)``. This speeds up
+  discovery time by about 10%. (John Arbash Meinel)
+
 Bug Fixes
 *********
 

@@ -16,6 +16,7 @@
 
 
 from cStringIO import StringIO
+import os
 import shutil
 import sys
 import tempfile
@@ -34,7 +35,7 @@ from bzrlib import (
     ui,
     workingtree,
 )
-
+from bzrlib.i18n import gettext
 
 class UseEditor(Exception):
     """Use an editor instead of selecting hunks."""
@@ -42,17 +43,17 @@ class UseEditor(Exception):
 
 class ShelfReporter(object):
 
-    vocab = {'add file': 'Shelve adding file "%(path)s"?',
-             'binary': 'Shelve binary changes?',
-             'change kind': 'Shelve changing "%s" from %(other)s'
-             ' to %(this)s?',
-             'delete file': 'Shelve removing file "%(path)s"?',
-             'final': 'Shelve %d change(s)?',
-             'hunk': 'Shelve?',
-             'modify target': 'Shelve changing target of'
-             ' "%(path)s" from "%(other)s" to "%(this)s"?',
-             'rename': 'Shelve renaming "%(other)s" =>'
-                        ' "%(this)s"?'
+    vocab = {'add file': gettext('Shelve adding file "%(path)s"?'),
+             'binary': gettext('Shelve binary changes?'),
+             'change kind': gettext('Shelve changing "%s" from %(other)s'
+             ' to %(this)s?'),
+             'delete file': gettext('Shelve removing file "%(path)s"?'),
+             'final': gettext('Shelve %d change(s)?'),
+             'hunk': gettext('Shelve?'),
+             'modify target': gettext('Shelve changing target of'
+             ' "%(path)s" from "%(other)s" to "%(this)s"?'),
+             'rename': gettext('Shelve renaming "%(other)s" =>'
+                        ' "%(this)s"?')
              }
 
     invert_diff = False
@@ -66,15 +67,15 @@ class ShelfReporter(object):
 
     def shelved_id(self, shelf_id):
         """Report the id changes were shelved to."""
-        trace.note('Changes shelved with id "%d".' % shelf_id)
+        trace.note(gettext('Changes shelved with id "%d".') % shelf_id)
 
     def changes_destroyed(self):
         """Report that changes were made without shelving."""
-        trace.note('Selected changes destroyed.')
+        trace.note(gettext('Selected changes destroyed.'))
 
     def selected_changes(self, transform):
         """Report the changes that were selected."""
-        trace.note("Selected changes:")
+        trace.note(gettext("Selected changes:"))
         changes = transform.iter_changes()
         delta.report_changes(changes, self.delta_reporter)
 
@@ -94,16 +95,16 @@ class ShelfReporter(object):
 
 class ApplyReporter(ShelfReporter):
 
-    vocab = {'add file': 'Delete file "%(path)s"?',
-             'binary': 'Apply binary changes?',
-             'change kind': 'Change "%(path)s" from %(this)s'
-             ' to %(other)s?',
-             'delete file': 'Add file "%(path)s"?',
-             'final': 'Apply %d change(s)?',
-             'hunk': 'Apply change?',
-             'modify target': 'Change target of'
-             ' "%(path)s" from "%(this)s" to "%(other)s"?',
-             'rename': 'Rename "%(this)s" => "%(other)s"?',
+    vocab = {'add file': gettext('Delete file "%(path)s"?'),
+             'binary': gettext('Apply binary changes?'),
+             'change kind': gettext('Change "%(path)s" from %(this)s'
+             ' to %(other)s?'),
+             'delete file': gettext('Add file "%(path)s"?'),
+             'final': gettext('Apply %d change(s)?'),
+             'hunk': gettext('Apply change?'),
+             'modify target': gettext('Change target of'
+             ' "%(path)s" from "%(this)s" to "%(other)s"?'),
+             'rename': gettext('Rename "%(this)s" => "%(other)s"?'),
              }
 
     invert_diff = True
@@ -251,20 +252,41 @@ class Shelver(object):
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
 
+    def _char_based(self):
+        # FIXME: A bit hackish to use INSIDE_EMACS here, but there is another
+        # work in progress moving this method (and more importantly prompt()
+        # below) into the ui area and address the issue in better ways.
+        # -- vila 2011-09-28
+        return os.environ.get('INSIDE_EMACS', None) is None
+
     def prompt(self, message):
         """Prompt the user for a character.
 
         :param message: The message to prompt a user with.
         :return: A character.
         """
-        if not sys.stdin.isatty():
-            # Since there is no controlling terminal we will hang when trying
-            # to prompt the user, better abort now.  See
+        char_based = self._char_based()
+        if char_based and not sys.stdin.isatty():
+            # Since there is no controlling terminal we will hang when
+            # trying to prompt the user, better abort now.  See
             # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
             # for more context.
-            raise errors.BzrError("You need a controlling terminal.")
+            raise errors.BzrError(gettext("You need a controlling terminal."))
         sys.stdout.write(message)
-        char = osutils.getchar()
+        if char_based:
+            # We peek one char at a time which requires a real term here
+            char = osutils.getchar()
+        else:
+            # While running tests (or under emacs) the input is line buffered
+            # so we must not use osutils.getchar(). Instead we switch to a mode
+            # where each line is terminated by a new line
+            line = sys.stdin.readline()
+            if line:
+                # XXX: Warn if more than one char is typed ?
+                char = line[0]
+            else:
+                # Empty input, callers handle it as enter
+                char = ''
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
         sys.stdout.flush()
         return char
@@ -412,7 +434,7 @@ class Unshelver(object):
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
-                    raise errors.BzrCommandError('No changes are shelved.')
+                    raise errors.BzrCommandError(gettext('No changes are shelved.'))
             apply_changes = True
             delete_shelf = True
             read_shelf = True
@@ -470,11 +492,11 @@ class Unshelver(object):
         cleanups = [self.tree.unlock]
         try:
             if self.read_shelf:
-                trace.note('Using changes with id "%d".' % self.shelf_id)
+                trace.note(gettext('Using changes with id "%d".') % self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
                 cleanups.append(unshelver.finalize)
                 if unshelver.message is not None:
-                    trace.note('Message: %s' % unshelver.message)
+                    trace.note(gettext('Message: %s') % unshelver.message)
                 change_reporter = delta._ChangeReporter()
                 merger = unshelver.make_merger(None)
                 merger.change_reporter = change_reporter
@@ -486,7 +508,7 @@ class Unshelver(object):
                     self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
-                trace.note('Deleted changes with id "%d".' % self.shelf_id)
+                trace.note(gettext('Deleted changes with id "%d".') % self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()

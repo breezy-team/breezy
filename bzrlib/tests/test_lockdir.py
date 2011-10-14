@@ -463,7 +463,8 @@ class TestLockDir(TestCaseWithTransport):
     def test_lock_with_buggy_rename(self):
         # test that lock acquisition handles servers which pretend they
         # renamed correctly but that actually fail
-        t = transport.get_transport('brokenrename+' + self.get_url())
+        t = transport.get_transport_from_url(
+            'brokenrename+' + self.get_url())
         ld1 = LockDir(t, 'test_lock')
         ld1.create()
         ld1.attempt_lock()

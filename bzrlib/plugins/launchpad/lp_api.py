@@ -33,6 +33,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.i18n import gettext
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
     )
@@ -235,12 +236,13 @@ class LaunchpadBranch(object):
         """Create a Bazaar branch on Launchpad for the supplied branch."""
         url = cls.tweak_url(bzr_branch.get_push_location(), launchpad)
         if not cls.plausible_launchpad_url(url):
-            raise errors.BzrError('%s is not registered on Launchpad' %
+            raise errors.BzrError(gettext('%s is not registered on Launchpad') %
                                   bzr_branch.base)
         bzr_branch.create_clone_on_transport(transport.get_transport(url))
         lp_branch = launchpad.branches.getByUrl(url=url)
         if lp_branch is None:
-            raise errors.BzrError('%s is not registered on Launchpad' % url)
+            raise errors.BzrError(gettext('%s is not registered on Launchpad') %
+                                                                            url)
         return lp_branch
 
     def get_target(self):
@@ -249,18 +251,21 @@ class LaunchpadBranch(object):
         if lp_branch.project is not None:
             dev_focus = lp_branch.project.development_focus
             if dev_focus is None:
-                raise errors.BzrError('%s has no development focus.' %
+                raise errors.BzrError(gettext('%s has no development focus.') %
                                   lp_branch.bzr_identity)
             target = dev_focus.branch
             if target is None:
-                raise errors.BzrError('development focus %s has no branch.' % dev_focus)
+                raise errors.BzrError(gettext(
+                        'development focus %s has no branch.') % dev_focus)
         elif lp_branch.sourcepackage is not None:
             target = lp_branch.sourcepackage.getBranch(pocket="Release")
             if target is None:
-                raise errors.BzrError('source package %s has no branch.' %
+                raise errors.BzrError(gettext(
+                                      'source package %s has no branch.') %
                                       lp_branch.sourcepackage)
         else:
-            raise errors.BzrError('%s has no associated product or source package.' %
+            raise errors.BzrError(gettext(
+                        '%s has no associated product or source package.') %
                                   lp_branch.bzr_identity)
         return LaunchpadBranch(target, target.bzr_identity)
 
@@ -272,14 +277,14 @@ class LaunchpadBranch(object):
         try:
             if self.lp.last_scanned_id is not None:
                 if self.bzr.last_revision() == self.lp.last_scanned_id:
-                    trace.note('%s is already up-to-date.' %
+                    trace.note(gettext('%s is already up-to-date.') %
                                self.lp.bzr_identity)
                     return
                 graph = self.bzr.repository.get_graph()
                 if not graph.is_ancestor(self.lp.last_scanned_id,
                                          self.bzr.last_revision()):
                     raise errors.DivergedBranches(self.bzr, self.push_bzr)
-                trace.note('Pushing to %s' % self.lp.bzr_identity)
+                trace.note(gettext('Pushing to %s') % self.lp.bzr_identity)
             self.bzr.push(self.push_bzr)
         finally:
             self.bzr.unlock()

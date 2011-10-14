@@ -333,7 +333,7 @@ class ContainerReader(BaseReader):
                 # risk that the same unicode string has been encoded two
                 # different ways.
                 if name_tuple in all_names:
-                    raise errors.DuplicateRecordNameError(name_tuple)
+                    raise errors.DuplicateRecordNameError(name_tuple[0])
                 all_names.add(name_tuple)
         excess_bytes = self.reader_func(1)
         if excess_bytes != '':
