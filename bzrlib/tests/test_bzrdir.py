@@ -1352,7 +1352,7 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertEqual('fail', err._preformatted_string)
 
     def test_post_repo_init(self):
-        from bzrlib.bzrdir import RepoInitHookParams
+        from bzrlib.controldir import RepoInitHookParams
         calls = []
         bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
             calls.append, None)
@@ -1397,3 +1397,36 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
         self._transport.put_bytes("a.~1~", "some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
 
+
+class TestMeta1DirColoFormat(TestCaseWithTransport):
+    """Tests specific to the meta1 dir with colocated branches format."""
+
+    def test_supports_colo(self):
+        format = bzrdir.BzrDirMetaFormat1Colo()
+        self.assertTrue(format.colocated_branches)
+
+    def test_upgrade_from_2a(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        format = bzrdir.BzrDirMetaFormat1Colo()
+        self.assertTrue(tree.bzrdir.needs_format_conversion(format))
+        converter = tree.bzrdir._format.get_converter(format)
+        result = converter.convert(tree.bzrdir, None)
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1Colo)
+        self.assertFalse(result.needs_format_conversion(format))
+
+    def test_downgrade_to_2a(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        format = bzrdir.BzrDirMetaFormat1()
+        self.assertTrue(tree.bzrdir.needs_format_conversion(format))
+        converter = tree.bzrdir._format.get_converter(format)
+        result = converter.convert(tree.bzrdir, None)
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1)
+        self.assertFalse(result.needs_format_conversion(format))
+
+    def test_downgrade_to_2a_too_many_branches(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name="another-colocated-branch")
+        converter = tree.bzrdir._format.get_converter(
+            bzrdir.BzrDirMetaFormat1())
+        self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
+            None)

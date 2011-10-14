@@ -279,11 +279,26 @@ def _posix_abspath(path):
     # copy posixpath.abspath, but use os.getcwdu instead
     if not posixpath.isabs(path):
         path = posixpath.join(getcwd(), path)
-    return posixpath.normpath(path)
+    return _posix_normpath(path)
 
 
 def _posix_realpath(path):
     return posixpath.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+
+
+def _posix_normpath(path):
+    path = posixpath.normpath(path)
+    # Bug 861008: posixpath.normpath() returns a path normalized according to
+    # the POSIX standard, which stipulates (for compatibility reasons) that two
+    # leading slashes must not be simplified to one, and only if there are 3 or
+    # more should they be simplified as one. So we treat the leading 2 slashes
+    # as a special case here by simply removing the first slash, as we consider
+    # that breaking POSIX compatibility for this obscure feature is acceptable.
+    # This is not a paranoid precaution, as we notably get paths like this when
+    # the repo is hosted at the root of the filesystem, i.e. in "/".    
+    if path.startswith('//'):
+        path = path[1:]
+    return path
 
 
 def _win32_fixdrive(path):
@@ -379,7 +394,7 @@ def _mac_getcwd():
 abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
-normpath = os.path.normpath
+normpath = _posix_normpath
 getcwd = os.getcwdu
 rename = os.rename
 dirname = os.path.dirname

@@ -41,13 +41,10 @@ class TestMkdir(TestCaseWithTransport):
         self.run_bzr(['mkdir', 'abc'], retcode=3)
         self.assertPathDoesNotExist('abc')
 
-
-class TestVersioning(TestCaseInTempDir):
-
     def test_mkdir(self):
         """Basic 'bzr mkdir' operation"""
 
-        self.run_bzr('init')
+        self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'foo'])
         self.assert_(os.path.isdir('foo'))
 
@@ -66,7 +63,7 @@ class TestVersioning(TestCaseInTempDir):
     def test_mkdir_in_subdir(self):
         """'bzr mkdir' operation in subdirectory"""
 
-        self.run_bzr('init')
+        self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'dir'])
         self.assert_(os.path.isdir('dir'))
 
@@ -90,14 +87,9 @@ class TestVersioning(TestCaseInTempDir):
     def test_mkdir_w_nested_trees(self):
         """'bzr mkdir' with nested trees"""
 
-        self.run_bzr('init')
-        os.mkdir('a')
-        os.chdir('a')
-        self.run_bzr('init')
-        os.mkdir('b')
-        os.chdir('b')
-        self.run_bzr('init')
-        os.chdir('../..')
+        self.make_branch_and_tree('.')
+        self.make_branch_and_tree('a')
+        self.make_branch_and_tree('a/b')
 
         self.run_bzr(['mkdir', 'dir', 'a/dir', 'a/b/dir'])
         self.assertTrue(os.path.isdir('dir'))
@@ -123,16 +115,13 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(delta.added[0][0], 'dir')
         self.assertFalse(delta.modified)
 
-    def check_branch(self):
-        """After all the above changes, run the check and upgrade commands.
+    def test_mkdir_quiet(self):
+        """'bzr mkdir --quiet' should not print a status message"""
 
-        The upgrade should be a no-op."""
-        b = Branch.open(u'.')
-        mutter('branch has %d revisions', b.revno())
-
-        mutter('check branch...')
-        from bzrlib.check import check
-        check(b, False)
+        self.make_branch_and_tree('.')
+        out, err = self.run_bzr(['mkdir', '--quiet', 'foo'])
+        self.assertEquals('', err)
+        self.assertEquals('', out)
 
 
 class SubdirCommit(TestCaseWithTransport):

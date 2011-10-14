@@ -222,9 +222,9 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
     def get_format_string(self):
         return "Branch for Testing"
 
-    def __init__(self):
-        super(DummyForeignVcsBranchFormat, self).__init__()
-        self._matchingbzrdir = DummyForeignVcsDirFormat()
+    @property
+    def _matchingbzrdir(self):
+        return DummyForeignVcsDirFormat()
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):

@@ -30,7 +30,7 @@ lazy_import.lazy_import(globals(), """
 from bzrlib import (
     annotate,
     bencode,
-    bzrdir,
+    controldir,
     commit,
     conflicts,
     delta,
@@ -2596,7 +2596,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     kind = file_kind(target_path)
                     if kind == "directory":
                         try:
-                            bzrdir.BzrDir.open(target_path)
+                            controldir.ControlDir.open(target_path)
                         except errors.NotBranchError:
                             pass
                         else:

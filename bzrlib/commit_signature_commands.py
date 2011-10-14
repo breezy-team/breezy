@@ -20,7 +20,7 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    bzrdir as _mod_bzrdir,
+    controldir,
     errors,
     gpg,
     revision as _mod_revision,
@@ -51,10 +51,10 @@ class cmd_sign_my_commits(Command):
 
     def run(self, location=None, committer=None, dry_run=False):
         if location is None:
-            bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
+            bzrdir = controldir.ControlDir.open_containing('.')[0]
         else:
             # Passed in locations should be exact
-            bzrdir = _mod_bzrdir.BzrDir.open(location)
+            bzrdir = controldir.ControlDir.open(location)
         branch = bzrdir.open_branch()
         repo = branch.repository
         branch_config = branch.get_config()
@@ -116,7 +116,7 @@ class cmd_verify_signatures(Command):
 
     def run(self, acceptable_keys=None, revision=None, verbose=None,
                                                             location=u'.'):
-        bzrdir = _mod_bzrdir.BzrDir.open_containing(location)[0]
+        bzrdir = controldir.ControlDir.open_containing(location)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
         branch_config = branch.get_config()

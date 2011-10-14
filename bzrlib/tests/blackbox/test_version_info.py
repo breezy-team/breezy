@@ -165,4 +165,10 @@ class TestVersionInfo(TestCaseWithTransport):
         
         self.assertContainsString(out, commit_message.encode('utf-8'))
 
+    def test_revision(self):
+        tree = self.create_tree()
+        branch = self.make_branch('just_branch')
+        branch.pull(tree.branch)
 
+        txt = self.run_bzr('version-info -r1 just_branch')[0]
+        self.assertStartsWith(txt, 'revision-id: r1\n')

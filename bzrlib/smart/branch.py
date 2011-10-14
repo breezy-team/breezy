@@ -22,7 +22,7 @@ from bzrlib import (
     errors,
     revision as _mod_revision,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -46,10 +46,10 @@ class SmartServerBranchRequest(SmartServerRequest):
         :return: A SmartServerResponse from self.do_with_branch().
         """
         transport = self.transport_from_client_path(path)
-        bzrdir = BzrDir.open_from_transport(transport)
-        if bzrdir.get_branch_reference() is not None:
+        controldir = ControlDir.open_from_transport(transport)
+        if controldir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch(ignore_fallbacks=True)
+        branch = controldir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 

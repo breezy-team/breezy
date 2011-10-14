@@ -65,8 +65,8 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     foreign,
@@ -1799,7 +1799,8 @@ class LogFormatterRegistry(registry.Registry):
         return self.get(name)(*args, **kwargs)
 
     def get_default(self, branch):
-        return self.get(branch.get_config().log_format())
+        c = branch.get_config_stack()
+        return self.get(c.get('log_format'))
 
 
 log_formatter_registry = LogFormatterRegistry()
@@ -2028,7 +2029,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
       branch will be read-locked.
     """
     from builtins import _get_revision_range
-    tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
+    tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
+        file_list[0])
     add_cleanup(b.lock_read().unlock)
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive

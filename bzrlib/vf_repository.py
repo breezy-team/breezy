@@ -1199,7 +1199,7 @@ class VersionedFileRepository(Repository):
         """Instantiate a VersionedFileRepository.
 
         :param _format: The format of the repository on disk.
-        :param a_bzrdir: The BzrDir of the repository.
+        :param controldir: The ControlDir of the repository.
         :param control_files: Control files to use for locking, etc.
         """
         # In the future we will have a single api for all stores for

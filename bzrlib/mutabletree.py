@@ -71,7 +71,7 @@ class MutableTree(tree.Tree):
     conformance tests for - rather we are testing MemoryTree specifically, and
     interface testing implementations of WorkingTree.
 
-    A mutable tree always has an associated Branch and BzrDir object - the
+    A mutable tree always has an associated Branch and ControlDir object - the
     branch and bzrdir attributes.
     """
     def __init__(self, *args, **kw):
