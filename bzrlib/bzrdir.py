@@ -66,7 +66,6 @@ from bzrlib.trace import (
 from bzrlib import (
     config,
     controldir,
-    hooks,
     registry,
     )
 from bzrlib.symbol_versioning import (

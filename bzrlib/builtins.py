@@ -18,6 +18,8 @@
 
 import os
 
+import bzrlib.bzrdir
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
