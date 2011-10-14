@@ -2079,10 +2079,11 @@ class BranchFormatMetadir(BranchFormat):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
 
-    def __init__(self):
-        super(BranchFormatMetadir, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-        self._matchingbzrdir.set_branch_format(self)
+    @property
+    def _matchingbzrdir(self):
+        ret = bzrdir.BzrDirMetaFormat1()
+        ret.set_branch_format(self)
+        return ret
 
     def supports_tags(self):
         return True
@@ -2250,7 +2251,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     supports_reference_locations = False
 
 
-class BranchReferenceFormat(BranchFormat):
+class BranchReferenceFormat(BranchFormatMetadir):
     """Bzr branch reference format.
 
     Branch references are used in implementing checkouts, they
@@ -2298,11 +2299,6 @@ class BranchReferenceFormat(BranchFormat):
             possible_transports=[target_branch.bzrdir.root_transport])
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
-
-    def __init__(self):
-        super(BranchReferenceFormat, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-        self._matchingbzrdir.set_branch_format(self)
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
