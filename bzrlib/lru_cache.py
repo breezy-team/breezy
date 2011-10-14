@@ -26,7 +26,7 @@ _null_key = object()
 class _LRUNode(object):
     """This maintains the linked-list which is the lru internals."""
 
-    __slots__ = ('prev', 'next_key', 'key', 'value', 'cleanup', 'size')
+    __slots__ = ('prev', 'next_key', 'key', 'value', 'cleanup')
 
     def __init__(self, key, value, cleanup=None):
         self.prev = None
@@ -34,10 +34,6 @@ class _LRUNode(object):
         self.key = key
         self.value = value
         self.cleanup = cleanup
-        # TODO: We could compute this 'on-the-fly' like we used to, and remove
-        #       one pointer from this object, we just need to decide if it
-        #       actually costs us much of anything in normal usage
-        self.size = None
 
     def __repr__(self):
         if self.prev is None:
@@ -321,8 +317,7 @@ class LRUSizeCache(LRUCache):
             node = _LRUNode(key, value, cleanup=cleanup)
             self._cache[key] = node
         else:
-            self._value_size -= node.size
-        node.size = value_len
+            self._value_size -= self._compute_size(node.value)
         self._value_size += value_len
         self._record_access(node)
 
@@ -341,7 +336,7 @@ class LRUSizeCache(LRUCache):
             self._remove_lru()
 
     def _remove_node(self, node):
-        self._value_size -= node.size
+        self._value_size -= self._compute_size(node.value)
         LRUCache._remove_node(self, node)
 
     def resize(self, max_size, after_cleanup_size=None):
