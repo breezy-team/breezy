@@ -22,6 +22,38 @@ from bzrlib import (
     )
 
 
+def walk_lru(lru):
+    """Test helper to walk the LRU list and assert its consistency"""
+    node = lru._most_recently_used
+    if node is not None:
+        if node.prev is not None:
+            raise AssertionError('the _most_recently_used entry is not'
+                                 ' supposed to have a previous entry'
+                                 ' %s' % (node,))
+    while node is not None:
+        if node.next_key is lru_cache._null_key:
+            if node is not lru._least_recently_used:
+                raise AssertionError('only the last node should have'
+                                     ' no next value: %s' % (node,))
+            node_next = None
+        else:
+            node_next = lru._cache[node.next_key]
+            if node_next.prev is not node:
+                raise AssertionError('inconsistency found, node.next.prev'
+                                     ' != node: %s' % (node,))
+        if node.prev is None:
+            if node is not lru._most_recently_used:
+                raise AssertionError('only the _most_recently_used should'
+                                     ' not have a previous node: %s'
+                                     % (node,))
+        else:
+            if node.prev.next_key != node.key:
+                raise AssertionError('inconsistency found, node.prev.next'
+                                     ' != node: %s' % (node,))
+        yield node
+        node = node_next
+
+ 
 class TestLRUCache(tests.TestCase):
     """Test that LRU cache properly keeps track of entries."""
 
@@ -61,7 +93,7 @@ class TestLRUCache(tests.TestCase):
         cache[None]
         cache[1]
         cache[None]
-        self.assertEqual([None, 1], [n.key for n in cache._walk_lru()])
+        self.assertEqual([None, 1], [n.key for n in walk_lru(cache)])
 
     def test_add__null_key(self):
         cache = lru_cache.LRUCache(max_cache=10)
@@ -147,7 +179,7 @@ class TestLRUCache(tests.TestCase):
 
         self.assertEqual([(i, i) for i in xrange(10)], cleanup_called)
 
-        self.assertEqual(range(19, 9, -1), [n.key for n in cache._walk_lru()])
+        self.assertEqual(range(19, 9, -1), [n.key for n in walk_lru(cache)])
 
     def test_cleanup_during_replace_still_replaces(self):
         cleanup_called = []
@@ -162,12 +194,12 @@ class TestLRUCache(tests.TestCase):
             cache.add, 1, 20, cleanup=cleanup_func)
         # We also still update the recent access to this node
         self.assertEqual([1, 9, 8, 7, 6, 5, 4, 3, 2, 0],
-                         [n.key for n in cache._walk_lru()])
+                         [n.key for n in walk_lru(cache)])
         self.assertEqual(20, cache[1])
 
         self.assertEqual([(1, 1)], cleanup_called)
         self.assertEqual([1, 9, 8, 7, 6, 5, 4, 3, 2, 0],
-                         [n.key for n in cache._walk_lru()])
+                         [n.key for n in walk_lru(cache)])
 
     def test_len(self):
         cache = lru_cache.LRUCache(max_cache=10, after_cleanup_count=10)
@@ -197,7 +229,7 @@ class TestLRUCache(tests.TestCase):
         # We hit the max
         self.assertEqual(10, len(cache))
         self.assertEqual([11, 10, 9, 1, 8, 7, 6, 5, 4, 3],
-                         [n.key for n in cache._walk_lru()])
+                         [n.key for n in walk_lru(cache)])
 
     def test_cleanup_shrinks_to_after_clean_count(self):
         cache = lru_cache.LRUCache(max_cache=5, after_cleanup_count=3)
@@ -248,14 +280,14 @@ class TestLRUCache(tests.TestCase):
         cache.add(4, 30)
         cache.add(5, 35)
 
-        self.assertEqual([5, 4, 3, 2, 1], [n.key for n in cache._walk_lru()])
+        self.assertEqual([5, 4, 3, 2, 1], [n.key for n in walk_lru(cache)])
 
         # Now access some randomly
         cache[2]
         cache[5]
         cache[3]
         cache[2]
-        self.assertEqual([2, 3, 5, 4, 1], [n.key for n in cache._walk_lru()])
+        self.assertEqual([2, 3, 5, 4, 1], [n.key for n in walk_lru(cache)])
 
     def test_get(self):
         cache = lru_cache.LRUCache(max_cache=5)
@@ -266,9 +298,9 @@ class TestLRUCache(tests.TestCase):
         self.assertIs(None, cache.get(3))
         obj = object()
         self.assertIs(obj, cache.get(3, obj))
-        self.assertEqual([2, 1], [n.key for n in cache._walk_lru()])
+        self.assertEqual([2, 1], [n.key for n in walk_lru(cache)])
         self.assertEqual(10, cache.get(1))
-        self.assertEqual([1, 2], [n.key for n in cache._walk_lru()])
+        self.assertEqual([1, 2], [n.key for n in walk_lru(cache)])
 
     def test_keys(self):
         cache = lru_cache.LRUCache(max_cache=5, after_cleanup_count=5)
