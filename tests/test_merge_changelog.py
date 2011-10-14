@@ -268,6 +268,8 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
 
+    _test_needs_features = [dpkg_mergechangelogs_feature]
+
     def make_params(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
