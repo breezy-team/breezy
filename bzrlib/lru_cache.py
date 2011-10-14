@@ -17,6 +17,7 @@
 """A simple least-recently-used (LRU) cache."""
 
 from bzrlib import (
+    symbol_versioning,
     trace,
     )
 
@@ -190,9 +191,12 @@ class LRUCache(object):
         """
         return self._cache.keys()
 
-    def items(self):
-        """Get the key:value pairs as a dict."""
+    def as_dict(self):
+        """Get a new dict with the same key:value pairs as the cache"""
         return dict((k, n.value) for k, n in self._cache.iteritems())
+
+    items = symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 5, 0)))(as_dict)
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
