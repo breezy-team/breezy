@@ -112,5 +112,12 @@ to check whether a feature is present and adding new features:
  * BzrDirComponentFormat.set_feature(name, importance)
  * BzrDirComponentFormat.get_feature(name) -> importance
 
+See also
+--------
+
+Mercurial has a similar feature, using its `.hg/requires`_ file.
+
+.. _.hg/requires: http://mercurial.selenic.com/wiki/RequiresFile
+
 ..
    vim: ft=rst tw=74 ai
