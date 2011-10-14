@@ -1785,9 +1785,10 @@ class cmd_revision_history(Command):
     @display_command
     def run(self, location="."):
         branch = Branch.open_containing(location)[0]
+        self.add_cleanup(branch.lock_read().unlock)
         graph = branch.repository.get_graph()
         history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
-            [_mod_revision.NULL_REVISION])
+            [_mod_revision.NULL_REVISION]))
         for revid in reversed(history):
             self.outf.write(revid)
             self.outf.write('\n')

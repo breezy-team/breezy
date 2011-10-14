@@ -38,9 +38,13 @@ def has_revision(branch, revision_id):
 
 
 def revision_history(branch):
-    graph = branch.repository.get_graph()
-    history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
-        [_mod_revision.NULL_REVISION]))
+    branch.lock_read()
+    try:
+        graph = branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
+    finally:
+        branch.unlock()
     history.reverse()
     return history
 
