@@ -150,7 +150,8 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         tree = new_dir.open_branch().create_checkout('local')
         new_branch_revid = tree.commit('something local')
-        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionNotInRepository(
+            trunk_tree.branch.base, new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_sprout_stacked_from_smart_server(self):
@@ -171,7 +172,8 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         tree = new_dir.open_branch().create_checkout('local')
         new_branch_revid = tree.commit('something local')
-        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionNotInRepository(trunk_tree.branch.user_url,
+            new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_unstack_fetches(self):
@@ -570,7 +572,7 @@ class TestStackingConnections(
         stacked.set_last_revision_info(1, 'rev-base')
         stacked_relative = self.make_branch('stacked_relative',
                                             format=self.bzrdir_format)
-        stacked_relative.set_stacked_on_url('../base')
+        stacked_relative.set_stacked_on_url(base_tree.branch.user_url)
         stacked.set_last_revision_info(1, 'rev-base')
         self.start_logging_connections()
 

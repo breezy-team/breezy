@@ -331,7 +331,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_repository())
+            target.open_branch().repository)
         target.open_workingtree().revert()
 
     def test_revert_inventory(self):
@@ -351,7 +351,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_repository())
+            target.open_branch().repository)
 
         target.open_workingtree().revert()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
@@ -363,7 +363,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_repository())
+            target.open_branch().repository)
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout)
@@ -503,8 +503,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/branch/branch.conf',
-                                     './.bzr/branch/parent',
+                                     './.bzr/branch',
                                      './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/inventory',
