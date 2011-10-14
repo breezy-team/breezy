@@ -77,7 +77,15 @@ def make_branches(self, format=None):
     tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
     # DO NOT MERGE HERE - we WANT a GHOST.
-    tree2.add_parent_tree_id(br1.revision_history()[4])
+    br1.lock_read()
+    try:
+        graph = br1.repository.get_graph()
+        revhistory = list(graph.iter_lefthand_ancestry(br1.last_revision(),
+            [revision.NULL_REVISION]))
+        revhistory.reverse()
+    finally:
+        br1.unlock()
+    tree2.add_parent_tree_id(revhistory[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
 
     return br1, br2

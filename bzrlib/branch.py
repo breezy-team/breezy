@@ -1007,6 +1007,7 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._gen_revision_history)
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     @needs_read_lock
     def revision_history(self):
         """Return sequence of revision ids on this branch.
@@ -1014,6 +1015,9 @@ class Branch(controldir.ControlComponent):
         This method will cache the revision history for as long as it is safe to
         do so.
         """
+        return self._revision_history()
+
+    def _revision_history(self):
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
@@ -1089,7 +1093,7 @@ class Branch(controldir.ControlComponent):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
             return 0
-        history = self.revision_history()
+        history = self._revision_history()
         try:
             return history.index(revision_id) + 1
         except ValueError:
@@ -1392,7 +1396,7 @@ class Branch(controldir.ControlComponent):
         # TODO: We should probably also check that self.revision_history
         # matches the repository for older branch formats.
         # If looking for the code that cross-checks repository parents against
-        # the iter_reverse_revision_history output, that is now a repository
+        # the Graph.iter_lefthand_ancestry output, that is now a repository
         # specific check.
         return result
 
@@ -2714,7 +2718,7 @@ class FullHistoryBzrBranch(BzrBranch):
         self._set_revision_history(history)
 
     def _read_last_revision_info(self):
-        rh = self.revision_history()
+        rh = self._revision_history()
         revno = len(rh)
         if revno:
             return (revno, rh[-1])
@@ -2774,7 +2778,7 @@ class FullHistoryBzrBranch(BzrBranch):
         if revision_id == _mod_revision.NULL_REVISION:
             new_history = []
         else:
-            new_history = self.revision_history()
+            new_history = self._revision_history()
         if revision_id is not None and new_history != []:
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]

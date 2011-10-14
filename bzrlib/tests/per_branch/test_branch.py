@@ -77,9 +77,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = self.get_branch()
         br.fetch(wt.branch)
         br.generate_revision_history('rev3')
-        rh = br.revision_history()
-        self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
-        for revision_id in rh:
+        for revision_id in ['rev3', 'rev2', 'rev1']:
             self.assertIsInstance(revision_id, str)
         last = br.last_revision()
         self.assertEqual('rev3', last)
@@ -399,16 +397,25 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Create a fake revision history easily."""
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
-        orig_history = tree.branch.revision_history()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        orig_history = list(
+            graph.iter_lefthand_ancestry(
+                tree.branch.last_revision(), [revision.NULL_REVISION]))
         rev2 = tree.commit('bar', allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
-        self.assertEqual(orig_history, tree.branch.revision_history())
+        self.assertEqual(orig_history, list(
+            graph.iter_lefthand_ancestry(
+                tree.branch.last_revision(), [revision.NULL_REVISION])))
 
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         tree.branch.generate_revision_history(revision.NULL_REVISION)
-        self.assertEqual([], tree.branch.revision_history())
+        self.assertEqual(revision.NULL_REVISION, tree.branch.last_revision())
 
     def test_create_checkout(self):
         tree_a = self.make_branch_and_tree('a')

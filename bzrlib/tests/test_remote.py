@@ -64,6 +64,7 @@ from bzrlib.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
     )
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
     test_server,
     )
@@ -115,10 +116,12 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     def test_remote_branch_revision_history(self):
         b = BzrDir.open_from_transport(self.transport).open_branch()
-        self.assertEqual([], b.revision_history())
+        self.assertEqual([],
+            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
         r1 = self.local_wt.commit('1st commit')
         r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8'.encode('utf8'))
-        self.assertEqual([r1, r2], b.revision_history())
+        self.assertEqual([r1, r2],
+            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
 
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
