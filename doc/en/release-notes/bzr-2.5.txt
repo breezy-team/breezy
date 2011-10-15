@@ -59,6 +59,11 @@ API Changes
 
 * ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
 
+* New flag ``RepositoryFormat.supports_invisible_revisions`` which
+  indicates whether revisions can be present in a repository without
+  being visible in e.g. a branch history at the same time.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
