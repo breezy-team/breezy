@@ -708,6 +708,9 @@ class TestIsUpstreamTag(TestCase):
     def test_git_upstream(self):
         self.assertTrue(is_upstream_tag('upstream/2.1'))
 
+    def test_svn_upstream(self):
+        self.assertTrue(is_upstream_tag('upstream_2.1'))
+
 
 class TestUpstreamTagVersion(TestCase):
 
@@ -717,6 +720,9 @@ class TestUpstreamTagVersion(TestCase):
     def test_distro_upstream(self):
         self.assertEqual((None, '2.1'),
             upstream_tag_version('upstream-debian-2.1'))
+
+    def test_svn_upstream(self):
+        self.assertEqual((None, '2.1'), upstream_tag_version('upstream_2.1'))
 
     def test_git_upstream(self):
         self.assertEqual((None, '2.1'), upstream_tag_version('upstream/2.1'))
@@ -751,7 +757,7 @@ class PristineTarSourceTests(TestCaseWithTransport):
 
     def test_version(self):
         self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
-            'upstream-ubuntu-3.3', 'upstream/3.3'],
+            'upstream-ubuntu-3.3', 'upstream/3.3', 'upstream_3.3'],
             self.source.possible_tag_names("3.3", component=None))
 
     def test_version_component(self):
