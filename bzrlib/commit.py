@@ -436,6 +436,16 @@ class Commit(object):
             message = message_callback(self)
             self.message = message
 
+            if self.builder.updates_branch:
+                # Remember the current last revision, in case
+                # the pre_commit hook raises an exception
+                # and the branch has to be reverted.
+                old_rev_info = self.branch.last_revision_info()
+                if self.bound_branch:
+                    raise AssertionError(
+                        "bound branches not supported for commit builders "
+                        "that update the branch")
+
             # Add revision data to the local branch
             self.rev_id = self.builder.commit(self.message)
 
@@ -445,21 +455,31 @@ class Commit(object):
             self.builder.abort()
             raise
 
-        self._process_pre_hooks(old_revno, new_revno)
+        if not self.builder.updates_branch:
+            self._process_pre_hooks(old_revno, new_revno)
 
-        # Upload revision data to the master.
-        # this will propagate merged revisions too if needed.
-        if self.bound_branch:
-            self._set_progress_stage("Uploading data to master branch")
-            # 'commit' to the master first so a timeout here causes the
-            # local branch to be out of date
-            (new_revno, self.rev_id) = self.master_branch.import_last_revision_info_and_tags(
-                self.branch, new_revno, self.rev_id, lossy=lossy)
-            if lossy:
-                self.branch.fetch(self.master_branch, self.rev_id)
+            # Upload revision data to the master.
+            # this will propagate merged revisions too if needed.
+            if self.bound_branch:
+                self._set_progress_stage("Uploading data to master branch")
+                # 'commit' to the master first so a timeout here causes the
+                # local branch to be out of date
+                (new_revno, self.rev_id) = self.master_branch.import_last_revision_info_and_tags(
+                    self.branch, new_revno, self.rev_id, lossy=lossy)
+                if lossy:
+                    self.branch.fetch(self.master_branch, self.rev_id)
 
-        # and now do the commit locally.
-        self.branch.set_last_revision_info(new_revno, self.rev_id)
+            # and now do the commit locally.
+            self.branch.set_last_revision_info(new_revno, self.rev_id)
+        else:
+            try:
+                self._process_pre_hooks(old_revno, new_revno)
+            except:
+                # The commit builder will already have updated the branch,
+                # revert it.
+                self.branch.set_last_revision_info(
+                    old_rev_info[0], old_rev_info[1])
+                raise
 
         # Merge local tags to remote
         if self.bound_branch:
