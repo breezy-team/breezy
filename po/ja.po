@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-10-01 00:00+0000\n"
+"PO-Revision-Date: 2011-10-15 03:48+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-10-02 04:33+0000\n"
-"X-Generator: Launchpad (build 14071)\n"
+"X-Launchpad-Export-Date: 2011-10-15 04:30+0000\n"
+"X-Generator: Launchpad (build 14124)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -594,19 +594,23 @@ msgstr "マージディレクティブやバンドルに対して-rを使用す�
 
 #: bzrlib/builtins.py:1097
 msgid "Update a mirror of this branch."
-msgstr ""
+msgstr "このブランチのミラーを更新します。"
 
 #: bzrlib/builtins.py:1099
 msgid ""
 "The target branch will not have its working tree populated because this\n"
 "is both expensive, and is not supported on remote file systems."
 msgstr ""
+"対象のブランチの作業ツリーの更新はコストが高く、リモートファイルシステムでは\n"
+"サポートされていないため、作業ツリーの更新は行いません。"
 
 #: bzrlib/builtins.py:1102
 msgid ""
 "Some smart servers or protocols *may* put the working tree in place in\n"
 "the future."
 msgstr ""
+"将来的に、作業ツリーの更新ができるようなスマートサーバやプロトコルがリリース\n"
+"*かもしれません*。"
 
 #: bzrlib/builtins.py:1105
 msgid ""
@@ -614,12 +618,17 @@ msgid ""
 "considered diverged if the destination branch's most recent commit is one\n"
 "that has not been merged (directly or indirectly) by the source branch."
 msgstr ""
+"このコマンドは、分岐していないブランチ同士でのみ使用できます。push先ブランチの\n"
+"最新のコミットが(直接的、もしくは間接的に)push元のブランチにまだマージされていない\n"
+"状態の場合に、ブランチが分岐しているとみなされます。"
 
 #: bzrlib/builtins.py:1109
 msgid ""
 "If branches have diverged, you can use 'bzr push --overwrite' to replace\n"
 "the other branch completely, discarding its unmerged changes."
 msgstr ""
+"ブランチ同士が分岐している場合、 'bzr push --overwrite' で、まだマージされていない\n"
+"変更を破棄してpush先のブランチを完全に置きかえることができます。"
 
 #: bzrlib/builtins.py:1112
 msgid ""
@@ -627,6 +636,9 @@ msgid ""
 "do a merge (see bzr help merge) from the other branch, and commit that.\n"
 "After that you will be able to do a push without '--overwrite'."
 msgstr ""
+"push先のブランチに違う変更があって、それを残したいなら、まずpush先のブランチからマージ\n"
+"して(bzr help mergeを参照)コミットしてください。そうすれば、'--overwrite'の指定なしで\n"
+"pushできるようになります。"
 
 #: bzrlib/builtins.py:1116
 msgid ""
@@ -635,57 +647,66 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
+"デフォルトのpush対象ブランチが設定されていない場合は、最初にpushした時に\n"
+"設定されます。(これをしないようにするには、--no-rememberを指定します。)\n"
+"その後は、デフォルトのブランチを使用する時には指定を省略できるようになります。\n"
+"デフォルトを変更するには、--rememberを指定します。この値は、リモートのブランチに\n"
+"アクセスできた時だけ保存されます。"
 
 #: bzrlib/builtins.py:1128
 msgid ""
 "Branch to push from, rather than the one containing the working directory."
-msgstr ""
+msgstr "カレントディレクトリの代わりにpush元とするブランチを指定します。"
 
 #: bzrlib/builtins.py:1131
 msgid ""
 "By default push will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow push to proceed."
 msgstr ""
+"デフォルトでは、push先のディレクトリが既に存在しているのにバージョン管理されていない状態の場合はpushできません。このフラグを指定すると、その場合で"
+"もpushできるようになります。"
 
 #: bzrlib/builtins.py:1136
 msgid ""
 "Create a stacked branch that references the public location of the parent "
 "branch."
-msgstr ""
+msgstr "親ブランチの公開された場所を参照するスタックドブランチを作成します。"
 
 #: bzrlib/builtins.py:1139
 msgid ""
 "Create a stacked branch that refers to another branch for the commit "
 "history. Only the work not present in the referenced branch is included in "
 "the branch created."
-msgstr ""
+msgstr "コミットの履歴を別のブランチから参照するスタックドブランチを作成します。参照先のブランチにない変更だけがこのブランチに含まれます。"
 
 #: bzrlib/builtins.py:1144
 msgid ""
 "Refuse to push if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
+"作業コピーが変更されている場合はpushできませんが、--no-strictオプションを指定\n"
+"するとpushできるようになります。"
 
 #: bzrlib/builtins.py:1147
 msgid "Don't populate the working tree, even for protocols that support it."
-msgstr ""
+msgstr "作業コピーの更新ができるプロトコルを使っている場合でも、作業コピーを更新しません。"
 
 #: bzrlib/builtins.py:1191
 msgid "Could not determine branch to refer to."
-msgstr ""
+msgstr "参照先のブランチを特定できません。"
 
 #: bzrlib/builtins.py:1198 bzrlib/foreign.py:306
 msgid "No push location known or specified."
-msgstr ""
+msgstr "push先のブランチが設定も指定もされていません。"
 
 #: bzrlib/builtins.py:1202
 #, python-format
 msgid "Using saved push location: %s"
-msgstr ""
+msgstr "デフォルトのpush先ブランチを使用します。: %s"
 
 #: bzrlib/builtins.py:1212
 msgid "Create a new branch that is a copy of an existing branch."
-msgstr ""
+msgstr "既存のブランチをコピーして新しいブランチを作成します。"
 
 #: bzrlib/builtins.py:1214
 msgid ""
@@ -697,80 +718,88 @@ msgid ""
 "identifier, if any. For example, \"branch lp:foo-bar\" will attempt to\n"
 "create ./foo-bar."
 msgstr ""
+"TO_LOCATIONが指定されていない場合は、FROM_LOCATIONの最後のパーツが使われます。\n"
+"つまり、\"branch ../foo/bar\"とした場合は、./barが作られます。\n"
+"FROM_LOCATIONに、スラッシュやその環境のパスセパレータが含まれていない場合は、\n"
+"FROM_LOCATIONからスキーマやドライブのIDを取り除いたものがTO_LOCATIONになります。\n"
+"例えば、\"branch lp:foo-bar\"とすると、./foo-barが作られます。"
 
 #: bzrlib/builtins.py:1221
 msgid ""
 "To retrieve the branch as of a particular revision, supply the --revision\n"
 "parameter, as in \"branch foo/bar -r 5\"."
 msgstr ""
+"ブランチの特定のリビジョンで取り出したい場合は、\"branch foo/bar -r 5\"のように\n"
+"--revisionオプションを指定してください。"
 
 #: bzrlib/builtins.py:1224
 msgid "The synonyms 'clone' and 'get' for this command are deprecated."
-msgstr ""
+msgstr "このコマンドの別名である'clone'と'get'は廃止予定です。"
 
 #: bzrlib/builtins.py:1234
 msgid "Create a branch without a working-tree."
-msgstr ""
+msgstr "作業ツリーのないブランチを作成します。"
 
 #: bzrlib/builtins.py:1236
 msgid "Switch the checkout in the current directory to the new branch."
-msgstr ""
+msgstr "カレントディレクトリにあるチェックアウトの参照先を新しいブランチに切り替えます。"
 
 #: bzrlib/builtins.py:1239
 msgid ""
 "Create a stacked branch referring to the source branch. The new branch will "
 "depend on the availability of the source branch for all operations."
-msgstr ""
+msgstr "元のブランチを参照するスタックドブランチを作成します。新しいブランチでは、元のブランチにアクセスできるときしか操作できません。"
 
 #: bzrlib/builtins.py:1243
 msgid "Do not use a shared repository, even if available."
-msgstr ""
+msgstr "共有リポジトリが使える場合でも、共有リポジトリを使いません。"
 
 #: bzrlib/builtins.py:1245
 msgid ""
 "By default branch will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow branch to proceed."
 msgstr ""
+"デフォルトでは、branch先のディレクトリが既に存在しているのにバージョン管理されていない場合はbranchできません。このフラグを指定すると、その場合"
+"でもbranchできるようになります。"
 
 #: bzrlib/builtins.py:1250
 msgid "Bind new branch to from location."
-msgstr ""
+msgstr "新しいブランチを元のブランチにバインドします。"
 
 #: bzrlib/builtins.py:1291
 #, python-format
 msgid "Target directory \"%s\" already exists."
-msgstr ""
+msgstr "対象のディレクトリ \"%s\" は既に存在します。"
 
 #: bzrlib/builtins.py:1301
 #, python-format
 msgid "Parent of \"%s\" does not exist."
-msgstr ""
+msgstr "\"%s\" の親が見つかりません。"
 
 #: bzrlib/builtins.py:1315
 msgid "The branch {0} has no revision {1}."
-msgstr ""
+msgstr "ブランチ {0} にリビジョン {1} はありません。"
 
 #: bzrlib/builtins.py:1323 bzrlib/push.py:51
 #, python-format
 msgid "Created new stacked branch referring to %s."
-msgstr ""
+msgstr "%s を参照するスタックドブランチを作成しました。"
 
 #: bzrlib/builtins.py:1327
 #, python-format
 msgid "Branched %d revision."
 msgid_plural "Branched %d revisions."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d個のリビジョンをブランチしました。"
 
 #: bzrlib/builtins.py:1332
 #, python-format
 msgid "New branch bound to %s"
-msgstr ""
+msgstr "新しいブランチは %s にバインドされています。"
 
 #: bzrlib/builtins.py:1337 bzrlib/builtins.py:5968
 #, python-format
 msgid "Switched to branch: %s"
-msgstr ""
+msgstr "バインド先をスイッチしました。: %s"
 
 #: bzrlib/builtins.py:1342
 msgid "List the branches available at the current location."
