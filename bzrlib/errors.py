@@ -3355,3 +3355,11 @@ class HpssVfsRequestNotAllowed(BzrError):
     def __init__(self, method, arguments):
         self.method = method
         self.arguments = arguments
+
+
+class UnsupportedKindChange(BzrError):
+
+    _fmt = ("Unsupported file kind change for %(path)s")
+
+    def __init__(self, path):
+        self.path = path
