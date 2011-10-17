@@ -578,6 +578,11 @@ class cmd_fast_export(Command):
      future once the feature names and definitions are formally agreed
      to by the broader fast-import developer community.
 
+     Git has stricter naming rules for tags and fast-export --plain
+     will skip tags which can't be imported into git. To replace characters
+     unsupported in git with an underscore instead, specify
+     --rewrite-tag-names.
+
     :Examples:
 
      To produce data destined for import into Bazaar::
@@ -624,12 +629,16 @@ class cmd_fast_export(Command):
                     Option('plain',
                         help="Exclude metadata to maximise interoperability."
                         ),
+                    Option('rewrite-tag-names',
+                        help="Replace characters invalid in git with '_'"
+                             " (plain mode only).",
+                        ),
                      ]
     encoding_type = 'exact'
     def run(self, source, destination=None, verbose=False,
         git_branch="master", checkpoint=10000, marks=None,
         import_marks=None, export_marks=None, revision=None,
-        plain=True):
+        plain=True, rewrite_tag_names=False):
         load_fastimport()
         from bzrlib.plugins.fastimport import exporter
 
@@ -639,7 +648,8 @@ class cmd_fast_export(Command):
             destination=destination,
             git_branch=git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
-            revision=revision, verbose=verbose, plain_format=plain)
+            revision=revision, verbose=verbose, plain_format=plain,
+            rewrite_tags=rewrite_tag_names)
         return exporter.run()
 
 

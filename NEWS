@@ -12,6 +12,11 @@ Bug fixes
 * Cope with non-utf8 characters in paths when importing.
   (Jelmer Vernooij, #838980)
 
+Features
+--------
+
+* New option --rewrite-tag-names for 'bzr fast-export'. (Alex Usov, #872601)
+
 0.11 2011-08-22
 
 Bug fixes

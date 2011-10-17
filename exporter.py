@@ -46,7 +46,7 @@
 # set new_git_branch to the previously used name)
 
 from email.Utils import parseaddr
-import sys, time
+import sys, time, re
 
 import bzrlib.branch
 import bzrlib.revision
@@ -112,18 +112,52 @@ def check_ref_format(refname):
     return True
 
 
+def sanitize_ref_name_for_git(refname):
+    """Rewrite refname so that it will be accepted by git-fast-import.
+    For the detailed rules see check_ref_format.
+
+    By rewriting the refname we are breaking uniqueness guarantees provided by bzr
+    so we have to manually
+    verify that resulting ref names are unique.
+
+    :param refname: refname to rewrite
+    :return: new refname
+    """
+    new_refname = re.sub(
+        # '/.' in refname or startswith '.'
+        r"/\.|^\."
+        # '..' in refname
+        r"|\.\."
+        # ord(c) < 040
+        r"|[" + "".join([chr(x) for x in range(040)]) + r"]"
+        # c in '\177 ~^:?*['
+        r"|[\177 ~^:?*[]"
+        # last char in "/."
+        r"|[/.]$"
+        # endswith '.lock'
+        r"|.lock$"
+        # "@{" in refname
+        r"|@{"
+        # "\\" in refname
+        r"|\\",
+        "_", refname)
+    return new_refname
 
 class BzrFastExporter(object):
 
     def __init__(self, source, destination, git_branch=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None, revision=None,
-        verbose=False, plain_format=False):
+        verbose=False, plain_format=False, rewrite_tags=False):
         """Export branch data in fast import format.
 
         :param plain_format: if True, 'classic' fast-import format is
-          used without any extended features; if False, the generated
-          data is richer and includes information like multiple
-          authors, revision properties, etc.
+            used without any extended features; if False, the generated
+            data is richer and includes information like multiple
+            authors, revision properties, etc.
+        :param rewrite_tags: if True and if plain_format is set, tag names
+            will be rewritten to be git-compatible.
+            Otherwise tags which aren't valid for git will be skipped if
+            plain_format is set.
         """
         self.source = source
         self.outf = _get_output_stream(destination)
@@ -134,6 +168,7 @@ class BzrFastExporter(object):
         self.revision = revision
         self.excluded_revisions = set()
         self.plain_format = plain_format
+        self.rewrite_tags = rewrite_tags
         self._multi_author_api_available = hasattr(bzrlib.revision.Revision,
             'get_apparent_authors')
         self.properties_to_exclude = ['authors', 'author']
@@ -559,9 +594,15 @@ class BzrFastExporter(object):
             else:
                 git_ref = 'refs/tags/%s' % tag.encode("utf-8")
                 if self.plain_format and not check_ref_format(git_ref):
-                    self.warning('not creating tag %r as its name would not be '
-                                 'valid in git.', git_ref)
-                    continue
+                    if self.rewrite_tags:
+                        new_ref = sanitize_ref_name_for_git(git_ref)
+                        self.warning('tag %r is exported as %r to be valid in git.',
+                                     git_ref, new_ref)
+                        git_ref = new_ref
+                    else:
+                        self.warning('not creating tag %r as its name would not be '
+                                     'valid in git.', git_ref)
+                        continue
                 self.print_cmd(commands.ResetCommand(git_ref, ":" + str(mark)))
 
     def _next_tmp_branch_name(self):
