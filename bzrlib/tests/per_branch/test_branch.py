@@ -442,8 +442,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
         # open the branch via a readonly transport
-        source_branch = _mod_branch.Branch.open(self.get_readonly_url(
-            urlutils.basename(tree_a.branch.base)))
+        url = self.get_readonly_url(urlutils.basename(tree_a.branch.base))
+        t = transport.get_transport_from_url(url)
+        if not tree_a.branch.bzrdir._format.supports_transport(t):
+            raise tests.TestNotApplicable("format does not support transport")
+        source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
