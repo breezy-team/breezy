@@ -34,7 +34,6 @@ from bzrlib import (
     commit,
     conflicts,
     delta,
-    errors,
     inventory,
     multiparent,
     osutils,
@@ -44,7 +43,7 @@ from bzrlib import (
     )
 from bzrlib.i18n import gettext
 """)
-from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
+from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ReusingTransform, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
@@ -562,9 +561,7 @@ class TreeTransformBase(object):
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
             if file_id is not None:
-                # XXX: This seems like something that should go via a different
-                #      indirection.
-                if self._tree.inventory[file_id].kind == 'directory':
+                if self._tree.stored_kind(file_id) == 'directory':
                     parents.append(trans_id)
             elif self.tree_kind(trans_id) == 'directory':
                 parents.append(trans_id)
@@ -2547,7 +2544,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     file_trans_id = {}
     top_pb = ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
-    if tree.inventory.root is not None:
+    if tree.get_root_id() is not None:
         # This is kind of a hack: we should be altering the root
         # as part of the regular tree shape diff logic.
         # The conditional test here is to avoid doing an
@@ -2568,7 +2565,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         try:
             deferred_contents = []
             num = 0
-            total = len(tree.inventory)
+            total = len(tree.all_file_ids())
             if delta_from_tree:
                 precomputed_delta = []
             else:
@@ -2583,7 +2580,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 for dir, files in wt.walkdirs():
                     existing_files.update(f[0] for f in files)
             for num, (tree_path, entry) in \
-                enumerate(tree.inventory.iter_entries_by_dir()):
+                enumerate(tree.iter_entries_by_dir()):
                 pb.update(gettext("Building tree"), num - len(deferred_contents), total)
                 if entry.parent_id is None:
                     continue
@@ -2837,33 +2834,6 @@ def _get_backup_name(name, by_parent, parent_trans_id, tt):
     for new_name in name_gen():
         if not tt.has_named_child(by_parent, parent_trans_id, new_name):
             return new_name
-
-
-def _entry_changes(file_id, entry, working_tree):
-    """Determine in which ways the inventory entry has changed.
-
-    Returns booleans: has_contents, content_mod, meta_mod
-    has_contents means there are currently contents, but they differ
-    contents_mod means contents need to be modified
-    meta_mod means the metadata needs to be modified
-    """
-    cur_entry = working_tree.inventory[file_id]
-    try:
-        working_kind = working_tree.kind(file_id)
-        has_contents = True
-    except NoSuchFile:
-        has_contents = False
-        contents_mod = True
-        meta_mod = False
-    if has_contents is True:
-        if entry.kind != working_kind:
-            contents_mod, meta_mod = True, False
-        else:
-            cur_entry._read_tree_state(working_tree.id2path(file_id),
-                                       working_tree)
-            contents_mod, meta_mod = entry.detect_changes(cur_entry)
-            cur_entry._forget_tree_state()
-    return has_contents, contents_mod, meta_mod
 
 
 def revert(working_tree, target_tree, filenames, backups=False,
