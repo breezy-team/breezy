@@ -51,6 +51,9 @@ Bug Fixes
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
 
+* ``bzr mv`` does not crash when attempting to move the root of a
+  branch. (Jonathan Riddell, #809728)
+
 * ``bzr shelve`` now use ``UIFactory.choose`` for input handling, making
   it usable when creating a custom ``UIFactory`` implementation. (Benoît
   Pierre)
