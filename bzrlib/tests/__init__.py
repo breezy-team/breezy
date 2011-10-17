@@ -1742,6 +1742,8 @@ class TestCase(testtools.TestCase):
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
+        # The logging module now tracks references for cleanup so discard ours
+        del self._log_memento
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
