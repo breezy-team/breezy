@@ -73,9 +73,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_nesting_repositories',
             (True, False))
 
-    def test_attribute_supports_invisible_revisions(self):
-        """Test the format.supports_invisible_revisions."""
-        self.assertFormatAttribute('supports_invisible_revisions',
+    def test_attribute_supports_unreferenced_revisions(self):
+        """Test the format.supports_unreferenced_revisions."""
+        self.assertFormatAttribute('supports_unreferenced_revisions',
             (True, False))
 
     def test_attribute__fetch_reconcile(self):

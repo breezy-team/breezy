@@ -112,7 +112,7 @@ class TestPull(TestCaseWithInterBranch):
         # It should not have updated the branch tip, but it should have fetched
         # the revision if the repository supports "invisible" revisions.
         self.assertEqual('rev2a', tree_a.branch.last_revision())
-        if tree_a.branch.repository._format.supports_invisible_revisions:
+        if tree_a.branch.repository._format.supports_unreferenced_revisions:
             self.assertTrue(tree_a.branch.repository.has_revision('rev2b'))
         tree_a.branch.pull(tree_b.branch, overwrite=True,
                            stop_revision='rev2b')

@@ -80,7 +80,7 @@ class VersionedFileRepositoryFormat(RepositoryFormat):
 
     supports_full_versioned_files = True
     supports_versioned_directories = True
-    supports_invisible_revisions = True
+    supports_unreferenced_revisions = True
 
     # Should commit add an inventory, or an inventory delta to the repository.
     _commit_inv_deltas = True
