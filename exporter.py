@@ -111,7 +111,8 @@ def check_ref_format(refname):
         return False
     return True
 
-def sanitize_ref_name_for_git(name_dict, refname):
+
+def sanitize_ref_name_for_git(refname):
     """Rewrite refname so that it will be accepted by git-fast-import.
     For the detailed rules see check_ref_format.
 
@@ -119,11 +120,10 @@ def sanitize_ref_name_for_git(name_dict, refname):
     so we have to manually
     verify that resulting ref names are unique.
 
-    :param name_dict: additional dictionary used to enforce uniqueness of resulting refname's
     :param refname: refname to rewrite
     :return: new refname
     """
-    newRefname = re.sub(
+    new_refname = re.sub(
         # '/.' in refname or startswith '.'
         r"/\.|^\."
         # '..' in refname
@@ -141,12 +141,7 @@ def sanitize_ref_name_for_git(name_dict, refname):
         # "\\" in refname
         r"|\\",
         "_", refname)
-    idx = name_dict.get(newRefname, 1)
-    name_dict[newRefname] = idx + 1
-    if idx != 1:
-        # append index to the resulting refname if it's not unique
-        newRefname += "_" + str(idx)
-    return newRefname
+    return new_refname
 
 class BzrFastExporter(object):
 
@@ -174,7 +169,6 @@ class BzrFastExporter(object):
         self.excluded_revisions = set()
         self.plain_format = plain_format
         self.rewrite_tags = rewrite_tags
-        self.rewrite_dict = dict()
         self._multi_author_api_available = hasattr(bzrlib.revision.Revision,
             'get_apparent_authors')
         self.properties_to_exclude = ['authors', 'author']
@@ -601,11 +595,11 @@ class BzrFastExporter(object):
                 git_ref = 'refs/tags/%s' % tag.encode("utf-8")
                 if self.plain_format and not check_ref_format(git_ref):
                     if self.rewrite_tags:
-                        new_ref = sanitize_ref_name_for_git(self.rewrite_dict, git_ref)
+                        new_ref = sanitize_ref_name_for_git(git_ref)
                         self.warning('tag %r is exported as %r to be valid in git.',
                                      git_ref, new_ref)
                         git_ref = new_ref
-                    else:                       
+                    else:
                         self.warning('not creating tag %r as its name would not be '
                                      'valid in git.', git_ref)
                         continue

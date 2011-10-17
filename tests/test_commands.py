@@ -80,6 +80,25 @@ class TestFastExport(ExternalBase):
         except AttributeError: # bzr < 2.4
             self.failUnlessExists("br.fi")
 
+    def test_tag_rewriting(self):
+        tree = self.make_branch_and_tree("br")
+        tree.commit("pointless")
+        self.assertTrue(tree.branch.supports_tags())
+        rev_id = tree.branch.dotted_revno_to_revision_id((1,))
+        tree.branch.tags.set_tag("goodTag", rev_id)
+        tree.branch.tags.set_tag("bad Tag", rev_id)
+        
+        # first check --no-rewrite-tag-names
+        data = self.run_bzr("fast-export --plain --no-rewrite-tag-names br")[0]
+        self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
+        self.assertEqual(data.find("reset refs/tags/"), data.rfind("reset refs/tags/"))
+        
+        # and now with --rewrite-tag-names
+        data = self.run_bzr("fast-export --plain --rewrite-tag-names br")[0]
+        self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
+        # "bad Tag" should be exported as bad_Tag
+        self.assertNotEqual(-1, data.find("reset refs/tags/bad_Tag"))
+
 
 simple_fast_import_stream = """commit refs/heads/master
 mark :1

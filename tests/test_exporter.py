@@ -95,40 +95,30 @@ class CheckRefFormatTests(tests.TestCase):
         self.assertFalse(check_ref_format('heads/foo\020bar'))
         self.assertFalse(check_ref_format('heads/foo\177bar'))
 
+
 class CheckRefnameRewriting(tests.TestCase):
     """Tests for sanitize_ref_name_for_git function"""
 
     def test_passthrough_valid(self):
-        self.assertEqual(sanitize_ref_name_for_git(dict(), 'heads/foo'), 'heads/foo')
-        self.assertEqual(sanitize_ref_name_for_git(dict(), 'foo/bar/baz'), 'foo/bar/baz')
-        self.assertEqual(sanitize_ref_name_for_git(dict(), 'refs///heads/foo'), 'refs///heads/foo')
-        self.assertEqual(sanitize_ref_name_for_git(dict(), 'foo./bar'), 'foo./bar')
-        self.assertEqual(sanitize_ref_name_for_git(dict(), 'heads/foo@bar'), 'heads/foo@bar')
-        self.assertEqual(sanitize_ref_name_for_git(dict(), 'heads/fix.lock.error'), 'heads/fix.lock.error')
+        self.assertEqual(sanitize_ref_name_for_git('heads/foo'), 'heads/foo')
+        self.assertEqual(sanitize_ref_name_for_git('foo/bar/baz'), 'foo/bar/baz')
+        self.assertEqual(sanitize_ref_name_for_git('refs///heads/foo'), 'refs///heads/foo')
+        self.assertEqual(sanitize_ref_name_for_git('foo./bar'), 'foo./bar')
+        self.assertEqual(sanitize_ref_name_for_git('heads/foo@bar'), 'heads/foo@bar')
+        self.assertEqual(sanitize_ref_name_for_git('heads/fix.lock.error'), 'heads/fix.lock.error')
 
-    def test_rewrite_to_unique_names(self):
-        self.assertEqual(sanitize_ref_name_for_git(dict(), 'heads/foo/'), 'heads/foo_')
-        # check that with persistent dictionary we generate unique names on each invocation
-        q = dict()
-        self.assertNotEqual(
-            sanitize_ref_name_for_git(q, 'heads/foo/'),
-            sanitize_ref_name_for_git(q, 'heads/foo/'))
-        self.assertNotEqual(
-            sanitize_ref_name_for_git(q, 'heads/foo/'),
-            sanitize_ref_name_for_git(q, 'heads/foo/'))
-        
     def test_rewrite_invalid(self):
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'foo./bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo/')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo.')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), './foo')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), '.refs/foo')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo..bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo?bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo.lock')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/v@{ation')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo\bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo\\bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo\020bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(dict(), 'heads/foo\177bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('foo./bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo/')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo.')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('./foo')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('.refs/foo')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo..bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo?bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo.lock')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/v@{ation')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\\bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\020bar')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\177bar')))
