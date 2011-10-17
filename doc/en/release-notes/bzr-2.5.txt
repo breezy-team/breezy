@@ -37,6 +37,11 @@ Improvements
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
 
+* all input prompts are now char-based when possible, and can be forced to
+  line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
+  to 'line-based'. This replace the previous shelf UI only patch using
+  ``INSIDE_EMACS``. (Benoît Pierre)
+
 Bug Fixes
 *********
 
@@ -45,6 +50,10 @@ Bug Fixes
 
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
+
+* ``bzr shelve`` now use ``UIFactory.choose`` for input handling, making
+  it usable when creating a custom ``UIFactory`` implementation. (Benoît
+  Pierre)
 
 Documentation
 *************
@@ -63,6 +72,9 @@ API Changes
   indicates whether revisions can be present in a repository without
   being referenced from e.g. a branch history at the same time.
   (Jelmer Vernooij)
+
+* ``UIFactory.choose`` has been added: prompt the user for a list of
+  choices. (Benoît Pierre)
 
 Internals
 *********
