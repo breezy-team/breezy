@@ -3492,7 +3492,9 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, 0)
+                pid, status = os.waitpid(self.pid, 0)
+            # GZ 2011-10-18: If status is nonzero, should report to the result
+            #                that something went wrong.
 
     test_blocks = partition_tests(suite, concurrency)
     # Clear the tests from the original suite so it doesn't keep them alive
