@@ -3356,6 +3356,24 @@ class _ForkedSelftest(_Selftest):
         return super(_ForkedSelftest, self)._run_selftest(**kwargs)
 
 
+class TestParallelFork(_ForkedSelftest, tests.TestCase):
+    """Check operation of --parallel=fork selftest option"""
+
+    def test_error_in_child_during_fork(self):
+        """Error in a forked child during test setup should get reported"""
+        class Test(tests.TestCase):
+            def testMethod(self):
+                pass
+        # We don't care what, just break something that a child will run
+        self.overrideAttr(tests, "workaround_zealous_crypto_random", None)
+        out = self._run_selftest(test_suite_factory=Test)
+        self.assertContainsRe(out,
+            "Traceback.*:\n"
+            ".+ in fork_for_tests\n"
+            "\s*workaround_zealous_crypto_random\(\)\n"
+            "TypeError:")
+
+
 class TestUncollectedWarnings(_Selftest, tests.TestCase):
     """Check a test case still alive after being run emits a warning"""
 
