@@ -3315,7 +3315,48 @@ class TestRunSuite(tests.TestCase):
         self.assertLength(1, calls)
 
 
-class TestUncollectedWarnings(tests.TestCase):
+class _Selftest(object):
+    """Mixin for tests needing full selftest output"""
+
+    def _inject_stream_into_subunit(self, stream):
+        """To be overridden by subclasses that run tests out of process"""
+
+    def _run_selftest(self, **kwargs):
+        sio = StringIO()
+        self._inject_stream_into_subunit(sio)
+        tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
+        return sio.getvalue()
+
+
+class _ForkedSelftest(_Selftest):
+    """Mixin for tests needing full selftest output with forked children"""
+
+    _test_needs_features = [features.subunit]
+
+    def _inject_stream_into_subunit(self, stream):
+        """Monkey-patch subunit so the extra output goes to stream not stdout
+
+        Some APIs need rewriting so this kind of bogus hackery can be replaced
+        by passing the stream param from run_tests down into ProtocolTestCase.
+        """
+        from subunit import ProtocolTestCase
+        _original_init = ProtocolTestCase.__init__
+        def _init_with_passthrough(self, *args, **kwargs):
+            _original_init(self, *args, **kwargs)
+            self._passthrough = stream
+        self.overrideAttr(ProtocolTestCase, "__init__", _init_with_passthrough)
+
+    def _run_selftest(self, **kwargs):
+        # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
+        if getattr(os, "fork", None) is None:
+            raise tests.TestNotApplicable("Platform doesn't support forking")
+        # Make sure the fork code is actually invoked by claiming two cores
+        self.overrideAttr(osutils, "local_concurrency", lambda: 2)
+        kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
+        return super(_ForkedSelftest, self)._run_selftest(**kwargs)
+
+
+class TestUncollectedWarnings(_Selftest, tests.TestCase):
     """Check a test case still alive after being run emits a warning"""
 
     class Test(tests.TestCase):
@@ -3333,25 +3374,19 @@ class TestUncollectedWarnings(tests.TestCase):
             self.Test("test_skip"),
             ])
 
-    def _inject_stream_into_subunit(self, stream):
-        """To be overridden by subclasses that run tests out of process"""
-
     def _run_selftest_with_suite(self, **kwargs):
-        sio = StringIO()
-        self._inject_stream_into_subunit(sio)
         old_flags = tests.selftest_debug_flags
         tests.selftest_debug_flags = old_flags.union(["uncollected_cases"])
         gc_on = gc.isenabled()
         if gc_on:
             gc.disable()
         try:
-            tests.selftest(test_suite_factory=self._get_suite, stream=sio,
-                stop_on_failure=False, **kwargs)
+            output = self._run_selftest(test_suite_factory=self._get_suite,
+                **kwargs)
         finally:
             if gc_on:
                 gc.enable()
             tests.selftest_debug_flags = old_flags
-        output = sio.getvalue()
         self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
         self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
         return output
@@ -3394,32 +3429,8 @@ class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
             runner_class=tests.SubUnitBzrRunner, **kwargs)
 
 
-class TestUncollectedWarningsForking(TestUncollectedWarnings):
+class TestUncollectedWarningsForked(_ForkedSelftest, TestUncollectedWarnings):
     """Check warnings from tests staying alive are emitted when forking"""
-
-    _test_needs_features = [features.subunit]
-
-    def _inject_stream_into_subunit(self, stream):
-        """Monkey-patch subunit so the extra output goes to stream not stdout
-
-        Some APIs need rewriting so this kind of bogus hackery can be replaced
-        by passing the stream param from run_tests down into ProtocolTestCase.
-        """
-        from subunit import ProtocolTestCase
-        _original_init = ProtocolTestCase.__init__
-        def _init_with_passthrough(self, *args, **kwargs):
-            _original_init(self, *args, **kwargs)
-            self._passthrough = stream
-        self.overrideAttr(ProtocolTestCase, "__init__", _init_with_passthrough)
-
-    def _run_selftest_with_suite(self, **kwargs):
-        # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
-        if getattr(os, "fork", None) is None:
-            raise tests.TestNotApplicable("Platform doesn't support forking")
-        # Make sure the fork code is actually invoked by claiming two cores
-        self.overrideAttr(osutils, "local_concurrency", lambda: 2)
-        kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
-        return TestUncollectedWarnings._run_selftest_with_suite(self, **kwargs)
 
 
 class TestEnvironHandling(tests.TestCase):
