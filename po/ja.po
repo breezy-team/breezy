@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-10-16 02:28+0000\n"
+"PO-Revision-Date: 2011-10-17 23:27+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-10-17 04:30+0000\n"
-"X-Generator: Launchpad (build 14155)\n"
+"X-Launchpad-Export-Date: 2011-10-18 04:30+0000\n"
+"X-Generator: Launchpad (build 14157)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1013,7 +1013,7 @@ msgstr "    bzr info -vv"
 
 #: bzrlib/builtins.py:1600
 msgid "Remove files or directories."
-msgstr ""
+msgstr "ファイルやディレクトリを削除します。"
 
 #: bzrlib/builtins.py:1602
 msgid ""
@@ -1023,30 +1023,35 @@ msgid ""
 "parameters are given Bazaar will scan for files that are being tracked by\n"
 "Bazaar but missing in your tree and stop tracking them for you."
 msgstr ""
+"このコマンドで指定されたファイルの変更をBazaarは管理しなくなります。\n"
+"revertでファイルが簡単に復活できる場合は、ファイルは削除されますし、そうで\n"
+"ない場合はバックアップ(.~#~という形式の拡張子がつきます)されます。オプション\n"
+"やパラメータが指定されていない場合は、バージョン管理されているけれどツリー\n"
+"削除されているファイルを探して、そのファイルのバージョン管理を止めます。"
 
 #: bzrlib/builtins.py:1610
 msgid "Only remove files that have never been committed."
-msgstr ""
+msgstr "まだコミットされていないファイルだけを削除します。"
 
 #: bzrlib/builtins.py:1612
 msgid "The file deletion mode to be used."
-msgstr ""
+msgstr "使用するファイル削除モードです。"
 
 #: bzrlib/builtins.py:1613
 msgid "Deletion Strategy"
-msgstr ""
+msgstr "削除モード"
 
 #: bzrlib/builtins.py:1626
 msgid "(The --force option is deprecated, rather use --no-backup in future.)"
-msgstr ""
+msgstr "(--forceオプションは廃止予定です。今後は--no-backupを使用してください)"
 
 #: bzrlib/builtins.py:1643
 msgid "No matching files."
-msgstr ""
+msgstr "対象のファイルはありませんでした。"
 
 #: bzrlib/builtins.py:1704
 msgid "Reconcile bzr metadata in a branch."
-msgstr ""
+msgstr "ブランチ内のBazaarのメタデータを修復します。"
 
 #: bzrlib/builtins.py:1706
 msgid ""
@@ -1055,6 +1060,9 @@ msgid ""
 "need to run this command if 'bzr check' or a bzr developer\n"
 "advises you to run it."
 msgstr ""
+"このコマンドで、オペレーションの失敗やBzrのアップグレードによってできた\n"
+"と思われるデータの不整合を修正することができます。'bzr check'の結果や、\n"
+"Bzrの開発者からの指示があるとき以外は、実行する必要はありません。"
 
 #: bzrlib/builtins.py:1711
 msgid ""
@@ -1063,26 +1071,35 @@ msgid ""
 "id which was not present in very early bzr versions is represented\n"
 "correctly in both branches."
 msgstr ""
+"２番目のブランチが指定された場合は、クロスブランチ修復を行います。\n"
+"これは、ツリーのルートIDのような、非常に古いバージョンのBzrにはなかった\n"
+"データが、両方のブランチに正しく表現されているかをチェックします。"
 
 #: bzrlib/builtins.py:1716
 msgid ""
 "At the same time it is run it may recompress data resulting in\n"
 "a potential saving in disk space or performance gain."
 msgstr ""
+"同時に、ディスクスペースの節約やパフォーマンスの向上のために、データの\n"
+"再圧縮がかかる可能性があります。"
 
 #: bzrlib/builtins.py:1719
 msgid "The branch *MUST* be on a listable system such as local disk or sftp."
 msgstr ""
+"ブランチは、ローカルディスクやsftpのような、リスト可能なシステム上に\n"
+"ある*必要があります*。"
 
 #: bzrlib/builtins.py:1783
 msgid "Make a directory into a versioned branch."
-msgstr ""
+msgstr "ディレクトリを、バージョン管理されたブランチにします。"
 
 #: bzrlib/builtins.py:1785
 msgid ""
 "Use this to create an empty branch, or before importing an\n"
 "existing project."
 msgstr ""
+"空のブランチを作る場合や、既存のプロジェクトをインポートする前にこの\n"
+"コマンドを使用します。"
 
 #: bzrlib/builtins.py:1788
 msgid ""
@@ -1091,16 +1108,21 @@ msgid ""
 "init creates a standalone branch which carries its own history\n"
 "in the .bzr directory."
 msgstr ""
+"親ディレクトリにリポジトリがある場合は、ブランチ内の履歴はリポジトリに\n"
+"保存されます。そうでない場合は、履歴を.bzrディレクトリ内に持つスタンド\n"
+"アロンブランチが作成されます。"
 
 #: bzrlib/builtins.py:1793
 msgid ""
 "If there is already a branch at the location but it has no working tree,\n"
 "the tree can be populated with 'bzr checkout'."
 msgstr ""
+"既にブランチがあって、作業ツリーがない場合は、'bzr checkout'でツリーを\n"
+"生成することができます。"
 
 #: bzrlib/builtins.py:1796
 msgid "Recipe for importing a tree of files::"
-msgstr ""
+msgstr "ファイルのツリーをインポートするためのレシピ::"
 
 #: bzrlib/builtins.py:1798
 msgid ""
@@ -1110,24 +1132,29 @@ msgid ""
 "    bzr status\n"
 "    bzr commit -m \"imported project\""
 msgstr ""
+"    cd ~/project\n"
+"    bzr init\n"
+"    bzr add .\n"
+"    bzr status\n"
+"    bzr commit -m \"imported project\""
 
 #: bzrlib/builtins.py:1809
 msgid ""
 "Create the path leading up to the branch if it does not already exist."
-msgstr ""
+msgstr "ブランチまでのパスが存在していなければ、作成します。"
 
 #: bzrlib/builtins.py:1812
 msgid "Specify a format for this branch. See \"help formats\"."
-msgstr ""
+msgstr "ブランチのフォーマットを指定します。\"help formats\"をご覧ください。"
 
 #: bzrlib/builtins.py:1820
 msgid ""
 "Never change revnos or the existing log.  Append revisions to it only."
-msgstr ""
+msgstr "リビジョン番号や既存のログを変更せず、リビジョンの追加だけを行います。"
 
 #: bzrlib/builtins.py:1823
 msgid "Create a branch without a working tree."
-msgstr ""
+msgstr "作業ツリーをもたないブランチを作成します。"
 
 #: bzrlib/builtins.py:1843 bzrlib/push.py:108
 #, python-format
@@ -1135,24 +1162,26 @@ msgid ""
 "Parent directory of %s does not exist.\n"
 "You may supply --create-prefix to create all leading parent directories."
 msgstr ""
+"%s の親ディレクトリがありません。\n"
+"--create-prefixを指定すれば、親ディレクトリも作成されます。"
 
 #: bzrlib/builtins.py:1877
 msgid ""
 "This branch format cannot be set to append-revisions-only.  Try --default."
-msgstr ""
+msgstr "このブランチフォーマットにappend-revisions-onlyは指定できません。--defaultを試してください。"
 
 #: bzrlib/builtins.py:1888
 msgid "Created a {0} (format: {1})\n"
-msgstr ""
+msgstr "{0}を作成しました。(フォーマット:{1})\n"
 
 #: bzrlib/builtins.py:1897
 #, python-format
 msgid "Using shared repository: %s\n"
-msgstr ""
+msgstr "共有リポジトリを使用しました。: %s\n"
 
 #: bzrlib/builtins.py:1901
 msgid "Create a shared repository for branches to share storage space."
-msgstr ""
+msgstr "ブランチのストレージを共有するための共有リポジトリを作成します。"
 
 #: bzrlib/builtins.py:1903
 msgid ""
@@ -1161,6 +1190,10 @@ msgid ""
 "with shared history, this reduces the amount of storage needed and \n"
 "speeds up the creation of new branches."
 msgstr ""
+"リポジトリのディレクトリの配下に新しく作られたブランチは、リビジョンを\n"
+"ブランチのディレクトリではなくリポジトリに保存します。リビジョンを共有\n"
+"しているブランチ同士のストレージサイズが節約され、新しいブランチを作成\n"
+"するスピードも速くなります。"
 
 #: bzrlib/builtins.py:1908
 msgid ""
@@ -1171,22 +1204,31 @@ msgid ""
 "store branches which are interacted with through checkouts or remote\n"
 "branches, such as on a server."
 msgstr ""
+"--no-treesオプションが指定された場合は、リポジトリ内に作成されたブランチ\n"
+"にはデフォルトでは作業ツリーができません。ディスク上にディレクトリとしては\n"
+"ありますが、特定リビジョンのファイルのコピーを個々に持つことはありません。\n"
+"これは、サーバー上のリポジトリなど、チェックアウトやリモートブランチとやりとり\n"
+"するリポジトリの場合に役立ちます。"
 
 #: bzrlib/builtins.py:1915
 msgid ""
 ":Examples:\n"
 "    Create a shared repository holding just branches::"
 msgstr ""
+":例:\n"
+"    ブランチだけをもつリポジトリを作成します。::"
 
 #: bzrlib/builtins.py:1918
 msgid ""
 "        bzr init-repo --no-trees repo\n"
 "        bzr init repo/trunk"
 msgstr ""
+"        bzr init-repo --no-trees repo\n"
+"        bzr init repo/trunk"
 
 #: bzrlib/builtins.py:1921
 msgid "    Make a lightweight checkout elsewhere::"
-msgstr ""
+msgstr "    別の場所に軽量チェックアウトを作成します。::"
 
 #: bzrlib/builtins.py:1923
 msgid ""
@@ -1194,19 +1236,22 @@ msgid ""
 "        cd trunk-checkout\n"
 "        (add files here)"
 msgstr ""
+"        bzr checkout --lightweight repo/trunk trunk-checkout\n"
+"        cd trunk-checkout\n"
+"        (ここでファイルを追加)"
 
 #: bzrlib/builtins.py:1931
 msgid ""
 "Specify a format for this repository. See \"bzr help formats\" for details."
-msgstr ""
+msgstr "リポジトリのフォーマットを指定します。詳しくは\"bzr help formats\"をご覧ください。"
 
 #: bzrlib/builtins.py:1935
 msgid "Repository format"
-msgstr ""
+msgstr "リポジトリフォーマット"
 
 #: bzrlib/builtins.py:1937
 msgid "Branches in the repository will default to not having a working tree."
-msgstr ""
+msgstr "リポジトリ内のブランチにはデフォルトでは作業ツリーを持たせません。"
 
 #: bzrlib/builtins.py:1961
 msgid "Show differences in the working tree, between revisions or branches."
