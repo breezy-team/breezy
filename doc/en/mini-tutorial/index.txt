@@ -103,7 +103,7 @@ Viewing the revision log
 
 You can see the history of your branch by browsing its log::
 
-  ------------------------------------------------------------
+  $ bzr log
   revno: 1
   committer: John Doe <john.doe@gmail.com>
   branch nick: trunk
@@ -129,7 +129,7 @@ The steps to publishing branches on Launchpad are:
    to Launchpad.  You need to first `create an SSH key`_ on your own computer,
    by running the command::
     
-       ssh-keygen
+       $ ssh-keygen
 
 .. _create an SSH key: https://help.launchpad.net/YourAccount/CreatingAnSSHKeyPair    
        
@@ -149,12 +149,12 @@ The steps to publishing branches on Launchpad are:
 
 6. Tell Bazaar your Launchpad account name.  If your account is john.doe, type ::
   
-      bzr launchpad-login john.doe
+      $ bzr launchpad-login john.doe
 
 7. `Push the branch for your project`_.  Once you've committed your changes 
    locally, you can publish them as the trunk of your new project by saying
     
-       bzr push lp:~sample-developers/sample/trunk
+       $ bzr push lp:~sample-developers/sample/trunk
        
    (Of course, using the team and project names you just chose.)
  
