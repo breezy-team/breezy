@@ -3504,8 +3504,8 @@ def fork_for_tests(suite):
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
-            workaround_zealous_crypto_random()
             try:
+                workaround_zealous_crypto_random()
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
