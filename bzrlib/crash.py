@@ -75,8 +75,7 @@ def report_bug(exc_info, stderr):
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
         trace.mutter("bzr: failed to report crash using apport: %r" % e)
-        import traceback
-        trace.mutter(traceback.format_exc())
+        trace.log_exception_quietly()
         pass
     return report_bug_legacy(exc_info, stderr)
 
