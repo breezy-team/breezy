@@ -3505,6 +3505,7 @@ def fork_for_tests(suite):
         pid = os.fork()
         if pid == 0:
             try:
+                stream = os.fdopen(c2pwrite, 'wb', 1)
                 workaround_zealous_crypto_random()
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
@@ -3512,16 +3513,17 @@ def fork_for_tests(suite):
                 # read from stdin (otherwise its a roulette to see what
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
-                # GZ 2011-06-16: Why set stdin to None? Breaks multi fork.
-                #sys.stdin = None
-                stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = AutoTimingTestResultDecorator(
                     SubUnitBzrProtocolClient(stream))
                 process_suite.run(subunit_result)
-            finally:
-                # GZ 2011-06-16: Is always exiting with silent success
-                #                really the right thing? Hurts debugging.
-                os._exit(0)
+            except:
+                # Try and report traceback on stream, but exit with error even
+                # if stream couldn't be created or something else goes wrong
+                try:
+                    traceback.print_exc(file=stream)
+                finally:
+                    os._exit(1)
+            os._exit(0)
         else:
             os.close(c2pwrite)
             stream = os.fdopen(c2pread, 'rb', 1)
