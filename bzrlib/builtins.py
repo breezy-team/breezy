@@ -884,8 +884,9 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError(gettext("missing file argument"))
         tree, rel_names = WorkingTree.open_containing_paths(names_list, canonicalize=False)
-        if rel_names[0] == '':
-            raise errors.BzrCommandError(gettext("can not move root of branch"))
+        for file_name in rel_names[0:-1]:
+            if file_name == '':
+                raise errors.BzrCommandError(gettext("can not move root of branch"))
         self.add_cleanup(tree.lock_tree_write().unlock)
         self._run(tree, names_list, rel_names, after)
 
