@@ -57,12 +57,14 @@ Starting a new project
 Let's suppose we want to store a new project under Bazaar.  First, we'll
 make a *repository directory* to hold all our work related to this
 project.  We can then have multiple branch directories under here, and
-they'll all store the committed history in the repository.  ::
+they'll all store the committed history in the repository.
+
+::
 
   $ bzr init-repo sample
   Shared repository with trees (format: 2a)
   Location:
-    shared repository: sample
+    shared repository: sample
   $ bzr init sample/trunk
   $ cd sample/trunk
   Created a repository tree (format: 2a)                                         
