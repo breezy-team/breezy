@@ -92,6 +92,9 @@ Internals
   which format implementations can use whether or not they can access
   a control dir over a particular transport. (Jelmer Vernooij)
 
+* ``BranchBuilder.build_commit`` now takes a ``parent_ids`` argument.
+  (Jelmer Vernooij)
+
 Testing
 *******
 
