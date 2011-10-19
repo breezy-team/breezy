@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-09-20 10:41+0100\n"
-"PO-Revision-Date: 2011-10-04 18:13+0000\n"
+"PO-Revision-Date: 2011-10-18 19:44+0000\n"
 "Last-Translator: Sergey Basalaev <SBasalaev@gmail.com>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -16,8 +16,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2011-10-05 04:30+0000\n"
-"X-Generator: Launchpad (build 14085)\n"
+"X-Launchpad-Export-Date: 2011-10-19 04:30+0000\n"
+"X-Generator: Launchpad (build 14157)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -2101,6 +2101,13 @@ msgid ""
 "Global ignores are not touched by this command. The global ignore file\n"
 "can be edited directly using an editor."
 msgstr ""
+"Bazaar также поддерживает глобальный игнорирования по пути "
+"~/.bazaar/ignore.\n"
+"На Windows глобальный файл игнорирования может быть найден в директории\n"
+"данных приложений. Ищите пути вроде\n"
+"C:\\Documents and Settings\\<user>\\Application Data\\Bazaar\\2.0\\ignore.\n"
+"Эта команда не изменяет глобальный файл игнорирования. Он может быть\n"
+"отредактирован вручную с помощью текстового редактора."
 
 #: bzrlib/builtins.py:2867
 msgid ""
@@ -2108,12 +2115,18 @@ msgid ""
 "precedence over regular ignores.  Such exceptions are used to specify\n"
 "files that should be versioned which would otherwise be ignored."
 msgstr ""
+"Шаблоны, начинающиеся с '!', являются исключениями к шаблонам игнорирования\n"
+"и имеют приоритет над обычными шаблонами. Такие исключения используются для\n"
+"указания файлов, которые должны попасть под контроль системы версий, но\n"
+"по умолчанию игнорируются."
 
 #: bzrlib/builtins.py:2871
 msgid ""
 "Patterns prefixed with '!!' act as regular ignore patterns, but have\n"
 "precedence over the '!' exception patterns."
 msgstr ""
+"Шаблоны, начинающиеся с '!!' ведут себя как обычные шаблоны, но имеют\n"
+"приоритет над шаблонами исключений '!'."
 
 #: bzrlib/builtins.py:2874
 msgid ""
@@ -2122,62 +2135,71 @@ msgid ""
 "* Ignore patterns containing shell wildcards must be quoted from\n"
 "  the shell on Unix."
 msgstr ""
+":Замечания: \n"
+"    \n"
+"* Шаблоны игнорирования, содержащие специальные символы оболочки,\n"
+"  должны быть заключены в кавычки при указании в командной строке."
 
 #: bzrlib/builtins.py:2879
 msgid ""
 "* Ignore patterns starting with \"#\" act as comments in the ignore file.\n"
 "  To ignore patterns that begin with that character, use the \"RE:\" prefix."
 msgstr ""
+"* Шаблоны игнорирования, начинающиеся с \"#\", являются комментариями.\n"
+"  Чтобы добавить шаблон, начинающийся с этого символа, используйте\n"
+"  префикс \"RE:\"."
 
 #: bzrlib/builtins.py:2882
 msgid ""
 ":Examples:\n"
 "    Ignore the top level Makefile::"
 msgstr ""
+":Примеры:\n"
+"    Игнорировать файл Makefile на верхнем уровне::"
 
 #: bzrlib/builtins.py:2885
 msgid "        bzr ignore ./Makefile"
-msgstr ""
+msgstr "        bzr ignore ./Makefile"
 
 #: bzrlib/builtins.py:2887
 msgid "    Ignore .class files in all directories...::"
-msgstr ""
+msgstr "    Игнорировать файлы .class во всех директориях...::"
 
 #: bzrlib/builtins.py:2889
 msgid "        bzr ignore \"*.class\""
-msgstr ""
+msgstr "        bzr ignore \"*.class\""
 
 #: bzrlib/builtins.py:2891
 msgid "    ...but do not ignore \"special.class\"::"
-msgstr ""
+msgstr "    ...но не игнорировать \"special.class\"::"
 
 #: bzrlib/builtins.py:2893
 msgid "        bzr ignore \"!special.class\""
-msgstr ""
+msgstr "        bzr ignore \"!special.class\""
 
 #: bzrlib/builtins.py:2895
 msgid "    Ignore files whose name begins with the \"#\" character::"
-msgstr ""
+msgstr "    Игнорировать файлы, начинающиеся с символа \"#\"::"
 
 #: bzrlib/builtins.py:2897
 msgid "        bzr ignore \"RE:^#\""
-msgstr ""
+msgstr "        bzr ignore \"RE:^#\""
 
 #: bzrlib/builtins.py:2899
 msgid "    Ignore .o files under the lib directory::"
-msgstr ""
+msgstr "    Игнорировать файлы .o в директории lib::"
 
 #: bzrlib/builtins.py:2901
 msgid "        bzr ignore \"lib/**/*.o\""
-msgstr ""
+msgstr "        bzr ignore \"lib/**/*.o\""
 
 #: bzrlib/builtins.py:2905
 msgid "        bzr ignore \"RE:lib/.*\\.o\""
-msgstr ""
+msgstr "        bzr ignore \"RE:lib/.*\\.o\""
 
 #: bzrlib/builtins.py:2907
 msgid "    Ignore everything but the \"debian\" toplevel directory::"
-msgstr ""
+msgstr "    Игнорировать всё, кроме верхней директории \"debian\"::"
 
 #: bzrlib/builtins.py:2909
 msgid ""
@@ -2190,25 +2212,35 @@ msgid ""
 "        bzr ignore \"!./local\"\n"
 "        bzr ignore \"!!*~\""
 msgstr ""
+"        bzr ignore \"RE:(?!debian/).*\"\n"
+"    \n"
+"    Игнорировать всё, кроме верхней директории \"local\",\n"
+"    но всегда игнорировать файлы, заканчивающиеся на ~, даже в local/::\n"
+"    \n"
+"        bzr ignore \"*\"\n"
+"        bzr ignore \"!./local\"\n"
+"        bzr ignore \"!!*~\""
 
 #: bzrlib/builtins.py:2923
 msgid "Display the default ignore rules that bzr uses."
-msgstr ""
+msgstr "Вывести правила игнорирования, которые bzr использует по умолчанию."
 
 #: bzrlib/builtins.py:2935
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
 msgstr ""
+"Для ignore требуется как минимум одно из NAME_PATTERN или --default-rules."
 
 #: bzrlib/builtins.py:2946
 #, python-format
 msgid "Invalid ignore pattern found. %s"
 msgid_plural "Invalid ignore patterns found. %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Найден некорректный шаблон игнорирования. %s"
+msgstr[1] "Найдены некорректные шаблоны игнорирования. %s"
+msgstr[2] "Найдены некорректные шаблоны игнорирования. %s"
 
 #: bzrlib/builtins.py:2955
 msgid "NAME_PATTERN should not be an absolute path"
-msgstr ""
+msgstr "NAME_PATTERN не должен быть абсолютным путём"
 
 #: bzrlib/builtins.py:2968
 #, python-format
@@ -2219,24 +2251,31 @@ msgid ""
 "These files will continue to be version controlled unless you 'bzr remove' "
 "them.\n"
 msgstr ""
+"Предупреждение: следующие файлы под контролем системы версий и удовлетворяют "
+"шаблонам игнорирования:\n"
+"%s\n"
+"Эти файлы будут продолжать под контролем системы версий, пока вы не "
+"выполните 'bzr remove'.\n"
 
 #: bzrlib/builtins.py:2975
 msgid "List ignored files and the patterns that matched them."
-msgstr ""
+msgstr "Вывести игнорируемые файлы и шаблоны, которым они удовлетворяют."
 
 #: bzrlib/builtins.py:2977
 msgid ""
 "List all the ignored files and the ignore pattern that caused the file to\n"
 "be ignored."
 msgstr ""
+"Вывести все игнорируемые файлы и шаблоны игнорирования, из-за которых эти\n"
+"файлы игнорируются."
 
 #: bzrlib/builtins.py:2980
 msgid "Alternatively, to list just the files::"
-msgstr ""
+msgstr "Альтернативно, чтобы вывести только файлы::"
 
 #: bzrlib/builtins.py:2982
 msgid "    bzr ls --ignored"
-msgstr ""
+msgstr "    bzr ls --ignored"
 
 #: bzrlib/builtins.py:3016
 #, python-format
@@ -2247,10 +2286,12 @@ msgstr "некорректный номер ревизии: %r"
 msgid ""
 "Export current or past revision to a destination directory or archive."
 msgstr ""
+"Экспортировать текущую или прошлую ревизию в директорию назначения\r\n"
+"или архив."
 
 #: bzrlib/builtins.py:3025
 msgid "If no revision is specified this exports the last committed revision."
-msgstr ""
+msgstr "Если ревизия не указана, экспортирует последнюю ревизию."
 
 #: bzrlib/builtins.py:3027
 msgid ""
@@ -2258,6 +2299,9 @@ msgid ""
 "given, try to find the format with the extension. If no extension\n"
 "is found exports to a directory (equivalent to --format=dir)."
 msgstr ""
+"Формат может быть именем экспортируемого формата, как tar, tgz, tbz2.\n"
+"Если не указан, формат определяется по расширению. Если расширение\n"
+"отсутствует, экспортирует в директорию (эквивалентно --format=dir)."
 
 #: bzrlib/builtins.py:3031
 msgid ""
@@ -2265,17 +2309,25 @@ msgid ""
 "container formats (tar, zip, etc). If it is not supplied it will default\n"
 "to the exported filename. The root option has no effect for 'dir' format."
 msgstr ""
+"Если указан root, он будет использоваться как корневая директория\n"
+"внутри форматов-контейнеров (tar, zip, и т.д.). Если не указан, по\n"
+"умолчанию используется имя файла для эскпорта. Опция root не имеет\n"
+"эффекта для формата 'dir'."
 
 #: bzrlib/builtins.py:3035
 msgid ""
 "If branch is omitted then the branch containing the current working\n"
 "directory will be used."
 msgstr ""
+"Если ветвь опущена, используется ветвь, содержащая текущую рабочую\n"
+"директорию."
 
 #: bzrlib/builtins.py:3038
 msgid ""
 "Note: Export of tree with non-ASCII filenames to zip is not supported."
 msgstr ""
+"Замечание: Экспорт в zip деревьев с именами файлов, содержащими не-ASCII\r\n"
+"символы, не поддерживается."
 
 #: bzrlib/builtins.py:3040
 msgid ""
@@ -2289,10 +2341,19 @@ msgid ""
 "     zip                          .zip\n"
 "  =================       ========================="
 msgstr ""
+"  ======================       =============================\n"
+"  Поддерживаемые форматы       Автоопределение по расширению\n"
+"  ======================       =============================\n"
+"      dir                                (нет)\n"
+"      tar                                .tar\n"
+"      tbz2                          .tar.bz2, .tbz2\n"
+"      tgz                            .tar.gz, .tgz\n"
+"      zip                                .zip\n"
+"  ======================       ============================="
 
 #: bzrlib/builtins.py:3054
 msgid "Type of file to export to."
-msgstr ""
+msgstr "Тип файла для экспорта."
 
 #: bzrlib/builtins.py:3057
 msgid "Apply content filters to export the convenient form."
@@ -2300,33 +2361,38 @@ msgstr ""
 
 #: bzrlib/builtins.py:3061
 msgid "Name of the root directory inside the exported file."
-msgstr ""
+msgstr "Имя корневой директории внутри экспортируемого файла."
 
 #: bzrlib/builtins.py:3063
 msgid ""
 "Set modification time of files to that of the last revision in which it was "
 "changed."
 msgstr ""
+"Установить время изменения файлов на время последней ревизии, в которой они "
+"были изменены."
 
 #: bzrlib/builtins.py:3083
 #, python-format
 msgid "Unsupported export format: %s"
-msgstr ""
+msgstr "Неподдерживаемый формат экспорта: %s"
 
 #: bzrlib/builtins.py:3087
 msgid ""
 "Write the contents of a file as of a given revision to standard output."
 msgstr ""
+"Вывести содержимое файла из определённой ревизии на стандартный вывод."
 
 #: bzrlib/builtins.py:3089
 msgid "If no revision is nominated, the last revision is used."
-msgstr ""
+msgstr "Если ревизия не указана, используется последняя."
 
 #: bzrlib/builtins.py:3091
 msgid ""
 "Note: Take care to redirect standard output when using this command on a\n"
 "binary file."
 msgstr ""
+"Замечание: Не забывайте перенаправлять стандартный вывод при использовании\n"
+"этой команды на двоичном файле."
 
 #: bzrlib/builtins.py:3098
 msgid "Apply content filters to display the convenience form."
@@ -2334,15 +2400,15 @@ msgstr ""
 
 #: bzrlib/builtins.py:3109
 msgid "bzr cat --revision takes exactly one revision specifier"
-msgstr ""
+msgstr "bzr cat --revision принимает ровно один спецификатор ревизии"
 
 #: bzrlib/builtins.py:3134 bzrlib/builtins.py:3146
 msgid "{0!r} is not present in revision {1}"
-msgstr ""
+msgstr "{0!r} не представлен в ревизии {1}"
 
 #: bzrlib/builtins.py:3169
 msgid "Commit changes into a new revision."
-msgstr ""
+msgstr "Закрепить изменения в новой ревизии."
 
 #: bzrlib/builtins.py:3171
 msgid ""
@@ -2360,10 +2426,12 @@ msgid ""
 "commit is assumed to be the author. These defaults can be overridden\n"
 "as explained below."
 msgstr ""
+"По умолчанию, закрепляется всё дерево и закрепляющий считается автором.\n"
+"Эти умолчания могут быть перезаписаны, как объяснено ниже."
 
 #: bzrlib/builtins.py:3182
 msgid ":Selective commits:"
-msgstr ""
+msgstr ":Выборочные закрепления:"
 
 #: bzrlib/builtins.py:3184
 msgid ""
@@ -2371,6 +2439,9 @@ msgid ""
 "  committed.  If a directory is specified then the directory and\n"
 "  everything within it is committed."
 msgstr ""
+"  Если указаны файлы, закрепить только изменения в этих файлах.\n"
+"  Если указана директория, то закрепляется директория и всё её\n"
+"  содержимое."
 
 #: bzrlib/builtins.py:3188
 msgid ""
@@ -2378,18 +2449,21 @@ msgid ""
 "  For example, to commit only changes within foo, but not changes\n"
 "  within foo/bar::"
 msgstr ""
+"  Когда даны исключения, они имеют приоритет над выбранными файлами.\n"
+"  Например, чтобы закрепить изменения внутри foo, но не изменения\n"
+"  в foo/bar::"
 
 #: bzrlib/builtins.py:3192
 msgid "    bzr commit foo -x foo/bar"
-msgstr ""
+msgstr "    bzr commit foo -x foo/bar"
 
 #: bzrlib/builtins.py:3194
 msgid "  A selective commit after a merge is not yet supported."
-msgstr ""
+msgstr "  Выборочные закрепления после слияния пока не поддерживаются."
 
 #: bzrlib/builtins.py:3196
 msgid ":Custom authors:"
-msgstr ""
+msgstr ":Выбор автора:"
 
 #: bzrlib/builtins.py:3198
 msgid ""
@@ -2400,10 +2474,15 @@ msgid ""
 "  the change you can specify the option multiple times, once for each\n"
 "  author."
 msgstr ""
+"  Если автор изменения не тот же самый человек, что и закрепляющий,\n"
+"  вы можете указать имя автора, используя опцию --author. Имя должно\n"
+"  быть в том же формате, что и committer-id, например\n"
+"  \"John Doe <jdoe@example.com>\". Если в изменении участвовал более,\n"
+"  чем один автор, вы можете указать эту опцию несколько раз."
 
 #: bzrlib/builtins.py:3205
 msgid ":Checks:"
-msgstr ""
+msgstr ":Проверки:"
 
 #: bzrlib/builtins.py:3207
 msgid ""
@@ -2413,6 +2492,11 @@ msgid ""
 "  checks can be implemented by defining hooks. See ``bzr help hooks``\n"
 "  for details."
 msgstr ""
+"  Распространённой ошибкой является забыть добавить новый файл перед\n"
+"  запуском команды commit. Опция --strict прерывает закрепление, если\n"
+"  присутствуют неизвестные файлы. Более продвинутые проверки могут\n"
+"  быть реализованы определением обработчиков. Подробности можно найти,\n"
+"  выполнив команду ``bzr help hooks''."
 
 #: bzrlib/builtins.py:3213
 msgid ":Things to note:"
