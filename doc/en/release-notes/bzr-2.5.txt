@@ -92,6 +92,9 @@ Internals
   which format implementations can use whether or not they can access
   a control dir over a particular transport. (Jelmer Vernooij)
 
+* ``BranchBuilder.build_commit`` now take ``parent_ids`` and
+  ``allow_leftmost_as_ghost`` arguments.  (Jelmer Vernooij)
+
 Testing
 *******
 
