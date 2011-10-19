@@ -85,8 +85,8 @@ class TestPack(tests.TestCaseWithTransport):
         self.assertTrue(len(pack_names) == 0)
 
     def test_pack_no_obsolete_packs_directory(self):
-        """Ensure --clean-obsolete-packs removes obsolete pack files
-        """
+        """Bug #314314, don't fail if obsolete_packs directory does
+        not exist."""
         wt = self.make_branch_and_tree('.')
         open('foo', 'w').write('foo')
         self.run_bzr(['add'])
