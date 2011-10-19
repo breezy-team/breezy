@@ -83,3 +83,14 @@ class TestPack(tests.TestCaseWithTransport):
 
         pack_names = transport.list_dir('repository/obsolete_packs')
         self.assertTrue(len(pack_names) == 0)
+
+    def test_pack_no_obsolete_packs_directory(self):
+        """Ensure --clean-obsolete-packs removes obsolete pack files
+        """
+        wt = self.make_branch_and_tree('.')
+        open('foo', 'w').write('foo')
+        self.run_bzr(['add'])
+        self.run_bzr(['commit', '-m', '"commit 1"'])
+        import os
+        os.rmdir('.bzr/repository/obsolete_packs/')
+        self.run_bzr(['pack'])
