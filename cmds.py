@@ -387,6 +387,15 @@ class cmd_fast_import_filter(Command):
         User mapping is supported by both the fast-import and
         fast-import-filter commands.
 
+    :History rewriting:
+
+     By default fast-import-filter does quite aggressive history rewriting.
+     Empty commits (or commits which had all their content filtered out) will
+     be removed, and so are the references to commits not included in the stream.
+
+     Flag --preserve-all-history reverses this behavior and makes it possible to
+     use fast-import-filter on incremental streams.
+
     :Examples:
 
      Create a new project from a library (note the trailing / on the
@@ -415,15 +424,19 @@ class cmd_fast_import_filter(Command):
                     Option('user-map', type=str,
                         help="Path to file containing a map of user-ids.",
                         ),
+                    Option('preserve-all-history',
+                        help="Preserve all commits and links between them"
+                        ),
                      ]
     encoding_type = 'exact'
     def run(self, source=None, verbose=False, include_paths=None,
-        exclude_paths=None, user_map=None):
+        exclude_paths=None, user_map=None, preserve_all_history=False):
         load_fastimport()
         from fastimport.processors import filter_processor
         params = {
             'include_paths': include_paths,
             'exclude_paths': exclude_paths,
+            'preserve_all_history': preserve_all_history
             }
         from fastimport import parser
         stream = _get_source_stream(source)
