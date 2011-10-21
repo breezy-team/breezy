@@ -107,6 +107,9 @@ Testing
   run. The new ``-Euncollected_cases`` selftest flag will add failures if any
   case which persists pasts its expected lifetime. (Martin Packman, #613247)
 
+* Report exceptions from child processes during fork instead of swallowing the
+  error and reporting that everything went okay. (Martin Packman, #804130)
+
 
 bzr 2.5b2
 #########
