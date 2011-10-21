@@ -332,6 +332,12 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
     def _known_formats(self):
         return set([RemoteGitControlDirFormat()])
 
+    def is_initializable(self):
+        return False
+
+    def is_supported(self):
+        return True
+
     def open(self, transport, _found=None):
         """Open this directory.
 
