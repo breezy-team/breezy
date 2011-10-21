@@ -348,11 +348,10 @@ class GitBranch(ForeignBranch):
     def control_transport(self):
         return self.bzrdir.control_transport
 
-    def __init__(self, bzrdir, repository, ref, lockfiles, tagsdict=None):
+    def __init__(self, bzrdir, repository, ref, tagsdict=None):
         self.base = bzrdir.root_transport.base
         self.repository = repository
         self._format = GitBranchFormat()
-        self.control_files = lockfiles
         self.bzrdir = bzrdir
         self._lock_mode = None
         self._lock_count = 0
@@ -434,6 +433,9 @@ class GitBranch(ForeignBranch):
         # FIXME: Set "origin" url in .git/config ?
         pass
 
+    def break_lock(self):
+        raise NotImplementedError(self.break_lock)
+
     def lock_read(self):
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w')
@@ -484,9 +486,9 @@ class GitBranch(ForeignBranch):
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
-    def __init__(self, bzrdir, repository, ref, lockfiles, tagsdict=None):
+    def __init__(self, bzrdir, repository, ref, tagsdict=None):
         super(LocalGitBranch, self).__init__(bzrdir, repository, ref,
-              lockfiles, tagsdict)
+              tagsdict)
         refs = repository._git.get_refs()
         if not (ref in refs.keys() or "HEAD" in refs.keys()):
             raise errors.NotBranchError(self.base)

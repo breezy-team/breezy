@@ -46,8 +46,6 @@ from bzrlib.plugins.git.branch import (
 from bzrlib.plugins.git.dir import (
     GitControlDirFormat,
     GitDir,
-    GitLockableFiles,
-    GitLock,
     )
 from bzrlib.plugins.git.errors import (
     GitSmartRemoteNotSupported,
@@ -198,11 +196,10 @@ class SSHGitSmartTransport(GitSmartTransport):
 
 class RemoteGitDir(GitDir):
 
-    def __init__(self, transport, lockfiles, format, get_client, client_path):
+    def __init__(self, transport, format, get_client, client_path):
         self._format = format
         self.root_transport = transport
         self.transport = transport
-        self._lockfiles = lockfiles
         self._mode_check_done = None
         self._get_client = get_client
         self._client_path = client_path
@@ -351,8 +348,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
             client_path = transport._path
         else:
             raise NotBranchError(transport.base)
-        lockfiles = GitLockableFiles(transport, GitLock())
-        return RemoteGitDir(transport, lockfiles, self, get_client, client_path)
+        return RemoteGitDir(transport, self, get_client, client_path)
 
     def get_format_description(self):
         return "Remote Git Repository"

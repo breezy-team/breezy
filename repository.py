@@ -24,7 +24,9 @@ from bzrlib import (
     inventory,
     repository,
     revision,
+    transactions,
     )
+from bzrlib.decorators import only_raises
 try:
     from bzrlib.revisiontree import InventoryRevisionTree
 except ImportError: # bzr < 2.4
@@ -111,10 +113,10 @@ class GitRepository(ForeignRepository):
     vcs = foreign_vcs_git
     chk_bytes = None
 
-    def __init__(self, gitdir, lockfiles):
+    def __init__(self, gitdir):
         super(GitRepository, self).__init__(GitRepositoryFormat(),
-            gitdir, lockfiles)
-        self._transport = lockfiles._transport
+            gitdir, None)
+        self._transport = gitdir.root_transport
         from bzrlib.plugins.git import fetch, push
         for optimiser in [fetch.InterRemoteGitNonGitRepository,
                           fetch.InterLocalGitNonGitRepository,
@@ -122,6 +124,8 @@ class GitRepository(ForeignRepository):
                           push.InterToLocalGitRepository,
                           push.InterToRemoteGitRepository]:
             repository.InterRepository.register_optimiser(optimiser)
+        self._lock_mode = None
+        self._lock_count = 0
 
     def add_fallback_repository(self, basis_url):
         raise errors.UnstackableRepositoryFormat(self._format,
@@ -129,6 +133,62 @@ class GitRepository(ForeignRepository):
 
     def is_shared(self):
         return False
+
+    def get_physical_lock_status(self):
+        return False
+
+    def lock_write(self):
+        """See Branch.lock_write()."""
+        if self._lock_mode:
+            assert self._lock_mode == 'w'
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'w'
+            self._lock_count = 1
+        return GitRepositoryLock(self)
+
+    def dont_leave_lock_in_place(self):
+        raise NotImplementedError(self.dont_leave_lock_in_place)
+
+    def leave_lock_in_place(self):
+        raise NotImplementedError(self.leave_lock_in_place)
+
+    def lock_read(self):
+        if self._lock_mode:
+            assert self._lock_mode in ('r', 'w')
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'r'
+            self._lock_count = 1
+        return self
+
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
+    def unlock(self):
+        if self._lock_count == 0:
+            raise errors.LockNotHeld(self)
+        if self._lock_count == 1 and self._lock_mode == 'w':
+            if self._write_group is not None:
+                self.abort_write_group()
+                self._lock_count -= 1
+                self._lock_mode = None
+                raise errors.BzrError(
+                    'Must end write groups before releasing write locks.')
+        self._lock_count -= 1
+        if self._lock_count == 0:
+            self._lock_mode = None
+
+    def is_write_locked(self):
+        return (self._lock_mode == 'w')
+
+    def is_locked(self):
+        return (self._lock_mode is not None)
+
+    def get_transaction(self):
+        """See Repository.get_transaction()."""
+        if self._write_group is None:
+            return transactions.PassThroughTransaction()
+        else:
+            return self._write_group
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
@@ -160,11 +220,22 @@ class GitRepository(ForeignRepository):
         raise errors.UnsupportedOperation(self.add_signature_text, self)
 
 
+class GitRepositoryLock(object):
+    """Subversion lock."""
+
+    def __init__(self, repository):
+        self.repository_token = None
+        self.repository = repository
+
+    def unlock(self):
+        self.repository.unlock()
+
+
 class LocalGitRepository(GitRepository):
     """Git repository on the file system."""
 
-    def __init__(self, gitdir, lockfiles):
-        GitRepository.__init__(self, gitdir, lockfiles)
+    def __init__(self, gitdir):
+        GitRepository.__init__(self, gitdir)
         self.base = gitdir.root_transport.base
         self._git = gitdir._git
         self._file_change_scanner = GitFileLastChangeScanner(self)

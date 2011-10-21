@@ -441,8 +441,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             return True
 
     def id2path(self, file_id):
-        if type(file_id) != str:
-            raise AssertionError
+        file_id = osutils.safe_utf8(file_id)
         path = self._fileid_map.lookup_path(file_id)
         # FIXME: What about directories?
         if self._is_versioned(path):

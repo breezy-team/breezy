@@ -21,7 +21,6 @@ import urllib
 
 from bzrlib import (
     errors as bzr_errors,
-    lockable_files,
     trace,
     osutils,
     urlutils,
@@ -29,60 +28,11 @@ from bzrlib import (
 from bzrlib.bzrdir import CreateRepository
 from bzrlib.transport import do_catching_redirections
 
-LockWarner = getattr(lockable_files, "_LockWarner", None)
-
 from bzrlib.controldir import (
     ControlDir,
     ControlDirFormat,
     format_registry,
     )
-
-
-class GitLock(object):
-    """A lock that thunks through to Git."""
-
-    def __init__(self):
-        self.lock_name = "git lock"
-
-    def lock_write(self, token=None):
-        pass
-
-    def lock_read(self):
-        pass
-
-    def unlock(self):
-        pass
-
-    def peek(self):
-        pass
-
-    def validate_token(self, token):
-        pass
-
-    def break_lock(self):
-        raise NotImplementedError(self.break_lock)
-
-    def dont_leave_in_place(self):
-        raise NotImplementedError(self.dont_leave_in_place)
-
-    def leave_in_place(self):
-        raise NotImplementedError(self.leave_in_place)
-
-
-class GitLockableFiles(lockable_files.LockableFiles):
-    """Git specific lockable files abstraction."""
-
-    def __init__(self, transport, lock):
-        self._lock = lock
-        self._transaction = None
-        self._lock_mode = None
-        self._transport = transport
-        self.lock_name = None
-        if LockWarner is None:
-            # Bzr 1.13
-            self._lock_count = 0
-        else:
-            self._lock_warner = LockWarner(repr(self))
 
 
 class GitDirConfig(object):
@@ -95,8 +45,6 @@ class GitDirConfig(object):
 
 
 class GitControlDirFormat(ControlDirFormat):
-
-    _lock_class = lockable_files.TransportLock
 
     colocated_branches = True
     fixed_components = True
@@ -221,8 +169,7 @@ class GitDir(ControlDir):
             mapping=default_mapping)
         for name, val in refs.iteritems():
             target_git_repo.refs[name] = val
-        lockfiles = GitLockableFiles(transport, GitLock())
-        return self.__class__(transport, lockfiles, target_git_repo, format)
+        return self.__class__(transport, target_git_repo, format)
 
     def find_repository(self):
         """Find the repository that should be used.
@@ -258,8 +205,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         """
         from bzrlib.plugins.git.transportgit import TransportRepo
         gitrepo = TransportRepo(transport, self.bare)
-        lockfiles = GitLockableFiles(transport, GitLock())
-        return LocalGitDir(transport, lockfiles, gitrepo, self)
+        return LocalGitDir(transport, gitrepo, self)
 
     def get_format_description(self):
         return "Local Git Repository"
@@ -328,7 +274,7 @@ class LocalGitDir(GitDir):
     def control_transport(self):
         return self.transport
 
-    def __init__(self, transport, lockfiles, gitrepo, format):
+    def __init__(self, transport, gitrepo, format):
         self._format = format
         self.root_transport = transport
         self._mode_check_done = False
@@ -337,7 +283,6 @@ class LocalGitDir(GitDir):
             self.transport = transport
         else:
             self.transport = transport.clone('.git')
-        self._lockfiles = lockfiles
         self._mode_check_done = None
 
     def is_control_filename(self, filename):
@@ -415,7 +360,7 @@ class LocalGitDir(GitDir):
         if not ref in self._git.refs:
             raise bzr_errors.NotBranchError(self.root_transport.base,
                     bzrdir=self)
-        return LocalGitBranch(self, repo, ref, self._lockfiles)
+        return LocalGitBranch(self, repo, ref)
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
@@ -445,7 +390,7 @@ class LocalGitDir(GitDir):
 
     def open_repository(self):
         """'open' a repository for this dir."""
-        return self._gitrepository_class(self, self._lockfiles)
+        return self._gitrepository_class(self)
 
     def open_workingtree(self, recommend_upgrade=True):
         if not self._git.bare:

@@ -438,8 +438,8 @@ mapping_registry.register_lazy('git-v1', "bzrlib.plugins.git.mapping",
     "BzrGitMappingv1")
 mapping_registry.register_lazy('git-experimental',
     "bzrlib.plugins.git.mapping", "BzrGitMappingExperimental")
-# mapping_registry.set_default('git-experimental')
-mapping_registry.set_default('git-v1')
+mapping_registry.set_default('git-experimental')
+# mapping_registry.set_default('git-v1')
 
 
 class ForeignGit(ForeignVcs):
