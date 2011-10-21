@@ -35,6 +35,7 @@ from bzrlib import (
     revision,
     tag,
     transport,
+    urlutils,
     )
 from bzrlib.decorators import (
     needs_read_lock,
@@ -742,22 +743,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
             prev_last_revid, self.source)
         return head, refs
 
-    def pull(self, overwrite=False, stop_revision=None,
-             possible_transports=None, _hook_master=None, run_hooks=True,
-             _override_hook_target=None, local=False):
-        """See Branch.pull.
-
-        :param _hook_master: Private parameter - set the branch to
-            be supplied as the master to pull hooks.
-        :param run_hooks: Private parameter - if false, this branch
-            is being called because it's the master of the primary branch,
-            so it should not run its hooks.
-        :param _override_hook_target: Private parameter - set the branch to be
-            supplied as the target_branch to pull hooks.
-        """
-        # This type of branch can't be bound.
-        if local:
-            raise errors.LocalRequiresBoundBranch()
+    def _basic_pull(self,stop_revision, overwrite, run_hooks,
+              _override_hook_target, _hook_master):
         result = GitBranchPullResult()
         result.source_branch = self.source
         if _override_hook_target is None:
@@ -795,6 +782,53 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 self.target.unlock()
         finally:
             self.source.unlock()
+
+    def pull(self, overwrite=False, stop_revision=None,
+             possible_transports=None, _hook_master=None, run_hooks=True,
+             _override_hook_target=None, local=False):
+        """See Branch.pull.
+
+        :param _hook_master: Private parameter - set the branch to
+            be supplied as the master to pull hooks.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
+        :param _override_hook_target: Private parameter - set the branch to be
+            supplied as the target_branch to pull hooks.
+        """
+        # This type of branch can't be bound.
+        bound_location = self.target.get_bound_location()
+        if local and not bound_location:
+            raise errors.LocalRequiresBoundBranch()
+        master_branch = None
+        source_is_master = False
+        self.source.lock_read()
+        if bound_location:
+            # bound_location comes from a config file, some care has to be
+            # taken to relate it to source.user_url
+            normalized = urlutils.normalize_url(bound_location)
+            try:
+                relpath = self.source.user_transport.relpath(normalized)
+                source_is_master = (relpath == '')
+            except (errors.PathNotChild, errors.InvalidURL):
+                source_is_master = False
+        if not local and bound_location and not source_is_master:
+            # not pulling from master, so we need to update master.
+            master_branch = self.target.get_master_branch(possible_transports)
+            master_branch.lock_write()
+        try:
+            try:
+                if master_branch:
+                    # pull from source into master.
+                    master_branch.pull(self.source, overwrite, stop_revision,
+                        run_hooks=False)
+                result = self._basic_pull(stop_revision, overwrite, run_hooks,
+                    _override_hook_target, _hook_master=master_branch)
+            finally:
+                self.source.unlock()
+        finally:
+            if master_branch:
+                master_branch.unlock()
         return result
 
     def _basic_push(self, overwrite=False, stop_revision=None):

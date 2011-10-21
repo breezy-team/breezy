@@ -217,7 +217,8 @@ class BzrGitCacheFormat(object):
         """
         from bzrlib.transport.local import LocalTransport
         repo_transport = getattr(repository, "_transport", None)
-        if repo_transport is not None and isinstance(repo_transport, LocalTransport):
+        if (repo_transport is not None and
+            isinstance(repo_transport, LocalTransport)):
             # Even if we don't write to this repo, we should be able
             # to update its cache.
             repo_transport = remove_readonly_transport_decorator(repo_transport)
