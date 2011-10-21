@@ -1718,10 +1718,7 @@ class TestCase(testtools.TestCase):
         return result
 
     def _startLogFile(self):
-        """Send bzr and test log messages to a temporary file.
-
-        The file is removed as the test is torn down.
-        """
+        """Setup a in-memory target for bzr and testcase log messages"""
         pseudo_log_file = StringIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
@@ -1734,14 +1731,13 @@ class TestCase(testtools.TestCase):
         self.addCleanup(self._finishLogFile)
 
     def _finishLogFile(self):
-        """Finished with the log file.
-
-        Close the file and delete it.
-        """
+        """Flush and dereference the in-memory log for this testcase"""
         if trace._trace_file:
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
+        # The logging module now tracks references for cleanup so discard ours
+        del self._log_memento
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.

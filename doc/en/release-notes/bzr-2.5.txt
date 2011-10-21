@@ -51,9 +51,15 @@ Bug Fixes
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
 
+* ``bzr mv`` does not crash when attempting to move the root of a
+  branch. (Jonathan Riddell, #809728)
+
 * ``bzr shelve`` now use ``UIFactory.choose`` for input handling, making
   it usable when creating a custom ``UIFactory`` implementation. (Benoît
   Pierre)
+
+* If sending a crash through Apport fails report the Apport failure to
+  bzr.log rather than stderr. (Jonathan Riddell, #766735)
 
 Documentation
 *************
@@ -85,6 +91,9 @@ Internals
 * ``ControlDirFormat`` now has a new method ``supports_transport``
   which format implementations can use whether or not they can access
   a control dir over a particular transport. (Jelmer Vernooij)
+
+* ``BranchBuilder.build_commit`` now take ``parent_ids`` and
+  ``allow_leftmost_as_ghost`` arguments.  (Jelmer Vernooij)
 
 Testing
 *******

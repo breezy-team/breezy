@@ -187,6 +187,12 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('move a b')
         self.run_bzr('rename b a')
 
+    def test_mv_no_root(self):
+        tree = self.make_branch_and_tree('.')
+        self.run_bzr_error(
+            ["bzr: ERROR: can not move root of branch"],
+            'mv . a')
+
     def test_mv_through_symlinks(self):
         self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
