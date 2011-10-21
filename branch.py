@@ -778,6 +778,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 if run_hooks:
                     for hook in branch.Branch.hooks['post_pull']:
                         hook(result)
+                return result
             finally:
                 self.target.unlock()
         finally:
