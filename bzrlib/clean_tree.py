@@ -64,9 +64,9 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
         if not no_prompt:
             for path, subp in deletables:
                 ui.ui_factory.note(subp)
-            prompt = 'Are you sure you wish to delete these'
+            prompt = gettext('Are you sure you wish to delete these')
             if not ui.ui_factory.get_boolean(prompt):
-                ui.ui_factory.note('Canceled')
+                ui.ui_factory.note(gettext('Canceled'))
                 return 0
         delete_items(deletables, dry_run=dry_run)
     finally:
