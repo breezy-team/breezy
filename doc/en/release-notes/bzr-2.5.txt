@@ -58,6 +58,10 @@ Bug Fixes
   it usable when creating a custom ``UIFactory`` implementation. (Benoît
   Pierre)
 
+* ``bzr clean-tree`` now use ``UIFactory.get_boolean`` for confirmation
+  prompt, making it usable when using a custom ``UIFactory``
+  implementation. (Benoît Pierre)
+
 * If sending a crash through Apport fails report the Apport failure to
   bzr.log rather than stderr. (Jonathan Riddell, #766735)
 
