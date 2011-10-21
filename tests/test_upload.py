@@ -756,7 +756,7 @@ class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
         b = self.get_branch()
         open(fn, 'wt').write(("[%s]\n"
                                   "upload_location=foo\n" %
-                                  b.base[:-1]))
+                                  b.base.rstrip("/")))
         conf = b.get_config()
         self.assertEqual("foo", conf.get_user_option('upload_location'))
 
