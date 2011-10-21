@@ -254,13 +254,13 @@ class RemoteGitDir(GitDir):
         return self.root_transport
 
     def open_repository(self):
-        return RemoteGitRepository(self, self._lockfiles)
+        return RemoteGitRepository(self)
 
     def open_branch(self, name=None, unsupported=False,
             ignore_fallbacks=False):
         repo = self.open_repository()
         refname = self._get_selected_ref(name)
-        return RemoteGitBranch(self, repo, refname, self._lockfiles)
+        return RemoteGitBranch(self, repo, refname)
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
@@ -376,8 +376,8 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
 class RemoteGitRepository(GitRepository):
 
-    def __init__(self, gitdir, lockfiles):
-        GitRepository.__init__(self, gitdir, lockfiles)
+    def __init__(self, gitdir):
+        GitRepository.__init__(self, gitdir)
         self._refs = None
 
     @property
@@ -452,10 +452,9 @@ class RemoteGitTagDict(GitTags):
 
 class RemoteGitBranch(GitBranch):
 
-    def __init__(self, bzrdir, repository, name, lockfiles):
+    def __init__(self, bzrdir, repository, name):
         self._sha = None
-        super(RemoteGitBranch, self).__init__(bzrdir, repository, name,
-                lockfiles)
+        super(RemoteGitBranch, self).__init__(bzrdir, repository, name)
 
     def last_revision_info(self):
         raise GitSmartRemoteNotSupported(self.last_revision_info, self)
