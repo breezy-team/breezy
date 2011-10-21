@@ -23,6 +23,7 @@ from bzrlib import (
     )
 from bzrlib.errors import (
     BzrError,
+    InProcessTransport,
     InvalidRevisionId,
     NoSuchFile,
     NoSuchRevision,
@@ -355,6 +356,16 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
     def initialize_on_transport(self, transport):
         raise UninitializableFormat(self)
+
+    def supports_transport(self, transport):
+        try:
+            external_url = transport.external_url()
+        except InProcessTransport:
+            raise NotBranchError(path=transport.base)
+        return (external_url.startswith("http:") or
+                external_url.startswith("https:") or
+                external_url.startswith("git+") or
+                external_url.startswith("git:"))
 
 
 class RemoteGitRepository(GitRepository):

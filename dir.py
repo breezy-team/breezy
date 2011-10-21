@@ -243,6 +243,15 @@ class LocalGitControlDirFormat(GitControlDirFormat):
     def is_supported(self):
         return True
 
+    def supports_transport(self, transport):
+        try:
+            external_url = transport.external_url()
+        except bzr_errors.InProcessTransport:
+            raise bzr_errors.NotBranchError(path=transport.base)
+        return (external_url.startswith("http:") or
+                external_url.startswith("https:") or
+                external_url.startswith("file:"))
+
 
 class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
 
