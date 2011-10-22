@@ -44,9 +44,9 @@ class VcsDirectory(object):
             sources = apt_pkg.GetPkgSrcRecords()
 
         urls = {}
-        lookup = getattr(sources, 'lookup', getattr(sources, 'Lookup', None))
+        lookup = getattr(sources, 'lookup', None) or sources.Lookup
         while lookup(name):
-            record = getattr(sources, 'record', getattr(sources, 'Record', None))
+            record = getattr(sources, 'record', None) or sources.Record
             for l in record.splitlines():
                 if not ": " in l:
                     continue
