@@ -61,6 +61,9 @@ Bug Fixes
 * If sending a crash through Apport fails report the Apport failure to
   bzr.log rather than stderr. (Jonathan Riddell, #766735)
 
+* ``bzr upgrade`` no longer treats 'already up-to-date' exceptions as
+  errors. (Benoît Pierre, #716560).
+
 Documentation
 *************
 
