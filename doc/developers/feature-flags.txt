@@ -36,8 +36,8 @@ Proposed approach
 To allow for more granular changes to the format, this spec proposes
 to add feature flags to the Bazaar formats, indicating
 what kind of data is present in that repository. Each feature has
-a name and some sort of indicator that tells the bzr client its "importance"
-(for lack of a better word) - optional, required, ...
+a name and some sort of indicator that tells the bzr client its
+"necessity" - optional, required, ...
 
 bzr clients would be able to open data with features that are
 set as "optional" but that they do not support. If there are features
@@ -48,11 +48,11 @@ Various kinds of metadata, e.g. ones that are generated from the
 repository itself and can be discarded without losing data (caches)
 would fall in the optional category.
 
-Feature importance
-------------------
+Feature necessity
+-----------------
 
 The initial implementation will feature the following set of possible
-settings for feature "importance". Any format importance that can't
+settings for feature "necessity". Any format necessity that can't
 be understood should be interpreted as "required", and an appropriate
 warning printed.
 
@@ -109,8 +109,8 @@ when there is an un unsupported mandatory feature required for write access.
 Methods will also be added to BzrDirComponentFormat to allow plugins, etc,
 to check whether a feature is present and adding new features:
 
- * BzrDirComponentFormat.set_feature(name, importance)
- * BzrDirComponentFormat.get_feature(name) -> importance
+ * BzrDirComponentFormat.set_feature(name, necessity)
+ * BzrDirComponentFormat.get_feature(name) -> necessity
 
 See also
 --------
