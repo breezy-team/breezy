@@ -14,7 +14,7 @@ from bzrlib import generate_ids
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, BzrCommandError, NotBranchError
 from bzrlib.osutils import (pathjoin, isdir, file_iterator, basename,
-                            file_kind, splitpath, normpath)
+                            file_kind, splitpath, normpath, walkdirs)
 from bzrlib.trace import warning
 from bzrlib.transform import TreeTransform, resolve_conflicts, cook_conflicts
 from bzrlib.workingtree import WorkingTree
@@ -74,19 +74,10 @@ class DirWrapper(object):
     def __repr__(self):
         return 'DirWrapper(%r)' % self.root
 
-    def getmembers(self, subdir=None):
-        if subdir is not None:
-            mydir = pathjoin(self.root, subdir)
-        else:
-            mydir = self.root
-        for child in os.listdir(mydir):
-            if subdir is not None:
-                child = pathjoin(subdir, child)
-            fi = FileInfo(self.root, child)
-            yield fi
-            if fi.isdir():
-                for v in self.getmembers(child):
-                    yield v
+    def getmembers(self):
+        for _, dir_block in walkdirs(self.root):
+            for relpath, _, _, stat_result, _ in dir_block:
+                yield FileInfo(self.root, relpath, stat_result)
 
     def extractfile(self, member):
         return open(member.fullpath)
@@ -94,7 +85,7 @@ class DirWrapper(object):
 
 class FileInfo(object):
 
-    def __init__(self, root, filepath):
+    def __init__(self, root, filepath, stat):
         self.fullpath = pathjoin(root, filepath)
         self.root = root
         if filepath != '':
@@ -102,7 +93,6 @@ class FileInfo(object):
         else:
             self.name = basename(root)
         self.type = None
-        stat = os.lstat(self.fullpath)
         self.mode = stat.st_mode
         if self.isdir():
             self.name += '/'
