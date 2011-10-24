@@ -36,9 +36,15 @@ except ImportError:
 
 from bzrlib.tests import TestUtil, multiply_tests
 try:
-    from bzrlib.tests.features import ModuleAvailableFeature
+    from bzrlib.tests.features import (
+        ModuleAvailableFeature,
+        UnicodeFilenameFeature,
+        )
 except ImportError: # bzr < 2.5
-    from bzrlib.tests import ModuleAvailableFeature
+    from bzrlib.tests import (
+        ModuleAvailableFeature,
+        UnicodeFilenameFeature,
+        )
 
 
 def make_new_upstream_dir(source, dest):

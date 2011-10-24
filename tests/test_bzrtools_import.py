@@ -19,10 +19,10 @@
 #
 
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
-from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
+from bzrlib.plugins.builddeb import tests
 
 
-class ImportArchiveTests(TestCaseWithTransport):
+class ImportArchiveTests(tests.TestCaseWithTransport):
 
     def test_strips_common_prefix(self):
         tree = self.make_branch_and_tree(".")
@@ -172,3 +172,13 @@ class ImportArchiveTests(TestCaseWithTransport):
         import_dir(tree, "source", target_tree=file_ids_tree)
         self.assertEqual("a-id", tree.path2id("b"))
         self.assertEqual("b-id", tree.path2id("b/b"))
+
+    def test_nonascii_filename(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(["source/", u"source/\xa7"])
+        import_dir(tree, "source")
+        self.assertEqual(["", u"\xa7"],
+            sorted([tree.id2path(i) for i in tree.all_file_ids()]))
