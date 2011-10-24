@@ -1043,7 +1043,8 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # This is nearly like TestResolveNonDirectoryParent but with branch and
         # trunk switched. As such it should certainly produce the same
         # conflict.
-        self.run_script("""
+        self.assertRaises(errors.MalformedTransform,
+                          self.run_script,"""
 $ bzr init trunk
 ...
 $ cd trunk
