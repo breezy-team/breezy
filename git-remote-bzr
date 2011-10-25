@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# vim: expandtab
 
 # Copyright (C) 2011 Jelmer Vernooij <jelmer@apache.org>
 
@@ -19,6 +20,8 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
+CAPABILITIES = ["fetch", "option", "push", "import"]
+
 import optparse
 import sys
 import bzrlib
@@ -27,16 +30,53 @@ bzrlib.initialize()
 from bzrlib.plugin import load_plugins
 load_plugins()
 
-def cmd_capabilities(argv):
-    print
+from bzrlib.controldir import ControlDir
+
+from bzrlib.plugins.git.object_store import (
+    get_object_store,
+    )
+from bzrlib.plugins.git.refs import (
+    BazaarRefsContainer,
+    )
+
+options = {}
+transports = []
+
+def cmd_capabilities(argv, name, dir):
+    sys.stdout.write("\n".join(CAPABILITIES)+"\n\n")
+    sys.stdout.flush()
+
+
+def cmd_list(argv, name, dir):
+    repo = dir.find_repository()
+    object_store = get_object_store(repo)
+    object_store.lock_read()
+    try:
+        refs = BazaarRefsContainer(dir, object_store)
+        for k, v in refs.as_dict().iteritems():
+            sys.stdout.write("%s %s\n" % (v, k))
+        sys.stdout.write("\n")
+    finally:
+        object_store.unlock()
+    sys.stdout.flush()
+
+
+def cmd_option(argv, name, dir):
+    sys.stdout.write("unsupported\n")
+    sys.stdout.flush()
+
 
 commands = {
     "capabilities": cmd_capabilities,
+    "list": cmd_list,
+    "option": cmd_option,
     }
 
 parser = optparse.OptionParser()
 (opts, args) = parser.parse_args()
 (shortname, url) = args
+
+dir = ControlDir.open(url)
 
 while True:
     l = sys.stdin.readline()
@@ -44,6 +84,7 @@ while True:
     if not argv:
         break
     try:
-       commands[argv[0]](argv)
+       commands[argv[0]](argv, shortname, dir)
     except KeyError:
-       sys.stderr.write("Unknown remote command %r", argv[0])
+       sys.stderr.write("Unknown remote command %r" % argv)
+       sys.exit(1)
