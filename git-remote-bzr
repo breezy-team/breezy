@@ -20,7 +20,7 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
-CAPABILITIES = ["fetch", "option", "push", "import"]
+CAPABILITIES = ["fetch", "option"]
 
 import optparse
 import os
@@ -61,8 +61,8 @@ def cmd_list(argv, name, remote_dir):
     object_store.lock_read()
     try:
         refs = BazaarRefsContainer(remote_dir, object_store)
-        for k, v in refs.as_dict().iteritems():
-            sys.stdout.write("%s %s\n" % (v, k))
+        for ref, git_sha1 in refs.as_dict().iteritems():
+            sys.stdout.write("%s %s\n" % (git_sha1, ref))
         sys.stdout.write("\n")
     finally:
         object_store.unlock()
