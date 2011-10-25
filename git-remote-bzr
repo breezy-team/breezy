@@ -32,7 +32,7 @@ from bzrlib.plugin import load_plugins
 load_plugins()
 
 from bzrlib.controldir import ControlDir
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoRepositoryPresent
 from bzrlib.repository import InterRepository
 from bzrlib.transport import get_transport_from_path
 
@@ -68,7 +68,10 @@ def cmd_capabilities(argv, name, remote_dir):
 
 
 def cmd_list(argv, name, remote_dir):
-    repo = remote_dir.find_repository()
+    try:
+        repo = remote_dir.find_repository()
+    except NoRepositoryPresent:
+        repo = remote_dir.create_repository()
     object_store = get_object_store(repo)
     object_store.lock_read()
     try:
@@ -162,7 +165,10 @@ parser = optparse.OptionParser()
 (opts, args) = parser.parse_args()
 (shortname, url) = args
 
-remote_dir = ControlDir.open(url)
+try:
+    remote_dir = ControlDir.open(url)
+except NotBranchError:
+    remote_dir = ControlDir.create(url)
 
 try:
     git_path = os.environ["GIT_DIR"]
