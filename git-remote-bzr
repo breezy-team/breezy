@@ -32,6 +32,13 @@ from bzrlib.plugin import load_plugins
 load_plugins()
 
 from bzrlib.controldir import ControlDir
+from bzrlib.repository import InterRepository
+from bzrlib.transport import get_transport_from_path
+
+from bzrlib.plugins.git.dir import (
+    BareLocalGitControlDirFormat,
+    LocalGitControlDirFormat,
+    )
 
 from bzrlib.plugins.git.object_store import (
     get_object_store,
@@ -68,17 +75,25 @@ def cmd_option(argv, name, remote_dir):
 
 
 batchcmd = None
-wants = {}
+wants = []
 def cmd_fetch(argv, name, remote_dir):
     global batchcmd, wants
     if batchcmd not in (None, "fetch"):
         raise Exception("fetch command inside other batch command")
-    wants[argv[1]] = argv[2]
+    wants.append(tuple(argv[1:]))
     batchcmd = "fetch"
 
 
-def fetch(wants, name, remote_dir):
-    # FIXME
+def fetch(wants, shortname, remote_dir, local_dir):
+    remote_repo = remote_dir.find_repository()
+    local_repo = local_dir.find_repository()
+    inter = InterRepository.get(remote_repo, local_repo)
+    def update_refs(heads):
+        ret = {}
+        for (sha1, ref) in wants:
+            ret[ref] = (sha1, None)
+        return ret
+    inter.fetch_refs(update_refs, lossy=False)
     sys.stdout.write("\n")
     sys.stdout.flush()
 
@@ -96,6 +111,15 @@ parser = optparse.OptionParser()
 
 remote_dir = ControlDir.open(url)
 
+git_path = os.environ["GIT_DIR"]
+if git_path.endswith("/.git"):
+    git_format = LocalGitControlDirFormat()
+    git_path = git_path[:-4]
+else:
+    git_format = BareLocalGitControlDirFormat()
+
+local_dir = git_format.open(get_transport_from_path(git_path))
+
 while True:
     l = sys.stdin.readline()
     if not l:
@@ -103,9 +127,12 @@ while True:
     argv = l.strip().split()
     if argv == []:
         if batchcmd == "fetch":
-            fetch(wants, shortname, remote_dir)
+            fetch(wants, shortname, remote_dir, local_dir)
+        elif batchcmd is None:
+            break
         else:
             raise AssertionError("invalid batch %r" % batchcmd)
+        batchcmd = None
     else:
         try:
            commands[argv[0]](argv, shortname, remote_dir)
