@@ -467,7 +467,7 @@ def import_git_objects(repo, mapping, object_iter,
         head = heads.pop()
         if head == ZERO_SHA:
             continue
-        assert isinstance(head, str)
+        assert isinstance(head, str), "head is %r" % (head,)
         try:
             o = lookup_object(head)
         except KeyError:

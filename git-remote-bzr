@@ -20,7 +20,7 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
-CAPABILITIES = ["fetch", "option"]
+CAPABILITIES = ["fetch", "option", "push"]
 
 import optparse
 import os
@@ -32,6 +32,7 @@ from bzrlib.plugin import load_plugins
 load_plugins()
 
 from bzrlib.controldir import ControlDir
+from bzrlib.errors import NotBranchError
 from bzrlib.repository import InterRepository
 from bzrlib.transport import get_transport_from_path
 
@@ -48,6 +49,7 @@ from bzrlib.plugins.git.object_store import (
     )
 from bzrlib.plugins.git.refs import (
     BazaarRefsContainer,
+    ref_to_branch_name,
     )
 
 options = {}
@@ -87,6 +89,14 @@ def cmd_fetch(argv, name, remote_dir):
     batchcmd = "fetch"
 
 
+def cmd_push(argv, name, remote_dir):
+    global batchcmd, wants
+    if batchcmd not in (None, "push"):
+        raise Exception("push command inside other batch command")
+    wants.append(tuple(argv[1].split(":", 1)))
+    batchcmd = "push"
+
+
 def fetch(wants, shortname, remote_dir, local_dir):
     remote_repo = remote_dir.find_repository()
     local_repo = local_dir.find_repository()
@@ -101,11 +111,28 @@ def fetch(wants, shortname, remote_dir, local_dir):
     sys.stdout.flush()
 
 
+def push(wants, shortname, remote_dir, local_dir):
+    for (src_ref, dest_ref) in wants:
+        local_branch = local_dir.open_branch(ref=src_ref)
+        dest_branch_name = ref_to_branch_name(dest_ref)
+        if dest_branch_name == "master":
+            dest_branch_name = None
+        try:
+            remote_branch = remote_dir.open_branch(name=dest_branch_name)
+        except NotBranchError:
+            remote_branch = remote_dir.create_branch(name=dest_branch_name)
+        local_branch.push(remote_branch)
+        sys.stdout.write("ok %s\n" % dest_ref)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
 commands = {
     "capabilities": cmd_capabilities,
     "list": cmd_list,
     "option": cmd_option,
     "fetch": cmd_fetch,
+    "push": cmd_push,
     }
 
 parser = optparse.OptionParser()
@@ -137,6 +164,8 @@ while True:
     if argv == []:
         if batchcmd == "fetch":
             fetch(wants, shortname, remote_dir, local_dir)
+        elif batchcmd == "push":
+            push(wants, shortname, remote_dir, local_dir)
         elif batchcmd is None:
             break
         else:

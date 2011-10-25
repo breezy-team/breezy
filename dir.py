@@ -77,7 +77,11 @@ class GitDir(ControlDir):
     def checkout_metadir(self, stacked=False):
         return format_registry.make_bzrdir("default")
 
-    def _get_selected_ref(self, branch):
+    def _get_selected_ref(self, branch, ref=None):
+        if ref is not None and branch is not None:
+            raise bzr_errors.BzrError("can't specify both ref and branch")
+        if ref is not None:
+            return ref
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
         if branch is not None:
@@ -358,11 +362,12 @@ class LocalGitDir(GitDir):
             return self.transport
         raise bzr_errors.IncompatibleFormat(format, self._format)
 
-    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None,
+            ref=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
-        ref = self._get_selected_ref(name)
+        ref = self._get_selected_ref(name, ref)
         if ref is None:
             ref = "HEAD"
         ref, sha = self._git.refs._follow(ref)
@@ -427,8 +432,8 @@ class LocalGitDir(GitDir):
         return self.open_repository()
 
     def create_branch(self, name=None, repository=None,
-                      append_revisions_only=None):
-        refname = self._get_selected_ref(name)
+                      append_revisions_only=None, ref=None):
+        refname = self._get_selected_ref(name, ref)
         from dulwich.protocol import ZERO_SHA
         # FIXME: This is a bit awkward. Perhaps we should have a
         # a separate method for changing the default branch?
