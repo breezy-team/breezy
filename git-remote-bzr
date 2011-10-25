@@ -35,6 +35,9 @@ from bzrlib.controldir import ControlDir
 from bzrlib.repository import InterRepository
 from bzrlib.transport import get_transport_from_path
 
+from bzrlib.plugins.git import (
+    LocalGitProber,
+    )
 from bzrlib.plugins.git.dir import (
     BareLocalGitControlDirFormat,
     LocalGitControlDirFormat,
@@ -111,14 +114,20 @@ parser = optparse.OptionParser()
 
 remote_dir = ControlDir.open(url)
 
-git_path = os.environ["GIT_DIR"]
-if git_path.endswith("/.git"):
-    git_format = LocalGitControlDirFormat()
-    git_path = git_path[:-4]
+try:
+    git_path = os.environ["GIT_DIR"]
+except KeyError:
+    git_transport = get_transport_from_path(".")
+    git_format = LocalGitProber().probe_transport(git_transport)
 else:
-    git_format = BareLocalGitControlDirFormat()
+    if git_path.endswith("/.git"):
+        git_format = LocalGitControlDirFormat()
+        git_path = git_path[:-4]
+    else:
+        git_format = BareLocalGitControlDirFormat()
+    git_transport = get_transport_from_path(git_path)
 
-local_dir = git_format.open(get_transport_from_path(git_path))
+local_dir = git_format.open(git_transport)
 
 while True:
     l = sys.stdin.readline()
