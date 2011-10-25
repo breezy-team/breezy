@@ -68,7 +68,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
         except OSError, e:
             if e.errno == errno.ENOENT:
                 # No dpkg-mergechangelogs command available
-                return 'not_applicable'
+                return 'not_applicable', ''
             raise
         stdout, stderr = proc.communicate()
         retcode = proc.returncode

@@ -207,17 +207,18 @@ class DistributionBranch(object):
     """
 
     def __init__(self, branch, pristine_upstream_branch, tree=None,
-            pristine_upstream_tree=None):
+                 pristine_upstream_tree=None):
         """Create a distribution branch.
 
         You can only import packages on to the DistributionBranch
         if both tree and pristine_upstream_tree are provided.
 
         :param branch: the Branch for the packaging part.
-        :param upstream_pristine_branch: the Branch for the pristine tar part, if any.
+        :param pristine_upstream_branch: the Branch for the pristine tar part,
+            if any.
         :param tree: an optional tree for the branch.
         :param pristine_upstream_tree: an optional tree for the
-            upstream_branch.
+            pristine_upstream_branch.
         """
         self.branch = branch
         self.tree = tree
