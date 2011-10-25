@@ -52,6 +52,13 @@ from bzrlib.plugins.git.refs import (
     ref_to_branch_name,
     )
 
+try:
+    from bzrlib.plugins.fastimport import exporter as fastexporter
+except ImportError:
+    pass
+else:
+    CAPABILITIES.append("import")
+
 options = {}
 transports = []
 
@@ -97,6 +104,21 @@ def cmd_push(argv, name, remote_dir):
     batchcmd = "push"
 
 
+def cmd_import(argv, name, remote_dir):
+    dest_branch_name = ref_to_branch_name(argv[1])
+    if dest_branch_name == "master":
+        dest_branch_name = None
+    remote_branch = remote_dir.open_branch(name=dest_branch_name)
+    exporter = fastexporter.BzrFastExporter(remote_branch,
+        outf=sys.stdout, git_branch=argv[1],
+        checkpoint=None, import_marks_file=None,
+        export_marks_file=None, revision=None,
+        verbose=None, plain_format=True,
+        rewrite_tags=False)
+    exporter.run()
+    sys.stdout.flush()
+
+
 def fetch(wants, shortname, remote_dir, local_dir):
     remote_repo = remote_dir.find_repository()
     local_repo = local_dir.find_repository()
@@ -133,6 +155,7 @@ commands = {
     "option": cmd_option,
     "fetch": cmd_fetch,
     "push": cmd_push,
+    "import": cmd_import,
     }
 
 parser = optparse.OptionParser()
