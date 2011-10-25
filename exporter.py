@@ -143,9 +143,10 @@ def sanitize_ref_name_for_git(refname):
         "_", refname)
     return new_refname
 
+
 class BzrFastExporter(object):
 
-    def __init__(self, source, destination, git_branch=None, checkpoint=-1,
+    def __init__(self, source, outf, git_branch=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None, revision=None,
         verbose=False, plain_format=False, rewrite_tags=False):
         """Export branch data in fast import format.
@@ -159,8 +160,8 @@ class BzrFastExporter(object):
             Otherwise tags which aren't valid for git will be skipped if
             plain_format is set.
         """
-        self.source = source
-        self.outf = _get_output_stream(destination)
+        self.branch = source
+        self.outf = outf
         self.git_branch = git_branch
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file
@@ -215,9 +216,6 @@ class BzrFastExporter(object):
         return list(view_revisions)
 
     def run(self):
-        # Open the source
-        self.branch = bzrlib.branch.Branch.open_containing(self.source)[0]
-
         # Export the data
         self.branch.repository.lock_read()
         try:

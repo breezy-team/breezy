@@ -663,13 +663,17 @@ class cmd_fast_export(Command):
         import_marks=None, export_marks=None, revision=None,
         plain=True, rewrite_tag_names=False):
         load_fastimport()
+        from bzrlib.branch import Branch
         from bzrlib.plugins.fastimport import exporter
 
         if marks:
             import_marks = export_marks = marks
-        exporter = exporter.BzrFastExporter(source,
-            destination=destination,
-            git_branch=git_branch, checkpoint=checkpoint,
+
+        # Open the source
+        branch = Branch.open_containing(source)[0]
+        outf = exporter._get_output_stream(destination)
+        exporter = exporter.BzrFastExporter(branch,
+            outf=outf, git_branch=git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
             revision=revision, verbose=verbose, plain_format=plain,
             rewrite_tags=rewrite_tag_names)
