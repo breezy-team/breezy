@@ -23,6 +23,7 @@
 CAPABILITIES = ["fetch", "option", "push", "import"]
 
 import optparse
+import os
 import sys
 import bzrlib
 bzrlib.initialize()
@@ -42,17 +43,17 @@ from bzrlib.plugins.git.refs import (
 options = {}
 transports = []
 
-def cmd_capabilities(argv, name, dir):
+def cmd_capabilities(argv, name, remote_dir):
     sys.stdout.write("\n".join(CAPABILITIES)+"\n\n")
     sys.stdout.flush()
 
 
-def cmd_list(argv, name, dir):
-    repo = dir.find_repository()
+def cmd_list(argv, name, remote_dir):
+    repo = remote_dir.find_repository()
     object_store = get_object_store(repo)
     object_store.lock_read()
     try:
-        refs = BazaarRefsContainer(dir, object_store)
+        refs = BazaarRefsContainer(remote_dir, object_store)
         for k, v in refs.as_dict().iteritems():
             sys.stdout.write("%s %s\n" % (v, k))
         sys.stdout.write("\n")
@@ -61,8 +62,24 @@ def cmd_list(argv, name, dir):
     sys.stdout.flush()
 
 
-def cmd_option(argv, name, dir):
+def cmd_option(argv, name, remote_dir):
     sys.stdout.write("unsupported\n")
+    sys.stdout.flush()
+
+
+batchcmd = None
+wants = {}
+def cmd_fetch(argv, name, remote_dir):
+    global batchcmd, wants
+    if batchcmd not in (None, "fetch"):
+        raise Exception("fetch command inside other batch command")
+    wants[argv[1]] = argv[2]
+    batchcmd = "fetch"
+
+
+def fetch(wants, name, remote_dir):
+    # FIXME
+    sys.stdout.write("\n")
     sys.stdout.flush()
 
 
@@ -70,21 +87,27 @@ commands = {
     "capabilities": cmd_capabilities,
     "list": cmd_list,
     "option": cmd_option,
+    "fetch": cmd_fetch,
     }
 
 parser = optparse.OptionParser()
 (opts, args) = parser.parse_args()
 (shortname, url) = args
 
-dir = ControlDir.open(url)
+remote_dir = ControlDir.open(url)
 
 while True:
     l = sys.stdin.readline()
-    argv = l.strip().split()
-    if not argv:
+    if not l:
         break
-    try:
-       commands[argv[0]](argv, shortname, dir)
-    except KeyError:
-       sys.stderr.write("Unknown remote command %r" % argv)
-       sys.exit(1)
+    argv = l.strip().split()
+    if argv == []:
+        if batchcmd == "fetch":
+            fetch(wants, shortname, remote_dir)
+        else:
+            raise AssertionError("invalid batch %r" % batchcmd)
+    else:
+        try:
+           commands[argv[0]](argv, shortname, remote_dir)
+        except KeyError:
+           raise Exception("Unknown remote command %r" % argv)
