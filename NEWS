@@ -41,6 +41,8 @@
 
   * Add i18n support. (Jelmer Vernooij)
 
+  * Now includes git remote helper ``git-remote-bzr``. (Jelmer Vernooij)
+
 0.6.2	2011-08-07
 
  FEATURES

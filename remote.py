@@ -257,9 +257,9 @@ class RemoteGitDir(GitDir):
         return RemoteGitRepository(self)
 
     def open_branch(self, name=None, unsupported=False,
-            ignore_fallbacks=False):
+            ignore_fallbacks=False, ref=None):
         repo = self.open_repository()
-        refname = self._get_selected_ref(name)
+        refname = self._get_selected_ref(name, ref)
         return RemoteGitBranch(self, repo, refname)
 
     def open_workingtree(self, recommend_upgrade=False):
