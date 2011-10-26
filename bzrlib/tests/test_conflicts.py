@@ -677,6 +677,14 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
              ('fileb_created',
               dict(actions='create_file_b', check='file_content_b',
                    path='file', file_id='file-b-id')),),
+            # File created with different file-ids but deleted on one side
+            (dict(_base_actions='create_file_a'),
+             ('filea_replaced',
+              dict(actions='replace_file_a_by_b', check='file_content_b',
+                   path='file', file_id='file-b-id')),
+             ('filea_modified',
+              dict(actions='modify_file_a', check='file_new_content',
+                   path='file', file_id='file-a-id')),),
             ])
 
     def do_nothing(self):
@@ -693,6 +701,16 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
     def check_file_content_b(self):
         self.assertFileEqual('file b content\n', 'branch/file')
+
+    def do_replace_file_a_by_b(self):
+        return [('unversion', 'file-a-id'),
+                ('add', ('file', 'file-b-id', 'file', 'file b content\n'))]
+
+    def do_modify_file_a(self):
+        return [('modify', ('file-a-id', 'new content\n'))]
+
+    def check_file_new_content(self):
+        self.assertFileEqual('new content\n', 'branch/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._this['path']
