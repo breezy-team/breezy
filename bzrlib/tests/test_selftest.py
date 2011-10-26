@@ -30,7 +30,6 @@ import warnings
 from testtools import (
     ExtendedToOriginalDecorator,
     MultiTestResult,
-    __version__ as testtools_version,
     )
 from testtools.content import Content
 from testtools.content_type import ContentType
@@ -1063,31 +1062,20 @@ class TestRunner(tests.TestCase):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
         runner = tests.TextTestRunner(stream=StringIO())
         result = self.run_test_runner(runner, Test("test_truth"))
-        if testtools_version[:3] <= (0, 9, 11):
-            self.assertContainsRe(runner.stream.getvalue(),
-                "=+\n"
-                "FAIL: \\S+\.test_truth\n"
-                "-+\n"
-                "(?:.*\n)*"
-                "No absolute truth\n"
-                "(?:.*\n)*"
-                "-+\n"
-                "Ran 1 test in .*\n"
-                "\n"
-                "FAILED \\(failures=1\\)\n\\Z")
-        else:
-            self.assertContainsRe(runner.stream.getvalue(),
-                "=+\n"
-                "FAIL: \\S+\.test_truth\n"
-                "-+\n"
-                "Empty attachments:\n"
-                "  log\n"
-                "\n"
-                "reason: {{{No absolute truth}}}\n"
-                "-+\n"
-                "Ran 1 test in .*\n"
-                "\n"
-                "FAILED \\(failures=1\\)\n\\Z")
+        self.assertContainsRe(runner.stream.getvalue(),
+            "=+\n"
+            "FAIL: \\S+\.test_truth\n"
+            "-+\n"
+            "(?:.*\n)*"
+            "\\s*(?:Text attachment: )?reason"
+            "(?:\n-+\n|: {{{)"
+            "No absolute truth"
+            "(?:\n-+\n|}}}\n)"
+            "(?:.*\n)*"
+            "-+\n"
+            "Ran 1 test in .*\n"
+            "\n"
+            "FAILED \\(failures=1\\)\n\\Z")
 
     def test_result_decorator(self):
         # decorate results
@@ -1252,14 +1240,11 @@ class TestRunner(tests.TestCase):
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
-        if testtools_version[:3] > (0, 9, 11):
-            self.assertContainsRe(out.getvalue(), "log: {{{\d+\.\d+  \\\\u2606}}}")
-        else:
-            self.assertContainsRe(out.getvalue(),
-                "Text attachment: log\n"
-                "-+\n"
-                "\d+\.\d+  \\\\u2606\n"
-                "-+\n")
+        self.assertContainsRe(out.getvalue(),
+            "(?:Text attachment: )?log"
+            "(?:\n-+\n|: {{{)"
+            "\d+\.\d+  \\\\u2606"
+            "(?:\n-+\n|}}}\n)")
 
 
 class SampleTestCase(tests.TestCase):
@@ -1744,16 +1729,16 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_fail')
         self.assertEqual(1, len(result.failures))
         result_content = result.failures[0][1]
-        if testtools_version < (0, 9, 12):
-            self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertContainsRe(result_content, 'this was a failing test')
 
     def test_error_has_log(self):
         result = self._run_test('test_error')
         self.assertEqual(1, len(result.errors))
         result_content = result.errors[0][1]
-        if testtools_version < (0, 9, 12):
-            self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertContainsRe(result_content, 'this test errored')
 
     def test_skip_has_no_log(self):
@@ -1778,7 +1763,8 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_xfail')
         self.assertEqual(1, len(result.expectedFailures))
         result_content = result.expectedFailures[0][1]
-        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertNotContainsRe(result_content, 'test with expected failure')
 
     def test_unexpected_success_has_log(self):
@@ -2193,7 +2179,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         self.assertNotContainsRe(content, 'test with expected failure')
         self.assertEqual(1, len(result.expectedFailures))
         result_content = result.expectedFailures[0][1]
-        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertNotContainsRe(result_content, 'test with expected failure')
 
     def test_unexpected_success_has_log(self):
