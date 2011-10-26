@@ -591,11 +591,11 @@ class Merger(object):
                 else:
                     self.base_rev_id = self.revision_graph.find_unique_lca(
                                             *lcas)
-                sorted_lca_keys = self.revision_graph.find_merge_order(                
+                sorted_lca_keys = self.revision_graph.find_merge_order(
                     revisions[0], lcas)
                 if self.base_rev_id == _mod_revision.NULL_REVISION:
                     self.base_rev_id = sorted_lca_keys[0]
-                
+
             if self.base_rev_id == _mod_revision.NULL_REVISION:
                 raise errors.UnrelatedBranches()
             if self._is_criss_cross:
@@ -604,7 +604,8 @@ class Merger(object):
                 trace.mutter('Criss-cross lcas: %r' % lcas)
                 if self.base_rev_id in lcas:
                     trace.mutter('Unable to find unique lca. '
-                                 'Fallback %r as best option.' % self.base_rev_id)
+                                 'Fallback %r as best option.'
+                                 % self.base_rev_id)
                 interesting_revision_ids = set(lcas)
                 interesting_revision_ids.add(self.base_rev_id)
                 interesting_trees = dict((t.get_revision_id(), t)
@@ -689,7 +690,8 @@ class Merger(object):
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                 sub_merge.merge_type = self.merge_type
-                other_branch = self.other_branch.reference_parent(file_id, relpath)
+                other_branch = self.other_branch.reference_parent(file_id,
+                                                                  relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
                 base_revision = self.base_tree.get_reference_revision(file_id)
                 sub_merge.base_tree = \
@@ -1387,18 +1389,35 @@ class Merge3Merger(object):
             if hook_status != 'not_applicable':
                 # Don't try any more hooks, this one applies.
                 break
+        keep_this = False
         result = "modified"
         if hook_status == 'not_applicable':
-            # This is a contents conflict, because none of the available
-            # functions could merge it.
             result = None
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            if self.this_tree.has_id(file_id):
-                self.tt.unversion_file(trans_id)
-            file_group = self._dump_conflicts(name, parent_id, file_id,
-                                              set_version=True)
-            self._raw_conflicts.append(('contents conflict', file_group))
+            duplicate = False
+            this_kind = this_pair[0]
+            if this_kind is None: # file_id is not in this
+                # Is the name used for a different file_id ?
+                dupe_path = self.other_tree.id2path(file_id)
+                this_id = self.this_tree.path2id(dupe_path)
+                duplicate = this_id is not None
+            if duplicate:
+                # Two entries for the same path
+                keep_this = True
+                # versioning the merged file will trigger a duplicate conflict
+                self.tt.version_file(file_id, trans_id)
+                transform.create_from_tree(
+                    self.tt, trans_id, self.other_tree, file_id,
+                    filter_tree_path=self._get_filter_tree_path(file_id))
+            else:
+                if this_kind is not None:
+                    self.tt.unversion_file(trans_id)
+                # This is a contents conflict, because none of the available
+                # functions could merge it.
+                file_group = self._dump_conflicts(name, parent_id, file_id,
+                                                  set_version=True)
+                self._raw_conflicts.append(('contents conflict', file_group))
         elif hook_status == 'success':
             self.tt.create_file(lines, trans_id)
         elif hook_status == 'conflicted':
@@ -1420,36 +1439,23 @@ class Merge3Merger(object):
             raise AssertionError('unknown hook_status: %r' % (hook_status,))
         if not self.this_tree.has_id(file_id) and result == "modified":
             self.tt.version_file(file_id, trans_id)
-        # The merge has been performed, so the old contents should not be
-        # retained.
-        self.tt.delete_contents(trans_id)
+        if not keep_this:
+            # The merge has been performed, so the old contents should not be
+            # retained.
+            self.tt.delete_contents(trans_id)
         return result
 
     def _default_other_winner_merge(self, merge_hook_params):
         """Replace this contents with other."""
         file_id = merge_hook_params.file_id
         trans_id = merge_hook_params.trans_id
-        file_in_this = self.this_tree.has_id(file_id)
         if self.other_tree.has_id(file_id):
             # OTHER changed the file
-            wt = self.this_tree
-            if wt.supports_content_filtering():
-                # We get the path from the working tree if it exists.
-                # That fails though when OTHER is adding a file, so
-                # we fall back to the other tree to find the path if
-                # it doesn't exist locally.
-                try:
-                    filter_tree_path = wt.id2path(file_id)
-                except errors.NoSuchId:
-                    filter_tree_path = self.other_tree.id2path(file_id)
-            else:
-                # Skip the id2path lookup for older formats
-                filter_tree_path = None
-            transform.create_from_tree(self.tt, trans_id,
-                             self.other_tree, file_id,
-                             filter_tree_path=filter_tree_path)
+            transform.create_from_tree(
+                self.tt, trans_id, self.other_tree, file_id,
+                filter_tree_path=self._get_filter_tree_path(file_id))
             return 'done', None
-        elif file_in_this:
+        elif self.this_tree.has_id(file_id):
             # OTHER deleted the file
             return 'delete', None
         else:
@@ -1528,6 +1534,23 @@ class Merge3Merger(object):
                                               this_lines, base_lines,
                                               other_lines)
             file_group.append(trans_id)
+
+
+    def _get_filter_tree_path(self, file_id):
+        wt = self.this_tree
+        if wt.supports_content_filtering():
+            # We get the path from the working tree if it exists.
+            # That fails though when OTHER is adding a file, so
+            # we fall back to the other tree to find the path if
+            # it doesn't exist locally.
+            try:
+                filter_tree_path = wt.id2path(file_id)
+            except errors.NoSuchId:
+                filter_tree_path = self.other_tree.id2path(file_id)
+        else:
+            # Skip the id2path lookup for older formats
+            filter_tree_path = None
+        return filter_tree_path
 
     def _dump_conflicts(self, name, parent_id, file_id, this_lines=None,
                         base_lines=None, other_lines=None, set_version=False,
@@ -1652,10 +1675,12 @@ class Merge3Merger(object):
                 for trans_id in conflict[1]:
                     file_id = self.tt.final_file_id(trans_id)
                     if file_id is not None:
+                        # Ok we found the relevant file-id
                         break
                 path = fp.get_path(trans_id)
                 for suffix in ('.BASE', '.THIS', '.OTHER'):
                     if path.endswith(suffix):
+                        # Here is the raw path
                         path = path[:-len(suffix)]
                         break
                 c = _mod_conflicts.Conflict.factory(conflict_type,
