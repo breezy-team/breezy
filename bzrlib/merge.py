@@ -1392,26 +1392,42 @@ class Merge3Merger(object):
         keep_this = False
         result = "modified"
         if hook_status == 'not_applicable':
+            # No merge hook was able to resolve the situation. Two cases exist:
+            # a content conflict or a duplicate one.
             result = None
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             duplicate = False
-            this_kind = this_pair[0]
-            if this_kind is None: # file_id is not in this
+            inhibit_content_conflict = False
+            if params.this_kind is None: # file_id is not in THIS
                 # Is the name used for a different file_id ?
                 dupe_path = self.other_tree.id2path(file_id)
                 this_id = self.this_tree.path2id(dupe_path)
-                duplicate = this_id is not None
-            if duplicate:
-                # Two entries for the same path
-                keep_this = True
-                # versioning the merged file will trigger a duplicate conflict
-                self.tt.version_file(file_id, trans_id)
-                transform.create_from_tree(
-                    self.tt, trans_id, self.other_tree, file_id,
-                    filter_tree_path=self._get_filter_tree_path(file_id))
-            else:
-                if this_kind is not None:
+                if this_id is not None:
+                    # Two entries for the same path
+                    keep_this = True
+                    # versioning the merged file will trigger a duplicate
+                    # conflict
+                    self.tt.version_file(file_id, trans_id)
+                    transform.create_from_tree(
+                        self.tt, trans_id, self.other_tree, file_id,
+                        filter_tree_path=self._get_filter_tree_path(file_id))
+                    inhibit_content_conflict = True
+            elif params.other_kind is None: # file_id is not in OTHER
+                # Is the name used for a different file_id ?
+                dupe_path = self.this_tree.id2path(file_id)
+                other_id = self.other_tree.path2id(dupe_path)
+                if other_id is not None:
+                    # Two entries for the same path again, but here, the other
+                    # entry will also be merged.  We simply inhibit the
+                    # 'content' conflict creation because we know OTHER will
+                    # create (or has already created depending on ordering) an
+                    # entry at the same path. This will trigger a 'duplicate'
+                    # conflict later.
+                    keep_this = True
+                    inhibit_content_conflict = True
+            if not inhibit_content_conflict:
+                if params.this_kind is not None:
                     self.tt.unversion_file(trans_id)
                 # This is a contents conflict, because none of the available
                 # functions could merge it.
