@@ -139,6 +139,9 @@ Documentation
 * Corrected documentation for BZR_PROGRESS_BAR. 
   (Dennis Benzinger, #735417)
 
+* Corrected documentation for ``bzr serve`` in the Admin Guide.
+  (Morten Bøgeskov, Martin Pool, #832576)
+
 API Changes
 ***********
 
