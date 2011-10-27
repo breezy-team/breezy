@@ -79,6 +79,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Accept both old and new style testtools output in selftest tests.
+  (Jelmer Vernooij, Martin Packman, #815423)
+
 * Fix the race for TestingThreadingTCPServer in
   test_server_crash_while_responding. (Vincent Ladeuil, #869366)
 
