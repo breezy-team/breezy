@@ -32,6 +32,17 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* During merges, when two entries end up using the same path for two
+  different file-ids (the same file being 'bzr added' in two different
+  branches) , 'duplicate' conflicts are created instead of 'content'
+  ones. This was previously leading to a 'Malformed tramsform' exception.
+  (Vincent Ladeuil, #880701)
+
+* 'Malformed transform' exceptions are now recognized as internal errors
+  instead of user errors and report a traceback. This will reduce user
+  confusion as there is generally nothing users can do about them.
+  (Vincent Ladeuil, #880701)
+
 Documentation
 *************
 
@@ -102,6 +113,7 @@ Bug Fixes
 * Return early from create_delta_index_from_delta given tiny inputs. This
   avoids raising a spurious MemoryError on certain platforms such as AIX.
   (John Arbash Meinel, #856731)
+
   
 Documentation
 *************

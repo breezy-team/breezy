@@ -1964,7 +1964,7 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class MalformedTransform(BzrError):
+class MalformedTransform(InternalBzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
 
