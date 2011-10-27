@@ -112,7 +112,7 @@ class LRUTreeCache(object):
         return list(self.iter_revision_trees(revids))
 
     def add(self, tree):
-        self._cache.add(tree.get_revision_id(), tree)
+        self._cache[tree.get_revision_id()] = tree
 
 
 def _find_missing_bzr_revids(graph, want, have):
