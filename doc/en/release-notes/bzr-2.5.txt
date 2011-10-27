@@ -81,6 +81,9 @@ API Changes
 
 * ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
 
+* Methods ``add`` and ``items`` of ``LRUCache`` and ``LRUSizeCache`` are
+  deprecated. Use normal dict-style access instead. (Martin Packman)
+
 * New flag ``RepositoryFormat.supports_unreferenced_revisions`` which
   indicates whether revisions can be present in a repository without
   being referenced from e.g. a branch history at the same time.
