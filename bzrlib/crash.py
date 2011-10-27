@@ -70,13 +70,11 @@ def report_bug(exc_info, stderr):
             return
     except ImportError, e:
         trace.mutter("couldn't find apport bug-reporting library: %s" % e)
-        pass
     except Exception, e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
-        stderr.write("bzr: failed to report crash using apport:\n "
-            "    %r\n" % e)
-        pass
+        trace.mutter("bzr: failed to report crash using apport: %r" % e)
+        trace.log_exception_quietly()
     return report_bug_legacy(exc_info, stderr)
 
 

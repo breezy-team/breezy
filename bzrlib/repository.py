@@ -1409,6 +1409,9 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_versioned_directories = None
     # Can other repositories be nested into one of this format?
     supports_nesting_repositories = None
+    # Is it possible for revisions to be present without being referenced
+    # somewhere ?
+    supports_unreferenced_revisions = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
