@@ -3048,7 +3048,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                 existing_file, new_file = conflict[2], conflict[1]
             else:
                 existing_file, new_file = conflict[1], conflict[2]
-            new_name = tt.final_name(existing_file)+'.moved'
+            new_name = tt.final_name(existing_file) + '.moved'
             tt.adjust_path(new_name, final_parent, existing_file)
             new_conflicts.add((c_type, 'Moved existing file to',
                                existing_file, new_file))
