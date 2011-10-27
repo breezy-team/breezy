@@ -32,6 +32,12 @@ Improvements
 Bug Fixes
 *********
 
+* During merges, when two entries end up using the same path for two
+  different file-ids (the same file being 'bzr added' in two different
+  branches) , 'duplicate' conflicts are created instead of 'content'
+  ones. This was previously leading to a 'Malformed tramsform' exception.
+  (Vincent Ladeuil, #880701)
+
 * Fixed an infinite loop when creating a repo at the root of the filesystem, 
   i.e. "/", due to posixpath.normpath() not collapsing 2 leading slashes into 
   one, thus respecting the POSIX standard, but making relpath() loop infinitely.
@@ -40,12 +46,13 @@ Bug Fixes
 * Fixed loading of external merge tools from config to properly decode
   command-lines which contain embedded quotes. (Gordon Tyler, #828803)
 
-* 'Duplicate' conflicts are now created instead of 'Content' ones when a
-  merge tries to create two entries for the same path.
-  (Vincent Ladeuil, #880701)
-
 * Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
   pyrex code with new Cython versions. (Denys Duchier, #837221)
+
+* 'Malformed transform' exceptions are now recognized as internal errors
+  instead of user errors and report a traceback. This will reduce user
+  confusion as there is generally nothing users can do about them.
+  (Vincent Ladeuil, #880701)
 
 * Prevent several kinds of OverflowError and other fallout from failing to fit
   stat fields into four bytes in dirstate pack_stat implementations.
@@ -54,6 +61,7 @@ Bug Fixes
 * Return early from create_delta_index_from_delta given tiny inputs. This
   avoids raising a spurious MemoryError on certain platforms such as AIX.
   (John Arbash Meinel, #856731)
+
   
 Documentation
 *************

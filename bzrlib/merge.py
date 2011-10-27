@@ -1389,6 +1389,9 @@ class Merge3Merger(object):
             if hook_status != 'not_applicable':
                 # Don't try any more hooks, this one applies.
                 break
+        # If the merge ends up replacing the content of the file, we get rid of
+        # it at the end of this method (this variable is used to track the
+        # exceptions to this rule).
         keep_this = False
         result = "modified"
         if hook_status == 'not_applicable':
@@ -1456,8 +1459,8 @@ class Merge3Merger(object):
         if not self.this_tree.has_id(file_id) and result == "modified":
             self.tt.version_file(file_id, trans_id)
         if not keep_this:
-            # The merge has been performed, so the old contents should not be
-            # retained.
+            # The merge has been performed and produced a new content, so the
+            # old contents should not be retained.
             self.tt.delete_contents(trans_id)
         return result
 
@@ -1553,20 +1556,17 @@ class Merge3Merger(object):
 
 
     def _get_filter_tree_path(self, file_id):
-        wt = self.this_tree
-        if wt.supports_content_filtering():
+        if self.this_tree.supports_content_filtering():
             # We get the path from the working tree if it exists.
             # That fails though when OTHER is adding a file, so
             # we fall back to the other tree to find the path if
             # it doesn't exist locally.
             try:
-                filter_tree_path = wt.id2path(file_id)
+                return self.this_tree.id2path(file_id)
             except errors.NoSuchId:
-                filter_tree_path = self.other_tree.id2path(file_id)
-        else:
-            # Skip the id2path lookup for older formats
-            filter_tree_path = None
-        return filter_tree_path
+                return self.other_tree.id2path(file_id)
+        # Skip the id2path lookup for older formats
+        return None
 
     def _dump_conflicts(self, name, parent_id, file_id, this_lines=None,
                         base_lines=None, other_lines=None, set_version=False,
