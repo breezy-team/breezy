@@ -29,6 +29,8 @@ import tempfile
 import os
 import re
 
+from distro_info import DebianDistroInfo, UbuntuDistroInfo
+
 from bzrlib.trace import mutter
 
 try:
@@ -75,12 +77,10 @@ from bzrlib.plugins.builddeb.errors import (
     )
 
 
-DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'wheezy',
-        'stable', 'testing', 'unstable', 'experimental', 'frozen', 'sid')
+DEBIAN_RELEASES = DebianDistroInfo().all
+DEBIAN_RELEASES.extend(['stable', 'testing', 'unstable', 'frozen'])
 DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
-UBUNTU_RELEASES = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
-        'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
-        'lucid', 'maverick', 'natty', "oneiric")
+UBUNTU_RELEASES = UbuntuDistroInfo().all
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 
