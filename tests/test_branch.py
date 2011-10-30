@@ -45,6 +45,9 @@ from bzrlib.bzrdir import (
 from bzrlib.repository import (
     Repository,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
 
 from bzrlib.plugins.git import (
     branch,
@@ -113,7 +116,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
 
         thebranch = Branch.open('.')
         self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
-                         thebranch.revision_history())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)), thebranch.revision_history))
 
     def test_tag_annotated(self):
         reva = self.simple_commit_a()
