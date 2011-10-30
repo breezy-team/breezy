@@ -3406,6 +3406,35 @@ class TestStackGetWithConverter(TestStackGet):
         self.assertEquals(['bar', 'baz'], self.conf.get('foo'))
 
 
+class TestIterOptionRefs(tests.TestCase):
+    """iter_option_refs is a bit unusual, document some cases."""
+
+    def assertRefs(self, expected, string):
+        self.assertEquals(expected, list(config.iter_option_refs(string)))
+
+    def test_empty(self):
+        self.assertRefs([(False, '')], '')
+
+    def test_no_refs(self):
+        self.assertRefs([(False, 'foo bar')], 'foo bar')
+
+    def test_single_ref(self):
+        self.assertRefs([(False, ''), (True, '{foo}'), (False, '')], '{foo}')
+
+    def test_broken_ref(self):
+        self.assertRefs([(False, '{foo')], '{foo')
+
+    def test_embedded_ref(self):
+        self.assertRefs([(False, '{'), (True, '{foo}'), (False, '}')],
+                        '{{foo}}')
+
+    def test_two_refs(self):
+        self.assertRefs([(False, ''), (True, '{foo}'),
+                         (False, ''), (True, '{bar}'),
+                         (False, ''),],
+                        '{foo}{bar}')
+
+
 class TestStackExpandOptions(tests.TestCaseWithTransport):
 
     def setUp(self):

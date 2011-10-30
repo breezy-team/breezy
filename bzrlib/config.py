@@ -3006,17 +3006,25 @@ class LocationMatcher(SectionMatcher):
             yield section
 
 
+_option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+"""Describes an expandable option reference.
+
+We want to match the most embedded reference first.
+
+I.e. for '{{foo}}' we will get '{foo}',
+for '{bar{baz}}' we will get '{baz}'
+"""
+
+def iter_option_refs(string):
+    # Split isolate refs so every other chunk is a ref
+    is_ref = False
+    for chunk  in _option_ref_re.split(string):
+        yield is_ref, chunk
+        is_ref = not is_ref
+
+
 class Stack(object):
     """A stack of configurations where an option can be defined"""
-
-    _option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
-    """Describes an exandable option reference.
-
-    We want to match the most embedded reference first.
-
-    I.e. for '{{foo}}' we will get '{foo}',
-    for '{bar{baz}}' we will get '{baz}'
-    """
 
     def __init__(self, sections_def, store=None, mutable_section_name=None):
         """Creates a stack of sections with an optional store for changes.
@@ -3135,19 +3143,15 @@ class Stack(object):
         result = string
         # We need to iterate until no more refs appear ({{foo}} will need two
         # iterations for example).
-        while True:
-            raw_chunks = Stack._option_ref_re.split(result)
-            if len(raw_chunks) == 1:
-                # Shorcut the trivial case: no refs
-                return result
+        expanded = True
+        while expanded:
+            expanded = False
             chunks = []
-            # Split will isolate refs so that every other chunk is a ref
-            chunk_is_ref = False
-            for chunk in raw_chunks:
-                if not chunk_is_ref:
+            for is_ref, chunk in iter_option_refs(result):
+                if not is_ref:
                     chunks.append(chunk)
-                    chunk_is_ref = True
                 else:
+                    expanded = True
                     name = chunk[1:-1]
                     if name in _refs:
                         raise errors.OptionExpansionLoop(string, _refs)
@@ -3157,7 +3161,6 @@ class Stack(object):
                         raise errors.ExpandingUnknownOption(name, string)
                     chunks.append(value)
                     _refs.pop()
-                    chunk_is_ref = False
             result = ''.join(chunks)
         return result
 
