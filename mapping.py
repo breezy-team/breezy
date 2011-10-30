@@ -54,7 +54,7 @@ DEFAULT_FILE_MODE = stat.S_IFREG | 0644
 
 
 def escape_file_id(file_id):
-    return file_id.replace('_', '__').replace(' ', '_s')
+    return file_id.replace('_', '__').replace(' ', '_s').replace('\x0c', '_c')
 
 
 def unescape_file_id(file_id):
@@ -68,6 +68,8 @@ def unescape_file_id(file_id):
                 ret.append("_")
             elif file_id[i+1] == 's':
                 ret.append(" ")
+            elif file_id[i+1] == 'c':
+                ret.append("\x0c")
             else:
                 raise AssertionError("unknown escape character %s" %
                     file_id[i+1])

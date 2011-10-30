@@ -71,6 +71,12 @@ class FileidTests(tests.TestCase):
     def test_escape_space(self):
         self.assertEquals("bla_s", escape_file_id("bla "))
 
+    def test_escape_control_l(self):
+        self.assertEquals("bla_c", escape_file_id("bla\x0c"))
+
+    def test_unescape_control_l(self):
+        self.assertEquals("bla\x0c", unescape_file_id("bla_c"))
+
     def test_escape_underscore(self):
         self.assertEquals("bla__", escape_file_id("bla_"))
 
