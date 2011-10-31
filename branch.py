@@ -743,7 +743,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             prev_last_revid, self.source)
         return head, refs
 
-    def _basic_pull(self,stop_revision, overwrite, run_hooks,
+    def _basic_pull(self, stop_revision, overwrite, run_hooks,
               _override_hook_target, _hook_master):
         result = GitBranchPullResult()
         result.source_branch = self.source
