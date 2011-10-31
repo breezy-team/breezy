@@ -3607,9 +3607,68 @@ gbar = glob-bar
 ''')
         g_store.save()
         stack = config.LocationStack('/branch')
-        self.debug()
         self.assertEquals('glob-bar', stack.get('lbar', expand=True))
         self.assertEquals('loc-foo', stack.get('gfoo', expand=True))
+
+
+class TestStackExpandSectionLocals(tests.TestCaseWithTransport):
+
+    def test_expand_relpath_locally(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+lfoo = loc-foo/{relpath}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('loc-foo/branch', stack.get('lfoo', expand=True))
+
+    def test_expand_relpath_unknonw_in_global(self):
+        g_store = config.GlobalStore()
+        g_store._load_from_string('''
+[DEFAULT]
+gfoo = {relpath}
+''')
+        g_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          stack.get, 'gfoo', expand=True)
+
+    def test_expand_local_option_locally(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+lfoo = loc-foo/{relpath}
+lbar = {gbar}
+''')
+        l_store.save()
+        g_store = config.GlobalStore()
+        g_store._load_from_string('''
+[DEFAULT]
+gfoo = {lfoo}
+gbar = glob-bar
+''')
+        g_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('glob-bar', stack.get('lbar', expand=True))
+        self.assertEquals('loc-foo/branch', stack.get('gfoo', expand=True))
+
+    def test_locals_dont_leak(self):
+        """Make sure we chose the right local in presence of several sections.
+        """
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user]
+lfoo = loc-foo/{relpath}
+[/home/user/project]
+lfoo = loc-foo/{relpath}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('loc-foo/branch', stack.get('lfoo', expand=True))
+        stack = config.LocationStack('/home/user/bar/baz')
+        self.assertEquals('loc-foo/bar/baz', stack.get('lfoo', expand=True))
+
 
 
 class TestStackSet(TestStackWithTransport):

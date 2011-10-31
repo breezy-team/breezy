@@ -2933,6 +2933,7 @@ class LocationSection(Section):
         super(LocationSection, self).__init__(section.id, section.options)
         self.length = length
         self.extra_path = extra_path
+        self.locals = {'relpath': extra_path}
 
     def get(self, name, default=None):
         value = super(LocationSection, self).get(name, default)
@@ -2941,6 +2942,19 @@ class LocationSection(Section):
             policy = _policy_value.get(policy_name, POLICY_NONE)
             if policy == POLICY_APPENDPATH:
                 value = urlutils.join(value, self.extra_path)
+            # expand section local options right now (since POLICY_APPENDPATH
+            # will never add options references, it's ok to expand after it).
+            chunks = []
+            for is_ref, chunk in iter_option_refs(value):
+                if not is_ref:
+                    chunks.append(chunk)
+                else:
+                    ref = chunk[1:-1]
+                    if ref in self.locals:
+                        chunks.append(self.locals[ref])
+                    else:
+                        chunks.append(chunk)
+            value = ''.join(chunks)
         return value
 
 
