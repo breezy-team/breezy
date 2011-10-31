@@ -32,7 +32,6 @@ CAPABILITIES = ["fetch", "option", "push"]
 
 import optparse
 import os
-import sys
 import bzrlib
 bzrlib.initialize()
 
