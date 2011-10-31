@@ -20,6 +20,14 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
+import signal
+import sys
+
+def handle_sigint(signal, frame):
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_sigint)
+
 CAPABILITIES = ["fetch", "option", "push"]
 
 import optparse
