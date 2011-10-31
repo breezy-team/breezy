@@ -212,10 +212,6 @@ class GitRepository(ForeignRepository):
     def revision_graph_can_have_wrong_parents(self):
         return False
 
-    def dfetch(self, source, stop_revision):
-        interrepo = repository.InterRepository.get(source, self)
-        return interrepo.dfetch(stop_revision)
-
     def add_signature_text(self, revid, signature):
         raise errors.UnsupportedOperation(self.add_signature_text, self)
 

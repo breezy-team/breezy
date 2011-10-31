@@ -51,7 +51,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         self.assertEquals(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
         self.assertEquals(new_refs, {})
 
-    def test_pointless_dfetch_refs(self):
+    def test_pointless_lossy_fetch_refs(self):
         revidmap, old_refs, new_refs = self.interrepo.fetch_refs(lambda x: {}, lossy=True)
         self.assertEquals(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
         self.assertEquals(new_refs, {})

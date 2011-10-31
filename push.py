@@ -213,6 +213,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         for sha1 in stop_sha1s:
             try:
                 for (kind, (revid, tree_sha, verifiers)) in self.source_store.lookup_git_sha(sha1):
+                    assert revid is not None
                     missing.append(revid)
                     revid_sha_map[revid] = sha1
             except KeyError:
@@ -246,7 +247,8 @@ class InterToLocalGitRepository(InterToGitRepository):
         try:
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
-            revidmap = self.fetch_objects(new_refs.values(), roundtrip=not lossy)
+            revidmap = self.fetch_objects(
+                new_refs.values(), roundtrip=not lossy)
             for name, (gitid, revid) in new_refs.iteritems():
                 if gitid is None:
                     try:
@@ -264,7 +266,8 @@ class InterToLocalGitRepository(InterToGitRepository):
         revidmap = {}
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            object_generator = self._get_missing_objects_iterator(pb)
+            object_generator = MissingObjectsIterator(
+                self.source_store, self.source, pb)
             for (old_revid, git_sha) in object_generator.import_revisions(
                 todo, roundtrip=roundtrip):
                 try:
@@ -280,12 +283,6 @@ class InterToLocalGitRepository(InterToGitRepository):
             return revidmap
         finally:
             pb.finished()
-
-    def _get_missing_objects_iterator(self, pb):
-        return MissingObjectsIterator(self.source_store, self.source, pb)
-
-    def dfetch(self, stop_revisions):
-        """Import the gist of the ancestry of a particular revision."""
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
