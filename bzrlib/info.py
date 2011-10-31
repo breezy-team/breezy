@@ -22,6 +22,7 @@ import sys
 
 from bzrlib import (
     bzrdir,
+    controldir,
     errors,
     hooks as _mod_hooks,
     osutils,
@@ -221,7 +222,10 @@ def _show_missing_revisions_working(working, outfile):
     """Show missing revisions in working tree."""
     branch = working.branch
     basis = working.basis_tree()
-    branch_revno, branch_last_revision = branch.last_revision_info()
+    try:
+        branch_revno, branch_last_revision = branch.last_revision_info()
+    except errors.UnsupportedOperation:
+        return
     try:
         tree_last_id = working.get_parent_ids()[0]
     except IndexError:
@@ -268,7 +272,10 @@ def _show_working_stats(working, outfile):
 
 def _show_branch_stats(branch, verbose, outfile):
     """Show statistics about a branch."""
-    revno, head = branch.last_revision_info()
+    try:
+        revno, head = branch.last_revision_info()
+    except errors.UnsupportedOperation:
+        return {}
     outfile.write('\n')
     outfile.write('Branch history:\n')
     outfile.write('  %8d revision%s\n' % (revno, plural(revno)))
@@ -330,7 +337,7 @@ def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
                 repository = a_bzrdir.open_repository()
             except NoRepositoryPresent:
                 # Return silently; cmd_info already returned NotBranchError
-                # if no bzrdir could be opened.
+                # if no controldir could be opened.
                 return
             else:
                 lockable = repository
@@ -445,10 +452,10 @@ def describe_format(control, repository, branch, tree):
         branch.user_url != tree.user_url):
         branch = None
         repository = None
-    non_aliases = set(bzrdir.format_registry.keys())
-    non_aliases.difference_update(bzrdir.format_registry.aliases())
+    non_aliases = set(controldir.format_registry.keys())
+    non_aliases.difference_update(controldir.format_registry.aliases())
     for key in non_aliases:
-        format = bzrdir.format_registry.make_bzrdir(key)
+        format = controldir.format_registry.make_bzrdir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
             if (tree and format.workingtree_format !=
                 tree._format):
@@ -466,7 +473,7 @@ def describe_format(control, repository, branch, tree):
         return 'unnamed'
     candidates.sort()
     new_candidates = [c for c in candidates if not
-        bzrdir.format_registry.get_info(c).hidden]
+        controldir.format_registry.get_info(c).hidden]
     if len(new_candidates) > 0:
         # If there are any non-hidden formats that match, only return those to
         # avoid listing hidden formats except when only a hidden format will

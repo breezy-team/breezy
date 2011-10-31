@@ -72,7 +72,7 @@ class TestUncommit(TestCaseWithTransport):
         $ bzr uncommit
         ...
         The above revision(s) will be removed.
-        2>Uncommit these revisions? [y/n]: 
+        2>Uncommit these revisions? ([y]es, [n]o): no
         <n
         Canceled
         """)
@@ -119,8 +119,8 @@ class TestUncommit(TestCaseWithTransport):
         t_a.commit('commit 3')
         b = t_a.branch.create_checkout('b').branch
         uncommit.uncommit(b)
-        self.assertEqual(len(b.revision_history()), 2)
-        self.assertEqual(len(t_a.branch.revision_history()), 2)
+        self.assertEqual(b.last_revision_info()[0], 2)
+        self.assertEqual(t_a.branch.last_revision_info()[0], 2)
         # update A's tree to not have the uncommitted revision referenced.
         t_a.update()
         t_a.commit('commit 3b')

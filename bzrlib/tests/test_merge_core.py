@@ -98,7 +98,7 @@ class MergeBuilder(object):
             tt.apply()
             wt.commit('branch commit')
             wt.flush()
-            if len(wt.branch.revision_history()) != 2:
+            if wt.branch.last_revision_info()[0] != 2:
                 raise AssertionError()
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()

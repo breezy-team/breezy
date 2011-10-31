@@ -112,7 +112,8 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Format 4 branches cannot be created."""
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
@@ -137,7 +138,7 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return SampleSupportedBranchFormatString
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, append_revisions_only=None):
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
@@ -540,6 +541,16 @@ class BzrBranch8(tests.TestCaseWithTransport):
         self.assertEqual(('path3', 'location3'),
                          branch.get_reference_info('file-id'))
 
+    def _recordParentMapCalls(self, repo):
+        self._parent_map_calls = []
+        orig_get_parent_map = repo.revisions.get_parent_map
+        def get_parent_map(q):
+            q = list(q)
+            self._parent_map_calls.extend([e[0] for e in q])
+            return orig_get_parent_map(q)
+        repo.revisions.get_parent_map = get_parent_map
+
+
 class TestBranchReference(tests.TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
@@ -652,7 +663,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         if value is not None:
             self.config.set_user_option('append_revisions_only', value)
         self.assertEqual(expected_value,
-                         self.branch._get_append_revisions_only())
+                         self.branch.get_append_revisions_only())
 
     def test_valid_append_revisions_only(self):
         self.assertEquals(None,

@@ -24,13 +24,16 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+import errno
 import os
 import sys
+import time
 import urllib
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import select
 import socket
 import thread
 import weakref
@@ -42,7 +45,8 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.smart import client, protocol, request, vfs
+from bzrlib.i18n import gettext
+from bzrlib.smart import client, protocol, request, signals, vfs
 from bzrlib.transport import ssh
 """)
 from bzrlib import osutils
@@ -175,6 +179,14 @@ class SmartMedium(object):
         ui.ui_factory.report_transport_activity(self, bytes, direction)
 
 
+_bad_file_descriptor = (errno.EBADF,)
+if sys.platform == 'win32':
+    # Given on Windows if you pass a closed socket to select.select. Probably
+    # also given if you pass a file handle to select.
+    WSAENOTSOCK = 10038
+    _bad_file_descriptor += (WSAENOTSOCK,)
+
+
 class SmartServerStreamMedium(SmartMedium):
     """Handles smart commands coming over a stream.
 
@@ -193,7 +205,9 @@ class SmartServerStreamMedium(SmartMedium):
         the stream.  See also the _push_back method.
     """
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    _timer = time.time
+
+    def __init__(self, backing_transport, root_client_path='/', timeout=None):
         """Construct new server.
 
         :param backing_transport: Transport for the directory served.
@@ -202,6 +216,10 @@ class SmartServerStreamMedium(SmartMedium):
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
         self.finished = False
+        if timeout is None:
+            raise AssertionError('You must supply a timeout.')
+        self._client_timeout = timeout
+        self._client_poll_timeout = min(timeout / 10.0, 1.0)
         SmartMedium.__init__(self)
 
     def serve(self):
@@ -213,9 +231,39 @@ class SmartServerStreamMedium(SmartMedium):
             while not self.finished:
                 server_protocol = self._build_protocol()
                 self._serve_one_request(server_protocol)
+        except errors.ConnectionTimeout, e:
+            trace.note('%s' % (e,))
+            trace.log_exception_quietly()
+            self._disconnect_client()
+            # We reported it, no reason to make a big fuss.
+            return
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
+        self._disconnect_client()
+
+    def _stop_gracefully(self):
+        """When we finish this message, stop looking for more."""
+        trace.mutter('Stopping %s' % (self,))
+        self.finished = True
+
+    def _disconnect_client(self):
+        """Close the current connection. We stopped due to a timeout/etc."""
+        # The default implementation is a no-op, because that is all we used to
+        # do when disconnecting from a client. I suppose we never had the
+        # *server* initiate a disconnect, before
+
+    def _wait_for_bytes_with_timeout(self, timeout_seconds):
+        """Wait for more bytes to be read, but timeout if none available.
+
+        This allows us to detect idle connections, and stop trying to read from
+        them, without setting the socket itself to non-blocking. This also
+        allows us to specify when we watch for idle timeouts.
+
+        :return: Did we timeout? (True if we timed out, False if there is data
+            to be read)
+        """
+        raise NotImplementedError(self._wait_for_bytes_with_timeout)
 
     def _build_protocol(self):
         """Identifies the version of the incoming request, and returns an
@@ -226,6 +274,10 @@ class SmartServerStreamMedium(SmartMedium):
 
         :returns: a SmartServerRequestProtocol.
         """
+        self._wait_for_bytes_with_timeout(self._client_timeout)
+        if self.finished:
+            # We're stopping, so don't try to do any more work
+            return None
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(
@@ -233,11 +285,44 @@ class SmartServerStreamMedium(SmartMedium):
         protocol.accept_bytes(unused_bytes)
         return protocol
 
+    def _wait_on_descriptor(self, fd, timeout_seconds):
+        """select() on a file descriptor, waiting for nonblocking read()
+
+        This will raise a ConnectionTimeout exception if we do not get a
+        readable handle before timeout_seconds.
+        :return: None
+        """
+        t_end = self._timer() + timeout_seconds
+        poll_timeout = min(timeout_seconds, self._client_poll_timeout)
+        rs = xs = None
+        while not rs and not xs and self._timer() < t_end:
+            if self.finished:
+                return
+            try:
+                rs, _, xs = select.select([fd], [], [fd], poll_timeout)
+            except (select.error, socket.error) as e:
+                err = getattr(e, 'errno', None)
+                if err is None and getattr(e, 'args', None) is not None:
+                    # select.error doesn't have 'errno', it just has args[0]
+                    err = e.args[0]
+                if err in _bad_file_descriptor:
+                    return # Not a socket indicates read() will fail
+                elif err == errno.EINTR:
+                    # Interrupted, keep looping.
+                    continue
+                raise
+        if rs or xs:
+            return
+        raise errors.ConnectionTimeout('disconnecting client after %.1f seconds'
+                                       % (timeout_seconds,))
+
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
 
         :param protocol: a SmartServerRequestProtocol.
         """
+        if protocol is None:
+            return
         try:
             self._serve_one_request_unguarded(protocol)
         except KeyboardInterrupt:
@@ -259,16 +344,30 @@ class SmartServerStreamMedium(SmartMedium):
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
-    def __init__(self, sock, backing_transport, root_client_path='/'):
+    def __init__(self, sock, backing_transport, root_client_path='/',
+                 timeout=None):
         """Constructor.
 
         :param sock: the socket the server will read from.  It will be put
             into blocking mode.
         """
         SmartServerStreamMedium.__init__(
-            self, backing_transport, root_client_path=root_client_path)
+            self, backing_transport, root_client_path=root_client_path,
+            timeout=timeout)
         sock.setblocking(True)
         self.socket = sock
+        # Get the getpeername now, as we might be closed later when we care.
+        try:
+            self._client_info = sock.getpeername()
+        except socket.error:
+            self._client_info = '<unknown>'
+
+    def __str__(self):
+        return '%s(client=%s)' % (self.__class__.__name__, self._client_info)
+
+    def __repr__(self):
+        return '%s.%s(client=%s)' % (self.__module__, self.__class__.__name__,
+            self._client_info)
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
@@ -282,6 +381,22 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             protocol.accept_bytes(bytes)
 
         self._push_back(protocol.unused_data)
+
+    def _disconnect_client(self):
+        """Close the current connection. We stopped due to a timeout/etc."""
+        self.socket.close()
+
+    def _wait_for_bytes_with_timeout(self, timeout_seconds):
+        """Wait for more bytes to be read, but timeout if none available.
+
+        This allows us to detect idle connections, and stop trying to read from
+        them, without setting the socket itself to non-blocking. This also
+        allows us to specify when we watch for idle timeouts.
+
+        :return: None, this will raise ConnectionTimeout if we time out before
+            data is available.
+        """
+        return self._wait_on_descriptor(self.socket, timeout_seconds)
 
     def _read_bytes(self, desired_count):
         return osutils.read_bytes_from_socket(
@@ -305,14 +420,15 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
 
-    def __init__(self, in_file, out_file, backing_transport):
+    def __init__(self, in_file, out_file, backing_transport, timeout=None):
         """Construct new server.
 
         :param in_file: Python file from which requests can be read.
         :param out_file: Python file to write responses.
         :param backing_transport: Transport for the directory served.
         """
-        SmartServerStreamMedium.__init__(self, backing_transport)
+        SmartServerStreamMedium.__init__(self, backing_transport,
+            timeout=timeout)
         if sys.platform == 'win32':
             # force binary mode for files
             import msvcrt
@@ -322,6 +438,17 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                     msvcrt.setmode(fileno(), os.O_BINARY)
         self._in = in_file
         self._out = out_file
+
+    def serve(self):
+        """See SmartServerStreamMedium.serve"""
+        # This is the regular serve, except it adds signal trapping for soft
+        # shutdown.
+        stop_gracefully = self._stop_gracefully
+        signals.register_on_hangup(id(self), stop_gracefully)
+        try:
+            return super(SmartServerPipeStreamMedium, self).serve()
+        finally:
+            signals.unregister_on_hangup(id(self))
 
     def _serve_one_request_unguarded(self, protocol):
         while True:
@@ -340,6 +467,27 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 self._out.flush()
                 return
             protocol.accept_bytes(bytes)
+
+    def _disconnect_client(self):
+        self._in.close()
+        self._out.flush()
+        self._out.close()
+
+    def _wait_for_bytes_with_timeout(self, timeout_seconds):
+        """Wait for more bytes to be read, but timeout if none available.
+
+        This allows us to detect idle connections, and stop trying to read from
+        them, without setting the socket itself to non-blocking. This also
+        allows us to specify when we watch for idle timeouts.
+
+        :return: None, this will raise ConnectionTimeout if we time out before
+            data is available.
+        """
+        if (getattr(self._in, 'fileno', None) is None
+            or sys.platform == 'win32'):
+            # You can't select() file descriptors on Windows.
+            return
+        return self._wait_on_descriptor(self._in, timeout_seconds)
 
     def _read_bytes(self, desired_count):
         return self._in.read(desired_count)
@@ -561,8 +709,8 @@ class _DebugCounter(object):
         value['count'] = 0
         value['vfs_count'] = 0
         if count != 0:
-            trace.note('HPSS calls: %d (%d vfs) %s',
-                       count, vfs_count, medium_repr)
+            trace.note(gettext('HPSS calls: {0} ({1} vfs) {2}').format(
+                       count, vfs_count, medium_repr))
 
     def flush_all(self):
         for ref in list(self.counts.keys()):

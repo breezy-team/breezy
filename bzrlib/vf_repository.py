@@ -43,6 +43,7 @@ from bzrlib import (
 from bzrlib.recordcounter import RecordCounter
 from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.testament import Testament
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
@@ -79,6 +80,7 @@ class VersionedFileRepositoryFormat(RepositoryFormat):
 
     supports_full_versioned_files = True
     supports_versioned_directories = True
+    supports_unreferenced_revisions = True
 
     # Should commit add an inventory, or an inventory delta to the repository.
     _commit_inv_deltas = True
@@ -1087,7 +1089,7 @@ class VersionedFileRepository(Repository):
         keys = {'chk_bytes':set(), 'inventories':set(), 'texts':set()}
         kinds = ['chk_bytes', 'texts']
         count = len(checker.pending_keys)
-        bar.update("inventories", 0, 2)
+        bar.update(gettext("inventories"), 0, 2)
         current_keys = checker.pending_keys
         checker.pending_keys = {}
         # Accumulate current checks.
@@ -1113,7 +1115,7 @@ class VersionedFileRepository(Repository):
             del keys['inventories']
         else:
             return
-        bar.update("texts", 1)
+        bar.update(gettext("texts"), 1)
         while (checker.pending_keys or keys['chk_bytes']
             or keys['texts']):
             # Something to check.
@@ -1198,7 +1200,7 @@ class VersionedFileRepository(Repository):
         """Instantiate a VersionedFileRepository.
 
         :param _format: The format of the repository on disk.
-        :param a_bzrdir: The BzrDir of the repository.
+        :param controldir: The ControlDir of the repository.
         :param control_files: Control files to use for locking, etc.
         """
         # In the future we will have a single api for all stores for
@@ -1206,6 +1208,8 @@ class VersionedFileRepository(Repository):
         # this construct will accept instances of those things.
         super(VersionedFileRepository, self).__init__(_format, a_bzrdir,
             control_files)
+        self._transport = control_files._transport
+        self.base = self._transport.base
         # for tests
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
@@ -1568,7 +1572,7 @@ class VersionedFileRepository(Repository):
         batch_size = 10 # should be ~150MB on a 55K path tree
         batch_count = len(revision_order) / batch_size + 1
         processed_texts = 0
-        pb.update("Calculating text parents", processed_texts, text_count)
+        pb.update(gettext("Calculating text parents"), processed_texts, text_count)
         for offset in xrange(batch_count):
             to_query = revision_order[offset * batch_size:(offset + 1) *
                 batch_size]
@@ -1577,7 +1581,7 @@ class VersionedFileRepository(Repository):
             for revision_id in to_query:
                 parent_ids = ancestors[revision_id]
                 for text_key in revision_keys[revision_id]:
-                    pb.update("Calculating text parents", processed_texts)
+                    pb.update(gettext("Calculating text parents"), processed_texts)
                     processed_texts += 1
                     candidate_parents = []
                     for parent_id in parent_ids:
@@ -1653,7 +1657,7 @@ class VersionedFileRepository(Repository):
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
             if pb is not None:
-                pb.update("Fetch texts", count, num_file_ids)
+                pb.update(gettext("Fetch texts"), count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
 
@@ -2464,13 +2468,13 @@ class _VersionedFileChecker(object):
             self.text_index.iterkeys()])
         # text keys is now grouped by file_id
         n_versions = len(self.text_index)
-        progress_bar.update('loading text store', 0, n_versions)
+        progress_bar.update(gettext('loading text store'), 0, n_versions)
         parent_map = self.repository.texts.get_parent_map(self.text_index)
         # On unlistable transports this could well be empty/error...
         text_keys = self.repository.texts.keys()
         unused_keys = frozenset(text_keys) - set(self.text_index)
         for num, key in enumerate(self.text_index.iterkeys()):
-            progress_bar.update('checking text graph', num, n_versions)
+            progress_bar.update(gettext('checking text graph'), num, n_versions)
             correct_parents = self.calculate_file_version_parents(key)
             try:
                 knit_parents = parent_map[key]
@@ -2920,7 +2924,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
-                pb.update('Transferring revisions', offset,
+                pb.update(gettext('Transferring revisions'), offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
                 basis_id = self._fetch_batch(batch, basis_id, cache)
@@ -2934,7 +2938,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                     hints.extend(hint)
         if hints and self.target._format.pack_compresses:
             self.target.pack(hint=hints)
-        pb.update('Transferring revisions', len(revision_ids),
+        pb.update(gettext('Transferring revisions'), len(revision_ids),
                   len(revision_ids))
 
     @needs_write_lock
@@ -3049,7 +3053,7 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
             _install_revision(repository, revision, revision_tree, signature,
                 inventory_cache)
             if pb is not None:
-                pb.update('Transferring revisions', n + 1, num_revisions)
+                pb.update(gettext('Transferring revisions'), n + 1, num_revisions)
     except:
         repository.abort_write_group()
         raise

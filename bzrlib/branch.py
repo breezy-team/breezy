@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import bzrlib.bzrdir
 
 from cStringIO import StringIO
 
@@ -21,25 +22,27 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from bzrlib import (
-        bzrdir,
-        cache_utf8,
-        cleanup,
-        config as _mod_config,
-        debug,
-        errors,
-        fetch,
-        graph as _mod_graph,
-        lockdir,
-        lockable_files,
-        remote,
-        repository,
-        revision as _mod_revision,
-        rio,
-        tag as _mod_tag,
-        transport,
-        ui,
-        urlutils,
-        )
+    bzrdir,
+    controldir,
+    cache_utf8,
+    cleanup,
+    config as _mod_config,
+    debug,
+    errors,
+    fetch,
+    graph as _mod_graph,
+    lockdir,
+    lockable_files,
+    remote,
+    repository,
+    revision as _mod_revision,
+    rio,
+    tag as _mod_tag,
+    transport,
+    ui,
+    urlutils,
+    )
+from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib import (
@@ -106,7 +109,7 @@ class Branch(controldir.ControlComponent):
         for existing_fallback_repo in self.repository._fallback_repositories:
             if existing_fallback_repo.user_url == url:
                 # This fallback is already configured.  This probably only
-                # happens because BzrDir.sprout is a horrible mess.  To avoid
+                # happens because ControlDir.sprout is a horrible mess.  To avoid
                 # confusing _unstack we don't add this a second time.
                 mutter('duplicate activation of fallback %r on %r', url, self)
                 return
@@ -170,14 +173,14 @@ class Branch(controldir.ControlComponent):
         For instance, if the branch is at URL/.bzr/branch,
         Branch.open(URL) -> a Branch instance.
         """
-        control = bzrdir.BzrDir.open(base, _unsupported,
+        control = controldir.ControlDir.open(base, _unsupported,
                                      possible_transports=possible_transports)
         return control.open_branch(unsupported=_unsupported)
 
     @staticmethod
     def open_from_transport(transport, name=None, _unsupported=False):
         """Open the branch rooted at transport"""
-        control = bzrdir.BzrDir.open_from_transport(transport, _unsupported)
+        control = controldir.ControlDir.open_from_transport(transport, _unsupported)
         return control.open_branch(name=name, unsupported=_unsupported)
 
     @staticmethod
@@ -192,7 +195,7 @@ class Branch(controldir.ControlComponent):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
-        control, relpath = bzrdir.BzrDir.open_containing(url,
+        control, relpath = controldir.ControlDir.open_containing(url,
                                                          possible_transports)
         return control.open_branch(), relpath
 
@@ -213,6 +216,16 @@ class Branch(controldir.ControlComponent):
         :return: A bzrlib.config.BranchConfig.
         """
         return _mod_config.BranchConfig(self)
+
+    def get_config_stack(self):
+        """Get a bzrlib.config.BranchStack for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A bzrlib.config.BranchStack.
+        """
+        return _mod_config.BranchStack(self)
 
     def _get_config(self):
         """Get the concrete config for just the config in this branch.
@@ -641,6 +654,14 @@ class Branch(controldir.ControlComponent):
         """
         raise errors.UpgradeRequired(self.user_url)
 
+    def get_append_revisions_only(self):
+        """Whether it is only possible to append revisions to the history.
+        """
+        if not self._format.supports_set_append_revisions_only():
+            return False
+        return self.get_config(
+            ).get_user_option_as_bool('append_revisions_only')
+
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
@@ -714,16 +735,18 @@ class Branch(controldir.ControlComponent):
         """
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
 
         The delta is relative to its mainline predecessor, or the
         empty tree for revision 1.
         """
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
+        try:
+            revid = self.get_rev_id(revno)
+        except errors.NoSuchRevision:
             raise errors.InvalidRevisionNumber(revno)
-        return self.repository.get_revision_delta(rh[revno-1])
+        return self.repository.get_revision_delta(revid)
 
     def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.
@@ -840,7 +863,7 @@ class Branch(controldir.ControlComponent):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            pb.update("Unstacking")
+            pb.update(gettext("Unstacking"))
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
             # repository into a new repository object without the fallbacks. 
@@ -860,7 +883,8 @@ class Branch(controldir.ControlComponent):
             # stream from one of them to the other.  This does mean doing
             # separate SSH connection setup, but unstacking is not a
             # common operation so it's tolerable.
-            new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+            new_bzrdir = controldir.ControlDir.open(
+                self.bzrdir.root_transport.base)
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
                 raise AssertionError("didn't expect %r to have "
@@ -983,6 +1007,7 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._gen_revision_history)
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     @needs_read_lock
     def revision_history(self):
         """Return sequence of revision ids on this branch.
@@ -990,6 +1015,9 @@ class Branch(controldir.ControlComponent):
         This method will cache the revision history for as long as it is safe to
         do so.
         """
+        return self._revision_history()
+
+    def _revision_history(self):
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
@@ -1065,7 +1093,7 @@ class Branch(controldir.ControlComponent):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
             return 0
-        history = self.revision_history()
+        history = self._revision_history()
         try:
             return history.index(revision_id) + 1
         except ValueError:
@@ -1368,11 +1396,11 @@ class Branch(controldir.ControlComponent):
         # TODO: We should probably also check that self.revision_history
         # matches the repository for older branch formats.
         # If looking for the code that cross-checks repository parents against
-        # the iter_reverse_revision_history output, that is now a repository
+        # the Graph.iter_lefthand_ancestry output, that is now a repository
         # specific check.
         return result
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
@@ -1424,14 +1452,13 @@ class Branch(controldir.ControlComponent):
         """
         t = transport.get_transport(to_location)
         t.ensure_base()
+        format = self._get_checkout_format(lightweight=lightweight)
         if lightweight:
-            format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)
             from_branch = BranchReferenceFormat().initialize(checkout, 
                 target_branch=self)
         else:
-            format = self._get_checkout_format()
-            checkout_branch = bzrdir.BzrDir.create_branch_convenience(
+            checkout_branch = controldir.ControlDir.create_branch_convenience(
                 to_location, force_new_tree=False, format=format)
             checkout = checkout_branch.bzrdir
             checkout_branch.bind(self)
@@ -1568,8 +1595,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     object will be created every time regardless.
     """
 
-    can_set_append_revisions_only = True
-
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
@@ -1577,14 +1602,14 @@ class BranchFormat(controldir.ControlComponentFormat):
         return not (self == other)
 
     @classmethod
-    def find_format(klass, a_bzrdir, name=None):
-        """Return the format for the branch object in a_bzrdir."""
+    def find_format(klass, controldir, name=None):
+        """Return the format for the branch object in controldir."""
         try:
-            transport = a_bzrdir.get_branch_transport(None, name=name)
+            transport = controldir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
             return format_registry.get(format_string)
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
+            raise errors.NotBranchError(path=transport.base, bzrdir=controldir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='branch')
 
@@ -1604,28 +1629,28 @@ class BranchFormat(controldir.ControlComponentFormat):
         """
         return format_registry._get_all()
 
-    def get_reference(self, a_bzrdir, name=None):
-        """Get the target reference of the branch in a_bzrdir.
+    def get_reference(self, controldir, name=None):
+        """Get the target reference of the branch in controldir.
 
         format probing must have been completed before calling
         this method - it is assumed that the format of the branch
-        in a_bzrdir is correct.
+        in controldir is correct.
 
-        :param a_bzrdir: The bzrdir to get the branch data from.
+        :param controldir: The controldir to get the branch data from.
         :param name: Name of the colocated branch to fetch
         :return: None if the branch is not a reference branch.
         """
         return None
 
     @classmethod
-    def set_reference(self, a_bzrdir, name, to_branch):
-        """Set the target reference of the branch in a_bzrdir.
+    def set_reference(self, controldir, name, to_branch):
+        """Set the target reference of the branch in controldir.
 
         format probing must have been completed before calling
         this method - it is assumed that the format of the branch
-        in a_bzrdir is correct.
+        in controldir is correct.
 
-        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param controldir: The controldir to set the branch reference for.
         :param name: Name of colocated branch to set, None for default
         :param to_branch: branch that the checkout is to reference
         """
@@ -1639,17 +1664,18 @@ class BranchFormat(controldir.ControlComponentFormat):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_description)
 
-    def _run_post_branch_init_hooks(self, a_bzrdir, name, branch):
+    def _run_post_branch_init_hooks(self, controldir, name, branch):
         hooks = Branch.hooks['post_branch_init']
         if not hooks:
             return
-        params = BranchInitHookParams(self, a_bzrdir, name, branch)
+        params = BranchInitHookParams(self, controldir, name, branch)
         for hook in hooks:
             hook(params)
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
-        """Create a branch of this format in a_bzrdir.
-        
+    def initialize(self, controldir, name=None, repository=None,
+                   append_revisions_only=None):
+        """Create a branch of this format in controldir.
+
         :param name: Name of the colocated branch to create.
         """
         raise NotImplementedError(self.initialize)
@@ -1687,11 +1713,11 @@ class BranchFormat(controldir.ControlComponentFormat):
         """
         raise NotImplementedError(self.network_name)
 
-    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
+    def open(self, controldir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
-        """Return the branch object for a_bzrdir
+        """Return the branch object for controldir.
 
-        :param a_bzrdir: A BzrDir that contains a branch.
+        :param controldir: A ControlDir that contains a branch.
         :param name: Name of colocated branch to open
         :param _found: a private parameter, do not use it. It is used to
             indicate if format probing has already be done.
@@ -1917,7 +1943,7 @@ class BranchInitHookParams(object):
     There are 4 fields that hooks may wish to access:
 
     :ivar format: the branch format
-    :ivar bzrdir: the BzrDir where the branch will be/has been initialized
+    :ivar bzrdir: the ControlDir where the branch will be/has been initialized
     :ivar name: name of colocated branch, if any (or None)
     :ivar branch: the branch created
 
@@ -1926,11 +1952,11 @@ class BranchInitHookParams(object):
     branch, which refer to the original branch.
     """
 
-    def __init__(self, format, a_bzrdir, name, branch):
+    def __init__(self, format, controldir, name, branch):
         """Create a group of BranchInitHook parameters.
 
         :param format: the branch format
-        :param a_bzrdir: the BzrDir where the branch will be/has been
+        :param controldir: the ControlDir where the branch will be/has been
             initialized
         :param name: name of colocated branch, if any (or None)
         :param branch: the branch created
@@ -1940,7 +1966,7 @@ class BranchInitHookParams(object):
         in branch, which refer to the original branch.
         """
         self.format = format
-        self.bzrdir = a_bzrdir
+        self.bzrdir = controldir
         self.name = name
         self.branch = branch
 
@@ -1956,7 +1982,7 @@ class SwitchHookParams(object):
 
     There are 4 fields that hooks may wish to access:
 
-    :ivar control_dir: BzrDir of the checkout to change
+    :ivar control_dir: ControlDir of the checkout to change
     :ivar to_branch: branch that the checkout is to reference
     :ivar force: skip the check for local commits in a heavy checkout
     :ivar revision_id: revision ID to switch to (or None)
@@ -1965,7 +1991,7 @@ class SwitchHookParams(object):
     def __init__(self, control_dir, to_branch, force, revision_id):
         """Create a group of SwitchHook parameters.
 
-        :param control_dir: BzrDir of the checkout to change
+        :param control_dir: ControlDir of the checkout to change
         :param to_branch: branch that the checkout is to reference
         :param force: skip the check for local commits in a heavy checkout
         :param revision_id: revision ID to switch to (or None)
@@ -1990,6 +2016,14 @@ class BranchFormatMetadir(BranchFormat):
     def _branch_class(self):
         """What class to instantiate on open calls."""
         raise NotImplementedError(self._branch_class)
+
+    def _get_initial_config(self, append_revisions_only=None):
+        if append_revisions_only:
+            return "append_revisions_only = True\n"
+        else:
+            # Avoid writing anything if append_revisions_only is disabled,
+            # as that is the default.
+            return ""
 
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
                            repository=None):
@@ -2050,10 +2084,11 @@ class BranchFormatMetadir(BranchFormat):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
 
-    def __init__(self):
-        super(BranchFormatMetadir, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-        self._matchingbzrdir.set_branch_format(self)
+    @property
+    def _matchingbzrdir(self):
+        ret = bzrdir.BzrDirMetaFormat1()
+        ret.set_branch_format(self)
+        return ret
 
     def supports_tags(self):
         return True
@@ -2086,8 +2121,11 @@ class BzrBranchFormat5(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 5"
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
+        if append_revisions_only:
+            raise errors.UpgradeRequired(a_bzrdir.user_url)
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
@@ -2119,10 +2157,12 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 6"
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch.conf', ''),
+                      ('branch.conf',
+                          self._get_initial_config(append_revisions_only)),
                       ('tags', ''),
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
@@ -2149,10 +2189,12 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 8"
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch.conf', ''),
+                      ('branch.conf',
+                          self._get_initial_config(append_revisions_only)),
                       ('tags', ''),
                       ('references', '')
                       ]
@@ -2180,10 +2222,12 @@ class BzrBranchFormat7(BranchFormatMetadir):
     This format was introduced in bzr 1.6.
     """
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch.conf', ''),
+                      ('branch.conf',
+                          self._get_initial_config(append_revisions_only)),
                       ('tags', ''),
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
@@ -2212,7 +2256,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     supports_reference_locations = False
 
 
-class BranchReferenceFormat(BranchFormat):
+class BranchReferenceFormat(BranchFormatMetadir):
     """Bzr branch reference format.
 
     Branch references are used in implementing checkouts, they
@@ -2242,7 +2286,7 @@ class BranchReferenceFormat(BranchFormat):
         location = transport.put_bytes('location', to_branch.base)
 
     def initialize(self, a_bzrdir, name=None, target_branch=None,
-            repository=None):
+            repository=None, append_revisions_only=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
             # this format does not implement branch itself, thus the implicit
@@ -2260,11 +2304,6 @@ class BranchReferenceFormat(BranchFormat):
             possible_transports=[target_branch.bzrdir.root_transport])
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
-
-    def __init__(self):
-        super(BranchReferenceFormat, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-        self._matchingbzrdir.set_branch_format(self)
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
@@ -2300,7 +2339,7 @@ class BranchReferenceFormat(BranchFormat):
                     (format, self))
         if location is None:
             location = self.get_reference(a_bzrdir, name)
-        real_bzrdir = bzrdir.BzrDir.open(
+        real_bzrdir = controldir.ControlDir.open(
             location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch(name=name, 
             ignore_fallbacks=ignore_fallbacks)
@@ -2512,7 +2551,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         old_revno, old_revid = self.last_revision_info()
-        if self._get_append_revisions_only():
+        if self.get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._run_pre_change_branch_tip_hooks(revno, revision_id)
         self._write_last_revision_info(revno, revision_id)
@@ -2679,7 +2718,7 @@ class FullHistoryBzrBranch(BzrBranch):
         self._set_revision_history(history)
 
     def _read_last_revision_info(self):
-        rh = self.revision_history()
+        rh = self._revision_history()
         revno = len(rh)
         if revno:
             return (revno, rh[-1])
@@ -2739,7 +2778,7 @@ class FullHistoryBzrBranch(BzrBranch):
         if revision_id == _mod_revision.NULL_REVISION:
             new_history = []
         else:
-            new_history = self.revision_history()
+            new_history = self._revision_history()
         if revision_id is not None and new_history != []:
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
@@ -2957,10 +2996,6 @@ class BzrBranch8(BzrBranch):
             raise errors.NotStacked(self)
         return stacked_url
 
-    def _get_append_revisions_only(self):
-        return self.get_config(
-            ).get_user_option_as_bool('append_revisions_only')
-
     @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -3115,14 +3150,14 @@ class BranchPushResult(_Result):
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
             if self.old_revid != self.new_revid:
-                note('Pushed up to revision %d.' % self.new_revno)
+                note(gettext('Pushed up to revision %d.') % self.new_revno)
             if tag_updates:
-                note('%d tag(s) updated.' % len(tag_updates))
+                note(ngettext('%d tag updated.', '%d tags updated.', len(tag_updates)) % len(tag_updates))
             if self.old_revid == self.new_revid and not tag_updates:
                 if not tag_conflicts:
-                    note('No new revisions or tags to push.')
+                    note(gettext('No new revisions or tags to push.'))
                 else:
-                    note('No new revisions to push.')
+                    note(gettext('No new revisions to push.'))
         self._show_tag_conficts(to_file)
 
 
@@ -3142,10 +3177,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s', self.branch.user_url,
-            self.branch._format)
+        note(gettext('checked branch {0} format {1}').format(
+                                self.branch.user_url, self.branch._format))
         for error in self.errors:
-            note('found error:%s', error)
+            note(gettext('found error:%s'), error)
 
 
 class Converter5to6(object):

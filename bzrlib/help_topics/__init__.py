@@ -331,6 +331,10 @@ command.  (e.g. ``bzr --profile help``).
                will be a pickle.
 --coverage     Generate line coverage report in the specified directory.
 
+-Oname=value   Override the ``name`` config option setting it to ``value`` for
+               the duration of the command.  This can be used multiple times if
+               several options need to be overridden.
+
 See http://doc.bazaar.canonical.com/developers/profiling.html for more
 information on profiling.
 
@@ -618,6 +622,8 @@ BZR_PROGRESS_BAR    Override the progress display. Values are 'none' or 'text'.
 BZR_PDB             Control whether to launch a debugger on error.
 BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a
                     breakin debugger.
+BZR_TEXTUI_INPUT    Force console input mode for prompts to line-based (instead
+                    of char-based).
 =================== ===========================================================
 """
 

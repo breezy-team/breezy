@@ -18,9 +18,14 @@
 
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
+import doctest
 import os
 import socket
+import sys
 import threading
+import time
+
+from testtools.matchers import DocTestMatches
 
 import bzrlib
 from bzrlib import (
@@ -28,7 +33,7 @@ from bzrlib import (
         errors,
         osutils,
         tests,
-        transport,
+        transport as _mod_transport,
         urlutils,
         )
 from bzrlib.smart import (
@@ -37,7 +42,7 @@ from bzrlib.smart import (
         message,
         protocol,
         request as _mod_request,
-        server,
+        server as _mod_server,
         vfs,
 )
 from bzrlib.tests import (
@@ -52,6 +57,21 @@ from bzrlib.transport import (
         remote,
         ssh,
         )
+
+
+def portable_socket_pair():
+    """Return a pair of TCP sockets connected to each other.
+
+    Unlike socket.socketpair, this should work on Windows.
+    """
+    listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listen_sock.bind(('127.0.0.1', 0))
+    listen_sock.listen(1)
+    client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_sock.connect(listen_sock.getsockname())
+    server_sock, addr = listen_sock.accept()
+    listen_sock.close()
+    return server_sock, client_sock
 
 
 class StringIOSSHVendor(object):
@@ -618,28 +638,46 @@ class TestSmartServerStreamMedium(tests.TestCase):
         super(TestSmartServerStreamMedium, self).setUp()
         self.overrideEnv('BZR_NO_SMART_VFS', None)
 
-    def portable_socket_pair(self):
-        """Return a pair of TCP sockets connected to each other.
+    def create_pipe_medium(self, to_server, from_server, transport,
+                           timeout=4.0):
+        """Create a new SmartServerPipeStreamMedium."""
+        return medium.SmartServerPipeStreamMedium(to_server, from_server,
+            transport, timeout=timeout)
 
-        Unlike socket.socketpair, this should work on Windows.
+    def create_pipe_context(self, to_server_bytes, transport):
+        """Create a SmartServerSocketStreamMedium.
+
+        This differes from create_pipe_medium, in that we initialize the
+        request that is sent to the server, and return the StringIO class that
+        will hold the response.
         """
-        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        listen_sock.bind(('127.0.0.1', 0))
-        listen_sock.listen(1)
-        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_sock.connect(listen_sock.getsockname())
-        server_sock, addr = listen_sock.accept()
-        listen_sock.close()
-        return server_sock, client_sock
+        to_server = StringIO(to_server_bytes)
+        from_server = StringIO()
+        m = self.create_pipe_medium(to_server, from_server, transport)
+        return m, from_server
+
+    def create_socket_medium(self, server_sock, transport, timeout=4.0):
+        """Initialize a new medium.SmartServerSocketStreamMedium."""
+        return medium.SmartServerSocketStreamMedium(server_sock, transport,
+            timeout=timeout)
+
+    def create_socket_context(self, transport, timeout=4.0):
+        """Create a new SmartServerSocketStreamMedium with default context.
+
+        This will call portable_socket_pair and pass the server side to
+        create_socket_medium along with transport.
+        It then returns the client_sock and the server.
+        """
+        server_sock, client_sock = portable_socket_pair()
+        server = self.create_socket_medium(server_sock, transport,
+                                           timeout=timeout)
+        return server, client_sock
 
     def test_smart_query_version(self):
         """Feed a canned query version to a server"""
         # wire-to-wire, using the whole stack
-        to_server = StringIO('hello\n')
-        from_server = StringIO()
         transport = local.LocalTransport(urlutils.local_path_to_url('/'))
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, transport)
+        server, from_server = self.create_pipe_context('hello\n', transport)
         smart_protocol = protocol.SmartServerRequestProtocolOne(transport,
                 from_server.write)
         server._serve_one_request(smart_protocol)
@@ -649,10 +687,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_response_to_canned_get(self):
         transport = memory.MemoryTransport('memory:///')
         transport.put_bytes('testfile', 'contents\nof\nfile\n')
-        to_server = StringIO('get\001./testfile\n')
-        from_server = StringIO()
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, transport)
+        server, from_server = self.create_pipe_context('get\001./testfile\n',
+            transport)
         smart_protocol = protocol.SmartServerRequestProtocolOne(transport,
                 from_server.write)
         server._serve_one_request(smart_protocol)
@@ -669,10 +705,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # VFS requests use filenames, not raw UTF-8.
         hpss_path = urlutils.escape(utf8_filename)
         transport.put_bytes(utf8_filename, 'contents\nof\nfile\n')
-        to_server = StringIO('get\001' + hpss_path + '\n')
-        from_server = StringIO()
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, transport)
+        server, from_server = self.create_pipe_context(
+                'get\001' + hpss_path + '\n', transport)
         smart_protocol = protocol.SmartServerRequestProtocolOne(transport,
                 from_server.write)
         server._serve_one_request(smart_protocol)
@@ -684,10 +718,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_pipe_like_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
-        to_server = StringIO(sample_request_bytes)
-        from_server = StringIO()
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, None)
+        server, from_server = self.create_pipe_context(
+            sample_request_bytes, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         server._serve_one_request(sample_protocol)
         self.assertEqual('', from_server.getvalue())
@@ -696,29 +728,23 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
-        server_sock, client_sock = self.portable_socket_pair()
-        server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
+        server, client_sock = self.create_socket_context(None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         client_sock.sendall(sample_request_bytes)
         server._serve_one_request(sample_protocol)
-        server_sock.close()
+        server._disconnect_client()
         self.assertEqual('', client_sock.recv(1))
         self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
         self.assertFalse(server.finished)
 
     def test_pipe_like_stream_shutdown_detection(self):
-        to_server = StringIO('')
-        from_server = StringIO()
-        server = medium.SmartServerPipeStreamMedium(to_server, from_server, None)
+        server, _ = self.create_pipe_context('', None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
 
     def test_socket_stream_shutdown_detection(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server, client_sock = self.create_socket_context(None)
         client_sock.close()
-        server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
 
@@ -735,14 +761,12 @@ class TestSmartServerStreamMedium(tests.TestCase):
         rest_of_request_bytes = 'lo\n'
         expected_response = (
             protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n')
-        server_sock, client_sock = self.portable_socket_pair()
-        server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
+        server, client_sock = self.create_socket_context(None)
         client_sock.sendall(incomplete_request_bytes)
         server_protocol = server._build_protocol()
         client_sock.sendall(rest_of_request_bytes)
         server._serve_one_request(server_protocol)
-        server_sock.close()
+        server._disconnect_client()
         self.assertEqual(expected_response, osutils.recv_all(client_sock, 50),
                          "Not a version 2 response to 'hello' request.")
         self.assertEqual('', client_sock.recv(1))
@@ -767,8 +791,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         to_server_w = os.fdopen(to_server_w, 'w', 0)
         from_server_r = os.fdopen(from_server_r, 'r', 0)
         from_server = os.fdopen(from_server, 'w', 0)
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, None)
+        server = self.create_pipe_medium(to_server, from_server, None)
         # Like test_socket_stream_incomplete_request, write an incomplete
         # request (that does not end in '\n') and build a protocol from it.
         to_server_w.write(incomplete_request_bytes)
@@ -789,10 +812,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # _serve_one_request should still process both of them as if they had
         # been received separately.
         sample_request_bytes = 'command\n'
-        to_server = StringIO(sample_request_bytes * 2)
-        from_server = StringIO()
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, None)
+        server, from_server = self.create_pipe_context(
+            sample_request_bytes * 2, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         server._serve_one_request(first_protocol)
         self.assertEqual(0, first_protocol.next_read_size())
@@ -811,9 +832,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # _serve_one_request should still process both of them as if they had
         # been received separately.
         sample_request_bytes = 'command\n'
-        server_sock, client_sock = self.portable_socket_pair()
-        server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
+        server, client_sock = self.create_socket_context(None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         # Put two whole requests on the wire.
         client_sock.sendall(sample_request_bytes * 2)
@@ -826,7 +845,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         stream_still_open = server._serve_one_request(second_protocol)
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertFalse(server.finished)
-        server_sock.close()
+        server._disconnect_client()
         self.assertEqual('', client_sock.recv(1))
 
     def test_pipe_like_stream_error_handling(self):
@@ -839,7 +858,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         def close():
             self.closed = True
         from_server.close = close
-        server = medium.SmartServerPipeStreamMedium(
+        server = self.create_pipe_medium(
             to_server, from_server, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
         server._serve_one_request(fake_protocol)
@@ -848,9 +867,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_socket_stream_error_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
+        server, client_sock = self.create_socket_context(None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
         server._serve_one_request(fake_protocol)
         # recv should not block, because the other end of the socket has been
@@ -859,36 +876,26 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
-        to_server = StringIO('')
-        from_server = StringIO()
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, None)
+        server, from_server = self.create_pipe_context('', None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
         self.assertEqual('', from_server.getvalue())
 
     def test_socket_stream_keyboard_interrupt_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
+        server, client_sock = self.create_socket_context(None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
-        server_sock.close()
+        server._disconnect_client()
         self.assertEqual('', client_sock.recv(1))
 
     def build_protocol_pipe_like(self, bytes):
-        to_server = StringIO(bytes)
-        from_server = StringIO()
-        server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, None)
+        server, _ = self.create_pipe_context(bytes, None)
         return server._build_protocol()
 
     def build_protocol_socket(self, bytes):
-        server_sock, client_sock = self.portable_socket_pair()
-        server = medium.SmartServerSocketStreamMedium(
-            server_sock, None)
+        server, client_sock = self.create_socket_context(None)
         client_sock.sendall(bytes)
         client_sock.close()
         return server._build_protocol()
@@ -934,6 +941,108 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server_protocol = self.build_protocol_socket('bzr request 2\n')
         self.assertProtocolTwo(server_protocol)
 
+    def test__build_protocol_returns_if_stopping(self):
+        # _build_protocol should notice that we are stopping, and return
+        # without waiting for bytes from the client.
+        server, client_sock = self.create_socket_context(None)
+        server._stop_gracefully()
+        self.assertIs(None, server._build_protocol())
+
+    def test_socket_set_timeout(self):
+        server, _ = self.create_socket_context(None, timeout=1.23)
+        self.assertEqual(1.23, server._client_timeout)
+
+    def test_pipe_set_timeout(self):
+        server = self.create_pipe_medium(None, None, None,
+            timeout=1.23)
+        self.assertEqual(1.23, server._client_timeout)
+
+    def test_socket_wait_for_bytes_with_timeout_with_data(self):
+        server, client_sock = self.create_socket_context(None)
+        client_sock.sendall('data\n')
+        # This should not block or consume any actual content
+        self.assertFalse(server._wait_for_bytes_with_timeout(0.1))
+        data = server.read_bytes(5)
+        self.assertEqual('data\n', data)
+
+    def test_socket_wait_for_bytes_with_timeout_no_data(self):
+        server, client_sock = self.create_socket_context(None)
+        # This should timeout quickly, reporting that there wasn't any data
+        self.assertRaises(errors.ConnectionTimeout,
+                          server._wait_for_bytes_with_timeout, 0.01)
+        client_sock.close()
+        data = server.read_bytes(1)
+        self.assertEqual('', data)
+
+    def test_socket_wait_for_bytes_with_timeout_closed(self):
+        server, client_sock = self.create_socket_context(None)
+        # With the socket closed, this should return right away.
+        # It seems select.select() returns that you *can* read on the socket,
+        # even though it closed. Presumably as a way to tell it is closed?
+        # Testing shows that without sock.close() this times-out failing the
+        # test, but with it, it returns False immediately.
+        client_sock.close()
+        self.assertFalse(server._wait_for_bytes_with_timeout(10))
+        data = server.read_bytes(1)
+        self.assertEqual('', data)
+
+    def test_socket_wait_for_bytes_with_shutdown(self):
+        server, client_sock = self.create_socket_context(None)
+        t = time.time()
+        # Override the _timer functionality, so that time never increments,
+        # this way, we can be sure we stopped because of the flag, and not
+        # because of a timeout, etc.
+        server._timer = lambda: t
+        server._client_poll_timeout = 0.1
+        server._stop_gracefully()
+        server._wait_for_bytes_with_timeout(1.0)
+
+    def test_socket_serve_timeout_closes_socket(self):
+        server, client_sock = self.create_socket_context(None, timeout=0.1)
+        # This should timeout quickly, and then close the connection so that
+        # client_sock recv doesn't block.
+        server.serve()
+        self.assertEqual('', client_sock.recv(1))
+
+    def test_pipe_wait_for_bytes_with_timeout_with_data(self):
+        # We intentionally use a real pipe here, so that we can 'select' on it.
+        # You can't select() on a StringIO
+        (r_server, w_client) = os.pipe()
+        self.addCleanup(os.close, w_client)
+        with os.fdopen(r_server, 'rb') as rf_server:
+            server = self.create_pipe_medium(
+                rf_server, None, None)
+            os.write(w_client, 'data\n')
+            # This should not block or consume any actual content
+            server._wait_for_bytes_with_timeout(0.1)
+            data = server.read_bytes(5)
+            self.assertEqual('data\n', data)
+
+    def test_pipe_wait_for_bytes_with_timeout_no_data(self):
+        # We intentionally use a real pipe here, so that we can 'select' on it.
+        # You can't select() on a StringIO
+        (r_server, w_client) = os.pipe()
+        # We can't add an os.close cleanup here, because we need to control
+        # when the file handle gets closed ourselves.
+        with os.fdopen(r_server, 'rb') as rf_server:
+            server = self.create_pipe_medium(
+                rf_server, None, None)
+            if sys.platform == 'win32':
+                # Windows cannot select() on a pipe, so we just always return
+                server._wait_for_bytes_with_timeout(0.01)
+            else:
+                self.assertRaises(errors.ConnectionTimeout,
+                                  server._wait_for_bytes_with_timeout, 0.01)
+            os.close(w_client)
+            data = server.read_bytes(5)
+            self.assertEqual('', data)
+
+    def test_pipe_wait_for_bytes_no_fileno(self):
+        server, _ = self.create_pipe_context('', None)
+        # Our file doesn't support polling, so we should always just return
+        # 'you have data to consume.
+        server._wait_for_bytes_with_timeout(0.01)
+
 
 class TestGetProtocolFactoryForBytes(tests.TestCase):
     """_get_protocol_factory_for_bytes identifies the protocol factory a server
@@ -969,6 +1078,75 @@ class TestGetProtocolFactoryForBytes(tests.TestCase):
 
 class TestSmartTCPServer(tests.TestCase):
 
+    def make_server(self):
+        """Create a SmartTCPServer that we can exercise.
+
+        Note: we don't use SmartTCPServer_for_testing because the testing
+        version overrides lots of functionality like 'serve', and we want to
+        test the raw service.
+
+        This will start the server in another thread, and wait for it to
+        indicate it has finished starting up.
+
+        :return: (server, server_thread)
+        """
+        t = _mod_transport.get_transport_from_url('memory:///')
+        server = _mod_server.SmartTCPServer(t, client_timeout=4.0)
+        server._ACCEPT_TIMEOUT = 0.1
+        # We don't use 'localhost' because that might be an IPv6 address.
+        server.start_server('127.0.0.1', 0)
+        server_thread = threading.Thread(target=server.serve,
+                                         args=(self.id(),))
+        server_thread.start()
+        # Ensure this gets called at some point
+        self.addCleanup(server._stop_gracefully)
+        server._started.wait()
+        return server, server_thread
+
+    def ensure_client_disconnected(self, client_sock):
+        """Ensure that a socket is closed, discarding all errors."""
+        try:
+            client_sock.close()
+        except Exception:
+            pass
+
+    def connect_to_server(self, server):
+        """Create a client socket that can talk to the server."""
+        client_sock = socket.socket()
+        server_info = server._server_socket.getsockname()
+        client_sock.connect(server_info)
+        self.addCleanup(self.ensure_client_disconnected, client_sock)
+        return client_sock
+
+    def connect_to_server_and_hangup(self, server):
+        """Connect to the server, and then hang up.
+        That way it doesn't sit waiting for 'accept()' to timeout.
+        """
+        # If the server has already signaled that the socket is closed, we
+        # don't need to try to connect to it. Not being set, though, the server
+        # might still close the socket while we try to connect to it. So we
+        # still have to catch the exception.
+        if server._stopped.isSet():
+            return
+        try:
+            client_sock = self.connect_to_server(server)
+            client_sock.close()
+        except socket.error, e:
+            # If the server has hung up already, that is fine.
+            pass
+
+    def say_hello(self, client_sock):
+        """Send the 'hello' smart RPC, and expect the response."""
+        client_sock.send('hello\n')
+        self.assertEqual('ok\x012\n', client_sock.recv(5))
+
+    def shutdown_server_cleanly(self, server, server_thread):
+        server._stop_gracefully()
+        self.connect_to_server_and_hangup(server)
+        server._stopped.wait()
+        server._fully_stopped.wait()
+        server_thread.join()
+
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
         self.overrideEnv('BZR_NO_SMART_VFS', None)
@@ -991,6 +1169,132 @@ class TestSmartTCPServer(tests.TestCase):
         err = self.assertRaises(errors.UnknownErrorFromSmartServer,
                                 t.get, 'something')
         self.assertContainsRe(str(err), 'some random exception')
+
+    def test_propagates_timeout(self):
+        server = _mod_server.SmartTCPServer(None, client_timeout=1.23)
+        server_sock, client_sock = portable_socket_pair()
+        handler = server._make_handler(server_sock)
+        self.assertEqual(1.23, handler._client_timeout)
+
+    def test_serve_conn_tracks_connections(self):
+        server = _mod_server.SmartTCPServer(None, client_timeout=4.0)
+        server_sock, client_sock = portable_socket_pair()
+        server.serve_conn(server_sock, '-%s' % (self.id(),))
+        self.assertEqual(1, len(server._active_connections))
+        # We still want to talk on the connection. Polling should indicate it
+        # is still active.
+        server._poll_active_connections()
+        self.assertEqual(1, len(server._active_connections))
+        # Closing the socket will end the active thread, and polling will
+        # notice and remove it from the active set.
+        client_sock.close()
+        server._poll_active_connections(0.1)
+        self.assertEqual(0, len(server._active_connections))
+
+    def test_serve_closes_out_finished_connections(self):
+        server, server_thread = self.make_server()
+        # The server is started, connect to it.
+        client_sock = self.connect_to_server(server)
+        # We send and receive on the connection, so that we know the
+        # server-side has seen the connect, and started handling the
+        # results.
+        self.say_hello(client_sock)
+        self.assertEqual(1, len(server._active_connections))
+        # Grab a handle to the thread that is processing our request
+        _, server_side_thread = server._active_connections[0]
+        # Close the connection, ask the server to stop, and wait for the
+        # server to stop, as well as the thread that was servicing the
+        # client request.
+        client_sock.close()
+        # Wait for the server-side request thread to notice we are closed.
+        server_side_thread.join()
+        # Stop the server, it should notice the connection has finished.
+        self.shutdown_server_cleanly(server, server_thread)
+        # The server should have noticed that all clients are gone before
+        # exiting.
+        self.assertEqual(0, len(server._active_connections))
+
+    def test_serve_reaps_finished_connections(self):
+        server, server_thread = self.make_server()
+        client_sock1 = self.connect_to_server(server)
+        # We send and receive on the connection, so that we know the
+        # server-side has seen the connect, and started handling the
+        # results.
+        self.say_hello(client_sock1)
+        server_handler1, server_side_thread1 = server._active_connections[0]
+        client_sock1.close()
+        server_side_thread1.join()
+        # By waiting until the first connection is fully done, the server
+        # should notice after another connection that the first has finished.
+        client_sock2 = self.connect_to_server(server)
+        self.say_hello(client_sock2)
+        server_handler2, server_side_thread2 = server._active_connections[-1]
+        # There is a race condition. We know that client_sock2 has been
+        # registered, but not that _poll_active_connections has been called. We
+        # know that it will be called before the server will accept a new
+        # connection, however. So connect one more time, and assert that we
+        # either have 1 or 2 active connections (never 3), and that the 'first'
+        # connection is not connection 1
+        client_sock3 = self.connect_to_server(server)
+        self.say_hello(client_sock3)
+        # Copy the list, so we don't have it mutating behind our back
+        conns = list(server._active_connections)
+        self.assertEqual(2, len(conns))
+        self.assertNotEqual((server_handler1, server_side_thread1), conns[0])
+        self.assertEqual((server_handler2, server_side_thread2), conns[0])
+        client_sock2.close()
+        client_sock3.close()
+        self.shutdown_server_cleanly(server, server_thread)
+
+    def test_graceful_shutdown_waits_for_clients_to_stop(self):
+        server, server_thread = self.make_server()
+        # We need something big enough that it won't fit in a single recv. So
+        # the server thread gets blocked writing content to the client until we
+        # finish reading on the client.
+        server.backing_transport.put_bytes('bigfile',
+            'a'*1024*1024)
+        client_sock = self.connect_to_server(server)
+        self.say_hello(client_sock)
+        _, server_side_thread = server._active_connections[0]
+        # Start the RPC, but don't finish reading the response
+        client_medium = medium.SmartClientAlreadyConnectedSocketMedium(
+            'base', client_sock)
+        client_client = client._SmartClient(client_medium)
+        resp, response_handler = client_client.call_expecting_body('get',
+            'bigfile')
+        self.assertEqual(('ok',), resp)
+        # Ask the server to stop gracefully, and wait for it.
+        server._stop_gracefully()
+        self.connect_to_server_and_hangup(server)
+        server._stopped.wait()
+        # It should not be accepting another connection.
+        self.assertRaises(socket.error, self.connect_to_server, server)
+        # It should also not be fully stopped
+        server._fully_stopped.wait(0.01)
+        self.assertFalse(server._fully_stopped.isSet())
+        response_handler.read_body_bytes()
+        client_sock.close()
+        server_side_thread.join()
+        server_thread.join()
+        self.assertTrue(server._fully_stopped.isSet())
+        log = self.get_log()
+        self.assertThat(log, DocTestMatches("""\
+    INFO  Requested to stop gracefully
+... Stopping SmartServerSocketStreamMedium(client=('127.0.0.1', ...
+    INFO  Waiting for 1 client(s) to finish
+""", flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
+
+    def test_stop_gracefully_tells_handlers_to_stop(self):
+        server, server_thread = self.make_server()
+        client_sock = self.connect_to_server(server)
+        self.say_hello(client_sock)
+        server_handler, server_side_thread = server._active_connections[0]
+        self.assertFalse(server_handler.finished)
+        server._stop_gracefully()
+        self.assertTrue(server_handler.finished)
+        client_sock.close()
+        self.connect_to_server_and_hangup(server)
+        server_thread.join()
 
 
 class SmartTCPTests(tests.TestCase):
@@ -1015,15 +1319,16 @@ class SmartTCPTests(tests.TestCase):
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
             self.permit_url(mem_server.get_url())
-            self.backing_transport = transport.get_transport_from_url(
+            self.backing_transport = _mod_transport.get_transport_from_url(
                 mem_server.get_url())
         else:
             self.backing_transport = backing_transport
         if readonly:
             self.real_backing_transport = self.backing_transport
-            self.backing_transport = transport.get_transport_from_url(
+            self.backing_transport = _mod_transport.get_transport_from_url(
                 "readonly+" + self.backing_transport.abspath('.'))
-        self.server = server.SmartTCPServer(self.backing_transport)
+        self.server = _mod_server.SmartTCPServer(self.backing_transport,
+                                                 client_timeout=4.0)
         self.server.start_server('127.0.0.1', 0)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
@@ -1163,7 +1468,7 @@ class TestServerHooks(SmartTCPTests):
     def test_server_started_hook_memory(self):
         """The server_started hook fires when the server is started."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_started',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
         self.start_server()
         # at this point, the server will be starting a thread up.
@@ -1177,10 +1482,10 @@ class TestServerHooks(SmartTCPTests):
     def test_server_started_hook_file(self):
         """The server_started hook fires when the server is started."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_started',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
         self.start_server(
-            backing_transport=transport.get_transport_from_path("."))
+            backing_transport=_mod_transport.get_transport_from_path("."))
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1194,7 +1499,7 @@ class TestServerHooks(SmartTCPTests):
     def test_server_stopped_hook_simple_memory(self):
         """The server_stopped hook fires when the server is stopped."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
         self.start_server()
         result = [([self.backing_transport.base], self.transport.base)]
@@ -1211,10 +1516,10 @@ class TestServerHooks(SmartTCPTests):
     def test_server_stopped_hook_simple_file(self):
         """The server_stopped hook fires when the server is stopped."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+        _mod_server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
         self.start_server(
-            backing_transport=transport.get_transport_from_path("."))
+            backing_transport=_mod_transport.get_transport_from_path("."))
         result = [(
             [self.backing_transport.base, self.backing_transport.external_url()]
             , self.transport.base)]
@@ -1356,13 +1661,13 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
-        t = transport.get_transport_from_url('bzr+ssh://example.com/path')
+        t = _mod_transport.get_transport_from_url('bzr+ssh://example.com/path')
         self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._parsed_url.host)
 
     def test_bzr_https(self):
         # https://bugs.launchpad.net/bzr/+bug/128456
-        t = transport.get_transport_from_url('bzr+https://example.com/path')
+        t = _mod_transport.get_transport_from_url('bzr+https://example.com/path')
         self.assertIsInstance(t, remote.RemoteHTTPTransport)
         self.assertStartsWith(
             t._http_transport.base,
@@ -2545,7 +2850,7 @@ class TestMessageHandlerErrors(tests.TestCase):
         from_server = StringIO()
         transport = memory.MemoryTransport('memory:///')
         server = medium.SmartServerPipeStreamMedium(
-            to_server, from_server, transport)
+            to_server, from_server, transport, timeout=4.0)
         proto = server._build_protocol()
         message_handler = proto.message_handler
         server._serve_one_request(proto)

@@ -117,3 +117,22 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr('revno --tree checkout_b')
         self.assertEqual('', err)
         self.assertEqual('???\n', out)
+
+    def test_revno_with_revision(self):
+        wt = self.make_branch_and_tree('.')
+        revid1 = wt.commit('rev1')
+        revid2 = wt.commit('rev2')
+
+        out, err = self.run_bzr('revno -r-2 .')
+        self.assertEqual('1\n', out)
+
+        out, err = self.run_bzr('revno -rrevid:%s .' % revid1)
+        self.assertEqual('1\n', out)
+
+    def test_revno_and_tree_mutually_exclusive(self):
+        wt = self.make_branch_and_tree('.')
+        out, err = self.run_bzr('revno -r-2 --tree .', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual(
+            'bzr: ERROR: --tree and --revision can not be used together\n',
+            err)

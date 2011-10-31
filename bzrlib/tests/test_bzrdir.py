@@ -513,6 +513,35 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         # Clone source into directory
         target = source_bzrdir.clone(self.get_url('parent/target'))
 
+    def test_format_initialize_on_transport_ex_stacked_on(self):
+        # trunk is a stackable format.  Note that its in the same server area
+        # which is what launchpad does, but not sufficient to exercise the
+        # general case.
+        trunk = self.make_branch('trunk', format='1.9')
+        t = self.get_transport('stacked')
+        old_fmt = bzrdir.format_registry.make_bzrdir('pack-0.92')
+        repo_name = old_fmt.repository_format.network_name()
+        # Should end up with a 1.9 format (stackable)
+        repo, control, require_stacking, repo_policy = \
+            old_fmt.initialize_on_transport_ex(t,
+                    repo_format_name=repo_name, stacked_on='../trunk',
+                    stack_on_pwd=t.base)
+        if repo is not None:
+            # Repositories are open write-locked
+            self.assertTrue(repo.is_write_locked())
+            self.addCleanup(repo.unlock)
+        else:
+            repo = control.open_repository()
+        self.assertIsInstance(control, bzrdir.BzrDir)
+        opened = bzrdir.BzrDir.open(t.base)
+        if not isinstance(old_fmt, remote.RemoteBzrDirFormat):
+            self.assertEqual(control._format.network_name(),
+                old_fmt.network_name())
+            self.assertEqual(control._format.network_name(),
+                opened._format.network_name())
+        self.assertEqual(control.__class__, opened.__class__)
+        self.assertLength(1, repo._fallback_repositories)
+
     def test_sprout_obeys_stacking_policy(self):
         child_branch, new_child_transport = self.prepare_default_stacking()
         new_child = child_branch.bzrdir.sprout(new_child_transport.base)
@@ -1323,7 +1352,7 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertEqual('fail', err._preformatted_string)
 
     def test_post_repo_init(self):
-        from bzrlib.bzrdir import RepoInitHookParams
+        from bzrlib.controldir import RepoInitHookParams
         calls = []
         bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
             calls.append, None)
@@ -1368,3 +1397,36 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
         self._transport.put_bytes("a.~1~", "some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
 
+
+class TestMeta1DirColoFormat(TestCaseWithTransport):
+    """Tests specific to the meta1 dir with colocated branches format."""
+
+    def test_supports_colo(self):
+        format = bzrdir.BzrDirMetaFormat1Colo()
+        self.assertTrue(format.colocated_branches)
+
+    def test_upgrade_from_2a(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        format = bzrdir.BzrDirMetaFormat1Colo()
+        self.assertTrue(tree.bzrdir.needs_format_conversion(format))
+        converter = tree.bzrdir._format.get_converter(format)
+        result = converter.convert(tree.bzrdir, None)
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1Colo)
+        self.assertFalse(result.needs_format_conversion(format))
+
+    def test_downgrade_to_2a(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        format = bzrdir.BzrDirMetaFormat1()
+        self.assertTrue(tree.bzrdir.needs_format_conversion(format))
+        converter = tree.bzrdir._format.get_converter(format)
+        result = converter.convert(tree.bzrdir, None)
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1)
+        self.assertFalse(result.needs_format_conversion(format))
+
+    def test_downgrade_to_2a_too_many_branches(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name="another-colocated-branch")
+        converter = tree.bzrdir._format.get_converter(
+            bzrdir.BzrDirMetaFormat1())
+        self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
+            None)

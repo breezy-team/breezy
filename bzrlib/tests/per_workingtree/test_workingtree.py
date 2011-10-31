@@ -249,7 +249,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         wt.commit('create initial state')
 
-        revid = b.revision_history()[0]
+        revid = b.last_revision()
         self.log('first revision_id is {%s}' % revid)
 
         tree = b.repository.revision_tree(revid)
@@ -623,8 +623,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # which should have pivoted the local tip into a merge
         self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
         # and the local branch history should match the masters now.
-        self.assertEqual(master_tree.branch.revision_history(),
-            tree.branch.revision_history())
+        self.assertEqual(master_tree.branch.last_revision(),
+            tree.branch.last_revision())
 
     def test_update_takes_revision_parameter(self):
         wt = self.make_branch_and_tree('wt')
@@ -1004,10 +1004,9 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             4 5-M
             |
             W
-         """
-        builder = branchbuilder.BranchBuilder(
-            self.get_transport(),
-            format=self.workingtree_format._matchingbzrdir)
+        """
+        format = self.workingtree_format.get_controldir_for_branch()
+        builder = self.make_branch_builder(".", format=format)
         builder.start_series()
         # mainline
         builder.build_snapshot(

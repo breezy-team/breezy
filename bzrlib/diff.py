@@ -27,9 +27,9 @@ import subprocess
 import tempfile
 
 from bzrlib import (
-    bzrdir,
-    cmdline,
     cleanup,
+    cmdline,
+    controldir,
     errors,
     osutils,
     patiencediff,
@@ -39,6 +39,7 @@ from bzrlib import (
     )
 
 from bzrlib.workingtree import WorkingTree
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.registry import (
@@ -355,7 +356,7 @@ def get_trees_and_branches_to_diff_locked(
     if old_url is None:
         old_url = default_location
     working_tree, branch, relpath = \
-        bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
+        controldir.ControlDir.open_containing_tree_or_branch(old_url)
     lock_tree_or_branch(working_tree, branch)
     if consider_relpath and relpath != '':
         if working_tree is not None and apply_view:
@@ -369,7 +370,7 @@ def get_trees_and_branches_to_diff_locked(
         new_url = default_location
     if new_url != old_url:
         working_tree, branch, relpath = \
-            bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
+            controldir.ControlDir.open_containing_tree_or_branch(new_url)
         lock_tree_or_branch(working_tree, branch)
         if consider_relpath and relpath != '':
             if working_tree is not None and apply_view:
@@ -393,7 +394,7 @@ def get_trees_and_branches_to_diff_locked(
             if view_files:
                 specific_files = view_files
                 view_str = views.view_display_str(view_files)
-                note("*** Ignoring files outside view. View is %s" % view_str)
+                note(gettext("*** Ignoring files outside view. View is %s") % view_str)
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None

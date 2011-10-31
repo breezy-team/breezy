@@ -233,6 +233,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 except:
                     builder.abort()
                     raise
+                else:
+                    builder.commit("msg")
             self.assertRaises(errors.RootMissing, do_commit)
         finally:
             tree.unlock()
@@ -1278,7 +1280,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            osutils.delete_any(path)
+            if osutils.file_kind(path) == "directory":
+                osutils.rmtree(path)
+            else:
+                osutils.delete_any(path)
             make_after(path)
 
         self._add_commit_change_check_changed(tree, path, change_kind,
@@ -1289,16 +1294,26 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=True)
 
     def test_last_modified_dir_file_ric(self):
-        self._check_kind_change(self.make_dir, self.make_file,
-            expect_fs_hash=True,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_file,
+                expect_fs_hash=True,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to file")
 
     def test_last_modified_dir_link(self):
         self._check_kind_change(self.make_dir, self.make_link)
 
     def test_last_modified_dir_link_ric(self):
-        self._check_kind_change(self.make_dir, self.make_link,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_link,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to link")
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,

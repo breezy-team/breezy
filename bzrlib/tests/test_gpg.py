@@ -20,10 +20,16 @@
 # import system imports here
 import sys
 
-from bzrlib import errors, ui
-import bzrlib.gpg as gpg
-from bzrlib.tests import TestCase
-from bzrlib.tests import features
+from bzrlib import (
+    errors,
+    gpg,
+    trace,
+    ui,
+    )
+from bzrlib.tests import (
+    TestCase,
+    features,
+    )
 
 class FakeConfig(object):
 
@@ -476,8 +482,14 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
     def test_set_acceptable_keys_unknown(self):
         self.requireFeature(features.gpgme)
         my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.notes = []
+        def note(*args):
+            self.notes.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'note', note)
         my_gpg.set_acceptable_keys("unknown")
         self.assertEqual(my_gpg.acceptable_keys, [])
+        self.assertEqual(self.notes,
+            ['No GnuPG key results for pattern: unknown'])
 
 
 class TestDisabled(TestCase):

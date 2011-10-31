@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     gpg,
     merge,
+    osutils,
     urlutils,
     transport,
     remote,
@@ -76,9 +77,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = self.get_branch()
         br.fetch(wt.branch)
         br.generate_revision_history('rev3')
-        rh = br.revision_history()
-        self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
-        for revision_id in rh:
+        for revision_id in ['rev3', 'rev2', 'rev1']:
             self.assertIsInstance(revision_id, str)
         last = br.last_revision()
         self.assertEqual('rev3', last)
@@ -114,10 +113,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a.add('vla', 'file2')
         tree_a.commit('rev2', rev_id='rev2')
 
-        delta = tree_a.branch.get_revision_delta(1)
+        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
+            (2, 5, 0)), tree_a.branch.get_revision_delta, 1)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('foo', 'file1', 'file')], delta.added)
-        delta = tree_a.branch.get_revision_delta(2)
+        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
+            (2, 5, 0)), tree_a.branch.get_revision_delta, 2)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
@@ -215,6 +216,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
         self.assertEqual(['non:existent@rev--ision--0--2'],
@@ -228,6 +232,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_record_two_ghosts(self):
         """Recording with all ghosts works."""
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable("repository format does not "
+                "support ghosts")
         wt.set_parent_ids([
                 'foo@azkhazan-123123-abcabc',
                 'wibble@fofof--20050401--1928390812',
@@ -245,78 +252,18 @@ class TestBranch(per_branch.TestCaseWithBranch):
                           self.get_branch().repository.get_revision,
                           None)
 
-# TODO 20051003 RBC:
-# compare the gpg-to-sign info for a commit with a ghost and
-#     an identical tree without a ghost
-# fetch missing should rewrite the TOC of weaves to list newly available parents.
-
-    def test_sign_existing_revision(self):
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        from bzrlib.testament import Testament
-        strategy = gpg.LoopbackGPGStrategy(None)
-        branch.repository.lock_write()
-        branch.repository.start_write_group()
-        branch.repository.sign_revision('A', strategy)
-        branch.repository.commit_write_group()
-        branch.repository.unlock()
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(branch.repository,
-                         'A').as_short_text() +
-                         '-----END PSEUDO-SIGNED CONTENT-----\n',
-                         branch.repository.get_signature_text('A'))
-
-    def test_store_signature(self):
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        branch.lock_write()
-        try:
-            branch.repository.start_write_group()
-            try:
-                branch.repository.store_revision_signature(
-                    gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
-            except:
-                branch.repository.abort_write_group()
-                raise
-            else:
-                branch.repository.commit_write_group()
-        finally:
-            branch.unlock()
-        # A signature without a revision should not be accessible.
-        self.assertRaises(errors.NoSuchRevision,
-                          branch.repository.has_signature_for_revision_id,
-                          'A')
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
-                         'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
-                         branch.repository.get_signature_text('A'))
-
-    def test_branch_keeps_signatures(self):
-        wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
-        repo = wt.branch.repository
-        repo.lock_write()
-        repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
-        repo.commit_write_group()
-        repo.unlock()
-        #FIXME: clone should work to urls,
-        # wt.clone should work to disks.
-        self.build_tree(['target/'])
-        d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
-        self.assertEqual(repo.get_signature_text('A'),
-                         d2.open_repository().get_signature_text('A'))
-
-    def test_nicks(self):
-        """Test explicit and implicit branch nicknames.
+    def test_nicks_bzr(self):
+        """Test the behaviour of branch nicks specific to bzr branches.
 
         Nicknames are implicitly the name of the branch's directory, unless an
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
+
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
+        if not isinstance(branch, _mod_branch.BzrBranch):
+            raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
         # Move the branch to a different directory, 'bzr.ab'.  Now that branch
@@ -334,6 +281,24 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = _mod_branch.Branch.open(self.get_url('integration'))
+        self.assertEqual(branch.nick, "Aaron's branch")
+        branch.nick = u"\u1234"
+        self.assertEqual(branch.nick, u"\u1234")
+
+    def test_nicks(self):
+        """Test explicit and implicit branch nicknames.
+
+        A nickname is always available, whether set explicitly or not.
+        """
+        t = self.get_transport()
+        branch = self.make_branch('bzr.dev')
+        # An implicit nick name is set; what it is exactly depends on the
+        # format.
+        self.assertIsInstance(branch.nick, basestring)
+        # Set the branch nick explicitly.
+        branch.nick = "Aaron's branch"
+        # Because the nick has been set explicitly, the nick is now always
+        # "Aaron's branch".
         self.assertEqual(branch.nick, "Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
@@ -365,14 +330,45 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.branch_format.initialize(repo.bzrdir, name='branch2')
         self.assertEquals(2, len(repo.bzrdir.list_branches()))
 
-    def test_create_open_branch_uses_repository(self):
+    def test_create_append_revisions_only(self):
         try:
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             return
+        for val in (True, False):
+            try:
+                branch = self.branch_format.initialize(repo.bzrdir,
+                    append_revisions_only=True)
+            except (errors.UninitializableFormat, errors.UpgradeRequired):
+                # branch references are not default init'able and
+                # not all branches support append_revisions_only
+                return
+            self.assertEquals(True, branch.get_append_revisions_only())
+            repo.bzrdir.destroy_branch()
+
+    def test_get_set_append_revisions_only(self):
+        branch = self.make_branch('.')
+        if branch._format.supports_set_append_revisions_only():
+            branch.set_append_revisions_only(True)
+            self.assertTrue(branch.get_append_revisions_only())
+            branch.set_append_revisions_only(False)
+            self.assertFalse(branch.get_append_revisions_only())
+        else:
+            self.assertRaises(errors.UpgradeRequired,
+                branch.set_append_revisions_only, True)
+            self.assertFalse(branch.get_append_revisions_only())
+
+    def test_create_open_branch_uses_repository(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            raise tests.TestNotApplicable("requires shared repository support")
         child_transport = repo.bzrdir.root_transport.clone('child')
         child_transport.mkdir('.')
-        child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
+        try:
+            child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable("control dir format not initializable")
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -401,16 +397,25 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Create a fake revision history easily."""
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
-        orig_history = tree.branch.revision_history()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        orig_history = list(
+            graph.iter_lefthand_ancestry(
+                tree.branch.last_revision(), [revision.NULL_REVISION]))
         rev2 = tree.commit('bar', allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
-        self.assertEqual(orig_history, tree.branch.revision_history())
+        self.assertEqual(orig_history, list(
+            graph.iter_lefthand_ancestry(
+                tree.branch.last_revision(), [revision.NULL_REVISION])))
 
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('foo')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         tree.branch.generate_revision_history(revision.NULL_REVISION)
-        self.assertEqual([], tree.branch.revision_history())
+        self.assertEqual(revision.NULL_REVISION, tree.branch.last_revision())
 
     def test_create_checkout(self):
         tree_a = self.make_branch_and_tree('a')
@@ -437,7 +442,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
         # open the branch via a readonly transport
-        source_branch = _mod_branch.Branch.open(self.get_readonly_url('a'))
+        url = self.get_readonly_url(urlutils.basename(tree_a.branch.base))
+        t = transport.get_transport_from_url(url)
+        if not tree_a.branch.bzrdir._format.supports_transport(t):
+            raise tests.TestNotApplicable("format does not support transport")
+        source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
@@ -449,7 +458,12 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
         # open the branch via a readonly transport
-        source_branch = _mod_branch.Branch.open(self.get_readonly_url('a'))
+        url = self.get_readonly_url(
+            osutils.basename(tree_a.branch.base.rstrip('/')))
+        t = transport.get_transport_from_url(url)
+        if not tree_a.branch.bzrdir._format.supports_transport(t):
+            raise tests.TestNotApplicable("format does not support transport")
+        source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
@@ -462,10 +476,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br = tree.branch
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, ["rev1"])
-        self.assertEquals(br.revision_history(), ["rev1"])
+        self.assertEquals(br.last_revision(), "rev1")
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, [])
-        self.assertEquals(br.revision_history(), [])
+        self.assertEquals(br.last_revision(), 'null:')
 
     def test_heads_to_fetch(self):
         # heads_to_fetch is a method that returns a collection of revids that
@@ -509,6 +523,12 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)
 
+    def get_get_config_calls(self):
+        # Smoke test that all branch succeed getting a config
+        br = self.make_branch('.')
+        br.get_config()
+        br.get_config_stack()
+
 
 class ChrootedTests(per_branch.TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
@@ -531,6 +551,9 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
                           _mod_branch.Branch.open_containing,
                           self.get_readonly_url('g/p/q'))
         branch = self.make_branch('.')
+        if not branch.bzrdir._format.supports_transport(
+            transport.get_transport_from_url(self.get_readonly_url('.'))):
+            raise tests.TestNotApplicable("format does not support transport")
         branch, relpath = _mod_branch.Branch.open_containing(
             self.get_readonly_url(''))
         self.assertEqual('', relpath)
@@ -837,12 +860,14 @@ class TestIgnoreFallbacksParameter(per_branch.TestCaseWithBranch):
     def test_fallbacks_not_opened(self):
         stacked = self.make_branch_with_fallback()
         self.get_transport('').rename('fallback', 'moved')
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
 
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
-        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
+        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened = reopened_dir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
 
 
@@ -856,8 +881,9 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
             tree.add_reference(subtree)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
-        reference_parent = tree.branch.reference_parent('subtree-id',
-                                                        'subtree')
+        reference_parent = tree.branch.reference_parent(
+            'subtree-id',
+            urlutils.relative_url(tree.branch.user_url, subtree.branch.user_url))
         self.assertEqual(subtree.branch.base, reference_parent.base)
 
     def test_reference_parent_accepts_possible_transports(self):
@@ -869,7 +895,9 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
         reference_parent = tree.branch.reference_parent('subtree-id',
-            'subtree', possible_transports=[subtree.bzrdir.root_transport])
+            urlutils.relative_url(
+                tree.branch.user_url, subtree.branch.user_url),
+            possible_transports=[subtree.bzrdir.root_transport])
 
     def test_get_reference_info(self):
         branch = self.make_branch('branch')
@@ -1042,7 +1070,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
 
 class TestBranchControlComponent(per_branch.TestCaseWithBranch):
     """Branch implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         br = self.make_branch('branch')
         self.assertIsInstance(br.user_url, str)

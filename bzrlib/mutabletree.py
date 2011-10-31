@@ -71,7 +71,7 @@ class MutableTree(tree.Tree):
     conformance tests for - rather we are testing MemoryTree specifically, and
     interface testing implementations of WorkingTree.
 
-    A mutable tree always has an associated Branch and BzrDir object - the
+    A mutable tree always has an associated Branch and ControlDir object - the
     branch and bzrdir attributes.
     """
     def __init__(self, *args, **kw):
@@ -260,7 +260,7 @@ class MutableTree(tree.Tree):
         :param more_warning: Details about what is happening.
         """
         if strict is None:
-            strict = self.branch.get_config().get_user_option_as_bool(opt_name)
+            strict = self.branch.get_config_stack().get(opt_name)
         if strict is not False:
             err_class = None
             if (self.has_changes()):
@@ -746,9 +746,10 @@ class _SmartAddHelper(object):
                 # which is perhaps reasonable: adding a new reference is a
                 # special operation and can have a special behaviour.  mbp
                 # 20070306
-                trace.mutter("%r is a nested bzr tree", abspath)
+                trace.warning("skipping nested tree %r", abspath)
             else:
-                this_ie = self._add_one_and_parent(parent_ie, directory, kind, inv_path)
+                this_ie = self._add_one_and_parent(parent_ie, directory, kind,
+                    inv_path)
 
             if kind == 'directory' and not sub_tree:
                 if this_ie.kind != 'directory':

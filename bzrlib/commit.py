@@ -72,7 +72,7 @@ from bzrlib.trace import mutter, note, is_quiet
 from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.urlutils import unescape_for_display
-
+from bzrlib.i18n import gettext
 
 class NullCommitReporter(object):
     """I report on progress of a commit."""
@@ -113,7 +113,7 @@ class ReportCommitToLog(NullCommitReporter):
         note(format, *args)
 
     def snapshot_change(self, change, path):
-        if path == '' and change in ('added', 'modified'):
+        if path == '' and change in (gettext('added'), gettext('modified')):
             return
         self._note("%s %s", change, path)
 
@@ -127,10 +127,10 @@ class ReportCommitToLog(NullCommitReporter):
                                    "to started.", DeprecationWarning,
                                    stacklevel=2)
             location = ''
-        self._note('Committing%s', location)
+        self._note(gettext('Committing%s'), location)
 
     def completed(self, revno, rev_id):
-        self._note('Committed revision %d.', revno)
+        self._note(gettext('Committed revision %d.'), revno)
         # self._note goes to the console too; so while we want to log the
         # rev_id, we can't trivially only log it. (See bug 526425). Long
         # term we should rearrange the reporting structure, but for now
@@ -139,10 +139,10 @@ class ReportCommitToLog(NullCommitReporter):
         mutter('Committed revid %s as revno %d.', rev_id, revno)
 
     def deleted(self, path):
-        self._note('deleted %s', path)
+        self._note(gettext('deleted %s'), path)
 
     def missing(self, path):
-        self._note('missing %s', path)
+        self._note(gettext('missing %s'), path)
 
     def renamed(self, change, old_path, new_path):
         self._note('%s %s => %s', change, old_path, new_path)
@@ -468,8 +468,8 @@ class Commit(object):
                 self.master_branch.tags)
             if tag_conflicts:
                 warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note("Conflicting tags in bound branch:\n" +
-                    "\n".join(warning_lines))
+                note( gettext("Conflicting tags in bound branch:\n{0}".format(
+                    "\n".join(warning_lines))) )
 
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such
@@ -695,6 +695,8 @@ class Commit(object):
                 # Reset the new path (None) and new versioned flag (False)
                 change = (change[0], (change[1][0], None), change[2],
                     (change[3][0], False)) + change[4:]
+                new_path = change[1][1]
+                versioned = False
             elif kind == 'tree-reference':
                 if self.recursive == 'down':
                     self._commit_nested_tree(change[0], change[1][1])
@@ -704,15 +706,15 @@ class Commit(object):
                     if new_path is None:
                         reporter.deleted(old_path)
                     elif old_path is None:
-                        reporter.snapshot_change('added', new_path)
+                        reporter.snapshot_change(gettext('added'), new_path)
                     elif old_path != new_path:
-                        reporter.renamed('renamed', old_path, new_path)
+                        reporter.renamed(gettext('renamed'), old_path, new_path)
                     else:
                         if (new_path or 
                             self.work_tree.branch.repository._format.rich_root_data):
                             # Don't report on changes to '' in non rich root
                             # repositories.
-                            reporter.snapshot_change('modified', new_path)
+                            reporter.snapshot_change(gettext('modified'), new_path)
             self._next_progress_entry()
         # Unversion IDs that were found to be deleted
         self.deleted_ids = deleted_ids
@@ -941,7 +943,7 @@ class Commit(object):
             self.reporter.renamed(change, old_path, path)
             self._next_progress_entry()
         else:
-            if change == 'unchanged':
+            if change == gettext('unchanged'):
                 return
             self.reporter.snapshot_change(change, path)
             self._next_progress_entry()
@@ -963,10 +965,10 @@ class Commit(object):
 
     def _emit_progress(self):
         if self.pb_entries_count is not None:
-            text = "%s [%d] - Stage" % (self.pb_stage_name,
+            text = gettext("{0} [{1}] - Stage").format(self.pb_stage_name,
                 self.pb_entries_count)
         else:
-            text = "%s - Stage" % (self.pb_stage_name, )
+            text = gettext("%s - Stage") % (self.pb_stage_name, )
         self.pb.update(text, self.pb_stage_count, self.pb_stage_total)
 
     def _set_specific_file_ids(self):

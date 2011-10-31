@@ -31,21 +31,11 @@ from bzrlib import (
     trace,
     ui,
     )
+from bzrlib.i18n import (
+    gettext, 
+    ngettext,
+    )
 """)
-
-class i18n:
-    """this class is ready to use bzrlib.i18n but bzrlib.i18n is not ready to
-    use so here is a stub until it is"""
-    @staticmethod
-    def gettext(string):
-        return string
-        
-    @staticmethod
-    def ngettext(single, plural, number):
-        if number == 1:
-            return single
-        else:
-            return plural
 
 #verification results
 SIGNATURE_VALID = 0
@@ -123,31 +113,31 @@ class LoopbackGPGStrategy(object):
         return (count, result, all_verifiable)
 
     def valid_commits_message(self, count):
-        return i18n.gettext(u"{0} commits with valid signatures").format(
+        return gettext(u"{0} commits with valid signatures").format(
                                         count[SIGNATURE_VALID])            
 
     def unknown_key_message(self, count):
-        return i18n.ngettext(u"{0} commit with unknown key",
+        return ngettext(u"{0} commit with unknown key",
                              u"{0} commits with unknown keys",
                              count[SIGNATURE_KEY_MISSING]).format(
                                         count[SIGNATURE_KEY_MISSING])
 
     def commit_not_valid_message(self, count):
-        return i18n.ngettext(u"{0} commit not valid",
+        return ngettext(u"{0} commit not valid",
                              u"{0} commits not valid",
                              count[SIGNATURE_NOT_VALID]).format(
                                             count[SIGNATURE_NOT_VALID])
 
     def commit_not_signed_message(self, count):
-        return i18n.ngettext(u"{0} commit not signed",
+        return ngettext(u"{0} commit not signed",
                              u"{0} commits not signed",
                              count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
 
     def expired_commit_message(self, count):
-        return i18n.ngettext(u"{0} commit with key now expired",
-                             u"{0} commits with key now expired",
-                             count[SIGNATURE_EXPIRED]).format(
+        return ngettext(u"{0} commit with key now expired",
+                        u"{0} commits with key now expired",
+                        count[SIGNATURE_EXPIRED]).format(
                                         count[SIGNATURE_EXPIRED])
 
 
@@ -324,7 +314,7 @@ class GPGStrategy(object):
                 acceptable_keys_config = str(acceptable_keys_config)
         except UnicodeEncodeError:
             #gpg Context.keylist(pattern) does not like unicode
-            raise errors.BzrCommandError('Only ASCII permitted in option names')
+            raise errors.BzrCommandError(gettext('Only ASCII permitted in option names'))
 
         if acceptable_keys_config is not None:
             key_patterns = acceptable_keys_config
@@ -342,8 +332,8 @@ class GPGStrategy(object):
                     self.acceptable_keys.append(key.subkeys[0].fpr)
                     trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
                 if not found_key:
-                    trace.note(i18n.gettext(
-                            "No GnuPG key results for pattern: {}"
+                    trace.note(gettext(
+                            "No GnuPG key results for pattern: {0}"
                                 ).format(pattern))
 
     def do_verifications(self, revisions, repository,
@@ -386,7 +376,7 @@ class GPGStrategy(object):
                 signers[uid] += 1
         result = []
         for uid, number in signers.items():
-             result.append( i18n.ngettext(u"{0} signed {1} commit", 
+             result.append( ngettext(u"{0} signed {1} commit", 
                              u"{0} signed {1} commits",
                              number).format(uid, number) )
         return result
@@ -403,7 +393,7 @@ class GPGStrategy(object):
                 signers[authors] += 1
         result = []
         for authors, number in signers.items():
-            result.append( i18n.ngettext(u"{0} commit by author {1}", 
+            result.append( ngettext(u"{0} commit by author {1}", 
                                  u"{0} commits by author {1}",
                                  number).format(number, authors) )
         return result
@@ -419,7 +409,7 @@ class GPGStrategy(object):
                 signers[authors] += 1
         result = []
         for authors, number in signers.items():
-            result.append( i18n.ngettext(u"{0} commit by author {1}", 
+            result.append( ngettext(u"{0} commit by author {1}", 
                                  u"{0} commits by author {1}",
                                  number).format(number, authors) )
         return result
@@ -433,7 +423,7 @@ class GPGStrategy(object):
                 signers[fingerprint] += 1
         result = []
         for fingerprint, number in signers.items():
-            result.append( i18n.ngettext(u"Unknown key {0} signed {1} commit", 
+            result.append( ngettext(u"Unknown key {0} signed {1} commit", 
                                  u"Unknown key {0} signed {1} commits",
                                  number).format(fingerprint, number) )
         return result
@@ -451,43 +441,43 @@ class GPGStrategy(object):
                 fingerprint_to_authors[fingerprint] = authors
         result = []
         for fingerprint, number in signers.items():
-            result.append( i18n.ngettext(u"{0} commit by author {1} with "\
-                                          "key {2} now expired", 
-                                 u"{0} commits by author {1} with key {2} now "\
-                                  "expired",
-                                 number).format(number,
+            result.append(ngettext(u"{0} commit by author {1} with "\
+                                    "key {2} now expired", 
+                                   u"{0} commits by author {1} with key {2} now "\
+                                    "expired",
+                                    number).format(number,
                             fingerprint_to_authors[fingerprint], fingerprint) )
         return result
 
     def valid_commits_message(self, count):
         """returns message for number of commits"""
-        return i18n.gettext(u"{0} commits with valid signatures").format(
+        return gettext(u"{0} commits with valid signatures").format(
                                         count[SIGNATURE_VALID])
 
     def unknown_key_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit with unknown key",
-                             u"{0} commits with unknown keys",
-                             count[SIGNATURE_KEY_MISSING]).format(
+        return ngettext(u"{0} commit with unknown key",
+                        u"{0} commits with unknown keys",
+                        count[SIGNATURE_KEY_MISSING]).format(
                                         count[SIGNATURE_KEY_MISSING])
 
     def commit_not_valid_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit not valid",
-                             u"{0} commits not valid",
-                             count[SIGNATURE_NOT_VALID]).format(
+        return ngettext(u"{0} commit not valid",
+                        u"{0} commits not valid",
+                        count[SIGNATURE_NOT_VALID]).format(
                                             count[SIGNATURE_NOT_VALID])
 
     def commit_not_signed_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit not signed",
-                             u"{0} commits not signed",
-                             count[SIGNATURE_NOT_SIGNED]).format(
+        return ngettext(u"{0} commit not signed",
+                        u"{0} commits not signed",
+                        count[SIGNATURE_NOT_SIGNED]).format(
                                         count[SIGNATURE_NOT_SIGNED])
 
     def expired_commit_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit with key now expired",
-                             u"{0} commits with key now expired",
-                             count[SIGNATURE_EXPIRED]).format(
-                                        count[SIGNATURE_EXPIRED])
+        return ngettext(u"{0} commit with key now expired",
+                        u"{0} commits with key now expired",
+                        count[SIGNATURE_EXPIRED]).format(
+                                    count[SIGNATURE_EXPIRED])

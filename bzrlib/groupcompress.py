@@ -39,6 +39,7 @@ from bzrlib import (
     )
 
 from bzrlib.repofmt import pack_repo
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.btree_index import BTreeBuilder
@@ -1754,8 +1755,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 raise errors.RevisionNotPresent(record.key, self)
             if random_id:
                 if record.key in inserted_keys:
-                    trace.note('Insert claimed random_id=True,'
-                               ' but then inserted %r two times', record.key)
+                    trace.note(gettext('Insert claimed random_id=True,'
+                               ' but then inserted %r two times'), record.key)
                     continue
                 inserted_keys.add(record.key)
             if reuse_blocks:
