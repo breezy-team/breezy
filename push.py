@@ -164,6 +164,13 @@ class InterToLocalGitRepository(InterToGitRepository):
         self.target_store = self.target._git.object_store
         self.target_refs = self.target._git.refs
 
+    def _commit_needs_fetching(self, sha_id):
+        try:
+            return (sha_id not in self.target_store)
+        except errors.NoSuchRevision:
+            # Ghost, can't push
+            return False
+
     def _revision_needs_fetching(self, sha_id, revid):
         if revid == NULL_REVISION:
             return False
@@ -172,11 +179,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 sha_id = self.source_store._lookup_revision_sha1(revid)
             except KeyError:
                 return False
-        try:
-            return (sha_id not in self.target_store)
-        except errors.NoSuchRevision:
-            # Ghost, can't push
-            return False
+        return self._commit_needs_fetching(sha_id)
 
     def missing_revisions(self, stop_revisions):
         """Find the revisions that are missing from the target repository.
@@ -189,12 +192,15 @@ class InterToLocalGitRepository(InterToGitRepository):
         """
         revid_sha_map = {}
         stop_revids = []
-        stop_sha1s = []
         for (sha1, revid) in stop_revisions:
             if sha1 is not None and revid is not None:
                 revid_sha_map[revid] = sha1
+                stop_revids.append(revid)
             elif sha1 is not None:
-                stop_sha1s.append(sha1)
+                if self._commit_needs_fetching(sha1):
+                    for (kind, (revid, tree_sha, verifiers)) in self.source_store.lookup_git_sha(sha1):
+                        revid_sha_map[revid] = sha1
+                        stop_revids.append(revid)
             else:
                 assert revid is not None
                 stop_revids.append(revid)
@@ -210,14 +216,6 @@ class InterToLocalGitRepository(InterToGitRepository):
                     missing.append(revid)
         finally:
             pb.finished()
-        for sha1 in stop_sha1s:
-            try:
-                for (kind, (revid, tree_sha, verifiers)) in self.source_store.lookup_git_sha(sha1):
-                    assert revid is not None
-                    missing.append(revid)
-                    revid_sha_map[revid] = sha1
-            except KeyError:
-                continue
         return graph.iter_topo_order(missing)
 
     def _get_target_bzr_refs(self):

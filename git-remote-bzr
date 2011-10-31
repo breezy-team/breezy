@@ -131,7 +131,7 @@ def fetch(wants, shortname, remote_dir, local_dir):
         for (sha1, ref) in wants:
             ret[ref] = (sha1, None)
         return ret
-    inter.fetch_refs(update_refs, lossy=False)
+    inter.fetch_refs(update_refs, lossy=True)
     sys.stdout.write("\n")
     sys.stdout.flush()
 
