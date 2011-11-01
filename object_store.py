@@ -291,7 +291,11 @@ class PackTupleIterable(object):
 
     def __init__(self, store):
         self.store = store
+        self.store.lock_read()
         self.objects = {}
+
+    def __del__(self):
+        self.store.unlock()
 
     def add(self, sha, path):
         self.objects[sha] = path
