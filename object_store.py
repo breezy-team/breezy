@@ -715,7 +715,6 @@ class BazaarObjectStore(BaseObjectStore):
 
         graph = self.repository.get_graph()
         todo = _find_missing_bzr_revids(graph, pending, processed)
-        trace.mutter('sending revisions %r', todo)
         ret = PackTupleIterable(self)
         pb = ui.ui_factory.nested_progress_bar()
         try:
