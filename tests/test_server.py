@@ -16,10 +16,20 @@
 
 """Test for git server."""
 
+from dulwich.client import TCPGitClient
+from dulwich.repo import Repo
+import threading
+
+from bzrlib import trace
 from bzrlib.transport import transport_server_registry
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
+    )
+
+from bzrlib.plugins.git.server import (
+    BzrBackend,
+    TCPGitServer,
     )
 
 class TestPresent(TestCase):
@@ -27,3 +37,30 @@ class TestPresent(TestCase):
     def test_present(self):
         # Just test that the server is registered.
         transport_server_registry.get('git')
+
+
+class GitServerTestCase(TestCaseWithTransport):
+
+    def start_server(self, t):
+        backend = BzrBackend(t)
+        server = TCPGitServer(backend, 'localhost', port=0)
+        self.addCleanup(server.shutdown)
+        thread = threading.Thread(target=server.serve).start()
+        self._server = server
+        _, port = self._server.socket.getsockname()
+        return port
+
+
+class TestPlainFetch(GitServerTestCase):
+
+    def test_fetch_simple(self):
+        wt = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        wt.add('foo')
+        wt.commit(message="some data")
+        t = self.get_transport('t')
+        port = self.start_server(t)
+        c = TCPGitClient('localhost', port=port)
+        gitrepo = Repo.init('gitrepo', mkdir=True)
+        refs = c.fetch('/', gitrepo)
+        self.assertEquals(refs.keys(), ["HEAD", "refs/heads/master"])

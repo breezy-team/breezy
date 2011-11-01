@@ -18,6 +18,8 @@
 
 from dulwich.server import TCPGitServer
 
+from bzrlib import trace
+
 from bzrlib.bzrdir import (
     BzrDir,
     )
@@ -46,8 +48,9 @@ class BzrBackend(Backend):
 
     def open_repository(self, path):
         # FIXME: More secure path sanitization
-        return BzrBackendRepo(self.transport.clone(path.lstrip("/")),
-            self.mapping)
+        transport = self.transport.clone(path.lstrip("/"))
+        trace.mutter('client opens %r: %r', path, transport)
+        return BzrBackendRepo(transport, self.mapping)
 
 
 class BzrBackendRepo(BackendRepo):
@@ -59,21 +62,23 @@ class BzrBackendRepo(BackendRepo):
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
         self.refs = BazaarRefsContainer(self.repo_dir, self.object_store)
-        self._refs = self.refs.as_dict() # Much faster for now..
 
     def get_refs(self):
-        return self._refs
+        self.object_store.lock_read()
+        try:
+            return self.refs.as_dict()
+        finally:
+            self.object_store.unlock()
 
     def get_peeled(self, name):
         return self.get_refs()[name]
 
     def fetch_objects(self, determine_wants, graph_walker, progress,
         get_tagged=None):
-        """ yield git objects to send to client """
-
-        wants = determine_wants(self.get_refs())
+        """Yield git objects to send to client """
         self.object_store.lock_read()
         try:
+            wants = determine_wants(self.get_refs())
             have = self.object_store.find_common_revisions(graph_walker)
             return self.object_store.generate_pack_contents(have, wants, progress,
                 get_tagged)
