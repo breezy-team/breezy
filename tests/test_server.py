@@ -20,7 +20,6 @@ from dulwich.client import TCPGitClient
 from dulwich.repo import Repo
 import threading
 
-from bzrlib import trace
 from bzrlib.transport import transport_server_registry
 from bzrlib.tests import (
     TestCase,
@@ -57,10 +56,13 @@ class TestPlainFetch(GitServerTestCase):
         wt = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
         wt.add('foo')
-        wt.commit(message="some data")
+        revid = wt.commit(message="some data")
+        wt.branch.tags.set_tag("atag", revid)
         t = self.get_transport('t')
         port = self.start_server(t)
         c = TCPGitClient('localhost', port=port)
         gitrepo = Repo.init('gitrepo', mkdir=True)
         refs = c.fetch('/', gitrepo)
-        self.assertEquals(refs.keys(), ["HEAD", "refs/heads/master"])
+        self.assertEquals(
+            set(refs.keys()),
+            set(["refs/tags/atag", "HEAD", "refs/heads/master"]))
