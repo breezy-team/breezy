@@ -1,5 +1,13 @@
 0.6.4	UNRELEASED
 
+ FIXES
+
+  * Fix and test fetching from "bzr serve --git". (Jelmer Vernooij)
+
+  * Raise UnsupportedOperation for `Branch.revision_id_to_dotted_revno`,
+    making it possible to run ``bzr tags`` against remote git repositories.
+    (Jelmer Vernooij, #858942)
+
 0.6.3	2011-11-01
 
  FIXES

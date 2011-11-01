@@ -468,7 +468,10 @@ class RemoteGitBranch(GitBranch):
         return self.base
 
     def revision_history(self):
-        raise GitSmartRemoteNotSupported(self.last_revision_info, self)
+        raise GitSmartRemoteNotSupported(self.revision_history, self)
+
+    def revision_id_to_revno(self, revision_id):
+        raise GitSmartRemoteNotSupported(self.revision_id_to_revno, self)
 
     def last_revision(self):
         return self.lookup_foreign_revision_id(self.head)
