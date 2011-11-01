@@ -34,6 +34,7 @@ from bzrlib import (
     errors,
     revision,
     urlutils,
+    version_info as bzrlib_version,
     )
 from bzrlib.branch import (
     Branch,
@@ -48,6 +49,7 @@ from bzrlib.repository import (
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
+from bzrlib.tests import TestSkipped
 
 from bzrlib.plugins.git import (
     branch,
@@ -65,10 +67,14 @@ class TestGitBranch(tests.TestCaseInTempDir):
 
     def test_open_by_ref(self):
         GitRepo.init('.')
-        d = BzrDir.open("%s,ref=%s" % (
+        url = "%s,ref=%s" % (
             urlutils.local_path_to_url(self.test_dir),
             urllib.quote("refs/remotes/origin/unstable", safe='')
-            ))
+            )
+        if bzrlib_version < (2, 5, 0):
+            self.assertRaises(errors.NotBranchError, BzrDir.open, url)
+            raise TestSkipped("opening by ref not supported with bzr < 2.5")
+        d = BzrDir.open(url)
         b = d.create_branch()
         self.assertEquals(b.ref, "refs/remotes/origin/unstable")
 
@@ -115,8 +121,12 @@ class TestGitBranch(tests.TestCaseInTempDir):
         revb = r.do_commit("b", committer="Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
-        self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
-                         self.applyDeprecated(deprecated_in((2, 5, 0)), thebranch.revision_history))
+        if bzrlib_version >= (2, 5, 0):
+            self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
+                             self.applyDeprecated(deprecated_in((2, 5, 0)), thebranch.revision_history))
+        else:
+            self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
+                thebranch.revision_history())
 
     def test_tag_annotated(self):
         reva = self.simple_commit_a()

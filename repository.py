@@ -25,6 +25,7 @@ from bzrlib import (
     repository,
     revision,
     transactions,
+    version_info as bzrlib_version,
     )
 from bzrlib.decorators import only_raises
 try:
@@ -114,8 +115,15 @@ class GitRepository(ForeignRepository):
     chk_bytes = None
 
     def __init__(self, gitdir):
+        if bzrlib_version >= (2, 5):
+            control_files = None
+        else:
+            class DummyControlFiles(object):
+                def __init__(self):
+                    self._transport = gitdir.root_transport
+            control_files = DummyControlFiles()
         super(GitRepository, self).__init__(GitRepositoryFormat(),
-            gitdir, None)
+            gitdir, control_files)
         self._transport = gitdir.root_transport
         from bzrlib.plugins.git import fetch, push
         for optimiser in [fetch.InterRemoteGitNonGitRepository,
