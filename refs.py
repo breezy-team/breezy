@@ -179,3 +179,18 @@ class BazaarRefsContainer(RefsContainer):
             target_branch.generate_revision_history(rev_id)
         finally:
             target_branch.unlock()
+
+
+def get_refs_container(controldir, object_store):
+    repo = controldir.find_repository()
+    git_repo = getattr(repo, "_git", None)
+    if git_repo is not None:
+        return git_repo.refs
+    return BazaarRefsContainer(controldir, object_store)
+
+
+def get_refs(repo, object_store=None):
+    cb = getattr(repo, "get_refs", None)
+    if cb is not None:
+        return cb()
+    return BazaarRefsContainer(repo.bzrdir, object_store).as_dict()

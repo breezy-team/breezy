@@ -244,6 +244,9 @@ class LocalGitRepository(GitRepository):
         self._git = gitdir._git
         self._file_change_scanner = GitFileLastChangeScanner(self)
 
+    def get_refs(self):
+        return self._git.get_refs()
+
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):

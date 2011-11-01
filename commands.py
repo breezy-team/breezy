@@ -202,7 +202,7 @@ class cmd_git_refs(Command):
             BzrDir,
             )
         from bzrlib.plugins.git.refs import (
-            BazaarRefsContainer,
+            get_refs,
             )
         from bzrlib.plugins.git.object_store import (
             get_object_store,
@@ -212,8 +212,8 @@ class cmd_git_refs(Command):
         object_store = get_object_store(repo)
         object_store.lock_read()
         try:
-            refs = BazaarRefsContainer(bzrdir, object_store)
-            for k, v in refs.as_dict().iteritems():
+            refs = get_refs(repo)
+            for k, v in refs.iteritems():
                 self.outf.write("%s -> %s\n" % (k, v))
         finally:
             object_store.unlock()

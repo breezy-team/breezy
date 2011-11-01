@@ -55,8 +55,11 @@ from bzrlib.plugins.git.object_store import (
     get_object_store,
     )
 from bzrlib.plugins.git.refs import (
-    BazaarRefsContainer,
+    get_refs,
     ref_to_branch_name,
+    )
+from bzrlib.plugins.git.repository import (
+    GitRepository,
     )
 
 try:
@@ -82,8 +85,8 @@ def cmd_list(argv, name, remote_dir):
     object_store = get_object_store(repo)
     object_store.lock_read()
     try:
-        refs = BazaarRefsContainer(remote_dir, object_store)
-        for ref, git_sha1 in refs.as_dict().iteritems():
+        refs = get_refs(repo, object_store)
+        for ref, git_sha1 in refs.iteritems():
             sys.stdout.write("%s %s\n" % (git_sha1, ref))
         sys.stdout.write("\n")
     finally:
@@ -138,7 +141,12 @@ def fetch(wants, shortname, remote_dir, local_dir):
         for (sha1, ref) in wants:
             ret[ref] = (sha1, None)
         return ret
-    inter.fetch_refs(update_refs, lossy=True)
+    if (isinstance(remote_repo, GitRepository) and
+        isinstance(local_repo, GitRepository)):
+        lossy = False
+    else:
+        lossy = True
+    inter.fetch_refs(update_refs, lossy=lossy)
     sys.stdout.write("\n")
     sys.stdout.flush()
 

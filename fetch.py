@@ -35,6 +35,7 @@ import stat
 
 from bzrlib import (
     debug,
+    errors,
     osutils,
     trace,
     ui,
@@ -764,7 +765,23 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 class InterGitGitRepository(InterFromGitRepository):
     """InterRepository that copies between Git repositories."""
 
-    def fetch_objects(self, determine_wants, mapping, pb=None):
+    def fetch_refs(self, update_refs, lossy=False):
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
+        old_refs = self.target._git.get_refs()
+        ref_changes = {}
+        def determine_wants(heads):
+            old_refs = dict([(k, (v, None)) for (k, v) in heads.iteritems()])
+            new_refs = update_refs(old_refs)
+            ref_changes.update(new_refs)
+            return [sha1 for (sha1, bzr_revid) in new_refs.itervalues()]
+        self.fetch_objects(determine_wants)
+        for k, (git_sha, bzr_revid) in ref_changes.iteritems():
+            self.target._git.refs[k] = git_sha
+        new_refs = self.target._git.get_refs()
+        return None, old_refs, new_refs
+
+    def fetch_objects(self, determine_wants, mapping=None, pb=None):
         def progress(text):
             trace.note("git: %s", text)
         graphwalker = self.target._git.get_graph_walker()
@@ -778,9 +795,9 @@ class InterGitGitRepository(InterFromGitRepository):
             raise NotImplementedError
         elif (isinstance(self.source, RemoteGitRepository) and
               isinstance(self.target, LocalGitRepository)):
-            f, commit = self.target._git.object_store.add_thin_pack()
+            f, commit = self.target._git.object_store.add_pack()
             try:
-                refs = self.source.bzrdir.root_transport.fetch_pack(
+                refs = self.source.bzrdir.fetch_pack(
                     determine_wants, graphwalker, f.write, progress)
                 commit()
                 return (None, None, refs)
@@ -788,7 +805,8 @@ class InterGitGitRepository(InterFromGitRepository):
                 f.close()
                 raise
         else:
-            raise AssertionError
+            raise AssertionError("fetching between %r and %r not supported" %
+                    (self.source, self.target))
 
     def _target_has_shas(self, shas):
         return set([sha for sha in shas if self.target._git.object_store])

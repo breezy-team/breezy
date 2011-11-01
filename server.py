@@ -28,10 +28,10 @@ from bzrlib.plugins.git.mapping import (
     default_mapping,
     )
 from bzrlib.plugins.git.object_store import (
-    get_object_store
+    get_object_store,
     )
 from bzrlib.plugins.git.refs import (
-    BazaarRefsContainer,
+    get_refs_container,
     )
 
 from dulwich.server import (
@@ -61,7 +61,7 @@ class BzrBackendRepo(BackendRepo):
         self.repo_dir = BzrDir.open_from_transport(self.transport)
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
-        self.refs = BazaarRefsContainer(self.repo_dir, self.object_store)
+        self.refs = get_refs_container(self.repo_dir, self.object_store)
 
     def get_refs(self):
         self.object_store.lock_read()

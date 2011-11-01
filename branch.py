@@ -314,7 +314,7 @@ class GitBranchFormat(branch.BranchFormat):
         return ForeignTestsBranchFactory()
 
     def make_tags(self, branch):
-        if getattr(branch.repository, "get_refs", None) is not None:
+        if getattr(branch.repository, "_git", None) is None:
             from bzrlib.plugins.git.remote import RemoteGitTagDict
             return RemoteGitTagDict(branch)
         else:
