@@ -210,10 +210,10 @@ class LocalGitTagDict(GitTags):
 
     def __init__(self, branch):
         super(LocalGitTagDict, self).__init__(branch)
-        self.refs = self.repository._git.refs
+        self.refs = self.repository.bzrdir._git.refs
 
     def get_refs(self):
-        return self.repository._git.get_refs()
+        return self.refs.as_dict()
 
     def _iter_tag_refs(self, refs):
         """Iterate over the tag refs.
@@ -490,7 +490,7 @@ class LocalGitBranch(GitBranch):
     def __init__(self, bzrdir, repository, ref, tagsdict=None):
         super(LocalGitBranch, self).__init__(bzrdir, repository, ref,
               tagsdict)
-        refs = repository._git.get_refs()
+        refs = bzrdir.get_refs()
         if not (ref in refs.keys() or "HEAD" in refs.keys()):
             raise errors.NotBranchError(self.base)
 

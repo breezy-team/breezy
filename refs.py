@@ -189,8 +189,8 @@ def get_refs_container(controldir, object_store):
     return BazaarRefsContainer(controldir, object_store)
 
 
-def get_refs(repo, object_store=None):
-    cb = getattr(repo, "get_refs", None)
+def get_refs(controldir, object_store=None):
+    cb = getattr(controldir, "get_refs", None)
     if cb is not None:
         return cb()
-    return BazaarRefsContainer(repo.bzrdir, object_store).as_dict()
+    return BazaarRefsContainer(controldir, object_store).as_dict()

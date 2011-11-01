@@ -85,7 +85,7 @@ def cmd_list(argv, name, remote_dir):
     object_store = get_object_store(repo)
     object_store.lock_read()
     try:
-        refs = get_refs(repo, object_store)
+        refs = get_refs(remote_dir, object_store)
         for ref, git_sha1 in refs.iteritems():
             sys.stdout.write("%s %s\n" % (git_sha1, ref))
         sys.stdout.write("\n")

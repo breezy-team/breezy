@@ -569,7 +569,7 @@ class InterFromGitRepository(InterRepository):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             git_shas.append(git_sha)
         walker = Walker(self.source._git.object_store,
-            include=git_shas, exclude=[sha for sha in self.target._git.get_refs().values() if sha != ZERO_SHA])
+            include=git_shas, exclude=[sha for sha in self.target.bzrdir.get_refs().values() if sha != ZERO_SHA])
         missing_revids = set()
         for entry in walker:
             missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
@@ -729,7 +729,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         """See `InterGitNonGitRepository`."""
-        remote_refs = self.source._git.get_refs()
+        remote_refs = self.source.bzrdir.get_refs()
         wants = determine_wants(remote_refs)
         create_pb = None
         if pb is None:
@@ -768,7 +768,7 @@ class InterGitGitRepository(InterFromGitRepository):
     def fetch_refs(self, update_refs, lossy=False):
         if lossy:
             raise errors.LossyPushToSameVCS(self.source, self.target)
-        old_refs = self.target._git.get_refs()
+        old_refs = self.target.bzrdir.get_refs()
         ref_changes = {}
         def determine_wants(heads):
             old_refs = dict([(k, (v, None)) for (k, v) in heads.iteritems()])
@@ -778,7 +778,7 @@ class InterGitGitRepository(InterFromGitRepository):
         self.fetch_objects(determine_wants)
         for k, (git_sha, bzr_revid) in ref_changes.iteritems():
             self.target._git.refs[k] = git_sha
-        new_refs = self.target._git.get_refs()
+        new_refs = self.target.bzrdir.get_refs()
         return None, old_refs, new_refs
 
     def fetch_objects(self, determine_wants, mapping=None, pb=None):

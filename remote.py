@@ -205,6 +205,7 @@ class RemoteGitDir(GitDir):
         self._get_client = get_client
         self._client_path = client_path
         self.base = self.root_transport.base
+        self._refs = None
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
@@ -264,6 +265,13 @@ class RemoteGitDir(GitDir):
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
+
+    def get_refs(self):
+        if self._refs is not None:
+            return self._refs
+        self._refs = self.fetch_pack(lambda x: [], None,
+            lambda x: None, lambda x: trace.mutter("git: %s" % x))
+        return self._refs
 
 
 class EmptyObjectStoreIterator(dict):
@@ -378,7 +386,6 @@ class RemoteGitRepository(GitRepository):
 
     def __init__(self, gitdir):
         GitRepository.__init__(self, gitdir)
-        self._refs = None
 
     @property
     def base(self):
@@ -390,13 +397,6 @@ class RemoteGitRepository(GitRepository):
 
     def get_parent_map(self, revids):
         raise GitSmartRemoteNotSupported(self.get_parent_map, self)
-
-    def get_refs(self):
-        if self._refs is not None:
-            return self._refs
-        self._refs = self.bzrdir.fetch_pack(lambda x: [], None,
-            lambda x: None, lambda x: trace.mutter("git: %s" % x))
-        return self._refs
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
@@ -438,7 +438,7 @@ class RemoteGitRepository(GitRepository):
 class RemoteGitTagDict(GitTags):
 
     def get_refs(self):
-        return self.repository.get_refs()
+        return self.repository.bzrdir.get_refs()
 
     def _iter_tag_refs(self, refs):
         for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
@@ -477,7 +477,7 @@ class RemoteGitBranch(GitBranch):
     def head(self):
         if self._sha is not None:
             return self._sha
-        refs = self.repository.get_refs()
+        refs = self.bzrdir.get_refs()
         name = branch_name_to_ref(self.name, "HEAD")
         try:
             self._sha = refs[name]

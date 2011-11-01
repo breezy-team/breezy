@@ -212,7 +212,7 @@ class cmd_git_refs(Command):
         object_store = get_object_store(repo)
         object_store.lock_read()
         try:
-            refs = get_refs(repo)
+            refs = get_refs(bzrdir)
             for k, v in refs.iteritems():
                 self.outf.write("%s -> %s\n" % (k, v))
         finally:

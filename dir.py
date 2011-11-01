@@ -184,6 +184,11 @@ class GitDir(ControlDir):
         """
         return self.open_repository()
 
+    def get_refs(self):
+        """Retrieve the refs as a dictionary.
+        """
+        raise NotImplementedError(self.get_refs)
+
 
 class LocalGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
@@ -522,3 +527,5 @@ class LocalGitDir(GitDir):
             self._find_creation_modes()
         return self._dir_mode
 
+    def get_refs(self):
+        return self._git.get_refs()
