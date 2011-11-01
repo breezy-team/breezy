@@ -221,13 +221,19 @@ class BzrGitCacheFormat(object):
             isinstance(repo_transport, LocalTransport)):
             # Even if we don't write to this repo, we should be able
             # to update its cache.
-            repo_transport = remove_readonly_transport_decorator(repo_transport)
             try:
-                repo_transport.mkdir('git')
-            except bzrlib.errors.FileExists:
-                pass
-            transport = repo_transport.clone('git')
+                repo_transport = remove_readonly_transport_decorator(repo_transport)
+            except bzrlib.errors.ReadOnlyError:
+                transport = None
+            else:
+                try:
+                    repo_transport.mkdir('git')
+                except bzrlib.errors.FileExists:
+                    pass
+                transport = repo_transport.clone('git')
         else:
+            transport = None
+        if transport is None:
             transport = get_remote_cache_transport(repository)
         return cls.from_transport(transport)
 
@@ -981,7 +987,10 @@ def migrate_ancient_formats(repo_transport):
 
 def remove_readonly_transport_decorator(transport):
     if transport.is_readonly():
-        return transport._decorated
+        try:
+            return transport._decorated
+        except AttributeError:
+            raise bzrlib.errors.ReadOnlyError(transport)
     return transport
 
 
@@ -996,5 +1005,8 @@ def from_repository(repository):
     """
     repo_transport = getattr(repository, "_transport", None)
     if repo_transport is not None:
-        migrate_ancient_formats(repo_transport)
+        try:
+            migrate_ancient_formats(repo_transport)
+        except bzrlib.errors.ReadOnlyError:
+            pass # Not much we can do
     return BzrGitCacheFormat.from_repository(repository)
