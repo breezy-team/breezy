@@ -86,13 +86,21 @@ class BzrBackendRepo(BackendRepo):
             self.object_store.unlock()
 
 
+class BzrTCPGitServer(TCPGitServer):
+
+    def handle_error(self, request, client_address):
+        trace.log_exception_quietly()
+        trace.warning('Exception happened during processing of request '
+                      'from %s', client_address)
+
+
 def serve_git(transport, host=None, port=None, inet=False):
     backend = BzrBackend(transport)
 
     if host is None:
         host = 'localhost'
     if port:
-        server = TCPGitServer(backend, host, port)
+        server = BzrTCPGitServer(backend, host, port)
     else:
-        server = TCPGitServer(backend, host)
+        server = BzrTCPGitServer(backend, host)
     server.serve_forever()
