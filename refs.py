@@ -150,9 +150,12 @@ class BazaarRefsContainer(RefsContainer):
                 keys.add(ref)
                 if getattr(branch, "name", None) is None:
                     keys.add("HEAD")
-            for tag_name, revid in branch.tags.get_tag_dict().iteritems():
-                if repo.has_revision(revid):
-                    keys.add(tag_name_to_ref(tag_name))
+            try:
+                for tag_name, revid in branch.tags.get_tag_dict().iteritems():
+                    if repo.has_revision(revid):
+                        keys.add(tag_name_to_ref(tag_name))
+            except errors.TagsNotSupported:
+                pass
         return keys
 
     def __delitem__(self, ref):
