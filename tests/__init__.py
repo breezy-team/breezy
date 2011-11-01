@@ -205,6 +205,7 @@ def test_suite():
         'test_refs',
         'test_revspec',
         'test_roundtrip',
+        'test_server',
         'test_transportgit',
         'test_unpeel_map',
         'test_workingtree',
