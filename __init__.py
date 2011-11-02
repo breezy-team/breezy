@@ -426,6 +426,14 @@ def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,
     update_git_cache(master_branch.repository, new_revid)
 
 
+def loggerhead_git_hook(branch_app, environ):
+    branch = branch_app.branch
+    if branch.get_config().get_user_option('http_git') != 'True':
+        return None
+    from bzrlib.plugins.git.server import git_http_hook
+    return git_http_hook(branch, environ['REQUEST_METHOD'],
+        environ['PATH_INFO'])
+
 try:
     from bzrlib.hooks import install_lazy_named_hook
 except ImportError: # Compatibility with bzr < 2.4
@@ -434,6 +442,9 @@ else:
     install_lazy_named_hook("bzrlib.branch",
         "Branch.hooks", "post_commit", post_commit_update_cache,
         "git cache")
+    install_lazy_named_hook("bzrlib.plugins.loggerhead.apps.branch",
+        "BranchWSGIApp.hooks", "controller",
+        loggerhead_git_hook, "git support")
 
 
 def test_suite():
