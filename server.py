@@ -80,6 +80,8 @@ class BzrBackendRepo(BackendRepo):
         try:
             wants = determine_wants(self.get_refs())
             have = self.object_store.find_common_revisions(graph_walker)
+            if wants is None:
+                return
             return self.object_store.generate_pack_contents(have, wants, progress,
                 get_tagged)
         finally:
@@ -104,3 +106,23 @@ def serve_git(transport, host=None, port=None, inet=False):
     else:
         server = BzrTCPGitServer(backend, host)
     server.serve_forever()
+
+
+def git_http_hook(branch, method, path):
+    from dulwich.web import HTTPGitApplication, HTTPGitRequest, DEFAULT_HANDLERS
+    handler = None
+    for (smethod, spath) in HTTPGitApplication.services:
+        if smethod != method:
+            continue
+        mat = spath.search(path)
+        if mat:
+            handler = HTTPGitApplication.services[smethod, spath]
+            break
+    if handler is None:
+        return None
+    backend = BzrBackend(branch.user_transport)
+    def git_call(environ, start_response):
+        req = HTTPGitRequest(environ, start_response, dumb=False,
+                             handlers=DEFAULT_HANDLERS)
+        return handler(req, backend, mat)
+    return git_call

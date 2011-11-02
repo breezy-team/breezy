@@ -20,7 +20,6 @@ from dulwich.client import TCPGitClient
 from dulwich.repo import Repo
 import threading
 
-from bzrlib import trace
 from bzrlib.transport import transport_server_registry
 from bzrlib.tests import (
     TestCase,
@@ -29,7 +28,7 @@ from bzrlib.tests import (
 
 from bzrlib.plugins.git.server import (
     BzrBackend,
-    TCPGitServer,
+    BzrTCPGitServer,
     )
 
 class TestPresent(TestCase):
@@ -43,7 +42,7 @@ class GitServerTestCase(TestCaseWithTransport):
 
     def start_server(self, t):
         backend = BzrBackend(t)
-        server = TCPGitServer(backend, 'localhost', port=0)
+        server = BzrTCPGitServer(backend, 'localhost', port=0)
         self.addCleanup(server.shutdown)
         thread = threading.Thread(target=server.serve).start()
         self._server = server
@@ -57,10 +56,28 @@ class TestPlainFetch(GitServerTestCase):
         wt = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
         wt.add('foo')
-        wt.commit(message="some data")
+        revid = wt.commit(message="some data")
+        wt.branch.tags.set_tag("atag", revid)
         t = self.get_transport('t')
         port = self.start_server(t)
         c = TCPGitClient('localhost', port=port)
         gitrepo = Repo.init('gitrepo', mkdir=True)
         refs = c.fetch('/', gitrepo)
-        self.assertEquals(refs.keys(), ["HEAD", "refs/heads/master"])
+        self.assertEquals(
+            set(refs.keys()),
+            set(["refs/tags/atag", "HEAD", "refs/heads/master"]))
+
+    def test_fetch_nothing(self):
+        wt = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        wt.add('foo')
+        revid = wt.commit(message="some data")
+        wt.branch.tags.set_tag("atag", revid)
+        t = self.get_transport('t')
+        port = self.start_server(t)
+        c = TCPGitClient('localhost', port=port)
+        gitrepo = Repo.init('gitrepo', mkdir=True)
+        refs = c.fetch('/', gitrepo, determine_wants=lambda x: [])
+        self.assertEquals(
+            set(refs.keys()),
+            set(["refs/tags/atag", "HEAD", "refs/heads/master"]))
