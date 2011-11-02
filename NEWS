@@ -11,7 +11,8 @@
  FEATURES
 
   * Allow downloading branches over HTTP by integration into loggerhead.
-   (Jelmer Vernooij, #585822)
+    To enable, set 'http_git=True' in the branch configuration.
+    (Jelmer Vernooij, #585822)
 
 0.6.3	2011-11-01
 
