@@ -28,7 +28,7 @@ from bzrlib.tests import (
 
 from bzrlib.plugins.git.server import (
     BzrBackend,
-    TCPGitServer,
+    BzrTCPGitServer,
     )
 
 class TestPresent(TestCase):
@@ -42,7 +42,7 @@ class GitServerTestCase(TestCaseWithTransport):
 
     def start_server(self, t):
         backend = BzrBackend(t)
-        server = TCPGitServer(backend, 'localhost', port=0)
+        server = BzrTCPGitServer(backend, 'localhost', port=0)
         self.addCleanup(server.shutdown)
         thread = threading.Thread(target=server.serve).start()
         self._server = server
