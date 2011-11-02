@@ -80,6 +80,8 @@ class BzrBackendRepo(BackendRepo):
         try:
             wants = determine_wants(self.get_refs())
             have = self.object_store.find_common_revisions(graph_walker)
+            if wants is None:
+                return
             return self.object_store.generate_pack_contents(have, wants, progress,
                 get_tagged)
         finally:
