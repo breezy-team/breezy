@@ -66,3 +66,18 @@ class TestPlainFetch(GitServerTestCase):
         self.assertEquals(
             set(refs.keys()),
             set(["refs/tags/atag", "HEAD", "refs/heads/master"]))
+
+    def test_fetch_nothing(self):
+        wt = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        wt.add('foo')
+        revid = wt.commit(message="some data")
+        wt.branch.tags.set_tag("atag", revid)
+        t = self.get_transport('t')
+        port = self.start_server(t)
+        c = TCPGitClient('localhost', port=port)
+        gitrepo = Repo.init('gitrepo', mkdir=True)
+        refs = c.fetch('/', gitrepo, determine_wants=lambda x: [])
+        self.assertEquals(
+            set(refs.keys()),
+            set(["refs/tags/atag", "HEAD", "refs/heads/master"]))
