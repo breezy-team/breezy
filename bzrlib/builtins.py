@@ -5615,12 +5615,8 @@ class cmd_tags(Command):
 
         self.add_cleanup(branch.lock_read().unlock)
         if revision:
-            graph = branch.repository.get_graph()
-            rev1, rev2 = _get_revision_range(revision, branch, self.name())
-            revid1, revid2 = rev1.rev_id, rev2.rev_id
-            # only show revisions between revid1 and revid2 (inclusive)
-            tags = [(tag, revid) for tag, revid in tags if
-                graph.is_between(revid, revid1, revid2)]
+            # Restrict to the specified range
+            tags = self._tags_for_range(branch, revision)
         if sort is None:
             sort = tag_sort_methods.get()
         sort(branch, tags)
@@ -5639,6 +5635,32 @@ class cmd_tags(Command):
         self.cleanup_now()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
+
+    def _tags_for_range(self, branch, revision):
+        range_valid = True
+        rev1, rev2 = _get_revision_range(revision, branch, self.name())
+        revid1, revid2 = rev1.rev_id, rev2.rev_id
+        # _get_revision_range will always set revid2 if it's not specified.
+        # If revid1 is None, it means we want to start from the branch
+        # origin which is always a valid ancestor. If revid1 == revid2, the
+        # ancestry check is useless.
+        if revid1 and revid1 != revid2:
+            # FIXME: We really want to use the same graph than
+            # branch.iter_merge_sorted_revisions below, but this is not
+            # easily available -- vila 2011-09-23
+            if branch.repository.get_graph().is_ancestor(revid2, revid1):
+                # We don't want to output anything in this case...
+                return []
+        # only show revisions between revid1 and revid2 (inclusive)
+        tagged_revids = branch.tags.get_reverse_tag_dict()
+        found = []
+        for r in branch.iter_merge_sorted_revisions(
+            start_revision_id=revid2, stop_revision_id=revid1,
+            stop_rule='include'):
+            revid_tags = tagged_revids.get(r[0], None)
+            if revid_tags:
+                found.extend([(tag, r[0]) for tag in revid_tags])
+        return found
 
 
 class cmd_reconfigure(Command):
