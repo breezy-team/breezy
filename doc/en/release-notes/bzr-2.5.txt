@@ -37,6 +37,10 @@ Improvements
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
 
+* ``bzr serve`` now can serve from URLs rather than just from the
+  file system. I.e.: ``bzr serve -d lp:bzr`` or
+  ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
+
 * all input prompts are now char-based when possible, and can be forced to
   line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
   to 'line-based'. This replace the previous shelf UI only patch using
