@@ -8,6 +8,8 @@
     making it possible to run ``bzr tags`` against remote git repositories.
     (Jelmer Vernooij, #858942)
 
+  * Fix compatibility with bzr < 2.5. (Jelmer Vernooij, #885566)
+
  FEATURES
 
   * Allow downloading branches over HTTP by integration into loggerhead.
