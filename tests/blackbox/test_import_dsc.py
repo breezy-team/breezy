@@ -113,7 +113,7 @@ class TestImportDsc(TestBaseImportDsc):
                 self.check_inventory_shape(tree.inventory, expected_shape)
         finally:
             tree.unlock()
-        self.assertEqual(len(tree.branch.revision_history()), 3)
+        self.assertEqual(3, tree.branch.revno())
 
     def test_import_dsc(self):
         self.requireFeature(PristineTarFeature)
@@ -130,7 +130,7 @@ class TestImportDsc(TestBaseImportDsc):
                 self.check_inventory_shape(tree.inventory, expected_shape)
         finally:
             tree.unlock()
-        self.assertEqual(len(tree.branch.revision_history()), 2)
+        self.assertEqual(2, tree.branch.revno())
 
     def test_import_no_files(self):
         self.make_branch_and_tree('.')
