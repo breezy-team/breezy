@@ -32,6 +32,7 @@ except ImportError:
     from debian_bundle import deb822
 
 from bzrlib import (
+    revision as _mod_revision,
     tests,
     )
 try:
@@ -44,6 +45,19 @@ except ImportError: # bzr < 2.5
         Feature,
         SymlinkFeature,
         )
+
+## Copied from bzrlib.tests.test_fetch from bzr-2.5
+def revision_history(branch):
+    branch.lock_read()
+    try:
+        graph = branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
+    finally:
+        branch.unlock()
+    history.reverse()
+    return history
+
 
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
@@ -794,11 +808,11 @@ class DistributionBranchTests(BuilddebTestCase):
         version = self.import_a_tree()
         tree = self.up_tree1
         branch = tree.branch
-        rh = branch.revision_history()
-        self.assertEqual(len(rh), 1)
+        revno, rev_id = branch.last_revision_info()
+        self.assertEqual(revno, 1)
         self.assertEqual(self.db1.pristine_upstream_source.version_as_revisions(
-            "package", version.upstream_version), {None: rh[0]})
-        rev = branch.repository.get_revision(rh[0])
+            "package", version.upstream_version), {None: rev_id})
+        rev = branch.repository.get_revision(rev_id)
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties.get('deb-md5'), None)
@@ -832,18 +846,18 @@ class DistributionBranchTests(BuilddebTestCase):
                 { None: [self.up_tree1.branch.last_revision()] }, [(None, None, None)])
         tree = self.up_tree1
         branch = tree.branch
-        rh = branch.revision_history()
-        self.assertEqual(len(rh), 2)
+        revno, rev_id = branch.last_revision_info()
+        self.assertEqual(revno, 2)
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
                 "package", version2.upstream_version),
-            {None: rh[1]})
-        rev = branch.repository.get_revision(rh[1])
+            {None: rev_id})
+        rev = branch.repository.get_revision(rev_id)
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version2.upstream_version))
         self.assertIs(rev.properties.get('deb-md5'), None)
-        rev_tree1 = branch.repository.revision_tree(rh[0])
-        rev_tree2 = branch.repository.revision_tree(rh[1])
+        rev_tree1 = branch.repository.revision_tree(rev.parent_ids[0])
+        rev_tree2 = branch.repository.revision_tree(rev_id)
         changes = rev_tree2.changes_from(rev_tree1)
         self.check_changes(changes, added=["NEWS"], removed=["COPYING"],
                 modified=["README"])
@@ -866,11 +880,11 @@ class DistributionBranchTests(BuilddebTestCase):
                 upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
-        rh = branch.revision_history()
-        self.assertEqual(len(rh), 1)
+        revno, rev_id = branch.last_revision_info()
+        self.assertEqual(revno, 1)
         self.assertEqual(self.db1.pristine_upstream_source.version_as_revisions(
-            "package", version.upstream_version), {None: rh[0]})
-        rev = branch.repository.get_revision(rh[0])
+            "package", version.upstream_version), {None: rev_id})
+        rev = branch.repository.get_revision(rev_id)
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
@@ -894,11 +908,11 @@ class DistributionBranchTests(BuilddebTestCase):
             {}, upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
-        rh = branch.revision_history()
-        self.assertEqual(len(rh), 1)
+        revno, rev_id = branch.last_revision_info()
+        self.assertEqual(revno, 1)
         self.assertEqual(self.db1.pristine_upstream_source.version_as_revisions(
-            "package", version.upstream_version), {None: rh[0]})
-        rev = branch.repository.get_revision(rh[0])
+            "package", version.upstream_version), {None: rev_id})
+        rev = branch.repository.get_revision(rev_id)
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
@@ -943,11 +957,11 @@ class DistributionBranchTests(BuilddebTestCase):
             {}, upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
         tree = self.up_tree1
         branch = tree.branch
-        rh = branch.revision_history()
-        self.assertEqual(len(rh), 1)
+        revno, rev_id = branch.last_revision_info()
+        self.assertEqual(revno, 1)
         self.assertEqual(self.db1.pristine_upstream_source.version_as_revisions(
-            "package", version.upstream_version), {None: rh[0]})
-        rev = branch.repository.get_revision(rh[0])
+            "package", version.upstream_version), {None: rev_id})
+        rev = branch.repository.get_revision(rev_id)
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
@@ -965,8 +979,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.new_version(version2)
         builder.build()
         self.db2.import_package(builder.dsc_name())
-        self.assertEqual(len(self.up_tree2.branch.revision_history()), 2)
-        self.assertEqual(len(self.tree2.branch.revision_history()), 3)
+        self.assertEqual(self.up_tree2.branch.revno(), 2)
+        self.assertEqual(self.tree2.branch.revno(), 3)
 
     def test_import_package_init_upstream_from_other(self):
         self.requireFeature(PristineTarFeature)
@@ -980,8 +994,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.new_version(version2)
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        self.assertEqual(len(self.up_tree1.branch.revision_history()), 1)
-        self.assertEqual(len(self.tree1.branch.revision_history()), 3)
+        self.assertEqual(self.up_tree1.branch.revno(), 1)
+        self.assertEqual(self.tree1.branch.revno(), 3)
 
     def import_package_single(self):
         version1 = Version("0.1-1")
@@ -990,8 +1004,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_default_control()
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        self.assertEqual(len(self.up_tree1.branch.revision_history()), 1)
-        self.assertEqual(len(self.tree1.branch.revision_history()), 2)
+        self.assertEqual(self.up_tree1.branch.revno(), 1)
+        self.assertEqual(self.tree1.branch.revno(), 2)
 
     def test_import_package_double(self):
         self.requireFeature(PristineTarFeature)
@@ -1016,8 +1030,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.remove_debian_file("COPYING")
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh = self.tree1.branch.revision_history()
-        up_rh = self.up_tree1.branch.revision_history()
+        rh = revision_history(self.tree1.branch)
+        up_rh = revision_history(self.up_tree1.branch)
         self.assertEqual(len(up_rh), 2)
         self.assertEqual(len(rh), 3)
         self.assertEqual(rh[0], up_rh[0])
@@ -1069,10 +1083,10 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_default_control()
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        rh2 = self.tree2.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
-        up_rh2 = self.up_tree2.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        rh2 = revision_history(self.tree2.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
+        up_rh2 = revision_history(self.up_tree2.branch)
         self.assertEqual(len(rh1), 2)
         self.assertEqual(len(rh2), 2)
         self.assertEqual(len(up_rh1), 1)
@@ -1118,10 +1132,10 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.build()
         self.db1.import_package(builder.dsc_name())
         self.db2.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        rh2 = self.tree2.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
-        up_rh2 = self.up_tree2.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        rh2 = revision_history(self.tree2.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
+        up_rh2 = revision_history(self.up_tree2.branch)
         self.assertEqual(len(rh1), 3)
         self.assertEqual(len(rh2), 4)
         self.assertEqual(len(up_rh1), 2)
@@ -1161,10 +1175,10 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.build()
         self.db1.import_package(builder.dsc_name())
         self.db2.import_package(builder.dsc_name())
-        self.assertEqual(3, len(self.tree1.branch.revision_history()))
-        self.assertEqual(2, len(self.up_tree1.branch.revision_history()))
-        self.assertEqual(3, len(self.tree2.branch.revision_history()))
-        self.assertEqual(2, len(self.up_tree2.branch.revision_history()))
+        self.assertEqual(3, self.tree1.branch.revno())
+        self.assertEqual(2, self.up_tree1.branch.revno())
+        self.assertEqual(3, self.tree2.branch.revno())
+        self.assertEqual(2, self.up_tree2.branch.revno())
         self.assertEqual(self.tree1.last_revision(),
                 self.tree2.last_revision())
         self.assertEqual(self.up_tree1.last_revision(),
@@ -1188,14 +1202,14 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_default_control()
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
-        self.assertEqual(len(rh1), 1)
-        self.assertEqual(len(up_rh1), 0)
+        revno1, rev_id1 = self.tree1.branch.last_revision_info()
+        up_revno1, up_rev_id1 = self.up_tree1.branch.last_revision_info()
+        self.assertEqual(revno1, 1)
+        self.assertEqual(up_revno1, 0)
         self.tree1.lock_read()
         self.addCleanup(self.tree1.unlock)
         self.assertTrue(self.db1.is_version_native(version))
-        revtree = self.tree1.branch.repository.revision_tree(rh1[0])
+        revtree = self.tree1.branch.repository.revision_tree(rev_id1)
         config_fileid, current_config = self.db1._default_config_for_tree(revtree)
         self.assertTrue(self.db1._is_tree_native(current_config))
 
@@ -1214,8 +1228,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_debian_file("NEWS")
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
         self.assertEqual(len(rh1), 2)
         self.assertEqual(len(up_rh1), 0)
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[0])
@@ -1245,8 +1259,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_upstream_file("README", "bar")
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
         self.assertEqual(len(rh1), 2)
         self.assertEqual(len(up_rh1), 0)
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[0])
@@ -1280,8 +1294,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_upstream_file("NEWS")
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
         self.assertEqual(len(rh1), 3)
         self.assertEqual(len(up_rh1), 1)
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
@@ -1316,8 +1330,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_upstream_file("NEWS")
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
         self.assertEqual(len(rh1), 2)
         self.assertEqual(len(up_rh1), 2)
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[0])
@@ -1369,8 +1383,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.new_version(version3)
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
         self.assertEqual(len(rh1), 4)
         self.assertEqual(len(up_rh1), 1)
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
@@ -1418,8 +1432,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.new_version(version3)
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
         self.assertEqual(len(rh1), 4)
         self.assertEqual(len(up_rh1), 2)
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
@@ -1475,8 +1489,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.new_version(version3)
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
         self.assertEqual(len(rh1), 4)
         self.assertEqual(len(up_rh1), 2)
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
@@ -1528,10 +1542,10 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.build()
         self.db1.import_package(builder.dsc_name())
         self.db2.import_package(builder.dsc_name())
-        rh1 = self.tree1.branch.revision_history()
-        up_rh1 = self.up_tree1.branch.revision_history()
-        rh2 = self.tree2.branch.revision_history()
-        up_rh2 = self.up_tree2.branch.revision_history()
+        rh1 = revision_history(self.tree1.branch)
+        up_rh1 = revision_history(self.up_tree1.branch)
+        rh2 = revision_history(self.tree2.branch)
+        up_rh2 = revision_history(self.up_tree2.branch)
         self.assertEqual(3, len(rh1))
         self.assertEqual(2, len(up_rh1))
         self.assertEqual(4, len(rh2))
@@ -1694,8 +1708,8 @@ class DistributionBranchTests(BuilddebTestCase):
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: upstream_rev})
-        rh1 = tree.branch.revision_history()
-        self.assertEqual(2, len(rh1))
+        revno1, rev_id1 = tree.branch.last_revision_info()
+        self.assertEqual(2, revno1)
         packaging_upstream_tip = tree.get_parent_ids()[1]
         # We added the extra parent for the upstream branch
         revtree = tree.branch.repository.revision_tree(packaging_upstream_tip)
