@@ -126,11 +126,11 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEqual(db1.pristine_upstream_source.has_version("package", v4), False)
 
         # The ubuntu upstream branch tip.
-        ubuu_tip = ubuu.branch.revision_history()[-1]
+        ubuu_tip = ubuu.branch.last_revision()
         # The debian upstream branch tip.
-        debu_tip = debu.branch.revision_history()[-1]
+        debu_tip = debu.branch.last_revision()
         # The ubuntu packaging branch tip.
-        ubup_tip_pre_fix = ubup.branch.revision_history()[-1]
+        ubup_tip_pre_fix = ubup.branch.last_revision()
 
         # The first conflict is resolved by calling fix_ancestry_as_needed().
         upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(ubup, debp.branch)
@@ -150,7 +150,7 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEqual(db2.pristine_upstream_source.has_version("package", v4), True)
 
         # Now let's take a look at the fixed ubuntu packaging branch.
-        ubup_tip_post_fix = ubup.branch.revision_history()[-1]
+        ubup_tip_post_fix = ubup.branch.last_revision()
         ubup_parents_post_fix = ubup.branch.repository.revision_tree(ubup_tip_post_fix).get_parent_ids()
 
         # The tip of the fixed ubuntu packaging branch has 2 parents.
