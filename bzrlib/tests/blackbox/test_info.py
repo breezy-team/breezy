@@ -22,6 +22,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     info,
     osutils,
@@ -187,7 +188,7 @@ Repository:
         branch1.bzrdir.sprout('bound')
         knit1_format = bzrdir.format_registry.make_bzrdir('knit')
         upgrade.upgrade('bound', knit1_format)
-        branch3 = bzrdir.BzrDir.open('bound').open_branch()
+        branch3 = controldir.ControlDir.open('bound').open_branch()
         branch3.bind(branch1)
         bound_tree = branch3.bzrdir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
@@ -232,7 +233,7 @@ Repository:
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
-        branch4 = bzrdir.BzrDir.create_branch_convenience('checkout',
+        branch4 = controldir.ControlDir.create_branch_convenience('checkout',
             format=knit1_format)
         branch4.bind(branch1)
         branch4.bzrdir.open_workingtree().update()
@@ -529,8 +530,8 @@ Repository:
 
         # Create branch inside shared repository
         repo.bzrdir.root_transport.mkdir('branch')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch',
-            format=format)
+        branch1 = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=format)
         out, err = self.run_bzr('info -v repo/branch')
         self.assertEqualDiff(
 """Repository branch (format: dirstate or knit)
@@ -803,7 +804,7 @@ Repository:
 
         # Create two branches
         repo.bzrdir.root_transport.mkdir('branch1')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch1',
+        branch1 = controldir.ControlDir.create_branch_convenience('repo/branch1',
             format=format)
         branch2 = branch1.bzrdir.sprout('repo/branch2').open_branch()
 
@@ -1221,13 +1222,13 @@ Repository:
                                     format=bzrdir.BzrDirMetaFormat1())
         repo.set_make_working_trees(False)
         repo.bzrdir.root_transport.mkdir('branch')
-        repo_branch = repo.bzrdir.create_branch_convenience('repo/branch',
-                                    format=bzrdir.BzrDirMetaFormat1())
+        repo_branch = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=bzrdir.BzrDirMetaFormat1())
         # Do a heavy checkout
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
-        co_branch = bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-            format=bzrdir.BzrDirMetaFormat1())
+        co_branch = controldir.ControlDir.create_branch_convenience(
+            'tree/checkout', format=bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')

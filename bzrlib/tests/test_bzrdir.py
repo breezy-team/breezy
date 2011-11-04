@@ -1352,7 +1352,7 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertEqual('fail', err._preformatted_string)
 
     def test_post_repo_init(self):
-        from bzrlib.bzrdir import RepoInitHookParams
+        from bzrlib.controldir import RepoInitHookParams
         calls = []
         bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
             calls.append, None)

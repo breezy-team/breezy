@@ -1718,10 +1718,7 @@ class TestCase(testtools.TestCase):
         return result
 
     def _startLogFile(self):
-        """Send bzr and test log messages to a temporary file.
-
-        The file is removed as the test is torn down.
-        """
+        """Setup a in-memory target for bzr and testcase log messages"""
         pseudo_log_file = StringIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
@@ -1734,14 +1731,13 @@ class TestCase(testtools.TestCase):
         self.addCleanup(self._finishLogFile)
 
     def _finishLogFile(self):
-        """Finished with the log file.
-
-        Close the file and delete it.
-        """
+        """Flush and dereference the in-memory log for this testcase"""
         if trace._trace_file:
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
+        # The logging module now tracks references for cleanup so discard ours
+        del self._log_memento
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -2581,16 +2577,13 @@ class TestCaseWithMemoryTransport(TestCase):
         real branch.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        try:
-            # Make sure we get a readable and accessible home for .bzr.log
-            # and/or config files, and not fallback to weird defaults (see
-            # http://pad.lv/825027).
-            self.assertIs(None, os.environ.get('BZR_HOME', None))
-            os.environ['BZR_HOME'] = root
-            wt = bzrdir.BzrDir.create_standalone_workingtree(root)
-            del os.environ['BZR_HOME']
-        except Exception, e:
-            self.fail("Fail to initialize the safety net: %r\nExiting\n" % (e,))
+        # Make sure we get a readable and accessible home for .bzr.log
+        # and/or config files, and not fallback to weird defaults (see
+        # http://pad.lv/825027).
+        self.assertIs(None, os.environ.get('BZR_HOME', None))
+        os.environ['BZR_HOME'] = root
+        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        del os.environ['BZR_HOME']
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
@@ -3495,7 +3488,9 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, 0)
+                pid, status = os.waitpid(self.pid, 0)
+            # GZ 2011-10-18: If status is nonzero, should report to the result
+            #                that something went wrong.
 
     test_blocks = partition_tests(suite, concurrency)
     # Clear the tests from the original suite so it doesn't keep them alive
@@ -3507,24 +3502,26 @@ def fork_for_tests(suite):
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
-            workaround_zealous_crypto_random()
             try:
+                stream = os.fdopen(c2pwrite, 'wb', 1)
+                workaround_zealous_crypto_random()
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
                 # read from stdin (otherwise its a roulette to see what
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
-                # GZ 2011-06-16: Why set stdin to None? Breaks multi fork.
-                #sys.stdin = None
-                stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = AutoTimingTestResultDecorator(
                     SubUnitBzrProtocolClient(stream))
                 process_suite.run(subunit_result)
-            finally:
-                # GZ 2011-06-16: Is always exiting with silent success
-                #                really the right thing? Hurts debugging.
-                os._exit(0)
+            except:
+                # Try and report traceback on stream, but exit with error even
+                # if stream couldn't be created or something else goes wrong
+                try:
+                    traceback.print_exc(file=stream)
+                finally:
+                    os._exit(1)
+            os._exit(0)
         else:
             os.close(c2pwrite)
             stream = os.fdopen(c2pread, 'rb', 1)

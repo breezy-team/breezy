@@ -30,7 +30,6 @@ import warnings
 from testtools import (
     ExtendedToOriginalDecorator,
     MultiTestResult,
-    __version__ as testtools_version,
     )
 from testtools.content import Content
 from testtools.content_type import ContentType
@@ -1063,31 +1062,20 @@ class TestRunner(tests.TestCase):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
         runner = tests.TextTestRunner(stream=StringIO())
         result = self.run_test_runner(runner, Test("test_truth"))
-        if testtools_version[:3] <= (0, 9, 11):
-            self.assertContainsRe(runner.stream.getvalue(),
-                "=+\n"
-                "FAIL: \\S+\.test_truth\n"
-                "-+\n"
-                "(?:.*\n)*"
-                "No absolute truth\n"
-                "(?:.*\n)*"
-                "-+\n"
-                "Ran 1 test in .*\n"
-                "\n"
-                "FAILED \\(failures=1\\)\n\\Z")
-        else:
-            self.assertContainsRe(runner.stream.getvalue(),
-                "=+\n"
-                "FAIL: \\S+\.test_truth\n"
-                "-+\n"
-                "Empty attachments:\n"
-                "  log\n"
-                "\n"
-                "reason: {{{No absolute truth}}}\n"
-                "-+\n"
-                "Ran 1 test in .*\n"
-                "\n"
-                "FAILED \\(failures=1\\)\n\\Z")
+        self.assertContainsRe(runner.stream.getvalue(),
+            "=+\n"
+            "FAIL: \\S+\.test_truth\n"
+            "-+\n"
+            "(?:.*\n)*"
+            "\\s*(?:Text attachment: )?reason"
+            "(?:\n-+\n|: {{{)"
+            "No absolute truth"
+            "(?:\n-+\n|}}}\n)"
+            "(?:.*\n)*"
+            "-+\n"
+            "Ran 1 test in .*\n"
+            "\n"
+            "FAILED \\(failures=1\\)\n\\Z")
 
     def test_result_decorator(self):
         # decorate results
@@ -1252,14 +1240,11 @@ class TestRunner(tests.TestCase):
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
-        if testtools_version[:3] > (0, 9, 11):
-            self.assertContainsRe(out.getvalue(), "log: {{{\d+\.\d+  \\\\u2606}}}")
-        else:
-            self.assertContainsRe(out.getvalue(),
-                "Text attachment: log\n"
-                "-+\n"
-                "\d+\.\d+  \\\\u2606\n"
-                "-+\n")
+        self.assertContainsRe(out.getvalue(),
+            "(?:Text attachment: )?log"
+            "(?:\n-+\n|: {{{)"
+            "\d+\.\d+  \\\\u2606"
+            "(?:\n-+\n|}}}\n)")
 
 
 class SampleTestCase(tests.TestCase):
@@ -1744,16 +1729,16 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_fail')
         self.assertEqual(1, len(result.failures))
         result_content = result.failures[0][1]
-        if testtools_version < (0, 9, 12):
-            self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertContainsRe(result_content, 'this was a failing test')
 
     def test_error_has_log(self):
         result = self._run_test('test_error')
         self.assertEqual(1, len(result.errors))
         result_content = result.errors[0][1]
-        if testtools_version < (0, 9, 12):
-            self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertContainsRe(result_content, 'this test errored')
 
     def test_skip_has_no_log(self):
@@ -1778,7 +1763,8 @@ class TestTestCaseLogDetails(tests.TestCase):
         result = self._run_test('test_xfail')
         self.assertEqual(1, len(result.expectedFailures))
         result_content = result.expectedFailures[0][1]
-        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertNotContainsRe(result_content, 'test with expected failure')
 
     def test_unexpected_success_has_log(self):
@@ -2193,7 +2179,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         self.assertNotContainsRe(content, 'test with expected failure')
         self.assertEqual(1, len(result.expectedFailures))
         result_content = result.expectedFailures[0][1]
-        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content,
+            '(?m)^(?:Text attachment: )?log(?:$|: )')
         self.assertNotContainsRe(result_content, 'test with expected failure')
 
     def test_unexpected_success_has_log(self):
@@ -3315,7 +3302,66 @@ class TestRunSuite(tests.TestCase):
         self.assertLength(1, calls)
 
 
-class TestUncollectedWarnings(tests.TestCase):
+class _Selftest(object):
+    """Mixin for tests needing full selftest output"""
+
+    def _inject_stream_into_subunit(self, stream):
+        """To be overridden by subclasses that run tests out of process"""
+
+    def _run_selftest(self, **kwargs):
+        sio = StringIO()
+        self._inject_stream_into_subunit(sio)
+        tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
+        return sio.getvalue()
+
+
+class _ForkedSelftest(_Selftest):
+    """Mixin for tests needing full selftest output with forked children"""
+
+    _test_needs_features = [features.subunit]
+
+    def _inject_stream_into_subunit(self, stream):
+        """Monkey-patch subunit so the extra output goes to stream not stdout
+
+        Some APIs need rewriting so this kind of bogus hackery can be replaced
+        by passing the stream param from run_tests down into ProtocolTestCase.
+        """
+        from subunit import ProtocolTestCase
+        _original_init = ProtocolTestCase.__init__
+        def _init_with_passthrough(self, *args, **kwargs):
+            _original_init(self, *args, **kwargs)
+            self._passthrough = stream
+        self.overrideAttr(ProtocolTestCase, "__init__", _init_with_passthrough)
+
+    def _run_selftest(self, **kwargs):
+        # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
+        if getattr(os, "fork", None) is None:
+            raise tests.TestNotApplicable("Platform doesn't support forking")
+        # Make sure the fork code is actually invoked by claiming two cores
+        self.overrideAttr(osutils, "local_concurrency", lambda: 2)
+        kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
+        return super(_ForkedSelftest, self)._run_selftest(**kwargs)
+
+
+class TestParallelFork(_ForkedSelftest, tests.TestCase):
+    """Check operation of --parallel=fork selftest option"""
+
+    def test_error_in_child_during_fork(self):
+        """Error in a forked child during test setup should get reported"""
+        class Test(tests.TestCase):
+            def testMethod(self):
+                pass
+        # We don't care what, just break something that a child will run
+        self.overrideAttr(tests, "workaround_zealous_crypto_random", None)
+        out = self._run_selftest(test_suite_factory=Test)
+        self.assertContainsRe(out,
+            "Traceback.*:\n"
+            ".+ in fork_for_tests\n"
+            "\s*workaround_zealous_crypto_random\(\)\n"
+            "TypeError:")
+
+
+class TestUncollectedWarnings(_Selftest, tests.TestCase):
     """Check a test case still alive after being run emits a warning"""
 
     class Test(tests.TestCase):
@@ -3333,25 +3379,19 @@ class TestUncollectedWarnings(tests.TestCase):
             self.Test("test_skip"),
             ])
 
-    def _inject_stream_into_subunit(self, stream):
-        """To be overridden by subclasses that run tests out of process"""
-
     def _run_selftest_with_suite(self, **kwargs):
-        sio = StringIO()
-        self._inject_stream_into_subunit(sio)
         old_flags = tests.selftest_debug_flags
         tests.selftest_debug_flags = old_flags.union(["uncollected_cases"])
         gc_on = gc.isenabled()
         if gc_on:
             gc.disable()
         try:
-            tests.selftest(test_suite_factory=self._get_suite, stream=sio,
-                stop_on_failure=False, **kwargs)
+            output = self._run_selftest(test_suite_factory=self._get_suite,
+                **kwargs)
         finally:
             if gc_on:
                 gc.enable()
             tests.selftest_debug_flags = old_flags
-        output = sio.getvalue()
         self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
         self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
         return output
@@ -3394,32 +3434,8 @@ class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
             runner_class=tests.SubUnitBzrRunner, **kwargs)
 
 
-class TestUncollectedWarningsForking(TestUncollectedWarnings):
+class TestUncollectedWarningsForked(_ForkedSelftest, TestUncollectedWarnings):
     """Check warnings from tests staying alive are emitted when forking"""
-
-    _test_needs_features = [features.subunit]
-
-    def _inject_stream_into_subunit(self, stream):
-        """Monkey-patch subunit so the extra output goes to stream not stdout
-
-        Some APIs need rewriting so this kind of bogus hackery can be replaced
-        by passing the stream param from run_tests down into ProtocolTestCase.
-        """
-        from subunit import ProtocolTestCase
-        _original_init = ProtocolTestCase.__init__
-        def _init_with_passthrough(self, *args, **kwargs):
-            _original_init(self, *args, **kwargs)
-            self._passthrough = stream
-        self.overrideAttr(ProtocolTestCase, "__init__", _init_with_passthrough)
-
-    def _run_selftest_with_suite(self, **kwargs):
-        # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
-        if getattr(os, "fork", None) is None:
-            raise tests.TestNotApplicable("Platform doesn't support forking")
-        # Make sure the fork code is actually invoked by claiming two cores
-        self.overrideAttr(osutils, "local_concurrency", lambda: 2)
-        kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
-        return TestUncollectedWarnings._run_selftest_with_suite(self, **kwargs)
 
 
 class TestEnvironHandling(tests.TestCase):

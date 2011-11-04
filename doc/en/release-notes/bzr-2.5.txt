@@ -37,6 +37,15 @@ Improvements
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
 
+* ``bzr serve`` now can serve from URLs rather than just from the
+  file system. I.e.: ``bzr serve -d lp:bzr`` or
+  ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
+
+* all input prompts are now char-based when possible, and can be forced to
+  line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
+  to 'line-based'. This replace the previous shelf UI only patch using
+  ``INSIDE_EMACS``. (Benoît Pierre)
+
 Bug Fixes
 *********
 
@@ -45,6 +54,23 @@ Bug Fixes
 
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
+
+* ``bzr mv`` does not crash when attempting to move the root of a
+  branch. (Jonathan Riddell, #809728)
+
+* ``bzr shelve`` now use ``UIFactory.choose`` for input handling, making
+  it usable when creating a custom ``UIFactory`` implementation. (Benoît
+  Pierre)
+
+* ``bzr clean-tree`` now use ``UIFactory.get_boolean`` for confirmation
+  prompt, making it usable when using a custom ``UIFactory``
+  implementation. (Benoît Pierre)
+
+* If sending a crash through Apport fails report the Apport failure to
+  bzr.log rather than stderr. (Jonathan Riddell, #766735)
+
+* ``bzr upgrade`` no longer treats 'already up-to-date' exceptions as
+  errors. (Benoît Pierre, #716560).
 
 Documentation
 *************
@@ -57,6 +83,19 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
+
+* Methods ``add`` and ``items`` of ``LRUCache`` and ``LRUSizeCache`` are
+  deprecated. Use normal dict-style access instead. (Martin Packman)
+
+* New flag ``RepositoryFormat.supports_unreferenced_revisions`` which
+  indicates whether revisions can be present in a repository without
+  being referenced from e.g. a branch history at the same time.
+  (Jelmer Vernooij)
+
+* ``UIFactory.choose`` has been added: prompt the user for a list of
+  choices. (Benoît Pierre)
+
 Internals
 *********
 
@@ -67,6 +106,9 @@ Internals
   which format implementations can use whether or not they can access
   a control dir over a particular transport. (Jelmer Vernooij)
 
+* ``BranchBuilder.build_commit`` now take ``parent_ids`` and
+  ``allow_leftmost_as_ghost`` arguments.  (Jelmer Vernooij)
+
 Testing
 *******
 
@@ -74,10 +116,13 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
-*  Ensure TestCase instances are deallocated immediately after running where
-   possible. This greatly reduces the peak resource needs of a full test suite
-   run. The new ``-Euncollected_cases`` selftest flag will add failures if any
-   case which persists pasts its expected lifetime. (Martin Packman, #613247)
+* Ensure TestCase instances are deallocated immediately after running where
+  possible. This greatly reduces the peak resource needs of a full test suite
+  run. The new ``-Euncollected_cases`` selftest flag will add failures if any
+  case which persists pasts its expected lifetime. (Martin Packman, #613247)
+
+* Report exceptions from child processes during fork instead of swallowing the
+  error and reporting that everything went okay. (Martin Packman, #804130)
 
 
 bzr 2.5b2
