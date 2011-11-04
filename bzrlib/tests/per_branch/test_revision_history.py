@@ -22,7 +22,10 @@ from bzrlib import (
     revision as _mod_revision,
     )
 from bzrlib.symbol_versioning import deprecated_in
-from bzrlib.tests import per_branch
+from bzrlib.tests import (
+    per_branch,
+    TestNotApplicable,
+    )
 
 
 class TestLastRevision(per_branch.TestCaseWithBranch):
@@ -205,6 +208,8 @@ class TestRevisionHistory(per_branch.TestCaseWithBranch):
 
     def test_parent_ghost(self):
         tree = self.make_branch_and_tree('tree')
+        if not tree.branch.repository._format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support ghosts")
         tree.add_parent_tree_id('ghost-revision',
                                 allow_leftmost_as_ghost=True)
         tree.commit('first non-ghost commit', rev_id='non-ghost-revision')
