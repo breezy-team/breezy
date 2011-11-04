@@ -118,9 +118,9 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
     else:
         def canonicalize(self, path):
             if os.path.isabs(path):
-                return os.path.normpath(path)
+                return osutils.normpath(path)
             else:
-                return os.path.normpath('/' + os.path.join(self.home, path))
+                return osutils.normpath('/' + os.path.join(self.home, path))
 
     def chattr(self, path, attr):
         try:
