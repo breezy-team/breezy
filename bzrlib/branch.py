@@ -2297,7 +2297,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
-            target_branch.bzrdir.user_url)
+            target_branch.user_url)
         branch_transport.put_bytes('format', self.get_format_string())
         branch = self.open(
             a_bzrdir, name, _found=True,
