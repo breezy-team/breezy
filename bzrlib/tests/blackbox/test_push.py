@@ -587,8 +587,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEquals(out,
             ('Conflicting tags:\n    mytag\n', 'No new revisions to push.\n'))
         out = self.run_bzr(['push', '-d', 'from', '--overwrite-tags', 'to'])
-        self.assertEquals(out,
-            ('1 tag(s) updated.\n', 'No new revisions to push.\n'))
+        self.assertEquals(out, ('', '1 tag updated.\n'))
         self.assertEquals(to_tree.branch.tags.lookup_tag('mytag'),
                           'somerevid')
         self.assertEquals(to_tree.branch.last_revision(), revid1)

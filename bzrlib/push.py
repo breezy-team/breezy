@@ -66,8 +66,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     :param location: the url of the destination
     :param to_file: the output stream
     :param verbose: if True, display more output than normal
-    :param overwrite: if False, a current branch at the destination may not
-        have diverged from the source, otherwise the push fails
+    :param overwrite: list of things to overwrite ("history", "tags")
+        or boolean indicating for everything
     :param remember: if True, store the location as the push location for
         the source branch
     :param stacked_on: the url of the branch, if any, to stack on;

@@ -1011,6 +1011,13 @@ class cmd_pull(Command):
             revision=None, verbose=False,
             directory=None, local=False,
             show_base=False, overwrite_tags=False):
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -1160,6 +1167,13 @@ class cmd_push(Command):
         stacked=False, strict=None, no_tree=False,
         overwrite_tags=False):
         from bzrlib.push import _show_push_branch
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
 
         if directory is None:
             directory = '.'
