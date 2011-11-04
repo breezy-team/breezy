@@ -421,6 +421,12 @@ class GitBranch(ForeignBranch):
         self.repository.lock_write()
         return GitWriteLock(self.unlock)
 
+    def leave_lock_in_place(self):
+        raise NotImplementedError(self.leave_lock_in_place)
+
+    def dont_leave_lock_in_place(self):
+        raise NotImplementedError(self.dont_leave_lock_in_place)
+
     def get_stacked_on_url(self):
         # Git doesn't do stacking (yet...)
         raise errors.UnstackableBranchFormat(self._format, self.base)
