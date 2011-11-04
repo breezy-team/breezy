@@ -36,6 +36,27 @@ class cmd_git_import(Command):
 
     takes_args = ["src_location", "dest_location?"]
 
+    def _get_colocated_branch(self, target_bzrdir, name):
+        from bzrlib.errors import NotBranchError
+        try:
+            return target_bzrdir.open_branch(name=name)
+        except NotBranchError:
+            return target_bzrdir.create_branch(name=name)
+
+    def _get_nested_branch(self, dest_transport, dest_format, name):
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.errors import NotBranchError
+        head_transport = dest_transport.clone(name)
+        try:
+            head_bzrdir = BzrDir.open_from_transport(head_transport)
+        except NotBranchError:
+            head_bzrdir = dest_format.initialize_on_transport_ex(
+                head_transport, create_prefix=True)[1]
+        try:
+            return head_bzrdir.open_branch()
+        except NotBranchError:
+            return head_bzrdir.create_branch()
+
     def run(self, src_location, dest_location=None):
         from collections import defaultdict
         import os
@@ -103,21 +124,17 @@ class cmd_git_import(Command):
         try:
             for i, (name, ref) in enumerate(refs.iteritems()):
                 try:
-                    ref_to_branch_name(name)
+                    branch_name = ref_to_branch_name(name)
                 except ValueError:
                     # Not a branch, ignore
                     continue
                 pb.update("creating branches", i, len(refs))
-                head_transport = dest_transport.clone(name)
-                try:
-                    head_bzrdir = BzrDir.open_from_transport(head_transport)
-                except NotBranchError:
-                    head_bzrdir = dest_format.initialize_on_transport_ex(
-                        head_transport, create_prefix=True)[1]
-                try:
-                    head_branch = head_bzrdir.open_branch()
-                except NotBranchError:
-                    head_branch = head_bzrdir.create_branch()
+                if target_bzrdir._format.colocated_branches:
+                    if name == "HEAD":
+                        branch_name = None
+                    head_branch = self._get_colocated_branch(target_bzrdir, branch_name)
+                else:
+                    head_branch = self._get_nested_branch(dest_transport, dest_format, branch_name)
                 revid = mapping.revision_id_foreign_to_bzr(ref)
                 source_branch = GitBranch(source_repo.bzrdir, source_repo,
                     ref, tags)
@@ -126,7 +143,8 @@ class cmd_git_import(Command):
                     head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
                 if not head_branch.get_parent():
-                    url = urlutils.join_segment_parameters(source_branch.base, {"ref": urllib.quote(name, '')})
+                    url = urlutils.join_segment_parameters(
+                        source_branch.base, {"ref": urllib.quote(name, '')})
                     head_branch.set_parent(url)
         finally:
             pb.finished()
