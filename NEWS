@@ -1,5 +1,10 @@
 0.6.5	UNRELEASED
 
+ FIXES
+
+  * Fix compatibility with bzr < 2.5 when used with remote repositories.
+    (Jelmer Vernooij, #885566)
+
 0.6.4	2011-11-03
 
  FIXES

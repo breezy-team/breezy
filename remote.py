@@ -385,10 +385,6 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 class RemoteGitRepository(GitRepository):
 
     @property
-    def base(self):
-        return self.bzrdir.base
-
-    @property
     def user_url(self):
         return self.control_url
 

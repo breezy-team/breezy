@@ -141,6 +141,7 @@ class GitRepository(ForeignRepository):
         self._transport = gitdir.root_transport
         super(GitRepository, self).__init__(GitRepositoryFormat(),
             gitdir, control_files)
+        self.base = gitdir.root_transport.base
         lazy_load_optimisers()
         self._lock_mode = None
         self._lock_count = 0
@@ -250,7 +251,6 @@ class LocalGitRepository(GitRepository):
 
     def __init__(self, gitdir):
         GitRepository.__init__(self, gitdir)
-        self.base = gitdir.root_transport.base
         self._git = gitdir._git
         self._file_change_scanner = GitFileLastChangeScanner(self)
 
