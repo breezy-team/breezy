@@ -384,9 +384,6 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
 class RemoteGitRepository(GitRepository):
 
-    def __init__(self, gitdir):
-        GitRepository.__init__(self, gitdir)
-
     @property
     def base(self):
         return self.bzrdir.base
