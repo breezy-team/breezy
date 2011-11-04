@@ -129,7 +129,7 @@ class cmd_git_import(Command):
                     # Not a branch, ignore
                     continue
                 pb.update("creating branches", i, len(refs))
-                if target_bzrdir._format.colocated_branches:
+                if getattr(target_bzrdir._format, "colocated_branches", False):
                     if name == "HEAD":
                         branch_name = None
                     head_branch = self._get_colocated_branch(target_bzrdir, branch_name)
