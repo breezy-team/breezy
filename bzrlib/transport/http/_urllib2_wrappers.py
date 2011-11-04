@@ -59,6 +59,7 @@ import urllib
 import urllib2
 import urlparse
 import re
+import ssl
 import sys
 import time
 
@@ -312,19 +313,6 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
         self._wrap_socket_for_reporting(self.sock)
 
 
-# Build the appropriate socket wrapper for ssl
-try:
-    # python 2.6 introduced a better ssl package
-    import ssl
-    _ssl_wrap_socket = ssl.wrap_socket
-except ImportError:
-    # python versions prior to 2.6 don't have ssl and ssl.wrap_socket instead
-    # they use httplib.FakeSocket
-    def _ssl_wrap_socket(sock, key_file, cert_file):
-        ssl_sock = socket.ssl(sock, key_file, cert_file)
-        return httplib.FakeSocket(sock, ssl_sock)
-
-
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
@@ -345,7 +333,7 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             self.connect_to_origin()
 
     def connect_to_origin(self):
-        ssl_sock = _ssl_wrap_socket(self.sock, self.key_file, self.cert_file)
+        ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file)
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)
 
