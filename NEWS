@@ -5,6 +5,8 @@
   * Fix compatibility with bzr < 2.5 when used with remote repositories.
     (Jelmer Vernooij, #885566)
 
+  * Fix git-import after branch refactoring. (Jelmer Vernooij, #886161)
+
 0.6.4	2011-11-03
 
  FIXES

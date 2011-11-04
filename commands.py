@@ -120,7 +120,7 @@ class cmd_git_import(Command):
                     head_branch = head_bzrdir.create_branch()
                 revid = mapping.revision_id_foreign_to_bzr(ref)
                 source_branch = GitBranch(source_repo.bzrdir, source_repo,
-                    name, None, tags)
+                    ref, tags)
                 source_branch.head = ref
                 if head_branch.last_revision() != revid:
                     head_branch.generate_revision_history(revid)

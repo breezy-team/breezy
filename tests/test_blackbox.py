@@ -178,3 +178,13 @@ class TestGitBlackBox(ExternalBase):
             '+++ b/a\n'
             '@@ -1,0 +1,1 @@\n'
             '+contents of a\n')
+
+    def test_git_import(self):
+        r = GitRepo.init("a", mkdir=True)
+        self.build_tree(["a/file"])
+        r.stage("file")
+        r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
+        r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
+        self.run_bzr(["git-import", "a", "b"])
+        self.assertEquals(set(["abranch", "bbranch"]),
+                set(os.listdir("b/refs/heads")))
