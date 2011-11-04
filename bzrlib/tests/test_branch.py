@@ -541,6 +541,16 @@ class BzrBranch8(tests.TestCaseWithTransport):
         self.assertEqual(('path3', 'location3'),
                          branch.get_reference_info('file-id'))
 
+    def _recordParentMapCalls(self, repo):
+        self._parent_map_calls = []
+        orig_get_parent_map = repo.revisions.get_parent_map
+        def get_parent_map(q):
+            q = list(q)
+            self._parent_map_calls.extend([e[0] for e in q])
+            return orig_get_parent_map(q)
+        repo.revisions.get_parent_map = get_parent_map
+
+
 class TestBranchReference(tests.TestCaseWithTransport):
     """Tests for the branch reference facility."""
 

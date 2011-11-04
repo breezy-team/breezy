@@ -87,10 +87,11 @@ from cStringIO import StringIO
 
 from bzrlib import (
     atomicfile,
-    bzrdir,
+    controldir,
     debug,
     errors,
     lazy_regex,
+    library_state,
     lockdir,
     mail_client,
     mergetools,
@@ -2571,6 +2572,14 @@ this process.
 Otherwise, bzr will prompt as normal to break the lock.
 '''))
 option_registry.register(
+    Option('log_format', default='long',
+           help= '''\
+Log format to use when displaying revisions.
+
+Standard log formats are ``long``, ``short`` and ``line``. Additional formats
+may be provided by plugins.
+'''))
+option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
@@ -3271,6 +3280,12 @@ class Stack(object):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
+    def _get_overrides(self):
+        # Hack around library_state.initialize never called
+        if bzrlib.global_state is not None:
+            return [bzrlib.global_state.cmdline_overrides]
+        return []
+
 
 class _CompatibleStack(Stack):
     """Place holder for compatibility with previous design.
@@ -3303,7 +3318,7 @@ class GlobalStack(_CompatibleStack):
         # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
-            [bzrlib.global_state.cmdline_overrides, gstore.get_sections],
+            [self._get_overrides, gstore.get_sections],
             gstore)
 
 
@@ -3318,7 +3333,7 @@ class LocationStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
-            [bzrlib.global_state.cmdline_overrides,
+            [self._get_overrides,
              matcher.get_sections, gstore.get_sections],
             lstore)
 
@@ -3332,7 +3347,7 @@ class BranchStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
-            [bzrlib.global_state.cmdline_overrides,
+            [self._get_overrides,
              matcher.get_sections, bstore.get_sections, gstore.get_sections],
             bstore)
         self.branch = branch
@@ -3438,13 +3453,15 @@ class cmd_config(commands.Command):
             elif scope == 'locations':
                 yield LocationConfig(directory)
             elif scope == 'branch':
-                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
-                    directory)
+                (_, br, _) = (
+                    controldir.ControlDir.open_containing_tree_or_branch(
+                        directory))
                 yield br.get_config()
         else:
             try:
-                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
-                    directory)
+                (_, br, _) = (
+                    controldir.ControlDir.open_containing_tree_or_branch(
+                        directory))
                 yield br.get_config()
             except errors.NotBranchError:
                 yield LocationConfig(directory)

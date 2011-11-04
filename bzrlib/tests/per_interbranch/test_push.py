@@ -17,7 +17,6 @@
 """Tests for branch.push behaviour."""
 
 from cStringIO import StringIO
-import os
 
 from testtools.matchers import (
     Equals,
@@ -119,7 +118,7 @@ class TestPush(TestCaseWithInterBranch):
         other = other_bzrdir.open_workingtree()
         # move the branch out of the way on disk to cause a connection
         # error.
-        os.rename('master', 'master_gone')
+        master_tree.bzrdir.destroy_branch()
         # try to push, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
@@ -370,7 +369,7 @@ class TestPushHook(TestCaseWithInterBranch):
         target.add('')
         rev1 = target.commit('rev 1')
         target.unlock()
-        sourcedir = target.bzrdir.clone(self.get_url('source'))
+        sourcedir = target.branch.bzrdir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_push',

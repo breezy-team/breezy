@@ -283,7 +283,7 @@ class cmd_dpush(Command):
     def run(self, location=None, remember=False, directory=None,
             no_rebase=False, strict=None):
         from bzrlib import urlutils
-        from bzrlib.bzrdir import BzrDir
+        from bzrlib.controldir import ControlDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
         from bzrlib.workingtree import WorkingTree
 
@@ -311,8 +311,8 @@ class cmd_dpush(Command):
                        gettext("Using saved location: %s\n") % display_url)
                 location = stored_loc
 
-        bzrdir = BzrDir.open(location)
-        target_branch = bzrdir.open_branch()
+        controldir = ControlDir.open(location)
+        target_branch = controldir.open_branch()
         target_branch.lock_write()
         try:
             try:
