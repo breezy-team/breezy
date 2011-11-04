@@ -175,8 +175,9 @@ class TestSwitch(TestCaseWithTransport):
         otherbranch = tree.bzrdir.create_branch(name='anotherbranch')
         otherbranch.generate_revision_history(revid1)
         self.run_bzr(['switch', 'anotherbranch'], working_dir='branch-1')
+        tree = WorkingTree.open("branch-1")
         self.assertEquals(tree.last_revision(), revid1)
-        self.assertEquals(tree.branch, otherbranch)
+        self.assertEquals(tree.branch.control_url, otherbranch.control_url)
 
     def test_switch_only_revision(self):
         tree = self._create_sample_tree()
