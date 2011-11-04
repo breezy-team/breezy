@@ -134,7 +134,6 @@ class cmd_git_import(Command):
                    "the newly created branches.")
 
 
-
 class cmd_git_object(Command):
     """List or display Git objects by SHA.
 

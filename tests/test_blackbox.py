@@ -22,6 +22,7 @@ from dulwich.repo import (
 
 import os
 
+from bzrlib.branch import Branch
 from bzrlib import (
     version_info as bzrlib_version,
     )
@@ -188,3 +189,24 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "a", "b"])
         self.assertEquals(set(["abranch", "bbranch"]),
                 set(os.listdir("b/refs/heads")))
+
+    def test_git_import_incremental(self):
+        r = GitRepo.init("a", mkdir=True)
+        self.build_tree(["a/file"])
+        r.stage("file")
+        r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
+        self.run_bzr(["git-import", "a", "b"])
+        self.run_bzr(["git-import", "a", "b"])
+        self.assertEquals(set(["abranch"]),
+                set(os.listdir("b/refs/heads")))
+
+    def test_git_import_tags(self):
+        r = GitRepo.init("a", mkdir=True)
+        self.build_tree(["a/file"])
+        r.stage("file")
+        cid = r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
+        r["refs/tags/atag"] = cid
+        self.run_bzr(["git-import", "a", "b"])
+        self.assertEquals(set(["abranch"]), set(os.listdir("b/refs/heads")))
+        b = Branch.open("b/refs/heads/abranch")
+        self.assertEquals(["atag"], b.tags.get_tag_dict().keys())
