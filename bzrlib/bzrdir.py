@@ -1053,12 +1053,11 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         path, name = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
-        if branch_format is None:
-            return self.transport.clone(path)
-        try:
-            branch_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(branch_format, self._format)
+        if branch_format is not None:
+            try:
+                branch_format.get_format_string()
+            except NotImplementedError:
+                raise errors.IncompatibleFormat(branch_format, self._format)
         if name is not None:
             try:
                 self.transport.mkdir('branches', mode=self._get_mkdir_mode())
