@@ -68,6 +68,10 @@ from bzrlib import (
     )
 
 
+checked_kerberos = False
+kerberos = None
+
+
 class addinfourl(urllib2.addinfourl):
     '''Replacement addinfourl class compatible with python-2.7's xmlrpclib
 
@@ -1319,9 +1323,14 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 
     def _auth_match_kerberos(self, auth):
         """Try to create a GSSAPI response for authenticating against a host."""
-        try:
-            import kerberos
-        except ImportError:
+        global kerberos, checked_kerberos
+        if kerberos is None and not checked_kerberos:
+            try:
+                import kerberos
+            except ImportError:
+                kerberos = None
+            checked_kerberos = True
+        if kerberos is None:
             return None
         ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
         if ret < 1:
