@@ -20,6 +20,7 @@ from bzrlib.branch import Branch
 from bzrlib import (
     errors,
     tests,
+    urlutils,
     )
 from bzrlib.tests import (
     per_controldir,
@@ -82,3 +83,23 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertEquals(re_made_branch.name, "colo")
         self.assertEqual(made_branch.control_url, re_made_branch.control_url)
         self.assertEqual(made_branch.user_url, re_made_branch.user_url)
+
+    def test_sprout_into_colocated(self):
+        # a bzrdir can construct a branch and repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise tests.TestNotApplicable('Control dir format not supported')
+        from_tree = self.make_branch_and_tree('from')
+        revid = from_tree.commit("rev1")
+        try:
+            other_branch = self.make_branch("to")
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating new branches.')
+        to_dir = from_tree.bzrdir.sprout(
+            urlutils.join_segment_parameters(
+                other_branch.bzrdir.user_url, {"branch": "target"}))
+        to_branch = to_dir.open_branch(name="target")
+        self.assertEquals(revid, to_branch.last_revision())
