@@ -562,7 +562,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
-        path = osutils.normpath(osutils.pathjoin(
+        path = osutils._win32_normpath(osutils.pathjoin(
                     self._local_base, urlutils.unescape(relpath)))
         return urlutils._win32_local_path_to_url(path)
 

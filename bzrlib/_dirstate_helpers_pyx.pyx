@@ -97,6 +97,7 @@ cdef extern from "Python.h":
     object PyTuple_GetItem_void_object "PyTuple_GET_ITEM" (void* tpl, int index)
     object PyTuple_GET_ITEM(object tpl, Py_ssize_t index)
 
+    unsigned long PyInt_AsUnsignedLongMask(object number) except? -1
 
     char *PyString_AsString(object p)
     char *PyString_AsString_obj "PyString_AsString" (PyObject *string)
@@ -821,12 +822,13 @@ cdef _pack_stat(stat_value):
     cdef char result[6*4] # 6 long ints
     cdef int *aliased
     aliased = <int *>result
-    aliased[0] = htonl(stat_value.st_size)
-    aliased[1] = htonl(int(stat_value.st_mtime))
-    aliased[2] = htonl(int(stat_value.st_ctime))
-    aliased[3] = htonl(stat_value.st_dev)
-    aliased[4] = htonl(stat_value.st_ino & 0xFFFFFFFF)
-    aliased[5] = htonl(stat_value.st_mode)
+    aliased[0] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_size))
+    # mtime and ctime will often be floats but get converted to PyInt within
+    aliased[1] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mtime))
+    aliased[2] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ctime))
+    aliased[3] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_dev))
+    aliased[4] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ino))
+    aliased[5] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mode))
     packed = PyString_FromStringAndSize(result, 6*4)
     return _encode(packed)[:-1]
 
@@ -1793,6 +1795,7 @@ cdef class ProcessEntryC:
                 advance_entry = -1
                 advance_path = -1
                 result = None
+                changed = None
                 path_handled = 0
                 if current_entry is None:
                     # unversioned -  the check for path_handled when the path
