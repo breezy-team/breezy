@@ -668,4 +668,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         new_branch = control.create_branch()
         self.assertTrue(new_branch._format.supports_stacking())
 
-
+    def test_no_leftover_dirs(self):
+        # bug 886196: development-colo uses a branch-lock directory
+        # in the user directory rather than the control directory.
+        if not self.bzrdir_format.colocated_branches:
+            raise TestNotApplicable(
+                "format does not support colocated branches")
+        branch = self.make_branch('.', format='development-colo')
+        branch.bzrdir.create_branch(name="another-colocated-branch")
+        self.assertEquals(
+            branch.bzrdir.user_transport.list_dir("."),
+            [".bzr"])

@@ -771,6 +771,9 @@ class BzrDir(controldir.ControlDir):
         return controldir.ControlDir.create(base, format=format,
                 possible_transports=possible_transports)
 
+    def __repr__(self):
+        return "<%s at %r>" % (self.__class__.__name__, self.user_url)
+
 
 class BzrDirMeta1(BzrDir):
     """A .bzr meta version 1 control object.
@@ -788,6 +791,8 @@ class BzrDirMeta1(BzrDir):
     def create_branch(self, name=None, repository=None,
             append_revisions_only=None):
         """See BzrDir.create_branch."""
+        if name is None:
+            name = self._get_selected_branch()
         return self._format.get_branch_format().initialize(self, name=name,
                 repository=repository,
                 append_revisions_only=append_revisions_only)
@@ -938,6 +943,8 @@ class BzrDirMeta1(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
+        if name is None:
+            name = self._get_selected_branch()
         format = self.find_branch_format(name=name)
         format.check_support_status(unsupported)
         return format.open(self, name=name,
@@ -972,7 +979,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
     def __init__(self, _transport, _format):
         super(BzrDirMeta1Colo, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(_transport,
+        self.control_files = lockable_files.LockableFiles(self.control_transport,
             self._format._lock_file_name, self._format._lock_class)
 
     def _get_branch_path(self, name):
@@ -983,13 +990,11 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         it uses the default branch.
 
         :param name: Optional branch name to use
-        :return: Relative path to branch, branch name
+        :return: Relative path to branch
         """
         if name is None:
-            name = self._get_selected_branch()
-        if name is None:
-            return 'branch', None
-        return urlutils.join('branches', name), name
+            return 'branch'
+        return urlutils.join('branches', name)
 
     def _read_branch_list(self):
         """Read the branch list.
@@ -1019,7 +1024,9 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
-        path, name = self._get_branch_path(name)
+        if name is None:
+            name = self._get_selected_branch()
+        path = self._get_branch_path(name)
         if name is not None:
             self.control_files.lock_write()
             try:
@@ -1050,7 +1057,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        path, name = self._get_branch_path(name)
+        path = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is not None:
