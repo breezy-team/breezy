@@ -166,6 +166,9 @@ class GitRepository(ForeignRepository):
             self._lock_count = 1
         return GitRepositoryLock(self)
 
+    def break_lock(self):
+        raise NotImplementedError(self.break_lock)
+
     def dont_leave_lock_in_place(self):
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
