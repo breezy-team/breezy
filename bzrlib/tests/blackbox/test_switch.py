@@ -160,13 +160,19 @@ class TestSwitch(TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/file-2')
 
     def test_switch_colocated(self):
-        tree = self.make_branch_and_tree('branch-1', format='development-colo')
+        # Create a branch branch-1 that initially is a checkout of 'foo'
+        # Use switch to change it to 'anotherbranch'
+        repo = self.make_repository('branch-1', format='development-colo')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        branch.BranchReferenceFormat().initialize(
+            repo.bzrdir, target_branch=target_branch)
+        tree = repo.bzrdir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
         revid1 = tree.commit('rev1')
         tree.add('file-2')
         revid2 = tree.commit('rev2')
-        otherbranch = tree.bzrdir.create_branch('anotherbranch')
+        otherbranch = tree.bzrdir.create_branch(name='anotherbranch')
         otherbranch.generate_revision_history(revid1)
         self.run_bzr(['switch', 'anotherbranch'], working_dir='branch-1')
         self.assertEquals(tree.last_revision(), revid1)
