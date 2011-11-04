@@ -1748,14 +1748,14 @@ register_transport_proto('http://',
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
-register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
-                        'HttpTransport_urllib')
-register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
-                        'HttpTransport_urllib')
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport_urllib')
+register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport_urllib')
 
 register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
