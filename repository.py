@@ -107,6 +107,22 @@ class GitCheck(check.Check):
         pass
 
 
+_optimisers_loaded = False
+
+def lazy_load_optimisers():
+    global _optimisers_loaded
+    if _optimisers_loaded:
+        return
+    from bzrlib.plugins.git import fetch, push
+    for optimiser in [fetch.InterRemoteGitNonGitRepository,
+                      fetch.InterLocalGitNonGitRepository,
+                      fetch.InterGitGitRepository,
+                      push.InterToLocalGitRepository,
+                      push.InterToRemoteGitRepository]:
+        repository.InterRepository.register_optimiser(optimiser)
+    _optimisers_loaded = True
+
+
 class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
@@ -122,16 +138,10 @@ class GitRepository(ForeignRepository):
                 def __init__(self):
                     self._transport = gitdir.root_transport
             control_files = DummyControlFiles()
+        self._transport = gitdir.root_transport
         super(GitRepository, self).__init__(GitRepositoryFormat(),
             gitdir, control_files)
-        self._transport = gitdir.root_transport
-        from bzrlib.plugins.git import fetch, push
-        for optimiser in [fetch.InterRemoteGitNonGitRepository,
-                          fetch.InterLocalGitNonGitRepository,
-                          fetch.InterGitGitRepository,
-                          push.InterToLocalGitRepository,
-                          push.InterToRemoteGitRepository]:
-            repository.InterRepository.register_optimiser(optimiser)
+        lazy_load_optimisers()
         self._lock_mode = None
         self._lock_count = 0
 
