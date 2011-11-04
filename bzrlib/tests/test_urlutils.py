@@ -20,7 +20,12 @@ import os
 import sys
 
 from bzrlib import osutils, urlutils, win32utils
-from bzrlib.errors import InvalidURL, InvalidURLJoin, InvalidRebaseURLs
+from bzrlib.errors import (
+    InvalidURL,
+    InvalidURLJoin,
+    InvalidRebaseURLs,
+    PathNotChild,
+    )
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -911,3 +916,36 @@ class TestURL(TestCase):
         url3 = url.clone()
         self.assertIsNot(url, url3)
         self.assertEquals(url, url3)
+
+
+class TestFileRelpath(TestCase):
+
+    def test_same_url(self):
+        self.assertEquals("",
+            urlutils.file_relpath("file:///a", "file:///a"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///a", "file:///a/"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///a/", "file:///a"))
+
+    def test_child(self):
+        self.assertEquals("b",
+            urlutils.file_relpath("file:///a", "file:///a/b"))
+        self.assertEquals("b",
+            urlutils.file_relpath("file:///a/", "file:///a/b"))
+        self.assertEquals("b/c",
+            urlutils.file_relpath("file:///a", "file:///a/b/c"))
+
+    def test_sibling(self):
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b", "file:///a/c")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b/", "file:///a/c")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b/", "file:///a/c/")
+
+    def test_parent(self):
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b", "file:///a")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b", "file:///a/")
