@@ -20,6 +20,7 @@
 
 import os
 
+from bzrlib.bzrdir import BzrDir
 from bzrlib import (
         osutils,
         urlutils,
@@ -159,7 +160,7 @@ class TestSwitch(TestCaseWithTransport):
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
 
-    def test_switch_colocated(self):
+    def test_switch_existing_colocated(self):
         # Create a branch branch-1 that initially is a checkout of 'foo'
         # Use switch to change it to 'anotherbranch'
         repo = self.make_repository('branch-1', format='development-colo')
@@ -178,6 +179,25 @@ class TestSwitch(TestCaseWithTransport):
         tree = WorkingTree.open("branch-1")
         self.assertEquals(tree.last_revision(), revid1)
         self.assertEquals(tree.branch.control_url, otherbranch.control_url)
+
+    def test_switch_new_colocated(self):
+        # Create a branch branch-1 that initially is a checkout of 'foo'
+        # Use switch to create 'anotherbranch' which derives from that
+        repo = self.make_repository('branch-1', format='development-colo')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        branch.BranchReferenceFormat().initialize(
+            repo.bzrdir, target_branch=target_branch)
+        tree = repo.bzrdir.create_workingtree()
+        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        self.run_bzr(['switch', '-b', 'anotherbranch'], working_dir='branch-1')
+        bzrdir = BzrDir.open("branch-1")
+        self.assertEquals(
+            set([b.name for b in bzrdir.list_branches()]),
+            set(["foo", "anotherbranch"]))
+        self.assertEquals(bzrdir.open_branch().name, "anotherbranch")
+        self.assertEquals(bzrdir.open_branch().last_revision(), revid1)
 
     def test_switch_only_revision(self):
         tree = self._create_sample_tree()

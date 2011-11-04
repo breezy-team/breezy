@@ -6068,7 +6068,19 @@ class cmd_switch(Command):
             if '/' not in to_location and '\\' not in to_location:
                 # This path is meant to be relative to the existing branch
                 this_url = self._get_branch_location(control_dir)
-                to_location = urlutils.join(this_url, '..', to_location)
+                # Perhaps the target control dir supports colocated branches?
+                try:
+                    root = controldir.ControlDir.open(this_url,
+                        possible_transports=[control_dir.user_transport])
+                except errors.NotBranchError:
+                    colocated = False
+                else:
+                    colocated = root._format.colocated_branches
+                if colocated:
+                    to_location = urlutils.join_segment_parameters(this_url,
+                        {"branch": to_location.encode("utf-8")})
+                else:
+                    to_location = urlutils.join(this_url, '..', to_location)
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
