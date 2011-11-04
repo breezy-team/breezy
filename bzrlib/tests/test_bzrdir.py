@@ -1431,9 +1431,3 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
         self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
             None)
 
-    def test_no_leftover_dirs(self):
-        # bug 886196: development-colo uses a branch-lock directory
-        # in the user directory rather than the control directory.
-        tree = self.make_branch_and_tree('.', format='development-colo')
-        tree.bzrdir.create_branch(name="another-colocated-branch")
-        self.assertEquals(os.listdir("."), [".bzr"])
