@@ -46,6 +46,12 @@ Improvements
   to 'line-based'. This replace the previous shelf UI only patch using
   ``INSIDE_EMACS``. (Benoît Pierre)
 
+* urllib-based HTTPS client connections now verify the server certificate
+  as well as the hostname. (Jelmer Vernooij)
+
+* urllib-based HTTPS connections are now the default.
+  (Jelmer Vernooij, #125055, #651161)
+
 Bug Fixes
 *********
 

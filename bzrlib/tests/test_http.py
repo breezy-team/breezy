@@ -32,7 +32,6 @@ import threading
 import bzrlib
 from bzrlib import (
     bzrdir,
-    cethread,
     config,
     debug,
     errors,
