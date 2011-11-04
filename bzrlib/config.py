@@ -91,6 +91,7 @@ from bzrlib import (
     debug,
     errors,
     lazy_regex,
+    library_state,
     lockdir,
     mail_client,
     mergetools,
@@ -3271,6 +3272,12 @@ class Stack(object):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
+    def _get_overrides(self):
+        # Hack around library_state.initialize never called
+        if bzrlib.global_state is not None:
+            return [bzrlib.global_state.cmdline_overrides]
+        return []
+
 
 class _CompatibleStack(Stack):
     """Place holder for compatibility with previous design.
@@ -3303,7 +3310,7 @@ class GlobalStack(_CompatibleStack):
         # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
-            [bzrlib.global_state.cmdline_overrides, gstore.get_sections],
+            [self._get_overrides, gstore.get_sections],
             gstore)
 
 
@@ -3318,7 +3325,7 @@ class LocationStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
-            [bzrlib.global_state.cmdline_overrides,
+            [self._get_overrides,
              matcher.get_sections, gstore.get_sections],
             lstore)
 
@@ -3332,7 +3339,7 @@ class BranchStack(_CompatibleStack):
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
-            [bzrlib.global_state.cmdline_overrides,
+            [self._get_overrides,
              matcher.get_sections, bstore.get_sections, gstore.get_sections],
             bstore)
         self.branch = branch

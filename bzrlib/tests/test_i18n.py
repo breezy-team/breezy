@@ -16,11 +16,12 @@
 
 """Tests for bzrlib.i18n"""
 
-from bzrlib import (i18n, 
-                    tests, 
-                    errors, 
-                    workingtree,
-                    )
+from bzrlib import (
+    i18n,
+    tests,
+    errors,
+    workingtree,
+    )
 
 
 class ZzzTranslations(object):
@@ -152,3 +153,10 @@ class TestTranslate(tests.TestCaseWithTransport):
         out = StringIO()
         help.help("authentication", out)
         self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")
+
+
+class LoadPluginTranslations(tests.TestCase):
+
+    def test_does_not_exist(self):
+        translation = i18n.load_plugin_translations("doesnotexist")
+        self.assertEquals("foo", translation.gettext("foo"))

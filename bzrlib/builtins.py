@@ -1908,7 +1908,7 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             branch = a_bzrdir.create_branch()
-            if not no_tree:
+            if not no_tree and not a_bzrdir.has_workingtree():
                 a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:
@@ -5816,7 +5816,8 @@ class cmd_tags(Command):
                     if isinstance(revno, tuple):
                         revno = '.'.join(map(str, revno))
                 except (errors.NoSuchRevision,
-                        errors.GhostRevisionsHaveNoRevno):
+                        errors.GhostRevisionsHaveNoRevno,
+                        errors.UnsupportedOperation):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
