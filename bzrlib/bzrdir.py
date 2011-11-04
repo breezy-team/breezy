@@ -771,6 +771,9 @@ class BzrDir(controldir.ControlDir):
         return controldir.ControlDir.create(base, format=format,
                 possible_transports=possible_transports)
 
+    def __repr__(self):
+        return "<%s at %r>" % (self.__class__.__name__, self.user_url)
+
 
 class BzrDirMeta1(BzrDir):
     """A .bzr meta version 1 control object.
