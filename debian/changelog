@@ -19,6 +19,13 @@ bzr (2.5.0~beta1-1) experimental; urgency=medium
 
  -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Sep 2011 17:05:06 +0200
 
+bzr (2.4.1-1) unstable; urgency=low
+
+  * New upstream release.
+   + Remove 04_fix_i18n, now applied upstream.
+
+ -- Jelmer Vernooij <jelmer@vernstok.nl>  Tue, 13 Sep 2011 14:23:54 +0200
+
 bzr (2.4.0-3) unstable; urgency=medium
 
   * Fix regression in open_write_stream, which breaks the bzr-builddeb
