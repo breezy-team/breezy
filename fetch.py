@@ -85,7 +85,10 @@ from bzrlib.plugins.git.object_store import (
     LRUTreeCache,
     _tree_to_objects,
     )
-from bzrlib.plugins.git.refs import extract_tags
+from bzrlib.plugins.git.refs import (
+    extract_tags,
+    gather_peeled,
+    )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
     )
@@ -542,8 +545,8 @@ class InterFromGitRepository(InterRepository):
         return determine_wants
 
     def determine_wants_all(self, refs):
-        potential = set([sha for (ref, sha) in refs.iteritems() if not
-            ref.endswith("^{}")])
+        potential = set([peeled for (peeled, unpeeled) in
+            gather_peeled(refs).itervalues()])
         return list(potential - self._target_has_shas(potential))
 
     @staticmethod
