@@ -28,6 +28,20 @@ from bzrlib import (
 is_tag = lambda x: x.startswith("refs/tags/")
 
 
+def gather_peeled(refs):
+    ret = {}
+    for k, v in refs.iteritems():
+        if not k.endswith("^{}"):
+            try:
+                peeled = refs[k+"^{}"]
+                unpeeled = v
+            except KeyError:
+                peeled = v
+                unpeeled = None
+            ret[k] = (peeled, unpeeled)
+    return ret
+
+
 def extract_tags(refs):
     """Extract the tags from a refs dictionary.
 
@@ -36,20 +50,13 @@ def extract_tags(refs):
         and unpeeled object SHA1s.
     """
     ret = {}
-    for k, v in refs.iteritems():
-        if is_tag(k) and not k.endswith("^{}"):
-            try:
-                peeled = refs[k+"^{}"]
-                unpeeled = v
-            except KeyError:
-                peeled = v
-                unpeeled = None
-            try:
-                tagname = ref_to_tag_name(k)
-            except UnicodeDecodeError:
-                pass
-            else:
-                ret[tagname] = (peeled, unpeeled)
+    for k, v in gather_peeled(refs).iteritems():
+        try:
+            tagname = ref_to_tag_name(k)
+        except (ValueError, UnicodeDecodeError):
+            pass
+        else:
+            ret[tagname] = v
     return ret
 
 
