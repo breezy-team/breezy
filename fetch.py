@@ -581,15 +581,16 @@ class InterGitNonGitRepository(InterFromGitRepository):
     repository."""
 
     def _target_has_shas(self, shas):
-        revids = []
+        revids = {}
         for sha in shas:
             try:
                 revid = self.source.lookup_foreign_revision_id(sha)
             except NotCommitError:
+                # Commit is definitely not present
                 continue
             else:
-                revids.append(revid)
-        return self.target.has_revisions(revids)
+                revids[revid] = sha
+        return set([revids[r] for r in self.target.has_revisions(revids)])
 
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
