@@ -3518,7 +3518,7 @@ def fork_for_tests(suite):
                 # Try and report traceback on stream, but exit with error even
                 # if stream couldn't be created or something else goes wrong
                 try:
-                    traceback.print_exc(file=stream)
+                    stream.write(traceback.format_exc())
                 finally:
                     os._exit(1)
             os._exit(0)
