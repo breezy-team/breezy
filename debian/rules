@@ -57,7 +57,7 @@ override_dh_install:
 	    "debian/bzr-doc/usr/share/doc/bzr/html/{}"
 
 override_dh_auto_build:
-	dh_auto_build --buildsystem=python_distutils
+	dh_auto_build
 	$(MAKE) docs
 
 override_dh_compress:
