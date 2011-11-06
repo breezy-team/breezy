@@ -694,7 +694,9 @@ class Command(object):
             for hook in Command.hooks['pre_command']:
                 try:
                     hook(self)
-                except: pass
+                except:
+                    trace.mutter('exception raised during pre_command hook')
+                    trace.log_exception_quietly()
             raised = None
             try:
                 return class_run(*args, **kwargs)
@@ -703,7 +705,11 @@ class Command(object):
                 raise e
             finally:
                 for hook in Command.hooks['post_command']:
-                    hook(self, raised)
+                    try:
+                        hook(self, raised)
+                    except:
+                        trace.mutter('exception raised during post_command hook')
+                        trace.log_exception_quietly()
         self.run = run
 
     def _setup_run(self):
