@@ -371,3 +371,64 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
+class TestPreAndPostCommandHooks(tests.TestCase):
+
+    def test_pre_and_post_hooks(self):
+        hook_calls = []
+
+        def pre_command(cmd):
+            print 'PRE'
+            self.assertEqual([], hook_calls)
+            hook_calls.append('pre')
+
+        def post_command(cmd, e):
+            print 'POST'
+            self.assertEqual(['pre', 'run'], hook_calls)
+            hook_calls.append('post')
+
+        def run(cmd):
+            print 'RUN'
+            self.assertEqual(['pre'], hook_calls)
+            hook_calls.append('run')
+
+        self.overrideAttr(builtins.cmd_rocks, 'run', run)
+        commands.install_bzr_command_hooks()
+        commands.Command.hooks.install_named_hook(
+            "pre_command", pre_command, None)
+        commands.Command.hooks.install_named_hook(
+            "post_command", post_command, None)
+
+        self.assertEqual([], hook_calls)
+        self.run_bzr(['rocks', '-Oxx=12', '-Oyy=foo'])
+        self.assertEqual(['pre', 'run', 'post'], hook_calls)
+
+    def test_post_hook_provided_exception(self):
+        hook_calls = []
+
+        class TestError(StandardError):
+            __doc__ = """A test exception."""
+
+        def post_command(cmd, e):
+            print 'POST'
+            self.assertTrue(isinstance(e, TestError))
+            hook_calls.append('post')
+
+        def run(cmd):
+            print 'RUN'
+            hook_calls.append('run')
+            raise TestError()
+
+        self.overrideAttr(builtins.cmd_rocks, 'run', run)
+        commands.install_bzr_command_hooks()
+        commands.Command.hooks.install_named_hook(
+            "post_command", post_command, None)
+
+        self.assertEqual([], hook_calls)
+        try:
+            self.run_bzr(['rocks', '-Oxx=12', '-Oyy=foo'])
+            self.fail('should have raised TestError')
+        except TestError:
+            pass
+        self.assertEqual(['run', 'post'], hook_calls)
+

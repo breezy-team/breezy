@@ -408,6 +408,7 @@ class Command(object):
         """Construct an instance of this command."""
         # List of standard options directly supported
         self.supported_std_options = []
+        self._hook_run()
         self._setup_run()
 
     def add_cleanup(self, cleanup_func, *args, **kwargs):
@@ -682,6 +683,29 @@ class Command(object):
                 display=('bytes' in debug.debug_flags))
             trace.set_verbosity_level(0)
 
+    def _hook_run(self):
+        """Wrap the defined run method on self with command execution hooks.
+
+        This is called by __init__ to make the Command be able to be run
+        by just calling run(), as it could be before hook executions were added.
+        """
+        class_run = self.run
+        def run(*args, **kwargs):
+            for hook in Command.hooks['pre_command']:
+                try:
+                    hook(self)
+                except: pass
+            raised = None
+            try:
+                return class_run(*args, **kwargs)
+            except Exception, e:
+                raised = e
+                raise e
+            finally:
+                for hook in Command.hooks['post_command']:
+                    hook(self, raised)
+        self.run = run
+
     def _setup_run(self):
         """Wrap the defined run method on self with a cleanup.
 
@@ -791,6 +815,15 @@ class CommandHooks(Hooks):
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
             (1, 17))
+        self.add_hook('pre_command',
+            "Called prior to executing a command. Called with the command "
+            "object.",
+            (2, 5))
+        self.add_hook('post_command',
+            "Called after executing a command. Called with the command "
+            "object and the raised exception (or None). The hook cannot "
+            "affect the raising of the exception.",
+            (2, 5))
 
 Command.hooks = CommandHooks()
 
