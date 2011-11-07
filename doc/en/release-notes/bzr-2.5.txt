@@ -72,6 +72,9 @@ Bug Fixes
 * ``bzr upgrade`` no longer treats 'already up-to-date' exceptions as
   errors. (Benoît Pierre, #716560).
 
+* Fix finding the CPU count when using Python >= 2.6 on BSD-based systems.
+  (Jelmer Vernooij, #887151)
+
 Documentation
 *************
 

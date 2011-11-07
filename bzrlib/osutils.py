@@ -2323,7 +2323,14 @@ def local_concurrency(use_cache=True):
             except (OSError, IOError):
                 pass
         else:
-            concurrency = multiprocessing.cpu_count()
+            # multiprocessing.cpu_count() isn't implemented on all platforms
+            try:
+                concurrency = multiprocessing.cpu_count()
+            except NotImplementedError:
+                try:
+                    concurrency = _local_concurrency()
+                except (OSError, IOError):
+                    pass
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):
