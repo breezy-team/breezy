@@ -422,7 +422,10 @@ class Transport(object):
         :param name: Segment parameter name (utf8 string)
         :param value: Segment parameter value (utf8 string)
         """
-        self._segment_parameters[name] = value
+        if value is None:
+            del self._segment_parameters[name]
+        else:
+            self._segment_parameters[name] = value
         self.base = urlutils.join_segment_parameters(
             self._raw_base, self._segment_parameters)
 
