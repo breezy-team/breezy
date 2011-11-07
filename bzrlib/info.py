@@ -159,6 +159,14 @@ def _show_related_info(branch, outfile):
         outfile.writelines(locs.get_lines())
 
 
+def _show_control_dir_info(control, outfile):
+    """Show control dir information."""
+    if control._format.colocated_branches:
+        outfile.write('\n')
+        outfile.write('Control directory:\n')
+        outfile.write('         %d branches\n' % len(control.list_branches()))
+
+
 def _show_format_info(control=None, repository=None, branch=None,
                       working=None, outfile=None):
     """Show known formats for control, working, branch and repository."""
@@ -377,6 +385,7 @@ def show_component_info(control, repository, branch=None, working=None,
         return
     _show_format_info(control, repository, branch, working, outfile)
     _show_locking_info(repository, branch, working, outfile)
+    _show_control_dir_info(control, outfile)
     if branch is not None:
         _show_missing_revisions_branch(branch, outfile)
     if working is not None:

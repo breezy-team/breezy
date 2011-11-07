@@ -31,6 +31,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr info -v`` now shows the number of colocated branches
+  for control directories that support them.
+  (Jelmer Vernooij, #863285)
+
 * ``bzr version-info`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #238705)
 
