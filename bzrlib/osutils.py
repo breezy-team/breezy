@@ -2316,21 +2316,15 @@ def local_concurrency(use_cache=True):
     if concurrency is None:
         try:
             import multiprocessing
-        except ImportError:
+            concurrency = multiprocessing.cpu_count()
+        except (ImportError, NotImplementedError):
             # multiprocessing is only available on Python >= 2.6
+            # and multiprocessing.cpu_count() isn't implemented on all
+            # platforms
             try:
                 concurrency = _local_concurrency()
             except (OSError, IOError):
                 pass
-        else:
-            # multiprocessing.cpu_count() isn't implemented on all platforms
-            try:
-                concurrency = multiprocessing.cpu_count()
-            except NotImplementedError:
-                try:
-                    concurrency = _local_concurrency()
-                except (OSError, IOError):
-                    pass
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):
