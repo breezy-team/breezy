@@ -1,4 +1,4 @@
-bzr (2.4.2-2) UNRELEASED; urgency=low
+bzr (2.4.2-2) unstable; urgency=low
 
   * Fix bzrlib.osutils.local_concurrency() when used on GNU/kFreeBSD
     with Python's multiprocessing module available. Closes: #647690
