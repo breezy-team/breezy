@@ -2435,10 +2435,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
-        self._base = self.bzrdir.transport.clone('..').base
+        self._user_transport = self.bzrdir.transport.clone('..')
         if name is not None:
-            self._base = urlutils.join_segment_parameters(self._base,
-                {"branch": name.encode("utf-8")})
+            self._user_transport.set_segment_parameter(
+                "branch", name.encode("utf-8"))
+        self._base = self._user_transport.base
         self.name = name
         self._format = _format
         if _control_files is None:
@@ -2460,8 +2461,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
     base = property(_get_base, doc="The URL for the root of this branch.")
 
     @property
-    def user_url(self):
-        return self._base
+    def user_transport(self):
+        return self._user_transport
 
     def _get_config(self):
         return _mod_config.TransportConfig(self._transport, 'branch.conf')
