@@ -3516,7 +3516,9 @@ def fork_for_tests(suite):
                 process_suite.run(subunit_result)
             except:
                 # Try and report traceback on stream, but exit with error even
-                # if stream couldn't be created or something else goes wrong
+                # if stream couldn't be created or something else goes wrong.
+                # The traceback is formatted to a string and written in one go
+                # to avoid interleaving lines from multiple failing children.
                 try:
                     stream.write(traceback.format_exc())
                 finally:
