@@ -25,6 +25,15 @@ New Features
   revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
   format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
 
+* Two new command hooks, ``pre_command`` and ``post_command``,
+  provide notification before and after a command has been run.
+  (Brian de Alwis)
+
+* Added new method run() to bzrlib.hooks.HookPoint to trigger defined hooks,
+  while catching and logging any errors.  E.g.:
+  ``bzrlib.commands.Command.hooks['pre_commands'].run(cmd)``
+  (Brian de Alwis)
+
 Improvements
 ************
 

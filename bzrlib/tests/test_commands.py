@@ -26,6 +26,7 @@ from bzrlib import (
     option,
     symbol_versioning,
     tests,
+    trace,
     )
 from bzrlib.commands import display_command
 from bzrlib.tests import TestSkipped
@@ -378,17 +379,14 @@ class TestPreAndPostCommandHooks(tests.TestCase):
         hook_calls = []
 
         def pre_command(cmd):
-            print 'PRE'
             self.assertEqual([], hook_calls)
             hook_calls.append('pre')
 
         def post_command(cmd, e):
-            print 'POST'
             self.assertEqual(['pre', 'run'], hook_calls)
             hook_calls.append('post')
 
         def run(cmd):
-            print 'RUN'
             self.assertEqual(['pre'], hook_calls)
             hook_calls.append('run')
 
@@ -410,12 +408,10 @@ class TestPreAndPostCommandHooks(tests.TestCase):
             __doc__ = """A test exception."""
 
         def post_command(cmd, e):
-            print 'POST'
             self.assertTrue(isinstance(e, TestError))
             hook_calls.append('post')
 
         def run(cmd):
-            print 'RUN'
             hook_calls.append('run')
             raise TestError()
 
@@ -431,4 +427,3 @@ class TestPreAndPostCommandHooks(tests.TestCase):
         except TestError:
             pass
         self.assertEqual(['run', 'post'], hook_calls)
-

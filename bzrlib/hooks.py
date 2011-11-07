@@ -20,6 +20,7 @@
 from bzrlib import (
     registry,
     symbol_versioning,
+    trace,
     )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -384,6 +385,19 @@ class HookPoint(object):
         strings.append("]>")
         return ''.join(strings)
 
+    def run(self, *args):
+        """Trigger this hook; catch and report any exceptions that may occur"""
+
+        raised = 0
+        for (callback, callback_name) in self._callbacks:
+            try:
+                callback.get_obj()(*args)
+            except Exception, e:
+                raised = raised + 1
+                trace.mutter('hook %r in %r failed: %r' % (self.name, callback_name, e))
+                trace.log_exception_quietly()
+        if raised > 0 and not trace.is_quiet():
+            trace.warning("There were hook failures for %r: see bzr.log" % self.name)
 
 _help_prefix = \
 """

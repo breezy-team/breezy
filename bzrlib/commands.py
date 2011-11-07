@@ -691,12 +691,7 @@ class Command(object):
         """
         class_run = self.run
         def run(*args, **kwargs):
-            for hook in Command.hooks['pre_command']:
-                try:
-                    hook(self)
-                except:
-                    trace.mutter('exception raised during pre_command hook')
-                    trace.log_exception_quietly()
+            Command.hooks['pre_command'].run(self)
             raised = None
             try:
                 return class_run(*args, **kwargs)
@@ -704,12 +699,7 @@ class Command(object):
                 raised = e
                 raise e
             finally:
-                for hook in Command.hooks['post_command']:
-                    try:
-                        hook(self, raised)
-                    except:
-                        trace.mutter('exception raised during post_command hook')
-                        trace.log_exception_quietly()
+                Command.hooks['post_command'].run(self, raised)
         self.run = run
 
     def _setup_run(self):

@@ -22,6 +22,7 @@ from bzrlib import (
     hooks as _mod_hooks,
     pyutils,
     tests,
+    trace,
     )
 from bzrlib.hooks import (
     HookPoint,
@@ -262,6 +263,45 @@ class TestHook(tests.TestCase):
         self.assertEqual(
             '<HookPoint(foo), callbacks=[%s(my callback)]>' %
             callback_repr, repr(hook))
+
+    def test_run(self):
+        executions = []
+
+        def callback(arg):
+            executions.append('callback')
+            self.assertEquals('argument', arg)
+
+        hook = HookPoint("foo", "no docs", None, None)
+        hook.hook(callback, None)
+        hook.hook(callback, None)
+        hook.run('argument')
+        self.assertEqual(['callback', 'callback'], executions)
+
+
+    def test_run_logs_exceptions(self):
+        class TestError(StandardError):
+            __doc__ = """A test exception."""
+
+        def callback():
+            raise TestError()
+
+        hook = HookPoint("foo", "no docs", None, None)
+        hook.hook(callback, None)
+
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        _warning = trace.warning
+        trace.warning = warning
+
+        try:
+            hook.run()
+        except:
+            self.fail('exceptions should be captured')
+        finally:
+            trace.warning = _warning
+
+        self.assertEqual(1, len(warnings))
 
 
 class TestHookRegistry(tests.TestCase):
