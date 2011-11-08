@@ -522,7 +522,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             # TODO now merge from tree.last_revision to revision (to preserve
             # user local changes)
             merge.transform_tree(tree, self)
-            tree.set_parent_ids([revision_id])
+            if revision_id == _mod_revision.NULL_REVISION:
+                new_parents = []
+            else:
+                new_parents = [revision_id]
+            tree.set_parent_ids(new_parents)
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))

@@ -72,6 +72,9 @@ Bug Fixes
 * ``bzr upgrade`` no longer treats 'already up-to-date' exceptions as
   errors. (Benoît Pierre, #716560).
 
+* ``WorkingTree.clone()`` now supports its ``revision_id`` being set
+  to the null revision. (Jelmer Vernooij, #876423)
+
 Documentation
 *************
 
