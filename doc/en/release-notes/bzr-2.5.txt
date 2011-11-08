@@ -56,6 +56,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr info`` now shows the master branch location too for
+  treeless local branches. (Jelmer Vernooij, #258355)
+
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
 
