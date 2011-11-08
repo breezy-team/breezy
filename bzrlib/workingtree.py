@@ -1008,14 +1008,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                 show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
-                    if basis_root_id != new_root_id:
+                    if new_root_id is not None and basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 finally:
                     basis_tree.unlock()
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the revisiontree we merged against to set the new
                 # tree data.
-                parent_trees = [(self.branch.last_revision(), new_basis_tree)]
+                parent_trees = []
+                if self.branch.last_revision() != _mod_revision.NULL_REVISION:
+                    parent_trees.append(
+                        (self.branch.last_revision(), new_basis_tree))
                 # we have to pull the merge trees out again, because
                 # merge_inner has set the ids. - this corner is not yet
                 # layered well enough to prevent double handling.
