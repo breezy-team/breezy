@@ -86,6 +86,9 @@ Bug Fixes
 * Fix finding the CPU count when using Python >= 2.6 on BSD-based systems.
   (Jelmer Vernooij, #887151)
 
+* ``WorkingTree.clone()`` now supports its ``revision_id`` being set
+  to the null revision. (Jelmer Vernooij, #876423)
+
 Documentation
 *************
 

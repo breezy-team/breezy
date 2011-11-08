@@ -26,6 +26,7 @@ from bzrlib import (
     config,
     errors,
     osutils,
+    revision as _mod_revision,
     symbol_versioning,
     tests,
     trace,
@@ -308,6 +309,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_clone_trivial(self):
         wt = self.make_branch_and_tree('source')
         cloned_dir = wt.bzrdir.clone('target')
+        cloned = cloned_dir.open_workingtree()
+        self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
+
+    def test_clone_empty(self):
+        wt = self.make_branch_and_tree('source')
+        cloned_dir = wt.bzrdir.clone('target', revision_id=_mod_revision.NULL_REVISION)
         cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
