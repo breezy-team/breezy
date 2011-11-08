@@ -3354,10 +3354,16 @@ class TestParallelFork(_ForkedSelftest, tests.TestCase):
         # We don't care what, just break something that a child will run
         self.overrideAttr(tests, "workaround_zealous_crypto_random", None)
         out = self._run_selftest(test_suite_factory=Test)
+        # Lines from the tracebacks of the two child processes may be mixed
+        # together due to the way subunit parses and forwards the streams,
+        # so permit extra lines between each part of the error output.
         self.assertContainsRe(out,
             "Traceback.*:\n"
+            "(?:.*\n)?"
             ".+ in fork_for_tests\n"
+            "(?:.*\n)?"
             "\s*workaround_zealous_crypto_random\(\)\n"
+            "(?:.*\n)?"
             "TypeError:")
 
 
