@@ -52,6 +52,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr info`` no longer shows empty output if only a control
+  directory is present. (Jelmer Vernooij, #159098)
+
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
 

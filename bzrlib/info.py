@@ -343,9 +343,8 @@ def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
             try:
                 repository = a_bzrdir.open_repository()
             except NoRepositoryPresent:
-                # Return silently; cmd_info already returned NotBranchError
-                # if no controldir could be opened.
-                return
+                lockable = None
+                repository = None
             else:
                 lockable = repository
         else:
@@ -356,12 +355,14 @@ def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
         repository = branch.repository
         lockable = tree
 
-    lockable.lock_read()
+    if lockable is not None:
+        lockable.lock_read()
     try:
         show_component_info(a_bzrdir, repository, branch, tree, verbose,
                             outfile)
     finally:
-        lockable.unlock()
+        if lockable is not None:
+            lockable.unlock()
 
 
 def show_component_info(control, repository, branch=None, working=None,

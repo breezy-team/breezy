@@ -46,6 +46,15 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
 
+    def test_info_empty_controldir(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info ctrl')
+        self.assertEquals(out,
+            'Empty control directory (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n')
+        self.assertEquals(err, '')
+
     def test_info_standalone(self):
         transport = self.get_transport()
 
