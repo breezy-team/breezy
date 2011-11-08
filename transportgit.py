@@ -285,6 +285,12 @@ class TransportRefsContainer(RefsContainer):
         self._remove_packed_ref(name)
         return True
 
+    def get(self, name, default=None):
+        try:
+            return self[name]
+        except KeyError:
+            return default
+
 
 class TransportRepo(BaseRepo):
 
