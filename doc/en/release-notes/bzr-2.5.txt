@@ -72,6 +72,10 @@ Bug Fixes
 * ``bzr upgrade`` no longer treats 'already up-to-date' exceptions as
   errors. (Benoît Pierre, #716560).
 
+* ``bzr version-info`` no longer populates the clean state for custom
+  templates unless {clean} is explicitly asked for.
+  (Lawrence Mitchell, #882541)
+
 * Fix finding the CPU count when using Python >= 2.6 on BSD-based systems.
   (Jelmer Vernooij, #887151)
 
