@@ -196,6 +196,9 @@ Improvements
 Bug Fixes
 *********
 
+* ``WorkingTree.pull`` can now pull ``NULL_REVISION``.
+  (Jelmer Vernooij, #887556)
+
 * ``bzr shelve`` can now be used in emacs shells as the input handling is
   turned into a line-based one when ``INSIDE_EMACS`` is set (which is the
   case for all recent emacs versions). (Vincent Ladeuil, #856261)

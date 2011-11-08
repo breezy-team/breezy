@@ -22,7 +22,6 @@ import os
 
 from bzrlib import (
     branch,
-    branchbuilder,
     bzrdir,
     config,
     errors,
