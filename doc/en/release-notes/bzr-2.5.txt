@@ -37,6 +37,10 @@ Improvements
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
 
+* ``bzr serve`` now can serve from URLs rather than just from the
+  file system. I.e.: ``bzr serve -d lp:bzr`` or
+  ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
+
 * all input prompts are now char-based when possible, and can be forced to
   line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
   to 'line-based'. This replace the previous shelf UI only patch using
@@ -72,6 +76,9 @@ Bug Fixes
   templates unless {clean} is explicitly asked for.
   (Lawrence Mitchell, #882541)
 
+* Fix finding the CPU count when using Python >= 2.6 on BSD-based systems.
+  (Jelmer Vernooij, #887151)
+
 Documentation
 *************
 
@@ -84,6 +91,9 @@ API Changes
    bzrlib.
 
 * ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
+
+* Methods ``add`` and ``items`` of ``LRUCache`` and ``LRUSizeCache`` are
+  deprecated. Use normal dict-style access instead. (Martin Packman)
 
 * New flag ``RepositoryFormat.supports_unreferenced_revisions`` which
   indicates whether revisions can be present in a repository without
