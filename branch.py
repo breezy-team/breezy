@@ -58,6 +58,7 @@ from bzrlib.plugins.git.errors import (
     )
 from bzrlib.plugins.git.refs import (
     extract_tags,
+    gather_peeled,
     is_tag,
     ref_to_branch_name,
     ref_to_tag_name,
@@ -127,17 +128,17 @@ class GitTags(tag.BasicTags):
     def _merge_to_local_git(self, target_repo, refs, overwrite=False):
         conflicts = []
         updates = {}
-        for k, v in refs.iteritems():
+        for k, (peeled, unpeeled) in gather_peeled(refs).iteritems():
             if not is_tag(k):
                 continue
             name = ref_to_tag_name(k)
-            if target_repo._git.refs.get(k) == v:
+            if target_repo._git.refs.get(k) in (peeled, unpeeled):
                 pass
             elif overwrite or not k in target_repo._git.refs:
-                target_repo._git.refs[k] = v
-                updates[name] = target_repo.lookup_foreign_revision_id(v)
+                target_repo._git.refs[k] = unpeeled or peeled
+                updates[name] = target_repo.lookup_foreign_revision_id(peeled)
             else:
-                conflicts.append((name, v, target_repo.refs[k]))
+                conflicts.append((name, peeled, target_repo.refs[k]))
         return updates, conflicts
 
     def _merge_to_git(self, to_tags, refs, overwrite=False):
