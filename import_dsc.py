@@ -560,7 +560,6 @@ class DistributionBranch(object):
                 tarballs=upstream_tarballs):
             return False
 
-
         up_branch = self.pristine_upstream_branch
         up_branch.lock_read()
         try:
@@ -568,14 +567,15 @@ class DistributionBranch(object):
             other_up_branch = branch.pristine_upstream_branch
             other_up_branch.lock_read()
             try:
-                pristine_upstream_revids = branch.pristine_upstream_source.version_as_revisions(package, version)
-                if pristine_upstream_revids.keys() != [None]:
-                    raise MultipleUpstreamTarballsNotSupported()
-                pristine_upstream_revid = pristine_upstream_revids[None]
                 graph = other_up_branch.repository.get_graph(
                         up_branch.repository)
-                return graph.is_ancestor(up_branch.last_revision(),
-                        pristine_upstream_revid)
+                pristine_upstream_revids = branch.pristine_upstream_source.version_as_revisions(
+                        package, version, tarballs=upstream_tarballs)
+                for (component, pristine_upstream_revid) in pristine_upstream_revids.iteritems():
+                    if not graph.is_ancestor(up_branch.last_revision(),
+                            pristine_upstream_revid):
+                        return False
+                return True
             finally:
                 other_up_branch.unlock()
         finally:
