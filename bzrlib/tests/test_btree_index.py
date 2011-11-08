@@ -831,6 +831,14 @@ class TestBTreeIndex(BTreeTestCase):
             btree_index.BTreeGraphIndex(t1, 'index', 10) !=
             btree_index.BTreeGraphIndex(t1, 'index', 20))
 
+    def test_key_too_big(self):
+        # the size that matters here is the _compressed_ size of the key, so we can't
+        # do a simple character repeat.
+        bigKey = ''.join(map(repr, xrange(btree_index._PAGE_SIZE)))
+        self.assertRaises(errors.BadIndexKey,
+                          self.make_index,
+                          nodes=[((bigKey,), 'value', ())])
+        
     def test_iter_all_only_root_no_size(self):
         self.make_index(nodes=[(('key',), 'value', ())])
         t = transport.get_transport_from_url('trace+' + self.get_url(''))
