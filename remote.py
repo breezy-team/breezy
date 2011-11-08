@@ -20,6 +20,7 @@ from bzrlib import (
     trace,
     ui,
     urlutils,
+    version_info as bzrlib_version,
     )
 from bzrlib.errors import (
     BzrError,
@@ -125,6 +126,11 @@ class GitSmartTransport(Transport):
             trace.mutter('host: %r, user: %r, port: %r, path: %r',
                          self._host, self._username, self._port, self._path)
         self._client = _client
+        if "," in self._path and bzrlib_version < (2, 5, 0):
+            trace.warning(
+                "ignoring parameters %r, not supported in bzr < 2.5.",
+                self._path.rsplit(",", 1)[1])
+        self._stripped_path = self._path.rsplit(",", 1)[0]
 
     def external_url(self):
         return self.base
@@ -136,7 +142,7 @@ class GitSmartTransport(Transport):
         raise NotImplementedError(self._get_client)
 
     def _get_path(self):
-        return self._path.rsplit(",", 1)[0]
+        return self._stripped_path
 
     def get(self, path):
         raise NoSuchFile(path)
@@ -172,7 +178,7 @@ class SSHGitSmartTransport(GitSmartTransport):
     _scheme = 'git+ssh'
 
     def _get_path(self):
-        path = self._path.rsplit(",", 1)[0]
+        path = self._stripped_path
         if path.startswith("/~/"):
             return path[3:]
         return path
