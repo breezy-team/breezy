@@ -1791,6 +1791,18 @@ class TransportTests(TestTransportImplementation):
         transport = _mod_transport.get_transport_from_url(url)
         self.assertEquals(parameters, transport.get_segment_parameters())
 
+    def test_set_segment_parameters(self):
+        """Segment parameters can be set and show up in base."""
+        transport = self.get_transport("foo")
+        orig_base = transport.base
+        transport.set_segment_parameter("arm", "board")
+        self.assertEquals("%s,arm=board" % orig_base, transport.base)
+        self.assertEquals({"arm": "board"}, transport.get_segment_parameters())
+        transport.set_segment_parameter("arm", None)
+        transport.set_segment_parameter("nonexistant", None)
+        self.assertEquals({}, transport.get_segment_parameters())
+        self.assertEquals(orig_base, transport.base)
+
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks
         # at all) you can tell this.  helps with bug 32669.
