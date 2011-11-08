@@ -3359,11 +3359,11 @@ class TestParallelFork(_ForkedSelftest, tests.TestCase):
         # so permit extra lines between each part of the error output.
         self.assertContainsRe(out,
             "Traceback.*:\n"
-            "(?:.*\n)?"
+            "(?:.*\n)*"
             ".+ in fork_for_tests\n"
-            "(?:.*\n)?"
+            "(?:.*\n)*"
             "\s*workaround_zealous_crypto_random\(\)\n"
-            "(?:.*\n)?"
+            "(?:.*\n)*"
             "TypeError:")
 
 
