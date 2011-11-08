@@ -29,6 +29,7 @@ from bzrlib import (
 from bzrlib.bzrdir import (
     BzrDir,
     )
+from bzrlib.tests import TestSkipped
 
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -211,6 +212,8 @@ class TestGitBlackBox(ExternalBase):
         self.assertEquals(["atag"], b.tags.get_tag_dict().keys())
 
     def test_git_import_colo(self):
+        if bzrlib_version < (2, 5, 0):
+            raise TestSkipped("colocated branches not supported with bzr < 2.5")
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
