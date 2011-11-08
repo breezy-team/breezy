@@ -113,10 +113,10 @@ def gather_location_info(repository, branch=None, working=None):
         elif branch_path is not None:
             # standalone
             locs['branch root'] = branch_path
-            if master_path != branch_path:
-                locs['bound to branch'] = master_path
         else:
             locs['repository'] = repository_path
+        if master_path != branch_path:
+            locs['bound to branch'] = master_path
     if repository.is_shared():
         # lightweight checkout of branch in shared repository
         locs['shared repository'] = repository_path
