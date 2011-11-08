@@ -77,9 +77,9 @@ class LocationList(object):
         return ["  %*s: %s\n" % (max_len, l, u) for l, u in self.locs ]
 
 
-def gather_location_info(repository, branch=None, working=None):
+def gather_location_info(repository=None, branch=None, working=None,
+        control=None):
     locs = {}
-    repository_path = repository.user_url
     if branch is not None:
         branch_path = branch.user_url
         master_path = branch.get_bound_location()
@@ -106,7 +106,7 @@ def gather_location_info(repository, branch=None, working=None):
             locs['branch root'] = branch_path
     else:
         working_path = None
-        if repository.is_shared():
+        if repository is not None and repository.is_shared():
             # lightweight checkout of branch in shared repository
             if branch_path is not None:
                 locs['repository branch'] = branch_path
@@ -115,13 +115,20 @@ def gather_location_info(repository, branch=None, working=None):
             locs['branch root'] = branch_path
             if master_path != branch_path:
                 locs['bound to branch'] = master_path
+        elif repository is not None:
+            locs['repository'] = repository.user_url
+        elif control is not None:
+            locs['control directory'] = control.user_url
         else:
-            locs['repository'] = repository_path
-    if repository.is_shared():
+            # Really, at least a control directory should be
+            # passed in for this method to be useful.
+            pass
+    if repository is not None and repository.is_shared():
         # lightweight checkout of branch in shared repository
-        locs['shared repository'] = repository_path
-    order = ['light checkout root', 'repository checkout root',
-             'checkout root', 'checkout of branch', 'shared repository',
+        locs['shared repository'] = repository.user_url
+    order = ['control directory', 'light checkout root',
+             'repository checkout root', 'checkout root',
+             'checkout of branch', 'shared repository',
              'repository', 'repository branch', 'branch root',
              'bound to branch']
     return [(n, locs[n]) for n in order if n in locs]
@@ -369,8 +376,10 @@ def show_component_info(control, repository, branch=None, working=None,
     layout = describe_layout(repository, branch, working)
     format = describe_format(control, repository, branch, working)
     outfile.write("%s (format: %s)\n" % (layout, format))
-    _show_location_info(gather_location_info(repository, branch, working),
-                        outfile)
+    _show_location_info(
+        gather_location_info(control=control, repository=repository,
+            branch=branch, working=working),
+        outfile)
     if branch is not None:
         _show_related_info(branch, outfile)
     if verbose == 0:
