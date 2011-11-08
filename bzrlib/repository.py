@@ -74,6 +74,9 @@ class CommitBuilder(object):
     record_root_entry = True
     # whether this commit builder supports the record_entry_contents interface
     supports_record_entry_contents = False
+    # whether this commit builder will automatically update the branch that is
+    # being committed to
+    updates_branch = False
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
