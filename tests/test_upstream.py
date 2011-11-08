@@ -821,6 +821,32 @@ class PristineTarSourceTests(TestCaseWithTransport):
             ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
             ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
 
+    def test_version_as_revisions_partially_missing(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.assertRaises(PackageVersionNotPresent,
+                self.source.version_as_revisions, None, "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")])
+
+    def test_has_version_multiple(self):
+        revid1 = self.tree.commit("msg")
+        revid2 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
+        self.assertTrue(
+                self.source.has_version(None, "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
+
+    def test_has_version_partially_missing(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.assertFalse(
+                self.source.has_version(None, "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
+
 
 class TarfileSourceTests(TestCaseWithTransport):
     """Tests for TarfileSource."""
