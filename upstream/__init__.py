@@ -86,12 +86,12 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.version_as_revisions)
 
-    def has_version(self, package, version, md5=None):
+    def has_version(self, package, version, tarballs=None):
         """Check whether this upstream source contains a particular package.
 
         :param package: Package name
         :param version: Version string
-        :param md5: Optional required MD5sum of the resulting tarball
+        :param tarballs: Tarballs list
         """
         raise NotImplementedError(self.has_version)
 

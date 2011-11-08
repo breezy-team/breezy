@@ -29,7 +29,6 @@ import subprocess
 import tempfile
 
 from bzrlib.plugins.builddeb.errors import (
-    MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     PerFileTimestampsNotSupported,
     )
@@ -313,11 +312,11 @@ class PristineTarSource(UpstreamSource):
     def has_version(self, package, version, tarballs=None):
         if tarballs is None:
             return self.has_version_component(package, version, component=None)
-        elif len(tarballs) > 1:
-            raise MultipleUpstreamTarballsNotSupported()
         else:
-            return self.has_version_component(package, version, tarballs[0][1],
-                    tarballs[0][2])
+            for (tarball, component, md5) in tarballs:
+                if not self.has_version_component(package, version, component, md5):
+                    return False
+            return True
 
     def has_version_component(self, package, version, component, md5=None):
         assert isinstance(version, str), str(type(version))
