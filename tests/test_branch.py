@@ -121,12 +121,13 @@ class TestGitBranch(tests.TestCaseInTempDir):
         revb = r.do_commit("b", committer="Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
-        if bzrlib_version >= (2, 5, 0):
-            self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
-                             self.applyDeprecated(deprecated_in((2, 5, 0)), thebranch.revision_history))
-        else:
-            self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
-                thebranch.revision_history())
+        (warnings, history) = self.callCatchWarnings(thebranch.revision_history)
+        self.assertTrue(
+            warnings == [] or 
+            (len(warnings) == 1 and isinstance(warnings[0], DeprecationWarning)),
+            warnings)
+        self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
+                         history)
 
     def test_tag_annotated(self):
         reva = self.simple_commit_a()
