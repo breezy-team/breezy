@@ -364,8 +364,6 @@ class TestCommit(TestCaseWithTransport):
             rev_ids.append(rev_id)
             wt.commit(message='rev %d' % (i+1),
                      rev_id=rev_id)
-        eq = self.assertEquals
-        eq(b.revision_history(), rev_ids)
         for i in range(4):
             self.assertThat(rev_ids[:i+1],
                 MatchesAncestry(b.repository, rev_ids[i]))

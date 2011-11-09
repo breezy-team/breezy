@@ -25,6 +25,7 @@ this.
 from bzrlib import (
     errors,
     remote,
+    urlutils,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import multiply_tests
@@ -36,17 +37,18 @@ from bzrlib.tests.per_repository import (
 
 class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):
 
-    def make_referring(self, relpath, target_path):
+    def make_referring(self, relpath, a_repository):
         """Get a new repository that refers to a_repository.
 
         :param relpath: The path to create the repository at.
         :param a_repository: A repository to refer to.
         """
         repo = self.make_repository(relpath)
-        repo.add_fallback_repository(self.readonly_repository(target_path))
+        repo.add_fallback_repository(self.readonly_repository(a_repository))
         return repo
 
-    def readonly_repository(self, relpath):
+    def readonly_repository(self, repo):
+        relpath = urlutils.basename(repo.bzrdir.user_url.rstrip('/'))
         return BzrDir.open_from_transport(
             self.get_readonly_transport(relpath)).open_repository()
 
@@ -58,8 +60,8 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
         # because developers use this api to setup the tree, branch and
         # repository for their tests: having it not give the right repository
         # type would invalidate the tests.
-        self.make_branch_and_tree('repo')
-        repo = self.make_referring('referring', 'repo')
+        tree = self.make_branch_and_tree('repo')
+        repo = self.make_referring('referring', tree.branch.repository)
         self.assertIsInstance(repo._format,
             self.repository_format.__class__)
 

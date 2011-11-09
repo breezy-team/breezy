@@ -252,7 +252,7 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.delete('branch-format')
         self.branch = self.bzrdir.open_branch()
         self._convert_working_inv()
-        rev_history = self.branch.revision_history()
+        rev_history = self.branch._revision_history()
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
         self.known_revisions = set(rev_history)

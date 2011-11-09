@@ -259,7 +259,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control = bzrdir.BzrDir.open(path, _unsupported)
+        control = controldir.ControlDir.open(path, _unsupported)
         return control.open_workingtree(_unsupported)
 
     @staticmethod
@@ -277,7 +277,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control, relpath = bzrdir.BzrDir.open_containing(path)
+        control, relpath = controldir.ControlDir.open_containing(path)
         return control.open_workingtree(), relpath
 
     @staticmethod
@@ -366,7 +366,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             else:
                 return True, tree
         t = transport.get_transport(location)
-        iterator = bzrdir.BzrDir.find_bzrdirs(t, evaluate=evaluate,
+        iterator = controldir.ControlDir.find_bzrdirs(t, evaluate=evaluate,
                                               list_current=list_current)
         return [tr for tr in iterator if tr is not None]
 
@@ -494,13 +494,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         raise NotImplementedError(self.get_root_id)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None):
+    def clone(self, to_controldir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
 
         Specifically modified files are kept as modified, but
         ignored and unknown files are discarded.
 
-        If you want to make a new line of development, see bzrdir.sprout()
+        If you want to make a new line of development, see ControlDir.sprout()
 
         revision
             If not None, the cloned tree will have its last revision set to
@@ -508,7 +508,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
-        result = to_bzrdir.create_workingtree()
+        result = to_controldir.create_workingtree()
         self.copy_content_into(result, revision_id)
         return result
 
@@ -522,7 +522,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             # TODO now merge from tree.last_revision to revision (to preserve
             # user local changes)
             merge.transform_tree(tree, self)
-            tree.set_parent_ids([revision_id])
+            if revision_id == _mod_revision.NULL_REVISION:
+                new_parents = []
+            else:
+                new_parents = [revision_id]
+            tree.set_parent_ids(new_parents)
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
@@ -1004,14 +1008,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                 show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
-                    if basis_root_id != new_root_id:
+                    if new_root_id is not None and basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 finally:
                     basis_tree.unlock()
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the revisiontree we merged against to set the new
                 # tree data.
-                parent_trees = [(self.branch.last_revision(), new_basis_tree)]
+                parent_trees = []
+                if self.branch.last_revision() != _mod_revision.NULL_REVISION:
+                    parent_trees.append(
+                        (self.branch.last_revision(), new_basis_tree))
                 # we have to pull the merge trees out again, because
                 # merge_inner has set the ids. - this corner is not yet
                 # layered well enough to prevent double handling.
@@ -2982,29 +2989,29 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     supports_versioned_directories = None
 
     @classmethod
-    def find_format_string(klass, a_bzrdir):
-        """Return format name for the working tree object in a_bzrdir."""
+    def find_format_string(klass, controldir):
+        """Return format name for the working tree object in controldir."""
         try:
-            transport = a_bzrdir.get_workingtree_transport(None)
+            transport = controldir.get_workingtree_transport(None)
             return transport.get_bytes("format")
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
 
     @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the working tree object in a_bzrdir."""
+    def find_format(klass, controldir):
+        """Return the format for the working tree object in controldir."""
         try:
-            format_string = klass.find_format_string(a_bzrdir)
+            format_string = klass.find_format_string(controldir)
             return format_registry.get(format_string)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string,
                                             kind="working tree")
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
-        """Initialize a new working tree in a_bzrdir.
+        """Initialize a new working tree in controldir.
 
-        :param a_bzrdir: BzrDir to initialize the working tree in.
+        :param controldir: ControlDir to initialize the working tree in.
         :param revision_id: allows creating a working tree at a different
             revision than the branch is at.
         :param from_branch: Branch to checkout

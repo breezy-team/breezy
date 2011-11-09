@@ -17,6 +17,7 @@
 """Tests for branch implementations - test reconcile() functionality"""
 
 from bzrlib import errors, reconcile
+from bzrlib.branch import BzrBranch
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests.per_branch import TestCaseWithBranch
 from bzrlib.tests import TestNotApplicable
@@ -25,6 +26,8 @@ from bzrlib.tests import TestNotApplicable
 class TestBranchReconcile(TestCaseWithBranch):
 
     def test_reconcile_fixes_invalid_revhistory(self):
+        if not isinstance(self.branch_format, BzrBranch):
+            raise TestNotApplicable("test only applies to bzr formats")
         # Different formats have different ways of handling invalid revision
         # histories, so the setup portion is customized
         tree = self.make_branch_and_tree('test')
