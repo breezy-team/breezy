@@ -23,6 +23,7 @@ import sys
 from bzrlib import (
     debug,
     remote,
+    tests,
     urlutils,
     )
 
@@ -31,13 +32,13 @@ from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
 from bzrlib.tests import (
     fixtures,
-    TestCaseWithTransport,
+    script,
     )
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
 
-class TestPull(TestCaseWithTransport):
+class TestPull(tests.TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
@@ -422,7 +423,7 @@ class TestPull(TestCaseWithTransport):
         self.assertLength(19, self.hpss_calls)
         remote = Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
-    
+
     def test_pull_cross_format_warning(self):
         """You get a warning for probably slow cross-format pulls.
         """
@@ -553,3 +554,30 @@ class TestPull(TestCaseWithTransport):
         out = self.run_bzr(['pull', '--overwrite', '-d', 'to', 'from'])
         self.assertEqual(out,
             ('No revisions or tags to pull.\n', ''))
+
+
+class TestPullOutput(script.TestCaseWithTransportAndScript):
+
+    def test_pull_log_format(self):
+        self.run_script("""
+            $ bzr init trunk
+            Created a standalone tree (format: 2a)
+            $ cd trunk
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'we need some foo'
+            2>Committing to:...trunk/
+            2>added file
+            2>Committed revision 1.
+            $ cd ..
+            $ bzr init feature
+            Created a standalone tree (format: 2a)
+            $ cd feature
+            $ bzr pull -v ../trunk -Olog_format=line
+            Now on revision 1.
+            Added Revisions:
+            1: jrandom@example.com ...we need some foo
+            2>+N  file
+            2>All changes applied successfully.
+            """)

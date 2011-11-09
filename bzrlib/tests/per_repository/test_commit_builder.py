@@ -148,6 +148,21 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
+    def test_updates_branch(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            will_update_branch = builder.updates_branch
+            rev_id = builder.commit('might update the branch')
+        finally:
+            tree.unlock()
+        actually_updated_branch = (tree.branch.last_revision() == rev_id)
+        self.assertEquals(actually_updated_branch, will_update_branch)
+
     def test_commit_with_revision_id_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -233,6 +248,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 except:
                     builder.abort()
                     raise
+                else:
+                    builder.commit("msg")
             self.assertRaises(errors.RootMissing, do_commit)
         finally:
             tree.unlock()
@@ -1292,16 +1309,26 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=True)
 
     def test_last_modified_dir_file_ric(self):
-        self._check_kind_change(self.make_dir, self.make_file,
-            expect_fs_hash=True,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_file,
+                expect_fs_hash=True,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to file")
 
     def test_last_modified_dir_link(self):
         self._check_kind_change(self.make_dir, self.make_link)
 
     def test_last_modified_dir_link_ric(self):
-        self._check_kind_change(self.make_dir, self.make_link,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_link,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to link")
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,

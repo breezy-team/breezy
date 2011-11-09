@@ -302,11 +302,14 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
         pp=[]
-        history = self.branch.revision_history( )
-
-        if len(history) < 2: return
-
         graph = self.branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(self.branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
+        history.reverse()
+
+        if len(history) < 2:
+            return
+
         for start in range(0,len(history)-1):
             start_id = history[start]
             for end in range(start+1,len(history)):
@@ -397,10 +400,12 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         # sees each change rather than the aggregate delta.
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        history = self.branch.revision_history()
+        graph = self.branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(self.branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
+        history.reverse()
         old_rev = history[0]
         new_rev = history[1]
-        graph = self.branch.repository.get_graph()
         unique_revs = graph.find_unique_ancestors(new_rev, [old_rev])
 
         l1 = self.branch.repository.fileids_altered_by_revision_ids(

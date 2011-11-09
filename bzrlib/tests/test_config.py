@@ -3107,17 +3107,19 @@ class TestSectionMatcher(TestStore):
     scenarios = [('location', {'matcher': config.LocationMatcher}),
                  ('id', {'matcher': config.NameMatcher}),]
 
-    def get_store(self, file_name):
-        return config.IniFileStore(self.get_readonly_transport(), file_name)
+    def setUp(self):
+        super(TestSectionMatcher, self).setUp()
+        # Any simple store is good enough
+        self.get_store = config.test_store_builder_registry.get('configobj')
 
     def test_no_matches_for_empty_stores(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('')
         matcher = self.matcher(store, '/bar')
         self.assertEquals([], list(matcher.get_sections()))
 
     def test_build_doesnt_load_store(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         matcher = self.matcher(store, '/bar')
         self.assertFalse(store.is_loaded())
 
@@ -3147,11 +3149,13 @@ class TestLocationSection(tests.TestCase):
 
 class TestLocationMatcher(TestStore):
 
-    def get_store(self, file_name):
-        return config.IniFileStore(self.get_readonly_transport(), file_name)
+    def setUp(self):
+        super(TestLocationMatcher, self).setUp()
+        # Any simple store is good enough
+        self.get_store = config.test_store_builder_registry.get('configobj')
 
     def test_unrelated_section_excluded(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('''
 [/foo]
 section=/foo
@@ -3177,7 +3181,7 @@ section=/quux/quux
                           [section.extra_path for section in sections])
 
     def test_more_specific_sections_first(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('''
 [/foo]
 section=/foo
@@ -3198,7 +3202,7 @@ section=/foo/bar
     def test_appendpath_in_no_name_section(self):
         # It's a bit weird to allow appendpath in a no-name section, but
         # someone may found a use for it
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         store._load_from_string('''
 foo=bar
 foo:policy = appendpath
@@ -3209,7 +3213,7 @@ foo:policy = appendpath
         self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
 
     def test_file_urls_are_normalized(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         if sys.platform == 'win32':
             expected_url = 'file:///C:/dir/subdir'
             expected_location = 'C:/dir/subdir'
@@ -3224,9 +3228,13 @@ class TestNameMatcher(TestStore):
 
     def setUp(self):
         super(TestNameMatcher, self).setUp()
-        self.store = config.IniFileStore(self.get_readonly_transport(),
-                                         'foo.conf')
-        self.store._load_from_string('''
+        self.matcher = config.NameMatcher
+        # Any simple store is good enough
+        self.get_store = config.test_store_builder_registry.get('configobj')
+
+    def get_matching_sections(self, name):
+        store = self.get_store(self)
+        store._load_from_string('''
 [foo]
 option=foo
 [foo/baz]
@@ -3234,9 +3242,7 @@ option=foo/baz
 [bar]
 option=bar
 ''')
-
-    def get_matching_sections(self, name):
-        matcher = config.NameMatcher(self.store, name)
+        matcher = self.matcher(store, name)
         return list(matcher.get_sections())
 
     def test_matching(self):
@@ -3632,7 +3638,7 @@ class TestStackRemove(TestStackWithTransport):
 
     def test_remove_existing(self):
         conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
+        conf.set('foo', 'bar')
         self.assertEquals('bar', conf.get('foo'))
         conf.remove('foo')
         # Did we get it back ?
@@ -3649,7 +3655,7 @@ class TestStackRemove(TestStackWithTransport):
         config.ConfigHooks.install_named_hook('remove', hook, None)
         self.assertLength(0, calls)
         conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
+        conf.set('foo', 'bar')
         conf.remove('foo')
         self.assertLength(1, calls)
         self.assertEquals((conf, 'foo'), calls[0])

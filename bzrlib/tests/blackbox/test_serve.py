@@ -22,7 +22,6 @@ import signal
 import sys
 import thread
 import threading
-import time
 
 from bzrlib import (
     builtins,
@@ -442,3 +441,10 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         self.assertEqual(base_url, self.bzr_serve_transport.base)
         self.assertEqual(base_dir,
             server_maker.get_base_path(self.bzr_serve_transport))
+        # Read-only, from a URL
+        cmd.run(directory=base_url, protocol=capture_transport)
+        server_maker = BzrServerFactory()
+        self.assertEqual(
+            'readonly+%s' % base_url, self.bzr_serve_transport.base)
+        self.assertEqual(
+            base_dir, server_maker.get_base_path(self.bzr_serve_transport))

@@ -359,6 +359,27 @@ class SmartClientMediumTests(tests.TestCase):
             ],
             vendor.calls)
 
+    def test_ssh_client_repr(self):
+        client_medium = medium.SmartSSHClientMedium(
+            'base', medium.SSHParams("example.com", "4242", "username"))
+        self.assertEquals(
+            "SmartSSHClientMedium(bzr+ssh://username@example.com:4242/)",
+            repr(client_medium))
+
+    def test_ssh_client_repr_no_port(self):
+        client_medium = medium.SmartSSHClientMedium(
+            'base', medium.SSHParams("example.com", None, "username"))
+        self.assertEquals(
+            "SmartSSHClientMedium(bzr+ssh://username@example.com/)",
+            repr(client_medium))
+
+    def test_ssh_client_repr_no_username(self):
+        client_medium = medium.SmartSSHClientMedium(
+            'base', medium.SSHParams("example.com", None, None))
+        self.assertEquals(
+            "SmartSSHClientMedium(bzr+ssh://example.com/)",
+            repr(client_medium))
+
     def test_ssh_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
         # does not fail.  It's ok to disconnect an unconnected medium.

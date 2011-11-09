@@ -622,6 +622,8 @@ BZR_PROGRESS_BAR    Override the progress display. Values are 'none' or 'text'.
 BZR_PDB             Control whether to launch a debugger on error.
 BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a
                     breakin debugger.
+BZR_TEXTUI_INPUT    Force console input mode for prompts to line-based (instead
+                    of char-based).
 =================== ===========================================================
 """
 

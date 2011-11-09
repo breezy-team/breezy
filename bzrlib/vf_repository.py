@@ -80,6 +80,7 @@ class VersionedFileRepositoryFormat(RepositoryFormat):
 
     supports_full_versioned_files = True
     supports_versioned_directories = True
+    supports_unreferenced_revisions = True
 
     # Should commit add an inventory, or an inventory delta to the repository.
     _commit_inv_deltas = True
@@ -1199,7 +1200,7 @@ class VersionedFileRepository(Repository):
         """Instantiate a VersionedFileRepository.
 
         :param _format: The format of the repository on disk.
-        :param a_bzrdir: The BzrDir of the repository.
+        :param controldir: The ControlDir of the repository.
         :param control_files: Control files to use for locking, etc.
         """
         # In the future we will have a single api for all stores for

@@ -87,7 +87,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     atomicfile,
-    bzrdir,
+    controldir,
     debug,
     errors,
     lazy_regex,
@@ -2572,6 +2572,14 @@ this process.
 Otherwise, bzr will prompt as normal to break the lock.
 '''))
 option_registry.register(
+    Option('log_format', default='long',
+           help= '''\
+Log format to use when displaying revisions.
+
+Standard log formats are ``long``, ``short`` and ``line``. Additional formats
+may be provided by plugins.
+'''))
+option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
@@ -3445,13 +3453,15 @@ class cmd_config(commands.Command):
             elif scope == 'locations':
                 yield LocationConfig(directory)
             elif scope == 'branch':
-                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
-                    directory)
+                (_, br, _) = (
+                    controldir.ControlDir.open_containing_tree_or_branch(
+                        directory))
                 yield br.get_config()
         else:
             try:
-                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
-                    directory)
+                (_, br, _) = (
+                    controldir.ControlDir.open_containing_tree_or_branch(
+                        directory))
                 yield br.get_config()
             except errors.NotBranchError:
                 yield LocationConfig(directory)

@@ -142,7 +142,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     This format:
         - exists within a metadir controlling .bzr
         - includes an explicit version marker for the workingtree control
-          files, separate from the BzrDir format
+          files, separate from the ControlDir format
         - modifies the hash cache format
         - is new in bzr 0.8
         - uses a LockDir to guard access for writes.
