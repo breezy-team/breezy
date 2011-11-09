@@ -421,12 +421,15 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
     def get_request (self):
         """Get the request and client address from the socket."""
         sock, addr = TestingTCPServerMixin.get_request(self)
-        # The thread is not create yet, it will be updated in process_request
+        # The thread is not created yet, it will be updated in process_request
         self.clients.append((sock, addr, None))
         return sock, addr
 
-    def process_request_thread(self, started, stopped, request, client_address):
+    def process_request_thread(self, started, detached, stopped,
+                               request, client_address):
         started.set()
+        # We will be on our own once the server tells us we're detached
+        detached.wait()
         SocketServer.ThreadingTCPServer.process_request_thread(
             self, request, client_address)
         self.close_request(request)
@@ -435,12 +438,13 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
     def process_request(self, request, client_address):
         """Start a new thread to process the request."""
         started = threading.Event()
+        detached = threading.Event()
         stopped = threading.Event()
         t = TestThread(
             sync_event=stopped,
             name='%s -> %s' % (client_address, self.server_address),
             target = self.process_request_thread,
-            args = (started, stopped, request, client_address))
+            args = (started, detached, stopped, request, client_address))
         # Update the client description
         self.clients.pop()
         self.clients.append((request, client_address, t))
@@ -449,12 +453,12 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         t.set_ignored_exceptions(self.ignored_exceptions)
         t.start()
         started.wait()
+        # If an exception occured during the thread start, it will get raised.
+        t.pending_exception()
         if debug_threads():
             sys.stderr.write('Client thread %s started\n' % (t.name,))
-        # If an exception occured during the thread start, it will get raised.
-        # In rare cases, an exception raised during the request processing may
-        # also get caught here (see http://pad.lv/869366)
-        t.pending_exception()
+        # Tell the thread, it's now on its own for exception handling.
+        detached.set()
 
     # The following methods are called by the main thread
 

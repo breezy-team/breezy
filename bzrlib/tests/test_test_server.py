@@ -203,20 +203,12 @@ class TestTCPServerInAThread(tests.TestCase):
         # Check that the connection thread did catch the exception,
         # http://pad.lv/869366 was wrongly checking the server thread which
         # works for TestingTCPServer where the connection is handled in the
-        # same thread than the server one but is racy for
-        # TestingThreadingTCPServer where the server thread may be in a
-        # blocking accept() call (or not).
-        try:
-            self.connection_thread.pending_exception()
-        except FailToRespond:
-            # Great, the test succeeded
-            pass
-        else:
-            # If the exception is not in the connection thread anymore, it's in
-            # the server's one. 
-            server.server.stopped.wait()
-            # The exception is available now
-            self.assertRaises(FailToRespond, server.pending_exception)
+        # same thread than the server one but was racy for
+        # TestingThreadingTCPServer. Since we the connection thread detaches
+        # itself before handling the request, we are guaranteed that the
+        # exception won't leak into the server thread anymore.
+        self.assertRaises(FailToRespond,
+                          self.connection_thread.pending_exception)
 
     def test_exception_swallowed_while_serving(self):
         # We need to ensure the exception has been caught
