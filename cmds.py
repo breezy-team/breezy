@@ -733,7 +733,7 @@ class cmd_merge_upstream(Command):
 
             if revision is not None:
                 if upstream_branch is None:
-                    raise BzrCommandError("--revision can only be used with a"
+                    raise BzrCommandError("--revision can only be used with a "
                         "valid upstream branch")
                 if len(revision) > 1:
                     raise BzrCommandError("merge-upstream takes only a "
