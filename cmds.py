@@ -747,7 +747,7 @@ class cmd_merge_upstream(Command):
             if version is None and upstream_revisions is not None:
                 # Look up the version from the upstream revision
                 version = upstream_branch_source.get_version(package,
-                    current_version, upstream_revisions)
+                    current_version, upstream_revisions[None])
             elif version is None and primary_upstream_source is not None:
                 version = primary_upstream_source.get_latest_version(
                     package, current_version)
