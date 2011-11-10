@@ -25,6 +25,12 @@ New Features
   revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
   format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
 
+* The new config scheme allows an alternative syntax for the 'appenpath'
+  policy relying on option expansion and defining a new 'relpath' option
+  local to a section. Instead of using '<option>:policy=appendpath', the
+  option value can de defined as 'option=xxxx/{relpath}'.
+  (Vincent Ladeuil, #832013)
+
 Improvements
 ************
 
