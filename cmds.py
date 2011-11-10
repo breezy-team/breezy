@@ -73,9 +73,6 @@ from bzrlib.plugins.builddeb.errors import (
     PackageVersionNotPresent,
     StrictBuildFailed,
     )
-from bzrlib.plugins.builddeb.util import (
-    get_parent_dir,
-    )
 from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
@@ -1176,9 +1173,10 @@ class cmd_merge_package(Command):
 
     In the opposite case a normal merge will be performed.
     """
+    takes_options = ['revision']
     takes_args = ['source']
 
-    def run(self, source):
+    def run(self, source, revision=None):
         source_branch = None
         # Get the target branch.
         try:
@@ -1191,6 +1189,14 @@ class cmd_merge_package(Command):
             source_branch = Branch.open(source)
         except NotBranchError:
             raise BzrCommandError("Invalid source branch URL?")
+
+        if revision is None:
+            revid = source_branch.last_revision()
+        elif len(revision) == 1:
+            revid = revision[0].in_history(source_branch).rev_id
+        else:
+            raise BzrCommandError('bzr merge-package --revision takes '
+                'exactly one argument')
 
         tree.lock_write()
         self.add_cleanup(tree.unlock)
@@ -1205,7 +1211,7 @@ class cmd_merge_package(Command):
 
         # Merge source packaging branch in to the target packaging branch.
         _merge_tags_if_possible(source_branch, tree.branch)
-        conflicts = tree.merge_from_branch(source_branch)
+        conflicts = tree.merge_from_branch(source_branch, to_revision=revid)
         if conflicts > 0:
             note('The merge resulted in %s conflicts. Please resolve these '
                  'and commit the changes with "bzr commit".' % conflicts)
