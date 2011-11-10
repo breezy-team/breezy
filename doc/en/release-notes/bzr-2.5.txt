@@ -8,17 +8,26 @@ Bazaar Release Notes
 bzr 2.5b3
 #########
 
-:2.5b3: NOT RELEASED YET
+:2.5b3: 2011-11-10
+
+This is the third beta of the 2.5 series, leading to a 2.5.0 release in
+February 2012. Beta releases are suitable for everyday use but may cause
+some incompatibilities with plugins.
+
+This release includes log options for ``push`` and ``pull``, more UI polish
+for colocated branches, a better and more coherent implementation for UI
+dialogs, enhancements to the config framework and more.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
 
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
+None
 
 New Features
 ************
-
-.. New commands, options, etc that users may wish to try out.
 
 * The ``log_format`` configuration can be used with ``-Olog_format=line`` to
   change the format ``push`` and ``pull`` use to display the
@@ -33,9 +42,6 @@ New Features
 
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * ``bzr info -v`` now shows the number of colocated branches
   for control directories that support them.
@@ -58,9 +64,6 @@ Improvements
 
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * ``bzr info`` now shows the master branch location too for
   treeless local branches. (Jelmer Vernooij, #258355)
@@ -95,16 +98,11 @@ Bug Fixes
 * ``WorkingTree.clone()`` now supports its ``revision_id`` being set
   to the null revision. (Jelmer Vernooij, #876423)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
+* ``WorkingTree.pull`` can now pull ``NULL_REVISION``.
+  (Jelmer Vernooij, #887556)
 
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
 
@@ -122,9 +120,6 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 * ``ControlDirFormat`` now has a new method ``supports_transport``
   which format implementations can use whether or not they can access
   a control dir over a particular transport. (Jelmer Vernooij)
@@ -134,10 +129,6 @@ Internals
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Ensure TestCase instances are deallocated immediately after running where
   possible. This greatly reduces the peak resource needs of a full test suite
@@ -215,9 +206,6 @@ Improvements
 
 Bug Fixes
 *********
-
-* ``WorkingTree.pull`` can now pull ``NULL_REVISION``.
-  (Jelmer Vernooij, #887556)
 
 * ``bzr shelve`` can now be used in emacs shells as the input handling is
   turned into a line-based one when ``INSIDE_EMACS`` is set (which is the
