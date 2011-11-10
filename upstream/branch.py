@@ -264,12 +264,19 @@ class UpstreamBranchSource(UpstreamSource):
         finally:
             self.upstream_branch.unlock()
 
-    def fetch_tarballs(self, package, version, target_dir, components=None):
+    def fetch_tarballs(self, package, version, target_dir, components=None,
+                       revisions=None):
+        if components is not None and components != [None]:
+            # Multiple components are not supported
+            raise PackageVersionNotPresent(package, version, self)
         self.upstream_branch.lock_read()
         try:
-            revid = self.version_as_revision(package, version)
-            if revid is None:
-                raise PackageVersionNotPresent(package, version, self)
+            if revisions is not None:
+                revid = revisions[None]
+            else:
+                revid = self.version_as_revision(package, version)
+                if revid is None:
+                    raise PackageVersionNotPresent(package, version, self)
             note("Exporting upstream branch revision %s to create the tarball",
                  revid)
             target_filename = self._tarball_path(package, version, None, target_dir)
