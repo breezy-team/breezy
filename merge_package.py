@@ -38,39 +38,36 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import find_changelog
 
 
-def _latest_version(branch):
+def _latest_version(branch, revid):
     """Version of the most recent source package upload in the given `branch`.
     
     :param branch: A Branch object containing the source upload of interest.
+    :param revid: Revision id in the branch
     """
-    changelog, _ignore = find_changelog(branch.basis_tree(), False)
+    changelog, _ignore = find_changelog(branch.repository.revision_tree(revid), False)
 
     return changelog.version
 
 
-def _upstream_version_data(source, target):
+def _upstream_version_data(branch, revid):
     """Most recent upstream versions/revision IDs of the merge source/target.
 
     Please note: both packaging branches must have been read-locked
     beforehand.
 
-    :param source: The merge source branch.
-    :param target: The merge target branch.
+    :param branch: The merge branch.
+    :param revid: The revision in the branch to consider
     """
-    results = list()
-    for branch in (source, target):
-        db = DistributionBranch(branch, branch)
-        uver = _latest_version(branch).upstream_version
-        upstream_revids = db.pristine_upstream_source.version_as_revisions(None, uver)
-        if upstream_revids.keys() != [None]:
-            raise MultipleUpstreamTarballsNotSupported()
-        upstream_revid = upstream_revids[None]
-        results.append((Version(uver), upstream_revid))
-
-    return results
+    db = DistributionBranch(branch, branch)
+    uver = _latest_version(branch, revid).upstream_version
+    upstream_revids = db.pristine_upstream_source.version_as_revisions(None, uver)
+    if upstream_revids.keys() != [None]:
+        raise MultipleUpstreamTarballsNotSupported()
+    upstream_revid = upstream_revids[None]
+    return (Version(uver), upstream_revid)
 
 
-def fix_ancestry_as_needed(tree, source):
+def fix_ancestry_as_needed(tree, source, source_revid=None):
     """Manipulate the merge target's ancestry to avoid upstream conflicts.
 
     Merging J->I given the following ancestry tree is likely to result in
@@ -119,11 +116,15 @@ def fix_ancestry_as_needed(tree, source):
 
     source.lock_read()
     try:
+        if source_revid is None:
+            source_revid = source.last_revision()
         tree.lock_write()
         try:
             # "Unpack" the upstream versions and revision ids for the merge
             # source and target branch respectively.
-            [(us_ver, us_revid), (ut_ver, ut_revid)] = _upstream_version_data(source, target)
+            (us_ver, us_revid) = _upstream_version_data(source, source_revid)
+            (ut_ver, ut_revid) = _upstream_version_data(target,
+                target.last_revision())
 
             # Did the upstream branches of the merge source/target diverge?
             graph = source.repository.get_graph(target.repository)
