@@ -21,7 +21,7 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
   * Support svn-buildpackage tag names to find upstream versions.
     LP: #874263
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 14 Oct 2011 16:16:46 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 10 Nov 2011 16:56:12 +0100
 
 bzr-builddeb (2.7.9) unstable; urgency=low
 

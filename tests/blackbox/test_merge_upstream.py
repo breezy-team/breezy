@@ -187,6 +187,40 @@ class TestMergeUpstream(BuilddebTestCase):
             os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
             working_dir=package.tree.basedir)
 
+    def test_upstream_branch_revision(self):
+        # It is sufficient to just specify an upstream revision
+        upstream = self.make_upstream()
+        rel1 = self.release_upstream(upstream)
+        package = self.import_upstream(rel1, upstream)
+        changed_upstream = self.file_moved_replaced_upstream(upstream)
+        rel2 = self.release_upstream(changed_upstream)
+        package_path = package.tree.basedir
+        os.mkdir(os.path.join(package_path, '.bzr-builddeb/'))
+        f = open(os.path.join(package_path, '.bzr-builddeb/local.conf'), 'wb')
+        try:
+          f.write('[BUILDDEB]\nupstream-branch = %s\n' % changed_upstream.tree.basedir)
+        finally:
+          f.close()
+
+        (out, err) = self.run_bzr(
+            ['merge-upstream', '-rrevid:%s' % changed_upstream.tree.last_revision()],
+            working_dir=package.tree.basedir)
+        self.assertEquals(out, "")
+        self.assertContainsRe(err, "Using version string 8.")
+
+    def test_upstream_branch_revision_requires_upstream(self):
+        # --revision requires a valid upstreambranch
+        upstream = self.make_upstream()
+        rel1 = self.release_upstream(upstream)
+        package = self.import_upstream(rel1, upstream)
+        changed_upstream = self.file_moved_replaced_upstream(upstream)
+        rel2 = self.release_upstream(changed_upstream)
+        (out, err) = self.run_bzr(['merge-upstream', '-r8'], working_dir=package.tree.basedir, retcode=3)
+        self.assertEquals(out, "")
+        self.assertEquals(err,
+            "Using distribution unstable\n"
+            "bzr: ERROR: --revision can only be used with a valid upstream branch\n")
+
     def test_hooks(self):
         upstream = self.make_upstream()
         rel1 = self.release_upstream(upstream)
