@@ -1,3 +1,10 @@
+bzr (2.5.0~beta3-2) UNRELEASED; urgency=low
+
+  * Build-depend on python-paramiko, python-pycurl and python-gpgme for use in
+    the testsuite.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 10 Nov 2011 15:51:53 +0100
+
 bzr (2.5.0~beta3-1) experimental; urgency=low
 
   * New upstream release.

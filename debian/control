@@ -15,8 +15,11 @@ Build-Depends: cython-dbg | python-pyrex,
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
                python-lzma-dbg,
+               python-gpgme,
                python-medusa,
                python-meliae-dbg,
+               python-paramiko,
+               python-pycurl,
                python-subunit,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.2
