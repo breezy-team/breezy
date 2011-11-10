@@ -70,24 +70,30 @@ class MergePackageTests(TestCaseWithTransport):
         ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
         # Ubuntu upstream.
         self.assertEquals(
-            MP._latest_version(ubup_o).upstream_version, '1.2')
+            MP._latest_version(ubup_o.branch, ubup_o.last_revision()).upstream_version,
+            '1.2')
         # Debian upstream.
         self.assertEquals(
-            MP._latest_version(debp_n).upstream_version, '1.10')
+            MP._latest_version(debp_n.branch, debp_n.last_revision()).upstream_version,
+            '1.10')
 
         ubuntup, debianp = self._setup_upstreams_not_diverged()
         # Ubuntu upstream.
         self.assertEquals(
-            MP._latest_version(ubuntup).upstream_version, '1.4')
+            MP._latest_version(ubuntup.branch, ubuntup.last_revision()).upstream_version,
+            '1.4')
         # Debian upstream.
         self.assertEquals(
-            MP._latest_version(debianp).upstream_version, '2.2')
+            MP._latest_version(debianp.branch, debianp.last_revision()).upstream_version,
+            '2.2')
 
     def test__upstream_version_data(self):
         ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
-        vdata = MP._upstream_version_data(debp_n.branch, ubup_o.branch)
-        self.assertEquals(vdata[0][0], Version('1.10'))
-        self.assertEquals(vdata[1][0], Version('1.2'))
+        vdata = MP._upstream_version_data(debp_n.branch, debp_n.last_revision())
+        self.assertEquals(vdata[0], Version('1.10'))
+
+        vdata = MP._upstream_version_data(ubup_o.branch, ubup_o.last_revision())
+        self.assertEquals(vdata[0], Version('1.2'))
 
     def test_debian_upstream_newer(self):
         """Diverging upstreams (debian newer) don't cause merge conflicts.
@@ -626,7 +632,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         def tree_nick(tree):
             return str(tree)[1:-1].split('/')[-1]
-            
+
         for version, paths, utree, urevid in vdata:
             msg = ''
             if utree is not None:
@@ -641,7 +647,7 @@ class MergePackageTests(TestCaseWithTransport):
                 msg += 'Added paths: %s. ' % str(paths)
 
             commit(msg, version)
-                
+
         return tree
 
 

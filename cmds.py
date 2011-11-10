@@ -1207,7 +1207,7 @@ class cmd_merge_package(Command):
                 source_branch.basis_tree())
         if not (this_config.build_type == BUILD_TYPE_NATIVE or
                 that_config.build_type == BUILD_TYPE_NATIVE):
-            fix_ancestry_as_needed(tree, source_branch)
+            fix_ancestry_as_needed(tree, source_branch, source_revid=revid)
 
         # Merge source packaging branch in to the target packaging branch.
         _merge_tags_if_possible(source_branch, tree.branch)

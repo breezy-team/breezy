@@ -67,7 +67,7 @@ def _upstream_version_data(branch, revid):
     return (Version(uver), upstream_revid)
 
 
-def fix_ancestry_as_needed(tree, source, source_revid):
+def fix_ancestry_as_needed(tree, source, source_revid=None):
     """Manipulate the merge target's ancestry to avoid upstream conflicts.
 
     Merging J->I given the following ancestry tree is likely to result in
@@ -116,6 +116,8 @@ def fix_ancestry_as_needed(tree, source, source_revid):
 
     source.lock_read()
     try:
+        if source_revid is None:
+            source_revid = source.last_revision()
         tree.lock_write()
         try:
             # "Unpack" the upstream versions and revision ids for the merge
