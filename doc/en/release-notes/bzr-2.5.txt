@@ -511,6 +511,9 @@ Bug Fixes
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
 
+* Raise BadIndexKey exception in btree_index when a key is too large, fixing 
+  an infinite recursion issue. (Shannon Weyrick, #720853)
+
 Documentation
 *************
 
