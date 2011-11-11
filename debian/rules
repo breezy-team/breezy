@@ -51,10 +51,11 @@ override_dh_install:
 	# Install the documentation; since html and txt and intermixed
 	# under doc/, this is handier than trying to do it from bzr-doc.install. 
 	for ext in txt html; do \
-	    ( cd doc && find -name "*.$$ext" -print0 ) | grep -v licence.txt | \
+	    ( cd doc && find -name "*.$$ext" -print0 ) | \
 	    	xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 	    	"debian/bzr-doc/usr/share/doc/bzr/$$ext/{}"; \
 	done
+	rm debian/bzr-doc/usr/share/doc/bzr/txt/*/*/licence.txt
 	# Install images as well
 	( cd doc && find -name "*.png" -print0 ) | \
 	    xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
