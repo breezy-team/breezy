@@ -972,7 +972,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
     def __init__(self, _transport, _format):
         super(BzrDirMeta1Colo, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(_transport,
+        self.control_files = lockable_files.LockableFiles(self.control_transport,
             self._format._lock_file_name, self._format._lock_class)
 
     def _get_branch_path(self, name):

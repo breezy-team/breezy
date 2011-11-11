@@ -1430,3 +1430,4 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
             bzrdir.BzrDirMetaFormat1())
         self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
             None)
+

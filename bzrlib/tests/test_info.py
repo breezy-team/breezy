@@ -18,7 +18,7 @@ import sys
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     info,
     tests,
     workingtree,
@@ -54,7 +54,7 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def test_describe_repository_layout(self):
         repository = self.make_repository('.', shared=True)
-        tree = bzrdir.BzrDir.create_branch_convenience('tree',
+        tree = controldir.ControlDir.create_branch_convenience('tree',
             force_new_tree=True).bzrdir.open_workingtree()
         self.assertEqual('Shared repository with trees',
             info.describe_layout(tree.branch.repository))
@@ -90,11 +90,11 @@ class TestInfo(tests.TestCaseWithTransport):
         # this ought to be easier...
         branch.create_checkout('%s_co' % format,
             lightweight=True).bzrdir.destroy_workingtree()
-        control = bzrdir.BzrDir.open('%s_co' % format)
+        control = controldir.ControlDir.open('%s_co' % format)
         old_format = control._format.workingtree_format
         try:
             control._format.workingtree_format = \
-                bzrdir.format_registry.make_bzrdir(format).workingtree_format
+                controldir.format_registry.make_bzrdir(format).workingtree_format
             control.create_workingtree()
             tree = workingtree.WorkingTree.open('%s_co' % format)
             format_description = info.describe_format(tree.bzrdir,
@@ -124,31 +124,31 @@ class TestInfo(tests.TestCaseWithTransport):
             repo, None, None))
 
     def test_describe_tree_format(self):
-        for key in bzrdir.format_registry.keys():
-            if key in bzrdir.format_registry.aliases():
+        for key in controldir.format_registry.keys():
+            if key in controldir.format_registry.aliases():
                 continue
             self.assertTreeDescription(key)
 
     def test_describe_checkout_format(self):
-        for key in bzrdir.format_registry.keys():
-            if key in bzrdir.format_registry.aliases():
+        for key in controldir.format_registry.keys():
+            if key in controldir.format_registry.aliases():
                 # Aliases will not describe correctly in the UI because the
                 # real format is found.
                 continue
             # legacy: weave does not support checkouts
             if key == 'weave':
                 continue
-            if bzrdir.format_registry.get_info(key).experimental:
+            if controldir.format_registry.get_info(key).experimental:
                 # We don't require that experimental formats support checkouts
                 # or describe correctly in the UI.
                 continue
-            if bzrdir.format_registry.get_info(key).hidden:
+            if controldir.format_registry.get_info(key).hidden:
                 continue
             expected = None
             if key in ('pack-0.92',):
                 expected = 'pack-0.92'
             elif key in ('knit', 'metaweave'):
-                if 'metaweave' in bzrdir.format_registry:
+                if 'metaweave' in controldir.format_registry:
                     expected = 'knit or metaweave'
                 else:
                     expected = 'knit'
@@ -157,10 +157,10 @@ class TestInfo(tests.TestCaseWithTransport):
             self.assertCheckoutDescription(key, expected)
 
     def test_describe_branch_format(self):
-        for key in bzrdir.format_registry.keys():
-            if key in bzrdir.format_registry.aliases():
+        for key in controldir.format_registry.keys():
+            if key in controldir.format_registry.aliases():
                 continue
-            if bzrdir.format_registry.get_info(key).hidden:
+            if controldir.format_registry.get_info(key).hidden:
                 continue
             expected = None
             if key in ('dirstate', 'knit'):
@@ -172,10 +172,10 @@ class TestInfo(tests.TestCaseWithTransport):
             self.assertBranchDescription(key, expected)
 
     def test_describe_repo_format(self):
-        for key in bzrdir.format_registry.keys():
-            if key in bzrdir.format_registry.aliases():
+        for key in controldir.format_registry.keys():
+            if key in controldir.format_registry.aliases():
                 continue
-            if bzrdir.format_registry.get_info(key).hidden:
+            if controldir.format_registry.get_info(key).hidden:
                 continue
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):
@@ -186,7 +186,7 @@ class TestInfo(tests.TestCaseWithTransport):
                 expected = '1.14-rich-root'
             self.assertRepoDescription(key, expected)
 
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         format.set_branch_format(_mod_branch.BzrBranchFormat6())
         tree = self.make_branch_and_tree('unknown', format=format)
         self.assertEqual('unnamed', info.describe_format(tree.bzrdir,
@@ -269,6 +269,20 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(
             [('branch root', bound_branch.bzrdir.root_transport.base),
              ('bound to branch', branch.bzrdir.root_transport.base)],
+            info.gather_location_info(bound_branch.repository, bound_branch)
+        )
+
+    def test_gather_location_bound_in_repository(self):
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(False)
+        branch = self.make_branch('branch')
+        bound_branch = controldir.ControlDir.create_branch_convenience(
+            'repo/bound_branch')
+        bound_branch.bind(branch)
+        self.assertEqual(
+            [('shared repository', bound_branch.repository.bzrdir.user_url),
+             ('repository branch', bound_branch.bzrdir.user_url),
+             ('bound to branch', branch.bzrdir.user_url)],
             info.gather_location_info(bound_branch.repository, bound_branch)
         )
 

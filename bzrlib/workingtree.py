@@ -522,7 +522,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             # TODO now merge from tree.last_revision to revision (to preserve
             # user local changes)
             merge.transform_tree(tree, self)
-            tree.set_parent_ids([revision_id])
+            if revision_id == _mod_revision.NULL_REVISION:
+                new_parents = []
+            else:
+                new_parents = [revision_id]
+            tree.set_parent_ids(new_parents)
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
@@ -1004,14 +1008,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                 show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
-                    if basis_root_id != new_root_id:
+                    if new_root_id is not None and basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 finally:
                     basis_tree.unlock()
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the revisiontree we merged against to set the new
                 # tree data.
-                parent_trees = [(self.branch.last_revision(), new_basis_tree)]
+                parent_trees = []
+                if self.branch.last_revision() != _mod_revision.NULL_REVISION:
+                    parent_trees.append(
+                        (self.branch.last_revision(), new_basis_tree))
                 # we have to pull the merge trees out again, because
                 # merge_inner has set the ids. - this corner is not yet
                 # layered well enough to prevent double handling.
