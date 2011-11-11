@@ -43,11 +43,15 @@ override_dh_install:
 		mv debian/tmp/usr/lib/$$py/dist-packages/bzrlib/tests \
 			debian/python-bzrlib.tests/usr/lib/$$py/dist-packages/bzrlib/tests; \
 	done
+	if [ -d debian/tmp/usr/share/locale ]; then \
+		mkdir -p debian/python-bzrlib/usr/share; \
+		mv debian/tmp/usr/share/locale debian/python-bzrlib/usr/share/locale; \
+	fi;
 	dh_install --list-missing --fail-missing
 	# Install the documentation; since html and txt and intermixed
 	# under doc/, this is handier than trying to do it from bzr-doc.install. 
 	for ext in txt html; do \
-	    ( cd doc && find -name "*.$$ext" -print0 ) | \
+	    ( cd doc && find -name "*.$$ext" -print0 ) | grep -v licence.txt | \
 	    	xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 	    	"debian/bzr-doc/usr/share/doc/bzr/$$ext/{}"; \
 	done

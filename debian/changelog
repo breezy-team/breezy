@@ -2,8 +2,11 @@ bzr (2.5.0~beta3-2) UNRELEASED; urgency=low
 
   * Build-depend on python-paramiko, python-pycurl and python-gpgme for use in
     the testsuite.
+  * Support installing po files.
+  * Don't install duplicate licence files, already documented in
+    debian/copyright.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Thu, 10 Nov 2011 15:51:53 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 11 Nov 2011 18:11:58 +0100
 
 bzr (2.5.0~beta3-1) experimental; urgency=low
 
