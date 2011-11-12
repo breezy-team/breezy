@@ -1,4 +1,4 @@
-bzr (2.5.0~beta3-2) unstable; urgency=low
+bzr (2.5.0~beta3-2) experimental; urgency=low
 
   * Build-depend on python-paramiko, python-pycurl and python-gpgme for use in
     the testsuite.
