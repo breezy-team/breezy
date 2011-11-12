@@ -1,0 +1,35 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Bazaar Developers <bazaar@lists.canonical.com>
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: bzr-stats\n"
+"Report-Msgid-Bugs-To: <bazaar@lists.canonical.com>\n"
+"POT-Creation-Date: 2011-11-12 05:56+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: cmds.py:243
+msgid "Generate statistics for LOCATION."
+msgstr ""
+
+# help of 'show-class' option of 'committer-statistics' command
+#: cmds.py:248
+msgid "Show the class of contributions."
+msgstr ""
+
+#: cmds.py:286
+msgid "Figure out the ancestor graph for LOCATION"
+msgstr ""
+
+#: cmds.py:395
+msgid "Determine credits for LOCATION."
+msgstr ""

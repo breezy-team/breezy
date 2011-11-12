@@ -21,6 +21,14 @@ from info import (
     bzr_plugin_version  as version_info,
     )
 
+try:
+    from bzrlib.i18n import load_plugin_translations
+except ImportError: # No translations for bzr < 2.5
+    gettext = lambda x: x
+else:
+    translation = load_plugin_translations("bzr-stats")
+    gettext = translation.ugettext
+
 __version__ = _format_version_tuple(version_info)
 
 
