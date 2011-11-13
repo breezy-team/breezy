@@ -19,6 +19,17 @@
 Currently only tells the user that Monotone is not supported.
 """
 
+from info import (
+    bzr_plugin_version as version_info,
+    )
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
+
+
 from bzrlib import (
     controldir,
     errors,
