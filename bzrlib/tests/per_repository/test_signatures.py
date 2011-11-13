@@ -33,6 +33,12 @@ class TestSignatures(per_repository.TestCaseWithRepository):
 #     an identical tree without a ghost
 # fetch missing should rewrite the TOC of weaves to list newly available parents.
 
+    def setUp(self):
+        super(TestSignatures, self).setUp()
+        if not self.repository_format.supports_revision_signatures:
+            raise tests.TestNotApplicable(
+                "repository does not support signing revisions")
+
     def test_sign_existing_revision(self):
         wt = self.make_branch_and_tree('.')
         wt.commit("base", allow_pointless=True, rev_id='A')
@@ -93,3 +99,19 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
+
+
+class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
+
+    def test_sign_revision(self):
+        if self.repository_format.supports_revision_signatures:
+            raise tests.TestNotApplicable(
+                "repository supports signing revisions")
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        self.assertRaises(errors.UnsupportedOperation,
+            repo.sign_revision, 'A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
