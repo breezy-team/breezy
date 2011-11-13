@@ -220,6 +220,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             return ""
 
+    def get_symlink_target(self, file_id, path=None):
+        """See RevisionTree.get_symlink_target."""
+        if path is None:
+            path = self.id2path(file_id)
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
+        if stat.S_ISLNK(mode):
+            return self.store[hexsha].data
+        else:
+            return None
+
     def _comparison_data(self, entry, path):
         if entry is None:
             return None, False, None
