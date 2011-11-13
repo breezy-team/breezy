@@ -237,6 +237,9 @@ class GitRepository(ForeignRepository):
     def add_signature_text(self, revid, signature):
         raise errors.UnsupportedOperation(self.add_signature_text, self)
 
+    def sign_revision(self, revision_id, gpg_strategy):
+        raise errors.UnsupportedOperation(self.add_signature_text, self)
+
 
 class GitRepositoryLock(object):
     """Subversion lock."""
