@@ -5349,10 +5349,10 @@ class cmd_serve(Command):
         if protocol is None:
             protocol = transport.transport_server_registry.get()
         host, port = self.get_host_and_port(port)
-        url = urlutils.local_path_to_url(directory)
+        url = transport.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        t = transport.get_transport(url)
+        t = transport.get_transport_from_url(url)
         try:
             protocol(t, host, port, inet, client_timeout)
         except TypeError, e:

@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5b3
+bzr 2.5b4
 #########
 
-:2.5b3: NOT RELEASED YET
+:2.5b4: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -19,6 +19,67 @@ New Features
 ************
 
 .. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.5b3
+#########
+
+:2.5b3: 2011-11-10
+
+This is the third beta of the 2.5 series, leading to a 2.5.0 release in
+February 2012. Beta releases are suitable for everyday use but may cause
+some incompatibilities with plugins.
+
+This release includes log options for ``push`` and ``pull``, more UI polish
+for colocated branches, a better and more coherent implementation for UI
+dialogs, enhancements to the config framework and more.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
 
 * The ``log_format`` configuration can be used with ``-Olog_format=line`` to
   change the format ``push`` and ``pull`` use to display the
@@ -34,14 +95,19 @@ New Features
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
+* ``bzr info -v`` now shows the number of colocated branches
+  for control directories that support them.
+  (Jelmer Vernooij, #863285)
 
 * ``bzr version-info`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #238705)
 
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
+
+* ``bzr serve`` now can serve from URLs rather than just from the
+  file system. I.e.: ``bzr serve -d lp:bzr`` or
+  ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
 
 * all input prompts are now char-based when possible, and can be forced to
   line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
@@ -51,8 +117,8 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
+* ``bzr info`` now shows the master branch location too for
+  treeless local branches. (Jelmer Vernooij, #258355)
 
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
@@ -74,16 +140,21 @@ Bug Fixes
 * ``bzr upgrade`` no longer treats 'already up-to-date' exceptions as
   errors. (Benoît Pierre, #716560).
 
-Documentation
-*************
+* ``bzr version-info`` no longer populates the clean state for custom
+  templates unless {clean} is explicitly asked for.
+  (Lawrence Mitchell, #882541)
 
-.. Improved or updated documentation.
+* Fix finding the CPU count when using Python >= 2.6 on BSD-based systems.
+  (Jelmer Vernooij, #887151)
+
+* ``WorkingTree.clone()`` now supports its ``revision_id`` being set
+  to the null revision. (Jelmer Vernooij, #876423)
+
+* ``WorkingTree.pull`` can now pull ``NULL_REVISION``.
+  (Jelmer Vernooij, #887556)
 
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
 
@@ -101,9 +172,6 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 * ``ControlDirFormat`` now has a new method ``supports_transport``
   which format implementations can use whether or not they can access
   a control dir over a particular transport. (Jelmer Vernooij)
@@ -113,10 +181,6 @@ Internals
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Ensure TestCase instances are deallocated immediately after running where
   possible. This greatly reduces the peak resource needs of a full test suite
