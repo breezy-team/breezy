@@ -100,7 +100,7 @@ exciting CDEs around for several notable reasons:
 * it models relationships between many of things tracked, e.g.
   source code branches can be associated with bug fixes
 
-* as well are managing historical knowledge,
+* as well as managing historical knowledge,
   it supports future development planning and tracking by providing
   features such as roadmaps, milestones and blueprints
 
