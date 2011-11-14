@@ -783,7 +783,7 @@ class TreeTransformBase(object):
                     to_mode |= 0010 & ~umask
             else:
                 to_mode = current_mode & ~0111
-            os.chmod(abspath, to_mode)
+            osutils.chmod_if_possible(abspath, to_mode)
 
     def _new_entry(self, name, parent_id, file_id):
         """Helper function to create a new filesystem entry."""
@@ -1642,7 +1642,7 @@ class TreeTransform(DiskTreeTransform):
             else:
                 raise
         if typefunc(mode):
-            os.chmod(self._limbo_name(trans_id), mode)
+            osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
 
     def iter_tree_children(self, parent_id):
         """Iterate through the entry's tree children, if any"""
