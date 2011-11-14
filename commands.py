@@ -245,7 +245,9 @@ class cmd_git_apply(Command):
 
     takes_options = [
         Option('signoff', short_name='s', help='Add a Signed-off-by line.'),
-        'force']
+        Option('force',
+            help='Apply patches even if tree has uncommitted changes.')
+        ]
     takes_args = ["patches*"]
 
     def _apply_patch(self, wt, f, signoff):
