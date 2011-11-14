@@ -519,21 +519,6 @@ def _verbosity_level_callback(option, opt_str, value, parser):
             _verbosity_level = -1
 
 
-class MergeTypeRegistry(_mod_registry.Registry):
-
-    pass
-
-
-_merge_type_registry = MergeTypeRegistry()
-_merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
-                                   "Merge using external diff3")
-_merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
-                                   "LCA-newness merge")
-_merge_type_registry.register_lazy('merge3', 'bzrlib.merge', 'Merge3Merger',
-                                   "Native diff3-style merge")
-_merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
-                                   "Weave-based merge")
-
 # Declare the standard options
 _standard_option('help', short_name='h',
                  help='Show help message.')
@@ -576,8 +561,8 @@ _global_option('long', help='Use detailed log format.'
                ' Same as --log-format long',
                short_name='l')
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
-                        _merge_type_registry, value_switches=True,
-                        title='Merge algorithm')
+                        lazy_registry=('bzrlib.merge', 'merge_type_registry'),
+                        value_switches=True, title='Merge algorithm')
 _global_option('message', type=unicode,
                short_name='m',
                help='Message string.')
