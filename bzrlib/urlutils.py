@@ -836,6 +836,7 @@ class URL(object):
         """
         if not isinstance(relpath, str):
             raise errors.InvalidURL(relpath)
+        relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):
             base_parts = []
         else:
