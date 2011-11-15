@@ -28,6 +28,12 @@ from bzrlib.tests import per_repository
 
 class TestSignatures(per_repository.TestCaseWithRepository):
 
+    def setUp(self):
+        super(TestSignatures, self).setUp()
+        if not self.repository_format.supports_revision_signatures:
+            raise tests.TestNotApplicable(
+                "repository does not support signing revisions")
+
 # TODO 20051003 RBC:
 # compare the gpg-to-sign info for a commit with a ghost and
 #     an identical tree without a ghost
@@ -119,3 +125,19 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         self.assertEquals(
             (gpg.SIGNATURE_VALID, None, ),
             repo.verify_revision_signature('A', strategy))
+
+
+class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
+
+    def test_sign_revision(self):
+        if self.repository_format.supports_revision_signatures:
+            raise tests.TestNotApplicable(
+                "repository supports signing revisions")
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        self.assertRaises(errors.UnsupportedOperation,
+            repo.sign_revision, 'A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()

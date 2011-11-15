@@ -320,12 +320,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
-            # if we failed to write, despite having an empty page to write to,
-            # then line is too big. len is 2 here because we've already written
-            # some header. raising the error avoids infinite recursion searching
-            # for a suitably large page that will not be found.
-            if rows[-1].writer.bytes_out_len <= 2:
-                raise errors.BadIndexKey(string_key)
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + "\n"
