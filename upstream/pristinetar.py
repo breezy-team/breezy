@@ -204,6 +204,7 @@ class PristineTarSource(UpstreamSource):
         message = "Import upstream version %s" % (version,)
         if component is not None:
             message += ", component %s" % component
+            revprops["deb-component"] = component
         if len(parent_ids) == 0:
             base_revid = _mod_revision.NULL_REVISION
         else:
