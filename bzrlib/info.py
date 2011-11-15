@@ -88,6 +88,11 @@ def gather_location_info(repository=None, branch=None, working=None,
     else:
         branch_path = None
         master_path = None
+        try:
+            if control is not None and control.get_branch_reference():
+                locs['checkout of branch'] = control.get_branch_reference()
+        except NotBranchError:
+            pass
     if working:
         working_path = working.user_url
         if working_path != branch_path:
@@ -334,7 +339,7 @@ def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
     try:
         tree = a_bzrdir.open_workingtree(
             recommend_upgrade=False)
-    except (NoWorkingTree, NotLocalUrl):
+    except (NoWorkingTree, NotLocalUrl, NotBranchError):
         tree = None
         try:
             branch = a_bzrdir.open_branch()
@@ -374,7 +379,7 @@ def show_component_info(control, repository, branch=None, working=None,
         verbose = 1
     if verbose is True:
         verbose = 2
-    layout = describe_layout(repository, branch, working)
+    layout = describe_layout(repository, branch, working, control)
     format = describe_format(control, repository, branch, working)
     outfile.write("%s (format: %s)\n" % (layout, format))
     _show_location_info(
@@ -404,13 +409,21 @@ def show_component_info(control, repository, branch=None, working=None,
     _show_repository_stats(repository, stats, outfile)
 
 
-def describe_layout(repository=None, branch=None, tree=None):
+def describe_layout(repository=None, branch=None, tree=None, control=None):
     """Convert a control directory layout into a user-understandable term
 
     Common outputs include "Standalone tree", "Repository branch" and
     "Checkout".  Uncommon outputs include "Unshared repository with trees"
     and "Empty control directory"
     """
+    if branch is None and control is not None:
+        try:
+            branch_reference = control.get_branch_reference()
+        except NotBranchError:
+            pass
+        else:
+            if branch_reference is not None:
+                return "Dangling branch reference"
     if repository is None:
         return 'Empty control directory'
     if branch is None and tree is None:

@@ -17,6 +17,7 @@
 
 """Tests for the info command of bzr."""
 
+import shutil
 import sys
 
 from bzrlib import (
@@ -53,6 +54,18 @@ class TestInfo(tests.TestCaseWithTransport):
             'Empty control directory (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
             'Location:\n'
             '  control directory: ctrl\n')
+        self.assertEquals(err, '')
+
+    def test_info_dangling_branch_reference(self):
+        br = self.make_branch('target')
+        br.create_checkout('from', lightweight=True)
+        shutil.rmtree('target')
+        out, err = self.run_bzr('info from')
+        self.assertEquals(out,
+            'Dangling branch reference (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Location:\n'
+            '   control directory: from\n'
+            '  checkout of branch: target\n')
         self.assertEquals(err, '')
 
     def test_info_standalone(self):
