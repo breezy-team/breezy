@@ -93,3 +93,29 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         d2 = repo.bzrdir.clone(urlutils.local_path_to_url('target'))
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
+
+    def test_verify_revision_signature_not_signed(self):
+        wt = self.make_branch_and_tree('.')
+        wt.commit("base", allow_pointless=True, rev_id='A')
+        strategy = gpg.LoopbackGPGStrategy(None)
+        self.assertEquals(
+            (gpg.SIGNATURE_NOT_SIGNED, None),
+            wt.branch.repository.verify_revision_signature('A', strategy))
+
+    def test_verify_revision_signature(self):
+        wt = self.make_branch_and_tree('.')
+        wt.commit("base", allow_pointless=True, rev_id='A')
+        strategy = gpg.LoopbackGPGStrategy(None)
+        repo = wt.branch.repository
+        self.addCleanup(repo.lock_write().unlock)
+        repo.start_write_group()
+        repo.sign_revision('A', strategy)
+        repo.commit_write_group()
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+                         Testament.from_revision(repo,
+                         'A').as_short_text() +
+                         '-----END PSEUDO-SIGNED CONTENT-----\n',
+                         repo.get_signature_text('A'))
+        self.assertEquals(
+            (gpg.SIGNATURE_VALID, None, ),
+            repo.verify_revision_signature('A', strategy))

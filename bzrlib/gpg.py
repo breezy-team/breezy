@@ -105,7 +105,7 @@ class LoopbackGPGStrategy(object):
         all_verifiable = True
         for rev_id in revisions:
             verification_result, uid =\
-                                repository.verify_revision(rev_id,self)
+                repository.verify_revision_signature(rev_id,self)
             result.append([rev_id, verification_result, uid])
             count[verification_result] += 1
             if verification_result != SIGNATURE_VALID:
@@ -358,7 +358,7 @@ class GPGStrategy(object):
         all_verifiable = True
         for rev_id in revisions:
             verification_result, uid =\
-                                repository.verify_revision(rev_id,self)
+                repository.verify_revision_signature(rev_id, self)
             result.append([rev_id, verification_result, uid])
             count[verification_result] += 1
             if verification_result != SIGNATURE_VALID:
