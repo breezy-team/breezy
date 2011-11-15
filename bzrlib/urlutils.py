@@ -867,7 +867,7 @@ class URL(object):
         if offset is not None:
             relative = unescape(offset).encode('utf-8')
             path = self._combine_paths(self.path, relative)
-            path = urllib.quote(path)
+            path = urllib.quote(path, safe="/~")
         else:
             path = self.quoted_path
         return self.__class__(self.scheme, self.quoted_user,
