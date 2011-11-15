@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr-git\n"
 "Report-Msgid-Bugs-To: <bazaar@lists.canonical.com>\n"
-"POT-Creation-Date: 2011-10-05 02:04+0200\n"
+"POT-Creation-Date: 2011-11-15 14:45+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,15 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: commands.py:132
+msgid "creating branches"
+msgstr ""
+
+#: commands.py:153
+msgid ""
+"Use 'bzr checkout' to create a working tree in the newly created branches."
+msgstr ""
 
 #: commands.py:33
 msgid "Import all branches from a git repository."
@@ -25,17 +34,22 @@ msgstr ""
 msgid "    "
 msgstr ""
 
-#: commands.py:223
+#: commands.py:242
 msgid "Apply a series of git-am style patches."
 msgstr ""
 
-#: commands.py:225
+#: commands.py:244
 msgid ""
 "This command will in the future probably be integrated into \n"
 "\"bzr pull\"."
 msgstr ""
 
 # help of 'signoff' option of 'git-apply' command
-#: commands.py:230
+#: commands.py:249
 msgid "Add a Signed-off-by line."
+msgstr ""
+
+# help of 'force' option of 'git-apply' command
+#: commands.py:251
+msgid "Apply patches even if tree has uncommitted changes."
 msgstr ""

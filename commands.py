@@ -75,6 +75,7 @@ class cmd_git_import(Command):
             NoRepositoryPresent,
             NotBranchError,
             )
+        from bzrlib.i18n import gettext
         from bzrlib.repository import (
             InterRepository,
             Repository,
@@ -128,7 +129,7 @@ class cmd_git_import(Command):
                 except ValueError:
                     # Not a branch, ignore
                     continue
-                pb.update("creating branches", i, len(refs))
+                pb.update(gettext("creating branches"), i, len(refs))
                 if getattr(target_bzrdir._format, "colocated_branches", False):
                     if name == "HEAD":
                         branch_name = None
@@ -148,8 +149,9 @@ class cmd_git_import(Command):
                     head_branch.set_parent(url)
         finally:
             pb.finished()
-        trace.note("Use 'bzr checkout' to create a working tree in "
-                   "the newly created branches.")
+        trace.note(gettext(
+            "Use 'bzr checkout' to create a working tree in "
+            "the newly created branches."))
 
 
 class cmd_git_object(Command):
