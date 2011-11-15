@@ -751,7 +751,7 @@ class URL(object):
         else:
             self.password = None
         self.port = port
-        self.quoted_path = quoted_path
+        self.quoted_path = _url_hex_escapes_re.sub(_unescape_safe_chars, quoted_path)
         self.path = urllib.unquote(self.quoted_path)
 
     def __eq__(self, other):
