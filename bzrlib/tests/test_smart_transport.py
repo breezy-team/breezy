@@ -1356,7 +1356,7 @@ class RemoteTransportRegistration(tests.TestCase):
     def test_registration(self):
         t = transport.get_transport('bzr+ssh://example.com/path')
         self.assertIsInstance(t, remote.RemoteSSHTransport)
-        self.assertEqual('example.com', t._host)
+        self.assertEqual('example.com', t._parsed_url.host)
 
     def test_bzr_https(self):
         # https://bugs.launchpad.net/bzr/+bug/128456
@@ -3558,7 +3558,7 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         # still work correctly.
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
         new_transport = base_transport.clone('c')
-        self.assertEqual('bzr+http://host/~a/b/c/', new_transport.base)
+        self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
         self.assertEqual(
             'c/',
             new_transport._client.remote_path_from_transport(new_transport))
@@ -3581,8 +3581,8 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'http://www.example.com/bar')
         self.assertEquals(type(r), type(t))
-        self.assertEquals('joe', t._user)
-        self.assertEquals(t._user, r._user)
+        self.assertEquals('joe', t._parsed_url.user)
+        self.assertEquals(t._parsed_url.user, r._parsed_url.user)
 
     def test_redirected_to_same_host_different_protocol(self):
         t = remote.RemoteHTTPTransport('bzr+http://joe@www.example.com/foo')

@@ -156,6 +156,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         except errors.TagsNotSupported:
             raise TestNotApplicable('format does not support tags.')
         source.tags.set_tag('tag-a', 'rev-2')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         target.pull(source)
         # The tag is present, and so is its revision.
         self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
@@ -177,6 +178,7 @@ class TestPull(per_branch.TestCaseWithBranch):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('format does not support tags.')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
         target.pull(source, 'rev-2-again')
         # The tag is present, and so is its revision.
         self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))

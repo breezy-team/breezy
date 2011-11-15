@@ -166,11 +166,17 @@ class ModuleAvailableFeature(Feature):
         self.module_name = module_name
 
     def _probe(self):
-        try:
-            self._module = __import__(self.module_name, {}, {}, [''])
+        sentinel = object()
+        module = sys.modules.get(self.module_name, sentinel)
+        if module is sentinel:
+            try:
+                self._module = __import__(self.module_name, {}, {}, [''])
+                return True
+            except ImportError:
+                return False
+        else:
+            self._module = module
             return True
-        except ImportError:
-            return False
 
     @property
     def module(self):
