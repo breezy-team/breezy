@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Support verifying signatures on remote repositories.
+  (Jelmer Vernooij, #889694)
+
 Documentation
 *************
 
@@ -42,6 +45,9 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Repository.verify_revision`` has been renamed to
+  ``Repository.verify_revision_signature``. (Jelmer Vernooij)
 
 Internals
 *********
