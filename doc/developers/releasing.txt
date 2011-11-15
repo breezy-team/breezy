@@ -500,8 +500,8 @@ Announcing the source freeze
 
 #. Post to the ``bazaar@lists.canonical.com`` and
    ``bzr-packagers@list.launchpad.net`` lists, saying that the source has
-   been frozen (gone gold). Be extra clear that this is only a *source*
-   release targeted at packagers and installer builders (see
+   been frozen. Be extra clear that this is only a *source* release targeted
+   at packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
    platform maintainers and plugin authors to update their code.  This is
    done before the general public announcement of the release.
