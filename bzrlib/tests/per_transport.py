@@ -1787,3 +1787,18 @@ class TransportTests(TestTransportImplementation):
         t2 = t.clone('link')
         st = t2.stat('')
         self.assertTrue(stat.S_ISLNK(st.st_mode))
+
+    def test_abspath_url_unquote_unreserved(self):
+        """URLs from abspath should have unreserved characters unquoted"""
+        t = self.get_transport()
+        needlessly_escaped_dir = "%2D%2E%30%39%41%5A%5F%61%7A%7E/"
+        self.assertEqual(t.base + "-.09AZ_az~",
+            t.abspath(needlessly_escaped_dir))
+
+    def test_clone_url_unquote_unreserved(self):
+        """Base URL of a cloned branch needs unreserved characters unquoted"""
+        t1 = self.get_transport()
+        needlessly_escaped_dir = "%2D%2E%30%39%41%5A%5F%61%7A%7E/"
+        self.build_tree([needlessly_escaped_dir], transport=t1)
+        t2 = t1.clone(needlessly_escaped_dir)
+        self.assertEqual(t1.base + "-.09AZ_az~/", t2.base)
