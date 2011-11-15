@@ -75,7 +75,7 @@ class cmd_git_import(Command):
             NoRepositoryPresent,
             NotBranchError,
             )
-        from bzrlib.i18n import gettext
+        from bzrlib.plugins.git import gettext
         from bzrlib.repository import (
             InterRepository,
             Repository,
