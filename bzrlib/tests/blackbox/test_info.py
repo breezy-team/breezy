@@ -1398,3 +1398,30 @@ In the working tree:
          0 versioned subdirectories
 """, out)
         self.assertEqual("", err)
+
+    def test_info_shows_colocated_branches(self):
+        bzrdir = self.make_branch('.', format='development-colo').bzrdir
+        bzrdir.create_branch(name="colo1")
+        bzrdir.create_branch(name="colo2")
+        bzrdir.create_branch(name="colo3")
+        out, err = self.run_bzr('info -v .')
+        self.assertEqualDiff(
+"""Standalone branch (format: development-colo)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1 with support for colocated branches
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+Control directory:
+         4 branches
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""", out)
+        self.assertEqual("", err)
