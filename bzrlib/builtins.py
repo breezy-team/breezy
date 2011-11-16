@@ -6078,7 +6078,7 @@ class cmd_switch(Command):
                     colocated = root._format.colocated_branches
                 if colocated:
                     to_location = urlutils.join_segment_parameters(this_url,
-                        {"branch": to_location.encode("utf-8")})
+                        {"branch": urlutils.escape(to_location)})
                 else:
                     to_location = urlutils.join(
                         this_url, '..', urlutils.escape(to_location))
