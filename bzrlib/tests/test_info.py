@@ -192,35 +192,41 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual('unnamed', info.describe_format(tree.bzrdir,
             tree.branch.repository, tree.branch, tree))
 
+    def test_gather_location_controldir_only(self):
+        bzrdir = self.make_bzrdir('.')
+        self.assertEqual([('control directory', bzrdir.user_url)],
+            info.gather_location_info(control=bzrdir))
+
     def test_gather_location_standalone(self):
         tree = self.make_branch_and_tree('tree')
         self.assertEqual([('branch root', tree.bzrdir.root_transport.base)],
-            info.gather_location_info(tree.branch.repository, tree.branch,
-                                      tree))
+            info.gather_location_info(
+                tree.branch.repository, tree.branch, tree, control=tree.bzrdir))
         self.assertEqual([('branch root', tree.bzrdir.root_transport.base)],
-            info.gather_location_info(tree.branch.repository, tree.branch))
+            info.gather_location_info(
+                tree.branch.repository, tree.branch, control=tree.bzrdir))
         return tree
 
     def test_gather_location_repo(self):
         srepo = self.make_repository('shared', shared=True)
-        self.assertEqual([('shared repository',
-                          srepo.bzrdir.root_transport.base)],
-                          info.gather_location_info(srepo))
+        self.assertEqual(
+            [('shared repository', srepo.bzrdir.root_transport.base)],
+            info.gather_location_info(srepo, control=srepo.bzrdir))
         urepo = self.make_repository('unshared')
-        self.assertEqual([('repository',
-                          urepo.bzrdir.root_transport.base)],
-                          info.gather_location_info(urepo))
+        self.assertEqual(
+            [('repository', urepo.bzrdir.root_transport.base)],
+            info.gather_location_info(urepo, control=urepo.bzrdir))
 
     def test_gather_location_repo_branch(self):
         srepo = self.make_repository('shared', shared=True)
-        self.assertEqual([('shared repository',
-                          srepo.bzrdir.root_transport.base)],
-                          info.gather_location_info(srepo))
+        self.assertEqual(
+            [('shared repository', srepo.bzrdir.root_transport.base)],
+            info.gather_location_info(srepo, control=srepo.bzrdir))
         tree = self.make_branch_and_tree('shared/tree')
-        self.assertEqual([('shared repository',
-                          srepo.bzrdir.root_transport.base),
-                          ('repository branch', tree.branch.base)],
-                          info.gather_location_info(srepo, tree.branch, tree))
+        self.assertEqual(
+            [('shared repository', srepo.bzrdir.root_transport.base),
+             ('repository branch', tree.branch.base)],
+            info.gather_location_info(srepo, tree.branch, tree, srepo.bzrdir))
 
     def test_gather_location_light_checkout(self):
         tree = self.make_branch_and_tree('tree')
@@ -259,8 +265,8 @@ class TestInfo(tests.TestCaseWithTransport):
              self.gather_tree_location_info(shared_checkout))
 
     def gather_tree_location_info(self, tree):
-        return info.gather_location_info(tree.branch.repository, tree.branch,
-                                         tree)
+        return info.gather_location_info(
+            tree.branch.repository, tree.branch, tree, tree.bzrdir)
 
     def test_gather_location_bound(self):
         branch = self.make_branch('branch')
@@ -269,7 +275,8 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(
             [('branch root', bound_branch.bzrdir.root_transport.base),
              ('bound to branch', branch.bzrdir.root_transport.base)],
-            info.gather_location_info(bound_branch.repository, bound_branch)
+            info.gather_location_info(
+                bound_branch.repository, bound_branch, control=bound_branch.bzrdir)
         )
 
     def test_gather_location_bound_in_repository(self):
