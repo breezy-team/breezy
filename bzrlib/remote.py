@@ -2007,6 +2007,11 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
+    def verify_revision_signature(self, revision_id, gpg_strategy):
+        self._ensure_real()
+        return self._real_repository.verify_revision_signature(
+            revision_id, gpg_strategy)
+
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         self._ensure_real()
         return self._real_repository.item_keys_introduced_by(revision_ids,
