@@ -1627,6 +1627,28 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
             request.execute('', ))
 
 
+class TestSmartServerRepositoryMakeWorkingTrees(
+        tests.TestCaseWithMemoryTransport):
+
+    def test_make_working_trees(self):
+        """For a repository with working trees, ('yes', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryMakeWorkingTrees(backing)
+        r = self.make_repository('.')
+        r.set_make_working_trees(True)
+        self.assertEqual(smart_req.SmartServerResponse(('yes', )),
+            request.execute('', ))
+
+    def test_is_not_shared(self):
+        """For a repository with working trees, ('no', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryMakeWorkingTrees(backing)
+        r = self.make_repository('.')
+        r.set_make_working_trees(False)
+        self.assertEqual(smart_req.SmartServerResponse(('no', )),
+            request.execute('', ))
+
+
 class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
 
     def test_lock_write_on_unlocked_repo(self):
@@ -1934,6 +1956,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryIsShared)
         self.assertHandlerEqual('Repository.lock_write',
             smart_repo.SmartServerRepositoryLockWrite)
+        self.assertHandlerEqual('Repository.make_working_trees',
+            smart_repo.SmartServerRepositoryMakeWorkingTrees)
         self.assertHandlerEqual('Repository.tarball',
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',
