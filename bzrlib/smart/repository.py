@@ -25,7 +25,6 @@ import threading
 
 from bzrlib import (
     bencode,
-    commands,
     errors,
     estimate_compressed_size,
     graph,
@@ -383,6 +382,20 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
             body += 'size: %d\n' % stats['size']
 
         return SuccessfulSmartServerResponse(('ok', ), body)
+
+
+class SmartServerRepositoryGetRevisionSignatureText(
+        SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id):
+        """Return the result of repository.get_signature_text().
+
+        :param repository: The repository to query in.
+        :return: A smart server response of with the signature text as
+            body.
+        """
+        text = repository.get_signature_text(revision_id)
+        return SuccessfulSmartServerResponse(('ok', ), text)
 
 
 class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):

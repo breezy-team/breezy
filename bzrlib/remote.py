@@ -1828,8 +1828,16 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_signature_text(revision_id)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response_tuple, response_handler = self._call_expecting_body(
+                'Repository.get_revision_signature_text', path, revision_id)
+            if response_tuple[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response_tuple)
+            return response_handler.read_body_bytes()
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_signature_text(revision_id)
 
     @needs_read_lock
     def _get_inventory_xml(self, revision_id):
