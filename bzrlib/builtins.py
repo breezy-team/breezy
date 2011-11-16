@@ -6080,7 +6080,8 @@ class cmd_switch(Command):
                     to_location = urlutils.join_segment_parameters(this_url,
                         {"branch": to_location.encode("utf-8")})
                 else:
-                    to_location = urlutils.join(this_url, '..', to_location)
+                    to_location = urlutils.join(
+                        this_url, '..', urlutils.escape(to_location))
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
@@ -6094,7 +6095,8 @@ class cmd_switch(Command):
                 except errors.NotBranchError:
                     this_url = self._get_branch_location(control_dir)
                     to_branch = Branch.open(
-                        urlutils.join(this_url, '..', to_location))
+                        urlutils.join(
+                            this_url, '..', urlutils.escape(to_location)))
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)

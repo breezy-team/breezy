@@ -153,6 +153,20 @@ class TestSwitch(TestCaseWithTransport):
         self.assertEqual(branchb_id, checkout.last_revision())
         self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
 
+    def test_switch_finds_relative_unicode_branch(self):
+        """Switch will find 'foo' relative to the branch the checkout is of."""
+        self.build_tree(['repo/'])
+        tree1 = self.make_branch_and_tree('repo/brancha')
+        tree1.commit('foo')
+        tree2 = self.make_branch_and_tree(u'repo/branch\xe9')
+        tree2.pull(tree1.branch)
+        branchb_id = tree2.commit('bar')
+        checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
+        self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
+        self.assertEqual(branchb_id, checkout.last_revision())
+        checkout = checkout.bzrdir.open_workingtree()
+        self.assertEqual(tree2.branch.base, checkout.branch.base)
+
     def test_switch_revision(self):
         tree = self._create_sample_tree()
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
