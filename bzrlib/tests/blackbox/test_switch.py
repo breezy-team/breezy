@@ -31,6 +31,7 @@ from bzrlib.tests import (
         TestCaseWithTransport,
         script,
         )
+from bzrlib.tests.features import UnicodeFilenameFeature
 from bzrlib.directory_service import directories
 
 
@@ -155,6 +156,7 @@ class TestSwitch(TestCaseWithTransport):
 
     def test_switch_finds_relative_unicode_branch(self):
         """Switch will find 'foo' relative to the branch the checkout is of."""
+        self.requireFeature(UnicodeFilenameFeature)
         self.build_tree(['repo/'])
         tree1 = self.make_branch_and_tree('repo/brancha')
         tree1.commit('foo')
@@ -216,6 +218,7 @@ class TestSwitch(TestCaseWithTransport):
     def test_switch_new_colocated_unicode(self):
         # Create a branch branch-1 that initially is a checkout of 'foo'
         # Use switch to create 'branch\xe9' which derives from that
+        self.requireFeature(UnicodeFilenameFeature)
         repo = self.make_repository('branch-1', format='development-colo')
         target_branch = repo.bzrdir.create_branch(name='foo')
         branch.BranchReferenceFormat().initialize(
