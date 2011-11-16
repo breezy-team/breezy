@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Provide smart server verb for ``Branch.revision_id_to_revno``.
+  (Jelmer Vernooij)
+
 Bug Fixes
 *********
 

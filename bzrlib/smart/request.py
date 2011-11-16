@@ -534,6 +534,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
+    'Branch.revision_id_to_revno', 'bzrlib.smart.branch', 'SmartServerBranchRequestRevisionIdToRevno')
+request_handlers.register_lazy(
     'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestCloningMetaDir')
 request_handlers.register_lazy(
