@@ -103,3 +103,23 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
                 other_branch.bzrdir.user_url, {"branch": "target"}))
         to_branch = to_dir.open_branch(name="target")
         self.assertEquals(revid, to_branch.last_revision())
+
+    def test_unicode(self):
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise tests.TestNotApplicable('Control dir format not supported')
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating new branches.')
+        made_control.create_repository()
+        made_branch = made_control.create_branch(name=u"col\xe9")
+        self.assertTrue(
+            u"col\xe9" in [b.name for b in made_control.list_branches()])
+        made_branch = Branch.open(made_branch.user_url)
+        self.assertEquals(u"col\xe9", made_branch.name)
+        made_control.destroy_branch(u"col\xe9")
