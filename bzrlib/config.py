@@ -3008,6 +3008,7 @@ class LocationSection(Section):
         super(LocationSection, self).__init__(section.id, section.options)
         self.length = length
         self.extra_path = extra_path
+        self.locals = {'relpath': extra_path}
 
     def get(self, name, default=None):
         value = super(LocationSection, self).get(name, default)
@@ -3016,6 +3017,19 @@ class LocationSection(Section):
             policy = _policy_value.get(policy_name, POLICY_NONE)
             if policy == POLICY_APPENDPATH:
                 value = urlutils.join(value, self.extra_path)
+            # expand section local options right now (since POLICY_APPENDPATH
+            # will never add options references, it's ok to expand after it).
+            chunks = []
+            for is_ref, chunk in iter_option_refs(value):
+                if not is_ref:
+                    chunks.append(chunk)
+                else:
+                    ref = chunk[1:-1]
+                    if ref in self.locals:
+                        chunks.append(self.locals[ref])
+                    else:
+                        chunks.append(chunk)
+            value = ''.join(chunks)
         return value
 
 
@@ -3081,17 +3095,25 @@ class LocationMatcher(SectionMatcher):
             yield section
 
 
+_option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+"""Describes an expandable option reference.
+
+We want to match the most embedded reference first.
+
+I.e. for '{{foo}}' we will get '{foo}',
+for '{bar{baz}}' we will get '{baz}'
+"""
+
+def iter_option_refs(string):
+    # Split isolate refs so every other chunk is a ref
+    is_ref = False
+    for chunk  in _option_ref_re.split(string):
+        yield is_ref, chunk
+        is_ref = not is_ref
+
+
 class Stack(object):
     """A stack of configurations where an option can be defined"""
-
-    _option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
-    """Describes an exandable option reference.
-
-    We want to match the most embedded reference first.
-
-    I.e. for '{{foo}}' we will get '{foo}',
-    for '{bar{baz}}' we will get '{baz}'
-    """
 
     def __init__(self, sections_def, store=None, mutable_section_name=None):
         """Creates a stack of sections with an optional store for changes.
@@ -3210,19 +3232,15 @@ class Stack(object):
         result = string
         # We need to iterate until no more refs appear ({{foo}} will need two
         # iterations for example).
-        while True:
-            raw_chunks = Stack._option_ref_re.split(result)
-            if len(raw_chunks) == 1:
-                # Shorcut the trivial case: no refs
-                return result
+        expanded = True
+        while expanded:
+            expanded = False
             chunks = []
-            # Split will isolate refs so that every other chunk is a ref
-            chunk_is_ref = False
-            for chunk in raw_chunks:
-                if not chunk_is_ref:
+            for is_ref, chunk in iter_option_refs(result):
+                if not is_ref:
                     chunks.append(chunk)
-                    chunk_is_ref = True
                 else:
+                    expanded = True
                     name = chunk[1:-1]
                     if name in _refs:
                         raise errors.OptionExpansionLoop(string, _refs)
@@ -3232,7 +3250,6 @@ class Stack(object):
                         raise errors.ExpandingUnknownOption(name, string)
                     chunks.append(value)
                     _refs.pop()
-                    chunk_is_ref = False
             result = ''.join(chunks)
         return result
 
@@ -3242,11 +3259,6 @@ class Stack(object):
             # anything else
             value = env[name]
         else:
-            # FIXME: This is a limited implementation, what we really need is a
-            # way to query the bzr config for the value of an option,
-            # respecting the scope rules (That is, once we implement fallback
-            # configs, getting the option value should restart from the top
-            # config, not the current one) -- vila 20101222
             value = self.get(name, expand=False)
             value = self._expand_options_in_string(value, env, _refs)
         return value

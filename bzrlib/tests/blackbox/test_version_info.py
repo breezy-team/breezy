@@ -20,7 +20,7 @@ import os
 
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithTransport
-
+from bzrlib.version_info_formats import VersionInfoBuilder
 
 class TestVersionInfo(TestCaseWithTransport):
 
@@ -150,7 +150,17 @@ class TestVersionInfo(TestCaseWithTransport):
             '"{revno} {branch_nick} {clean}\n" branch')
         self.assertEqual("2 branch 0\n", out)
         self.assertEqual("", err)
-    
+
+    def test_custom_no_clean_in_template(self):
+        def should_not_be_called(self):
+            raise AssertionError("Method on %r should not have been used" % (self,))
+        self.overrideAttr(VersionInfoBuilder, "_extract_file_revisions",
+                          should_not_be_called)
+        self.create_tree()
+        out, err = self.run_bzr('version-info --custom --template=r{revno} branch')
+        self.assertEqual("r2", out)
+        self.assertEqual("", err)
+
     def test_non_ascii(self):
         """Test that we can output non-ascii data"""
         
