@@ -2206,9 +2206,9 @@ class RemoteStreamSource(vf_repository.StreamSource):
 
     def _real_stream(self, repo, search):
         """Get a stream for search from repo.
-        
-        This never called RemoteStreamSource.get_stream, and is a heler
-        for RemoteStreamSource._get_stream to allow getting a stream 
+
+        This never called RemoteStreamSource.get_stream, and is a helper
+        for RemoteStreamSource._get_stream to allow getting a stream
         reliably whether fallback back because of old servers or trying
         to stream from a non-RemoteRepository (which the stacked support
         code will do).
@@ -2485,6 +2485,7 @@ class RemoteBranchFormat(branch.BranchFormat):
             if heads_to_fetch_impl is branch.Branch.heads_to_fetch.im_func:
                 return True
         return False
+
 
 class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """Branch stored on a server accessed by HPSS RPC.
@@ -3269,7 +3270,6 @@ class RemoteBzrDirConfig(RemoteConfig):
     def _real_object(self):
         self._bzrdir._ensure_real()
         return self._bzrdir._real_bzrdir
-
 
 
 def _extract_tar(tar, to_dir):
