@@ -35,6 +35,9 @@ Bug Fixes
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
+* Support looking up revision numbers by revision id in empty branches.
+  (Jelmer Vernooij, #535031)
+
 Documentation
 *************
 
