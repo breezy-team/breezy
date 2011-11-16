@@ -49,6 +49,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``bzr config`` uses the new configuration implementation.
+  (Vincent Ladeuil)
+
 Testing
 *******
 
