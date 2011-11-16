@@ -343,6 +343,27 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
             return SuccessfulSmartServerResponse(('no', ))
 
 
+class SmartServerRequestHasSignatureForRevisionId(
+        SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id):
+        """Return ok if a signature is present for a revision.
+
+        :param repository: The repository to query in.
+        :param revision_id: The utf8 encoded revision_id to lookup.
+        :return: A smart server response of ('ok', ) if a
+            signature for the revision is present.
+        """
+        try:
+            if repository.has_signature_for_revision_id(revision_id):
+                return SuccessfulSmartServerResponse(('yes', ))
+            else:
+                return SuccessfulSmartServerResponse(('no', ))
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('NoSuchRevision', revision_id))
+
+
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revid, committers):

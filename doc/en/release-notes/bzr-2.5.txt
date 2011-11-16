@@ -61,6 +61,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* New HPSS call ``Repository.has_signature_for_revision_id``.
+  (Jelmer Vernooij)
+
 Testing
 *******
 

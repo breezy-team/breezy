@@ -2479,6 +2479,33 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
                               call.call.method == verb])
 
 
+class TestRepositoryHasSignatureForRevisionId(TestRemoteRepository):
+
+    def test_has_signature_for_revision_id(self):
+        # ('yes', ) for Repository.has_signature_for_revision_id -> 'True'.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.has_signature_for_revision_id('A')
+        self.assertEqual(
+            [('call', 'Repository.has_signature_for_revision_id',
+              ('quack/', 'A'))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_is_not_shared(self):
+        # ('no', ) for Repository.has_signature_for_revision_id -> 'False'.
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.has_signature_for_revision_id('A')
+        self.assertEqual(
+            [('call', 'Repository.has_signature_for_revision_id',
+              ('qwack/', 'A'))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
