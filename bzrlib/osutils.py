@@ -116,10 +116,10 @@ def chmod_if_possible(filename, mode):
         # doing a stat, and then trying to compare
         os.chmod(filename, mode)
     except (IOError, OSError),e:
-        # EPERM seems to commonly happen on smbfs; there's probably no
-        # point warning about it.
+        # Permission/access denied seems to commonly happen on smbfs; there's
+        # probably no point warning about it.
         # <https://bugs.launchpad.net/bzr/+bug/606537>
-        if getattr(e, 'errno') == errno.EPERM:
+        if getattr(e, 'errno') in (errno.EPERM, errno.EACCES):
             trace.mutter("ignore EPERM on mkdir of %r" % filename)
             return
         raise
