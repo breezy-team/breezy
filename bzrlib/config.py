@@ -2996,7 +2996,7 @@ class SectionMatcher(object):
         # This is where we require loading the store so we can see all defined
         # sections.
         sections = self.store.get_sections()
-        # Walk the revisions in the provided order
+        # Walk the revisions in the order provided
         for store, s in sections:
             if self.match(s):
                 yield store, s
@@ -3351,7 +3351,7 @@ class GlobalStack(_CompatibleStack):
         # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
-            [self._get_overrides, gstore.get_sections],
+            [self._get_overrides, NameMatcher(gstore, 'DEFAULT').get_sections],
             gstore, mutable_section_id='DEFAULT')
 
 
@@ -3371,7 +3371,7 @@ class LocationStack(_CompatibleStack):
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, gstore.get_sections],
+             matcher.get_sections, NameMatcher(gstore, 'DEFAULT').get_sections],
             lstore, mutable_section_id=location)
 
 
@@ -3385,7 +3385,8 @@ class BranchStack(_CompatibleStack):
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, bstore.get_sections, gstore.get_sections],
+             matcher.get_sections, bstore.get_sections,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             bstore)
         self.branch = branch
 

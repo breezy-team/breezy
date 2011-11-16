@@ -3339,7 +3339,7 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals(None, self.conf.get('foo'))
 
     def test_get_hook(self):
-        self.conf.store._load_from_string('foo=bar')
+        self.conf.set('foo', 'bar')
         calls = []
         def hook(*args):
             calls.append(args)
@@ -3351,12 +3351,17 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals((self.conf, 'foo', 'bar'), calls[0])
 
 
-class TestStackGetWithConverter(TestStackGet):
+class TestStackGetWithConverter(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestStackGetWithConverter, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
+        # We just want a simple stack with a simple store so we can inject
+        # whatever content the tests need without caring about what section
+        # names are valid for a given store/stack.
+        store = config.IniFileStore(self.get_transport(), 'foo.conf')
+        self.conf = config.Stack([store.get_sections], store)
 
     def register_bool_option(self, name, default=None, default_from_env=None):
         b = config.Option(name, help='A boolean.',
@@ -3728,8 +3733,7 @@ class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):
         conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
-        self.assertEquals('bar', conf.get('foo'))
+        self.assertEquals(None, conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
         self.assertEquals('baz', conf.get('foo'))
