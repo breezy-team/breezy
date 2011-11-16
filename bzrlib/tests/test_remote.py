@@ -1865,6 +1865,49 @@ class TestBranchLockWrite(RemoteBranchTestCase):
         self.assertFinished(client)
 
 
+class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
+
+    def test_simple(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'null:'),
+            'success', ('ok', '0',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'unknown'),
+            'error', ('NoSuchRevision', 'unknown',),)
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertEquals(0, branch.revision_id_to_revno('null:'))
+        self.assertRaises(errors.NoSuchRevision,
+            branch.revision_id_to_revno, 'unknown')
+        self.assertFinished(client)
+
+    def test_dotted(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'null:'),
+            'success', ('ok', '0',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'unknown'),
+            'error', ('NoSuchRevision', 'unknown',),)
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertEquals((0, ), branch.revision_id_to_dotted_revno('null:'))
+        self.assertRaises(errors.NoSuchRevision,
+            branch.revision_id_to_dotted_revno, 'unknown')
+        self.assertFinished(client)
+
+
 class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
     def test__get_config(self):
