@@ -421,7 +421,7 @@ class BaseVersionedFile(object):
                             if not (lines == self.get_line_list([revision])[0]):
                                 raise AssertionError()
                             self.clear_cache()
-                    pb.update('Importing revisions',
+                    pb.update(gettext('Importing revisions'),
                               (total - len(revisions)) + len(added), total)
                 revisions = [r for r in revisions if r not in added]
         finally:

@@ -20,8 +20,9 @@
 from bzrlib import (
     bencode,
     errors,
+    revision as _mod_revision,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -45,10 +46,10 @@ class SmartServerBranchRequest(SmartServerRequest):
         :return: A SmartServerResponse from self.do_with_branch().
         """
         transport = self.transport_from_client_path(path)
-        bzrdir = BzrDir.open_from_transport(transport)
-        if bzrdir.get_branch_reference() is not None:
+        controldir = ControlDir.open_from_transport(transport)
+        if controldir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch(ignore_fallbacks=True)
+        branch = controldir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 
@@ -171,8 +172,16 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         The revision list is returned as the body content,
         with each revision utf8 encoded and \x00 joined.
         """
+        branch.lock_read()
+        try:
+            graph = branch.repository.get_graph()
+            stop_revisions = (None, _mod_revision.NULL_REVISION)
+            history = list(graph.iter_lefthand_ancestry(
+                branch.last_revision(), stop_revisions))
+        finally:
+            branch.unlock()
         return SuccessfulSmartServerResponse(
-            ('ok', ), ('\x00'.join(branch.revision_history())))
+            ('ok', ), ('\x00'.join(reversed(history))))
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):

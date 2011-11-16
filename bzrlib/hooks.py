@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     pyutils,
     )
+from bzrlib.i18n import gettext
 """)
 
 
@@ -70,7 +71,7 @@ class KnownHooksRegistry(registry.Registry):
 
 _builtin_known_hooks = (
     ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
-    ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
+    ('bzrlib.controldir', 'ControlDir.hooks', 'ControlDirHooks'),
     ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
     ('bzrlib.config', 'ConfigHooks', '_ConfigHooks'),
     ('bzrlib.info', 'hooks', 'InfoHooks'),
@@ -310,10 +311,10 @@ class HookPoint(object):
             introduced_string = _format_version_tuple(self.introduced)
         else:
             introduced_string = 'unknown'
-        strings.append('Introduced in: %s' % introduced_string)
+        strings.append(gettext('Introduced in: %s') % introduced_string)
         if self.deprecated:
             deprecated_string = _format_version_tuple(self.deprecated)
-            strings.append('Deprecated in: %s' % deprecated_string)
+            strings.append(gettext('Deprecated in: %s') % deprecated_string)
         strings.append('')
         strings.extend(textwrap.wrap(self.__doc__,
             break_long_words=False))

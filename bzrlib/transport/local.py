@@ -330,7 +330,10 @@ class LocalTransport(transport.Transport):
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
         abspath = self._abspath(relpath)
-        handle = osutils.open_file(abspath, 'wb')
+        try:
+            handle = osutils.open_file(abspath, 'wb')
+        except (IOError, OSError),e:
+            self._translate_error(e, abspath)
         handle.truncate()
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
@@ -564,7 +567,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
-        path = osutils.normpath(osutils.pathjoin(
+        path = osutils._win32_normpath(osutils.pathjoin(
                     self._local_base, urlutils.unescape(relpath)))
         return urlutils._win32_local_path_to_url(path)
 

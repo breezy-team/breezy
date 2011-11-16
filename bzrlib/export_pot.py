@@ -28,11 +28,13 @@ from bzrlib import (
     errors,
     help_topics,
     plugin,
+    help,
     )
 from bzrlib.trace import (
     mutter,
     note,
     )
+from bzrlib.i18n import gettext
 
 
 def _escape(s):
@@ -118,13 +120,13 @@ def _standard_options(outf):
         if getattr(opt, 'title', None):
             lineno = offsets.get(opt.title, 9999)
             if lineno == 9999:
-                note("%r is not found in bzrlib/option.py" % opt.title)
+                note(gettext("%r is not found in bzrlib/option.py") % opt.title)
             _poentry(outf, path, lineno, opt.title,
                      'title of %r option' % name)
         if getattr(opt, 'help', None):
             lineno = offsets.get(opt.help, 9999)
             if lineno == 9999:
-                note("%r is not found in bzrlib/option.py" % opt.help)
+                note(gettext("%r is not found in bzrlib/option.py") % opt.help)
             _poentry(outf, path, lineno, opt.help,
                      'help of %r option' % name)
 
@@ -167,7 +169,7 @@ def _write_command_help(outf, cmd):
     _command_options(outf, path, cmd)
 
 
-def _command_helps(outf):
+def _command_helps(outf, plugin_name=None):
     """Extract docstrings from path.
 
     This respects the Bazaar cmdtable/table convention and will
@@ -180,24 +182,30 @@ def _command_helps(outf):
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
-        note("Exporting messages from builtin command: %s", cmd_name)
+        if plugin_name is not None:
+            # only export builtins if we are not exporting plugin commands
+            continue
+        note(gettext("Exporting messages from builtin command: %s"), cmd_name)
         _write_command_help(outf, command)
 
     plugin_path = plugin.get_core_plugin_path()
     core_plugins = glob(plugin_path + '/*/__init__.py')
     core_plugins = [os.path.basename(os.path.dirname(p))
                         for p in core_plugins]
-    # core plugins
+    # plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
-        if command.plugin_name() not in core_plugins:
+        if plugin_name is not None and command.plugin_name() != plugin_name:
+            # if we are exporting plugin commands, skip plugins we have not specified.
+            continue
+        if plugin_name is None and command.plugin_name() not in core_plugins:
             # skip non-core plugins
             # TODO: Support extracting from third party plugins.
             continue
-        note("Exporting messages from plugin command: %s in %s",
-             cmd_name, command.plugin_name())
+        note(gettext("Exporting messages from plugin command: {0} in {1}").format(
+             cmd_name, command.plugin_name() ))
         _write_command_help(outf, command)
 
 
@@ -221,7 +229,7 @@ def _error_messages(outf):
             continue
         fmt = getattr(klass, "_fmt", None)
         if fmt:
-            note("Exporting message from error: %s", name)
+            note(gettext("Exporting message from error: %s"), name)
             _poentry(outf, 'bzrlib/errors.py',
                      offsets.get(fmt, 9999), fmt)
 
@@ -234,17 +242,23 @@ def _help_topics(outf):
                     outf,
                     'dummy/help_topics/'+key+'/detail.txt',
                     1, doc)
-
+        elif callable(doc): # help topics from files
+            _poentry_per_paragraph(
+                    outf,
+                    'en/help_topics/'+key+'.txt',
+                    1, doc(key))
         summary = topic_registry.get_summary(key)
         if summary is not None:
             _poentry(outf, 'dummy/help_topics/'+key+'/summary.txt',
                      1, summary)
 
-def export_pot(outf):
+def export_pot(outf, plugin=None):
     global _FOUND_MSGID
     _FOUND_MSGID = set()
-    _standard_options(outf)
-    _command_helps(outf)
-    _error_messages(outf)
-    # disable exporting help topics until we decide  how to translate it.
-    #_help_topics(outf)
+    if plugin is None:
+        _standard_options(outf)
+        _command_helps(outf)
+        _error_messages(outf)
+        _help_topics(outf)
+    else:
+        _command_helps(outf, plugin)

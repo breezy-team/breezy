@@ -27,6 +27,7 @@ from bzrlib import (
     symbol_versioning,
     workingtree,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
@@ -208,7 +209,15 @@ class RevisionSpec(object):
     def in_history(self, branch):
         if branch:
             if self.wants_revision_history:
-                revs = branch.revision_history()
+                # TODO: avoid looking at all of history
+                branch.lock_read()
+                try:
+                    graph = branch.repository.get_graph()
+                    revs = list(graph.iter_lefthand_ancestry(
+                        branch.last_revision(), [revision.NULL_REVISION]))
+                finally:
+                    branch.unlock()
+                revs.reverse()
             else:
                 revs = None
         else:
@@ -910,7 +919,8 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             location_type = 'parent branch'
         if submit_location is None:
             raise errors.NoSubmitBranch(branch)
-        trace.note('Using %s %s', location_type, submit_location)
+        trace.note(gettext('Using {0} {1}').format(location_type,
+                                                        submit_location))
         return submit_location
 
     def _match_on(self, branch, revs):

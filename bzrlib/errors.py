@@ -20,7 +20,10 @@
 from bzrlib import (
     osutils,
     symbol_versioning,
+    i18n,
+    trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib.patches import (
     MalformedHunkHeader,
     MalformedLine,
@@ -140,7 +143,11 @@ class BzrError(StandardError):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
-            return fmt
+            i18n.install()
+            unicode_fmt = unicode(fmt) #_fmt strings should be ascii
+            if type(fmt) == unicode:
+                trace.mutter("Unicode strings in error.fmt are deprecated")
+            return gettext(unicode_fmt)
         fmt = getattr(self, '__doc__', None)
         if fmt is not None:
             symbol_versioning.warn("%s uses its docstring as a format, "
@@ -1572,6 +1579,7 @@ class RetryWithNewPacks(BzrError):
             problem we can raise the original error (value from sys.exc_info())
         """
         BzrError.__init__(self)
+        self.context = context
         self.reload_occurred = reload_occurred
         self.exc_info = exc_info
         self.orig_error = exc_info[1]
@@ -1659,6 +1667,7 @@ class SmartMessageHandlerError(InternalBzrError):
 
     def __init__(self, exc_info):
         import traceback
+        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
         self.exc_type, self.exc_value, self.exc_tb = exc_info
         self.exc_info = exc_info
         traceback_strings = traceback.format_exception(
@@ -1701,6 +1710,11 @@ class SocketConnectionError(ConnectionError):
 class ConnectionReset(TransportError):
 
     _fmt = "Connection closed: %(msg)s %(orig_error)s"
+
+
+class ConnectionTimeout(ConnectionError):
+
+    _fmt = "Connection Timeout: %(msg)s%(orig_error)s"
 
 
 class InvalidRange(TransportError):
@@ -1972,7 +1986,7 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class MalformedTransform(BzrError):
+class MalformedTransform(InternalBzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
 
@@ -2347,6 +2361,14 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """Raised when a commit is attempting to set a non-ascii revision id
        but cant.
     """
+
+
+class GhostTagsNotSupported(BzrError):
+
+    _fmt = "Ghost tags not supported by format %(format)r."
+
+    def __init__(self, format):
+        self.format = format
 
 
 class BinaryFile(BzrError):
@@ -2784,7 +2806,7 @@ class DuplicateRecordNameError(ContainerError):
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
-        self.name = name
+        self.name = name.decode("utf-8")
 
 
 class NoDestinationAddress(InternalBzrError):
@@ -3324,3 +3346,25 @@ class NoCompatibleInter(BzrError):
     def __init__(self, source, target):
         self.source = source
         self.target = target
+
+
+class HpssVfsRequestNotAllowed(BzrError):
+
+    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
+            "%(method)s, %(arguments)s.")
+
+    def __init__(self, method, arguments):
+        self.method = method
+        self.arguments = arguments
+
+
+class UnsupportedKindChange(BzrError):
+
+    _fmt = ("Kind change from %(from_kind)s to %(to_kind)s for "
+            "%(path)s not supported by format %(format)r")
+
+    def __init__(self, path, from_kind, to_kind, format):
+        self.path = path
+        self.from_kind = from_kind
+        self.to_kind = to_kind
+        self.format = format

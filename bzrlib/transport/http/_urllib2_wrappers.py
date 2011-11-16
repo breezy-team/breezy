@@ -48,12 +48,6 @@ DEBUG = 0
 
 import errno
 import httplib
-try:
-    import kerberos
-except ImportError:
-    have_kerberos = False
-else:
-    have_kerberos = True
 import socket
 import urllib
 import urllib2
@@ -70,9 +64,12 @@ from bzrlib import (
     osutils,
     trace,
     transport,
-    ui,
     urlutils,
     )
+
+
+checked_kerberos = False
+kerberos = None
 
 
 class addinfourl(urllib2.addinfourl):
@@ -1326,7 +1323,14 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 
     def _auth_match_kerberos(self, auth):
         """Try to create a GSSAPI response for authenticating against a host."""
-        if not have_kerberos:
+        global kerberos, checked_kerberos
+        if kerberos is None and not checked_kerberos:
+            try:
+                import kerberos
+            except ImportError:
+                kerberos = None
+            checked_kerberos = True
+        if kerberos is None:
             return None
         ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
         if ret < 1:

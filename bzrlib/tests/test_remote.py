@@ -64,6 +64,7 @@ from bzrlib.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
     )
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
     test_server,
     )
@@ -115,10 +116,12 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     def test_remote_branch_revision_history(self):
         b = BzrDir.open_from_transport(self.transport).open_branch()
-        self.assertEqual([], b.revision_history())
+        self.assertEqual([],
+            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
         r1 = self.local_wt.commit('1st commit')
         r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8'.encode('utf8'))
-        self.assertEqual([r1, r2], b.revision_history())
+        self.assertEqual([r1, r2],
+            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
 
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
@@ -2147,8 +2150,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', 'include-missing:',
-              rev_id), '\n\n0'),
+              'Repository.get_parent_map',
+              ('quack/', 'include-missing:', rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
@@ -2273,6 +2276,32 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         # Now asking for rev_id's ghost parent should not make calls
         self.assertEqual({}, repo.get_parent_map(['non-existant']))
         self.assertLength(0, self.hpss_calls)
+
+    def test_exposes_get_cached_parent_map(self):
+        """RemoteRepository exposes get_cached_parent_map from
+        _unstacked_provider
+        """
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = bz2.compress('\n'.join(lines))
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(encoded_body, 'ok')
+        repo.lock_read()
+        # get_cached_parent_map should *not* trigger an RPC
+        self.assertEqual({}, repo.get_cached_parent_map([r1]))
+        self.assertEqual([], client._calls)
+        self.assertEqual({r2: (r1,)}, repo.get_parent_map([r2]))
+        self.assertEqual({r1: (NULL_REVISION,)},
+            repo.get_cached_parent_map([r1]))
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
+            client._calls)
+        repo.unlock()
 
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):

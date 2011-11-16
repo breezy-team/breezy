@@ -189,7 +189,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
     def test_note_revisions(self):
         stderr = self.run_send([])[1]
-        self.assertEndsWith(stderr, '\nBundling 1 revision(s).\n')
+        self.assertEndsWith(stderr, '\nBundling 1 revision.\n')
 
     def test_mailto_option(self):
         b = branch.Branch.open('branch')
@@ -296,8 +296,8 @@ class TestSendStrictMixin(TestSendMixin):
     def set_config_send_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
-        conf = self.local_tree.branch.get_config()
-        conf.set_user_option('send_strict', value)
+        conf = self.local_tree.branch.get_config_stack()
+        conf.set('send_strict', value)
 
     def assertSendFails(self, args):
         out, err = self.run_send(args, rc=3, err_re=self._default_errors)
@@ -311,7 +311,10 @@ class TestSendStrictMixin(TestSendMixin):
         if revs is None:
             revs = self._default_sent_revs
         out, err = self.run_send(args, err_re=err_re)
-        bundling_revs = 'Bundling %d revision(s).\n' % len(revs)
+        if len(revs) == 1:
+            bundling_revs = 'Bundling %d revision.\n'% len(revs)
+        else:
+            bundling_revs = 'Bundling %d revisions.\n' % len(revs)
         if with_warning:
             self.assertContainsRe(err, self._default_additional_warning)
             self.assertEndsWith(err, bundling_revs)

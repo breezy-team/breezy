@@ -35,6 +35,7 @@ from bzrlib import (
     rules,
     trace,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.decorators import needs_read_lock
@@ -57,6 +58,14 @@ class Tree(object):
     Trees can be compared, etc, regardless of whether they are working
     trees or versioned trees.
     """
+
+    def has_versioned_directories(self):
+        """Whether this tree can contain explicitly versioned directories.
+
+        This defaults to True, but some implementations may want to override
+        it.
+        """
+        return True
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False, include_root=False,
@@ -623,7 +632,7 @@ class Tree(object):
         prefs = self.iter_search_rules([path], filter_pref_names).next()
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+            trace.note(gettext("*** {0} content-filter: {1} => {2!r}").format(path,prefs,stk))
         return stk
 
     def _content_filter_stack_provider(self):

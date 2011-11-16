@@ -22,6 +22,7 @@ import os
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     revision as _mod_revision,
     )
@@ -63,14 +64,41 @@ class TestBranch(TestCaseWithTransport):
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
+    def test_into_colocated(self):
+        """Branch from a branch into a colocated branch."""
+        self.example_branch('a')
+        out, err = self.run_bzr(
+            'init --format=development-colo file:b,branch=orig')
+        self.assertEqual(
+            """Created a standalone tree (format: development-colo)\n""",
+            out)
+        self.assertEqual('', err)
+        out, err = self.run_bzr(
+            'branch --use-existing-dir a file:b,branch=thiswasa')
+        self.assertEqual('', out)
+        self.assertEqual('Branched 2 revisions.\n', err)
+        out, err = self.run_bzr('branches b')
+        self.assertEqual(" orig\n thiswasa\n", out)
+        self.assertEqual('', err)
+
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
         self.example_branch('a')
-        #now add some random corruption
-        fname = 'a/.bzr/repository/packs/' + os.listdir('a/.bzr/repository/packs')[0]
+        # add some corruption
+        packs_dir = 'a/.bzr/repository/packs/'
+        fname = packs_dir + os.listdir(packs_dir)[0]
         with open(fname, 'rb+') as f:
-            f.seek(750)
-            f.write("\xff")
+            # Start from the end of the file to avoid choosing a place bigger
+            # than the file itself.
+            f.seek(-5, os.SEEK_END)
+            c = f.read(1)
+            f.seek(-5, os.SEEK_END)
+            # Make sure we inject a value different than the one we just read
+            if c == '\xFF':
+                corrupt = '\x00'
+            else:
+                corrupt = '\xFF'
+            f.write(corrupt) # make sure we corrupt something
         self.run_bzr_error(['Corruption while decompressing repository file'], 
                             'branch a b', retcode=3)
 
@@ -149,7 +177,7 @@ class TestBranch(TestCaseWithTransport):
 
         def make_shared_tree(path):
             shared_repo.bzrdir.root_transport.mkdir(path)
-            shared_repo.bzrdir.create_branch_convenience('repo/' + path)
+            controldir.ControlDir.create_branch_convenience('repo/' + path)
             return WorkingTree.open('repo/' + path)
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
@@ -334,7 +362,7 @@ class TestBranchStacked(TestCaseWithTransport):
         # mainline.
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
         self.assertEqual('', out)
-        self.assertEqual('Branched 2 revision(s).\n',
+        self.assertEqual('Branched 2 revisions.\n',
             err)
         # it should have preserved the branch format, and so it should be
         # capable of supporting stacking, but not actually have a stacked_on
@@ -441,7 +469,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(37, self.hpss_calls)
+        self.assertLength(39, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -561,7 +589,7 @@ class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
                 $ bzr checkout %(option)s repo/trunk checkout
                 $ cd checkout
                 $ bzr branch --switch ../repo/trunk ../repo/branched
-                2>Branched 0 revision(s).
+                2>Branched 0 revisions.
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...branched...
                 $ cd ..

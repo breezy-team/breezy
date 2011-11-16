@@ -25,6 +25,7 @@ from bzrlib import (
     version_info_formats,
     workingtree,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.commands import Command
@@ -41,9 +42,9 @@ def _parse_version_info_format(format):
         return version_info_formats.get_builder(format)
     except KeyError:
         formats = version_info_formats.get_builder_formats()
-        raise errors.BzrCommandError('No known version info format %s.'
-                                     ' Supported types are: %s'
-                                     % (format, formats))
+        raise errors.BzrCommandError(gettext('No known version info format {0}.'
+                                     ' Supported types are: {1}').format(
+                                     format, formats))
 
 
 class cmd_version_info(Command):
@@ -82,6 +83,7 @@ class cmd_version_info(Command):
                      Option('include-file-revisions',
                             help='Include the last revision for each file.'),
                      Option('template', type=str, help='Template for the output.'),
+                     'revision',
                      ]
     takes_args = ['location?']
 
@@ -89,7 +91,13 @@ class cmd_version_info(Command):
 
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,
-            include_file_revisions=False, template=None):
+            include_file_revisions=False, template=None,
+            revision=None):
+
+        if revision and len(revision) > 1:
+            raise errors.BzrCommandError(
+                gettext('bzr version-info --revision takes exactly'
+                        ' one revision specifier'))
 
         if location is None:
             location = '.'
@@ -105,14 +113,24 @@ class cmd_version_info(Command):
         else:
             b = wt.branch
 
-        if all or template:
+        if all:
             include_history = True
             check_clean = True
-            include_file_revisions=True
+            include_file_revisions = True
+        if template:
+            include_history = True
+            include_file_revisions = True
+            if '{clean}' in template:
+                check_clean = True
+
+        if revision is not None:
+            revision_id = revision[0].as_revision_id(b)
+        else:
+            revision_id = None
 
         builder = format(b, working_tree=wt,
                 check_for_clean=check_clean,
                 include_revision_history=include_history,
                 include_file_revisions=include_file_revisions,
-                template=template)
+                template=template, revision_id=revision_id)
         builder.generate(self.outf)

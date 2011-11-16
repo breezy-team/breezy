@@ -564,7 +564,7 @@ class RemoteTests(object):
         url = self.get_readonly_url('from')
         self.run_bzr(['branch', url, 'to'])
         branch = Branch.open('to')
-        self.assertEqual(1, len(branch.revision_history()))
+        self.assertEqual(1, branch.last_revision_info()[0])
         # the branch should be set in to to from
         self.assertEqual(url + '/', branch.get_parent())
 

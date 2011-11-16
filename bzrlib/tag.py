@@ -47,6 +47,63 @@ class _Tags(object):
     def __init__(self, branch):
         self.branch = branch
 
+    def get_tag_dict(self):
+        """Return a dictionary mapping tags to revision ids.
+        """
+        raise NotImplementedError(self.get_tag_dict)
+
+    def get_reverse_tag_dict(self):
+        """Return a dictionary mapping revision ids to list of tags.
+        """
+        raise NotImplementedError(self.get_reverse_tag_dict)
+
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
+        """Merge new tags from this tags container into another.
+
+        :param to_tags: Tags container to merge into
+        :param overwrite: Whether to overwrite existing, divergent, tags.
+        :param ignore_master: Do not modify the tags in the target's master
+            branch (if any).  Default is false (so the master will be updated).
+            New in bzr 2.3.
+        :return: Tuple with tag updates as dictionary and tag conflicts
+        """
+        raise NotImplementedError(self.merge_to)
+
+    def set_tag(self, tag_name, revision):
+        """Set a tag.
+
+        :param tag_name: Tag name
+        :param revision: Revision id
+        :raise GhostTagsNotSupported: if revision is not present in
+            the branch repository
+        """
+        raise NotImplementedError(self.set_tag)
+
+    def lookup_tag(self, tag_name):
+        """Look up a tag.
+
+        :param tag_name: Tag to look up
+        :raise NoSuchTag: Raised when tag does not exist
+        :return: Matching revision id
+        """
+        raise NotImplementedError(self.lookup_tag)
+
+    def delete_tag(self, tag_name):
+        """Delete a tag.
+
+        :param tag_name: Tag to delete
+        :raise NoSuchTag: Raised when tag does not exist
+        """
+        raise NotImplementedError(self.delete_tag)
+
+    def rename_revisions(self, rename_map):
+        """Replace revision ids according to a rename map.
+
+        :param rename_map: Dictionary mapping old revision ids to
+            new revision ids.
+        """
+        raise NotImplementedError(self.rename_revisions)
+
     def has_tag(self, tag_name):
         return self.get_tag_dict().has_key(tag_name)
 
@@ -68,7 +125,7 @@ class DisabledTags(_Tags):
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False):
         # we never have anything to copy
-        pass
+        return {}, []
 
     def rename_revisions(self, rename_map):
         # No tags, so nothing to rename
@@ -201,7 +258,10 @@ class BasicTags(_Tags):
             branch (if any).  Default is false (so the master will be updated).
             New in bzr 2.3.
 
-        :returns: A set of tags that conflicted, each of which is
+        :returns: Tuple with tag_updates and tag_conflicts.
+            tag_updates is a dictionary with new tags, None is used for
+            removed tags
+            tag_conflicts is a set of tags that conflicted, each of which is
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
@@ -211,15 +271,15 @@ class BasicTags(_Tags):
     def _merge_to_operation(self, operation, to_tags, overwrite, ignore_master):
         add_cleanup = operation.add_cleanup
         if self.branch == to_tags.branch:
-            return
+            return {}, []
         if not self.branch.supports_tags():
             # obviously nothing to copy
-            return
+            return {}, []
         source_dict = self.get_tag_dict()
         if not source_dict:
             # no tags in the source, and we don't want to clobber anything
             # that's in the destination
-            return
+            return {}, []
         # We merge_to both master and child individually.
         #
         # It's possible for master and child to have differing sets of
@@ -239,25 +299,27 @@ class BasicTags(_Tags):
             master = to_tags.branch.get_master_branch()
         if master is not None:
             add_cleanup(master.lock_write().unlock)
-        conflicts = self._merge_to(to_tags, source_dict, overwrite)
+        updates, conflicts = self._merge_to(to_tags, source_dict, overwrite)
         if master is not None:
-            conflicts += self._merge_to(master.tags, source_dict,
-                overwrite)
+            extra_updates, extra_conflicts = self._merge_to(master.tags,
+                source_dict, overwrite)
+            updates.update(extra_updates)
+            conflicts += extra_conflicts
         # We use set() to remove any duplicate conflicts from the master
         # branch.
-        return set(conflicts)
+        return updates, set(conflicts)
 
     def _merge_to(self, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
-        result, conflicts = self._reconcile_tags(source_dict, dest_dict,
-                                                 overwrite)
+        result, updates, conflicts = self._reconcile_tags(source_dict,
+            dest_dict, overwrite)
         if result != dest_dict:
             to_tags._set_tag_dict(result)
-        return conflicts
+        return updates, conflicts
 
     def rename_revisions(self, rename_map):
         """Rename revisions in this tags dictionary.
-        
+
         :param rename_map: Dictionary mapping old revids to new revids
         """
         reverse_tags = self.get_reverse_tag_dict()
@@ -275,19 +337,21 @@ class BasicTags(_Tags):
         * different definitions => if overwrite is False, keep destination
           value and give a warning, otherwise use the source value
 
-        :returns: (result_dict,
+        :returns: (result_dict, updates,
             [(conflicting_tag, source_target, dest_target)])
         """
         conflicts = []
+        updates = {}
         result = dict(dest_dict) # copy
         for name, target in source_dict.items():
-            if name not in result or overwrite:
-                result[name] = target
-            elif result[name] == target:
+            if result.get(name) == target:
                 pass
+            elif name not in result or overwrite:
+                updates[name] = target
+                result[name] = target
             else:
                 conflicts.append((name, target, result[name]))
-        return result, conflicts
+        return result, updates, conflicts
 
 
 def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):

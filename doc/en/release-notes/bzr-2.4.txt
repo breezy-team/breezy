@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.4.1
+bzr 2.4.3
 #########
 
-:2.4.1: NOT RELEASED YET
+:2.4.2: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -31,6 +31,17 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* During merges, when two entries end up using the same path for two
+  different file-ids (the same file being 'bzr added' in two different
+  branches) , 'duplicate' conflicts are created instead of 'content'
+  ones. This was previously leading to a 'Malformed tramsform' exception.
+  (Vincent Ladeuil, #880701)
+
+* 'Malformed transform' exceptions are now recognized as internal errors
+  instead of user errors and report a traceback. This will reduce user
+  confusion as there is generally nothing users can do about them.
+  (Vincent Ladeuil, #880701)
 
 Documentation
 *************
@@ -56,6 +67,163 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+
+bzr 2.4.2
+#########
+
+:2.4.2: 2011-10-27
+
+This is a bugfix release. Most of the bugs dealt with portability
+issues. Upgrading is recommended for all users of earlier 2.4 releases.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
+Bug Fixes
+*********
+
+* Fixed an infinite loop when creating a repo at the root of the filesystem, 
+  i.e. "/", due to posixpath.normpath() not collapsing 2 leading slashes into 
+  one, thus respecting the POSIX standard, but making relpath() loop infinitely.
+  (Florian Vichot, #861008)
+
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+* Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
+  pyrex code with new Cython versions. (Denys Duchier, #837221)
+
+* Prevent several kinds of OverflowError and other fallout from failing to fit
+  stat fields into four bytes in dirstate pack_stat implementations.
+  (Martin Packman, #683191 #706957)
+
+* Return early from create_delta_index_from_delta given tiny inputs. This
+  avoids raising a spurious MemoryError on certain platforms such as AIX.
+  (John Arbash Meinel, #856731)
+
+  
+Documentation
+*************
+
+* Corrected documentation for ``bzr serve`` in the Admin Guide.
+  (Morten Bøgeskov, Martin Pool, #832576)
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+No changes.
+
+Testing
+*******
+
+* Accept both old and new style testtools output in selftest tests.
+  (Jelmer Vernooij, Martin Packman, #815423)
+
+* Fix the race for TestingThreadingTCPServer in
+  test_server_crash_while_responding. (Vincent Ladeuil, #869366)
+
+* Really corrupt the pack file without depending on a special length or value.
+  (Vincent Ladeuil, #807032)
+
+
+bzr 2.4.1
+#########
+
+:2.4.1: 2011-09-08
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.4 releases.
+
+It includes fixes from previous stable releases and address some issues with
+the test suite.
+
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* ``config.LocationMatcher`` properly excludes unrelated sections.
+  (Vincent Ladeuil, #829237)
+
+* ``dirstate.fdatasync`` and ``repository.fdatasync`` can now properly be
+  disabled. (Vincent Ladeuil, #824513)
+
+* Disable ``os.fsync`` and ``os.fdatasync`` by default when running
+  ``bzr selftest``. You can use ``--sync`` to re-enable them.
+  (John Arbash Meinel, #837293)
+
+* Fix i18n use when no environment variables are set. (Jelmer Vernooij, #810701)
+
+* Avoid UnicodeDecode error when reporting EINVAL from transports.
+  (IWATA Hidetaka, #829237)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+* Corrected documentation for BZR_PROGRESS_BAR. 
+  (Dennis Benzinger, #735417)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* The test suite should now be able to run under weird environments where
+  ``/etc/passwd`` doesn't contain the ``uid`` for the user running selftest
+  or where ``fakeroot`` is used but ``/root`` is inacessible.
+  (Vincent Ladeuil, #825027)
 
 bzr 2.4.0
 #########

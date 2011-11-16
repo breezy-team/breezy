@@ -1050,7 +1050,7 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = _mod_transport.get_transport(url)
+        t = _mod_transport.get_transport_from_url(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
@@ -1418,11 +1418,11 @@ class TransportTests(TestTransportImplementation):
 
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
-        transport = _mod_transport.get_transport("file:///")
+        transport = _mod_transport.get_transport_from_url("file:///")
         self.assertEqual(transport.abspath("/"), "file:///")
 
         # but a transport that starts with a drive spec must keep it.
-        transport = _mod_transport.get_transport("file:///C:/")
+        transport = _mod_transport.get_transport_from_url("file:///C:/")
         self.assertEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):
@@ -1788,7 +1788,7 @@ class TransportTests(TestTransportImplementation):
         base_url = self._server.get_url()
         parameters = {"key1": "val1", "key2": "val2"}
         url = urlutils.join_segment_parameters(base_url, parameters)
-        transport = _mod_transport.get_transport(url)
+        transport = _mod_transport.get_transport_from_url(url)
         self.assertEquals(parameters, transport.get_segment_parameters())
 
     def test_stat_symlink(self):

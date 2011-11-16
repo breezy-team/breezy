@@ -197,7 +197,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_backing_file, size = self._spill_mem_keys_without_combining()
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(transport.get_transport('.'),
+        new_backing = BTreeGraphIndex(transport.get_transport_from_path('.'),
                                       '<temp>', size)
         # GC will clean up the file
         new_backing._file = new_backing_file

@@ -44,7 +44,7 @@ class TestCaseAFTP(tests.TestCaseWithTransport):
     """Test aftp transport."""
 
     def test_aftp_degrade(self):
-        t = transport.get_transport('aftp://host/path')
+        t = transport.get_transport_from_url('aftp://host/path')
         self.assertTrue(t.is_active)
         parent = t.clone('..')
         self.assertTrue(parent.is_active)

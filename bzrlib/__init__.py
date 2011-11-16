@@ -52,7 +52,7 @@ __copyright__ = "Copyright 2005-2011 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 5, 0, 'dev', 1)
+version_info = (2, 5, 0, 'dev', 4)
 
 # API compatibility version
 api_minimum_version = (2, 4, 0)
@@ -137,7 +137,7 @@ version_string = __version__
 # variables that need to be hunted down. Accessing the current BzrLibraryState
 # through this variable is not encouraged: it is better to pass it around as
 # part of the context of an operation than to look it up directly, but when
-# that is too hard, it is better to use this variable than to make a branch new
+# that is too hard, it is better to use this variable than to make a brand new
 # global variable.
 # If using this variable by looking it up (because it can't be easily obtained)
 # it is important to store the reference you get, rather than looking it up

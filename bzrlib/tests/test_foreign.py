@@ -101,7 +101,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
             *args, **kwargs)
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
@@ -148,6 +148,13 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
         return "Dummy Foreign Vcs Repository"
 
 
+def branch_history(graph, revid):
+    ret = list(graph.iter_lefthand_ancestry(revid,
+        (revision.NULL_REVISION,)))
+    ret.reverse()
+    return ret
+
+
 class InterToDummyVcsBranch(branch.GenericInterBranch):
 
     @staticmethod
@@ -165,12 +172,11 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
         try:
             graph = self.source.repository.get_graph()
             # This just handles simple cases, but that's good enough for tests
-            my_history = self.target.revision_history()
+            my_history = branch_history(self.target.repository.get_graph(),
+                result.old_revid)
             if stop_revision is None:
                 stop_revision = self.source.last_revision()
-            their_history = list(graph.iter_lefthand_ancestry(stop_revision,
-                (revision.NULL_REVISION,)))
-            their_history.reverse()
+            their_history = branch_history(graph, stop_revision)
             if their_history[:min(len(my_history), len(their_history))] != my_history:
                 raise errors.DivergedBranches(self.target, self.source)
             todo = their_history[len(my_history):]
@@ -222,9 +228,9 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
     def get_format_string(self):
         return "Branch for Testing"
 
-    def __init__(self):
-        super(DummyForeignVcsBranchFormat, self).__init__()
-        self._matchingbzrdir = DummyForeignVcsDirFormat()
+    @property
+    def _matchingbzrdir(self):
+        return DummyForeignVcsDirFormat()
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
@@ -465,7 +471,8 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
             format=DummyForeignVcsDirFormat())
         target_tree.branch.lock_write()
         try:
-            pushresult = source_tree.branch.push(target_tree.branch, lossy=True)
+            pushresult = source_tree.branch.push(
+                target_tree.branch, lossy=True)
         finally:
             target_tree.branch.unlock()
         self.assertEquals(revision.NULL_REVISION, pushresult.old_revid)

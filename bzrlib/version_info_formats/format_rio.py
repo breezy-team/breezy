@@ -60,10 +60,9 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 info.add('clean', 'False')
 
         if self._include_history:
-            self._extract_revision_history()
             log = Stanza()
             for (revision_id, message,
-                 timestamp, timezone) in self._revision_history_info:
+                 timestamp, timezone) in self._iter_revision_history():
                 log.add('id', revision_id)
                 log.add('message', message)
                 log.add('date', create_date_str(timestamp, timezone))

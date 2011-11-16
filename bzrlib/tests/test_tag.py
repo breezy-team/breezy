@@ -109,12 +109,14 @@ class TestTagMerging(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchTag, a.tags.lookup_tag, 'tag-2')
         # conflicting merge
         a.tags.set_tag('tag-2', 'z')
-        conflicts = a.tags.merge_to(b.tags)
+        updates, conflicts = a.tags.merge_to(b.tags)
+        self.assertEqual({}, updates)
         self.assertEqual(list(conflicts), [('tag-2', 'z', 'y')])
         self.assertEqual('y', b.tags.lookup_tag('tag-2'))
         # overwrite conflicts
-        conflicts = a.tags.merge_to(b.tags, overwrite=True)
+        updates, conflicts = a.tags.merge_to(b.tags, overwrite=True)
         self.assertEqual(list(conflicts), [])
+        self.assertEqual({u'tag-2': 'z'}, updates)
         self.assertEqual('z', b.tags.lookup_tag('tag-2'))
 
 

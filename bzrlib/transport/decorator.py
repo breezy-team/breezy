@@ -50,7 +50,8 @@ class TransportDecorator(transport.Transport):
                              (url, prefix))
         not_decorated_url = url[len(prefix):]
         if _decorated is None:
-            self._decorated = transport.get_transport(not_decorated_url)
+            self._decorated = transport.get_transport(
+                not_decorated_url)
         else:
             self._decorated = _decorated
         super(TransportDecorator, self).__init__(prefix + self._decorated.base)

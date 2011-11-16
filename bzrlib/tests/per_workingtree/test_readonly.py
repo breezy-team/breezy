@@ -26,6 +26,8 @@ from bzrlib import (
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
+from bzrlib.workingtree import InventoryWorkingTree
+
 
 class TestReadonly(TestCaseWithWorkingTree):
 
@@ -77,6 +79,8 @@ class TestReadonly(TestCaseWithWorkingTree):
         """Even if the tree is unclean, we should still handle readonly dirs."""
         # First create a tree
         tree = self.create_basic_tree()
+        if not isinstance(tree, InventoryWorkingTree):
+            raise tests.TestNotApplicable("requires inventory working tree")
 
         # XXX: *Ugly* *ugly* hack, we need the hashcache to think it is out of
         # date, but we don't want to actually wait 3 seconds doing nothing.

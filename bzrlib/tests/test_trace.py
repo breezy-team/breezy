@@ -113,8 +113,9 @@ class TestTrace(TestCase):
         msg = _format_exception()
         # Even though Windows and Linux differ for 'os.rmdir', they both give
         # 'No such file' for open()
+        # However it now gets translated so we can not test for a specific message
         self.assertContainsRe(msg,
-            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+            r'^bzr: ERROR: \[Errno .*\] .*nosuchfile')
 
     def test_format_pywintypes_error(self):
         self.requireFeature(features.pywintypes)

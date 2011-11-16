@@ -67,29 +67,19 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch('')
+            self.branch = self.make_branch('abranch')
         return self.branch
 
+    def get_default_format(self):
+        format = self.bzrdir_format
+        self.assertEquals(format.get_branch_format(), self.branch_format)
+        return format
+
     def make_branch(self, relpath, format=None):
-        if format is not None:
-            return TestCaseWithControlDir.make_branch(self, relpath, format)
-        repo = self.make_repository(relpath)
-        # fixme RBC 20060210 this isnt necessarily a fixable thing,
-        # Skipped is the wrong exception to raise.
         try:
-            return self.branch_format.initialize(repo.bzrdir)
+            return super(TestCaseWithBranch, self).make_branch(relpath, format)
         except errors.UninitializableFormat:
-            raise tests.TestSkipped('Uninitializable branch format')
-
-    def make_branch_builder(self, relpath, format=None):
-        if format is None:
-            format = self.branch_format._matchingbzrdir
-        return super(TestCaseWithBranch, self).make_branch_builder(
-            relpath, format=format)
-
-    def make_repository(self, relpath, shared=False, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
-        return made_control.create_repository(shared=shared)
+            raise tests.TestNotApplicable('Uninitializable branch format')
 
     def create_tree_with_merge(self):
         """Create a branch with a simple ancestry.

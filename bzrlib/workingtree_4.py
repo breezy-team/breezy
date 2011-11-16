@@ -1608,7 +1608,7 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
     This format:
         - exists within a metadir controlling .bzr
         - includes an explicit version marker for the workingtree control
-          files, separate from the BzrDir format
+          files, separate from the ControlDir format
         - modifies the hash cache format
         - is new in bzr 0.15
         - uses a LockDir to guard access to it.
@@ -1849,7 +1849,7 @@ class DirStateRevisionTree(InventoryTree):
         # Make sure the file exists
         entry = self._get_entry(file_id, path=path)
         if entry == (None, None): # do we raise?
-            return None
+            raise errors.NoSuchId(self, file_id)
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]
         try:

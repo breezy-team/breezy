@@ -49,7 +49,7 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_missing(self):
-        missing = "You are missing 1 revision(s):"
+        missing = "You are missing 1 revision:"
 
         # create a source branch
         a_tree = self.make_branch_and_tree('a')
@@ -92,13 +92,13 @@ class TestMissing(TestCaseWithTransport):
 
         # compare again, but now we have the 'merge' commit extra
         lines = self.run_bzr('missing ../b', retcode=1)[0].splitlines()
-        self.assertEqual("You have 1 extra revision(s):", lines[0])
+        self.assertEqual("You have 1 extra revision:", lines[0])
         self.assertEqual(8, len(lines))
         lines2 = self.run_bzr('missing ../b --mine-only', retcode=1)[0]
         lines2 = lines2.splitlines()
         self.assertEqual(lines, lines2)
         lines3 = self.run_bzr('missing ../b --theirs-only', retcode=0)[0]
-        self.assertEqualDiff('Other branch is up to date.\n', lines3)
+        self.assertEqualDiff('Other branch has no new revisions.\n', lines3)
 
         # relative to a, missing the 'merge' commit
         os.chdir('../b')
@@ -109,7 +109,7 @@ class TestMissing(TestCaseWithTransport):
         lines2 = lines2.splitlines()
         self.assertEqual(lines, lines2)
         lines3 = self.run_bzr('missing ../a --mine-only', retcode=0)[0]
-        self.assertEqualDiff('This branch is up to date.\n', lines3)
+        self.assertEqualDiff('This branch has no new revisions.\n', lines3)
         lines4 = self.run_bzr('missing ../a --short', retcode=1)[0]
         lines4 = lines4.splitlines()
         self.assertEqual(4, len(lines4))
@@ -131,7 +131,7 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqual("  a", lines8[-1])
 
         os.chdir('../a')
-        self.assertEqualDiff('Other branch is up to date.\n',
+        self.assertEqualDiff('Other branch has no new revisions.\n',
                              self.run_bzr('missing ../b --theirs-only')[0])
 
         # after a pull we're back on track
@@ -142,9 +142,9 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqualDiff('Branches are up to date.\n',
                              self.run_bzr('missing ../a')[0])
         # If you supply mine or theirs you only know one side is up to date
-        self.assertEqualDiff('This branch is up to date.\n',
+        self.assertEqualDiff('This branch has no new revisions.\n',
                              self.run_bzr('missing ../a --mine-only')[0])
-        self.assertEqualDiff('Other branch is up to date.\n',
+        self.assertEqualDiff('Other branch has no new revisions.\n',
                              self.run_bzr('missing ../a --theirs-only')[0])
 
     def test_missing_filtered(self):
@@ -217,7 +217,7 @@ class TestMissing(TestCaseWithTransport):
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a', 'initial\nmore\n')])
         b_tree.commit(message='more')
-        
+
         out2, err2 = self.run_bzr('missing --directory a b', retcode=1)
         os.chdir('a')
         out1, err1 = self.run_bzr('missing ../b', retcode=1)
