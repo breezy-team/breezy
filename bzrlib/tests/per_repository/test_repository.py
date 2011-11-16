@@ -322,6 +322,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFalse(result.open_repository().make_working_trees())
 
     def test_upgrade_preserves_signatures(self):
+        if not self.repository_format.supports_revision_signatures:
+            raise tests.TestNotApplicable(
+                "repository does not support signing revisions")
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository

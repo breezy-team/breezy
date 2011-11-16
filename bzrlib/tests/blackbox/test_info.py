@@ -17,6 +17,7 @@
 
 """Tests for the info command of bzr."""
 
+import shutil
 import sys
 
 from bzrlib import (
@@ -45,6 +46,27 @@ class TestInfo(tests.TestCaseWithTransport):
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
+
+    def test_info_empty_controldir(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info ctrl')
+        self.assertEquals(out,
+            'Empty control directory (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n')
+        self.assertEquals(err, '')
+
+    def test_info_dangling_branch_reference(self):
+        br = self.make_branch('target')
+        br.create_checkout('from', lightweight=True)
+        shutil.rmtree('target')
+        out, err = self.run_bzr('info from')
+        self.assertEquals(out,
+            'Dangling branch reference (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Location:\n'
+            '   control directory: from\n'
+            '  checkout of branch: target\n')
+        self.assertEquals(err, '')
 
     def test_info_standalone(self):
         transport = self.get_transport()
@@ -1374,5 +1396,32 @@ In the working tree:
          0 unknown
          0 ignored
          0 versioned subdirectories
+""", out)
+        self.assertEqual("", err)
+
+    def test_info_shows_colocated_branches(self):
+        bzrdir = self.make_branch('.', format='development-colo').bzrdir
+        bzrdir.create_branch(name="colo1")
+        bzrdir.create_branch(name="colo2")
+        bzrdir.create_branch(name="colo3")
+        out, err = self.run_bzr('info -v .')
+        self.assertEqualDiff(
+"""Standalone branch (format: development-colo)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1 with support for colocated branches
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+Control directory:
+         4 branches
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
 """, out)
         self.assertEqual("", err)
