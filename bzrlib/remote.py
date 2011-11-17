@@ -41,10 +41,12 @@ from bzrlib.errors import (
     SmartProtocolError,
     )
 from bzrlib.i18n import gettext
+from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
+from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
 
@@ -1498,8 +1500,14 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     ### These methods are just thin shims to the VFS object for now.
 
+    @needs_read_lock
     def revision_tree(self, revision_id):
-        return list(self.revision_trees([revision_id]))[0]
+        revision_id = _mod_revision.ensure_null(revision_id)
+        if revision_id == _mod_revision.NULL_REVISION:
+            return InventoryRevisionTree(self,
+                Inventory(root_id=None), _mod_revision.NULL_REVISION)
+        else:
+            return list(self.revision_trees([revision_id]))[0]
 
     def get_serializer_format(self):
         self._ensure_real()
@@ -1592,7 +1600,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     @needs_read_lock
     def clone(self, a_bzrdir, revision_id=None):
         dest_repo = self._create_sprouting_repo(
-            controldir, shared=self.is_shared())
+            a_bzrdir, shared=self.is_shared())
         self.copy_content_into(dest_repo, revision_id)
         return dest_repo
 
