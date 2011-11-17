@@ -405,6 +405,8 @@ class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
     def do_repository_request(self, repository):
         """Return the result of repository.make_working_trees().
 
+        Introduced in bzr 2.5.0.
+
         :param repository: The repository to query in.
         :return: A smart server response of ('yes', ) if the repository uses
             working trees, and ('no', ) if it is not.
