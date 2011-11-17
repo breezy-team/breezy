@@ -591,7 +591,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
                 "Cannot lock_read old formats like AllInOne over HPSS.")
         remote_backing_repo = controldir.ControlDir.open(
             self.get_vfs_only_url('remote')).open_repository()
-        self.assertEqual(remote_backing_repo._format, local_repo._format)
+        self.assertEqual(
+            remote_backing_repo._format.network_name(),
+            local_repo._format.network_name())
 
     def test_sprout_branch_from_hpss_preserves_repo_format(self):
         """branch.sprout from a smart server preserves the repository format.
