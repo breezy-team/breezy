@@ -1606,6 +1606,9 @@ class BranchFormat(controldir.ControlComponentFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=controldir)
+        try:
             format_string = transport.get_bytes("format")
             return format_registry.get(format_string)
         except errors.NoSuchFile:
@@ -3030,6 +3033,8 @@ class BzrBranch8(BzrBranch):
             except errors.RevisionNotPresent, e:
                 raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
             index = len(self._partial_revision_history_cache) - 1
+            if index < 0:
+                raise errors.NoSuchRevision(self, revision_id)
             if self._partial_revision_history_cache[index] != revision_id:
                 raise errors.NoSuchRevision(self, revision_id)
         return self.revno() - index

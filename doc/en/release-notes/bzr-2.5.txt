@@ -32,6 +32,15 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Resolve regression from colocated branch path handling, by ensuring that
+  unreserved characters are unquoted in URLs. (Martin Packman, #842223)
+
+* Support verifying signatures on remote repositories.
+  (Jelmer Vernooij, #889694)
+
+* Support looking up revision numbers by revision id in empty branches.
+  (Jelmer Vernooij, #535031)
+
 Documentation
 *************
 
@@ -43,6 +52,12 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Repository.verify_revision`` has been renamed to
+  ``Repository.verify_revision_signature``. (Jelmer Vernooij)
+
+* Some global options for use with commands have been removed, construct
+  an ``Option`` with the name instead. (Martin Packman)
+
 Internals
 *********
 
@@ -52,6 +67,9 @@ Internals
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
+* New HPSS calls ``Repository.has_signature_for_revision_id`` and
+  ``Repository.make_working_trees``.  (Jelmer Vernooij)
+
 Testing
 *******
 
@@ -59,6 +77,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Avoid failures in test_transform when OS error messages are localised.
+  (Martin Packman, #891582)
 
 bzr 2.5b3
 #########
@@ -122,6 +142,9 @@ Bug Fixes
 
 * ``bzr info`` now shows the master branch location too for
   treeless local branches. (Jelmer Vernooij, #258355)
+
+* ``bzr info`` no longer shows empty output if only a control
+  directory is present. (Jelmer Vernooij, #159098)
 
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
@@ -513,6 +536,9 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
+
+* Raise BadIndexKey exception in btree_index when a key is too large, fixing 
+  an infinite recursion issue. (Shannon Weyrick, #720853)
 
 Documentation
 *************

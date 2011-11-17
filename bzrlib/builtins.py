@@ -1317,22 +1317,22 @@ class cmd_branch(Command):
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
-            if not use_existing_dir:
-                raise errors.BzrCommandError(gettext('Target directory "%s" '
-                    'already exists.') % to_location)
+            try:
+                to_dir = controldir.ControlDir.open_from_transport(
+                    to_transport)
+            except errors.NotBranchError:
+                if not use_existing_dir:
+                    raise errors.BzrCommandError(gettext('Target directory "%s" '
+                        'already exists.') % to_location)
+                else:
+                    to_dir = None
             else:
                 try:
-                    to_dir = controldir.ControlDir.open_from_transport(
-                        to_transport)
+                    to_dir.open_branch()
                 except errors.NotBranchError:
-                    to_dir = None
+                    pass
                 else:
-                    try:
-                        to_dir.open_branch()
-                    except errors.NotBranchError:
-                        pass
-                    else:
-                        raise errors.AlreadyBranchError(to_location)
+                    raise errors.AlreadyBranchError(to_location)
         except errors.NoSuchFile:
             raise errors.BzrCommandError(gettext('Parent of "%s" does not exist.')
                                          % to_location)
