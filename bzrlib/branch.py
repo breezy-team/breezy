@@ -1606,6 +1606,9 @@ class BranchFormat(controldir.ControlComponentFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=controldir)
+        try:
             format_string = transport.get_bytes("format")
             return format_registry.get(format_string)
         except errors.NoSuchFile:
