@@ -177,7 +177,7 @@ class RemoteGitProber(Prober):
                           headers={"Content-Type": "application/x-git-upload-pack-request"})
             req.follow_redirections = True
             resp = transport._perform(req)
-            if resp.code == 404:
+            if resp.code in (404, 405):
                 raise bzr_errors.NotBranchError(transport.base)
             headers = resp.headers
         else:
@@ -201,7 +201,7 @@ class RemoteGitProber(Prober):
                     transport._curl_perform(conn, header,
                         ["Content-Type: application/x-git-upload-pack-request"])
                     code = conn.getinfo(pycurl.HTTP_CODE)
-                    if code == 404:
+                    if code in (404, 405):
                         raise bzr_errors.NotBranchError(transport.base)
                     if code != 200:
                         raise bzr_errors.InvalidHttpResponse(transport._path,
