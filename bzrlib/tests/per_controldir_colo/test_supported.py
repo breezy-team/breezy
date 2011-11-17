@@ -16,14 +16,16 @@
 
 """Tests for bzr directories that support colocated branches."""
 
-import bzrlib.branch
+from bzrlib.branch import Branch
 from bzrlib import (
     errors,
     tests,
-    transport,
     )
 from bzrlib.tests import (
     per_controldir,
+    )
+from bzrlib.tests.features import (
+    UnicodeFilenameFeature,
     )
 
 
@@ -53,7 +55,54 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable(
                 'Control dir does not support creating new branches.')
-        made_repo = made_control.create_repository()
+        made_control.create_repository()
         made_branch = made_control.create_branch("colo")
-        self.assertIsInstance(made_branch, bzrlib.branch.Branch)
+        self.assertIsInstance(made_branch, Branch)
+        self.assertEquals("colo", made_branch.name)
         self.assertEqual(made_control, made_branch.bzrdir)
+
+    def test_open_by_url(self):
+        # a bzrdir can construct a branch and repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise tests.TestNotApplicable('Control dir format not supported')
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating new branches.')
+        made_control.create_repository()
+        made_branch = made_control.create_branch(name="colo")
+        other_branch = made_control.create_branch(name="othercolo")
+        self.assertIsInstance(made_branch, Branch)
+        self.assertEqual(made_control, made_branch.bzrdir)
+        self.assertNotEqual(made_branch.user_url, other_branch.user_url)
+        self.assertNotEqual(made_branch.control_url, other_branch.control_url)
+        re_made_branch = Branch.open(made_branch.user_url)
+        self.assertEquals(re_made_branch.name, "colo")
+        self.assertEqual(made_branch.control_url, re_made_branch.control_url)
+        self.assertEqual(made_branch.user_url, re_made_branch.user_url)
+
+    def test_unicode(self):
+        self.requireFeature(UnicodeFilenameFeature)
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise tests.TestNotApplicable('Control dir format not supported')
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating new branches.')
+        made_control.create_repository()
+        made_branch = made_control.create_branch(name=u"col\xe9")
+        self.assertTrue(
+            u"col\xe9" in [b.name for b in made_control.list_branches()])
+        made_branch = Branch.open(made_branch.user_url)
+        self.assertEquals(u"col\xe9", made_branch.name)
+        made_control.destroy_branch(u"col\xe9")

@@ -91,6 +91,10 @@ class DummyForeignVcs(foreign.ForeignVcs):
 class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
     """A Dummy VCS Branch."""
 
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
     def __init__(self, _format, _control_files, a_bzrdir, *args, **kwargs):
         self._format = _format
         self._base = a_bzrdir.transport.base

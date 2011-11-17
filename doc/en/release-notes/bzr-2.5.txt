@@ -192,6 +192,8 @@ API Changes
   being referenced from e.g. a branch history at the same time.
   (Jelmer Vernooij)
 
+* New method ``Transport.set_segment_parameter``.  (Jelmer Vernooij)
+
 * ``UIFactory.choose`` has been added: prompt the user for a list of
   choices. (Benoît Pierre)
 
