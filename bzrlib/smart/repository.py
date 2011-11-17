@@ -25,7 +25,6 @@ import threading
 
 from bzrlib import (
     bencode,
-    commands,
     errors,
     estimate_compressed_size,
     graph,
