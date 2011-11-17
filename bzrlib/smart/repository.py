@@ -349,6 +349,8 @@ class SmartServerRequestHasSignatureForRevisionId(
     def do_repository_request(self, repository, revision_id):
         """Return ok if a signature is present for a revision.
 
+        Introduced in bzr 2.5.0.
+
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to lookup.
         :return: A smart server response of ('ok', ) if a
