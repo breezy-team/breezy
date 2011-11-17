@@ -74,6 +74,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Avoid failures in test_transform when OS error messages are localised.
+  (Martin Packman, #891582)
 
 bzr 2.5b3
 #########
