@@ -1589,8 +1589,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     def make_working_trees(self):
         """See Repository.make_working_trees"""
-        self._ensure_real()
-        return self._real_repository.make_working_trees()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.make_working_trees', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.make_working_trees()
+        if response[0] not in ('yes', 'no'):
+            raise SmartProtocolError('unexpected response code %s' % (response,))
+        return response[0] == 'yes'
 
     def refresh_data(self):
         """Re-read any data needed to synchronise with disk.
