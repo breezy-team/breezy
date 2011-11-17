@@ -363,7 +363,7 @@ class SmartServerRequestHasSignatureForRevisionId(
                 return SuccessfulSmartServerResponse(('no', ))
         except errors.NoSuchRevision:
             return FailedSmartServerResponse(
-                ('NoSuchRevision', revision_id))
+                ('nosuchrevision', revision_id))
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):

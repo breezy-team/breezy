@@ -1561,7 +1561,7 @@ class TestSmartServerRequestHasSignatureForRevisionId(
         self.make_repository('.')
         self.assertEqual(
             smart_req.FailedSmartServerResponse(
-                ('NoSuchRevision', 'revid'), None),
+                ('nosuchrevision', 'revid'), None),
             request.execute('', 'revid'))
 
     def test_missing_signature(self):
