@@ -200,6 +200,8 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
     def do_with_branch(self, branch, revid):
         """Return branch.revision_id_to_revno().
 
+        New in 2.5.
+
         The revno is encoded in decimal, the revision_id is encoded as utf8.
         """
         try:
