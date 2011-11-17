@@ -17,11 +17,8 @@
 
 """Black-box tests for bzr config."""
 
-import os
-
 from bzrlib import (
     config,
-    errors,
     tests,
     )
 from bzrlib.tests import (
