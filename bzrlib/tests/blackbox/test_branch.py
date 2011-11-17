@@ -30,7 +30,6 @@ from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     fixtures,
-    script,
     test_server,
     )
 from bzrlib.tests.features import (
@@ -70,16 +69,19 @@ class TestBranch(TestCaseWithTransport):
         out, err = self.run_bzr(
             'init --format=development-colo file:b,branch=orig')
         self.assertEqual(
-            """Created a standalone tree (format: development-colo)\n""",
+            """Created a lightweight checkout (format: development-colo)\n""",
             out)
         self.assertEqual('', err)
         out, err = self.run_bzr(
-            'branch --use-existing-dir a file:b,branch=thiswasa')
+            'branch a file:b,branch=thiswasa')
         self.assertEqual('', out)
         self.assertEqual('Branched 2 revisions.\n', err)
         out, err = self.run_bzr('branches b')
         self.assertEqual(" orig\n thiswasa\n", out)
         self.assertEqual('', err)
+        out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Already a branch: "file:b,branch=orig".\n', err)
 
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""

@@ -25,6 +25,9 @@ from bzrlib import (
 from bzrlib.tests import (
     per_controldir,
     )
+from bzrlib.tests.features import (
+    UnicodeFilenameFeature,
+    )
 
 
 class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
@@ -105,6 +108,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertEquals(revid, to_branch.last_revision())
 
     def test_unicode(self):
+        self.requireFeature(UnicodeFilenameFeature)
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
             # because the default open will not open them and

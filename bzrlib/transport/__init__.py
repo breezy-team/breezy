@@ -419,8 +419,8 @@ class Transport(object):
     def set_segment_parameter(self, name, value):
         """Set a segment parameter.
 
-        :param name: Segment parameter name (utf8 string)
-        :param value: Segment parameter value (utf8 string)
+        :param name: Segment parameter name (urlencoded string)
+        :param value: Segment parameter value (urlencoded string)
         """
         if value is None:
             try:
