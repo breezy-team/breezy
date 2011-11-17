@@ -1473,19 +1473,33 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             return t
         raise errors.UnexpectedSmartServerResponse(response)
 
+    @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
-        # TODO: Option to control what format is created?
-        self._ensure_real()
-        dest_repo = self._real_repository._format.initialize(to_bzrdir,
-                                                             shared=False)
+        """Create a descendent repository for new development.
+
+        Unlike clone, this does not copy the settings of the repository.
+        """
+        dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
         dest_repo.fetch(self, revision_id=revision_id)
+        return dest_repo
+
+    def _create_sprouting_repo(self, a_bzrdir, shared):
+        if not isinstance(a_bzrdir._format, self.bzrdir._format.__class__):
+            # use target default format.
+            dest_repo = a_bzrdir.create_repository()
+        else:
+            # Most control formats need the repository to be specifically
+            # created, but on some old all-in-one formats it's not needed
+            try:
+                dest_repo = self._format.initialize(a_bzrdir, shared=shared)
+            except errors.UninitializableFormat:
+                dest_repo = a_bzrdir.open_repository()
         return dest_repo
 
     ### These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.revision_tree(revision_id)
+        return list(self.revision_trees([revision_id]))[0]
 
     def get_serializer_format(self):
         self._ensure_real()
@@ -1577,8 +1591,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def clone(self, a_bzrdir, revision_id=None):
-        self._ensure_real()
-        return self._real_repository.clone(a_bzrdir, revision_id=revision_id)
+        dest_repo = self._create_sprouting_repo(
+            controldir, shared=self.is_shared())
+        self.copy_content_into(dest_repo, revision_id)
+        return dest_repo
 
     def make_working_trees(self):
         """See Repository.make_working_trees"""
@@ -1845,9 +1861,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def get_revision_delta(self, revision_id, specific_fileids=None):
-        self._ensure_real()
-        return self._real_repository.get_revision_delta(revision_id,
-            specific_fileids=specific_fileids)
+        r = self.get_revision(revision_id)
+        return list(self.get_deltas_for_revisions([r],
+            specific_fileids=specific_fileids))[0]
 
     @needs_read_lock
     def revision_trees(self, revision_ids):
