@@ -375,7 +375,10 @@ class BzrDir(controldir.ControlDir):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
-        result = cloning_format.initialize_on_transport(target_transport)
+        try:
+            result = controldir.ControlDir.open_from_transport(target_transport)
+        except errors.NotBranchError:
+            result = cloning_format.initialize_on_transport(target_transport)
         source_branch, source_repository = self._find_source_repo(
             add_cleanup, source_branch)
         fetch_spec_factory.source_branch = source_branch
@@ -414,7 +417,7 @@ class BzrDir(controldir.ControlDir):
         mutter("created new branch %r" % (result_branch,))
 
         # Create/update the result working tree
-        if (create_tree_if_local and
+        if (create_tree_if_local and not result.has_workingtree() and
             isinstance(target_transport, local.LocalTransport) and
             (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
