@@ -30,6 +30,9 @@ Improvements
   branch, the relative branch name should no longer be url-encoded.
   (Jelmer Vernooij)
 
+* ``bzr switch`` now accepts colocated branch names to switch to.
+  (Jelmer Vernooij, #826814)
+
 Bug Fixes
 *********
 
@@ -135,9 +138,6 @@ Improvements
 * ``bzr serve`` now can serve from URLs rather than just from the
   file system. I.e.: ``bzr serve -d lp:bzr`` or
   ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
-
-* ``bzr switch`` now accepts colocated branch names to switch to.
-  (Jelmer Vernooij, #826814)
 
 * all input prompts are now char-based when possible, and can be forced to
   line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
@@ -440,9 +440,6 @@ New Features
   of just matching the message.  ``--message`` keeps its original meaning,
   while ``--match-message, --match-author, --match-committer`` and
   ``--match-bugs`` match each of those fields. (Jacek Sieka)
-
-* ``bzr switch`` will now look up and switch to colocated branches.
-  (Jelmer Vernooij, #826814)
 
 * ``config.Option`` can now declare ``default_from_env``, a list of
   environment variables to get a default value from. (Vincent Ladeuil)
