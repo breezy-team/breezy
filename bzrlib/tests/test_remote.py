@@ -491,7 +491,7 @@ class TestBzrDirDestroyRepository(TestRemote):
         transport = self.get_transport('quack')
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDir.destroy_repository', ('quack/'),
+            'BzrDir.destroy_repository', ('quack/',),
             'success', ('ok',)),
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)

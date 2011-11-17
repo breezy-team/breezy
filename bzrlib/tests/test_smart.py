@@ -229,7 +229,7 @@ class TestSmartServerBzrDirRequestDestroyRepository(
         """The repository can be removed."""
         backing = self.get_transport()
         dir = self.make_repository('.').bzrdir
-        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyRepository
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse(('ok',))
         self.assertEqual(expected, request.execute(''))
@@ -238,9 +238,10 @@ class TestSmartServerBzrDirRequestDestroyRepository(
         """An error is raised if the repository didn't exist."""
         backing = self.get_transport()
         dir = self.make_bzrdir('.')
-        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyRepository
         request = request_class(backing)
-        expected = smart_req.FailedSmartServerResponse(('norepository',), None)
+        expected = smart_req.FailedSmartServerResponse(
+            ('norepository',), None)
         self.assertEqual(expected, request.execute(''))
 
 

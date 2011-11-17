@@ -804,7 +804,10 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_repository(self):
         """See BzrDir.destroy_repository."""
-        self.transport.delete_tree('repository')
+        try:
+            self.transport.delete_tree('repository')
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):

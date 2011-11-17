@@ -156,6 +156,8 @@ class TestControlDir(TestCaseWithControlDir):
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
             raise TestNotApplicable('Format does not support destroying'
                                     ' repository')
+        self.assertRaises(errors.NoRepositoryPresent,
+            bzrdir.destroy_repository)
         self.assertRaises(errors.NoRepositoryPresent, bzrdir.open_repository)
         bzrdir.create_repository()
         bzrdir.open_repository()

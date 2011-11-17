@@ -130,7 +130,7 @@ class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
         :return: On success, 'ok'.
         """
         try:
-            self._bzrdir.destroy_repository(name)
+            self._bzrdir.destroy_repository()
         except errors.NoRepositoryPresent, e:
             return FailedSmartServerResponse(('norepository',))
         return SuccessfulSmartServerResponse(('ok',))
