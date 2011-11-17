@@ -698,12 +698,6 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
-    def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
-        self._ensure_real()
-        return self._real_bzrdir.clone(url, revision_id=revision_id,
-            force_new_repo=force_new_repo, preserve_stacking=preserve_stacking)
-
     def _get_config(self):
         return RemoteBzrDirConfig(self)
 
@@ -1575,8 +1569,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def get_revision(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_revision(revision_id)
+        return self.get_revisions([revision_id])[0]
 
     def get_transaction(self):
         self._ensure_real()
@@ -1873,9 +1866,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             callback_refs=callback_refs, check_repo=check_repo)
 
     def copy_content_into(self, destination, revision_id=None):
-        self._ensure_real()
-        return self._real_repository.copy_content_into(
-            destination, revision_id=revision_id)
+        """Make a complete copy of the content in self into destination.
+
+        This is a destructive operation! Do not use it on existing
+        repositories.
+        """
+        interrepo = _mod_repository.InterRepository.get(self, destination)
+        return interrepo.copy_content(revision_id)
 
     def _copy_repository_tarball(self, to_bzrdir, revision_id=None):
         # get a tarball of the remote repository, and copy from that into the
@@ -1994,10 +1991,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def _serializer(self):
         return self._format._serializer
 
+    @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        self._ensure_real()
-        return self._real_repository.store_revision_signature(
-            gpg_strategy, plaintext, revision_id)
+        signature = gpg_strategy.sign(plaintext)
+        self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
         self._ensure_real()
