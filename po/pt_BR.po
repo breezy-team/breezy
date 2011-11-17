@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-11-10 13:40+0100\n"
-"PO-Revision-Date: 2011-10-28 14:36+0000\n"
+"PO-Revision-Date: 2011-11-16 20:04+0000\n"
 "Last-Translator: Rafael Neri <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2011-11-11 04:39+0000\n"
-"X-Generator: Launchpad (build 14277)\n"
+"X-Launchpad-Export-Date: 2011-11-17 04:30+0000\n"
+"X-Generator: Launchpad (build 14291)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -313,7 +313,7 @@ msgstr "Este é equivalente ao número de revisões no ramo."
 
 #: bzrlib/builtins.py:568
 msgid "--tree and --revision can not be used together"
-msgstr ""
+msgstr "--tre e --revision não podem ser usados juntos"
 
 #: bzrlib/builtins.py:585 bzrlib/builtins.py:5793
 msgid "Tags can only be placed on a single revision, not on a range"
@@ -494,11 +494,11 @@ msgstr "--dry-run requer --auto."
 
 #: bzrlib/builtins.py:885
 msgid "missing file argument"
-msgstr ""
+msgstr "falta argumento de arquivo"
 
 #: bzrlib/builtins.py:889
 msgid "can not move root of branch"
-msgstr ""
+msgstr "não é possível mover a raiz do ramo"
 
 #: bzrlib/builtins.py:895
 msgid "Only one path may be specified to --auto."
