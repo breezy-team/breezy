@@ -25,7 +25,6 @@ import threading
 
 from bzrlib import (
     bencode,
-    commands,
     errors,
     estimate_compressed_size,
     graph,
@@ -334,8 +333,8 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to lookup.
-        :return: A smart server response of ('ok', ) if the revision is
-            present.
+        :return: A smart server response of ('yes', ) if the revision is
+            present. ('no', ) if it is missing.
         """
         if repository.has_revision(revision_id):
             return SuccessfulSmartServerResponse(('yes', ))
@@ -353,8 +352,9 @@ class SmartServerRequestHasSignatureForRevisionId(
 
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to lookup.
-        :return: A smart server response of ('ok', ) if a
-            signature for the revision is present.
+        :return: A smart server response of ('yes', ) if a
+            signature for the revision is present,
+            ('no', ) if it is missing.
         """
         try:
             if repository.has_signature_for_revision_id(revision_id):
