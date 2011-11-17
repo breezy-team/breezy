@@ -3682,6 +3682,16 @@ bfoo = {basename}
         stack = config.LocationStack('/home/user/project/branch')
         self.assertEquals('branch', stack.get('bfoo', expand=True))
 
+    def test_expand_basename_locally_longer_path(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user]
+bfoo = {basename}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/dir/branch')
+        self.assertEquals('branch', stack.get('bfoo', expand=True))
+
     def test_expand_relpath_locally(self):
         l_store = config.LocationStore()
         l_store._load_from_string('''
