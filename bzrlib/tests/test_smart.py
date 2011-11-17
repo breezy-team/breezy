@@ -30,6 +30,7 @@ from bzrlib import (
     branch as _mod_branch,
     bzrdir,
     errors,
+    gpg,
     tests,
     transport,
     urlutils,
@@ -1547,6 +1548,53 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
         self.assertTrue(tree.branch.repository.has_revision(rev_id_utf8))
         self.assertEqual(smart_req.SmartServerResponse(('yes', )),
             request.execute('', rev_id_utf8))
+
+
+class TestSmartServerRequestHasSignatureForRevisionId(
+        tests.TestCaseWithMemoryTransport):
+
+    def test_missing_revision(self):
+        """For a missing revision, NoSuchRevision is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRequestHasSignatureForRevisionId(
+            backing)
+        self.make_repository('.')
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('nosuchrevision', 'revid'), None),
+            request.execute('', 'revid'))
+
+    def test_missing_signature(self):
+        """For a missing signature, ('no', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRequestHasSignatureForRevisionId(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('a commit', rev_id='A')
+        tree.unlock()
+        self.assertTrue(tree.branch.repository.has_revision('A'))
+        self.assertEqual(smart_req.SmartServerResponse(('no', )),
+            request.execute('', 'A'))
+
+    def test_present_signature(self):
+        """For a present signature, ('yes', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRequestHasSignatureForRevisionId(
+            backing)
+        strategy = gpg.LoopbackGPGStrategy(None)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('a commit', rev_id='A')
+        tree.branch.repository.start_write_group()
+        tree.branch.repository.sign_revision('A', strategy)
+        tree.branch.repository.commit_write_group()
+        tree.unlock()
+        self.assertTrue(tree.branch.repository.has_revision('A'))
+        self.assertEqual(smart_req.SmartServerResponse(('yes', )),
+            request.execute('', 'A'))
 
 
 class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
