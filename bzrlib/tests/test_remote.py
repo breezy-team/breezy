@@ -2504,6 +2504,31 @@ class TestRepositoryIsShared(TestRemoteRepository):
         self.assertEqual(False, result)
 
 
+class TestRepositoryMakeWorkingTrees(TestRemoteRepository):
+
+    def test_make_working_trees(self):
+        # ('yes', ) for Repository.make_working_trees -> 'True'.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.make_working_trees()
+        self.assertEqual(
+            [('call', 'Repository.make_working_trees', ('quack/',))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_no_working_trees(self):
+        # ('no', ) for Repository.make_working_trees -> 'False'.
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.make_working_trees()
+        self.assertEqual(
+            [('call', 'Repository.make_working_trees', ('qwack/',))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
 class TestRepositoryLockWrite(TestRemoteRepository):
 
     def test_lock_write(self):

@@ -64,6 +64,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Add hpss call ``Repository.make_working_trees``.
+  (Jelmer Vernooij)
+
 Testing
 *******
 
