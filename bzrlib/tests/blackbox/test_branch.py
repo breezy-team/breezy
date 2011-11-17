@@ -44,14 +44,15 @@ from bzrlib.workingtree import WorkingTree
 
 class TestBranch(TestCaseWithTransport):
 
-    def example_branch(self, path='.'):
-        tree = self.make_branch_and_tree(path)
+    def example_branch(self, path='.', format=None):
+        tree = self.make_branch_and_tree(path, format=format)
         self.build_tree_contents([(path + '/hello', 'foo')])
         tree.add('hello')
         tree.commit(message='setup')
         self.build_tree_contents([(path + '/goodbye', 'baz')])
         tree.add('goodbye')
         tree.commit(message='setup')
+        return tree
 
     def test_branch(self):
         """Branch from one branch to another."""
@@ -82,6 +83,16 @@ class TestBranch(TestCaseWithTransport):
         out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: Already a branch: "file:b,branch=orig".\n', err)
+
+    def test_from_colocated(self):
+        """Branch from a colocated branch into a regular branch."""
+        tree = self.example_branch('a', format='development-colo')
+        tree.bzrdir.create_branch(name='somecolo')
+        out, err = self.run_bzr('branch %s,branch=somecolo' %
+            local_path_to_url('a'))
+        self.assertEqual('', out)
+        self.assertEqual('Branched 0 revisions.\n', err)
+        self.assertPathExists("somecolo")
 
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
