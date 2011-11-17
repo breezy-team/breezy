@@ -221,6 +221,39 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
 
+class TestSmartServerBzrDirRequestDestroyBranch(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.destroy_branch."""
+
+    def test_destroy_branch_default(self):
+        """The default branch can be removed."""
+        backing = self.get_transport()
+        dir = self.make_branch('.').bzrdir
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('ok',))
+        self.assertEqual(expected, request.execute('', None))
+
+    def test_destroy_branch_named(self):
+        """A named branch can be removed."""
+        backing = self.get_transport()
+        dir = self.make_repository('.', format="development-colo").bzrdir
+        dir.create_branch(name="branchname")
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('ok',))
+        self.assertEqual(expected, request.execute('', "branchname"))
+
+    def test_destroy_branch_missing(self):
+        """An error is raised if the branch didn't exist."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.', format="development-colo")
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.FailedSmartServerResponse(('nobranch',), None)
+        self.assertEqual(expected, request.execute('', "branchname"))
+
+
 class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
     """Tests for BzrDir.create_repository."""
 

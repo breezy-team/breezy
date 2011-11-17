@@ -26,6 +26,8 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* New HPSS call ``BzrDir.destroy_branch``. (Jelmer Vernooij)
+
 Bug Fixes
 *********
 

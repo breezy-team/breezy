@@ -485,6 +485,33 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirDestroyBranch(TestRemote):
+
+    def test_destroy_default(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_branch', ('quack/', None),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_branch()
+        self.assertFinished(client)
+
+    def test_destroy_named(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_branch', ('quack/', "foo"),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_branch("foo")
+        self.assertFinished(client)
+
+
 class TestBzrDirOpen(TestRemote):
 
     def make_fake_client_and_transport(self, path='quack'):

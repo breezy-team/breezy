@@ -513,9 +513,16 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
-        self._ensure_real()
-        self._real_bzrdir.destroy_branch(name=name)
-        self._next_open_branch_result = None
+        path = self._path_for_remote_call(self._client)
+        try:
+            response = self._call('BzrDir.destroy_branch', path, name)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_bzrdir.destroy_branch(name=name)
+            self._next_open_branch_result = None
+            return
+        if response[0] != 'ok':
+            raise SmartProtocolError('unexpected response code %s' % (response,))
 
     def create_workingtree(self, revision_id=None, from_branch=None,
         accelerator_tree=None, hardlink=False):
