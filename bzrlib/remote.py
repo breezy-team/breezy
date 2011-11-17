@@ -484,8 +484,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def destroy_repository(self):
         """See BzrDir.destroy_repository"""
-        self._ensure_real()
-        self._real_bzrdir.destroy_repository()
+        path = self._path_for_remote_call(self._client)
+        try:
+            response = self._call('BzrDir.destroy_repository', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_bzrdir.destroy_repository()
+            return
+        if response[0] != 'ok':
+            raise SmartProtocolError('unexpected response code %s' % (response,))
 
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None):

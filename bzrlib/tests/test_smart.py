@@ -221,6 +221,29 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
 
+class TestSmartServerBzrDirRequestDestroyRepository(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.destroy_repository."""
+
+    def test_destroy_repository_default(self):
+        """The repository can be removed."""
+        backing = self.get_transport()
+        dir = self.make_repository('.').bzrdir
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('ok',))
+        self.assertEqual(expected, request.execute(''))
+
+    def test_destroy_repository_missing(self):
+        """An error is raised if the repository didn't exist."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.FailedSmartServerResponse(('norepository',), None)
+        self.assertEqual(expected, request.execute(''))
+
+
 class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
     """Tests for BzrDir.create_repository."""
 
