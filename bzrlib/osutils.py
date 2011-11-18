@@ -120,7 +120,8 @@ def chmod_if_possible(filename, mode):
         # probably no point warning about it.
         # <https://bugs.launchpad.net/bzr/+bug/606537>
         if getattr(e, 'errno') in (errno.EPERM, errno.EACCES):
-            trace.mutter("ignore EPERM on mkdir of %r" % filename)
+            trace.mutter("ignore error on chmod of %r: %r" % (
+                filename, e))
             return
         raise
 
