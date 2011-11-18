@@ -441,11 +441,11 @@ def split_segment_parameters_raw(url):
     :param url: A relative or absolute URL
     :return: (url, subsegments)
     """
-    (parent_url, child_dir) = split(url)
-    subsegments = child_dir.split(",")
-    if len(subsegments) == 1:
+    # Segements begin at first comma after last forward slash, if one exists
+    segment_start = url.find(",", url.rfind("/")+1)
+    if segment_start == -1:
         return (url, [])
-    return (join(parent_url, subsegments[0]), subsegments[1:])
+    return url[:segment_start], url[segment_start+1:].split(",")
 
 
 def split_segment_parameters(url):
