@@ -97,14 +97,33 @@ def make_readonly(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod & 0777555
-        os.chmod(filename, mod)
+        chmod_if_possible(filename, mod)
 
 
 def make_writable(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod | 0200
-        os.chmod(filename, mod)
+        chmod_if_possible(filename, mod)
+
+
+def chmod_if_possible(filename, mode):
+    # Set file mode if that can be safely done.
+    # Sometimes even on unix the filesystem won't allow it - see
+    # https://bugs.launchpad.net/bzr/+bug/606537
+    try:
+        # It is probably faster to just do the chmod, rather than
+        # doing a stat, and then trying to compare
+        os.chmod(filename, mode)
+    except (IOError, OSError),e:
+        # Permission/access denied seems to commonly happen on smbfs; there's
+        # probably no point warning about it.
+        # <https://bugs.launchpad.net/bzr/+bug/606537>
+        if getattr(e, 'errno') in (errno.EPERM, errno.EACCES):
+            trace.mutter("ignore error on chmod of %r: %r" % (
+                filename, e))
+            return
+        raise
 
 
 def minimum_path_selection(paths):

@@ -134,7 +134,7 @@ def login(service, timeout=None, proxy_info=None):
         proxy_info=proxy_info)
     # XXX: Work-around a minor security bug in launchpadlib 1.5.1, which would
     # create this directory with default umask.
-    os.chmod(cache_directory, 0700)
+    osutils.chmod_if_possible(cache_directory, 0700)
     return launchpad
 
 

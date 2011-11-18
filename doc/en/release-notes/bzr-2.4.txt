@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Cope with Unix filesystems, such as smbfs, where chmod gives 'permission
+  denied'.  (Martin Pool, #606537)
+
 * During merges, when two entries end up using the same path for two
   different file-ids (the same file being 'bzr added' in two different
   branches) , 'duplicate' conflicts are created instead of 'content'
