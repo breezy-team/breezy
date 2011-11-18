@@ -552,7 +552,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         # the end of the range instead.
         request = PUTRequest(abspath, bytes,
                              {'Content-Range':
-                                  'bytes %d-%d/*' % (at, at+len(bytes)),},
+                                  'bytes %d-%d/*' % (at, at+len(bytes)-1),},
                              accepted_errors=[200, 201, 204, 403, 404, 409])
         response = self._perform(request)
         code = response.code
