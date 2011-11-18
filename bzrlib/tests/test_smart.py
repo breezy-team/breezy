@@ -222,6 +222,29 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
 
+class TestSmartServerBzrDirRequestHasWorkingTree(
+    tests.TestCaseWithTransport):
+    """Tests for BzrDir.has_workingtree."""
+
+    def test_has_workingtree_yes(self):
+        """A working tree is present."""
+        backing = self.get_transport()
+        dir = self.make_branch_and_tree('.').bzrdir
+        request_class = smart_dir.SmartServerBzrDirRequestHasWorkingTree
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('yes',))
+        self.assertEqual(expected, request.execute(''))
+
+    def test_has_workingtree_no(self):
+        """A working tree is missing."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestHasWorkingTree
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('no',))
+        self.assertEqual(expected, request.execute(''))
+
+
 class TestSmartServerBzrDirRequestDestroyRepository(
     tests.TestCaseWithMemoryTransport):
     """Tests for BzrDir.destroy_repository."""

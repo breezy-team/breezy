@@ -120,6 +120,22 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         return '/'.join(segments)
 
 
+class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Check whether there is a working tree present.
+
+        New in 2.5.0.
+
+        :return: If there is a working tree present, 'yes'.
+            Otherwise 'no'.
+        """
+        if self._bzrdir.has_workingtree():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
 class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, name=None):

@@ -47,9 +47,6 @@ Bug Fixes
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
-* Support looking up revision numbers by revision id in empty branches.
-  (Jelmer Vernooij, #535031)
-
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
@@ -80,8 +77,8 @@ Internals
   (Vincent Ladeuil)
 
 * New HPSS calls ``Repository.has_signature_for_revision_id`` and
-  ``Repository.make_working_trees``, ``BzrDir.destroy_repository``.
-  (Jelmer Vernooij)
+  ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
+  ``BzrDir.has_workingtree``.  (Jelmer Vernooij)
 
 Testing
 *******

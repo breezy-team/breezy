@@ -672,8 +672,16 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def has_workingtree(self):
         if self._has_working_tree is None:
-            self._ensure_real()
-            self._has_working_tree = self._real_bzrdir.has_workingtree()
+            path = self._path_for_remote_call(self._client)
+            try:
+                response = self._call('BzrDir.has_workingtree', path)
+            except errors.UnknownSmartMethod:
+                self._ensure_real()
+                self._has_working_tree = self._real_bzrdir.has_workingtree()
+            else:
+                if response[0] not in ('yes', 'no'):
+                    raise SmartProtocolError('unexpected response code %s' % (response,))
+                self._has_working_tree = (response[0] == 'yes')
         return self._has_working_tree
 
     def open_workingtree(self, recommend_upgrade=True):
