@@ -39,14 +39,19 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* A new section local option ``basename`` is available to help support some
+  ``bzr-pipeline`` workflows and more generally help mapping local paths to
+  remote ones. See ``bzr help configuration`` for more details.
+  (Vincent Ladeuil, #843211)
+
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
-* Support verifying signatures on remote repositories.
-  (Jelmer Vernooij, #889694)
-
 * Support looking up revision numbers by revision id in empty branches.
   (Jelmer Vernooij, #535031)
+
+* Support verifying signatures on remote repositories.
+  (Jelmer Vernooij, #889694)
 
 Documentation
 *************

@@ -3671,6 +3671,38 @@ gbar = glob-bar
 
 class TestStackExpandSectionLocals(tests.TestCaseWithTransport):
 
+    def test_expand_locals_empty(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+base = {basename}
+rel = {relpath}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/')
+        self.assertEquals('', stack.get('base', expand=True))
+        self.assertEquals('', stack.get('rel', expand=True))
+
+    def test_expand_basename_locally(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+bfoo = {basename}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('branch', stack.get('bfoo', expand=True))
+
+    def test_expand_basename_locally_longer_path(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user]
+bfoo = {basename}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/dir/branch')
+        self.assertEquals('branch', stack.get('bfoo', expand=True))
+
     def test_expand_relpath_locally(self):
         l_store = config.LocationStore()
         l_store._load_from_string('''

@@ -3027,7 +3027,8 @@ class LocationSection(Section):
         super(LocationSection, self).__init__(section.id, section.options)
         self.length = length
         self.extra_path = extra_path
-        self.locals = {'relpath': extra_path}
+        self.locals = {'relpath': extra_path,
+                       'basename': urlutils.basename(extra_path)}
 
     def get(self, name, default=None, expand=True):
         value = super(LocationSection, self).get(name, default)
