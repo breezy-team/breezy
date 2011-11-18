@@ -511,11 +511,11 @@ class TestUrlToPath(TestCase):
             split_segment_parameters_raw("/somedir/path,heads%2Ftip"))
         self.assertEquals(("/somedir/path", ["heads%2Ftip", "bar"]),
             split_segment_parameters_raw("/somedir/path,heads%2Ftip,bar"))
-        self.assertEquals(("/", ["key1=val1"]),
+        self.assertEquals(("", ["key1=val1"]),
             split_segment_parameters_raw(",key1=val1"))
         self.assertEquals(("foo/", ["key1=val1"]),
             split_segment_parameters_raw("foo/,key1=val1"))
-        self.assertEquals(("/foo", ["key1=val1"]),
+        self.assertEquals(("foo", ["key1=val1"]),
             split_segment_parameters_raw("foo,key1=val1"))
         self.assertEquals(("foo/base,la=bla/other/elements", []),
             split_segment_parameters_raw("foo/base,la=bla/other/elements"))
@@ -538,7 +538,7 @@ class TestUrlToPath(TestCase):
                 "/somedir/path,ref=heads%2Ftip,key1=val1"))
         self.assertEquals(("/somedir/path", {"ref": "heads%2F=tip"}),
             split_segment_parameters("/somedir/path,ref=heads%2F=tip"))
-        self.assertEquals(("/", {"key1": "val1"}),
+        self.assertEquals(("", {"key1": "val1"}),
             split_segment_parameters(",key1=val1"))
         self.assertEquals(("foo/", {"key1": "val1"}),
             split_segment_parameters("foo/,key1=val1"))
