@@ -80,7 +80,8 @@ Internals
   (Vincent Ladeuil)
 
 * New HPSS calls ``Repository.has_signature_for_revision_id`` and
-  ``Repository.make_working_trees``.  (Jelmer Vernooij)
+  ``Repository.make_working_trees``, ``BzrDir.destroy_repository``.
+  (Jelmer Vernooij)
 
 Testing
 *******

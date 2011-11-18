@@ -21,7 +21,6 @@ from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
-    BzrDirMetaFormat1,
     BzrProber,
     )
 from bzrlib.controldir import (
@@ -119,6 +118,22 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         else:
             segments = []
         return '/'.join(segments)
+
+
+class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Destroy the repository.
+
+        New in 2.5.0.
+
+        :return: On success, 'ok'.
+        """
+        try:
+            self._bzrdir.destroy_repository()
+        except errors.NoRepositoryPresent, e:
+            return FailedSmartServerResponse(('norepository',))
+        return SuccessfulSmartServerResponse(('ok',))
 
 
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
