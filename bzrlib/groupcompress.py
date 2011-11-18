@@ -307,9 +307,6 @@ class GroupCompressBlock(object):
     def _create_z_content(self):
         if self._z_content_chunks is not None:
             return
-        if _USE_LZMA:
-            self._create_z_content_using_lzma()
-            return
         if self._content_chunks is not None:
             chunks = self._content_chunks
         else:
@@ -319,10 +316,7 @@ class GroupCompressBlock(object):
     def to_chunks(self):
         """Create the byte stream as a series of 'chunks'"""
         self._create_z_content()
-        if _USE_LZMA:
-            header = self.GCB_LZ_HEADER
-        else:
-            header = self.GCB_HEADER
+        header = self.GCB_HEADER
         chunks = ['%s%d\n%d\n'
                   % (header, self._z_content_length, self._content_length),
                  ]
