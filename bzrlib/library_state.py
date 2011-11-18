@@ -67,7 +67,7 @@ class BzrLibraryState(object):
         self._trace = trace
         # There is no overrides by default, they are set later when the command
         # arguments are parsed.
-        self.cmdline_overrides = config.CommandLineSection()
+        self.cmdline_overrides = config.CommandLineStore()
         self.started = False
 
     def __enter__(self):

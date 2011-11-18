@@ -2565,9 +2565,6 @@ class TestMutableSection(tests.TestCase):
     scenarios = [('mutable',
                   {'get_section':
                        lambda opts: config.MutableSection('myID', opts)},),
-                 ('cmdline',
-                  {'get_section':
-                       lambda opts: config.CommandLineSection(opts)},),
         ]
 
     def test_set(self):
@@ -2615,43 +2612,52 @@ class TestMutableSection(tests.TestCase):
         self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
 
 
-class TestCommandLineSection(tests.TestCase):
+class TestCommandLineStore(tests.TestCase):
 
     def setUp(self):
-        super(TestCommandLineSection, self).setUp()
-        self.section = config.CommandLineSection()
+        super(TestCommandLineStore, self).setUp()
+        self.store = config.CommandLineStore()
+
+    def get_section(self):
+        """Get the unique section for the command line overrides."""
+        sections = list(self.store.get_sections())
+        self.assertLength(1, sections)
+        store, section = sections[0]
+        self.assertEquals(self.store, store)
+        return section
 
     def test_no_override(self):
-        self.section._from_cmdline([])
-        # FIXME: we want some iterator over all options, failing that, we peek
-        # under the cover -- vila 2011-09026
-        self.assertLength(0, self.section.options)
+        self.store._from_cmdline([])
+        section = self.get_section()
+        self.assertLength(0, list(section.iter_option_names()))
 
     def test_simple_override(self):
-        self.section._from_cmdline(['a=b'])
-        self.assertEqual('b', self.section.get('a'))
+        self.store._from_cmdline(['a=b'])
+        section = self.get_section()
+        self.assertEqual('b', section.get('a'))
 
     def test_list_override(self):
-        self.section._from_cmdline(['l=1,2,3'])
-        val = self.section.get('l')
+        self.store._from_cmdline(['l=1,2,3'])
+        val = self.get_section().get('l')
         self.assertEqual('1,2,3', val)
-        # Reminder: lists should registered as such explicitely, otherwise the
-        # conversion needs to be done afterwards.
+        # Reminder: lists should be registered as such explicitely, otherwise
+        # the conversion needs to be done afterwards.
         self.assertEqual(['1', '2', '3'], config.list_from_store(val))
 
     def test_multiple_overrides(self):
-        self.section._from_cmdline(['a=b', 'x=y'])
-        self.assertEquals('b', self.section.get('a'))
-        self.assertEquals('y', self.section.get('x'))
+        self.store._from_cmdline(['a=b', 'x=y'])
+        section = self.get_section()
+        self.assertEquals('b', section.get('a'))
+        self.assertEquals('y', section.get('x'))
 
     def test_wrong_syntax(self):
         self.assertRaises(errors.BzrCommandError,
-                          self.section._from_cmdline, ['a=b', 'c'])
+                          self.store._from_cmdline, ['a=b', 'c'])
 
 
 class TestStore(tests.TestCaseWithTransport):
 
-    def assertSectionContent(self, expected, section):
+    def assertSectionContent(self, expected, (store, section)):
         """Assert that some options have the proper values in a section."""
         expected_name, expected_options = expected
         self.assertEquals(expected_name, section.id)
@@ -2983,13 +2989,13 @@ class TestConcurrentStoreUpdates(TestStore):
 
     def setUp(self):
         super(TestConcurrentStoreUpdates, self).setUp()
-        self._content = 'one=1\ntwo=2\n'
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
                 '%s is not meant to be compatible with the old config design'
                 % (self.stack,))
-        self.stack.store._load_from_string(self._content)
+        self.stack.set('one', '1')
+        self.stack.set('two', '2')
         # Flush the store
         self.stack.store.save()
 
@@ -3170,9 +3176,9 @@ section=/quux/quux
 ''')
         self.assertEquals(['/foo', '/foo/baz', '/foo/bar', '/foo/bar/baz',
                            '/quux/quux'],
-                          [section.id for section in store.get_sections()])
+                          [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/quux')
-        sections = list(matcher.get_sections())
+        sections = [section for s, section in matcher.get_sections()]
         self.assertEquals([3, 2],
                           [section.length for section in sections])
         self.assertEquals(['/foo/bar', '/foo'],
@@ -3189,9 +3195,9 @@ section=/foo
 section=/foo/bar
 ''')
         self.assertEquals(['/foo', '/foo/bar'],
-                          [section.id for section in store.get_sections()])
+                          [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
-        sections = list(matcher.get_sections())
+        sections = [section for s, section in matcher.get_sections()]
         self.assertEquals([3, 2],
                           [section.length for section in sections])
         self.assertEquals(['/foo/bar', '/foo'],
@@ -3210,7 +3216,7 @@ foo:policy = appendpath
         matcher = config.LocationMatcher(store, 'dir/subdir')
         sections = list(matcher.get_sections())
         self.assertLength(1, sections)
-        self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
+        self.assertEquals('bar/dir/subdir', sections[0][1].get('foo'))
 
     def test_file_urls_are_normalized(self):
         store = self.get_store(self)
@@ -3333,7 +3339,7 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals(None, self.conf.get('foo'))
 
     def test_get_hook(self):
-        self.conf.store._load_from_string('foo=bar')
+        self.conf.set('foo', 'bar')
         calls = []
         def hook(*args):
             calls.append(args)
@@ -3345,12 +3351,17 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals((self.conf, 'foo', 'bar'), calls[0])
 
 
-class TestStackGetWithConverter(TestStackGet):
+class TestStackGetWithConverter(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestStackGetWithConverter, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
+        # We just want a simple stack with a simple store so we can inject
+        # whatever content the tests need without caring about what section
+        # names are valid for a given store/stack.
+        store = config.IniFileStore(self.get_transport(), 'foo.conf')
+        self.conf = config.Stack([store.get_sections], store)
 
     def register_bool_option(self, name, default=None, default_from_env=None):
         b = config.Option(name, help='A boolean.',
@@ -3754,8 +3765,7 @@ class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):
         conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
-        self.assertEquals('bar', conf.get('foo'))
+        self.assertEquals(None, conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
         self.assertEquals('baz', conf.get('foo'))

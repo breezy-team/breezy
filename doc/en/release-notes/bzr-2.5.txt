@@ -26,6 +26,13 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* When using ``bzr switch`` to switch to a sibling of the current
+  branch, the relative branch name should no longer be url-encoded.
+  (Jelmer Vernooij)
+
+* ``bzr switch`` now accepts colocated branch names to switch to.
+  (Jelmer Vernooij, #826814)
+
 Bug Fixes
 *********
 
@@ -36,6 +43,15 @@ Bug Fixes
   ``bzr-pipeline`` workflows and more generally help mapping local paths to
   remote ones. See ``bzr help configuration`` for more details.
   (Vincent Ladeuil, #843211)
+
+* Resolve regression from colocated branch path handling, by ensuring that
+  unreserved characters are unquoted in URLs. (Martin Packman, #842223)
+
+* Support looking up revision numbers by revision id in empty branches.
+  (Jelmer Vernooij, #535031)
+
+* Support verifying signatures on remote repositories.
+  (Jelmer Vernooij, #889694)
 
 Documentation
 *************
@@ -48,11 +64,23 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Repository.verify_revision`` has been renamed to
+  ``Repository.verify_revision_signature``. (Jelmer Vernooij)
+
+* Some global options for use with commands have been removed, construct
+  an ``Option`` with the name instead. (Martin Packman)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* ``bzr config`` uses the new configuration implementation.
+  (Vincent Ladeuil)
+
+* New HPSS calls ``Repository.has_signature_for_revision_id`` and
+  ``Repository.make_working_trees``.  (Jelmer Vernooij)
 
 Testing
 *******
@@ -61,6 +89,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Avoid failures in test_transform when OS error messages are localised.
+  (Martin Packman, #891582)
 
 bzr 2.5b3
 #########
@@ -125,6 +155,9 @@ Bug Fixes
 * ``bzr info`` now shows the master branch location too for
   treeless local branches. (Jelmer Vernooij, #258355)
 
+* ``bzr info`` no longer shows empty output if only a control
+  directory is present. (Jelmer Vernooij, #159098)
+
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
 
@@ -170,6 +203,8 @@ API Changes
   indicates whether revisions can be present in a repository without
   being referenced from e.g. a branch history at the same time.
   (Jelmer Vernooij)
+
+* New method ``Transport.set_segment_parameter``.  (Jelmer Vernooij)
 
 * ``UIFactory.choose`` has been added: prompt the user for a list of
   choices. (Benoît Pierre)
@@ -515,6 +550,9 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
+
+* Raise BadIndexKey exception in btree_index when a key is too large, fixing 
+  an infinite recursion issue. (Shannon Weyrick, #720853)
 
 Documentation
 *************

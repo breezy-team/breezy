@@ -1606,6 +1606,9 @@ class BranchFormat(controldir.ControlComponentFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=controldir)
+        try:
             format_string = transport.get_bytes("format")
             return format_registry.get(format_string)
         except errors.NoSuchFile:
@@ -2297,7 +2300,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
-            target_branch.bzrdir.user_url)
+            target_branch.user_url)
         branch_transport.put_bytes('format', self.get_format_string())
         branch = self.open(
             a_bzrdir, name, _found=True,
@@ -2435,11 +2438,12 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
-        self._base = self.bzrdir.transport.clone('..').base
+        self._user_transport = self.bzrdir.transport.clone('..')
+        if name is not None:
+            self._user_transport.set_segment_parameter(
+                "branch", urlutils.escape(name))
+        self._base = self._user_transport.base
         self.name = name
-        # XXX: We should be able to just do
-        #   self.base = self.bzrdir.root_transport.base
-        # but this does not quite work yet -- mbp 20080522
         self._format = _format
         if _control_files is None:
             raise ValueError('BzrBranch _control_files is None')
@@ -2449,11 +2453,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         Branch.__init__(self)
 
     def __str__(self):
-        if self.name is None:
-            return '%s(%s)' % (self.__class__.__name__, self.user_url)
-        else:
-            return '%s(%s,%s)' % (self.__class__.__name__, self.user_url,
-                self.name)
+        return '%s(%s)' % (self.__class__.__name__, self.user_url)
 
     __repr__ = __str__
 
@@ -2462,6 +2462,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return self._base
 
     base = property(_get_base, doc="The URL for the root of this branch.")
+
+    @property
+    def user_transport(self):
+        return self._user_transport
 
     def _get_config(self):
         return _mod_config.TransportConfig(self._transport, 'branch.conf')
@@ -3030,6 +3034,8 @@ class BzrBranch8(BzrBranch):
             except errors.RevisionNotPresent, e:
                 raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
             index = len(self._partial_revision_history_cache) - 1
+            if index < 0:
+                raise errors.NoSuchRevision(self, revision_id)
             if self._partial_revision_history_cache[index] != revision_id:
                 raise errors.NoSuchRevision(self, revision_id)
         return self.revno() - index
