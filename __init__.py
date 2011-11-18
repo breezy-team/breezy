@@ -20,36 +20,38 @@ This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
 """
 
-__version__ = '1.12.2'
-version_info = tuple(int(n) for n in __version__.split('.'))
-
 import bzrlib
+import bzrlib.api
 
-# Don't go further if we are not compatible
-if bzrlib.version_info < (1, 12):
-    # We need bzr 1.12
-    from bzrlib import trace
-    trace.note('not installing http[s]+webdav:// support'
-               ' (only supported for bzr 1.12 and above)')
+from info import (
+    bzr_plugin_version as version_info,
+    bzr_compatible_versions,
+    )
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
 else:
-    from bzrlib import transport
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
 
-    transport.register_urlparse_netloc_protocol('http+webdav')
-    transport.register_urlparse_netloc_protocol('https+webdav')
+bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
-    transport.register_lazy_transport('https+webdav://',
-                                      'bzrlib.plugins.webdav.webdav',
-                                      'HttpDavTransport')
-    transport.register_lazy_transport('http+webdav://',
-                                      'bzrlib.plugins.webdav.webdav',
-                                      'HttpDavTransport')
+from bzrlib import transport
+
+transport.register_urlparse_netloc_protocol('http+webdav')
+transport.register_urlparse_netloc_protocol('https+webdav')
+
+transport.register_lazy_transport(
+    'https+webdav://', 'bzrlib.plugins.webdav.webdav', 'HttpDavTransport')
+transport.register_lazy_transport(
+    'http+webdav://', 'bzrlib.plugins.webdav.webdav', 'HttpDavTransport')
 
 
-    def load_tests(basic_tests, module, loader):
-        testmod_names = [
-            'tests',
-            ]
-        basic_tests.addTest(loader.loadTestsFromModuleNames(
-                ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-        return basic_tests
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'tests',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
 
