@@ -136,6 +136,22 @@ class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
             return SuccessfulSmartServerResponse(('no', ))
 
 
+class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Destroy the repository.
+
+        New in 2.5.0.
+
+        :return: On success, 'ok'.
+        """
+        try:
+            self._bzrdir.destroy_repository()
+        except errors.NoRepositoryPresent, e:
+            return FailedSmartServerResponse(('norepository',))
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, require_stacking):

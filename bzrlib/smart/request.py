@@ -555,8 +555,11 @@ request_handlers.register_lazy(
     'BzrDir.get_config_file', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestConfigFile')
 request_handlers.register_lazy(
-    'BzrDir.destroy_repository', 'bzrlib.smart.bzrdir',
+    'BzrDir.has_workingtree', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestHasWorkingTree')
+request_handlers.register_lazy(
+    'BzrDir.destroy_repository', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestDestroyRepository')
 request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
@@ -616,6 +619,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
 request_handlers.register_lazy(
+    'Repository.has_signature_for_revision_id', 'bzrlib.smart.repository',
+    'SmartServerRequestHasSignatureForRevisionId')
+request_handlers.register_lazy(
     'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
 request_handlers.register_lazy(
     'Repository.insert_stream_1.19', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream_1_19')
@@ -625,6 +631,8 @@ request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
+request_handlers.register_lazy(
+    'Repository.make_working_trees', 'bzrlib.smart.repository', 'SmartServerRepositoryMakeWorkingTrees')
 request_handlers.register_lazy(
     'Repository.set_make_working_trees', 'bzrlib.smart.repository',
     'SmartServerRepositorySetMakeWorkingTrees')
