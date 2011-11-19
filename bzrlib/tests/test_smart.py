@@ -1393,6 +1393,26 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
             request.execute, 'subdir')
 
 
+class TestSmartServerRepositoryBreakLock(tests.TestCaseWithMemoryTransport):
+
+    def test_lock_to_break(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryBreakLock(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.branch.repository.lock_write()
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute(''))
+
+    def test_nothing_to_break(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryBreakLock(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute(''))
+
+
 class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
 
     def test_trivial_bzipped(self):
@@ -2029,6 +2049,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerRequestOpenBranchV3)
         self.assertHandlerEqual('PackRepository.autopack',
             smart_packrepo.SmartServerPackRepositoryAutopack)
+        self.assertHandlerEqual('Repository.break_lock',
+            smart_repo.SmartServerRepositoryBreakLock)
         self.assertHandlerEqual('Repository.gather_stats',
             smart_repo.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
