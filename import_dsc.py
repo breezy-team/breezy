@@ -70,6 +70,7 @@ from bzrlib.plugins.builddeb.util import (
     FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
     component_from_orig_tarball,
+    export,
     extract_orig_tarballs,
     get_commit_info_from_changelog,
     md5sum_filename,
@@ -110,6 +111,7 @@ class DscCache(object):
     def get_transport(self, name):
         return self.transport_cache[name]
 
+
 class DscComp(object):
 
     def __init__(self, cache):
@@ -125,7 +127,6 @@ class DscComp(object):
         if v1 > v2:
             return 1
         return -1
-
 
 
 class DistributionBranchSet(object):
@@ -192,6 +193,21 @@ class DistributionBranchSet(object):
         """
         index = self._branch_list.index(branch)
         return self._branch_list[index+1:]
+
+
+def checkout_upstream_version(tree, package, version, revisions):
+    """Checkout an upstream version from the pristine tar source.
+
+    """
+    tree.update(revision=revisions[None])
+    parent_ids = []
+    for component in sorted(revisions.keys()):
+        revid = revisions[component]
+        if component is not None:
+            component_tree = tree.branch.repository.revision_tree(revid)
+            export(component_tree, os.path.join(tree.basedir, component), format='dir')
+        parent_ids.append(revid)
+    tree.set_parent_ids(parent_ids)
 
 
 class DistributionBranch(object):
@@ -647,30 +663,16 @@ class DistributionBranch(object):
                     self.revid_of_version(last_contained_version))]
         else:
             mutter("We don't have any of those versions")
-        for branch in reversed(self.get_lesser_branches()):
+        for branch in list(reversed(self.get_lesser_branches())) + self.get_greater_branches():
             merged, missing_versions = \
                 branch.contained_versions(missing_versions)
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append((branch, merged[0], revid))
-                mutter("Adding merge from lesser of %s for version %s"
+                mutter("Adding merge from related branch of %s for version %s"
                         % (revid, str(merged[0])))
                 #FIXME: should this really be here?
-                branch.branch.tags.merge_to(self.branch.tags)
-                self.branch.fetch(branch.branch,
-                        last_revision=revid)
-        for branch in self.get_greater_branches():
-            merged, missing_versions = \
-                branch.contained_versions(missing_versions)
-            if merged:
-                revid = branch.revid_of_version(merged[0])
-                parents.append((branch, merged[0], revid))
-                mutter("Adding merge from greater of %s for version %s"
-                    % (revid, str(merged[0])))
-                #FIXME: should this really be here?
-                branch.branch.tags.merge_to(self.branch.tags)
-                self.branch.fetch(branch.branch,
-                        last_revision=revid)
+                self._fetch_from_branch(branch, revid)
         return parents
 
     def pull_upstream_from_branch(self, pull_branch, package, version):
@@ -691,18 +693,18 @@ class DistributionBranch(object):
         assert isinstance(version, str)
         pull_revisions = pull_branch.pristine_upstream_source.version_as_revisions(
             package, version)
-        if pull_revisions.keys() != [None]:
-            raise MultipleUpstreamTarballsNotSupported()
-        pull_revision = pull_revisions[None]
-        mutter("Pulling upstream part of %s from revision %s" % \
-                (version, pull_revision))
-        assert self.pristine_upstream_tree is not None, \
-            "Can't pull upstream with no tree"
-        self.pristine_upstream_tree.pull(pull_branch.pristine_upstream_branch,
-                stop_revision=pull_revision)
-        self.pristine_upstream_source.tag_version(version, pull_revision)
-        self.branch.fetch(self.pristine_upstream_branch, last_revision=pull_revision)
-        self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
+        for (component, pull_revision) in pull_revisions.iteritems():
+            mutter("Fetching upstream part %s of %s from revision %s" % \
+                    (component, version, pull_revision))
+            assert self.pristine_upstream_tree is not None, \
+                "Can't pull upstream with no tree"
+            self.pristine_upstream_branch.pull(pull_branch.pristine_upstream_branch,
+                    stop_revision=pull_revision)
+            self.pristine_upstream_source.tag_version(version, pull_revision)
+            self.branch.fetch(self.pristine_upstream_branch, last_revision=pull_revision)
+            self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
+        checkout_upstream_version(self.pristine_upstream_tree,
+            package, version, pull_revisions)
 
     def pull_version_from_branch(self, pull_branch, package, version, native=False):
         """Pull a version from a particular branch.
@@ -800,13 +802,14 @@ class DistributionBranch(object):
                     real_parents = [upstream_revids[component]]
         return real_parents
 
-    def _fetch_upstream_to_branch(self, revid):
+    def _fetch_upstream_to_branch(self, imported_revids):
         """Fetch the revision from the upstream branch in to the packaging one.
         """
         # Make sure we see any revisions added by the upstream branch
         # since self.tree was locked.
         self.branch.repository.refresh_data()
-        self.branch.fetch(self.pristine_upstream_branch, last_revision=revid)
+        for (component, tag, revid) in imported_revids:
+            self.branch.fetch(self.pristine_upstream_branch, last_revision=revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
     def import_upstream(self, upstream_part, package, version, upstream_parents,
@@ -1100,6 +1103,13 @@ class DistributionBranch(object):
         cl.parse_changelog(open(cl_filename).read(), strict=False)
         return cl
 
+    def _fetch_from_branch(self, branch, revid):
+        branch.branch.tags.merge_to(self.branch.tags)
+        self.branch.fetch(branch.branch, last_revision=revid)
+        if self.pristine_upstream_branch.last_revision() == NULL_REVISION:
+            self.pristine_upstream_tree.pull(branch.pristine_upstream_branch)
+            branch.pristine_upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
+
     def _import_normal_package(self, package, version, versions, debian_part, md5,
             upstream_part, upstream_tarballs, timestamp=None, author=None,
             file_ids_from=None, pull_debian=True):
@@ -1145,13 +1155,13 @@ class DistributionBranch(object):
                     # from another branch:
                     upstream_parents = self.upstream_parents(package, versions,
                             version.upstream_version)
-                    for (component, tag, revid) in self.import_upstream(upstream_part,
+                    imported_revids = self.import_upstream(upstream_part,
                             package, version.upstream_version,
                             upstream_parents,
                             upstream_tarballs=upstream_tarballs,
                             timestamp=timestamp, author=author,
-                            file_ids_from=file_ids_from):
-                        self._fetch_upstream_to_branch(revid)
+                            file_ids_from=file_ids_from)
+                    self._fetch_upstream_to_branch(imported_revids)
             else:
                 mutter("We already have the needed upstream part")
             parents = self.get_parents_with_upstream(package, version, versions,
@@ -1167,32 +1177,14 @@ class DistributionBranch(object):
         else:
             parents = [self.revid_of_version(last_contained_version)]
         missing_versions = self.missing_versions(versions)
-        for branch in reversed(self.get_lesser_branches()):
+        for branch in list(reversed(self.get_lesser_branches())) + self.get_greater_branches():
             merged, missing_versions = \
                 branch.contained_versions(missing_versions)
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append(revid)
                 #FIXME: should this really be here?
-                branch.branch.tags.merge_to(self.branch.tags)
-                self.branch.fetch(branch.branch,
-                        last_revision=revid)
-                if self.pristine_upstream_branch.last_revision() == NULL_REVISION:
-                    self.pristine_upstream_tree.pull(branch.pristine_upstream_branch)
-                    branch.pristine_upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
-        for branch in self.get_greater_branches():
-            merged, missing_versions = \
-                branch.contained_versions(missing_versions)
-            if merged:
-                revid = branch.revid_of_version(merged[0])
-                parents.append(revid)
-                #FIXME: should this really be here?
-                branch.branch.tags.merge_to(self.branch.tags)
-                self.branch.fetch(branch.branch,
-                        last_revision=revid)
-                if self.pristine_upstream_branch.last_revision() == NULL_REVISION:
-                    self.pristine_upstream_tree.pull(branch.pristine_upstream_branch)
-                    branch.pristine_upstream_branch.tags.merge_to(self.pristine_upstream_branch.tags)
+                self._fetch_from_branch(branch, revid)
         if (self.branch.last_revision() != NULL_REVISION
                 and not self.branch.last_revision() in parents):
             parents.insert(0, self.branch.last_revision())
@@ -1393,12 +1385,12 @@ class DistributionBranch(object):
                     parents = { None: [] }
                     if self.pristine_upstream_branch.last_revision() != NULL_REVISION:
                         parents = { None: [self.pristine_upstream_branch.last_revision()] }
-                    for (component, tag, revid) in self.import_upstream(tarball_dir,
+                    imported_revids = self.import_upstream(tarball_dir,
                             package, version, parents,
                             upstream_tarballs=upstream_tarballs,
                             upstream_branch=upstream_branch,
-                            upstream_revisions=upstream_revisions):
-                        self._fetch_upstream_to_branch(revid)
+                            upstream_revisions=upstream_revisions)
+                    self._fetch_upstream_to_branch(imported_revids)
                 finally:
                     shutil.rmtree(tarball_dir)
                 if self.branch.last_revision() != NULL_REVISION:
