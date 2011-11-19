@@ -900,13 +900,24 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def do_repository_request(self, repository, revision_id):
+    def do_repository_request(self, repository, lock_token, write_group_tokens,
+            revision_id):
+        self._lock_token = lock_token
+        self._write_group_tokens = write_group_tokens
         self._revision_id = revision_id
         return None
 
     def do_body(self, body_bytes):
-        self._repository.add_signature_text(self._revision_id, body_bytes)
-        return SuccessfulSmartServerResponse(('ok', ),)
+        self._repository.lock_write(token=self._lock_token)
+        try:
+            self._repository.resume_write_group(self._write_group_tokens)
+            try:
+                self._repository.add_signature_text(self._revision_id, body_bytes)
+            finally:
+                new_write_group_tokens = self._repository.suspend_write_group()
+        finally:
+            self._repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ) + tuple(new_write_group_tokens))
 
 
 class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):

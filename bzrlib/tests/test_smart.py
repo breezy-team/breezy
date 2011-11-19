@@ -1399,17 +1399,21 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryAddSignatureText(backing)
         tree = self.make_branch_and_memory_tree('.')
-        self.addCleanup(tree.branch.repository.lock_write().unlock)
+        write_token = tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add('')
+        tree.commit("Message", rev_id='rev1')
         tree.branch.repository.start_write_group()
-        try:
-            self.assertEqual(None, request.execute('', 'rev1'))
-
-            self.assertEqual(
-                smart_req.SuccessfulSmartServerResponse(('ok', ), None),
-                request.do_body('somesignature'))
-        finally:
-            tree.branch.repository.commit_write_group()
-
+        write_group_tokens = tree.branch.repository.suspend_write_group()
+        self.assertEqual(None, request.execute('', write_token,
+            write_group_tokens, 'rev1'))
+        response = request.do_body('somesignature')
+        self.assertTrue(response.is_successful())
+        self.assertEqual(response.args[0], 'ok')
+        write_group_tokens = response.args[1:]
+        tree.branch.repository.resume_write_group(write_group_tokens)
+        tree.branch.repository.commit_write_group()
+        tree.unlock()
         self.assertEqual("somesignature",
             tree.branch.repository.get_signature_text("rev1"))
 
