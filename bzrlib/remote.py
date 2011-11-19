@@ -1009,9 +1009,16 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
         :param suppress_errors: see Repository.abort_write_group.
         """
-        self._ensure_real()
-        return self._real_repository.abort_write_group(
-            suppress_errors=suppress_errors)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.abort_write_group', path,
+                suppress_errors)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.abort_write_group(
+                suppress_errors=suppress_errors)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     @property
     def chk_bytes(self):
@@ -1031,16 +1038,37 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
-        self._ensure_real()
-        return self._real_repository.commit_write_group()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.commit_write_group', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.commit_write_group()
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def resume_write_group(self, tokens):
-        self._ensure_real()
-        return self._real_repository.resume_write_group(tokens)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.resume_write_group', path,
+                *tokens)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.resume_write_group(tokens)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def suspend_write_group(self):
-        self._ensure_real()
-        return self._real_repository.suspend_write_group()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.suspend_write_group',
+                path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.suspend_write_group()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return list(response[1:])
 
     def get_missing_parent_inventories(self, check_for_missing_texts=True):
         self._ensure_real()
@@ -1414,8 +1442,14 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
-        self._ensure_real()
-        return self._real_repository.start_write_group()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.start_write_group', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.start_write_group()
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)

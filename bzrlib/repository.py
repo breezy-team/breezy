@@ -642,6 +642,12 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
 
     def suspend_write_group(self):
+        """Suspend a write group.
+
+        :raise UnsuspendableWriteGroup: If the write group can not be
+            suspended.
+        :return: List of tokens
+        """
         raise errors.UnsuspendableWriteGroup(self)
 
     def refresh_data(self):
