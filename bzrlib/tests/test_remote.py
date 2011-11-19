@@ -1487,9 +1487,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         branch.lock_write()
         result = branch._set_last_revision(NULL_REVISION)
         branch.unlock()
@@ -1524,9 +1521,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         result = branch._set_last_revision('rev-id2')
@@ -1599,7 +1593,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        branch._ensure_real = lambda: None
         branch.lock_write()
         # The 'TipChangeRejected' error response triggered by calling
         # set_last_revision_info causes a TipChangeRejected exception.
