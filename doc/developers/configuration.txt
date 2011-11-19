@@ -98,10 +98,12 @@ handled by ``Section.get()``. One such option is ``relpath`` which is
 defined in ``LocationSection`` as an alternative to the ``appendpath``
 policy.
 
-For ``appendpath``, the ``LocationSection`` will carry ``extra_path`` as
-``832013-expand-in-stack`` and ``relpath`` will be available as a
-``Section`` local option with the same value. Note that such options can
-only be expanded inside the section that defines them.
+For ``appendpath``, the ``LocationSection`` will carry ``extra_path`` as the
+relative path between the section name and the location used. ``relpath``
+will be available as a ``Section`` local option with the same
+value. ``basename`` will carry the location base name and be available as a
+local option with the same name. Note that such options can only be expanded
+inside the section that defines them.
 
 Specific section matchers can be implemented by overriding ``get_sections``
 or just ``match``.
