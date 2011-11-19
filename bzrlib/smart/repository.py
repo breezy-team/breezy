@@ -918,7 +918,7 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token,
-            *write_group_tokens):
+            write_group_tokens):
         """Commit a write group."""
         repository.lock_write(token=lock_token)
         try:
@@ -935,8 +935,8 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def do_repository_request(self, repository, lock_token, suppress_errors,
-            *write_group_tokens):
+    def do_repository_request(self, repository, lock_token, write_group_tokens,
+            suppress_errors):
         """Abort a write group."""
         repository.lock_write(token=lock_token)
         try:

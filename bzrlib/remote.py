@@ -1013,13 +1013,14 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._call('Repository.abort_write_group', path,
-                self._lock_token, suppress_errors, *self._write_group_tokens)
+                self._lock_token, self._write_group_tokens, suppress_errors)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.abort_write_group(
                 suppress_errors=suppress_errors)
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
+        self._write_group_tokens = None
 
     @property
     def chk_bytes(self):
@@ -1042,12 +1043,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._call('Repository.commit_write_group', path,
-                self._lock_token, *self._write_group_tokens)
+                self._lock_token, self._write_group_tokens)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.commit_write_group()
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
+        self._write_group_tokens = None
 
     def resume_write_group(self, tokens):
         if self._real_repository:
