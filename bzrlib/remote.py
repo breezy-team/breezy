@@ -1281,6 +1281,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
         write groups are only applicable locally for the smart server..
         """
+        if self._write_group_tokens is not None:
+            return True
         if self._real_repository:
             return self._real_repository.is_in_write_group()
 
