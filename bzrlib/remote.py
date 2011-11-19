@@ -1731,11 +1731,28 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return self._real_repository._get_versioned_file_checker(
             revisions, revision_versions_cache)
 
+    def _iter_files_bytes_rpc(self, desired_files):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        for (file_id, revision, identifier) in desired_files:
+            response_tuple, response_handler = self._call_expecting_body(
+                "Repository.iter_file_bytes", path, file_id, revision)
+            if response_tuple != ('ok', ):
+                raise errors.UnexpectedSmartServerResponse(response_tuple)
+            byte_stream = response_handler.read_streamed_body()
+            yield (identifier, byte_stream)
+
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.
         """
-        self._ensure_real()
-        return self._real_repository.iter_files_bytes(desired_files)
+        try:
+            for (identifier, bytes_iterator) in self._iter_files_bytes_rpc(
+                    desired_files):
+                yield identifier, bytes_iterator
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            for (identifier, bytes_iterator) in (
+                self._real_repository.iter_files_bytes(desired_files)):
+                yield identifier, bytes_iterator
 
     def get_cached_parent_map(self, revision_ids):
         """See bzrlib.CachingParentsProvider.get_cached_parent_map"""

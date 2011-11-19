@@ -2690,6 +2690,21 @@ class TestRepositoryHasRevision(TestRemoteRepository):
         self.assertEqual([], client._calls)
 
 
+class TestRepositoryIterFilesByteS(TestRemoteRepository):
+    """Test Repository.iter_file_bytes."""
+
+    def test_single(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.iter_file_bytes', ('quack/', 'somefile', 'somerev'),
+            'success', ('ok',), "mydata" * 1000)
+        for (identifier, byte_stream) in repo.iter_files_bytes([("somefile",
+                "somerev", "myid")]):
+            self.assertEquals("myid", identifier)
+            self.assertEquals("".join(byte_stream), "mydata" * 1000)
+
+
 class TestRepositoryInsertStreamBase(TestRemoteRepository):
     """Base class for Repository.insert_stream and .insert_stream_1.19
     tests.
