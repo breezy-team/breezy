@@ -957,12 +957,22 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token,
-            *write_group_tokens):
+            write_group_tokens):
         """Commit a write group."""
         repository.lock_write(token=lock_token)
         try:
-            repository.resume_write_group(write_group_tokens)
-            repository.commit_write_group()
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+            try:
+                repository.commit_write_group()
+            except:
+                write_group_tokens = repository.suspend_write_group()
+                # FIXME JRV 2011-11-19: What if the write_group_tokens
+                # have changed?
+                raise
         finally:
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok', ))
@@ -974,13 +984,16 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def do_repository_request(self, repository, lock_token, suppress_errors,
-            *write_group_tokens):
+    def do_repository_request(self, repository, lock_token, write_group_tokens):
         """Abort a write group."""
         repository.lock_write(token=lock_token)
         try:
-            repository.resume_write_group(write_group_tokens)
-            repository.abort_write_group(suppress_errors)
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+                repository.abort_write_group()
         finally:
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok', ))
