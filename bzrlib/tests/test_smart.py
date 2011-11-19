@@ -1892,20 +1892,24 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
 
 
 class TestSmartServerRepositoryGetPhysicalLockStatus(
-    tests.TestCaseWithMemoryTransport):
+    tests.TestCaseWithTransport):
 
-    def test_true(self):
+    def test_with_write_lock(self):
         backing = self.get_transport()
         repo = self.make_repository('.')
-        repo.lock_write()
-        self.assertEquals(True, repo.get_physical_lock_status())
+        self.addCleanup(repo.lock_write().unlock)
+        # lock_write() doesn't necessarily actually take a physical
+        # lock out.
+        if repo.get_physical_lock_status():
+            expected = 'yes'
+        else:
+            expected = 'no'
         request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
         request = request_class(backing)
-        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('yes',)),
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse((expected,)),
             request.execute('', ))
-        repo.unlock()
 
-    def test_false(self):
+    def test_without_write_lock(self):
         backing = self.get_transport()
         repo = self.make_repository('.')
         self.assertEquals(False, repo.get_physical_lock_status())
