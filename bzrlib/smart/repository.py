@@ -947,7 +947,7 @@ class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
             tokens = repository.suspend_write_group()
         finally:
             repository.unlock()
-        return SuccessfulSmartServerResponse(('ok', ) + tuple(tokens))
+        return SuccessfulSmartServerResponse(('ok', tokens))
 
 
 class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
@@ -994,6 +994,28 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
                 return FailedSmartServerResponse(
                     ('UnresumableWriteGroup', e.write_groups, e.reason))
                 repository.abort_write_group()
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
+    """Check that a write group is still valid.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, write_group_tokens):
+        """Abort a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+            else:
+                repository.suspend_write_group()
         finally:
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok', ))
