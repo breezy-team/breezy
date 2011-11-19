@@ -1597,8 +1597,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def get_inventory(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_inventory(revision_id)
+        return list(self.iter_inventories([revision_id]))[0]
 
     def iter_inventories(self, revision_ids, ordering=None):
         self._ensure_real()
