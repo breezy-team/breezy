@@ -2641,6 +2641,63 @@ class TestRepositoryLockWrite(TestRemoteRepository):
             client._calls)
 
 
+class TestRepositoryWriteGroups(TestRemoteRepository):
+
+    def test_start_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', 'token1'))
+        repo.lock_write()
+        repo.start_write_group()
+
+    def test_commit_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', 'token1'))
+        client.add_expected_call(
+            'Repository.commit_write_group', ('quack/', 'a token', 'token1'),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.start_write_group()
+        repo.commit_write_group()
+
+    def test_abort_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', 'token1'))
+        client.add_expected_call(
+            'Repository.abort_write_group', ('quack/', 'a token', False, 'token1'),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.start_write_group()
+        repo.abort_write_group(False)
+
+    def test_suspend_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        self.assertEquals([], repo.suspend_write_group())
+
+    def test_resume_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        repo.resume_write_group(['packname1', 'packname2'])
+
+
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
 
     def test_backwards_compat(self):

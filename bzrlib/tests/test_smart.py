@@ -1927,6 +1927,44 @@ class TestSmartServerRepositorySetMakeWorkingTrees(
         self.assertTrue(repo.make_working_trees())
 
 
+class TestSmartServerRepositoryWriteGroup(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_start_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryStartWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', lock_token))
+
+    def test_commit_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        tokens = repo.suspend_write_group()
+        request_class = smart_repo.SmartServerRepositoryCommitWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', lock_token, *tokens))
+
+    def test_abort_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        repo.start_write_group()
+        tokens = repo.suspend_write_group()
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryAbortWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', lock_token, False, *tokens))
+
+
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def make_repo_needing_autopacking(self, path='.'):
@@ -2080,6 +2118,12 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',
             smart_repo.SmartServerRepositoryUnlock)
+        self.assertHandlerEqual('Repository.start_write_group',
+            smart_repo.SmartServerRepositoryStartWriteGroup)
+        self.assertHandlerEqual('Repository.commit_write_group',
+            smart_repo.SmartServerRepositoryCommitWriteGroup)
+        self.assertHandlerEqual('Repository.abort_write_group',
+            smart_repo.SmartServerRepositoryAbortWriteGroup)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
 

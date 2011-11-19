@@ -907,3 +907,56 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
     def do_body(self, body_bytes):
         self._repository.add_signature_text(self._revision_id, body_bytes)
         return SuccessfulSmartServerResponse(('ok', ),)
+
+
+class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
+    """Start a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token):
+        """Start a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            repository.start_write_group()
+            tokens = repository.suspend_write_group()
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ) + tuple(tokens))
+
+
+class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
+    """Commit a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token,
+            *write_group_tokens):
+        """Commit a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            repository.resume_write_group(write_group_tokens)
+            repository.commit_write_group()
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
+    """Abort a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, suppress_errors,
+            *write_group_tokens):
+        """Abort a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            repository.resume_write_group(write_group_tokens)
+            repository.abort_write_group(suppress_errors)
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
