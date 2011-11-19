@@ -1465,8 +1465,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     def break_lock(self):
         # should hand off to the network
-        self._ensure_real()
-        return self._real_repository.break_lock()
+        try:
+            response = self._call("Repository.break_lock")
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.break_lock()
+        if response != ('ok',):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def _get_tarball(self, compression):
         """Return a TemporaryFile containing a repository tarball.

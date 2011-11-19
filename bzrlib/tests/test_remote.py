@@ -2124,6 +2124,19 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                          result)
 
 
+class TestRepositoryBreakLock(TestRemoteRepository):
+
+    def test_break_lock(self):
+        # get_graph returns a graph with a custom parents provider.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        repo.break_lock()
+        self.assertEqual(
+            [('call', 'Repository.break_lock', ())],
+            client._calls)
+
+
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):
