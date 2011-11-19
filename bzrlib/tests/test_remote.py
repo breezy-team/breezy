@@ -1038,6 +1038,41 @@ class RemoteBranchTestCase(RemoteBzrDirTestCase):
         return RemoteBranch(bzrdir, repo, _client=client, format=format)
 
 
+class TestBranchGetPhysicalLockStatus(RemoteBranchTestCase):
+
+    def test_get_physical_lock_status_yes(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_physical_lock_status', ('quack/',),
+            'success', ('yes',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_physical_lock_status()
+        self.assertFinished(client)
+        self.assertEqual(True, result)
+
+    def test_get_physical_lock_status_no(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_physical_lock_status', ('quack/',),
+            'success', ('no',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_physical_lock_status()
+        self.assertFinished(client)
+        self.assertEqual(False, result)
+
+
 class TestBranchGetParent(RemoteBranchTestCase):
 
     def test_no_parent(self):
@@ -2541,6 +2576,31 @@ class TestRepositoryHasSignatureForRevisionId(TestRemoteRepository):
         self.assertEqual(
             [('call', 'Repository.has_signature_for_revision_id',
               ('qwack/', 'A'))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
+class TestRepositoryPhysicalLockStatus(TestRemoteRepository):
+
+    def test_get_physical_lock_status_yes(self):
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.get_physical_lock_status()
+        self.assertEqual(
+            [('call', 'Repository.get_physical_lock_status',
+              ('qwack/', ))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_get_physical_lock_status_no(self):
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.get_physical_lock_status()
+        self.assertEqual(
+            [('call', 'Repository.get_physical_lock_status',
+              ('qwack/', ))],
             client._calls)
         self.assertEqual(False, result)
 
