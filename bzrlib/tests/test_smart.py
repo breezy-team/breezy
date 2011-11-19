@@ -1941,7 +1941,18 @@ class TestSmartServerRepositoryWriteGroup(
         self.addCleanup(repo.unlock)
         request_class = smart_repo.SmartServerRepositoryStartWriteGroup
         request = request_class(backing)
-        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok', [])),
+            request.execute('', lock_token))
+
+    def test_start_write_group_unsuspendable(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', format='knit')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryStartWriteGroup
+        request = request_class(backing)
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(('UnsuspendableWriteGroup',)),
             request.execute('', lock_token))
 
     def test_commit_write_group(self):

@@ -1475,7 +1475,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         try:
             response = self._call('Repository.start_write_group', path,
                 self._lock_token)
-        except errors.UnknownSmartMethod:
+        except (errors.UnknownSmartMethod, errors.UnsuspendableWriteGroup):
             self._ensure_real()
             return self._real_repository.start_write_group()
         if response[0] != 'ok':
@@ -3449,6 +3449,8 @@ def _translate_error(err, **context):
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
         raise NoSuchRevision(find('repository'), err.error_args[0])
+    elif err.error_verb == 'UnsuspendableWriteGroup':
+        raise errors.UnsuspendableWriteGroup(repository=find('repository'))
     elif err.error_verb == 'UnresumableWriteGroup':
         raise errors.UnresumableWriteGroup(repository=find('repository'),
             write_groups=err.error_args[0], reason=err.error_args[1])

@@ -944,7 +944,10 @@ class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
         repository.lock_write(token=lock_token)
         try:
             repository.start_write_group()
-            tokens = repository.suspend_write_group()
+            try:
+                tokens = repository.suspend_write_group()
+            except errors.UnsuspendableWriteGroup:
+                return FailedSmartServerResponse(('UnsuspendableWriteGroup',))
         finally:
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok', tokens))
