@@ -24,6 +24,7 @@ from bzrlib import (
     controldir,
     debug,
     errors,
+    gpg,
     graph,
     lock,
     lockdir,
@@ -31,6 +32,7 @@ from bzrlib import (
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
+    testament as _mod_testament,
     urlutils,
     vf_repository,
     )
@@ -2007,8 +2009,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        self._ensure_real()
-        return self._real_repository.sign_revision(revision_id, gpg_strategy)
+        testament = _mod_testament.Testament.from_revision(self, revision_id)
+        plaintext = testament.as_short_text()
+        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     @property
     def texts(self):
@@ -2060,9 +2063,14 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return (response[0] == 'yes')
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
-        self._ensure_real()
-        return self._real_repository.verify_revision_signature(
-            revision_id, gpg_strategy)
+        if not self.has_signature_for_revision_id(revision_id):
+            return gpg.SIGNATURE_NOT_SIGNED, None
+        signature = self.get_signature_text(revision_id)
+
+        testament = _mod_testament.Testament.from_revision(self, revision_id)
+        plaintext = testament.as_short_text()
+
+        return gpg_strategy.verify(signature, plaintext)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         self._ensure_real()
