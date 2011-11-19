@@ -75,6 +75,7 @@ from bzrlib.transport.remote import (
     RemoteSSHTransport,
     RemoteTCPTransport,
     )
+from bzrlib.xml7 import serializer_v7
 
 
 load_tests = load_tests_apply_scenarios
@@ -2122,6 +2123,19 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                           'firstrev': (123456.300, 3600),
                           'latestrev': (654231.400, 0),},
                          result)
+
+
+class TestRepositoryGetSerializerFormat(TestRemoteRepository):
+
+    def test_get_serializer_format(self):
+        transport_path = 'hill'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok', '7')
+        self.assertEquals(serializer_v7, repo.get_serializer_format())
+        self.assertEqual(
+            [('call', 'VersionedFileRepository.get_serializer_format',
+              ('hill/', ))],
+            client._calls)
 
 
 class TestRepositoryGetGraph(TestRemoteRepository):
