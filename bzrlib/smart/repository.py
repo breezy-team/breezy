@@ -25,7 +25,6 @@ import threading
 
 from bzrlib import (
     bencode,
-    commands,
     errors,
     estimate_compressed_size,
     graph,
@@ -854,3 +853,16 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
+class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
+    """Add a revision signature text.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, revision_id):
+        self._revision_id = revision_id
+        return None
+
+    def do_body(self, body_bytes):
+        self._repository.add_signature_text(self._revision_id, body_bytes)
+        return SuccessfulSmartServerResponse(('ok', ),)

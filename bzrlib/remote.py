@@ -1997,8 +1997,18 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
-        self._ensure_real()
-        return self._real_repository.add_signature_text(revision_id, signature)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response, response_handler = self._call_with_body_bytes(
+                'Repository.add_signature_text', (path, revision_id),
+                signature)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.add_signature_text(
+                revision_id, signature)
+        self.refresh_data()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def has_signature_for_revision_id(self, revision_id):
         self._ensure_real()

@@ -2095,6 +2095,21 @@ class TestRepositoryGetGraph(TestRemoteRepository):
         self.assertNotEqual(graph._parents_provider, repo)
 
 
+class TestRepositoryAddSignatureText(TestRemoteRepository):
+
+    def test_add_signature_text(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        self.assertIs(None,
+            repo.add_signature_text("rev1", "every bloody emperor"))
+        self.assertEqual(
+            [('call_with_body_bytes',
+              'Repository.add_signature_text', ('quack/', 'rev1', ),
+              'every bloody emperor')],
+            client._calls)
+
+
 class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_get_parent_map_caching(self):

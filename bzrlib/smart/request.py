@@ -608,6 +608,9 @@ request_handlers.register_lazy('Repository.gather_stats',
 request_handlers.register_lazy('Repository.get_parent_map',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGetParentMap')
+request_handlers.register_lazy('Repository.add_signature_text',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryAddSignatureText')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(

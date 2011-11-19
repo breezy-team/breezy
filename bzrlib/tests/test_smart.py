@@ -1345,6 +1345,27 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
             request.execute, 'subdir')
 
 
+class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTransport):
+
+    def test_add_text(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryAddSignatureText(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        self.addCleanup(tree.branch.repository.lock_write().unlock)
+        tree.branch.repository.start_write_group()
+        try:
+            self.assertEqual(None, request.execute('', 'rev1'))
+
+            self.assertEqual(
+                smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+                request.do_body('somesignature'))
+        finally:
+            tree.branch.repository.commit_write_group()
+
+        self.assertEqual("somesignature",
+            tree.branch.repository.get_signature_text("rev1"))
+
+
 class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
 
     def test_trivial_bzipped(self):
@@ -1912,6 +1933,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerRequestOpenBranchV3)
         self.assertHandlerEqual('PackRepository.autopack',
             smart_packrepo.SmartServerPackRepositoryAutopack)
+        self.assertHandlerEqual('Repository.add_signature_text',
+            smart_repo.SmartServerRepositoryAddSignatureText)
         self.assertHandlerEqual('Repository.gather_stats',
             smart_repo.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
