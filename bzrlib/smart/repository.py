@@ -902,12 +902,25 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, lock_token, write_group_tokens,
             revision_id):
+        """Add a revision signature text.
+
+        :param repository: Repository to operate on
+        :param lock_token: Lock token
+        :param write_group_tokens: Write group tokens
+        :param revision_id: Revision for which to add signature
+        """
         self._lock_token = lock_token
         self._write_group_tokens = write_group_tokens
         self._revision_id = revision_id
         return None
 
     def do_body(self, body_bytes):
+        """Add a signature text.
+
+        :param body_bytes: GPG signature text
+        :return: SuccessfulSmartServerResponse with arguments 'ok' and
+            the list of new write group tokens.
+        """
         self._repository.lock_write(token=self._lock_token)
         try:
             self._repository.resume_write_group(self._write_group_tokens)
