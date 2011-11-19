@@ -651,6 +651,15 @@ request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')
 request_handlers.register_lazy(
+    'Repository.start_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryStartWriteGroup')
+request_handlers.register_lazy(
+    'Repository.commit_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryCommitWriteGroup')
+request_handlers.register_lazy(
+    'Repository.abort_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryAbortWriteGroup')
+request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')
