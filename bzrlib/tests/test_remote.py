@@ -75,7 +75,6 @@ from bzrlib.transport.remote import (
     RemoteSSHTransport,
     RemoteTCPTransport,
     )
-from bzrlib.xml7 import serializer_v7
 
 
 load_tests = load_tests_apply_scenarios
@@ -2131,7 +2130,7 @@ class TestRepositoryGetSerializerFormat(TestRemoteRepository):
         transport_path = 'hill'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response('ok', '7')
-        self.assertEquals(serializer_v7, repo.get_serializer_format())
+        self.assertEquals('7', repo.get_serializer_format())
         self.assertEqual(
             [('call', 'VersionedFileRepository.get_serializer_format',
               ('hill/', ))],
