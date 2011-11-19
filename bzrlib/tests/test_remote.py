@@ -2633,6 +2633,27 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
         repo.lock_write()
         repo.start_write_group()
 
+    def test_start_write_group_unsuspendable(self):
+        # Some repositories do not support suspending write
+        # groups. For those, fall back to the "real" repository.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        def stub_ensure_real():
+            client._calls.append(('_ensure_real',))
+            repo._real_repository = _StubRealPackRepository(client._calls)
+        repo._ensure_real = stub_ensure_real
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'error', ('UnsuspendableWriteGroup',))
+        repo.lock_write()
+        repo.start_write_group()
+        self.assertEquals(client._calls[-2:], [ 
+            ('_ensure_real',),
+            ('start_write_group',)])
+
     def test_commit_write_group(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
@@ -3026,6 +3047,9 @@ class _StubRealPackRepository(object):
     def __init__(self, calls):
         self.calls = calls
         self._pack_collection = _StubPackCollection(calls)
+
+    def start_write_group(self):
+        self.calls.append(('start_write_group',))
 
     def is_in_write_group(self):
         return False
