@@ -421,6 +421,8 @@ def _translate_error(err):
         return ('UnstackableBranchFormat', str(err.format), err.url)
     elif isinstance(err, errors.NotStacked):
         return ('NotStacked',)
+    elif isinstance(err, errors.BzrCheckError):
+        return ('BzrCheckError', err.msg)
     elif isinstance(err, UnicodeError):
         # If it is a DecodeError, than most likely we are starting
         # with a plain string

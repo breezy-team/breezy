@@ -1941,7 +1941,7 @@ class TestSmartServerRepositoryWriteGroup(
         request_class = smart_repo.SmartServerRepositoryAbortWriteGroup
         request = request_class(backing)
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
-            request.execute('', lock_token, tokens, False))
+            request.execute('', lock_token, tokens))
 
 
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):

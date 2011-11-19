@@ -48,7 +48,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, note, warning, log_exception_quietly
 
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -1010,17 +1010,25 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
         :param suppress_errors: see Repository.abort_write_group.
         """
-        path = self.bzrdir._path_for_remote_call(self._client)
-        try:
-            response = self._call('Repository.abort_write_group', path,
-                self._lock_token, self._write_group_tokens, suppress_errors)
-        except errors.UnknownSmartMethod:
+        if self._real_repository:
             self._ensure_real()
             return self._real_repository.abort_write_group(
                 suppress_errors=suppress_errors)
-        if response != ('ok', ):
-            raise errors.UnexpectedSmartServerResponse(response)
-        self._write_group_tokens = None
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.abort_write_group', path,
+                self._lock_token, self._write_group_tokens)
+        except Exception, exc:
+            self._write_group = None
+            if not suppress_errors:
+                raise
+            mutter('abort_write_group failed')
+            log_exception_quietly()
+            note(gettext('bzr: ERROR (ignored): %s'), exc)
+        else:
+            if response != ('ok', ):
+                raise errors.UnexpectedSmartServerResponse(response)
+            self._write_group_tokens = None
 
     @property
     def chk_bytes(self):
@@ -1040,13 +1048,12 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
-        path = self.bzrdir._path_for_remote_call(self._client)
-        try:
-            response = self._call('Repository.commit_write_group', path,
-                self._lock_token, self._write_group_tokens)
-        except errors.UnknownSmartMethod:
+        if self._real_repository:
             self._ensure_real()
             return self._real_repository.commit_write_group()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._call('Repository.commit_write_group', path,
+            self._lock_token, self._write_group_tokens)
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
         self._write_group_tokens = None
@@ -1054,11 +1061,14 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def resume_write_group(self, tokens):
         if self._real_repository:
             return self._real_repository.resume_write_group(tokens)
+        self._write_group_tokens = tokens
 
     def suspend_write_group(self):
         if self._real_repository:
             return self._real_repository.suspend_write_group()
-        return []
+        ret = self._write_group_tokens
+        self._write_group_tokens = None
+        return ret
 
     def get_missing_parent_inventories(self, check_for_missing_texts=True):
         self._ensure_real()
@@ -1425,6 +1435,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             self._real_repository.lock_write(self._lock_token)
         elif self._lock_mode == 'r':
             self._real_repository.lock_read()
+        if self._write_group_tokens is not None:
+            # if we are already in a write group, resume it
+            self._real_repository.resume_write_group(self._write_group_tokens)
+            self._write_group_tokens = None
 
     def start_write_group(self):
         """Start a write group on the decorated repository.
@@ -1434,6 +1448,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
+        if self._real_repository:
+            self._ensure_real()
+            return self._real_repository.start_write_group()
+        if not self.is_write_locked():
+            raise errors.NotWriteLocked(self)
+        if self._write_group_tokens is not None:
+            raise errors.BzrError('already in a write group')
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._call('Repository.start_write_group', path,
@@ -1443,7 +1464,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             return self._real_repository.start_write_group()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        self._write_group_tokens = response[1:]
+        self._write_group_tokens = list(response[1:])
 
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1468,6 +1489,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._unstacked_provider.disable_cache()
         old_mode = self._lock_mode
         self._lock_mode = None
+        if self._write_group_tokens is not None:
+            raise errors.BzrError(
+                'Must end write groups before releasing write locks.')
         try:
             # The real repository is responsible at present for raising an
             # exception if it's in an unfinished write group.  However, it
@@ -3399,6 +3423,9 @@ def _translate_error(err, **context):
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
         raise NoSuchRevision(find('repository'), err.error_args[0])
+    elif err.error_verb == 'UnresumableWriteGroup':
+        raise errors.UnresumableWriteGroup(repository=find('repository'),
+            write_groups=err.error_args[0], reason=err.error_args[1])
     elif err.error_verb == 'nobranch':
         if len(err.error_args) >= 1:
             extra = err.error_args[0]
@@ -3449,6 +3476,8 @@ def _translate_error_without_context(err):
         raise errors.UnstackableRepositoryFormat(*err.error_args)
     elif err.error_verb == 'FileExists':
         raise errors.FileExists(err.error_args[0])
+    elif err.error_verb == 'BzrCheckError':
+        raise errors.BzrCheckError(msg=err.error_args[0])
     elif err.error_verb == 'DirectoryNotEmpty':
         raise errors.DirectoryNotEmpty(err.error_args[0])
     elif err.error_verb == 'ShortReadvError':
