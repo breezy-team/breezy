@@ -514,6 +514,9 @@ request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
+request_handlers.register_lazy(
+    'Branch.get_physical_lock_status', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestGetPhysicalLockStatus')
 request_handlers.register_lazy( 'Branch.revision_history',
     'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
 request_handlers.register_lazy( 'Branch.set_config_option',
@@ -638,6 +641,9 @@ request_handlers.register_lazy(
     'SmartServerRepositorySetMakeWorkingTrees')
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
+request_handlers.register_lazy(
+    'Repository.get_physical_lock_status', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetPhysicalLockStatus')
 request_handlers.register_lazy(
     'Repository.get_rev_id_for_revno', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetRevIdForRevno')

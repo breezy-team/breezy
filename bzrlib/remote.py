@@ -1264,7 +1264,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             return self._real_repository.get_physical_lock_status()
         if response[0] not in ('yes', 'no'):
             raise errors.UnexpectedSmartServerResponse(response)
-        return response[0] == 'yes'
+        return (response[0] == 'yes')
 
     def is_in_write_group(self):
         """Return True if there is an open write group.

@@ -1323,6 +1323,34 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         self.assertEqual('LockFailed', error_name)
 
 
+class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
+
+    def setUp(self):
+        tests.TestCaseWithMemoryTransport.setUp(self)
+
+    def test_true(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestGetPhysicalLockStatus(
+            backing)
+        branch = self.make_branch('.')
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        self.assertEquals(True, branch.get_physical_lock_status())
+        response = request.execute('')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('yes',)), response)
+        branch.unlock()
+
+    def test_false(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestGetPhysicalLockStatus(
+            backing)
+        branch = self.make_branch('.')
+        self.assertEquals(False, branch.get_physical_lock_status())
+        response = request.execute('')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('no',)), response)
+
+
 class TestSmartServerBranchRequestUnlock(TestLockedBranch):
 
     def setUp(self):
@@ -1863,6 +1891,30 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
             smart_req.SmartServerResponse(('TokenMismatch',)), response)
 
 
+class TestSmartServerRepositoryGetPhysicalLockStatus(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_true(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        repo.lock_write()
+        self.assertEquals(True, repo.get_physical_lock_status())
+        request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('yes',)),
+            request.execute('', ))
+        repo.unlock()
+
+    def test_false(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        self.assertEquals(False, repo.get_physical_lock_status())
+        request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('no',)),
+            request.execute('', ))
+
+
 class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
 
     def test_is_readonly_no(self):
@@ -1989,6 +2041,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchGetConfigFile)
         self.assertHandlerEqual('Branch.get_parent',
             smart_branch.SmartServerBranchGetParent)
+        self.assertHandlerEqual('Branch.get_physical_lock_status',
+            smart_branch.SmartServerBranchRequestGetPhysicalLockStatus)
         self.assertHandlerEqual('Branch.get_tags_bytes',
             smart_branch.SmartServerBranchGetTagsBytes)
         self.assertHandlerEqual('Branch.lock_write',
@@ -2033,6 +2087,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
             smart_repo.SmartServerRepositoryGetParentMap)
+        self.assertHandlerEqual('Repository.get_physical_lock_status',
+            smart_repo.SmartServerRepositoryGetPhysicalLockStatus)
         self.assertHandlerEqual('Repository.get_rev_id_for_revno',
             smart_repo.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',

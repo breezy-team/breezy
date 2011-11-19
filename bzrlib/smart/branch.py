@@ -377,3 +377,15 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok',))
 
+
+class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
+    """Get the physical lock status for a branch.
+
+    New in 2.5.
+    """
+
+    def do_with_branch(self, branch):
+        if branch.get_physical_lock_status():
+            return SuccessfulSmartServerResponse(('yes',))
+        else:
+            return SuccessfulSmartServerResponse(('no',))
