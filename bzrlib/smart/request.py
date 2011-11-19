@@ -662,6 +662,9 @@ request_handlers.register_lazy(
     'Repository.abort_write_group', 'bzrlib.smart.repository',
     'SmartServerRepositoryAbortWriteGroup')
 request_handlers.register_lazy(
+    'Repository.check_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryCheckWriteGroup')
+request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')

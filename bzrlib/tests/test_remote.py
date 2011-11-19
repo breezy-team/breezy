@@ -2648,9 +2648,9 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             'success', ('ok', 'a token'))
         client.add_expected_call(
             'Repository.start_write_group', ('quack/', 'a token'),
-            'success', ('ok', 'token1'))
+            'success', ('ok', ['token1']))
         client.add_expected_call(
-            'Repository.commit_write_group', ('quack/', 'a token', ('token1',)),
+            'Repository.commit_write_group', ('quack/', 'a token', ['token1']),
             'success', ('ok',))
         repo.lock_write()
         repo.start_write_group()
@@ -2664,9 +2664,9 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             'success', ('ok', 'a token'))
         client.add_expected_call(
             'Repository.start_write_group', ('quack/', 'a token'),
-            'success', ('ok', 'token1'))
+            'success', ('ok', ['token1']))
         client.add_expected_call(
-            'Repository.abort_write_group', ('quack/', 'a token', ('token1',)),
+            'Repository.abort_write_group', ('quack/', 'a token', ['token1']),
             'success', ('ok',))
         repo.lock_write()
         repo.start_write_group()
@@ -2680,7 +2680,14 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
     def test_resume_write_group(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        repo.resume_write_group(['packname1', 'packname2'])
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.check_write_group', ('quack/', 'a token', ['token1']),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.resume_write_group(['token1'])
 
 
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):

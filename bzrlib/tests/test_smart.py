@@ -1943,6 +1943,30 @@ class TestSmartServerRepositoryWriteGroup(
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
             request.execute('', lock_token, tokens))
 
+    def test_check_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        repo.start_write_group()
+        tokens = repo.suspend_write_group()
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryCheckWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', lock_token, tokens))
+
+    def test_check_write_group_invalid(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryCheckWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.FailedSmartServerResponse(
+            ('UnresumableWriteGroup', ['random'],
+                'Malformed write group token')),
+            request.execute('', lock_token, ["random"]))
+
 
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 

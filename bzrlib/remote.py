@@ -1014,6 +1014,11 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             self._ensure_real()
             return self._real_repository.abort_write_group(
                 suppress_errors=suppress_errors)
+        if not self.is_in_write_group():
+            if suppress_errors:
+                mutter('(suppressed) not in write group')
+                return
+            raise errors.BzrError("not in write group")
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response = self._call('Repository.abort_write_group', path,
@@ -1051,6 +1056,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         if self._real_repository:
             self._ensure_real()
             return self._real_repository.commit_write_group()
+        if not self.is_in_write_group():
+            raise errors.BzrError("not in write group")
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._call('Repository.commit_write_group', path,
             self._lock_token, self._write_group_tokens)
@@ -1061,12 +1068,21 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def resume_write_group(self, tokens):
         if self._real_repository:
             return self._real_repository.resume_write_group(tokens)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.check_write_group', path,
+               self._lock_token, tokens)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.resume_write_group(tokens)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
         self._write_group_tokens = tokens
 
     def suspend_write_group(self):
         if self._real_repository:
             return self._real_repository.suspend_write_group()
-        ret = self._write_group_tokens
+        ret = self._write_group_tokens or []
         self._write_group_tokens = None
         return ret
 
@@ -1464,7 +1480,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             return self._real_repository.start_write_group()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        self._write_group_tokens = list(response[1:])
+        self._write_group_tokens = response[1]
 
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1489,9 +1505,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._unstacked_provider.disable_cache()
         old_mode = self._lock_mode
         self._lock_mode = None
-        if self._write_group_tokens is not None:
-            raise errors.BzrError(
-                'Must end write groups before releasing write locks.')
         try:
             # The real repository is responsible at present for raising an
             # exception if it's in an unfinished write group.  However, it
@@ -1500,6 +1513,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             # This is just to let the _real_repository stay up to date.
             if self._real_repository is not None:
                 self._real_repository.unlock()
+            elif self._write_group_tokens is not None:
+                self.abort_write_group()
         finally:
             # The rpc-level lock should be released even if there was a
             # problem releasing the vfs-based lock.
