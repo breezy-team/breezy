@@ -907,11 +907,17 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
     def body_stream(self, repository, desired_files):
         self._repository.lock_read()
         try:
-            for (identifier, byte_stream) in self._repository.iter_files_bytes(
-                desired_files):
-                yield "%s\n" % identifier
+            text_keys = {}
+            for i, key in enumerate(desired_files):
+                text_keys[key] = i
+            for record in repository.texts.get_record_stream(text_keys, 'unordered', True):
+                if record.storage_kind == 'absent':
+                    yield "absent\0%s\0%s\n" % record.key
+                    # FIXME: Way to abort early?
+                    continue
+                yield "ok\0%s\n" % text_keys[record.key]
                 compressor = bz2.BZ2Compressor()
-                for bytes in byte_stream:
+                for bytes in record.get_bytes_as('chunked'):
                     yield compressor.compress(bytes)
                 data = compressor.flush()
                 if data:
@@ -924,8 +930,7 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
 
     def do_body(self, body_bytes):
         desired_files = [
-            tuple(l.split("\0")) + (i,) for i, l in
-            enumerate(body_bytes.splitlines())]
+            tuple(l.split("\0")) for l in body_bytes.splitlines()]
         return SuccessfulSmartServerResponse(('ok', ),
             body_stream=self.body_stream(self._repository, desired_files))
 

@@ -2698,7 +2698,7 @@ class TestRepositoryIterFilesBytes(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
             'Repository.iter_files_bytes_bz2', ('quack/', ),
-            'success', ('ok',), iter(["0", "\n", bz2.compress("mydata" * 10)]))
+            'success', ('ok',), iter(["ok\x000", "\n", bz2.compress("mydata" * 10)]))
         for (identifier, byte_stream) in repo.iter_files_bytes([("somefile",
                 "somerev", "myid")]):
             self.assertEquals("myid", identifier)
@@ -2711,8 +2711,7 @@ class TestRepositoryIterFilesBytes(TestRemoteRepository):
             'Repository.iter_files_bytes_bz2',
                 ('quack/', ),
             'error', ('RevisionNotPresent', 'somefile', 'somerev'),
-            iter([request.FailedSmartServerResponse(
-                ('RevisionNotPresent', 'somerev', 'somefile'))]))
+            iter(["absent\0somefile\0somerev\n"]))
         self.assertRaises(errors.RevisionNotPresent, list,
                 repo.iter_files_bytes(
                 [("somefile", "somerev", "myid")]))

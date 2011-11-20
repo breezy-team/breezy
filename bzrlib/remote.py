@@ -1761,9 +1761,17 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         while True:
             while not "\n" in unused:
                 unused += byte_stream.next()
-            idx, rest = unused.split("\n", 1)
+            header, rest = unused.split("\n", 1)
+            args = header.split("\0")
+            if args[0] == "absent":
+                response_handler.cancel_read_body()
+                raise errors.RevisionNotPresent(args[2], args[1])
+            elif args[0] == "ok":
+                idx = int(args[1])
+            else:
+                raise errors.UnexpectedSmartServerResponse(args)
             unused = []
-            yield (identifiers[int(idx)],
+            yield (identifiers[idx],
                 decompress_stream(rest, byte_stream, unused))
             unused = "".join(unused)
 

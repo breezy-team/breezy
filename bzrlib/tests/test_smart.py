@@ -1612,7 +1612,7 @@ class TestSmartServerRepositoryIterFilesBytesBz2(tests.TestCaseWithTransport):
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
         self.assertEquals("".join(response.body_stream),
-            "0\n" + bz2.compress("somecontents"))
+            "ok\x000\n" + bz2.compress("somecontents"))
 
     def test_missing(self):
         backing = self.get_transport()
@@ -1623,9 +1623,8 @@ class TestSmartServerRepositoryIterFilesBytesBz2(tests.TestCaseWithTransport):
         response = request.do_body("thefileid\0revision\n")
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
-        self.assertEquals(response.body_stream.next(),
-            smart_req.FailedSmartServerResponse(
-                ('RevisionNotPresent', 'revision', 'thefileid')))
+        self.assertEquals("".join(response.body_stream),
+            "absent\x00thefileid\x00revision\n")
 
 
 class TestSmartServerRequestHasSignatureForRevisionId(
