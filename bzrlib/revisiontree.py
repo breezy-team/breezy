@@ -65,8 +65,9 @@ class RevisionTree(tree.Tree):
         raise NotImplementedError(self.get_file_revision)
 
     def get_file_text(self, file_id, path=None):
-        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
-        return ''.join(content)
+        for (identifier, content) in self.iter_files_bytes([(file_id, None)]):
+            ret = "".join(content)
+        return ret
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
