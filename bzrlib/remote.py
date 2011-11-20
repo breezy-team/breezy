@@ -2035,7 +2035,12 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         decompressor = bz2.BZ2Decompressor()
         chunks = []
         for bytes in byte_stream:
-            chunks.append(decompressor.decompress(bytes))
+            try:
+                chunks.append(decompressor.decompress(bytes))
+            except EOFError:
+                yield serializer.read_revision_from_string("".join(chunks))
+                chunks = [bytes]
+                decompressor = bz2.BZ2Decompressor()
             if decompressor.unused_data != "":
                 yield serializer.read_revision_from_string("".join(chunks))
                 chunks = [decompressor.unused_data]
