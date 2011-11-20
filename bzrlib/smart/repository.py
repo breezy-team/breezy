@@ -901,6 +901,16 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
     per line, and as tuples of file id and revision, separated by
     \0.
 
+    The server replies with a stream. Each entry is preceded by a header,
+    which can either be:
+
+    * "ok\x00IDX\n" where IDX is the index of the entry in the desired files
+        list sent by the client. This header is followed by the contents of
+        the file, bzip2-compressed.
+    * "absent\x00FILEID\x00REVISION\x00IDX" to indicate a text is missing.
+        The client can then raise an appropriate RevisionNotPresent error
+        or check its fallback repositories.
+
     New in 2.5.
     """
 
