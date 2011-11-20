@@ -894,3 +894,42 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
+class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
+    """Stream a list of revisions.
+
+    The client sends a list of newline-separated revision ids in the
+    body of the request and the server replies with the serializer format,
+    and a stream of bzip2-compressed revision texts (using the specified
+    serializer format).
+
+    Any revisions the server does not have are omitted from the stream.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        self._repository = repository
+        # Signal there is a body
+        return None
+
+    def do_body(self, body_bytes):
+        revision_ids = body_bytes.split("\n")
+        return SuccessfulSmartServerResponse(
+            ('ok', self._repository.get_serializer_format()),
+            body_stream=self.body_stream(self._repository, revision_ids))
+
+    def body_stream(self, repository, revision_ids):
+        self._repository.lock_read()
+        try:
+            for record in repository.revisions.get_record_stream(
+                [(revid,) for revid in revision_ids], 'unordered', True):
+                if record.storage_kind == 'absent':
+                    continue
+                compressor = bz2.BZ2Compressor()
+                for bytes in record.get_bytes_as('chunked'):
+                    yield compressor.compress(bytes)
+                data = compressor.flush()
+                if data:
+                    yield data
+        finally:
+            self._repository.unlock()
