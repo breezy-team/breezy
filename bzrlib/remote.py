@@ -1880,8 +1880,16 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return self._real_repository.reconcile(other=other, thorough=thorough)
 
     def all_revision_ids(self):
-        self._ensure_real()
-        return self._real_repository.all_revision_ids()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response_tuple, response_handler = self._call_expecting_body(
+                "Repository.all_revision_ids", path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.all_revision_ids()
+        if response_tuple != ("ok", ):
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        return response_handler.read_body_bytes().splitlines()
 
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
