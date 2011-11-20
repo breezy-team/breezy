@@ -1764,9 +1764,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             header, rest = unused.split("\n", 1)
             args = header.split("\0")
             if args[0] == "absent":
-                response_handler.cancel_read_body()
                 absent[identifiers[int(args[3])]] = (args[1], args[2])
-                raise errors.RevisionNotPresent(args[2], args[1])
+                unused = rest
+                continue
             elif args[0] == "ok":
                 idx = int(args[1])
             else:
@@ -1784,13 +1784,20 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             for (identifier, bytes_iterator) in self._iter_files_bytes_rpc(
                     desired_files, absent):
                 yield identifier, bytes_iterator
-            while absent:
-                for fallback in self._fallback_repositories:
-                    desired_files = [(key[0], key[1], identifier) for
-                        (identifier, key) in absent.iteritems()]
-                    for (identifier, bytes_iterator) in fallback.iter_files_bytes(absent):
-                        del absent[identifier]
-                        yield identifier, bytes_iterator
+            for fallback in self._fallback_repositories:
+                if not absent:
+                    break
+                desired_files = [(key[0], key[1], identifier) for
+                    (identifier, key) in absent.iteritems()]
+                for (identifier, bytes_iterator) in fallback.iter_files_bytes(absent):
+                    del absent[identifier]
+                    yield identifier, bytes_iterator
+            if absent:
+                # There may be more missing items, but raise an exception
+                # for just one.
+                missing_identifier = absent.keys()[0]
+                missing_key = absent[missing_identifier]
+                raise errors.RevisionNotPresent(missing_key[1], missing_key[0])
         except errors.UnknownSmartMethod:
             self._ensure_real()
             for (identifier, bytes_iterator) in (
