@@ -714,7 +714,7 @@ altered in u2
             err, "bzr: ERROR: Could not parse --commit-time:")
         # Test that it is actually checking and does not simply crash with
         # some other exception
-        self.assertContainsString(err, "does not match format")
+        self.assertContainsString(err, "missing a timezone offset")
 
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419

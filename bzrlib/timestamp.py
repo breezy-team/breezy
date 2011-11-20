@@ -128,6 +128,7 @@ def format_patch_date(secs, offset=0):
 # Format for patch dates: %Y-%m-%d %H:%M:%S [+-]%H%M
 # Groups: 1 = %Y-%m-%d %H:%M:%S; 2 = [+-]%H; 3 = %M
 RE_PATCHDATE = re.compile("(\d+-\d+-\d+\s+\d+:\d+:\d+)\s*([+-]\d\d)(\d\d)$")
+RE_PATCHDATE_NOOFFSET = re.compile("\d+-\d+-\d+\s+\d+:\d+:\d+$")
 
 def parse_patch_date(date_str):
     """Parse a patch-style date into a POSIX timestamp and offset.
@@ -136,8 +137,12 @@ def parse_patch_date(date_str):
     """
     match = RE_PATCHDATE.match(date_str)
     if match is None:
-        raise ValueError("time data %r does not match format " % date_str
-            + "'%Y-%m-%d %H:%M:%S %z'")
+        if RE_PATCHDATE_NOOFFSET.match(date_str) is not None:
+            raise ValueError("time data %r is missing a timezone offset"
+                % date_str)
+        else:
+            raise ValueError("time data %r does not match format " % date_str
+                + "'%Y-%m-%d %H:%M:%S %z'")
     secs_str = match.group(1)
     offset_hours, offset_mins = int(match.group(2)), int(match.group(3))
     if abs(offset_hours) >= 24 or offset_mins >= 60:
