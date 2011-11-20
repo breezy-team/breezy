@@ -1732,19 +1732,33 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             revisions, revision_versions_cache)
 
     def _iter_files_bytes_rpc(self, desired_files):
-        def decompress_bz2_stream(byte_stream):
-            decompressor = bz2.BZ2Decompressor()
-            for bytes in byte_stream:
-                yield decompressor.decompress(bytes)
         path = self.bzrdir._path_for_remote_call(self._client)
-        for (file_id, revision, identifier) in desired_files:
-            response_tuple, response_handler = self._call_expecting_body(
-                "Repository.iter_file_bytes", path, file_id, revision,
-                "bz2")
-            if response_tuple != ('ok', ):
-                raise errors.UnexpectedSmartServerResponse(response_tuple)
-            byte_stream = response_handler.read_streamed_body()
-            yield (identifier, decompress_bz2_stream(byte_stream))
+        lines = []
+        identifiers = []
+        for (file_id, revid, identifier) in desired_files:
+            lines.append("%s\0%s" % (file_id, revid))
+            identifiers.append(identifier)
+        (response_tuple, response_handler) = (
+            self._call_with_body_bytes_expecting_body(
+            "Repository.iter_files_bytes_bz2", (path, ), "\n".join(lines)))
+        if response_tuple != ('ok', ):
+            response_handler.cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        byte_stream = response_handler.read_streamed_body()
+        unused = [byte_stream.next()]
+        while True:
+            # FIXME: what if the index isn't completely in unused ?
+            idx, rest = unused[0].split("\n", 1)
+            if idx == "done":
+                return
+            decompressor = bz2.BZ2Decompressor()
+            unused = []
+            def decompress_stream(byte_stream):
+                yield decompressor.decompress(rest)
+                while decompressor.unused_data == "":
+                    yield decompressor.decompress(byte_stream.next())
+                unused.append(decompressor.unused_data)
+            yield (identifiers[int(idx)], decompress_stream(byte_stream))
 
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.

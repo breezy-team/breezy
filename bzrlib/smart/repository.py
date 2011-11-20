@@ -919,6 +919,7 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
                 e.revision_id, e.file_id))
         finally:
             self._repository.unlock()
+        yield "done\n"
 
     def do_body(self, body_bytes):
         desired_files = [

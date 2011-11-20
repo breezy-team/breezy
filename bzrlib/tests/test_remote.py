@@ -2690,28 +2690,29 @@ class TestRepositoryHasRevision(TestRemoteRepository):
         self.assertEqual([], client._calls)
 
 
-class TestRepositoryIterFilesByteS(TestRemoteRepository):
+class TestRepositoryIterFilesBytes(TestRemoteRepository):
     """Test Repository.iter_file_bytes."""
 
     def test_single(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.iter_file_bytes',
-                ('quack/', 'somefile', 'somerev', 'bz2'),
-            'success', ('ok',), bz2.compress("mydata" * 1000))
+            'Repository.iter_files_bytes_bz2', ('quack/', ),
+            'success', ('ok',), iter(["0\n" + bz2.compress("mydata" * 10) + "done\n"]))
         for (identifier, byte_stream) in repo.iter_files_bytes([("somefile",
                 "somerev", "myid")]):
             self.assertEquals("myid", identifier)
-            self.assertEquals("".join(byte_stream), "mydata" * 1000)
+            self.assertEquals("".join(byte_stream), "mydata" * 10)
 
     def test_missing(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.iter_file_bytes',
-                ('quack/', 'somefile', 'somerev', 'bz2'),
-            'error', ('RevisionNotPresent', 'somefile', 'somerev'), None)
+            'Repository.iter_files_bytes_bz2',
+                ('quack/', ),
+            'error', ('RevisionNotPresent', 'somefile', 'somerev'),
+            iter([request.FailedSmartServerResponse(
+                ('RevisionNotPresent', 'somerev', 'somefile'))]))
         self.assertRaises(errors.RevisionNotPresent, list,
                 repo.iter_files_bytes(
                 [("somefile", "somerev", "myid")]))
