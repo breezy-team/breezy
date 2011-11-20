@@ -58,6 +58,37 @@ class TestPatchHeader(tests.TestCase):
         # offset of three minutes
         self.assertEqual((1173193459, +3 * 60),
             timestamp.parse_patch_date('2007-03-06 15:07:19 +0003'))
+        # No space between time and offset
+        self.assertEqual((1173193459, -5 * 3600),
+            timestamp.parse_patch_date('2007-03-06 10:04:19-0500'))
+        # Extra spacing
+        self.assertEqual((1173193459, -5 * 3600),
+            timestamp.parse_patch_date('2007-03-06     10:04:19     -0500'))
+
+    def test_parse_patch_date_bad(self):
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            'NOT A TIME')
+        # Extra data at end
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19 -0500x')
+        # Missing day
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03 10:04:19 -0500')
+        # Missing seconds
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04 -0500')
+        # Missing offset
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19')
+        # Missing plus or minus in offset
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19 0500')
+        # Too many digits in offset
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19 79500')
+        # Minus sign in middle of offset
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19 +05-5')
 
 
 class UnpackHighresDateTests(tests.TestCase):

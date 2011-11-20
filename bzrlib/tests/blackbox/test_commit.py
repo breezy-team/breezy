@@ -704,6 +704,18 @@ altered in u2
         self.assertStartsWith(
             err, "bzr: ERROR: Could not parse --commit-time:")
 
+    def test_commit_time_missing_tz(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='2009-10-10 08:00:00' tree/hello.txt", retcode=3)
+        self.assertStartsWith(
+            err, "bzr: ERROR: Could not parse --commit-time:")
+        # Test that it is actually checking and does not simply crash with
+        # some other exception
+        self.assertContainsString(err, "does not match format")
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree('.')
