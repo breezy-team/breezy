@@ -910,12 +910,14 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
             text_keys = {}
             for i, key in enumerate(desired_files):
                 text_keys[key] = i
-            for record in repository.texts.get_record_stream(text_keys, 'unordered', True):
+            for record in repository.texts.get_record_stream(text_keys,
+                    'unordered', True):
                 if record.storage_kind == 'absent':
-                    yield "absent\0%s\0%s\n" % record.key
+                    yield "absent\0%s\0%s\0%d\n" % (record.key[0],
+                        record.key[1], text_keys[record.key])
                     # FIXME: Way to abort early?
                     continue
-                yield "ok\0%s\n" % text_keys[record.key]
+                yield "ok\0%d\n" % text_keys[record.key]
                 compressor = bz2.BZ2Compressor()
                 for bytes in record.get_bytes_as('chunked'):
                     yield compressor.compress(bytes)

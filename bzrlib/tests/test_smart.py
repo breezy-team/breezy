@@ -1624,7 +1624,7 @@ class TestSmartServerRepositoryIterFilesBytesBz2(tests.TestCaseWithTransport):
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
         self.assertEquals("".join(response.body_stream),
-            "absent\x00thefileid\x00revision\n")
+            "absent\x00thefileid\x00revision\x000\n")
 
 
 class TestSmartServerRequestHasSignatureForRevisionId(

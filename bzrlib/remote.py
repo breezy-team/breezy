@@ -1730,7 +1730,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return self._real_repository._get_versioned_file_checker(
             revisions, revision_versions_cache)
 
-    def _iter_files_bytes_rpc(self, desired_files):
+    def _iter_files_bytes_rpc(self, desired_files, absent):
         path = self.bzrdir._path_for_remote_call(self._client)
         lines = []
         identifiers = []
@@ -1765,6 +1765,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             args = header.split("\0")
             if args[0] == "absent":
                 response_handler.cancel_read_body()
+                absent[identifiers[int(args[3])]] = (args[1], args[2])
                 raise errors.RevisionNotPresent(args[2], args[1])
             elif args[0] == "ok":
                 idx = int(args[1])
@@ -1779,9 +1780,17 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         """See Repository.iter_file_bytes.
         """
         try:
+            absent = {}
             for (identifier, bytes_iterator) in self._iter_files_bytes_rpc(
-                    desired_files):
+                    desired_files, absent):
                 yield identifier, bytes_iterator
+            while absent:
+                for fallback in self._fallback_repositories:
+                    desired_files = [(key[0], key[1], identifier) for
+                        (identifier, key) in absent.iteritems()]
+                    for (identifier, bytes_iterator) in fallback.iter_files_bytes(absent):
+                        del absent[identifier]
+                        yield identifier, bytes_iterator
         except errors.UnknownSmartMethod:
             self._ensure_real()
             for (identifier, bytes_iterator) in (
