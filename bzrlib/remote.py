@@ -3440,6 +3440,8 @@ def _translate_error_without_context(err):
         raise errors.FileExists(err.error_args[0])
     elif err.error_verb == 'DirectoryNotEmpty':
         raise errors.DirectoryNotEmpty(err.error_args[0])
+    elif err.error_verb == 'RevisionNotPresent':
+        raise errors.RevisionNotPresent(err.error_args[0], err.error_args[1])
     elif err.error_verb == 'ShortReadvError':
         args = err.error_args
         raise errors.ShortReadvError(

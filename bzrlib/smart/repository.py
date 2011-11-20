@@ -894,3 +894,14 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
+class SmartServerRepositoryIterFileBytes(SmartServerRepositoryReadLocked):
+    """Iterate over the contents of a file.
+
+    New in 2.5.
+    """
+
+    def do_readlocked_repository_request(self, repository, file_id, revision):
+        (identifier, bytes_iterator) = repository.iter_files_bytes(
+            [(file_id, revision, None)]).next()
+        return SuccessfulSmartServerResponse(('ok', ),
+            body_stream=bytes_iterator)

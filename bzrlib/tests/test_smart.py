@@ -1597,6 +1597,22 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
             request.execute('', rev_id_utf8))
 
 
+class TestSmartServerRepositoryIterFileBytes(tests.TestCaseWithTransport):
+
+    def test_simple(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterFileBytes(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", "somecontents")])
+        t.add(["file"], ["thefileid"])
+        t.commit(rev_id='somerev', message="add file")
+        response = request.execute('', 'thefileid', 'somerev')
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals("".join(response.body_stream), "somecontents")
+
+
 class TestSmartServerRequestHasSignatureForRevisionId(
         tests.TestCaseWithMemoryTransport):
 
@@ -2049,6 +2065,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryInsertStreamLocked)
         self.assertHandlerEqual('Repository.is_shared',
             smart_repo.SmartServerRepositoryIsShared)
+        self.assertHandlerEqual('Repository.iter_file_bytes',
+            smart_repo.SmartServerRepositoryIterFileBytes)
         self.assertHandlerEqual('Repository.lock_write',
             smart_repo.SmartServerRepositoryLockWrite)
         self.assertHandlerEqual('Repository.make_working_trees',
