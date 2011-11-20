@@ -1732,14 +1732,19 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             revisions, revision_versions_cache)
 
     def _iter_files_bytes_rpc(self, desired_files):
+        def decompress_bz2_stream(byte_stream):
+            decompressor = bz2.BZ2Decompressor()
+            for bytes in byte_stream:
+                yield decompressor.decompress(bytes)
         path = self.bzrdir._path_for_remote_call(self._client)
         for (file_id, revision, identifier) in desired_files:
             response_tuple, response_handler = self._call_expecting_body(
-                "Repository.iter_file_bytes", path, file_id, revision)
+                "Repository.iter_file_bytes", path, file_id, revision,
+                "bz2")
             if response_tuple != ('ok', ):
                 raise errors.UnexpectedSmartServerResponse(response_tuple)
             byte_stream = response_handler.read_streamed_body()
-            yield (identifier, byte_stream)
+            yield (identifier, decompress_bz2_stream(byte_stream))
 
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.

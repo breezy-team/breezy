@@ -2697,8 +2697,9 @@ class TestRepositoryIterFilesByteS(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.iter_file_bytes', ('quack/', 'somefile', 'somerev'),
-            'success', ('ok',), "mydata" * 1000)
+            'Repository.iter_file_bytes',
+                ('quack/', 'somefile', 'somerev', 'bz2'),
+            'success', ('ok',), bz2.compress("mydata" * 1000))
         for (identifier, byte_stream) in repo.iter_files_bytes([("somefile",
                 "somerev", "myid")]):
             self.assertEquals("myid", identifier)
@@ -2708,7 +2709,8 @@ class TestRepositoryIterFilesByteS(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.iter_file_bytes', ('quack/', 'somefile', 'somerev'),
+            'Repository.iter_file_bytes',
+                ('quack/', 'somefile', 'somerev', 'bz2'),
             'error', ('RevisionNotPresent', 'somefile', 'somerev'), None)
         self.assertRaises(errors.RevisionNotPresent, list,
                 repo.iter_files_bytes(
