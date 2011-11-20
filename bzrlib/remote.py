@@ -1889,7 +1889,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             return self._real_repository.all_revision_ids()
         if response_tuple != ("ok", ):
             raise errors.UnexpectedSmartServerResponse(response_tuple)
-        return response_handler.read_body_bytes().splitlines()
+        revids = set(response_handler.read_body_bytes().splitlines())
+        for fallback in self._fallback_repositories:
+            revids.update(set(fallback.all_revision_ids()))
+        return list(revids)
 
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):

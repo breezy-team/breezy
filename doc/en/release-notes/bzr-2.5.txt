@@ -76,9 +76,10 @@ Internals
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
-* New HPSS calls ``Repository.has_signature_for_revision_id`` and
+* New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
-  ``BzrDir.has_workingtree``.  (Jelmer Vernooij)
+  ``BzrDir.has_workingtree`` and ``Repository.all_revision_ids``.
+  (Jelmer Vernooij)
 
 Testing
 *******
