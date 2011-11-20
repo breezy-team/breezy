@@ -913,13 +913,14 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
                 compressor = bz2.BZ2Compressor()
                 for bytes in byte_stream:
                     yield compressor.compress(bytes)
-                yield compressor.flush()
+                data = compressor.flush()
+                if data:
+                    yield data
         except errors.RevisionNotPresent, e:
             yield FailedSmartServerResponse(('RevisionNotPresent',
                 e.revision_id, e.file_id))
         finally:
             self._repository.unlock()
-        yield "done\n"
 
     def do_body(self, body_bytes):
         desired_files = [

@@ -1597,8 +1597,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def get_inventory(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_inventory(revision_id)
+        return list(self.iter_inventories([revision_id]))[0]
 
     def iter_inventories(self, revision_ids, ordering=None):
         self._ensure_real()
@@ -1745,20 +1744,24 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         byte_stream = response_handler.read_streamed_body()
-        unused = [byte_stream.next()]
-        while True:
-            # FIXME: what if the index isn't completely in unused ?
-            idx, rest = unused[0].split("\n", 1)
-            if idx == "done":
-                return
+        def decompress_stream(start, byte_stream):
             decompressor = bz2.BZ2Decompressor()
+            ret = [decompressor.decompress(start)]
+            while decompressor.unused_data == "":
+                try:
+                    ret.append(decompressor.decompress(byte_stream.next()))
+                except (StopIteration, EOFError):
+                    break
+            return (ret, decompressor.unused_data)
+        unused = ""
+        while True:
+            while not "\n" in unused:
+                unused += byte_stream.next()
+            idx, rest = unused.split("\n", 1)
+            print idx
             unused = []
-            def decompress_stream(byte_stream):
-                yield decompressor.decompress(rest)
-                while decompressor.unused_data == "":
-                    yield decompressor.decompress(byte_stream.next())
-                unused.append(decompressor.unused_data)
-            yield (identifiers[int(idx)], decompress_stream(byte_stream))
+            (data, unused) = decompress_stream(rest, byte_stream)
+            yield (identifiers[int(idx)], iter(data))
 
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.
@@ -1933,8 +1936,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def revision_trees(self, revision_ids):
-        self._ensure_real()
-        return self._real_repository.revision_trees(revision_ids)
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            yield InventoryRevisionTree(self, inv, inv.revision_id)
 
     @needs_read_lock
     def get_revision_reconcile(self, revision_id):
@@ -2006,9 +2010,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     @property
     def revisions(self):
         """Decorate the real repository for now.
-
-        In the short term this should become a real object to intercept graph
-        lookups.
 
         In the long term a full blown network facility is needed.
         """
