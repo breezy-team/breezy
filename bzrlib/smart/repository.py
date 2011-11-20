@@ -900,14 +900,31 @@ class SmartServerRepositoryIterFileBytes(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def byte_stream(self, repository, bytes_iterator):
+    def body_stream_plain(self, repository, bytes_iterator):
         try:
             for bytes in bytes_iterator:
                 yield bytes
         finally:
             repository.unlock()
 
-    def do_repository_request(self, repository, file_id, revision):
+    def body_stream_bz2(self, repository, bytes_iterator):
+        compressor = bz2.BZ2Compressor()
+        try:
+            for bytes in bytes_iterator:
+                yield compressor.compress(bytes)
+        finally:
+            repository.unlock()
+        yield compressor.flush()
+
+    def do_repository_request(self, repository, file_id, revision,
+            compression):
+        if compression == "bz2":
+            body_stream = self.body_stream_bz2
+        elif compression == "none":
+            body_stream = self.body_stream_plain
+        else:
+            return FailedSmartServerResponse(
+                ("BzrError", "Unknown compression type %r" % compression))
         repository.lock_read()
         try:
             (identifier, bytes_iterator) = repository.iter_files_bytes(
@@ -924,4 +941,4 @@ class SmartServerRepositoryIterFileBytes(SmartServerRepositoryRequest):
             finally:
                 raise exc_info[0], exc_info[1], exc_info[2]
         return SuccessfulSmartServerResponse(('ok', ),
-            body_stream=self.byte_stream(repository, bytes_iterator))
+            body_stream=body_stream(repository, bytes_iterator))
