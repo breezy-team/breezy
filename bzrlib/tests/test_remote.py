@@ -2704,6 +2704,16 @@ class TestRepositoryIterFilesByteS(TestRemoteRepository):
             self.assertEquals("myid", identifier)
             self.assertEquals("".join(byte_stream), "mydata" * 1000)
 
+    def test_missing(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.iter_file_bytes', ('quack/', 'somefile', 'somerev'),
+            'error', ('RevisionNotPresent', 'somefile', 'somerev'), None)
+        self.assertRaises(errors.RevisionNotPresent, list,
+                repo.iter_files_bytes(
+                [("somefile", "somerev", "myid")]))
+
 
 class TestRepositoryInsertStreamBase(TestRemoteRepository):
     """Base class for Repository.insert_stream and .insert_stream_1.19

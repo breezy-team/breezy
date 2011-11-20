@@ -1612,6 +1612,17 @@ class TestSmartServerRepositoryIterFileBytes(tests.TestCaseWithTransport):
         self.assertEquals(response.args, ("ok", ))
         self.assertEquals("".join(response.body_stream), "somecontents")
 
+    def test_missing(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterFileBytes(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        response = request.execute('', 'thefileid', 'somerev')
+        self.assertEquals(
+            smart_req.FailedSmartServerResponse(
+                ('RevisionNotPresent', 'somerev', 'thefileid')),
+            response)
+
 
 class TestSmartServerRequestHasSignatureForRevisionId(
         tests.TestCaseWithMemoryTransport):

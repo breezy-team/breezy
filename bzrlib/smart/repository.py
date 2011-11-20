@@ -894,14 +894,34 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
-class SmartServerRepositoryIterFileBytes(SmartServerRepositoryReadLocked):
+class SmartServerRepositoryIterFileBytes(SmartServerRepositoryRequest):
     """Iterate over the contents of a file.
 
     New in 2.5.
     """
 
-    def do_readlocked_repository_request(self, repository, file_id, revision):
-        (identifier, bytes_iterator) = repository.iter_files_bytes(
-            [(file_id, revision, None)]).next()
+    def byte_stream(self, repository, bytes_iterator):
+        try:
+            for bytes in bytes_iterator:
+                yield bytes
+        finally:
+            repository.unlock()
+
+    def do_repository_request(self, repository, file_id, revision):
+        repository.lock_read()
+        try:
+            (identifier, bytes_iterator) = repository.iter_files_bytes(
+                [(file_id, revision, None)]).next()
+        except errors.RevisionNotPresent:
+            repository.unlock()
+            return FailedSmartServerResponse(('RevisionNotPresent',
+                revision, file_id))
+        except Exception:
+            exc_info = sys.exc_info()
+            try:
+                # On non-error, unlocking is done by the body stream handler.
+                repository.unlock()
+            finally:
+                raise exc_info[0], exc_info[1], exc_info[2]
         return SuccessfulSmartServerResponse(('ok', ),
-            body_stream=bytes_iterator)
+            body_stream=self.byte_stream(repository, bytes_iterator))
