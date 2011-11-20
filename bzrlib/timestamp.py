@@ -139,8 +139,11 @@ def parse_patch_date(date_str):
         raise ValueError("time data %r does not match format " % date_str
             + "'%Y-%m-%d %H:%M:%S %z'")
     secs_str = match.group(1)
-    offset_hours, offset_mins = match.group(2), match.group(3)
-    offset = int(offset_hours) * 3600 + int(offset_mins) * 60
+    offset_hours, offset_mins = int(match.group(2)), int(match.group(3))
+    if abs(offset_hours) >= 24 or offset_mins >= 60:
+        raise ValueError("invalid timezone %r" %
+            (match.group(2) + match.group(3)))
+    offset = offset_hours * 3600 + offset_mins * 60
     tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')
     # adjust seconds according to offset before converting to POSIX
     # timestamp, to avoid edge problems

@@ -83,6 +83,14 @@ class TestPatchHeader(tests.TestCase):
         # Missing plus or minus in offset
         self.assertRaises(ValueError, timestamp.parse_patch_date,
             '2007-03-06 10:04:19 0500')
+        # Invalid hour in offset
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19 +2400')
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19 -2400')
+        # Invalid minute in offset
+        self.assertRaises(ValueError, timestamp.parse_patch_date,
+            '2007-03-06 10:04:19 -0560')
         # Too many digits in offset
         self.assertRaises(ValueError, timestamp.parse_patch_date,
             '2007-03-06 10:04:19 79500')
