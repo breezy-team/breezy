@@ -1597,45 +1597,35 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
             request.execute('', rev_id_utf8))
 
 
-class TestSmartServerRepositoryIterFileBytes(tests.TestCaseWithTransport):
+class TestSmartServerRepositoryIterFilesBytesBz2(tests.TestCaseWithTransport):
 
-    def test_plain(self):
+    def test_single(self):
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterFileBytes(backing)
+        request = smart_repo.SmartServerRepositoryIterFilesBytesBz2(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", "somecontents")])
         t.add(["file"], ["thefileid"])
         t.commit(rev_id='somerev', message="add file")
-        response = request.execute('', 'thefileid', 'somerev', "none")
-        self.assertTrue(response.is_successful())
-        self.assertEquals(response.args, ("ok", ))
-        self.assertEquals("".join(response.body_stream), "somecontents")
-
-    def test_bz2(self):
-        backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterFileBytes(backing)
-        t = self.make_branch_and_tree('.')
-        self.addCleanup(t.lock_write().unlock)
-        self.build_tree_contents([("file", "somecontents")])
-        t.add(["file"], ["thefileid"])
-        t.commit(rev_id='somerev', message="add file")
-        response = request.execute('', 'thefileid', 'somerev', 'bz2')
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("thefileid\0somerev\n")
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
         self.assertEquals("".join(response.body_stream),
-            bz2.compress("somecontents"))
+            "0\n" + bz2.compress("somecontents"))
 
     def test_missing(self):
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterFileBytes(backing)
+        request = smart_repo.SmartServerRepositoryIterFilesBytesBz2(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
-        response = request.execute('', 'thefileid', 'somerev', 'none')
-        self.assertEquals(
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("thefileid\0revision\n")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals(response.body_stream.next(),
             smart_req.FailedSmartServerResponse(
-                ('RevisionNotPresent', 'somerev', 'thefileid')),
-            response)
+                ('RevisionNotPresent', 'revision', 'thefileid')))
 
 
 class TestSmartServerRequestHasSignatureForRevisionId(
@@ -2090,8 +2080,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryInsertStreamLocked)
         self.assertHandlerEqual('Repository.is_shared',
             smart_repo.SmartServerRepositoryIsShared)
-        self.assertHandlerEqual('Repository.iter_file_bytes',
-            smart_repo.SmartServerRepositoryIterFileBytes)
+        self.assertHandlerEqual('Repository.iter_files_bytes_bz2',
+            smart_repo.SmartServerRepositoryIterFilesBytesBz2)
         self.assertHandlerEqual('Repository.lock_write',
             smart_repo.SmartServerRepositoryLockWrite)
         self.assertHandlerEqual('Repository.make_working_trees',

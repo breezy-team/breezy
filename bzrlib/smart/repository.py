@@ -894,51 +894,39 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
-class SmartServerRepositoryIterFileBytes(SmartServerRepositoryRequest):
-    """Iterate over the contents of a file.
+class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
+    """Iterate over the contents of files.
+
+    The client sends a list of desired files to stream, one
+    per line, and as tuples of file id and revision, separated by
+    \0.
 
     New in 2.5.
     """
 
-    def body_stream_plain(self, repository, bytes_iterator):
+    def body_stream(self, repository, desired_files):
+        self._repository.lock_read()
         try:
-            for bytes in bytes_iterator:
-                yield bytes
+            for (identifier, byte_stream) in self._repository.iter_files_bytes(
+                desired_files):
+                yield "%s\n" % identifier
+                compressor = bz2.BZ2Compressor()
+                for bytes in byte_stream:
+                    yield compressor.compress(bytes)
+                yield compressor.flush()
+        except errors.RevisionNotPresent, e:
+            yield FailedSmartServerResponse(('RevisionNotPresent',
+                e.revision_id, e.file_id))
         finally:
-            repository.unlock()
+            self._repository.unlock()
 
-    def body_stream_bz2(self, repository, bytes_iterator):
-        compressor = bz2.BZ2Compressor()
-        try:
-            for bytes in bytes_iterator:
-                yield compressor.compress(bytes)
-        finally:
-            repository.unlock()
-        yield compressor.flush()
-
-    def do_repository_request(self, repository, file_id, revision,
-            compression):
-        if compression == "bz2":
-            body_stream = self.body_stream_bz2
-        elif compression == "none":
-            body_stream = self.body_stream_plain
-        else:
-            return FailedSmartServerResponse(
-                ("BzrError", "Unknown compression type %r" % compression))
-        repository.lock_read()
-        try:
-            (identifier, bytes_iterator) = repository.iter_files_bytes(
-                [(file_id, revision, None)]).next()
-        except errors.RevisionNotPresent:
-            repository.unlock()
-            return FailedSmartServerResponse(('RevisionNotPresent',
-                revision, file_id))
-        except Exception:
-            exc_info = sys.exc_info()
-            try:
-                # On non-error, unlocking is done by the body stream handler.
-                repository.unlock()
-            finally:
-                raise exc_info[0], exc_info[1], exc_info[2]
+    def do_body(self, body_bytes):
+        desired_files = [
+            tuple(l.split("\0")) + (i,) for i, l in
+            enumerate(body_bytes.splitlines())]
         return SuccessfulSmartServerResponse(('ok', ),
-            body_stream=body_stream(repository, bytes_iterator))
+            body_stream=self.body_stream(self._repository, desired_files))
+
+    def do_repository_request(self, repository):
+        # Signal that we want a body
+        return None

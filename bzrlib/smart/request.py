@@ -632,7 +632,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(
-    'Repository.iter_file_bytes', 'bzrlib.smart.repository', 'SmartServerRepositoryIterFileBytes')
+    'Repository.iter_files_bytes_bz2', 'bzrlib.smart.repository',
+    'SmartServerRepositoryIterFilesBytesBz2')
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
 request_handlers.register_lazy(
