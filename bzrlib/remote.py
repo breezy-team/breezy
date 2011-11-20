@@ -1749,17 +1749,19 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             ret = [decompressor.decompress(start)]
             while decompressor.unused_data == "":
                 try:
-                    ret.append(decompressor.decompress(byte_stream.next()))
-                except (StopIteration, EOFError):
+                    data = byte_stream.next()
+                except StopIteration:
                     break
+                try:
+                    ret.append(decompressor.decompress(data))
+                except EOFError:
+                    return (ret, decompressor.unused_data + data)
             return (ret, decompressor.unused_data)
         unused = ""
         while True:
             while not "\n" in unused:
                 unused += byte_stream.next()
             idx, rest = unused.split("\n", 1)
-            print idx
-            unused = []
             (data, unused) = decompress_stream(rest, byte_stream)
             yield (identifiers[int(idx)], iter(data))
 
