@@ -934,9 +934,6 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
                 data = compressor.flush()
                 if data:
                     yield data
-        except errors.RevisionNotPresent, e:
-            yield FailedSmartServerResponse(('RevisionNotPresent',
-                e.revision_id, e.file_id))
         finally:
             self._repository.unlock()
 
