@@ -1872,6 +1872,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def _get_inventory_xml(self, revision_id):
+        # This call is used by older working tree formats,
+        # which stored a serialized basis inventory.
         self._ensure_real()
         return self._real_repository._get_inventory_xml(revision_id)
 
