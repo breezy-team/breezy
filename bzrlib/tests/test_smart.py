@@ -25,6 +25,7 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
+import zlib
 
 from bzrlib import (
     branch as _mod_branch,
@@ -1597,11 +1598,11 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
             request.execute('', rev_id_utf8))
 
 
-class TestSmartServerRepositoryIterFilesBytesBz2(tests.TestCaseWithTransport):
+class TestSmartServerRepositoryIterFilesBytes(tests.TestCaseWithTransport):
 
     def test_single(self):
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterFilesBytesBz2(backing)
+        request = smart_repo.SmartServerRepositoryIterFilesBytes(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", "somecontents")])
@@ -1612,11 +1613,11 @@ class TestSmartServerRepositoryIterFilesBytesBz2(tests.TestCaseWithTransport):
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
         self.assertEquals("".join(response.body_stream),
-            "ok\x000\n" + bz2.compress("somecontents"))
+            "ok\x000\n" + zlib.compress("somecontents"))
 
     def test_missing(self):
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterFilesBytesBz2(backing)
+        request = smart_repo.SmartServerRepositoryIterFilesBytes(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.assertIs(None, request.execute(''))
@@ -2079,8 +2080,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryInsertStreamLocked)
         self.assertHandlerEqual('Repository.is_shared',
             smart_repo.SmartServerRepositoryIsShared)
-        self.assertHandlerEqual('Repository.iter_files_bytes_bz2',
-            smart_repo.SmartServerRepositoryIterFilesBytesBz2)
+        self.assertHandlerEqual('Repository.iter_files_bytes',
+            smart_repo.SmartServerRepositoryIterFilesBytes)
         self.assertHandlerEqual('Repository.lock_write',
             smart_repo.SmartServerRepositoryLockWrite)
         self.assertHandlerEqual('Repository.make_working_trees',

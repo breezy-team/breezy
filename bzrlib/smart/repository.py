@@ -22,6 +22,7 @@ import Queue
 import sys
 import tempfile
 import threading
+import zlib
 
 from bzrlib import (
     bencode,
@@ -894,7 +895,7 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
-class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
+class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
     """Iterate over the contents of files.
 
     The client sends a list of desired files to stream, one
@@ -928,9 +929,11 @@ class SmartServerRepositoryIterFilesBytesBz2(SmartServerRepositoryRequest):
                     # FIXME: Way to abort early?
                     continue
                 yield "ok\0%d\n" % text_keys[record.key]
-                compressor = bz2.BZ2Compressor()
+                compressor = zlib.compressobj()
                 for bytes in record.get_bytes_as('chunked'):
-                    yield compressor.compress(bytes)
+                    data = compressor.compress(bytes)
+                    if data:
+                        yield data
                 data = compressor.flush()
                 if data:
                     yield data
