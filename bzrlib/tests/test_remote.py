@@ -492,7 +492,7 @@ class TestBzrDirDestroyBranch(TestRemote):
         referenced = self.make_branch('referenced')
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDir.destroy_branch', ('quack/', None),
+            'BzrDir.destroy_branch', ('quack/', ),
             'success', ('ok',)),
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
