@@ -70,21 +70,20 @@ class TestNormalize(tests.TestCase):
 class PoEntryTestCase(tests.TestCase):
 
     def setUp(self):
-        self.overrideAttr(export_pot, '_FOUND_MSGID', set())
-        self._outf = StringIO()
         super(PoEntryTestCase, self).setUp()
+        self.exporter = export_pot._PotExporter(StringIO())
 
     def check_output(self, expected):
         self.assertEqual(
-                self._outf.getvalue(),
+                self.exporter.outf.getvalue(),
                 textwrap.dedent(expected)
                 )
 
 class TestPoEntry(PoEntryTestCase):
 
     def test_simple(self):
-        export_pot._poentry(self._outf, 'dummy', 1, "spam")
-        export_pot._poentry(self._outf, 'dummy', 2, "ham", 'EGG')
+        self.exporter.poentry('dummy', 1, "spam")
+        self.exporter.poentry('dummy', 2, "ham", 'EGG')
         self.check_output('''\
                 #: dummy:1
                 msgid "spam"
@@ -98,9 +97,9 @@ class TestPoEntry(PoEntryTestCase):
                 ''')
 
     def test_duplicate(self):
-        export_pot._poentry(self._outf, 'dummy', 1, "spam")
+        self.exporter.poentry('dummy', 1, "spam")
         # This should be ignored.
-        export_pot._poentry(self._outf, 'dummy', 2, "spam", 'EGG')
+        self.exporter.poentry('dummy', 2, "spam", 'EGG')
 
         self.check_output('''\
                 #: dummy:1
@@ -112,8 +111,7 @@ class TestPoEntry(PoEntryTestCase):
 class TestPoentryPerPergraph(PoEntryTestCase):
 
     def test_single(self):
-        export_pot._poentry_per_paragraph(
-                self._outf,
+        self.exporter.poentry_per_paragraph(
                 'dummy',
                 10,
                 '''foo\nbar\nbaz\n'''
@@ -128,8 +126,7 @@ class TestPoentryPerPergraph(PoEntryTestCase):
                 ''')
 
     def test_multi(self):
-        export_pot._poentry_per_paragraph(
-                self._outf,
+        self.exporter.poentry_per_paragraph(
                 'dummy',
                 10,
                 '''spam\nham\negg\n\nSPAM\nHAM\nEGG\n'''
@@ -169,8 +166,8 @@ class TestExportCommandHelp(PoEntryTestCase):
             Blah Blah Blah
             """
 
-        export_pot._write_command_help(self._outf, cmd_Demo())
-        result = self._outf.getvalue()
+        export_pot._write_command_help(self.exporter, cmd_Demo())
+        result = self.exporter.outf.getvalue()
         # We don't care about filename and lineno here.
         result = re.sub(r'(?m)^#: [^\n]+\n', '', result)
 
