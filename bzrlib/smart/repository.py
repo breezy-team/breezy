@@ -386,6 +386,10 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
 
 class SmartServerRepositoryGetRevisionSignatureText(
         SmartServerRepositoryRequest):
+    """Return the signature text of a revision.
+
+    New in 2.5.
+    """
 
     def do_repository_request(self, repository, revision_id):
         """Return the result of repository.get_signature_text().

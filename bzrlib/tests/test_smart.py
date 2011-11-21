@@ -1946,6 +1946,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',
             smart_repo.SmartServerRepositoryGetRevisionGraph)
+        self.assertHandlerEqual('Repository.get_revision_signature_text',
+            smart_repo.SmartServerRepositoryGetRevisionSignatureText)
         self.assertHandlerEqual('Repository.get_stream',
             smart_repo.SmartServerRepositoryGetStream)
         self.assertHandlerEqual('Repository.get_stream_1.19',
