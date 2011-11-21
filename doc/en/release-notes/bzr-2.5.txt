@@ -50,6 +50,11 @@ Bug Fixes
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
+
 Documentation
 *************
 
