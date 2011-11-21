@@ -926,11 +926,6 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
                 [(revid,) for revid in revision_ids], 'unordered', True):
                 if record.storage_kind == 'absent':
                     continue
-                compressor = zlib.compressobj()
-                for bytes in record.get_bytes_as('chunked'):
-                    yield compressor.compress(bytes)
-                data = compressor.flush()
-                if data:
-                    yield data
+                yield zlib.compress(record.get_bytes_as('fulltext'))
         finally:
             self._repository.unlock()
