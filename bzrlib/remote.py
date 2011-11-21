@@ -1465,8 +1465,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     def break_lock(self):
         # should hand off to the network
+        path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            response = self._call("Repository.break_lock")
+            response = self._call("Repository.break_lock", path)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.break_lock()
