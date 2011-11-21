@@ -216,14 +216,14 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
 
-        This version is implemented on top of Repository.extract_files_bytes"""
+        This version is implemented on top of Repository.iter_files_bytes"""
         repo_desired_files = [(f, self.get_file_revision(f), i)
                               for f, i in desired_files]
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):
                 yield result
         except errors.RevisionNotPresent, e:
-            raise errors.NoSuchFile(e.revision_id)
+            raise errors.NoSuchFile(e.file_id)
 
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):
