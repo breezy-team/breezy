@@ -1832,12 +1832,20 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         try:
             response_tuple, response_handler = self._call_expecting_body(
                 'Repository.get_revision_signature_text', path, revision_id)
-            if response_tuple[0] != 'ok':
-                raise errors.UnexpectedSmartServerResponse(response_tuple)
-            return response_handler.read_body_bytes()
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.get_signature_text(revision_id)
+        except errors.NoSuchRevision, err:
+            for fallback in self._fallback_repositories:
+                try:
+                    return fallback.get_signature_text(revision_id)
+                except errors.NoSuchRevision:
+                    pass
+            raise err
+        else:
+            if response_tuple[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response_tuple)
+            return response_handler.read_body_bytes()
 
     @needs_read_lock
     def _get_inventory_xml(self, revision_id):
