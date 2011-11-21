@@ -1476,8 +1476,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # The rename will fail because the target directory is not empty (but
         # raises FileExists anyway).
         err = self.assertRaises(errors.FileExists, tt_helper)
-        self.assertContainsRe(str(err),
-            "^File exists: .+/baz")
+        self.assertEndsWith(err.path, "/baz")
 
     def test_two_directories_clash(self):
         def tt_helper():
@@ -1495,8 +1494,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 wt.unlock()
                 raise
         err = self.assertRaises(errors.FileExists, tt_helper)
-        self.assertContainsRe(str(err),
-            "^File exists: .+/foo")
+        self.assertEndsWith(err.path, "/foo")
 
     def test_two_directories_clash_finalize(self):
         def tt_helper():
@@ -1514,8 +1512,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 tt.finalize()
                 raise
         err = self.assertRaises(errors.FileExists, tt_helper)
-        self.assertContainsRe(str(err),
-            "^File exists: .+/foo")
+        self.assertEndsWith(err.path, "/foo")
 
     def test_file_to_directory(self):
         wt = self.make_branch_and_tree('.')

@@ -194,8 +194,6 @@ class TestExport(TestCaseWithTransport):
     def test_tbz2_export(self):
         self.run_tar_export_disk_and_stdout('tbz2', 'bz2')
 
-    # TODO: test_xz_export, I don't have pylzma working here to test it.
-
     def test_zip_export_unicode(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')

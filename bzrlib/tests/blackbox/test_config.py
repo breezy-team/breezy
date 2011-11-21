@@ -96,18 +96,22 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             ''')
 
     def test_list_all_values(self):
+        # FIXME: we should register the option as a list or it's displayed as
+        # astring and as such, quoted.
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
-              list = 1, a, "with, a comma"
+              list = '1, a, "with, a comma"'
             ''')
 
     def test_list_value_only(self):
+        # FIXME: we should register the option as a list or it's displayed as
+        # astring and as such, quoted.
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ bzr config -d tree list
-            1, a, "with, a comma"
+            '1, a, "with, a comma"'
             ''')
 
     def test_bazaar_config(self):
@@ -189,7 +193,7 @@ class TestConfigActive(tests.TestCaseWithTransport):
         # We need to delete the locations definition that overrides the branch
         # one
         script.run_script(self, '''\
-            $ bzr config -d tree --remove file
+            $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree file
             branch
             ''')
@@ -291,7 +295,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_branch_config_default(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --remove file
+            $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree --all file
             branch:
               file = branch
@@ -316,7 +320,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
               file = bazaar
             ''')
         script.run_script(self, '''\
-            $ bzr config -d tree --remove file
+            $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree --all file
             bazaar:
               file = bazaar

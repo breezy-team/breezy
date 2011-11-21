@@ -30,6 +30,7 @@ from bzrlib import (
     branch as _mod_branch,
     bzrdir,
     errors,
+    gpg,
     tests,
     transport,
     urlutils,
@@ -252,6 +253,53 @@ class TestSmartServerBzrDirRequestDestroyBranch(
         request = request_class(backing)
         expected = smart_req.FailedSmartServerResponse(('nobranch',), None)
         self.assertEqual(expected, request.execute('', "branchname"))
+
+
+class TestSmartServerBzrDirRequestHasWorkingTree(
+    tests.TestCaseWithTransport):
+    """Tests for BzrDir.has_workingtree."""
+
+    def test_has_workingtree_yes(self):
+        """A working tree is present."""
+        backing = self.get_transport()
+        dir = self.make_branch_and_tree('.').bzrdir
+        request_class = smart_dir.SmartServerBzrDirRequestHasWorkingTree
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('yes',))
+        self.assertEqual(expected, request.execute(''))
+
+    def test_has_workingtree_no(self):
+        """A working tree is missing."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestHasWorkingTree
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('no',))
+        self.assertEqual(expected, request.execute(''))
+
+
+class TestSmartServerBzrDirRequestDestroyRepository(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.destroy_repository."""
+
+    def test_destroy_repository_default(self):
+        """The repository can be removed."""
+        backing = self.get_transport()
+        dir = self.make_repository('.').bzrdir
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyRepository
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('ok',))
+        self.assertEqual(expected, request.execute(''))
+
+    def test_destroy_repository_missing(self):
+        """An error is raised if the repository didn't exist."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyRepository
+        request = request_class(backing)
+        expected = smart_req.FailedSmartServerResponse(
+            ('norepository',), None)
+        self.assertEqual(expected, request.execute(''))
 
 
 class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
@@ -1582,6 +1630,53 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
             request.execute('', rev_id_utf8))
 
 
+class TestSmartServerRequestHasSignatureForRevisionId(
+        tests.TestCaseWithMemoryTransport):
+
+    def test_missing_revision(self):
+        """For a missing revision, NoSuchRevision is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRequestHasSignatureForRevisionId(
+            backing)
+        self.make_repository('.')
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('nosuchrevision', 'revid'), None),
+            request.execute('', 'revid'))
+
+    def test_missing_signature(self):
+        """For a missing signature, ('no', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRequestHasSignatureForRevisionId(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('a commit', rev_id='A')
+        tree.unlock()
+        self.assertTrue(tree.branch.repository.has_revision('A'))
+        self.assertEqual(smart_req.SmartServerResponse(('no', )),
+            request.execute('', 'A'))
+
+    def test_present_signature(self):
+        """For a present signature, ('yes', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRequestHasSignatureForRevisionId(
+            backing)
+        strategy = gpg.LoopbackGPGStrategy(None)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('a commit', rev_id='A')
+        tree.branch.repository.start_write_group()
+        tree.branch.repository.sign_revision('A', strategy)
+        tree.branch.repository.commit_write_group()
+        tree.unlock()
+        self.assertTrue(tree.branch.repository.has_revision('A'))
+        self.assertEqual(smart_req.SmartServerResponse(('yes', )),
+            request.execute('', 'A'))
+
+
 class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
 
     def test_empty_revid(self):
@@ -1656,6 +1751,28 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryIsShared(backing)
         self.make_repository('.', shared=False)
+        self.assertEqual(smart_req.SmartServerResponse(('no', )),
+            request.execute('', ))
+
+
+class TestSmartServerRepositoryMakeWorkingTrees(
+        tests.TestCaseWithMemoryTransport):
+
+    def test_make_working_trees(self):
+        """For a repository with working trees, ('yes', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryMakeWorkingTrees(backing)
+        r = self.make_repository('.')
+        r.set_make_working_trees(True)
+        self.assertEqual(smart_req.SmartServerResponse(('yes', )),
+            request.execute('', ))
+
+    def test_is_not_shared(self):
+        """For a repository with working trees, ('no', ) is returned."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryMakeWorkingTrees(backing)
+        r = self.make_repository('.')
+        r.set_make_working_trees(False)
         self.assertEqual(smart_req.SmartServerResponse(('no', )),
             request.execute('', ))
 
@@ -1969,6 +2086,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryIsShared)
         self.assertHandlerEqual('Repository.lock_write',
             smart_repo.SmartServerRepositoryLockWrite)
+        self.assertHandlerEqual('Repository.make_working_trees',
+            smart_repo.SmartServerRepositoryMakeWorkingTrees)
         self.assertHandlerEqual('Repository.tarball',
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',
