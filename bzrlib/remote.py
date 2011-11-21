@@ -1748,8 +1748,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         byte_stream = response_handler.read_streamed_body()
-        byte_stream_full = list(byte_stream)
-        byte_stream = iter(byte_stream_full)
         def decompress_stream(start, byte_stream, unused):
             decompressor = zlib.decompressobj()
             yield decompressor.decompress(start)
