@@ -443,13 +443,13 @@ def split_segment_parameters_raw(url):
     """
     # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
     #                operates on urls not url+segments, and Transport classes
-    #                should not be blindly adding slash in the first place. 
+    #                should not be blindly adding slashes in the first place. 
     lurl = strip_trailing_slash(url)
-    # Segements begin at first comma after last forward slash, if one exists
+    # Segments begin at first comma after last forward slash, if one exists
     segment_start = lurl.find(",", lurl.rfind("/")+1)
     if segment_start == -1:
         return (url, [])
-    return lurl[:segment_start], lurl[segment_start+1:].split(",")
+    return (lurl[:segment_start], lurl[segment_start+1:].split(","))
 
 
 def split_segment_parameters(url):
