@@ -2058,15 +2058,14 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                     raise errors.InvalidRevisionId(
                         revision_id=rev_id, branch=self)
         try:
-            revision_iter = self._iter_revisions_rpc(revision_ids)
+            missing = set(revision_ids)
+            revs = {}
+            for rev in self._iter_revisions_rpc(revision_ids):
+                missing.remove(rev.revision_id)
+                revs[rev.revision_id] = rev
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.get_revisions(revision_ids)
-        missing = set(revision_ids)
-        revs = {}
-        for rev in revision_iter:
-            missing.remove(rev.revision_id)
-            revs[rev.revision_id] = rev
         for fallback in self._fallback_repositories:
             if not missing:
                 break
