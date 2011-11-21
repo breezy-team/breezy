@@ -2050,6 +2050,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
+        if revision_ids is None:
+            revision_ids = self.all_revision_ids()
+        else:
+            for rev_id in revision_ids:
+                if not rev_id or not isinstance(rev_id, basestring):
+                    raise errors.InvalidRevisionId(
+                        revision_id=rev_id, branch=self)
         try:
             revision_iter = self._iter_revisions_rpc(revision_ids)
         except errors.UnknownSmartMethod:
