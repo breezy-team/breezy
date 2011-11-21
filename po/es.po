@@ -9,15 +9,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-11-10 13:40+0100\n"
-"PO-Revision-Date: 2011-11-14 12:19+0000\n"
-"Last-Translator: Jelmer Vernooij <Unknown>\n"
+"PO-Revision-Date: 2011-11-20 08:46+0000\n"
+"Last-Translator: Paco Molinero <paco@byasl.com>\n"
 "Language-Team: Spanish <es@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2011-11-15 04:38+0000\n"
-"X-Generator: Launchpad (build 14291)\n"
+"X-Launchpad-Export-Date: 2011-11-21 04:30+0000\n"
+"X-Generator: Launchpad (build 14299)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -233,7 +233,7 @@ msgstr "No puede especificar una revisión NULL."
 
 #: bzrlib/builtins.py:458
 msgid "Remove the working tree from a given branch/checkout."
-msgstr ""
+msgstr "Eliminar el árbol de trabajo de una rama/comprobación dada"
 
 #: bzrlib/builtins.py:460
 msgid ""
@@ -288,7 +288,7 @@ msgstr "Esto es igual al número de revisiones en esta rama."
 
 #: bzrlib/builtins.py:568
 msgid "--tree and --revision can not be used together"
-msgstr ""
+msgstr "--tree y --revision no se pueden usar juntos"
 
 #: bzrlib/builtins.py:585 bzrlib/builtins.py:5793
 msgid "Tags can only be placed on a single revision, not on a range"
@@ -467,7 +467,7 @@ msgstr "falta el argumento de archivo"
 
 #: bzrlib/builtins.py:889
 msgid "can not move root of branch"
-msgstr ""
+msgstr "no se puede mover la raíz de la rama"
 
 #: bzrlib/builtins.py:895
 msgid "Only one path may be specified to --auto."
@@ -772,6 +772,8 @@ msgid ""
 "This command will print the names of all the branches at the current\n"
 "location."
 msgstr ""
+"Esta orden imprimirá los nombres de todas las ramas en la ubicación\n"
+"actual."
 
 #: bzrlib/builtins.py:1392
 msgid ""
@@ -846,7 +848,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1520
 msgid "Update a working tree to a new revision."
-msgstr ""
+msgstr "Actualiza un árbol de trabajo a una revisión nueva."
 
 #: bzrlib/builtins.py:1522
 msgid ""
@@ -899,6 +901,7 @@ msgstr "bzr update --revision toma exactamente una revisión"
 #: bzrlib/builtins.py:1568
 msgid "bzr update can only update a whole tree, not a file or subdirectory"
 msgstr ""
+"bzr update solo puede actualizar todo un árbol, no un archivo o subdirectorio"
 
 #: bzrlib/builtins.py:1599
 msgid "Tree is up to date at revision {0} of branch {1}"

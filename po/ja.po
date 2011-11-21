@@ -8,23 +8,23 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-11-10 13:40+0100\n"
-"PO-Revision-Date: 2011-10-18 16:27+0000\n"
-"Last-Translator: IWATA Hidetaka <Unknown>\n"
+"PO-Revision-Date: 2011-11-21 03:39+0000\n"
+"Last-Translator: INADA Naoki <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-11-11 04:38+0000\n"
-"X-Generator: Launchpad (build 14277)\n"
+"X-Launchpad-Export-Date: 2011-11-21 04:30+0000\n"
+"X-Generator: Launchpad (build 14299)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
-msgstr ""
+msgstr "{0} をスキップ ({1} の {2} byte より大きいため)"
 
 #: bzrlib/branch.py:866
 msgid "Unstacking"
-msgstr ""
+msgstr "スタックの解除"
 
 #: bzrlib/branch.py:3153
 #, python-format
@@ -35,8 +35,7 @@ msgstr "リビジョン%dまでプッシュしました。"
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d 個のタグを更新しました"
 
 #: bzrlib/branch.py:3158
 msgid "No new revisions or tags to push."
@@ -48,12 +47,12 @@ msgstr "プッシュする新しいリビジョンはありません。"
 
 #: bzrlib/branch.py:3180
 msgid "checked branch {0} format {1}"
-msgstr ""
+msgstr "format {1} のブランチ {0} をチェックしました"
 
 #: bzrlib/branch.py:3183
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "検出されたエラー: %s"
 
 #: bzrlib/builtins.py:118 bzrlib/builtins.py:2864 bzrlib/workingtree.py:306
 #, python-format
@@ -235,7 +234,7 @@ msgstr "--revisionとリビジョンＩＤのどちらかを指定してくだ�
 #: bzrlib/builtins.py:348
 #, python-format
 msgid "Repository %r does not support access to raw revision texts"
-msgstr ""
+msgstr "リポジトリ %r はリビジョンのtextへの直接アクセスをサポートしていません"
 
 #: bzrlib/builtins.py:359
 msgid "The repository {0} contains no revision {1}."
@@ -306,11 +305,11 @@ msgstr "これは、ブランチ内のリビジョンの数と同じです。"
 
 #: bzrlib/builtins.py:568
 msgid "--tree and --revision can not be used together"
-msgstr ""
+msgstr "--tree と --revision は同時に指定できません"
 
 #: bzrlib/builtins.py:585 bzrlib/builtins.py:5793
 msgid "Tags can only be placed on a single revision, not on a range"
-msgstr ""
+msgstr "タグは1つのリビジョンにしか指定できません"
 
 #: bzrlib/builtins.py:609
 msgid "Show revno of working tree"
@@ -352,7 +351,7 @@ msgstr ""
 msgid ""
 "A warning will be printed when nested trees are encountered,\n"
 "unless they are explicitly ignored."
-msgstr ""
+msgstr "ネストしたツリーがあった場合、明示的に無視しない限り警告を表示します。"
 
 #: bzrlib/builtins.py:674
 msgid ""
@@ -507,7 +506,7 @@ msgstr "ファイルが指定されていません。"
 
 #: bzrlib/builtins.py:889
 msgid "can not move root of branch"
-msgstr ""
+msgstr "ブランチの root は移動できません。"
 
 #: bzrlib/builtins.py:895
 msgid "Only one path may be specified to --auto."
@@ -575,6 +574,9 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
+"--verbose オプションは pull されたリビジョンを log_format 設定オプションを\n"
+"利用して表示します。 -Olog_format=<other_format> と指定することで、\n"
+"別のフォーマットで表示できます。"
 
 #: bzrlib/builtins.py:1011
 msgid ""
@@ -684,6 +686,9 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
+"--verbose オプションは push されたリビジョンを log_format 設定オプションを\n"
+"利用して表示します。 -Olog_format=<other_format> と指定することで、\n"
+"別のフォーマットで表示できます。"
 
 #: bzrlib/builtins.py:1158
 msgid ""
@@ -841,17 +846,17 @@ msgstr "カレントフォルダにある利用可能なブランチをリスト
 msgid ""
 "This command will print the names of all the branches at the current\n"
 "location."
-msgstr ""
+msgstr "このコマンドは、現在の場所にある全てのブランチの名前を表示します。"
 
 #: bzrlib/builtins.py:1392
 msgid ""
 "Recursively scan for branches rather than just looking in the specified "
 "location."
-msgstr ""
+msgstr "指定された場所だけでなく、再帰的にブランチを探します。"
 
 #: bzrlib/builtins.py:1409
 msgid " (default)\n"
-msgstr ""
+msgstr " (デフォルト)\n"
 
 #: bzrlib/builtins.py:1416
 msgid "Create a new checkout of an existing branch."
@@ -931,7 +936,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1520
 msgid "Update a working tree to a new revision."
-msgstr ""
+msgstr "作業ツリーを新しいリビジョンに更新します。"
 
 #: bzrlib/builtins.py:1522
 msgid ""
@@ -953,12 +958,18 @@ msgid ""
 "these changes, use 'bzr revert'.  The uncommitted changes may conflict\n"
 "with the changes brought in by the change in basis revision."
 msgstr ""
+"作業ツリーにコミットされていない変更があった場合、その変更は update 後も\n"
+"コミットされていない変更として残ります。これらの変更を取り消すには、\n"
+"'bzr revert' コマンドを利用してください。コミットされていない変更は、ベース\n"
+"リビジョンの更新による変更とコンフリクトする可能性があります。"
 
 #: bzrlib/builtins.py:1534
 msgid ""
 "If the tree's branch is bound to a master branch, bzr will also update\n"
 "the branch from the master."
 msgstr ""
+"作業ツリーのブランチがマスターブランチに束縛されている場合、bzrは\n"
+"作業ツリーのブランチもマスターブランチの状態に更新します。"
 
 #: bzrlib/builtins.py:1537
 msgid ""
@@ -5399,23 +5410,23 @@ msgstr ""
 
 #: bzrlib/errors.py:1455
 msgid "Versioned file error"
-msgstr ""
+msgstr "バージョン管理されたファイルのエラー"
 
 #: bzrlib/errors.py:1460
 msgid "Revision {%(revision_id)s} not present in \"%(file_id)s\"."
-msgstr ""
+msgstr "\"%(file_id)s\" にはリビジョン {%(revision_id)s} がありません。"
 
 #: bzrlib/errors.py:1470
 msgid "Revision {%(revision_id)s} already present in \"%(file_id)s\"."
-msgstr ""
+msgstr "\"%(file_id)s\" にはすでにリビジョン {%(revision_id)s} が存在しています。"
 
 #: bzrlib/errors.py:1480
 msgid "Text did not match its checksum: %(msg)s"
-msgstr ""
+msgstr "テキストがチェックサムと一致しません: %(msg)s"
 
 #: bzrlib/errors.py:1605
 msgid "Export format %(format)r not supported"
-msgstr ""
+msgstr "エクスポートフォーマット %(format)r はサポートされていません"
 
 #: bzrlib/errors.py:1614
 msgid "Transport error: %(msg)s %(orig_error)s"
@@ -5439,31 +5450,31 @@ msgstr ""
 
 #: bzrlib/errors.py:1690
 msgid "%(msg)s %(host)s%(port)s%(orig_error)s"
-msgstr ""
+msgstr "%(msg)s %(host)s%(port)s%(orig_error)s"
 
 #: bzrlib/errors.py:1711
 msgid "Connection closed: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "接続が閉じられました: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1716
 msgid "Connection Timeout: %(msg)s%(orig_error)s"
-msgstr ""
+msgstr "接続がタイムアウトしました: %(msg)s%(orig_error)s"
 
 #: bzrlib/errors.py:1721
 msgid "Invalid range access in %(path)s at %(offset)s: %(msg)s"
-msgstr ""
+msgstr "%(path)s の %(offset)s に対する不正な range アクセス: %(msg)s"
 
 #: bzrlib/errors.py:1731
 msgid "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
-msgstr ""
+msgstr "%(path)s からの不正な HTTP レスポンス: %(msg)s%(orig_error)s"
 
 #: bzrlib/errors.py:1746
 msgid "Invalid http range %(range)r for %(path)s: %(msg)s"
-msgstr ""
+msgstr "%(path) に対する不正な range %(range)r: %(msg)s"
 
 #: bzrlib/errors.py:1760
 msgid "HTTP MIME Boundary missing for %(path)s: %(msg)s"
-msgstr ""
+msgstr "%(path)s に HTTP MIME 境界が見つかりません: %(msg)s"
 
 #: bzrlib/errors.py:1768
 msgid "Invalid http Content-type \"%(ctype)s\" for %(path)s: %(msg)s"
@@ -5475,51 +5486,53 @@ msgstr ""
 
 #: bzrlib/errors.py:1791
 msgid "Too many redirections"
-msgstr ""
+msgstr "リダイレクションが多すぎます"
 
 #: bzrlib/errors.py:1796
 msgid "Working tree has conflicts."
-msgstr ""
+msgstr "作業ツリーに衝突があります"
 
 #: bzrlib/errors.py:1800
 msgid "Config file %(filename)s is not UTF-8 encoded\n"
-msgstr ""
+msgstr "設定ファイル %(filename)s が UTF-8 でエンコードされていません\n"
 
 #: bzrlib/errors.py:1809
 msgid ""
 "Error(s) parsing config file %(filename)s:\n"
 "%(errors)s"
 msgstr ""
+"設定ファイル %(filename)s のパースエラー:\n"
+"%(error)s"
 
 #: bzrlib/errors.py:1820
 msgid "Bad value \"%(value)s\" for option \"%(name)s\"."
-msgstr ""
+msgstr "オプション \"%(name)s\" に対する不正な値 \"%(value)s\""
 
 #: bzrlib/errors.py:1828
 msgid "%(username)r does not seem to contain a reasonable email address"
-msgstr ""
+msgstr "%(username)r に有効な e-mail アドレスが含まれていないようです"
 
 #: bzrlib/errors.py:1837
 msgid "Failed to GPG sign data with command \"%(command_line)s\""
-msgstr ""
+msgstr "\"%(command_line)s\" コマンドでのGPGサインに失敗しました"
 
 #: bzrlib/errors.py:1845
 msgid "Failed to verify GPG signature data with error \"%(error)s\""
-msgstr ""
+msgstr "GPGシグネチャの検証に \"%(error)s\" で失敗しました。"
 
 #: bzrlib/errors.py:1853
 msgid "Unable to import library \"%(library)s\": %(error)s"
-msgstr ""
+msgstr "ライブラリ \"%(library)s\" をインポートできません: %(error)s"
 
 #: bzrlib/errors.py:1861
 msgid "python-gpgme is not installed, it is needed to verify signatures"
-msgstr ""
+msgstr "python-gpgme がインストールされていません。これはシグネチャの検証に必要です。"
 
 #: bzrlib/errors.py:1869
 msgid ""
 "The working tree for %(basedir)s has changed since the last commit, but "
 "weave merge requires that it be unchanged"
-msgstr ""
+msgstr "作業ツリー %(basedir)s が最後のコミットから変更されています。 作業ツリーが変更されている場合weaveマージはできません。"
 
 #: bzrlib/errors.py:1879
 msgid ""
@@ -5529,15 +5542,15 @@ msgstr ""
 
 #: bzrlib/errors.py:1885
 msgid "Cycle in graph %(graph)r"
-msgstr ""
+msgstr "グラフ %(graph)r がループしています。"
 
 #: bzrlib/errors.py:1913
 msgid "File %(filename)s is not conflicted."
-msgstr ""
+msgstr "%(filename)s は衝突していません"
 
 #: bzrlib/errors.py:1935
 msgid "No bundle was found in \"%(filename)s\"."
-msgstr ""
+msgstr "\"%(filename)s\" にバンドルが見つかりません。"
 
 #: bzrlib/errors.py:1944
 msgid "Unable to handle bundle version %(version)s: %(msg)s"
@@ -5572,21 +5585,23 @@ msgstr ""
 
 #: bzrlib/errors.py:2029
 msgid "Moving the root directory is not supported at this time"
-msgstr ""
+msgstr "いまのところ、ルートディレクトリの移動はサポートされていません"
 
 #: bzrlib/errors.py:2034
 msgid "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
-msgstr ""
+msgstr "%(from_path)s から %(to_path)s へのリネームに失敗しました: %(why)s"
 
 #: bzrlib/errors.py:2045
 msgid ""
 "Could not move %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 msgstr ""
+"%(from_path)s%(operator)s から %(to_path)s%(_has_extra)s%(extra)s へ移動できません"
 
 #: bzrlib/errors.py:2081
 msgid ""
 "Could not rename %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 msgstr ""
+"%(from_path)s%(operator)s から %(to_path)s%(_has_extra)s%(extra)s へリネームできません"
 
 #: bzrlib/errors.py:2090
 msgid ""
@@ -5594,6 +5609,8 @@ msgid ""
 "%(changes_as_text)sUse --keep to not delete them, or --force to delete them "
 "regardless."
 msgstr ""
+"変更された、あるいは管理されていないファイルは安全に削除できません:\n"
+"%(changes_as_text)sファイルを削除しない場合は --keep を、強制的に削除する場合は --force を利用してください。"
 
 #: bzrlib/errors.py:2127
 msgid "Unable to import paramiko (required for sftp support): %(error)s"
