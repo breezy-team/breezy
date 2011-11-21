@@ -27,6 +27,7 @@ from bzrlib import (
     graph,
     lock,
     lockdir,
+    osutils,
     repository as _mod_repository,
     revision as _mod_revision,
     static_tuple,
@@ -1735,7 +1736,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         lines = []
         identifiers = []
         for (file_id, revid, identifier) in desired_files:
-            lines.append("%s\0%s" % (file_id, revid))
+            lines.append("%s\0%s" % (
+                osutils.safe_file_id(file_id),
+                osutils.safe_revision_id(revid)))
             identifiers.append(identifier)
         (response_tuple, response_handler) = (
             self._call_with_body_bytes_expecting_body(
@@ -1991,7 +1994,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def _copy_repository_tarball(self, to_bzrdir, revision_id=None):
         # get a tarball of the remote repository, and copy from that into the
         # destination
-        from bzrlib import osutils
         import tarfile
         # TODO: Maybe a progress bar while streaming the tarball?
         note(gettext("Copying repository content as tarball..."))
