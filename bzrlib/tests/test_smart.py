@@ -1925,6 +1925,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchRequestSetParentLocation)
         self.assertHandlerEqual('Branch.unlock',
             smart_branch.SmartServerBranchRequestUnlock)
+        self.assertHandlerEqual('BzrDir.destroy_branch',
+            smart_dir.SmartServerRequestDestroyBranch)
         self.assertHandlerEqual('BzrDir.find_repository',
             smart_dir.SmartServerRequestFindRepositoryV1)
         self.assertHandlerEqual('BzrDir.find_repositoryV2',
