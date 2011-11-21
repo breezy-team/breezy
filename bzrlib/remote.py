@@ -3065,7 +3065,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if response[0] == 'ok':
             if len(response) == 2:
                 return int(response[1])
-            raise NoSuchRevision(revision_id)
+            raise NoSuchRevision(self, revision_id)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
