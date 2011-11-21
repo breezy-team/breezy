@@ -148,7 +148,8 @@ class BzrFastExporter(object):
 
     def __init__(self, source, outf, git_branch=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None, revision=None,
-        verbose=False, plain_format=False, rewrite_tags=False):
+        verbose=False, plain_format=False, rewrite_tags=False,
+        baseline=False):
         """Export branch data in fast import format.
 
         :param plain_format: if True, 'classic' fast-import format is
@@ -170,6 +171,7 @@ class BzrFastExporter(object):
         self.excluded_revisions = set()
         self.plain_format = plain_format
         self.rewrite_tags = rewrite_tags
+        self.baseline = baseline
         self._multi_author_api_available = hasattr(bzrlib.revision.Revision,
             'get_apparent_authors')
         self.properties_to_exclude = ['authors', 'author']
@@ -225,6 +227,9 @@ class BzrFastExporter(object):
                 self._commit_total)
             if not self.plain_format:
                 self.emit_features()
+            if self.baseline:
+                self._commit_total += 1
+                self.emit_baseline(interesting[0], self.git_branch)
             for revid in interesting:
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
@@ -301,6 +306,19 @@ class BzrFastExporter(object):
     def emit_features(self):
         for feature in sorted(commands.FEATURE_NAMES):
             self.print_cmd(commands.FeatureCommand(feature))
+
+    def emit_baseline(self, revid, git_branch):
+        # Emit a full source tree of the first commit's parent
+        git_ref = 'refs/heads/%s' % (git_branch,)
+        revobj = self.branch.repository.get_revision(revid)
+        assert(len(revobj.parent_ids))
+        previd = revobj.parent_ids[0]
+        prevobj = self.branch.repository.get_revision(previd)
+        mark = 1
+        self.revid_to_mark[previd] = mark
+        file_cmds = self._get_filecommands(bzrlib.revision.NULL_REVISION, previd)
+        self.print_cmd(self._get_commit_command(git_ref, mark, prevobj,
+            file_cmds))
 
     def emit_commit(self, revid, git_branch):
         if revid in self.revid_to_mark or revid in self.excluded_revisions:

@@ -606,6 +606,16 @@ class cmd_fast_export(Command):
      unsupported in git with an underscore instead, specify
      --rewrite-tag-names.
 
+    :History truncation:
+
+    When code has been significantly refactored over time (e.g., to separate 
+    proprietary code from open source code), it is sometimes convenient to
+    simply truncate the revision history at a certain point.  The --baseline 
+    option, to be used in conjunction with -r, emits a baseline commit
+    containing the state of the entire source tree immediately prior to the
+    first requested revision.  This allows a user to produce a tree identical
+    to the original without munging multiple exports.
+
     :Examples:
 
      To produce data destined for import into Bazaar::
@@ -656,12 +666,16 @@ class cmd_fast_export(Command):
                         help="Replace characters invalid in git with '_'"
                              " (plain mode only).",
                         ),
+                    Option('baseline',
+                        help="Export an 'abolute' baseline commit prior to"
+                             "the first relative commit",
+                        ),
                      ]
     encoding_type = 'exact'
     def run(self, source, destination=None, verbose=False,
         git_branch="master", checkpoint=10000, marks=None,
         import_marks=None, export_marks=None, revision=None,
-        plain=True, rewrite_tag_names=False):
+        plain=True, rewrite_tag_names=False, baseline=False):
         load_fastimport()
         from bzrlib.branch import Branch
         from bzrlib.plugins.fastimport import exporter
@@ -676,7 +690,7 @@ class cmd_fast_export(Command):
             outf=outf, git_branch=git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
             revision=revision, verbose=verbose, plain_format=plain,
-            rewrite_tags=rewrite_tag_names)
+            rewrite_tags=rewrite_tag_names, baseline=baseline)
         return exporter.run()
 
 
