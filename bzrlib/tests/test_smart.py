@@ -2132,6 +2132,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryUnlock)
         self.assertHandlerEqual('Repository.start_write_group',
             smart_repo.SmartServerRepositoryStartWriteGroup)
+        self.assertHandlerEqual('Repository.check_write_group',
+            smart_repo.SmartServerRepositoryCheckWriteGroup)
         self.assertHandlerEqual('Repository.commit_write_group',
             smart_repo.SmartServerRepositoryCommitWriteGroup)
         self.assertHandlerEqual('Repository.abort_write_group',
