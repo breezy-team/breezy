@@ -77,6 +77,15 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
             branch.repository.unlock()
 
 
+class SmartServerBranchBreakLock(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Break a branch lock.
+        """
+        branch.break_lock()
+        return SuccessfulSmartServerResponse(('ok', ), )
+
+
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):

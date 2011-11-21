@@ -495,6 +495,9 @@ request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
+    'Branch.break_lock', 'bzrlib.smart.branch',
+    'SmartServerBranchBreakLock')
+request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch',
     'SmartServerBranchGetConfigFile')
 request_handlers.register_lazy(

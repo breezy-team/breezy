@@ -1136,6 +1136,26 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.assertEqual('child-1', self.tree.branch.last_revision())
 
 
+class TestSmartServerBranchBreakLock(tests.TestCaseWithMemoryTransport):
+
+    def test_lock_to_break(self):
+        base_branch = self.make_branch('base')
+        request = smart_branch.SmartServerBranchBreakLock(
+            self.get_transport())
+        base_branch.lock_write()
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute('base'))
+
+    def test_nothing_to_break(self):
+        base_branch = self.make_branch('base')
+        request = smart_branch.SmartServerBranchBreakLock(
+            self.get_transport())
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute('base'))
+
+
 class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
 
     def test_get_parent_none(self):
@@ -2005,6 +2025,8 @@ class TestHandlers(tests.TestCase):
 
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""
+        self.assertHandlerEqual('Branch.break_lock',
+            smart_branch.SmartServerBranchBreakLock)
         self.assertHandlerEqual('Branch.get_config_file',
             smart_branch.SmartServerBranchGetConfigFile)
         self.assertHandlerEqual('Branch.get_parent',
