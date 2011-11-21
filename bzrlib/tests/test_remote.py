@@ -2151,7 +2151,7 @@ class TestRepositoryBreakLock(TestRemoteRepository):
         client.add_success_response('ok')
         repo.break_lock()
         self.assertEqual(
-            [('call', 'Repository.break_lock', ())],
+            [('call', 'Repository.break_lock', ('quack/',))],
             client._calls)
 
 
