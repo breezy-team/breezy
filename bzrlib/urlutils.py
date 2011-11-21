@@ -750,7 +750,7 @@ class URL(object):
         else:
             self.password = None
         self.port = port
-        self.quoted_path = quoted_path
+        self.quoted_path = _url_hex_escapes_re.sub(_unescape_safe_chars, quoted_path)
         self.path = urllib.unquote(self.quoted_path)
 
     def __eq__(self, other):
@@ -835,6 +835,7 @@ class URL(object):
         """
         if not isinstance(relpath, str):
             raise errors.InvalidURL(relpath)
+        relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):
             base_parts = []
         else:
@@ -866,7 +867,7 @@ class URL(object):
         if offset is not None:
             relative = unescape(offset).encode('utf-8')
             path = self._combine_paths(self.path, relative)
-            path = urllib.quote(path)
+            path = urllib.quote(path, safe="/~")
         else:
             path = self.quoted_path
         return self.__class__(self.scheme, self.quoted_user,

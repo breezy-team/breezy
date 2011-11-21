@@ -485,6 +485,45 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirHasWorkingTree(TestRemote):
+
+    def test_has_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('yes',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertTrue(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+    def test_no_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('no',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertFalse(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+
+class TestBzrDirDestroyRepository(TestRemote):
+
+    def test_destroy_repository(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_repository', ('quack/',),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_repository()
+        self.assertFinished(client)
+
+
 class TestBzrDirOpen(TestRemote):
 
     def make_fake_client_and_transport(self, path='quack'):
@@ -2505,6 +2544,33 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
                               call.call.method == verb])
 
 
+class TestRepositoryHasSignatureForRevisionId(TestRemoteRepository):
+
+    def test_has_signature_for_revision_id(self):
+        # ('yes', ) for Repository.has_signature_for_revision_id -> 'True'.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.has_signature_for_revision_id('A')
+        self.assertEqual(
+            [('call', 'Repository.has_signature_for_revision_id',
+              ('quack/', 'A'))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_is_not_shared(self):
+        # ('no', ) for Repository.has_signature_for_revision_id -> 'False'.
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.has_signature_for_revision_id('A')
+        self.assertEqual(
+            [('call', 'Repository.has_signature_for_revision_id',
+              ('qwack/', 'A'))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
@@ -2526,6 +2592,31 @@ class TestRepositoryIsShared(TestRemoteRepository):
         result = repo.is_shared()
         self.assertEqual(
             [('call', 'Repository.is_shared', ('qwack/',))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
+class TestRepositoryMakeWorkingTrees(TestRemoteRepository):
+
+    def test_make_working_trees(self):
+        # ('yes', ) for Repository.make_working_trees -> 'True'.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.make_working_trees()
+        self.assertEqual(
+            [('call', 'Repository.make_working_trees', ('quack/',))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_no_working_trees(self):
+        # ('no', ) for Repository.make_working_trees -> 'False'.
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.make_working_trees()
+        self.assertEqual(
+            [('call', 'Repository.make_working_trees', ('qwack/',))],
             client._calls)
         self.assertEqual(False, result)
 
