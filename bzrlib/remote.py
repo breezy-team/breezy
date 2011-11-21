@@ -2073,7 +2073,12 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                 revision_id)
         if response[0] not in ('yes', 'no'):
             raise SmartProtocolError('unexpected response code %s' % (response,))
-        return (response[0] == 'yes')
+        if response[0] == 'yes':
+            return True
+        for fallback in self._fallback_repositories:
+            if fallback.has_signature_for_revision_id(revision_id):
+                return True
+        return False
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
         self._ensure_real()
