@@ -1748,6 +1748,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         byte_stream = response_handler.read_streamed_body()
+        byte_stream_full = list(byte_stream)
+        byte_stream = iter(byte_stream_full)
         def decompress_stream(start, byte_stream, unused):
             decompressor = zlib.decompressobj()
             yield decompressor.decompress(start)
@@ -1756,10 +1758,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                     data = byte_stream.next()
                 except StopIteration:
                     break
-                try:
-                    yield decompressor.decompress(data)
-                except EOFError:
-                    unused.extend([decompressor.unused_data, data])
+                yield decompressor.decompress(data)
+            yield decompressor.flush()
             unused.append(decompressor.unused_data)
         unused = ""
         while True:
@@ -1775,10 +1775,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                 idx = int(args[1])
             else:
                 raise errors.UnexpectedSmartServerResponse(args)
-            unused = []
+            unused_chunks = []
             yield (identifiers[idx],
-                decompress_stream(rest, byte_stream, unused))
-            unused = "".join(unused)
+                decompress_stream(rest, byte_stream, unused_chunks))
+            unused = "".join(unused_chunks)
 
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.

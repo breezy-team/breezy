@@ -923,12 +923,13 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
                 text_keys[key] = i
             for record in repository.texts.get_record_stream(text_keys,
                     'unordered', True):
+                identifier = text_keys[record.key]
                 if record.storage_kind == 'absent':
                     yield "absent\0%s\0%s\0%d\n" % (record.key[0],
-                        record.key[1], text_keys[record.key])
+                        record.key[1], identifier)
                     # FIXME: Way to abort early?
                     continue
-                yield "ok\0%d\n" % text_keys[record.key]
+                yield "ok\0%d\n" % identifier
                 compressor = zlib.compressobj()
                 for bytes in record.get_bytes_as('chunked'):
                     data = compressor.compress(bytes)
