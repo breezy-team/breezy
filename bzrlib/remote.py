@@ -1793,7 +1793,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                     break
                 desired_files = [(key[0], key[1], identifier) for
                     (identifier, key) in absent.iteritems()]
-                for (identifier, bytes_iterator) in fallback.iter_files_bytes(absent):
+                for (identifier, bytes_iterator) in fallback.iter_files_bytes(desired_files):
                     del absent[identifier]
                     yield identifier, bytes_iterator
             if absent:
@@ -1801,7 +1801,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                 # for just one.
                 missing_identifier = absent.keys()[0]
                 missing_key = absent[missing_identifier]
-                raise errors.RevisionNotPresent(missing_key[1], missing_key[0])
+                raise errors.RevisionNotPresent(revision_id=missing_key[1],
+                    file_id=missing_key[0])
         except errors.UnknownSmartMethod:
             self._ensure_real()
             for (identifier, bytes_iterator) in (
