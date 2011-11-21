@@ -398,7 +398,11 @@ class SmartServerRepositoryGetRevisionSignatureText(
         :return: A smart server response of with the signature text as
             body.
         """
-        text = repository.get_signature_text(revision_id)
+        try:
+            text = repository.get_signature_text(revision_id)
+        except errors.NoSuchRevision, err:
+            return FailedSmartServerResponse(
+                ('nosuchrevision', err.revision))
         return SuccessfulSmartServerResponse(('ok', ), text)
 
 
