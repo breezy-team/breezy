@@ -1915,6 +1915,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchRequestLastRevisionInfo)
         self.assertHandlerEqual('Branch.revision_history',
             smart_branch.SmartServerRequestRevisionHistory)
+        self.assertHandlerEqual('Branch.revision_id_to_revno',
+            smart_branch.SmartServerBranchRequestRevisionIdToRevno)
         self.assertHandlerEqual('Branch.set_config_option',
             smart_branch.SmartServerBranchRequestSetConfigOption)
         self.assertHandlerEqual('Branch.set_last_revision',
