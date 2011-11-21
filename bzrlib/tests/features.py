@@ -302,7 +302,7 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         name_A = osutils.pathjoin(tdir, 'A')
         os.mkdir(name_a)
         result = osutils.isdir(name_A)
-        bzrlib.tests._rmtree_temp_dir(tdir)
+        tests._rmtree_temp_dir(tdir)
         return result
 
     def feature_name(self):
