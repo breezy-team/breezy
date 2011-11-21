@@ -1909,7 +1909,7 @@ class TestSmartServerRepositorySetMakeWorkingTrees(
 class TestSmartServerRepositoryGetSerializerFormat(
     tests.TestCaseWithMemoryTransport):
 
-    def test_set_false(self):
+    def test_get_serializer_format(self):
         backing = self.get_transport()
         repo = self.make_repository('.', format='2a')
         request_class = smart_repo.SmartServerRepositoryGetSerializerFormat
