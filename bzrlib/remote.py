@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bz2
+import zlib
 
 from bzrlib import (
     bencode,
@@ -1742,13 +1743,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             identifiers.append(identifier)
         (response_tuple, response_handler) = (
             self._call_with_body_bytes_expecting_body(
-            "Repository.iter_files_bytes_bz2", (path, ), "\n".join(lines)))
+            "Repository.iter_files_bytes", (path, ), "\n".join(lines)))
         if response_tuple != ('ok', ):
             response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         byte_stream = response_handler.read_streamed_body()
         def decompress_stream(start, byte_stream, unused):
-            decompressor = bz2.BZ2Decompressor()
+            decompressor = zlib.decompressobj()
             yield decompressor.decompress(start)
             while decompressor.unused_data == "":
                 try:

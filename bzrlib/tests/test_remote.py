@@ -25,6 +25,7 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import bz2
 from cStringIO import StringIO
+import zlib
 
 from bzrlib import (
     branch,
@@ -2697,8 +2698,8 @@ class TestRepositoryIterFilesBytes(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.iter_files_bytes_bz2', ('quack/', ),
-            'success', ('ok',), iter(["ok\x000", "\n", bz2.compress("mydata" * 10)]))
+            'Repository.iter_files_bytes', ('quack/', ),
+            'success', ('ok',), iter(["ok\x000", "\n", zlib.compress("mydata" * 10)]))
         for (identifier, byte_stream) in repo.iter_files_bytes([("somefile",
                 "somerev", "myid")]):
             self.assertEquals("myid", identifier)
@@ -2708,7 +2709,7 @@ class TestRepositoryIterFilesBytes(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.iter_files_bytes_bz2',
+            'Repository.iter_files_bytes',
                 ('quack/', ),
             'error', ('RevisionNotPresent', 'somefile', 'somerev'),
             iter(["absent\0somefile\0somerev\n"]))
