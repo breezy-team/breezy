@@ -1597,8 +1597,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def get_inventory(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_inventory(revision_id)
+        return list(self.iter_inventories([revision_id]))[0]
 
     def iter_inventories(self, revision_ids, ordering=None):
         self._ensure_real()
@@ -1899,8 +1898,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     @needs_read_lock
     def revision_trees(self, revision_ids):
-        self._ensure_real()
-        return self._real_repository.revision_trees(revision_ids)
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            yield InventoryRevisionTree(self, inv, inv.revision_id)
 
     @needs_read_lock
     def get_revision_reconcile(self, revision_id):
@@ -1972,9 +1972,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     @property
     def revisions(self):
         """Decorate the real repository for now.
-
-        In the short term this should become a real object to intercept graph
-        lookups.
 
         In the long term a full blown network facility is needed.
         """
