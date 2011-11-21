@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bz2
+import zlib
 
 from bzrlib import (
     bencode,
@@ -2032,19 +2033,17 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         serializer_format = response_tuple[1]
         serializer = serializer_format_registry.get(serializer_format)
         byte_stream = response_handler.read_streamed_body()
-        decompressor = bz2.BZ2Decompressor()
+        decompressor = zlib.decompressobj()
         chunks = []
         for bytes in byte_stream:
-            try:
-                chunks.append(decompressor.decompress(bytes))
-            except EOFError:
-                yield serializer.read_revision_from_string("".join(chunks))
-                chunks = [bytes]
-                decompressor = bz2.BZ2Decompressor()
+            chunks.append(decompressor.decompress(bytes))
             if decompressor.unused_data != "":
+                chunks.append(decompressor.flush())
                 yield serializer.read_revision_from_string("".join(chunks))
-                chunks = [decompressor.unused_data]
-                decompressor = bz2.BZ2Decompressor()
+                unused = decompressor.unused_data
+                decompressor = zlib.decompressobj()
+                chunks = [decompressor.decompress(unused)]
+        chunks.append(decompressor.flush())
         text = "".join(chunks)
         if text != "":
             yield serializer.read_revision_from_string("".join(chunks))

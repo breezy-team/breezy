@@ -25,6 +25,7 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
+import zlib
 
 from bzrlib import (
     branch as _mod_branch,
@@ -1537,12 +1538,15 @@ class TestSmartServerRepositoryIterRevisions(
         # Format 2a uses serializer format 10
         self.assertEquals(response.args, ("ok", "10"))
 
-        entries = [bz2.compress(record.get_bytes_as("fulltext")) for record in
+        self.addCleanup(tree.branch.lock_read().unlock)
+        entries = [zlib.compress(record.get_bytes_as("fulltext")) for record in
             tree.branch.repository.revisions.get_record_stream(
             [("rev1", ), ("rev2", )], "unordered", True)]
 
         contents = "".join(response.body_stream)
-        self.assertEquals(contents, "".join(entries))
+        self.assertTrue(contents in (
+            "".join([entries[0], entries[1]]),
+            "".join([entries[1], entries[0]])))
 
     def test_missing(self):
         backing = self.get_transport()

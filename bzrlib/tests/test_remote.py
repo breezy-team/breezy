@@ -25,6 +25,7 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import bz2
 from cStringIO import StringIO
+import zlib
 
 from bzrlib import (
     branch,
@@ -2389,7 +2390,7 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         somerev1.timezone = -60
         somerev1.inventory_sha1 = "691b39be74c67b1212a75fcb19c433aaed903c2b"
         somerev1.message = "Message"
-        body = bz2.compress(chk_bencode_serializer.write_revision_to_string(
+        body = zlib.compress(chk_bencode_serializer.write_revision_to_string(
             somerev1))
         client.add_success_response_with_body(
             body, 'ok', '10')
