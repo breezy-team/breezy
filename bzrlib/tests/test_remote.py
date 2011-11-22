@@ -1886,7 +1886,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         self.assertEqual(value_dict, branch._get_config().get_option('name'))
 
 
-class TestBranchGetSetConfigStore(RemoteBranchTestCase):
+class TestBranchGetPutConfigStore(RemoteBranchTestCase):
 
     def test_get_branch_conf(self):
         # in an empty branch we decode the response properly

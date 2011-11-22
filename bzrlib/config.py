@@ -3428,6 +3428,10 @@ class BranchStack(_CompatibleStack):
 class RemoteControlStack(_CompatibleStack):
     """Remote control-only options stack."""
 
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote bzr dirs. RemoteControlStack only uses
+    # control.conf and is used only for stack options.
+
     def __init__(self, bzrdir):
         cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
@@ -3438,6 +3442,10 @@ class RemoteControlStack(_CompatibleStack):
 
 class RemoteBranchStack(_CompatibleStack):
     """Remote branch-only options stack."""
+
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote branches. RemoteBranchStack only uses
+    # branch.conf and is used only for the stack options.
 
     def __init__(self, branch):
         bstore = branch._get_config_store()
