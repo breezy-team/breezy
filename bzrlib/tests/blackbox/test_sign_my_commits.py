@@ -165,3 +165,16 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(53, self.hpss_calls)
+
+    def test_verify_commits(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.monkey_patch_gpg()
+        out, err = self.run_bzr(['sign-my-commits', self.get_url('branch')])
+        self.reset_smart_call_log()
+        self.run_bzr('sign-my-commits')
+        out = self.run_bzr(['verify-signatures', self.get_url('branch')])
+        self.assertLength(21, self.hpss_calls)
