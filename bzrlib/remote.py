@@ -2660,13 +2660,14 @@ class RemoteBranchStore(config.IniFileStore):
     def _save_content(self, content):
         path = self.branch._remote_path()
         try:
-            response = self.branch._call_with_body_bytes(
+            response, handler = self.branch._call_with_body_bytes_expecting_body(
                 'Branch.put_config_file', (path,
                     self.branch._lock_token, self.branch._repo_lock_token),
                 content)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_store._save_content(content)
+        handler.cancel_read_body()
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
 

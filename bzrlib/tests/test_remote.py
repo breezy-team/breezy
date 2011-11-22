@@ -1934,7 +1934,7 @@ class TestBranchGetSetConfigStore(RemoteBranchTestCase):
             [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
              ('call', 'Branch.lock_write', ('memory:///', '', '')),
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
-             ('call_with_body_bytes', 'Branch.put_config_file',
+             ('call_with_body_bytes_expecting_body', 'Branch.put_config_file',
                  ('memory:///', 'branch token', 'repo token'),
                  '# line 1\nemail = The Dude <lebowski@example.com>\n'),
              ('call', 'Branch.unlock', ('memory:///', 'branch token', 'repo token'))],
