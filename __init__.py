@@ -196,12 +196,6 @@ else:
             debian_changelog_commit_message,
             "Use changes documented in debian/changelog to suggest "
             "the commit message")
-    if bzrlib.version_info[0] >= 2 and bzrlib.version_info[1] >= 4:
-        install_lazy_named_hook(
-            "bzrlib.msgeditor", "hooks", "set_commit_message",
-                debian_changelog_commit,
-                "Use changes documented in debian/changelog to set "
-                "the commit message and bugs fixed")
     install_lazy_named_hook(
         "bzrlib.merge", "Merger.hooks",
         'merge_file_content', changelog_merge_hook_factory,
