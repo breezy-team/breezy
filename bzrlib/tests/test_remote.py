@@ -1919,7 +1919,7 @@ class TestBranchGetSetConfigStore(RemoteBranchTestCase):
         client.add_expected_call(
             'Branch.set_config_file', ('memory:///', 'branch token',
             'repo token'),
-            'success', ())
+            'success', ('ok',))
         client.add_expected_call(
             'Branch.unlock', ('memory:///', 'branch token', 'repo token'),
             'success', ('ok',))

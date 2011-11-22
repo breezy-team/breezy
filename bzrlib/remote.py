@@ -2667,7 +2667,7 @@ class RemoteBranchStore(config.IniFileStore):
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_store._save_content(content)
-        if len(response) and response[0] != 'ok':
+        if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def _ensure_real(self):
