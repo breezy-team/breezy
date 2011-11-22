@@ -342,14 +342,11 @@ class RemoteControlStore(config.IniFileStore):
     def __init__(self, bzrdir):
         super(RemoteControlStore, self).__init__()
         self.bzrdir = bzrdir
+        self._real_store = None
 
-    def _load_content_vfs(self):
-        try:
-            return self.bzrdir.control_transport.get_bytes("control.conf")
-        except errors.PermissionDenied:
-            warning("Permission denied while trying to load "
-                    "configuration store of %r.", self.bzrdir)
-            raise
+    def _ensure_real(self):
+        self.bzrdir._ensure_real()
+        self._real_store = config.ControlStore(self.bzrdir)
 
     def external_url(self):
         return "hpss"
@@ -361,17 +358,23 @@ class RemoteControlStore(config.IniFileStore):
             response, handler = self.bzrdir._call_expecting_body(
                 'BzrDir.get_config_file', path)
         except errors.UnknownSmartMethod:
-            return self._load_content_vfs()
+            self._ensure_real()
+            return self._real_store._load_content()
         if len(response) and response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         return handler.read_body_bytes()
 
     def _save_content(self, content):
-        # FIXME JRV 2011-11-22: There is no HPSS method that allows
-        # saving the entire config file, only HPSS calls for setting
-        # individual options.
-        # For now, fall back to VFS
-        self.bzrdir.control_transport.put_bytes("control.conf", content)
+        medium = self.bzrdir._client._medium
+        path = self.bzrdir._path_for_remote_call(self.bzrdir._client)
+        try:
+            response, handler = self.bzrdir._call_with_body_bytes(
+                'BzrDir.set_config_file', (path, ), content)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_store._save_content(content)
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
 
 
 class RemoteControlStack(config._CompatibleStack):
@@ -2610,6 +2613,7 @@ class RemoteBranchStore(config.IniFileStore):
     def __init__(self, branch):
         super(RemoteBranchStore, self).__init__()
         self.branch = branch
+        self._real_store = None
 
     def lock_write(self, token=None):
         return self.branch.lock_write(token)
@@ -2625,14 +2629,6 @@ class RemoteBranchStore(config.IniFileStore):
     def save_without_locking(self):
         super(RemoteBranchStore, self).save()
 
-    def _load_content_vfs(self):
-        try:
-            return self.branch.control_transport.get_bytes("branch.conf")
-        except errors.PermissionDenied:
-            warning("Permission denied while trying to load "
-                    "configuration store of %r.", self.branch)
-            raise
-
     def external_url(self):
         return "hpss"
 
@@ -2642,17 +2638,26 @@ class RemoteBranchStore(config.IniFileStore):
             response, handler = self.branch._client.call_expecting_body(
                 'Branch.get_config_file', path)
         except errors.UnknownSmartMethod:
-            return self._load_content_vfs()
+            self._ensure_real()
+            return self._real_store._load_content()
         if len(response) and response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         return handler.read_body_bytes()
 
     def _save_content(self, content):
-        # FIXME JRV 2011-11-22: There is no HPSS method that allows
-        # saving the entire config file, only HPSS calls for setting
-        # individual options.
-        # For now, fall back to VFS
-        self.branch.control_transport.put_bytes("branch.conf", content)
+        path = self.branch._remote_path()
+        try:
+            response, handler = self.branch._client.call_with_body_bytes(
+                'Branch.set_config_file', (path, ), content)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_store._save_content(content)
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _ensure_real(self):
+        self.branch._ensure_real()
+        self._real_store = config.BranchStore(self.branch)
 
 
 class RemoteBranchStack(config._CompatibleStack):
