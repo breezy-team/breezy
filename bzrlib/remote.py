@@ -2625,6 +2625,7 @@ class RemoteBranchStore(config.IniFileStore):
     def __init__(self, branch):
         super(RemoteBranchStore, self).__init__()
         self.branch = branch
+        self.id = "branch"
         self._real_store = None
 
     def lock_write(self, token=None):
