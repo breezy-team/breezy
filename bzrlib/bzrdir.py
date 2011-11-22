@@ -1059,7 +1059,8 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         ret.extend([self.open_branch(name.decode("utf-8")) for name in
                     self._read_branch_list()])
 
-        return ret
+        # don't return a list with duplicates
+        return list(set(ret))
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
