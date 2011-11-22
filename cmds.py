@@ -608,13 +608,13 @@ class cmd_fast_export(Command):
 
     :History truncation:
 
-    When code has been significantly refactored over time (e.g., to separate 
-    proprietary code from open source code), it is sometimes convenient to
-    simply truncate the revision history at a certain point.  The --baseline 
-    option, to be used in conjunction with -r, emits a baseline commit
-    containing the state of the entire source tree immediately prior to the
-    first requested revision.  This allows a user to produce a tree identical
-    to the original without munging multiple exports.
+     When code has been significantly refactored over time (e.g., to separate 
+     proprietary code from open source code), it is sometimes convenient to
+     simply truncate the revision history at a certain point.  The --baseline 
+     option, to be used in conjunction with -r, emits a baseline commit
+     containing the state of the entire source tree at the first requested 
+     revision.  This allows a user to produce a tree identical to the original 
+     without munging multiple exports.
 
     :Examples:
 
