@@ -21,7 +21,6 @@ from bzrlib import (
     errors,
     tests,
     urlutils,
-    branch as _mod_branch
     )
 from bzrlib.tests import (
     per_controldir,
@@ -128,13 +127,3 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         made_branch = Branch.open(made_branch.user_url)
         self.assertEquals(u"col\xe9", made_branch.name)
         made_control.destroy_branch(u"col\xe9")
-
-    def test_no_list_branches_repeats(self):
-        branch = self.make_branch('branch')
-        bzrdir = branch.bzrdir
-        colo_branch = bzrdir.create_branch('colo')
-        _mod_branch.BranchReferenceFormat().initialize(bzrdir,
-                                                       colo_branch)
-        bzrdir.create_workingtree()
-        self.assertEqual(len(bzrdir.list_branches()),
-                         len(set(bzrdir.list_branches())))
