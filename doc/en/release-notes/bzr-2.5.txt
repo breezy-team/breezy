@@ -50,6 +50,11 @@ Bug Fixes
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
+
 Documentation
 *************
 
@@ -76,10 +81,14 @@ Internals
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
+
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
-  ``BzrDir.has_workingtree``, ``Repository.get_physical_lock_status``
-  and ``Branch.get_physical_lock_status``.  (Jelmer Vernooij)
+  ``BzrDir.has_workingtree``, ``Repository.get_physical_lock_status``,
+  ``Branch.get_physical_lock_status`` and ``Branch.put_config_file``.
+  (Jelmer Vernooij)
 
 Testing
 *******
