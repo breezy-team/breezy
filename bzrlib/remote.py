@@ -344,9 +344,26 @@ class RemoteControlStore(config.IniFileStore):
         self.bzrdir = bzrdir
         self._real_store = None
 
+    def lock_write(self, token=None):
+        self._ensure_real()
+        return self._real_store.lock_write(token)
+
+    def unlock(self):
+        self._ensure_real()
+        return self._real_store.unlock()
+
+    @needs_write_lock
+    def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
+        super(RemoteControlStore, self).save()
+
     def _ensure_real(self):
         self.bzrdir._ensure_real()
-        self._real_store = config.ControlStore(self.bzrdir)
+        if self._real_store is None:
+            self._real_store = config.ControlStore(self.bzrdir)
 
     def external_url(self):
         return "hpss"
@@ -2657,7 +2674,8 @@ class RemoteBranchStore(config.IniFileStore):
 
     def _ensure_real(self):
         self.branch._ensure_real()
-        self._real_store = config.BranchStore(self.branch)
+        if self._real_store is None:
+            self._real_store = config.BranchStore(self.branch)
 
 
 class RemoteBranchStack(config._CompatibleStack):
