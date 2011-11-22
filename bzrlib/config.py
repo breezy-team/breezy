@@ -3429,7 +3429,7 @@ class RemoteControlStack(_CompatibleStack):
     """Remote control-only options stack."""
 
     def __init__(self, bzrdir):
-        cstore = ControlStore(bzrdir)
+        cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
             [cstore.get_sections],
             cstore)
@@ -3440,7 +3440,7 @@ class RemoteBranchStack(_CompatibleStack):
     """Remote branch-only options stack."""
 
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
             [bstore.get_sections],
             bstore)
