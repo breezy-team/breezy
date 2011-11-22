@@ -223,7 +223,6 @@ class TestCat(tests.TestCaseWithTransport):
         self.assertEqual('contents of a/README\n', out)
 
 
-
 class TestSmartServerCat(tests.TestCaseWithTransport):
 
     def test_simple_branch_cat(self):
