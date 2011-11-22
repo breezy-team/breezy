@@ -333,6 +333,17 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         _mod_bzrdir.BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
+class RemoteControlStack(config._CompatibleStack):
+    """Remote control-only options stack."""
+
+    def __init__(self, bzrdir):
+        cstore = RemoteControlStore(bzrdir)
+        super(RemoteControlStack, self).__init__(
+            [cstore.get_sections],
+            cstore)
+        self.bzrdir = bzrdir
+
+
 class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     """Control directory on a remote server, accessed via bzr:// or similar."""
 
@@ -717,6 +728,16 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def _get_config(self):
         return RemoteBzrDirConfig(self)
+
+    def get_config_stack(self):
+        """Get a RemoteControlStack for this BzrDir.
+
+        This can then be used to get and set configuration options for the
+        bzrdir.
+
+        :return: A RemoteControlStack
+        """
+        return RemoteControlStack(self)
 
 
 class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
@@ -2538,6 +2559,18 @@ class RemoteBranchFormat(branch.BranchFormat):
                 return True
         return False
 
+
+class RemoteBranchStack(config._CompatibleStack):
+    """Remote branch-only options stack."""
+
+    def __init__(self, branch):
+        bstore = RemoteBranchStore(branch)
+        super(RemoteBranchStack, self).__init__(
+            [bstore.get_sections],
+            bstore)
+        self.branch = branch
+
+
 class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """Branch stored on a server accessed by HPSS RPC.
 
@@ -2631,6 +2664,16 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def _get_config(self):
         return RemoteBranchConfig(self)
+
+    def get_config_stack(self):
+        """Get a RemoteBranchStack for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A RemoteBranchStack
+        """
+        return RemoteBranchStack(self)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
