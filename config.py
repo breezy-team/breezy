@@ -293,7 +293,7 @@ class DebBuildConfig(object):
                          "The revision of the upstream source to use.")
 
   commit_message_from_changelog = _bool_property('commit-message-from-changelog',
-                                    "Whether the commit message should come from debian/changelog", default=True)
+       "Whether the commit message should come from debian/changelog", default=False)
 
 
 def _test():

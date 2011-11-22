@@ -21,10 +21,8 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
   * Support svn-buildpackage tag names to find upstream versions.
     LP: #874263
   * Support --revision argument to merge-package. LP: #888590
-
-  [ Max Bowsher ]
-  * Avoid using set_commit_message hook to override commit message from
-    debian/changelog. LP: #812749
+  * By default, don't override the commit message from debian/changelog
+    unless 'commit-message-from-changelog' is explicitly set to True. LP: #812749
 
  -- Jelmer Vernooij <jelmer@debian.org>  Tue, 22 Nov 2011 12:04:47 +0100
 

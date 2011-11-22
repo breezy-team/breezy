@@ -117,8 +117,8 @@ def debian_changelog_commit(commit, start_message):
     """hooked into bzrlib.msgeditor set_commit_message.
      Set the commit message from debian/changelog and set any LP: #1234 to bug
      fixed tags."""
-    from bzrlib.plugins.builddeb.util import find_bugs_fixed
-    from bzrlib.plugins.builddeb.util import debuild_config
+    from bzrlib.plugins.builddeb.util import (
+        debuild_config, find_bugs_fixed)
 
     t = commit.work_tree
     config = debuild_config(t, False)
@@ -146,7 +146,7 @@ def debian_tag_name(branch, revid):
     from bzrlib.plugins.builddeb.errors import MissingChangelogError
     from bzrlib.plugins.builddeb.import_dsc import (DistributionBranch,
         DistributionBranchSet)
-    from bzrlib.plugins.builddeb.util import (debuild_config, find_changelog)
+    from bzrlib.plugins.builddeb.util import debuild_config, find_changelog
     t = branch.repository.revision_tree(revid)
     config = debuild_config(t, False)
     try:
@@ -196,6 +196,12 @@ else:
             debian_changelog_commit_message,
             "Use changes documented in debian/changelog to suggest "
             "the commit message")
+    if bzrlib.version_info[0] >= 2 and bzrlib.version_info[1] >= 4:
+        install_lazy_named_hook(
+            "bzrlib.msgeditor", "hooks", "set_commit_message",
+                debian_changelog_commit,
+                "Use changes documented in debian/changelog to set "
+                "the commit message and bugs fixed")
     install_lazy_named_hook(
         "bzrlib.merge", "Merger.hooks",
         'merge_file_content', changelog_merge_hook_factory,
