@@ -92,25 +92,34 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
 
 class SmartServerBranchSetConfigFile(SmartServerBranchRequest):
+    """Set the configuration data for a branch.
 
-    def do_with_branch(self, branch, lock_token):
+    New in 2.5.
+    """
+
+    def do_with_branch(self, branch, branch_token, repo_token):
         """Set the content of branch.conf.
 
         The body is not utf8 decoded - its the literal bytestream for disk.
         """
         self._branch = branch
-        self._lock_token = lock_token
+        self._branch_token = branch_token
+        self._repo_token = repo_token
         # Signal we want a body
         return None
 
     def do_body(self, body_bytes):
-        self._branch.lock_write(token=self._lock_token)
+        self._branch.repository.lock_write(token=self._repo_token)
         try:
-            self._branch.control_transport.put_bytes(
-                'branch.conf', body_bytes)
+            self._branch.lock_write(token=self._branch_token)
+            try:
+                self._branch.control_transport.put_bytes(
+                    'branch.conf', body_bytes)
+            finally:
+                self._branch.unlock()
         finally:
-            self._branch.unlock()
-        return SuccessfulSmartServerResponse( ('ok', ),)
+            self._branch.repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
 
 
 class SmartServerBranchGetParent(SmartServerBranchRequest):

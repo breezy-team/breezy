@@ -824,7 +824,7 @@ class TestSmartServerBranchRequestSetConfigFile(TestLockedBranch):
         request = smart_branch.SmartServerBranchSetConfigFile(backing)
         branch = self.make_branch('.')
         branch_token, repo_token = self.get_lock_tokens(branch)
-        self.assertIs(None, request.execute('', branch_token))
+        self.assertIs(None, request.execute('', branch_token, repo_token))
         self.assertEqual(
             smart_req.SmartServerResponse(('ok', )),
             request.do_body('foo bar baz'))
