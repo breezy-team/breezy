@@ -498,6 +498,9 @@ request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch',
     'SmartServerBranchGetConfigFile')
 request_handlers.register_lazy(
+    'Branch.set_config_file', 'bzrlib.smart.branch',
+    'SmartServerBranchSetConfigFile')
+request_handlers.register_lazy(
     'Branch.get_parent', 'bzrlib.smart.branch', 'SmartServerBranchGetParent')
 request_handlers.register_lazy(
     'Branch.get_tags_bytes', 'bzrlib.smart.branch',
