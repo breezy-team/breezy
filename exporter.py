@@ -215,6 +215,10 @@ class BzrFastExporter(object):
             self.note("Calculating the revisions to exclude ...")
             self.excluded_revisions = set([rev_id for rev_id, _, _, _ in
                 self.branch.iter_merge_sorted_revisions(start_rev_id)])
+            if self.baseline:
+                # needed so the first relative commit knows its parent
+                self.excluded_revisions.remove(start_rev_id)
+                view_revisions.insert(0, start_rev_id)
         return list(view_revisions)
 
     def run(self):
@@ -228,8 +232,7 @@ class BzrFastExporter(object):
             if not self.plain_format:
                 self.emit_features()
             if self.baseline:
-                self._commit_total += 1
-                self.emit_baseline(interesting[0], self.git_branch)
+                self.emit_baseline(interesting.pop(0), self.git_branch)
             for revid in interesting:
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
@@ -311,13 +314,10 @@ class BzrFastExporter(object):
         # Emit a full source tree of the first commit's parent
         git_ref = 'refs/heads/%s' % (git_branch,)
         revobj = self.branch.repository.get_revision(revid)
-        assert(len(revobj.parent_ids))
-        previd = revobj.parent_ids[0]
-        prevobj = self.branch.repository.get_revision(previd)
         mark = 1
-        self.revid_to_mark[previd] = mark
-        file_cmds = self._get_filecommands(bzrlib.revision.NULL_REVISION, previd)
-        self.print_cmd(self._get_commit_command(git_ref, mark, prevobj,
+        self.revid_to_mark[revid] = mark
+        file_cmds = self._get_filecommands(bzrlib.revision.NULL_REVISION, revid)
+        self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
             file_cmds))
 
     def emit_commit(self, revid, git_branch):

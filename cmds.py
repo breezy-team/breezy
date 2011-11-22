@@ -667,7 +667,7 @@ class cmd_fast_export(Command):
                              " (plain mode only).",
                         ),
                     Option('baseline',
-                        help="Export an 'abolute' baseline commit prior to"
+                        help="Export an 'absolute' baseline commit prior to"
                              "the first relative commit",
                         ),
                      ]
