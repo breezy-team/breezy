@@ -1917,7 +1917,7 @@ class TestBranchGetSetConfigStore(RemoteBranchTestCase):
             'Branch.get_config_file', ('memory:///', ),
             'success', ('ok', ), "# line 1\n")
         client.add_expected_call(
-            'Branch.set_config_file', ('memory:///', 'branch token',
+            'Branch.put_config_file', ('memory:///', 'branch token',
             'repo token'),
             'success', ('ok',))
         client.add_expected_call(
@@ -1934,7 +1934,7 @@ class TestBranchGetSetConfigStore(RemoteBranchTestCase):
             [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
              ('call', 'Branch.lock_write', ('memory:///', '', '')),
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
-             ('call_with_body_bytes', 'Branch.set_config_file',
+             ('call_with_body_bytes', 'Branch.put_config_file',
                  ('memory:///', 'branch token', 'repo token'),
                  '# line 1\nemail = The Dude <lebowski@example.com>\n'),
              ('call', 'Branch.unlock', ('memory:///', 'branch token', 'repo token'))],

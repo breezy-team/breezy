@@ -2661,7 +2661,7 @@ class RemoteBranchStore(config.IniFileStore):
         path = self.branch._remote_path()
         try:
             response = self.branch._call_with_body_bytes(
-                'Branch.set_config_file', (path,
+                'Branch.put_config_file', (path,
                     self.branch._lock_token, self.branch._repo_lock_token),
                 content)
         except errors.UnknownSmartMethod:

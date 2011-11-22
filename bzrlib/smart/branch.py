@@ -91,7 +91,7 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse( ('ok', ), content)
 
 
-class SmartServerBranchSetConfigFile(SmartServerBranchRequest):
+class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
     """Set the configuration data for a branch.
 
     New in 2.5.

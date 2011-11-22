@@ -817,11 +817,11 @@ class TestLockedBranch(tests.TestCaseWithMemoryTransport):
         return branch_token, repo_token
 
 
-class TestSmartServerBranchRequestSetConfigFile(TestLockedBranch):
+class TestSmartServerBranchRequestPutConfigFile(TestLockedBranch):
 
     def test_with_content(self):
         backing = self.get_transport()
-        request = smart_branch.SmartServerBranchSetConfigFile(backing)
+        request = smart_branch.SmartServerBranchPutConfigFile(backing)
         branch = self.make_branch('.')
         branch_token, repo_token = self.get_lock_tokens(branch)
         self.assertIs(None, request.execute('', branch_token, repo_token))
@@ -2004,8 +2004,8 @@ class TestHandlers(tests.TestCase):
         """Test that known methods are registered to the correct object."""
         self.assertHandlerEqual('Branch.get_config_file',
             smart_branch.SmartServerBranchGetConfigFile)
-        self.assertHandlerEqual('Branch.set_config_file',
-            smart_branch.SmartServerBranchSetConfigFile)
+        self.assertHandlerEqual('Branch.put_config_file',
+            smart_branch.SmartServerBranchPutConfigFile)
         self.assertHandlerEqual('Branch.get_parent',
             smart_branch.SmartServerBranchGetParent)
         self.assertHandlerEqual('Branch.get_tags_bytes',
