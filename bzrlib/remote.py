@@ -333,6 +333,62 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         _mod_bzrdir.BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
+class RemoteControlStore(config.IniFileStore):
+    """Control store which attempts to use HPSS calls to retrieve control store.
+
+    Note that this is specific to bzr-based formats.
+    """
+
+    def __init__(self, bzrdir):
+        super(RemoteControlStore, self).__init__()
+        self.bzrdir = bzrdir
+        self._real_store = None
+
+    def lock_write(self, token=None):
+        self._ensure_real()
+        return self._real_store.lock_write(token)
+
+    def unlock(self):
+        self._ensure_real()
+        return self._real_store.unlock()
+
+    @needs_write_lock
+    def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
+        super(RemoteControlStore, self).save()
+
+    def _ensure_real(self):
+        self.bzrdir._ensure_real()
+        if self._real_store is None:
+            self._real_store = config.ControlStore(self.bzrdir)
+
+    def external_url(self):
+        return self.bzrdir.user_url
+
+    def _load_content(self):
+        medium = self.bzrdir._client._medium
+        path = self.bzrdir._path_for_remote_call(self.bzrdir._client)
+        try:
+            response, handler = self.bzrdir._call_expecting_body(
+                'BzrDir.get_config_file', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_store._load_content()
+        if len(response) and response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return handler.read_body_bytes()
+
+    def _save_content(self, content):
+        # FIXME JRV 2011-11-22: Ideally this should use a
+        # HPSS call too, but at the moment it is not possible
+        # to write lock control directories.
+        self._ensure_real()
+        return self._real_store._save_content(content)
+
+
 class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     """Control directory on a remote server, accessed via bzr:// or similar."""
 
@@ -729,6 +785,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def _get_config(self):
         return RemoteBzrDirConfig(self)
+
+    def _get_config_store(self):
+        return RemoteControlStore(self)
 
 
 class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
@@ -2550,6 +2609,68 @@ class RemoteBranchFormat(branch.BranchFormat):
                 return True
         return False
 
+
+class RemoteBranchStore(config.IniFileStore):
+    """Branch store which attempts to use HPSS calls to retrieve branch store.
+
+    Note that this is specific to bzr-based formats.
+    """
+
+    def __init__(self, branch):
+        super(RemoteBranchStore, self).__init__()
+        self.branch = branch
+        self.id = "branch"
+        self._real_store = None
+
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
+        super(RemoteBranchStore, self).save()
+
+    def external_url(self):
+        return self.branch.user_url
+
+    def _load_content(self):
+        path = self.branch._remote_path()
+        try:
+            response, handler = self.branch._call_expecting_body(
+                'Branch.get_config_file', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_store._load_content()
+        if len(response) and response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return handler.read_body_bytes()
+
+    def _save_content(self, content):
+        path = self.branch._remote_path()
+        try:
+            response, handler = self.branch._call_with_body_bytes_expecting_body(
+                'Branch.put_config_file', (path,
+                    self.branch._lock_token, self.branch._repo_lock_token),
+                content)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_store._save_content(content)
+        handler.cancel_read_body()
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _ensure_real(self):
+        self.branch._ensure_real()
+        if self._real_store is None:
+            self._real_store = config.BranchStore(self.branch)
+
+
 class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """Branch stored on a server accessed by HPSS RPC.
 
@@ -2643,6 +2764,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def _get_config(self):
         return RemoteBranchConfig(self)
+
+    def _get_config_store(self):
+        return RemoteBranchStore(self)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
