@@ -26,7 +26,6 @@ import tempfile
 from bzrlib import (
     osutils,
     symbol_versioning,
-    tests,
     )
 
 
@@ -290,6 +289,8 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         if CaseInsCasePresFilenameFeature.available():
             return False
 
+        from bzrlib import tests
+
         if tests.TestCaseWithMemoryTransport.TEST_ROOT is None:
             root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
             tests.TestCaseWithMemoryTransport.TEST_ROOT = root
@@ -490,26 +491,3 @@ class Win32Feature(Feature):
 
 
 win32_feature = Win32Feature()
-
-
-for name in ['HTTPServerFeature', 
-    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
-    'OsFifoFeature', 'UnicodeFilenameFeature',
-    'ByteStringNamedFilesystem', 'UTF8Filesystem',
-    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
-    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
-    'posix_permissions_feature',
-    ]:
-    setattr(tests, name, _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 5, 0)),
-        'bzrlib.tests', name,
-        name, 'bzrlib.tests.features'))
-
-
-for (old_name, new_name) in [
-    ('UnicodeFilename', 'UnicodeFilenameFeature'),
-    ]:
-    setattr(tests, name, _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 5, 0)),
-        'bzrlib.tests', old_name,
-        new_name, 'bzrlib.tests.features'))
