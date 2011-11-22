@@ -3425,6 +3425,27 @@ class BranchStack(_CompatibleStack):
         self.branch = branch
 
 
+class RemoteControlStack(_CompatibleStack):
+    """Remote control-only options stack."""
+
+    def __init__(self, bzrdir):
+        cstore = ControlStore(bzrdir)
+        super(RemoteControlStack, self).__init__(
+            [cstore.get_sections],
+            cstore)
+        self.bzrdir = bzrdir
+
+
+class RemoteBranchStack(_CompatibleStack):
+    """Remote branch-only options stack."""
+
+    def __init__(self, branch):
+        bstore = BranchStore(branch)
+        super(RemoteBranchStack, self).__init__(
+            [bstore.get_sections],
+            bstore)
+        self.branch = branch
+
 # Use a an empty dict to initialize an empty configobj avoiding all
 # parsing and encoding checks
 _quoting_config = configobj.ConfigObj(

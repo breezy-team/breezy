@@ -151,7 +151,7 @@ def build_remote_branch_stack(test):
      server_class) = transport_remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return remote.RemoteBranchStack(b)
+    return config.RemoteBranchStack(b)
 config.test_stack_builder_registry.register('remote_branch',
                                             build_remote_branch_stack)
 
@@ -164,7 +164,7 @@ def build_remote_control_stack(test):
     # creating a dedicated helper to create only the bzrdir
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return remote.RemoteControlStack(b.bzrdir)
+    return config.RemoteControlStack(b.bzrdir)
 config.test_stack_builder_registry.register('remote_control',
                                             build_remote_control_stack)
 
@@ -3759,6 +3759,7 @@ lfoo = loc-foo/{relpath}
         self.assertEquals('loc-foo/branch', stack.get('lfoo', expand=True))
         stack = config.LocationStack('/home/user/bar/baz')
         self.assertEquals('loc-foo/bar/baz', stack.get('lfoo', expand=True))
+
 
 
 class TestStackSet(TestStackWithTransport):
