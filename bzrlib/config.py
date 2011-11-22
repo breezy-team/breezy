@@ -2843,14 +2843,6 @@ class IniFileStore(Store):
         for hook in ConfigHooks['save']:
             hook(self)
 
-    def external_url(self):
-        # FIXME: external_url should really accepts an optional relpath
-        # parameter (bug #750169) :-/ -- vila 2011-04-04
-        # The following will do in the interim but maybe we don't want to
-        # expose a path here but rather a config ID and its associated
-        # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name)
-
     def get_sections(self):
         """Get the configobj section in the file order.
 
@@ -2908,6 +2900,14 @@ class TransportIniFileStore(IniFileStore):
 
     def _save_content(self, content):
         self.transport.put_bytes(self.file_name, content)
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return urlutils.join(self.transport.external_url(), self.file_name)
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need

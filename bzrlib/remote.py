@@ -333,6 +333,47 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         _mod_bzrdir.BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
+class RemoteControlStore(config.IniFileStore):
+    """Control store which attempts to use HPSS calls to retrieve control store.
+
+    Note that this is specific to bzr-based formats.
+    """
+
+    def __init__(self, bzrdir):
+        super(RemoteControlStore, self).__init__()
+        self.bzrdir = bzrdir
+
+    def _load_content_vfs(self):
+        try:
+            return self.bzrdir.control_transport.get_bytes("control.conf")
+        except errors.PermissionDenied:
+            warning("Permission denied while trying to load "
+                    "configuration store of %r.", self.bzrdir)
+            raise
+
+    def external_url(self):
+        return "hpss"
+
+    def _load_content(self):
+        medium = self.bzrdir._client._medium
+        path = self.bzrdir._path_for_remote_call(self.bzrdir._client)
+        try:
+            response, handler = self.bzrdir._call_expecting_body(
+                'BzrDir.get_config_file', path)
+        except errors.UnknownSmartMethod:
+            return self._load_content_vfs()
+        if len(response) and response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return handler.read_body_bytes()
+
+    def _save_content(self, content):
+        # FIXME JRV 2011-11-22: There is no HPSS method that allows
+        # saving the entire config file, only HPSS calls for setting
+        # individual options.
+        # For now, fall back to VFS
+        self.bzrdir.control_transport.put_bytes("control.conf", content)
+
+
 class RemoteControlStack(config._CompatibleStack):
     """Remote control-only options stack."""
 
@@ -2558,6 +2599,60 @@ class RemoteBranchFormat(branch.BranchFormat):
             if heads_to_fetch_impl is branch.Branch.heads_to_fetch.im_func:
                 return True
         return False
+
+
+class RemoteBranchStore(config.IniFileStore):
+    """Branch store which attempts to use HPSS calls to retrieve branch store.
+
+    Note that this is specific to bzr-based formats.
+    """
+
+    def __init__(self, branch):
+        super(RemoteBranchStore, self).__init__()
+        self.branch = branch
+
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def save(self):
+        # We need to be able to override the undecorated implementation
+        self.save_without_locking()
+
+    def save_without_locking(self):
+        super(RemoteBranchStore, self).save()
+
+    def _load_content_vfs(self):
+        try:
+            return self.branch.control_transport.get_bytes("branch.conf")
+        except errors.PermissionDenied:
+            warning("Permission denied while trying to load "
+                    "configuration store of %r.", self.branch)
+            raise
+
+    def external_url(self):
+        return "hpss"
+
+    def _load_content(self):
+        path = self.branch._remote_path()
+        try:
+            response, handler = self.branch._client.call_expecting_body(
+                'Branch.get_config_file', path)
+        except errors.UnknownSmartMethod:
+            return self._load_content_vfs()
+        if len(response) and response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return handler.read_body_bytes()
+
+    def _save_content(self, content):
+        # FIXME JRV 2011-11-22: There is no HPSS method that allows
+        # saving the entire config file, only HPSS calls for setting
+        # individual options.
+        # For now, fall back to VFS
+        self.branch.control_transport.put_bytes("branch.conf", content)
 
 
 class RemoteBranchStack(config._CompatibleStack):
