@@ -3413,7 +3413,7 @@ class BranchStack(_CompatibleStack):
     """Per-location options falling back to branch then global options stack."""
 
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         lstore = LocationStore()
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
