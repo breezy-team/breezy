@@ -366,7 +366,7 @@ class RemoteControlStore(config.IniFileStore):
             self._real_store = config.ControlStore(self.bzrdir)
 
     def external_url(self):
-        return "hpss"
+        return self.bzrdir.user_url
 
     def _load_content(self):
         medium = self.bzrdir._client._medium
@@ -2643,7 +2643,7 @@ class RemoteBranchStore(config.IniFileStore):
         super(RemoteBranchStore, self).save()
 
     def external_url(self):
-        return "hpss"
+        return self.branch.user_url
 
     def _load_content(self):
         path = self.branch._remote_path()
