@@ -485,6 +485,45 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirHasWorkingTree(TestRemote):
+
+    def test_has_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('yes',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertTrue(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+    def test_no_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('no',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertFalse(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+
+class TestBzrDirDestroyRepository(TestRemote):
+
+    def test_destroy_repository(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_repository', ('quack/',),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_repository()
+        self.assertFinished(client)
+
+
 class TestBzrDirOpen(TestRemote):
 
     def make_fake_client_and_transport(self, path='quack'):
