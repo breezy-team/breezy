@@ -67,6 +67,160 @@ class TestNormalize(tests.TestCase):
         self.assertEqual(export_pot._normalize(s), e)
 
 
+class TestParseSource(tests.TestCase):
+    """Check mappings to line numbers generated from python source"""
+
+    def test_classes(self):
+        src = '''
+class Ancient:
+    """Old style class"""
+
+class Modern(object):
+    """New style class"""
+'''
+        cls_lines, _ = export_pot._parse_source(src)
+        self.assertEqual(cls_lines,
+            {"Ancient": 2, "Modern": 5})
+
+    def test_classes_nested(self):
+        src = '''
+class Matroska(object):
+    class Smaller(object):
+        class Smallest(object):
+            pass
+'''
+        cls_lines, _ = export_pot._parse_source(src)
+        self.assertEqual(cls_lines,
+            {"Matroska": 2, "Smaller": 3, "Smallest":4})
+
+    def test_strings_docstrings(self):
+        src = '''\
+"""Module"""
+
+def function():
+    """Function"""
+
+class Class(object):
+    """Class"""
+
+    def method(self):
+        """Method"""
+'''
+        _, str_lines = export_pot._parse_source(src)
+        self.assertEqual(str_lines,
+            {"Module": 1, "Function": 4, "Class": 7, "Method": 10})
+
+    def test_strings_literals(self):
+        src = '''\
+s = "One"
+t = (2, "Two")
+f = dict(key="Three")
+'''
+        _, str_lines = export_pot._parse_source(src)
+        self.assertEqual(str_lines,
+            {"One": 1, "Two": 2, "Three": 3})
+
+    def test_strings_multiline(self):
+        src = '''\
+"""Start
+
+End
+"""
+t = (
+    "A"
+    "B"
+    "C"
+    )
+'''
+        _, str_lines = export_pot._parse_source(src)
+        self.assertEqual(str_lines,
+            {"Start\n\nEnd\n": 1, "ABC": 6})
+
+    def test_strings_multiline_escapes(self):
+        src = '''\
+s = "Escaped\\n"
+r = r"Raw\\n"
+t = (
+    "A\\n\\n"
+    "B\\n\\n"
+    "C\\n\\n"
+    )
+'''
+        _, str_lines = export_pot._parse_source(src)
+        self.expectFailure("Escaped newlines confuses the multiline handling",
+            self.assertNotEqual, str_lines,
+            {"Escaped\n": 0, "Raw\\n": 2, "A\n\nB\n\nC\n\n": -2})
+        self.assertEqual(str_lines,
+            {"Escaped\n": 1, "Raw\\n": 2, "A\n\nB\n\nC\n\n": 4})
+
+
+class TestModuleContext(tests.TestCase):
+    """Checks for source context tracking objects"""
+
+    def check_context(self, context, path, lineno):
+        self.assertEquals((context.path, context.lineno), (path, lineno))
+
+    def test___init__(self):
+        context = export_pot._ModuleContext("one.py")
+        self.check_context(context, "one.py", 1)
+        context = export_pot._ModuleContext("two.py", 5)
+        self.check_context(context, "two.py", 5)
+
+    def test_from_class(self):
+        """New context returned with lineno updated from class"""
+        path = "cls.py"
+        class A(object): pass
+        class B(object): pass
+        cls_lines = {"A": 5, "B": 7}
+        context = export_pot._ModuleContext(path, _source_info=(cls_lines, {}))
+        contextA = context.from_class(A)
+        self.check_context(contextA, path, 5)
+        contextB1 = context.from_class(B)
+        self.check_context(contextB1, path, 7)
+        contextB2 = contextA.from_class(B)
+        self.check_context(contextB2, path, 7)
+        self.check_context(context, path, 1)
+        self.assertEquals("", self.get_log())
+
+    def test_from_class_missing(self):
+        """When class has no lineno the old context details are returned"""
+        path = "cls_missing.py"
+        class A(object): pass
+        class M(object): pass
+        context = export_pot._ModuleContext(path, 3, ({"A": 15}, {}))
+        contextA = context.from_class(A)
+        contextM1 = context.from_class(M)
+        self.check_context(contextM1, path, 3)
+        contextM2 = contextA.from_class(M)
+        self.check_context(contextM2, path, 15)
+        self.assertContainsRe(self.get_log(), "Definition of <.*M'> not found")
+
+    def test_from_string(self):
+        """New context returned with lineno updated from string"""
+        path = "str.py"
+        str_lines = {"one": 14, "two": 42}
+        context = export_pot._ModuleContext(path, _source_info=({}, str_lines))
+        context1 = context.from_string("one")
+        self.check_context(context1, path, 14)
+        context2A = context.from_string("two")
+        self.check_context(context2A, path, 42)
+        context2B = context1.from_string("two")
+        self.check_context(context2B, path, 42)
+        self.check_context(context, path, 1)
+        self.assertEquals("", self.get_log())
+
+    def test_from_string_missing(self):
+        """When string has no lineno the old context details are returned"""
+        path = "str_missing.py"
+        context = export_pot._ModuleContext(path, 4, ({}, {"line\n": 21}))
+        context1 = context.from_string("line\n")
+        context2A = context.from_string("not there")
+        self.check_context(context2A, path, 4)
+        context2B = context1.from_string("not there")
+        self.check_context(context2B, path, 21)
+        self.assertContainsRe(self.get_log(), "String 'not there' not found")
+
+
 class PoEntryTestCase(tests.TestCase):
 
     def setUp(self):
@@ -78,6 +232,7 @@ class PoEntryTestCase(tests.TestCase):
                 self.exporter.outf.getvalue(),
                 textwrap.dedent(expected)
                 )
+
 
 class TestPoEntry(PoEntryTestCase):
 
