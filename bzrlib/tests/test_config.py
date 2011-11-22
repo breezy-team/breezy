@@ -3761,7 +3761,6 @@ lfoo = loc-foo/{relpath}
         self.assertEquals('loc-foo/bar/baz', stack.get('lfoo', expand=True))
 
 
-
 class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):

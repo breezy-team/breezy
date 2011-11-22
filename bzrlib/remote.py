@@ -2659,7 +2659,7 @@ class RemoteBranchStore(config.IniFileStore):
     def _save_content(self, content):
         path = self.branch._remote_path()
         try:
-            response, handler = self.branch._call_with_body_bytes(
+            response = self.branch._call_with_body_bytes(
                 'Branch.set_config_file', (path,
                     self.branch._lock_token, self.branch._repo_lock_token),
                 content)
