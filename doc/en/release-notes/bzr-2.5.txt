@@ -26,8 +26,12 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* Provide smart server verb for ``Branch.revision_id_to_revno``.
+* When using ``bzr switch`` to switch to a sibling of the current
+  branch, the relative branch name should no longer be url-encoded.
   (Jelmer Vernooij)
+
+* ``bzr switch`` now accepts colocated branch names to switch to.
+  (Jelmer Vernooij, #826814)
 
 Bug Fixes
 *********
@@ -35,11 +39,21 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* A new section local option ``basename`` is available to help support some
+  ``bzr-pipeline`` workflows and more generally help mapping local paths to
+  remote ones. See ``bzr help configuration`` for more details.
+  (Vincent Ladeuil, #843211)
+
+* Resolve regression from colocated branch path handling, by ensuring that
+  unreserved characters are unquoted in URLs. (Martin Packman, #842223)
+
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
-* Support looking up revision numbers by revision id in empty branches.
-  (Jelmer Vernooij, #535031)
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
 
 Documentation
 *************
@@ -55,11 +69,26 @@ API Changes
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
 
+* Some global options for use with commands have been removed, construct
+  an ``Option`` with the name instead. (Martin Packman)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* ``bzr config`` uses the new configuration implementation.
+  (Vincent Ladeuil)
+
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
+
+* New HPSS calls ``Repository.has_signature_for_revision_id``,
+  ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
+  ``BzrDir.has_workingtree``, ``Branch.put_config_file`` and
+  ``Branch.revision_id_to_revno``.
+  (Jelmer Vernooij)
 
 Testing
 *******
@@ -68,6 +97,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Avoid failures in test_transform when OS error messages are localised.
+  (Martin Packman, #891582)
 
 bzr 2.5b3
 #########
@@ -180,6 +211,8 @@ API Changes
   indicates whether revisions can be present in a repository without
   being referenced from e.g. a branch history at the same time.
   (Jelmer Vernooij)
+
+* New method ``Transport.set_segment_parameter``.  (Jelmer Vernooij)
 
 * ``UIFactory.choose`` has been added: prompt the user for a list of
   choices. (Benoît Pierre)
@@ -525,6 +558,9 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
+
+* Raise BadIndexKey exception in btree_index when a key is too large, fixing 
+  an infinite recursion issue. (Shannon Weyrick, #720853)
 
 Documentation
 *************

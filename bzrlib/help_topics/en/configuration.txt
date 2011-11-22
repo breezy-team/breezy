@@ -318,6 +318,21 @@ In both cases, when used in a directory like
    $ bzr config mypush
    lp:~vila/bzr/832013-expand-in-stack
 
+Another such option is ``basename`` which can be used like this::
+
+  [/home/vila/src/bzr]
+  mypush = lp:~vila/bzr/{basename}
+
+When used in a directory like
+``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::
+
+   $ bzr config mypush
+   lp:~vila/bzr/832013-expand-in-stack
+
+Note that ``basename`` here refers to the base name of ``relpath`` which
+itself is defined as the relative path between the section name and the
+location it matches.
+
 When an option is local to a Section, it cannot be referred to from option
 values in any other section from the same ``Store`` nor from any other
 ``Store``.

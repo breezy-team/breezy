@@ -25,7 +25,6 @@ import threading
 
 from bzrlib import (
     bencode,
-    commands,
     errors,
     estimate_compressed_size,
     graph,
@@ -334,13 +333,37 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to lookup.
-        :return: A smart server response of ('ok', ) if the revision is
-            present.
+        :return: A smart server response of ('yes', ) if the revision is
+            present. ('no', ) if it is missing.
         """
         if repository.has_revision(revision_id):
             return SuccessfulSmartServerResponse(('yes', ))
         else:
             return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerRequestHasSignatureForRevisionId(
+        SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id):
+        """Return ok if a signature is present for a revision.
+
+        Introduced in bzr 2.5.0.
+
+        :param repository: The repository to query in.
+        :param revision_id: The utf8 encoded revision_id to lookup.
+        :return: A smart server response of ('yes', ) if a
+            signature for the revision is present,
+            ('no', ) if it is missing.
+        """
+        try:
+            if repository.has_signature_for_revision_id(revision_id):
+                return SuccessfulSmartServerResponse(('yes', ))
+            else:
+                return SuccessfulSmartServerResponse(('no', ))
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('nosuchrevision', revision_id))
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
@@ -395,6 +418,23 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
             shared, and ('no', ) if it is not.
         """
         if repository.is_shared():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """Return the result of repository.make_working_trees().
+
+        Introduced in bzr 2.5.0.
+
+        :param repository: The repository to query in.
+        :return: A smart server response of ('yes', ) if the repository uses
+            working trees, and ('no', ) if it is not.
+        """
+        if repository.make_working_trees():
             return SuccessfulSmartServerResponse(('yes', ))
         else:
             return SuccessfulSmartServerResponse(('no', ))

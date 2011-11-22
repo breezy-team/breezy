@@ -85,10 +85,41 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
         try:
-            content = branch._transport.get_bytes('branch.conf')
+            content = branch.control_transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
+
+
+class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
+    """Set the configuration data for a branch.
+
+    New in 2.5.
+    """
+
+    def do_with_branch(self, branch, branch_token, repo_token):
+        """Set the content of branch.conf.
+
+        The body is not utf8 decoded - its the literal bytestream for disk.
+        """
+        self._branch = branch
+        self._branch_token = branch_token
+        self._repo_token = repo_token
+        # Signal we want a body
+        return None
+
+    def do_body(self, body_bytes):
+        self._branch.repository.lock_write(token=self._repo_token)
+        try:
+            self._branch.lock_write(token=self._branch_token)
+            try:
+                self._branch.control_transport.put_bytes(
+                    'branch.conf', body_bytes)
+            finally:
+                self._branch.unlock()
+        finally:
+            self._branch.repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
 
 
 class SmartServerBranchGetParent(SmartServerBranchRequest):

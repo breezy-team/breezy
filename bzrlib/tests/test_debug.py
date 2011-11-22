@@ -34,7 +34,7 @@ class TestDebugFlags(tests.TestCaseInTempDir):
 
     def assertDebugFlags(self, expected_flags, conf_bytes):
         conf = config.GlobalStack()
-        conf.store._load_from_string(conf_bytes)
+        conf.store._load_from_string('[DEFAULT]\n' + conf_bytes)
         conf.store.save()
         self.overrideAttr(debug, 'debug_flags', set())
         debug.set_debug_flags_from_config()
