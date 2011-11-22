@@ -2776,16 +2776,10 @@ class IniFileStore(Store):
         serialize/deserialize the config file.
     """
 
-    def __init__(self, transport, file_name):
+    def __init__(self):
         """A config Store using ConfigObj for storage.
-
-        :param transport: The transport object where the config file is located.
-
-        :param file_name: The config file basename in the transport directory.
         """
         super(IniFileStore, self).__init__()
-        self.transport = transport
-        self.file_name = file_name
         self._config_obj = None
 
     def is_loaded(self):
@@ -2794,16 +2788,29 @@ class IniFileStore(Store):
     def unload(self):
         self._config_obj = None
 
+    def _load_content(self):
+        """Load the config file bytes.
+
+        This should be provided by subclasses
+
+        :return: Byte string
+        """
+        raise NotImplementedError(self._load_content)
+
+    def _save_content(self, content):
+        """Save the config file bytes.
+
+        This should be provided by subclasses
+
+        :param content: Config file bytes to write
+        """
+        raise NotImplementedError(self._save_content)
+
     def load(self):
         """Load the store from the associated file."""
         if self.is_loaded():
             return
-        try:
-            content = self.transport.get_bytes(self.file_name)
-        except errors.PermissionDenied:
-            trace.warning("Permission denied while trying to load "
-                          "configuration store %s.", self.external_url())
-            raise
+        content = self._load_content()
         self._load_from_string(content)
         for hook in ConfigHooks['load']:
             hook(self)
@@ -2832,17 +2839,9 @@ class IniFileStore(Store):
             return
         out = StringIO()
         self._config_obj.write(out)
-        self.transport.put_bytes(self.file_name, out.getvalue())
+        self._save_content(out.getvalue())
         for hook in ConfigHooks['save']:
             hook(self)
-
-    def external_url(self):
-        # FIXME: external_url should really accepts an optional relpath
-        # parameter (bug #750169) :-/ -- vila 2011-04-04
-        # The following will do in the interim but maybe we don't want to
-        # expose a path here but rather a config ID and its associated
-        # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name)
 
     def get_sections(self):
         """Get the configobj section in the file order.
@@ -2877,13 +2876,47 @@ class IniFileStore(Store):
         return self.mutable_section_class(section_id, section)
 
 
+class TransportIniFileStore(IniFileStore):
+    """IniFileStore that loads files from a transport.
+    """
+
+    def __init__(self, transport, file_name):
+        """A Store using a ini file on a Transport
+
+        :param transport: The transport object where the config file is located.
+        :param file_name: The config file basename in the transport directory.
+        """
+        super(TransportIniFileStore, self).__init__()
+        self.transport = transport
+        self.file_name = file_name
+
+    def _load_content(self):
+        try:
+            return self.transport.get_bytes(self.file_name)
+        except errors.PermissionDenied:
+            trace.warning("Permission denied while trying to load "
+                          "configuration store %s.", self.external_url())
+            raise
+
+    def _save_content(self, content):
+        self.transport.put_bytes(self.file_name, content)
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return urlutils.join(self.transport.external_url(), self.file_name)
+
+
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
 # unlockable stores for use with objects that can already ensure the locking
 # (think branches). If different stores (not based on ConfigObj) are created,
 # they may face the same issue.
 
 
-class LockableIniFileStore(IniFileStore):
+class LockableIniFileStore(TransportIniFileStore):
     """A ConfigObjStore using locks on save to ensure store integrity."""
 
     def __init__(self, transport, file_name, lock_dir_name=None):
@@ -2951,7 +2984,7 @@ class LocationStore(LockableIniFileStore):
         self.id = 'locations'
 
 
-class BranchStore(IniFileStore):
+class BranchStore(TransportIniFileStore):
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
@@ -3380,7 +3413,7 @@ class BranchStack(_CompatibleStack):
     """Per-location options falling back to branch then global options stack."""
 
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         lstore = LocationStore()
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
@@ -3395,8 +3428,12 @@ class BranchStack(_CompatibleStack):
 class RemoteControlStack(_CompatibleStack):
     """Remote control-only options stack."""
 
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote bzr dirs. RemoteControlStack only uses
+    # control.conf and is used only for stack options.
+
     def __init__(self, bzrdir):
-        cstore = ControlStore(bzrdir)
+        cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
             [cstore.get_sections],
             cstore)
@@ -3406,8 +3443,12 @@ class RemoteControlStack(_CompatibleStack):
 class RemoteBranchStack(_CompatibleStack):
     """Remote branch-only options stack."""
 
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote branches. RemoteBranchStack only uses
+    # branch.conf and is used only for the stack options.
+
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
             [bstore.get_sections],
             bstore)
