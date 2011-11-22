@@ -2470,6 +2470,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def _get_config(self):
         return _mod_config.TransportConfig(self._transport, 'branch.conf')
 
+    def _get_config_store(self):
+        return _mod_config.BranchStore(self)
+
     def is_locked(self):
         return self.control_files.is_locked()
 

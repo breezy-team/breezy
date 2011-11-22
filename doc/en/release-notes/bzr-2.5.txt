@@ -81,10 +81,14 @@ Internals
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
+
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
-  ``BzrDir.has_workingtree`` and
-  ``VersionedFileRepository.get_serializer_format``.  (Jelmer Vernooij)
+  ``BzrDir.has_workingtree``, ``Branch.put_config_file`` and
+  ``VersionedFileRepository.get_serializer_format``.
+  (Jelmer Vernooij)
 
 Testing
 *******
