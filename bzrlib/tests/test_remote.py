@@ -2392,8 +2392,10 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         somerev1.message = "Message"
         body = zlib.compress(chk_bencode_serializer.write_revision_to_string(
             somerev1))
+        # Split up body into two bits to make sure the zlib compression object
+        # gets data fed twice.
         client.add_success_response_with_body(
-            body, 'ok', '10')
+                [body[:10], body[10:]], 'ok', '10')
         revs = repo.get_revisions(['somerev1'])
         self.assertEquals(revs, [somerev1])
         self.assertEqual(
