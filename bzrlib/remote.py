@@ -382,16 +382,11 @@ class RemoteControlStore(config.IniFileStore):
         return handler.read_body_bytes()
 
     def _save_content(self, content):
-        medium = self.bzrdir._client._medium
-        path = self.bzrdir._path_for_remote_call(self.bzrdir._client)
-        try:
-            response, handler = self.bzrdir._call_with_body_bytes(
-                'BzrDir.set_config_file', (path, ), content)
-        except errors.UnknownSmartMethod:
-            self._ensure_real()
-            return self._real_store._save_content(content)
-        if response[0] != 'ok':
-            raise errors.UnexpectedSmartServerResponse(response)
+        # FIXME JRV 2011-11-22: Ideally this should use a
+        # HPSS call too, but at the moment it is not possible
+        # to write lock control directories.
+        self._ensure_real()
+        return self._real_store._save_content(content)
 
 
 class RemoteControlStack(config._CompatibleStack):
