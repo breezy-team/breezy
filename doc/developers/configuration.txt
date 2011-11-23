@@ -47,6 +47,7 @@ known dict objects:
 MutableSection is needed to set or remove an option, ReadOnlySection should
 be used otherwise.
 
+
 Stores
 ------
 
@@ -79,7 +80,7 @@ Filtering sections
 ------------------
 
 For some contexts, only some sections from a given store will apply. Defining
-which is what the ``SectionMatcher`` are about.
+which is what the ``SectionMatcher`` objects are about.
 
 The main constraint here is that a ``SectionMatcher`` should delay the loading
 of the associated store as long as possible. The constructor should collect
@@ -92,7 +93,17 @@ additional context (the ``LocationSection`` add an ``extra_path`` attribute
 to implement the ``appendpath`` policy for example). If no sections match,
 an empty list is returned.
 
-.. FIXME: Replace the appendpath example if/when it's deprecated ;)
+Options local to a section can also be defined for special purposes and be
+handled by ``Section.get()``. One such option is ``relpath`` which is
+defined in ``LocationSection`` as an alternative to the ``appendpath``
+policy.
+
+For ``appendpath``, the ``LocationSection`` will carry ``extra_path`` as the
+relative path between the section name and the location used. ``relpath``
+will be available as a ``Section`` local option with the same
+value. ``basename`` will carry the location base name and be available as a
+local option with the same name. Note that such options can only be expanded
+inside the section that defines them.
 
 Specific section matchers can be implemented by overriding ``get_sections``
 or just ``match``.

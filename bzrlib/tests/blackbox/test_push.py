@@ -22,6 +22,7 @@ import re
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     osutils,
     tests,
@@ -174,7 +175,7 @@ class TestPush(tests.TestCaseWithTransport):
 
         def make_shared_tree(path):
             shared_repo.bzrdir.root_transport.mkdir(path)
-            shared_repo.bzrdir.create_branch_convenience('repo/' + path)
+            controldir.ControlDir.create_branch_convenience('repo/' + path)
             return workingtree.WorkingTree.open('repo/' + path)
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])

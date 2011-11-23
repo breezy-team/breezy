@@ -221,3 +221,21 @@ class TestCat(tests.TestCaseWithTransport):
         url = self.get_readonly_url() + '/a'
         out, err = self.run_bzr(['cat', '-d', url, 'README'])
         self.assertEqual('contents of a/README\n', out)
+
+
+class TestSmartServerCat(tests.TestCaseWithTransport):
+
+    def test_simple_branch_cat(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['cat', "%s/foo" % self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(17, self.hpss_calls)

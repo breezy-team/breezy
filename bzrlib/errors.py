@@ -1579,6 +1579,7 @@ class RetryWithNewPacks(BzrError):
             problem we can raise the original error (value from sys.exc_info())
         """
         BzrError.__init__(self)
+        self.context = context
         self.reload_occurred = reload_occurred
         self.exc_info = exc_info
         self.orig_error = exc_info[1]
@@ -1985,7 +1986,7 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class MalformedTransform(BzrError):
+class MalformedTransform(InternalBzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
 
@@ -3355,3 +3356,15 @@ class HpssVfsRequestNotAllowed(BzrError):
     def __init__(self, method, arguments):
         self.method = method
         self.arguments = arguments
+
+
+class UnsupportedKindChange(BzrError):
+
+    _fmt = ("Kind change from %(from_kind)s to %(to_kind)s for "
+            "%(path)s not supported by format %(format)r")
+
+    def __init__(self, path, from_kind, to_kind, format):
+        self.path = path
+        self.from_kind = from_kind
+        self.to_kind = to_kind
+        self.format = format

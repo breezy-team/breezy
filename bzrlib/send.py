@@ -19,7 +19,7 @@ import os
 import time
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     osutils,
     registry,
@@ -40,7 +40,8 @@ format_registry = registry.Registry()
 def send(submit_branch, revision, public_branch, remember, format,
          no_bundle, no_patch, output, from_, mail_to, message, body,
          to_file, strict=None):
-    tree, branch = bzrdir.BzrDir.open_containing_tree_or_branch(from_)[:2]
+    tree, branch = controldir.ControlDir.open_containing_tree_or_branch(
+        from_)[:2]
     # we may need to write data into branch's repository to calculate
     # the data to send.
     branch.lock_write()

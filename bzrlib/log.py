@@ -65,8 +65,8 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     foreign,
@@ -105,7 +105,10 @@ def find_touching_revisions(branch, file_id):
     last_ie = None
     last_path = None
     revno = 1
-    for revision_id in branch.revision_history():
+    graph = branch.repository.get_graph()
+    history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+        [_mod_revision.NULL_REVISION]))
+    for revision_id in reversed(history):
         this_inv = branch.repository.get_inventory(revision_id)
         if this_inv.has_id(file_id):
             this_ie = this_inv[file_id]
@@ -338,7 +341,7 @@ def format_signature_validity(rev_id, repo):
     from bzrlib import gpg
 
     gpg_strategy = gpg.GPGStrategy(None)
-    result = repo.verify_revision(rev_id, gpg_strategy)
+    result = repo.verify_revision_signature(rev_id, gpg_strategy)
     if result[0] == gpg.SIGNATURE_VALID:
         return "valid signature from {0}".format(result[1])
     if result[0] == gpg.SIGNATURE_KEY_MISSING:
@@ -2026,7 +2029,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
       branch will be read-locked.
     """
     from builtins import _get_revision_range
-    tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
+    tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
+        file_list[0])
     add_cleanup(b.lock_read().unlock)
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive

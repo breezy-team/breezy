@@ -66,7 +66,6 @@ from bzrlib.trace import (
 from bzrlib import (
     config,
     controldir,
-    hooks,
     registry,
     )
 from bzrlib.symbol_versioning import (
@@ -233,97 +232,6 @@ class BzrDir(controldir.ControlDir):
         t = _mod_transport.get_transport(url)
         t.ensure_base()
 
-    @staticmethod
-    def find_bzrdirs(transport, evaluate=None, list_current=None):
-        """Find bzrdirs recursively from current location.
-
-        This is intended primarily as a building block for more sophisticated
-        functionality, like finding trees under a directory, or finding
-        branches that use a given repository.
-
-        :param evaluate: An optional callable that yields recurse, value,
-            where recurse controls whether this bzrdir is recursed into
-            and value is the value to yield.  By default, all bzrdirs
-            are recursed into, and the return value is the bzrdir.
-        :param list_current: if supplied, use this function to list the current
-            directory, instead of Transport.list_dir
-        :return: a generator of found bzrdirs, or whatever evaluate returns.
-        """
-        if list_current is None:
-            def list_current(transport):
-                return transport.list_dir('')
-        if evaluate is None:
-            def evaluate(bzrdir):
-                return True, bzrdir
-
-        pending = [transport]
-        while len(pending) > 0:
-            current_transport = pending.pop()
-            recurse = True
-            try:
-                bzrdir = BzrDir.open_from_transport(current_transport)
-            except (errors.NotBranchError, errors.PermissionDenied):
-                pass
-            else:
-                recurse, value = evaluate(bzrdir)
-                yield value
-            try:
-                subdirs = list_current(current_transport)
-            except (errors.NoSuchFile, errors.PermissionDenied):
-                continue
-            if recurse:
-                for subdir in sorted(subdirs, reverse=True):
-                    pending.append(current_transport.clone(subdir))
-
-    @staticmethod
-    def find_branches(transport):
-        """Find all branches under a transport.
-
-        This will find all branches below the transport, including branches
-        inside other branches.  Where possible, it will use
-        Repository.find_branches.
-
-        To list all the branches that use a particular Repository, see
-        Repository.find_branches
-        """
-        def evaluate(bzrdir):
-            try:
-                repository = bzrdir.open_repository()
-            except errors.NoRepositoryPresent:
-                pass
-            else:
-                return False, ([], repository)
-            return True, (bzrdir.list_branches(), None)
-        ret = []
-        for branches, repo in BzrDir.find_bzrdirs(transport,
-                                                  evaluate=evaluate):
-            if repo is not None:
-                ret.extend(repo.find_branches())
-            if branches is not None:
-                ret.extend(branches)
-        return ret
-
-    @staticmethod
-    def create_branch_and_repo(base, force_new_repo=False, format=None):
-        """Create a new BzrDir, Branch and Repository at the url 'base'.
-
-        This will use the current default BzrDirFormat unless one is
-        specified, and use whatever
-        repository format that that uses via bzrdir.create_branch and
-        create_repository. If a shared repository is available that is used
-        preferentially.
-
-        The created Branch object is returned.
-
-        :param base: The URL to create the branch at.
-        :param force_new_repo: If True a new repository is always created.
-        :param format: If supplied, the format of branch to create.  If not
-            supplied, the default is used.
-        """
-        bzrdir = BzrDir.create(base, format)
-        bzrdir._find_or_create_repository(force_new_repo)
-        return bzrdir.create_branch()
-
     def determine_repository_policy(self, force_new_repo=False, stack_on=None,
                                     stack_on_pwd=None, require_stacking=False):
         """Return an object representing a policy to use.
@@ -467,7 +375,10 @@ class BzrDir(controldir.ControlDir):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
-        result = cloning_format.initialize_on_transport(target_transport)
+        try:
+            result = controldir.ControlDir.open_from_transport(target_transport)
+        except errors.NotBranchError:
+            result = cloning_format.initialize_on_transport(target_transport)
         source_branch, source_repository = self._find_source_repo(
             add_cleanup, source_branch)
         fetch_spec_factory.source_branch = source_branch
@@ -506,7 +417,7 @@ class BzrDir(controldir.ControlDir):
         mutter("created new branch %r" % (result_branch,))
 
         # Create/update the result working tree
-        if (create_tree_if_local and
+        if (create_tree_if_local and not result.has_workingtree() and
             isinstance(target_transport, local.LocalTransport) and
             (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
@@ -543,73 +454,6 @@ class BzrDir(controldir.ControlDir):
                     force_new_repo=force_new_repo, recurse=recurse,
                     stacked=stacked)
         return result
-
-    @staticmethod
-    def create_branch_convenience(base, force_new_repo=False,
-                                  force_new_tree=None, format=None,
-                                  possible_transports=None):
-        """Create a new BzrDir, Branch and Repository at the url 'base'.
-
-        This is a convenience function - it will use an existing repository
-        if possible, can be told explicitly whether to create a working tree or
-        not.
-
-        This will use the current default BzrDirFormat unless one is
-        specified, and use whatever
-        repository format that that uses via bzrdir.create_branch and
-        create_repository. If a shared repository is available that is used
-        preferentially. Whatever repository is used, its tree creation policy
-        is followed.
-
-        The created Branch object is returned.
-        If a working tree cannot be made due to base not being a file:// url,
-        no error is raised unless force_new_tree is True, in which case no
-        data is created on disk and NotLocalUrl is raised.
-
-        :param base: The URL to create the branch at.
-        :param force_new_repo: If True a new repository is always created.
-        :param force_new_tree: If True or False force creation of a tree or
-                               prevent such creation respectively.
-        :param format: Override for the bzrdir format to create.
-        :param possible_transports: An optional reusable transports list.
-        """
-        if force_new_tree:
-            # check for non local urls
-            t = _mod_transport.get_transport(base, possible_transports)
-            if not isinstance(t, local.LocalTransport):
-                raise errors.NotLocalUrl(base)
-        bzrdir = BzrDir.create(base, format, possible_transports)
-        repo = bzrdir._find_or_create_repository(force_new_repo)
-        result = bzrdir.create_branch()
-        if force_new_tree or (repo.make_working_trees() and
-                              force_new_tree is None):
-            try:
-                bzrdir.create_workingtree()
-            except errors.NotLocalUrl:
-                pass
-        return result
-
-    @staticmethod
-    def create_standalone_workingtree(base, format=None):
-        """Create a new BzrDir, WorkingTree, Branch and Repository at 'base'.
-
-        'base' must be a local path or a file:// url.
-
-        This will use the current default BzrDirFormat unless one is
-        specified, and use whatever
-        repository format that that uses for bzrdirformat.create_workingtree,
-        create_branch and create_repository.
-
-        :param format: Override for the bzrdir format to create.
-        :return: The WorkingTree object.
-        """
-        t = _mod_transport.get_transport(base)
-        if not isinstance(t, local.LocalTransport):
-            raise errors.NotLocalUrl(base)
-        bzrdir = BzrDir.create_branch_and_repo(base,
-                                               force_new_repo=True,
-                                               format=format).bzrdir
-        return bzrdir.create_workingtree()
 
     @deprecated_method(deprecated_in((2, 3, 0)))
     def generate_backup_name(self, base):
@@ -690,7 +534,7 @@ class BzrDir(controldir.ControlDir):
                 return None
             # find the next containing bzrdir
             try:
-                found_bzrdir = BzrDir.open_containing_from_transport(
+                found_bzrdir = self.open_containing_from_transport(
                     next_transport)[0]
             except errors.NotBranchError:
                 return None
@@ -813,150 +657,6 @@ class BzrDir(controldir.ControlDir):
         # add new tests for it to the appropriate place.
         return filename == '.bzr' or filename.startswith('.bzr/')
 
-    @staticmethod
-    def open_unsupported(base):
-        """Open a branch which is not supported."""
-        return BzrDir.open(base, _unsupported=True)
-
-    @staticmethod
-    def open(base, _unsupported=False, possible_transports=None):
-        """Open an existing bzrdir, rooted at 'base' (url).
-
-        :param _unsupported: a private parameter to the BzrDir class.
-        """
-        t = _mod_transport.get_transport(base, possible_transports)
-        return BzrDir.open_from_transport(t, _unsupported=_unsupported)
-
-    @staticmethod
-    def open_from_transport(transport, _unsupported=False,
-                            _server_formats=True):
-        """Open a bzrdir within a particular directory.
-
-        :param transport: Transport containing the bzrdir.
-        :param _unsupported: private.
-        """
-        for hook in BzrDir.hooks['pre_open']:
-            hook(transport)
-        # Keep initial base since 'transport' may be modified while following
-        # the redirections.
-        base = transport.base
-        def find_format(transport):
-            return transport, controldir.ControlDirFormat.find_format(
-                transport, _server_formats=_server_formats)
-
-        def redirected(transport, e, redirection_notice):
-            redirected_transport = transport._redirected_to(e.source, e.target)
-            if redirected_transport is None:
-                raise errors.NotBranchError(base)
-            note(gettext('{0} is{1} redirected to {2}').format(
-                 transport.base, e.permanently, redirected_transport.base))
-            return redirected_transport
-
-        try:
-            transport, format = do_catching_redirections(find_format,
-                                                         transport,
-                                                         redirected)
-        except errors.TooManyRedirections:
-            raise errors.NotBranchError(base)
-
-        format.check_support_status(_unsupported)
-        return format.open(transport, _found=True)
-
-    @staticmethod
-    def open_containing(url, possible_transports=None):
-        """Open an existing branch which contains url.
-
-        :param url: url to search from.
-
-        See open_containing_from_transport for more detail.
-        """
-        transport = _mod_transport.get_transport(url, possible_transports)
-        return BzrDir.open_containing_from_transport(transport)
-
-    @staticmethod
-    def open_containing_from_transport(a_transport):
-        """Open an existing branch which contains a_transport.base.
-
-        This probes for a branch at a_transport, and searches upwards from there.
-
-        Basically we keep looking up until we find the control directory or
-        run into the root.  If there isn't one, raises NotBranchError.
-        If there is one and it is either an unrecognised format or an unsupported
-        format, UnknownFormatError or UnsupportedFormatError are raised.
-        If there is one, it is returned, along with the unused portion of url.
-
-        :return: The BzrDir that contains the path, and a Unicode path
-                for the rest of the URL.
-        """
-        # this gets the normalised url back. I.e. '.' -> the full path.
-        url = a_transport.base
-        while True:
-            try:
-                result = BzrDir.open_from_transport(a_transport)
-                return result, urlutils.unescape(a_transport.relpath(url))
-            except errors.NotBranchError, e:
-                pass
-            try:
-                new_t = a_transport.clone('..')
-            except errors.InvalidURLJoin:
-                # reached the root, whatever that may be
-                raise errors.NotBranchError(path=url)
-            if new_t.base == a_transport.base:
-                # reached the root, whatever that may be
-                raise errors.NotBranchError(path=url)
-            a_transport = new_t
-
-    @classmethod
-    def open_tree_or_branch(klass, location):
-        """Return the branch and working tree at a location.
-
-        If there is no tree at the location, tree will be None.
-        If there is no branch at the location, an exception will be
-        raised
-        :return: (tree, branch)
-        """
-        bzrdir = klass.open(location)
-        return bzrdir._get_tree_branch()
-
-    @classmethod
-    def open_containing_tree_or_branch(klass, location):
-        """Return the branch and working tree contained by a location.
-
-        Returns (tree, branch, relpath).
-        If there is no tree at containing the location, tree will be None.
-        If there is no branch containing the location, an exception will be
-        raised
-        relpath is the portion of the path that is contained by the branch.
-        """
-        bzrdir, relpath = klass.open_containing(location)
-        tree, branch = bzrdir._get_tree_branch()
-        return tree, branch, relpath
-
-    @classmethod
-    def open_containing_tree_branch_or_repository(klass, location):
-        """Return the working tree, branch and repo contained by a location.
-
-        Returns (tree, branch, repository, relpath).
-        If there is no tree containing the location, tree will be None.
-        If there is no branch containing the location, branch will be None.
-        If there is no repository containing the location, repository will be
-        None.
-        relpath is the portion of the path that is contained by the innermost
-        BzrDir.
-
-        If no tree, branch or repository is found, a NotBranchError is raised.
-        """
-        bzrdir, relpath = klass.open_containing(location)
-        try:
-            tree, branch = bzrdir._get_tree_branch()
-        except errors.NotBranchError:
-            try:
-                repo = bzrdir.find_repository()
-                return None, None, repo, relpath
-            except (errors.NoRepositoryPresent):
-                raise errors.NotBranchError(location)
-        return tree, branch, branch.repository, relpath
-
     def _cloning_metadir(self):
         """Produce a metadir suitable for cloning with.
 
@@ -1002,7 +702,7 @@ class BzrDir(controldir.ControlDir):
 
         :require_stacking: If True, non-stackable formats will be upgraded
             to similar stackable formats.
-        :returns: a BzrDirFormat with all component formats either set
+        :returns: a ControlDirFormat with all component formats either set
             appropriately or set to None if that component should not be
             created.
         """
@@ -1019,24 +719,6 @@ class BzrDir(controldir.ControlDir):
         if require_stacking:
             format.require_stacking()
         return format
-
-    @classmethod
-    def create(cls, base, format=None, possible_transports=None):
-        """Create a new BzrDir at the url 'base'.
-
-        :param format: If supplied, the format of branch to create.  If not
-            supplied, the default is used.
-        :param possible_transports: If supplied, a list of transports that
-            can be reused to share a remote connection.
-        """
-        if cls is not BzrDir:
-            raise AssertionError("BzrDir.create always creates the"
-                "default format, not one of %r" % cls)
-        t = _mod_transport.get_transport(base, possible_transports)
-        t.ensure_base()
-        if format is None:
-            format = controldir.ControlDirFormat.get_default_format()
-        return format.initialize_on_transport(t)
 
     def get_branch_transport(self, branch_format, name=None):
         """Get the transport for use by branch format in this BzrDir.
@@ -1077,60 +759,23 @@ class BzrDir(controldir.ControlDir):
         """
         raise NotImplementedError(self.get_workingtree_transport)
 
+    @classmethod
+    def create(cls, base, format=None, possible_transports=None):
+        """Create a new BzrDir at the url 'base'.
 
-class BzrDirHooks(hooks.Hooks):
-    """Hooks for BzrDir operations."""
-
-    def __init__(self):
-        """Create the default hooks."""
-        hooks.Hooks.__init__(self, "bzrlib.bzrdir", "BzrDir.hooks")
-        self.add_hook('pre_open',
-            "Invoked before attempting to open a BzrDir with the transport "
-            "that the open will use.", (1, 14))
-        self.add_hook('post_repo_init',
-            "Invoked after a repository has been initialized. "
-            "post_repo_init is called with a "
-            "bzrlib.bzrdir.RepoInitHookParams.",
-            (2, 2))
-
-# install the default hooks
-BzrDir.hooks = BzrDirHooks()
-
-
-class RepoInitHookParams(object):
-    """Object holding parameters passed to `*_repo_init` hooks.
-
-    There are 4 fields that hooks may wish to access:
-
-    :ivar repository: Repository created
-    :ivar format: Repository format
-    :ivar bzrdir: The bzrdir for the repository
-    :ivar shared: The repository is shared
-    """
-
-    def __init__(self, repository, format, a_bzrdir, shared):
-        """Create a group of RepoInitHook parameters.
-
-        :param repository: Repository created
-        :param format: Repository format
-        :param bzrdir: The bzrdir for the repository
-        :param shared: The repository is shared
+        :param format: If supplied, the format of branch to create.  If not
+            supplied, the default is used.
+        :param possible_transports: If supplied, a list of transports that
+            can be reused to share a remote connection.
         """
-        self.repository = repository
-        self.format = format
-        self.bzrdir = a_bzrdir
-        self.shared = shared
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        if cls is not BzrDir:
+            raise AssertionError("BzrDir.create always creates the "
+                "default format, not one of %r" % cls)
+        return controldir.ControlDir.create(base, format=format,
+                possible_transports=possible_transports)
 
     def __repr__(self):
-        if self.repository:
-            return "<%s for %s>" % (self.__class__.__name__,
-                self.repository)
-        else:
-            return "<%s for %s>" % (self.__class__.__name__,
-                self.bzrdir)
+        return "<%s at %r>" % (self.__class__.__name__, self.user_url)
 
 
 class BzrDirMeta1(BzrDir):
@@ -1149,6 +794,8 @@ class BzrDirMeta1(BzrDir):
     def create_branch(self, name=None, repository=None,
             append_revisions_only=None):
         """See BzrDir.create_branch."""
+        if name is None:
+            name = self._get_selected_branch()
         return self._format.get_branch_format().initialize(self, name=name,
                 repository=repository,
                 append_revisions_only=append_revisions_only)
@@ -1165,7 +812,10 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_repository(self):
         """See BzrDir.destroy_repository."""
-        self.transport.delete_tree('repository')
+        try:
+            self.transport.delete_tree('repository')
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
@@ -1299,6 +949,8 @@ class BzrDirMeta1(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
+        if name is None:
+            name = self._get_selected_branch()
         format = self.find_branch_format(name=name)
         format.check_support_status(unsupported)
         return format.open(self, name=name,
@@ -1333,7 +985,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
     def __init__(self, _transport, _format):
         super(BzrDirMeta1Colo, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(_transport,
+        self.control_files = lockable_files.LockableFiles(self.control_transport,
             self._format._lock_file_name, self._format._lock_class)
 
     def _get_branch_path(self, name):
@@ -1344,13 +996,11 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         it uses the default branch.
 
         :param name: Optional branch name to use
-        :return: Relative path to branch, branch name
+        :return: Relative path to branch
         """
         if name is None:
-            name = self._get_selected_branch()
-        if name is None:
-            return 'branch', None
-        return urlutils.join('branches', name), name
+            return 'branch'
+        return urlutils.join('branches', name.encode("utf-8"))
 
     def _read_branch_list(self):
         """Read the branch list.
@@ -1380,16 +1030,18 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
-        path, name = self._get_branch_path(name)
+        if name is None:
+            name = self._get_selected_branch()
+        path = self._get_branch_path(name)
         if name is not None:
             self.control_files.lock_write()
             try:
                 branches = self._read_branch_list()
                 try:
-                    branches.remove(name)
+                    branches.remove(name.encode("utf-8"))
                 except ValueError:
                     raise errors.NotBranchError(name)
-                self._write_branch_list(name)
+                self._write_branch_list(branches)
             finally:
                 self.control_files.unlock()
         self.transport.delete_tree(path)
@@ -1404,14 +1056,14 @@ class BzrDirMeta1Colo(BzrDirMeta1):
             pass
 
         # colocated branches
-        ret.extend([self.open_branch(name) for name in
+        ret.extend([self.open_branch(name.decode("utf-8")) for name in
                     self._read_branch_list()])
 
         return ret
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        path, name = self._get_branch_path(name)
+        path = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:
@@ -1426,11 +1078,12 @@ class BzrDirMeta1Colo(BzrDirMeta1):
             except errors.FileExists:
                 pass
             branches = self._read_branch_list()
-            if not name in branches:
+            utf8_name = name.encode("utf-8")
+            if not utf8_name in branches:
                 self.control_files.lock_write()
                 try:
                     branches = self._read_branch_list()
-                    branches.append(name)
+                    branches.append(utf8_name)
                     self._write_branch_list(branches)
                 finally:
                     self.control_files.unlock()

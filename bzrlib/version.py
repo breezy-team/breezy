@@ -21,8 +21,8 @@ import sys
 
 import bzrlib
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     trace,
@@ -98,7 +98,7 @@ def _get_bzr_source_tree():
     If bzr is not being run from its working tree, returns None.
     """
     try:
-        control = bzrdir.BzrDir.open_containing(__file__)[0]
+        control = controldir.ControlDir.open_containing(__file__)[0]
         return control.open_workingtree(recommend_upgrade=False)
     except (errors.NotBranchError, errors.UnknownFormatError,
             errors.NoWorkingTree):

@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5b3
+bzr 2.5b4
 #########
 
-:2.5b3: NOT RELEASED YET
+:2.5b4: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -20,22 +20,18 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* The ``log_format`` configuration can be used with ``-Olog_format=line`` to
-  change the format ``push`` and ``pull`` use to display the
-  revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
-  format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
-
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* ``bzr version-info`` now takes a ``--revision`` argument.
-  (Jelmer Vernooij, #238705)
+* When using ``bzr switch`` to switch to a sibling of the current
+  branch, the relative branch name should no longer be url-encoded.
+  (Jelmer Vernooij)
 
-* ``bzr revno`` now takes a ``--revision`` argument.
-  (Jelmer Vernooij, #870649)
+* ``bzr switch`` now accepts colocated branch names to switch to.
+  (Jelmer Vernooij, #826814)
 
 Bug Fixes
 *********
@@ -43,8 +39,24 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* ``bzr mkdir --quiet`` now does not print a line for every created
-  directory. (Martin von Gagern, #869915)
+* Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
+  pickled. (Jelmer Vernooij, #893149)
+
+* A new section local option ``basename`` is available to help support some
+  ``bzr-pipeline`` workflows and more generally help mapping local paths to
+  remote ones. See ``bzr help configuration`` for more details.
+  (Vincent Ladeuil, #843211)
+
+* Resolve regression from colocated branch path handling, by ensuring that
+  unreserved characters are unquoted in URLs. (Martin Packman, #842223)
+
+* Support verifying signatures on remote repositories.
+  (Jelmer Vernooij, #889694)
+
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
 
 Documentation
 *************
@@ -57,15 +69,28 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Repository.verify_revision`` has been renamed to
+  ``Repository.verify_revision_signature``. (Jelmer Vernooij)
+
+* Some global options for use with commands have been removed, construct
+  an ``Option`` with the name instead. (Martin Packman)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
-* ``ControlDirFormat`` now has a new method ``supports_transport``
-  which format implementations can use whether or not they can access
-  a control dir over a particular transport. (Jelmer Vernooij)
+* ``bzr config`` uses the new configuration implementation.
+  (Vincent Ladeuil)
+
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
+
+* New HPSS calls ``Repository.has_signature_for_revision_id``,
+  ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
+  ``BzrDir.has_workingtree`` and ``Branch.put_config_file``.
+  (Jelmer Vernooij)
 
 Testing
 *******
@@ -74,10 +99,146 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
-*  Ensure TestCase instances are deallocated immediately after running where
-   possible. This greatly reduces the peak resource needs of a full test suite
-   run. The new ``-Euncollected_cases`` selftest flag will add failures if any
-   case which persists pasts its expected lifetime. (Martin Packman, #613247)
+* Avoid failures in test_transform when OS error messages are localised.
+  (Martin Packman, #891582)
+
+bzr 2.5b3
+#########
+
+:2.5b3: 2011-11-10
+
+This is the third beta of the 2.5 series, leading to a 2.5.0 release in
+February 2012. Beta releases are suitable for everyday use but may cause
+some incompatibilities with plugins.
+
+This release includes log options for ``push`` and ``pull``, more UI polish
+for colocated branches, a better and more coherent implementation for UI
+dialogs, enhancements to the config framework and more.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
+
+* The ``log_format`` configuration can be used with ``-Olog_format=line`` to
+  change the format ``push`` and ``pull`` use to display the
+  revisions. I.e.: ``bzr pull -v -Olog_format=short`` will use the ``short``
+  format instead of the default ``long`` one. (Vincent Ladeuil, #861472)
+
+* The new config scheme allows an alternative syntax for the 'appenpath'
+  policy relying on option expansion and defining a new 'relpath' option
+  local to a section. Instead of using '<option>:policy=appendpath', the
+  option value can de defined as 'option=xxxx/{relpath}'.
+  (Vincent Ladeuil, #832013)
+
+Improvements
+************
+
+* ``bzr info -v`` now shows the number of colocated branches
+  for control directories that support them.
+  (Jelmer Vernooij, #863285)
+
+* ``bzr version-info`` now takes a ``--revision`` argument.
+  (Jelmer Vernooij, #238705)
+
+* ``bzr revno`` now takes a ``--revision`` argument.
+  (Jelmer Vernooij, #870649)
+
+* ``bzr serve`` now can serve from URLs rather than just from the
+  file system. I.e.: ``bzr serve -d lp:bzr`` or
+  ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
+
+* all input prompts are now char-based when possible, and can be forced to
+  line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
+  to 'line-based'. This replace the previous shelf UI only patch using
+  ``INSIDE_EMACS``. (Benoît Pierre)
+
+Bug Fixes
+*********
+
+* ``bzr info`` now shows the master branch location too for
+  treeless local branches. (Jelmer Vernooij, #258355)
+
+* ``bzr info`` no longer shows empty output if only a control
+  directory is present. (Jelmer Vernooij, #159098)
+
+* ``bzr mkdir --quiet`` now does not print a line for every created
+  directory. (Martin von Gagern, #869915)
+
+* ``bzr mv`` does not crash when attempting to move the root of a
+  branch. (Jonathan Riddell, #809728)
+
+* ``bzr shelve`` now use ``UIFactory.choose`` for input handling, making
+  it usable when creating a custom ``UIFactory`` implementation. (Benoît
+  Pierre)
+
+* ``bzr clean-tree`` now use ``UIFactory.get_boolean`` for confirmation
+  prompt, making it usable when using a custom ``UIFactory``
+  implementation. (Benoît Pierre)
+
+* If sending a crash through Apport fails report the Apport failure to
+  bzr.log rather than stderr. (Jonathan Riddell, #766735)
+
+* ``bzr upgrade`` no longer treats 'already up-to-date' exceptions as
+  errors. (Benoît Pierre, #716560).
+
+* ``bzr version-info`` no longer populates the clean state for custom
+  templates unless {clean} is explicitly asked for.
+  (Lawrence Mitchell, #882541)
+
+* Fix finding the CPU count when using Python >= 2.6 on BSD-based systems.
+  (Jelmer Vernooij, #887151)
+
+* ``WorkingTree.clone()`` now supports its ``revision_id`` being set
+  to the null revision. (Jelmer Vernooij, #876423)
+
+* ``WorkingTree.pull`` can now pull ``NULL_REVISION``.
+  (Jelmer Vernooij, #887556)
+
+API Changes
+***********
+
+* ``Branch.revision_history`` is now deprecated. (Jelmer Vernooij, #799519)
+
+* Methods ``add`` and ``items`` of ``LRUCache`` and ``LRUSizeCache`` are
+  deprecated. Use normal dict-style access instead. (Martin Packman)
+
+* New flag ``RepositoryFormat.supports_unreferenced_revisions`` which
+  indicates whether revisions can be present in a repository without
+  being referenced from e.g. a branch history at the same time.
+  (Jelmer Vernooij)
+
+* New method ``Transport.set_segment_parameter``.  (Jelmer Vernooij)
+
+* ``UIFactory.choose`` has been added: prompt the user for a list of
+  choices. (Benoît Pierre)
+
+Internals
+*********
+
+* ``ControlDirFormat`` now has a new method ``supports_transport``
+  which format implementations can use whether or not they can access
+  a control dir over a particular transport. (Jelmer Vernooij)
+
+* ``BranchBuilder.build_commit`` now take ``parent_ids`` and
+  ``allow_leftmost_as_ghost`` arguments.  (Jelmer Vernooij)
+
+Testing
+*******
+
+* Ensure TestCase instances are deallocated immediately after running where
+  possible. This greatly reduces the peak resource needs of a full test suite
+  run. The new ``-Euncollected_cases`` selftest flag will add failures if any
+  case which persists pasts its expected lifetime. (Martin Packman, #613247)
+
+* Report exceptions from child processes during fork instead of swallowing the
+  error and reporting that everything went okay. (Martin Packman, #804130)
 
 
 bzr 2.5b2
@@ -399,6 +560,9 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
+
+* Raise BadIndexKey exception in btree_index when a key is too large, fixing 
+  an infinite recursion issue. (Shannon Weyrick, #720853)
 
 Documentation
 *************

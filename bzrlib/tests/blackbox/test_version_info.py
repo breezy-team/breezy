@@ -18,8 +18,9 @@
 
 import os
 
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithTransport
-
+from bzrlib.version_info_formats import VersionInfoBuilder
 
 class TestVersionInfo(TestCaseWithTransport):
 
@@ -36,29 +37,27 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(['branch/b'])
         wt.add('b')
         wt.commit('adding b', rev_id='r2')
-
-        self.revisions = wt.branch.revision_history()
         return wt
 
     def test_basic(self):
-        self.create_tree()
+        wt = self.create_tree()
 
         txt = self.run_bzr('version-info branch')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[-1])
+        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
 
     def test_all(self):
         """'--all' includes clean, revision history, and file revisions"""
-        self.create_tree()
+        wt = self.create_tree()
         txt = self.run_bzr('version-info branch --all')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + self.revisions[-1])
+        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
         self.assertContainsRe(txt, 'clean: True')
         self.assertContainsRe(txt, 'revisions:')
-        for rev_id in self.revisions:
+        for rev_id in wt.branch.repository.all_revision_ids():
             self.assertContainsRe(txt, 'id: ' + rev_id)
         self.assertContainsRe(txt, 'message: adding a')
         self.assertContainsRe(txt, 'message: adding b')
@@ -151,7 +150,17 @@ class TestVersionInfo(TestCaseWithTransport):
             '"{revno} {branch_nick} {clean}\n" branch')
         self.assertEqual("2 branch 0\n", out)
         self.assertEqual("", err)
-    
+
+    def test_custom_no_clean_in_template(self):
+        def should_not_be_called(self):
+            raise AssertionError("Method on %r should not have been used" % (self,))
+        self.overrideAttr(VersionInfoBuilder, "_extract_file_revisions",
+                          should_not_be_called)
+        self.create_tree()
+        out, err = self.run_bzr('version-info --custom --template=r{revno} branch')
+        self.assertEqual("r2", out)
+        self.assertEqual("", err)
+
     def test_non_ascii(self):
         """Test that we can output non-ascii data"""
         
