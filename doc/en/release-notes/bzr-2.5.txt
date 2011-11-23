@@ -39,6 +39,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
+  pickled. (Jelmer Vernooij, #893149)
+
 * A new section local option ``basename`` is available to help support some
   ``bzr-pipeline`` workflows and more generally help mapping local paths to
   remote ones. See ``bzr help configuration`` for more details.
