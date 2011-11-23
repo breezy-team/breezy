@@ -89,6 +89,10 @@ Internals
   ``BzrDir.has_workingtree`` and ``Branch.put_config_file``.
   (Jelmer Vernooij)
 
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
+
 Testing
 *******
 

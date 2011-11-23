@@ -3670,3 +3670,52 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
         # interpretation
         self.make_master_and_checkout('mas~ter', 'checkout')
         self.assertUpdateSucceeds(self.bound_location.replace('%2E', '~', 1))
+
+
+class TestWithCustomErrorHandler(RemoteBranchTestCase):
+
+    def test_no_context(self):
+        class OutOfCoffee(errors.BzrError):
+            """A dummy exception for testing."""
+
+            def __init__(self, urgency):
+                self.urgency = urgency
+        remote.no_context_error_translators.register("OutOfCoffee",
+            lambda err: OutOfCoffee(err.error_args[0]))
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info',
+            ('quack/',),
+            'error', ('OutOfCoffee', 'low'))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(OutOfCoffee, branch.last_revision_info)
+        self.assertFinished(client)
+
+    def test_with_context(self):
+        class OutOfTea(errors.BzrError):
+            def __init__(self, branch, urgency):
+                self.branch = branch
+                self.urgency = urgency
+        remote.error_translators.register("OutOfTea",
+            lambda err, find, path: OutOfTea(err.error_args[0],
+                find("branch")))
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info',
+            ('quack/',),
+            'error', ('OutOfTea', 'low'))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(OutOfTea, branch.last_revision_info)
+        self.assertFinished(client)
