@@ -307,3 +307,22 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         wt.commit('commit', committer='test@user')
         out, err = self.run_bzr(['annotate', '-d', 'a', 'hello.txt'])
         self.assertEqualDiff('1   test@us | my helicopter\n', out)
+
+
+class TestSmartServerAnnotate(tests.TestCaseWithTransport):
+
+    def test_simple_annotate(self):
+        self.setup_smart_server_with_call_log()
+        wt = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/hello.txt', 'my helicopter\n')])
+        wt.add(['hello.txt'])
+        wt.commit('commit', committer='test@user')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['annotate', "-d", self.get_url('branch'),
+            "hello.txt"])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(19, self.hpss_calls)
