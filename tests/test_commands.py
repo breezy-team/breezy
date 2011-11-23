@@ -16,6 +16,7 @@
 """Test the command implementations."""
 
 import os
+import re
 import tempfile
 import gzip
 
@@ -58,6 +59,40 @@ class TestSourceStream(tests.TestCase):
         self.assertIsNot("bla", stream.read())
 
 
+fast_export_baseline_data = """commit refs/heads/master
+mark :1
+committer
+data 15
+add c, remove b
+M 644 inline a
+data 13
+test 1
+test 3
+M 644 inline c
+data 6
+test 4
+commit refs/heads/master
+mark :2
+committer
+data 14
+modify a again
+from :1
+M 644 inline a
+data 20
+test 1
+test 3
+test 5
+commit refs/heads/master
+mark :3
+committer
+data 5
+add d
+from :2
+M 644 inline d
+data 6
+test 6
+"""
+
 class TestFastExport(ExternalBase):
 
     def test_empty(self):
@@ -99,6 +134,45 @@ class TestFastExport(ExternalBase):
         # "bad Tag" should be exported as bad_Tag
         self.assertNotEqual(-1, data.find("reset refs/tags/bad_Tag"))
 
+    def test_baseline_option(self):
+        tree = self.make_branch_and_tree("bl")
+
+        # Revision 1
+        file('bl/a', 'w').write('test 1')
+        tree.add('a')
+        tree.commit(message='add a')
+
+        # Revision 2
+        file('bl/b', 'w').write('test 2')
+        file('bl/a', 'a').write('\ntest 3')
+        tree.add('b')
+        tree.commit(message='add b, modify a')
+
+        # Revision 3
+        file('bl/c', 'w').write('test 4')
+        tree.add('c')
+        tree.remove('b')
+        tree.commit(message='add c, remove b')
+
+        # Revision 4
+        file('bl/a', 'a').write('\ntest 5')
+        tree.commit(message='modify a again')
+
+        # Revision 5
+        file('bl/d', 'w').write('test 6')
+        tree.add('d')
+        tree.commit(message='add d')
+
+        # This exports the baseline state at Revision 3,
+        # followed by the deltas for 4 and 5
+        data = self.run_bzr("fast-export --baseline -r 3.. bl")[0]
+        data = re.sub('committer.*', 'committer', data)
+        self.assertEquals(fast_export_baseline_data, data)
+
+        # Also confirm that --baseline with no args is identical to full export
+        data1 = self.run_bzr("fast-export --baseline bl")[0]
+        data2 = self.run_bzr("fast-export bl")[0]
+        self.assertEquals(data1, data2)
 
 simple_fast_import_stream = """commit refs/heads/master
 mark :1
