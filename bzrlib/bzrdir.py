@@ -84,6 +84,11 @@ class FeatureFlags(object):
         self._format_line = format_line
         self._features = features
 
+    def __eq__(self, other):
+        return (type(other) is FeatureFlags and
+                other._format_line == self._format_line and
+                other._features == self._features)
+
     def get_format_string(self):
         """Get the format string."""
         return self._format_line + "\n"

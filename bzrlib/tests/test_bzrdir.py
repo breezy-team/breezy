@@ -1470,3 +1470,13 @@ class TestFeatureFlags(TestCase):
         flags = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
         flags.set_feature("foo", "required")
         self.assertEquals("required", flags.get_feature("foo"))
+
+    def test_eq(self):
+        flags1 = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
+        flags2 = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
+        self.assertEquals(flags1, flags1)
+        self.assertEquals(flags1, flags2)
+        flags3 = bzrdir.FeatureFlags("Different", {"nested trees": "optional"})
+        self.assertNotEquals(flags1, flags3)
+        flags4 = bzrdir.FeatureFlags("Name", {})
+        self.assertNotEquals(flags1, flags4)
