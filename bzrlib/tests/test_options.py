@@ -341,10 +341,12 @@ class TestOptionDefinitions(TestCase):
 
     def get_builtin_command_options(self):
         g = []
-        for cmd_name in sorted(commands.all_command_names()):
+        commands.install_bzr_command_hooks()
+        for cmd_name in sorted(commands.builtin_command_names()):
             cmd = commands.get_cmd_object(cmd_name)
             for opt_name, opt in sorted(cmd.options().items()):
                 g.append((cmd_name, opt))
+        self.assert_(g)
         return g
 
     def test_global_options_used(self):
