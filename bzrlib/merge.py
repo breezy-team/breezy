@@ -2041,14 +2041,14 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
 
 
 merge_type_registry = registry.Registry()
-merge_type_registry.register_lazy('diff3', Diff3Merger,
-                                  "Merge using external diff3")
-merge_type_registry.register_lazy('lca', LCAMerger,
-                                  "LCA-newness merge")
-merge_type_registry.register_lazy('merge3', Merge3Merger,
-                                  "Native diff3-style merge")
-merge_type_registry.register_lazy('weave', WeaveMerger,
-                                  "Weave-based merge")
+merge_type_registry.register('diff3', Diff3Merger,
+                             "Merge using external diff3")
+merge_type_registry.register('lca', LCAMerger,
+                             "LCA-newness merge")
+merge_type_registry.register('merge3', Merge3Merger,
+                             "Native diff3-style merge")
+merge_type_registry.register('weave', WeaveMerger,
+                             "Weave-based merge")
 
 
 def get_merge_type_registry():
