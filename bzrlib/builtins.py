@@ -1694,7 +1694,7 @@ class cmd_remove(Command):
             no_backup='Don\'t backup changed files.',
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories. '
-                '(deprecated, use no-backup)')]
+                '(deprecated, use no-backup).')]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
