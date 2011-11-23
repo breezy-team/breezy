@@ -363,6 +363,9 @@ class TestOptionDefinitions(TestCase):
                     msgs.append('%-16s %-16s %s' %
                            ((scope or 'GLOBAL'), name, 'NO HELP'))
                 elif not option_re.match(helptxt):
+                    if name.startswith("format/"):
+                        # Don't complain about the odd format registry help
+                        continue
                     msgs.append('%-16s %-16s %s' %
                             ((scope or 'GLOBAL'), name, helptxt))
         if msgs:
