@@ -366,6 +366,9 @@ class TestOptionDefinitions(TestCase):
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))
 
+
+class TestOptionMisc(TestCase):
+
     def test_is_hidden(self):
         registry = controldir.ControlDirFormatRegistry()
         bzrdir.register_metadir(registry, 'hidden', 'HiddenFormat',
