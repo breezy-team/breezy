@@ -74,6 +74,57 @@ from bzrlib.symbol_versioning import (
     )
 
 
+class FeatureFlags(object):
+    """Feature flag container.
+    """
+
+    def __init__(self, format_line, features):
+        if "\n" in format_line:
+            raise ValueError("format line %r contains newline" % format_line)
+        self._format_line = format_line
+        self._features = features
+
+    def get_format_string(self):
+        """Get the format string."""
+        return self._format_line + "\n"
+
+    @classmethod
+    def from_string(cls, format_text):
+        """Create a feature flag list from a string."""
+        lines = format_text.splitlines()
+        format_string = lines[0]
+        features = {}
+        for line in lines[1:]:
+            (feature, necessity) = line.split("\t")
+            features[feature] = necessity
+        return cls(format_string, features)
+
+    def as_string(self):
+        return "\n".join(
+            [self._format_line] +
+            [("%s\t%s" % item) for item in self._features.iteritems()] +
+            [""])
+
+    def set_feature(self, name, necessity):
+        """Set a feature."""
+        self._features[name] = necessity
+
+    def get_feature(self, name):
+        """Get a feature."""
+        return self._features.get(name)
+
+    def check_features(self, present):
+        """Check if all features required are present.
+        """
+        missing_required = set()
+        for name, necessity in self._features.iteritems():
+            if name in present:
+                continue
+            if necessity == "required":
+                missing_required.add(name)
+        return missing_required
+
+
 class BzrDir(controldir.ControlDir):
     """A .bzr control diretory.
 

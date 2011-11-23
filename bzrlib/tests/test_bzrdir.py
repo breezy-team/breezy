@@ -1431,3 +1431,42 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
         self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
             None)
 
+
+
+class TestFeatureFlags(TestCase):
+
+    def test_format_line_with_newline(self):
+        self.assertRaises(ValueError, bzrdir.FeatureFlags, "With\n", {})
+
+    def test_format_string(self):
+        flags = bzrdir.FeatureFlags("Name", {
+            "nested trees": "required"})
+        self.assertEquals(
+            flags.get_format_string(),
+            "Name\n")
+
+    def test_as_string(self):
+        flags = bzrdir.FeatureFlags(
+            "Name", {"foo": "required"})
+        self.assertEquals(flags.as_string(),
+            "Name\n"
+            "foo\trequired\n")
+
+    def test_from_string(self):
+        flags = bzrdir.FeatureFlags.from_string(
+            "Name\n"
+            "foo\trequired\n")
+        self.assertEquals("Name\n", flags.get_format_string())
+        self.assertEquals("required", flags.get_feature("foo"))
+
+    def test_get_feature(self):
+        flags = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
+        self.assertEquals("optional",
+            flags.get_feature("nested trees"))
+        self.assertIs(None,
+            flags.get_feature("bar"))
+
+    def test_set_feature(self):
+        flags = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
+        flags.set_feature("foo", "required")
+        self.assertEquals("required", flags.get_feature("foo"))
