@@ -349,37 +349,6 @@ class TestOptionDefinitions(TestCase):
         self.assert_(g)
         return g
 
-    def test_global_options_used(self):
-        # In the distant memory, options could only be declared globally.  Now
-        # we prefer to declare them in the command, unless like -r they really
-        # are used very widely with the exact same meaning.  So this checks
-        # for any that should be garbage collected.
-        g = dict(option.Option.OPTIONS.items())
-        used_globals = {}
-        msgs = []
-        for cmd_name in sorted(commands.all_command_names()):
-            cmd = commands.get_cmd_object(cmd_name)
-            for option_or_name in sorted(cmd.takes_options):
-                if not isinstance(option_or_name, basestring):
-                    self.assertIsInstance(option_or_name, option.Option)
-                elif not option_or_name in g:
-                    msgs.append("apparent reference to undefined "
-                        "global option %r from %r"
-                        % (option_or_name, cmd))
-                else:
-                    used_globals.setdefault(option_or_name, []).append(cmd_name)
-        unused_globals = set(g.keys()) - set(used_globals.keys())
-        # not enforced because there might be plugins that use these globals
-        ## for option_name in sorted(unused_globals):
-        ##    msgs.append("unused global option %r" % option_name)
-        ## for option_name, cmds in sorted(used_globals.items()):
-        ##     if len(cmds) <= 1:
-        ##         msgs.append("global option %r is only used by %r"
-        ##                 % (option_name, cmds))
-        if msgs:
-            self.fail("problems with global option definitions:\n"
-                    + '\n'.join(msgs))
-
     def test_option_grammar(self):
         msgs = []
         # Option help should be written in sentence form, and have a final
