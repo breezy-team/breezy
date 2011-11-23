@@ -18,8 +18,6 @@
 """Black-box tests for bzr lookup-revision.
 """
 
-import os
-
 from bzrlib import tests
 
 class TestLookupRevision(tests.TestCaseWithTransport):
