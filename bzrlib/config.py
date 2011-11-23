@@ -3410,13 +3410,13 @@ class cmd_config(commands.Command):
         # FIXME: This should be a registry option so that plugins can register
         # their own config files (or not) -- vila 20101002
         commands.Option('scope', help='Reduce the scope to the specified'
-                        ' configuration file',
+                        ' configuration file.',
                         type=unicode),
         commands.Option('all',
             help='Display all the defined values for the matching options.',
             ),
         commands.Option('remove', help='Remove the option from'
-                        ' the configuration file'),
+                        ' the configuration file.'),
         ]
 
     _see_also = ['configuration']
