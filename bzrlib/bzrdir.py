@@ -910,8 +910,8 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
-        from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self, name=name)
+        from bzrlib.branch import BranchFormatMetadir
+        format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
 
     def get_branch_transport(self, branch_format, name=None):
