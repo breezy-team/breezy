@@ -151,9 +151,9 @@ class SubdirCommit(TestCaseWithTransport):
         def get_text_by_path(tree, path):
             return tree.get_file_text(tree.path2id(path), path)
 
-        self.assertEqual(get_text_by_path(new, 'b/two').read(), 'old contents')
-        self.assertEqual(get_text_by_path(new, 'top').read(), 'old contents')
-        self.assertEqual(get_text_by_path(new, 'a/one').read(), 'new contents')
+        self.assertEqual(get_text_by_path(new, 'b/two'), 'old contents')
+        self.assertEqual(get_text_by_path(new, 'top'), 'old contents')
+        self.assertEqual(get_text_by_path(new, 'a/one'), 'new contents')
         new.unlock()
 
         os.chdir('a')
