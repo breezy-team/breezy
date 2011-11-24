@@ -826,7 +826,7 @@ class InventoryTree(Tree):
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
-        return self.get_file(self._inventory.path2id(path), path)
+        return self.get_file(self.path2id(path), path)
 
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
