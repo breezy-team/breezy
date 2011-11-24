@@ -1025,6 +1025,14 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 
+    def test_with_features(self):
+        tree = self.make_branch_and_tree('tree', format='2a')
+        tree.bzrdir.control_transport.put_bytes(
+            'branch-format',
+            tree.bzrdir._format.get_format_string() + "bar\trequired\n")
+        dir = bzrdir.BzrDir.open('tree')
+        self.assertEquals("required", dir._format.features.get_feature("bar"))
+
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
         new_format = bzrdir.format_registry.make_bzrdir('dirstate')
@@ -1434,7 +1442,6 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
             bzrdir.BzrDirMetaFormat1())
         self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
             None)
-
 
 
 class TestFeatureFlags(TestCase):

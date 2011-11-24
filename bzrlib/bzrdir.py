@@ -1171,9 +1171,14 @@ class BzrProber(controldir.Prober):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            return klass.formats.get(format_string)
+            first_line = format_string[:format_string.index("\n")+1]
+        except ValueError:
+            first_line = format_string
+        try:
+            cls = klass.formats.get(first_line)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
+            raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
+        return cls.from_string(format_string)
 
     @classmethod
     def known_formats(cls):
@@ -1502,6 +1507,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return False
         if other.workingtree_format != self.workingtree_format:
             return False
+        if other.features != self.features:
+            return False
         return True
 
     def __ne__(self, other):
@@ -1643,6 +1650,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         # problems.
         format = BzrDirMetaFormat1()
         self._supply_sub_formats_to(format)
+        format.features = self.features.copy()
         return BzrDirMeta1(transport, format)
 
     def __return_repository_format(self):
