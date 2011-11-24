@@ -81,6 +81,11 @@ class BzrDirFormatAllInOne(BzrDirFormat):
             stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
             make_working_trees=make_working_trees, shared_repo=shared_repo)
 
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise AssertionError("unexpected format string %r" % format_string)
+
 
 class BzrDirFormat5(BzrDirFormatAllInOne):
     """Bzr control format 5.
