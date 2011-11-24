@@ -47,6 +47,14 @@ Bug Fixes
   remote ones. See ``bzr help configuration`` for more details.
   (Vincent Ladeuil, #843211)
 
+* Fix test failures on windows related to locations.conf handling.
+  (Vincent Ladeuil, #892992)
+
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
+
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
@@ -58,11 +66,6 @@ Bug Fixes
 
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
-
-* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
-  prohibits several invalid strings, reads the correct number of seconds,
-  and gives a better error message if the time zone offset is not given.
-  (Matt Giuca, #892657)
 
 Documentation
 *************
