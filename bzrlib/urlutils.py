@@ -78,8 +78,8 @@ def file_relpath(base, path):
         raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
             (base, MIN_ABS_FILEURL_LENGTH))
-    base = local_path_from_url(base)
-    path = local_path_from_url(path)
+    base = osutils.normpath(local_path_from_url(base))
+    path = osutils.normpath(local_path_from_url(path))
     return escape(osutils.relpath(base, path))
 
 

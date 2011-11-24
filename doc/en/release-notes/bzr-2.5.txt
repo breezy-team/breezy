@@ -156,6 +156,9 @@ Improvements
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
 
+* ``bzr rmbranch`` can now remove colocated branches.
+  (Jelmer Vernooij, #831464)
+
 * ``bzr serve`` now can serve from URLs rather than just from the
   file system. I.e.: ``bzr serve -d lp:bzr`` or
   ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
