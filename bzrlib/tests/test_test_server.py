@@ -204,7 +204,7 @@ class TestTCPServerInAThread(tests.TestCase):
         # http://pad.lv/869366 was wrongly checking the server thread which
         # works for TestingTCPServer where the connection is handled in the
         # same thread than the server one but was racy for
-        # TestingThreadingTCPServer. Since we the connection thread detaches
+        # TestingThreadingTCPServer. Since the connection thread detaches
         # itself before handling the request, we are guaranteed that the
         # exception won't leak into the server thread anymore.
         self.assertRaises(FailToRespond,
