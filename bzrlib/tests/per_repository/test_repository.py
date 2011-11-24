@@ -322,6 +322,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFalse(result.open_repository().make_working_trees())
 
     def test_upgrade_preserves_signatures(self):
+        if not self.repository_format.supports_revision_signatures:
+            raise tests.TestNotApplicable(
+                "repository does not support signing revisions")
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository
@@ -588,7 +591,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
                 "Cannot lock_read old formats like AllInOne over HPSS.")
         remote_backing_repo = controldir.ControlDir.open(
             self.get_vfs_only_url('remote')).open_repository()
-        self.assertEqual(remote_backing_repo._format, local_repo._format)
+        self.assertEqual(
+            remote_backing_repo._format.network_name(),
+            local_repo._format.network_name())
 
     def test_sprout_branch_from_hpss_preserves_repo_format(self):
         """branch.sprout from a smart server preserves the repository format.

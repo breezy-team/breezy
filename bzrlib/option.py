@@ -547,69 +547,41 @@ _standard_option('verbose', short_name='v',
                  custom_callback=_verbosity_level_callback)
 
 # Declare commonly used options
-_global_option('all')
-_global_option('basis', type=str)
-_global_option('bound')
 _global_option('change',
                type=_parse_change_str,
                short_name='c',
                param_name='revision',
                help='Select changes introduced by the specified revision. See also "help revisionspec".')
-_global_option('diff-options', type=str)
 _global_option('directory', short_name='d', type=unicode,
                help='Branch to operate on, instead of working directory')
-_global_option('dry-run',
-               help="Show what would be done, but don't actually do anything.")
-_global_option('email')
 _global_option('file', type=unicode, short_name='F')
-_global_option('force')
-_global_option('format', type=unicode)
-_global_option('forward')
-_global_option('kind', type=str)
-_global_option('line', help='Use log format with one line per revision.'
-               ' Same as --log-format line')
 _global_registry_option('log-format', "Use specified log format.",
                         lazy_registry=('bzrlib.log', 'log_formatter_registry'),
                         value_switches=True, title='Log format',
                         short_value_switches={'short': 'S'})
-_global_option('long', help='Use detailed log format.'
-               ' Same as --log-format long',
-               short_name='l')
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         _merge_type_registry, value_switches=True,
                         title='Merge algorithm')
 _global_option('message', type=unicode,
                short_name='m',
                help='Message string.')
-_global_option('name-from-revision', help='The path name in the old tree.')
-_global_option('no-backup')
-_global_option('no-recurse')
 _global_option('null', short_name='0',
                  help='Use an ASCII NUL (\\0) separator rather than '
                       'a newline.')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally.')
-_global_option('pattern', type=str)
-_global_option('profile',
-               help='Show performance profiling information.')
-_global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
+_global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
 _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
                help='See "help revisionspec" for details.')
-_global_option('short', help='Use moderately short log format.'
-               ' Same as --log-format short')
 _global_option('show-ids',
                help='Show internal object ids.')
 _global_option('timezone',
                type=str,
                help='Display timezone as local, original, or utc.')
-_global_option('root', type=str)
-_global_option('unbound')
-_global_option('update')
-_global_option('version')
 
 diff_writer_registry = _mod_registry.Registry()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')

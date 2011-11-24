@@ -1606,6 +1606,9 @@ class BranchFormat(controldir.ControlComponentFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=controldir)
+        try:
             format_string = transport.get_bytes("format")
             return format_registry.get(format_string)
         except errors.NoSuchFile:
@@ -2297,7 +2300,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
-            target_branch.bzrdir.user_url)
+            target_branch.user_url)
         branch_transport.put_bytes('format', self.get_format_string())
         branch = self.open(
             a_bzrdir, name, _found=True,
@@ -2435,10 +2438,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
-        self._base = self.bzrdir.transport.clone('..').base
+        self._user_transport = self.bzrdir.transport.clone('..')
         if name is not None:
-            self._base = urlutils.join_segment_parameters(self._base,
-                {"branch": name.encode("utf-8")})
+            self._user_transport.set_segment_parameter(
+                "branch", urlutils.escape(name))
+        self._base = self._user_transport.base
         self.name = name
         self._format = _format
         if _control_files is None:
@@ -2460,11 +2464,14 @@ class BzrBranch(Branch, _RelockDebugMixin):
     base = property(_get_base, doc="The URL for the root of this branch.")
 
     @property
-    def user_url(self):
-        return self._base
+    def user_transport(self):
+        return self._user_transport
 
     def _get_config(self):
         return _mod_config.TransportConfig(self._transport, 'branch.conf')
+
+    def _get_config_store(self):
+        return _mod_config.BranchStore(self)
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -3030,6 +3037,8 @@ class BzrBranch8(BzrBranch):
             except errors.RevisionNotPresent, e:
                 raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
             index = len(self._partial_revision_history_cache) - 1
+            if index < 0:
+                raise errors.NoSuchRevision(self, revision_id)
             if self._partial_revision_history_cache[index] != revision_id:
                 raise errors.NoSuchRevision(self, revision_id)
         return self.revno() - index

@@ -375,7 +375,10 @@ class BzrDir(controldir.ControlDir):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
-        result = cloning_format.initialize_on_transport(target_transport)
+        try:
+            result = controldir.ControlDir.open_from_transport(target_transport)
+        except errors.NotBranchError:
+            result = cloning_format.initialize_on_transport(target_transport)
         source_branch, source_repository = self._find_source_repo(
             add_cleanup, source_branch)
         fetch_spec_factory.source_branch = source_branch
@@ -414,7 +417,7 @@ class BzrDir(controldir.ControlDir):
         mutter("created new branch %r" % (result_branch,))
 
         # Create/update the result working tree
-        if (create_tree_if_local and
+        if (create_tree_if_local and not result.has_workingtree() and
             isinstance(target_transport, local.LocalTransport) and
             (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
@@ -809,7 +812,10 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_repository(self):
         """See BzrDir.destroy_repository."""
-        self.transport.delete_tree('repository')
+        try:
+            self.transport.delete_tree('repository')
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
@@ -994,7 +1000,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         """
         if name is None:
             return 'branch'
-        return urlutils.join('branches', name)
+        return urlutils.join('branches', name.encode("utf-8"))
 
     def _read_branch_list(self):
         """Read the branch list.
@@ -1032,10 +1038,10 @@ class BzrDirMeta1Colo(BzrDirMeta1):
             try:
                 branches = self._read_branch_list()
                 try:
-                    branches.remove(name)
+                    branches.remove(name.encode("utf-8"))
                 except ValueError:
                     raise errors.NotBranchError(name)
-                self._write_branch_list(name)
+                self._write_branch_list(branches)
             finally:
                 self.control_files.unlock()
         self.transport.delete_tree(path)
@@ -1050,7 +1056,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
             pass
 
         # colocated branches
-        ret.extend([self.open_branch(name) for name in
+        ret.extend([self.open_branch(name.decode("utf-8")) for name in
                     self._read_branch_list()])
 
         return ret
@@ -1072,11 +1078,12 @@ class BzrDirMeta1Colo(BzrDirMeta1):
             except errors.FileExists:
                 pass
             branches = self._read_branch_list()
-            if not name in branches:
+            utf8_name = name.encode("utf-8")
+            if not utf8_name in branches:
                 self.control_files.lock_write()
                 try:
                     branches = self._read_branch_list()
-                    branches.append(name)
+                    branches.append(utf8_name)
                     self._write_branch_list(branches)
                 finally:
                     self.control_files.unlock()
