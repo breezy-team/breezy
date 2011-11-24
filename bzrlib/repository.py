@@ -1548,6 +1548,28 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     supports_leaving_lock = True
     supports_nesting_repositories = True
 
+    _present_features = set()
+
+    @classmethod
+    def register_feature(cls, name):
+        """Register a feature as being present.
+
+        :param name: Name of the feature
+        """
+        cls._present_features.add(name)
+
+    @classmethod
+    def unregister_feature(cls, name):
+        """Unregister a feature."""
+        cls._present_features.remove(name)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        super(MetaDirRepositoryFormat, self).check_support_status(
+            allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
+        self.features.check_features(self._present_features)
+
     @property
     def _matchingbzrdir(self):
         matching = bzrdir.BzrDirMetaFormat1()
@@ -1556,6 +1578,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()
+        self.features = bzrdir.FeatureFlags()
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
