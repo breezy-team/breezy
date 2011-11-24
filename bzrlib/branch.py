@@ -1602,21 +1602,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         return not (self == other)
 
     @classmethod
-    def find_format(klass, controldir, name=None):
-        """Return the format for the branch object in controldir."""
-        try:
-            transport = controldir.get_branch_transport(None, name=name)
-        except errors.NoSuchFile:
-            raise errors.NotBranchError(path=name, bzrdir=controldir)
-        try:
-            format_string = transport.get_bytes("format")
-            return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base, bzrdir=controldir)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string, kind='branch')
-
-    @classmethod
     @deprecated_method(deprecated_in((2, 4, 0)))
     def get_default_format(klass):
         """Return the current default format."""
@@ -2042,6 +2027,39 @@ class BranchFormatMetadir(BranchFormat):
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()
         self.features = bzrdir.FeatureFlags()
+
+    @classmethod
+    def from_string(cls, format_string):
+        ret = cls()
+        if not format_string.startswith(cls.get_format_string()):
+            raise ValueError("Invalid format header %r" % format_string)
+        try:
+            ret.features = bzrdir.FeatureFlags.from_string(
+                format_string.split("\n", 1)[1])
+        except IndexError:
+            pass
+        return ret
+
+    @classmethod
+    def find_format(klass, controldir, name=None):
+        """Return the format for the branch object in controldir."""
+        try:
+            transport = controldir.get_branch_transport(None, name=name)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=controldir)
+        try:
+            format_string = transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base, bzrdir=controldir)
+        try:
+            first_line = format_string[:format_string.index("\n")+1]
+        except IndexError:
+            first_line = format_string
+        try:
+            cls = format_registry.get(first_line)
+        except KeyError:
+            raise errors.UnknownFormatError(format=first_line, kind='branch')
+        return cls.from_string(format_string)
 
     def _branch_class(self):
         """What class to instantiate on open calls."""
