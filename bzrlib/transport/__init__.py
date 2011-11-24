@@ -1856,5 +1856,5 @@ register_lazy_transport('ssh:', 'bzrlib.transport.remote',
 
 transport_server_registry = registry.Registry()
 transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server',
-    'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155).")
+    'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
 transport_server_registry.default_key = 'bzr'
