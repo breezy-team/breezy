@@ -1449,7 +1449,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         Note that in pre format ?? repositories the format string is
         not permitted nor written to disk.
         """
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(cls.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""

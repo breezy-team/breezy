@@ -85,6 +85,7 @@ class BzrDirFormatAllInOne(BzrDirFormat):
     def from_string(cls, format_string):
         if format_string != cls.get_format_string():
             raise AssertionError("unexpected format string %r" % format_string)
+        return cls()
 
 
 class BzrDirFormat5(BzrDirFormatAllInOne):
@@ -715,6 +716,12 @@ class BzrDirFormat4(BzrDirFormat):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat4
         return RepositoryFormat4()
     repository_format = property(__return_repository_format)
+
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise AssertionError("unexpected format string %r" % format_string)
+        return cls()
 
 
 class BzrDirPreSplitOut(BzrDir):

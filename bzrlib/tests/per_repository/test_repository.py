@@ -179,7 +179,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except NotImplementedError:
             return
         self.assertEqual(self.repository_format,
-                         repository.RepositoryFormat.find_format(opened_control))
+                         repository.MetaDirRepositoryFormat.find_format(opened_control))
 
     def test_format_matchingbzrdir(self):
         self.assertEqual(self.repository_format,
