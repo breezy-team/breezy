@@ -992,8 +992,8 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
-    controldir.ControlComponent):
+class RemoteRepository(_mod_repository.Repository, _RpcHelper,
+        lock._RelockDebugMixin):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
