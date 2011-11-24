@@ -23,16 +23,16 @@ import sys
 import shutil
 
 import bzrlib
-import bzrlib.bzrdir
-import bzrlib.tests
-import bzrlib.revisionspec
-import bzrlib.plugins.bisect as bisect
+from bzrlib.bzrdir import BzrDir
+from bzrlib.plugins import bisect
+from bzrlib.plugins.bisect import cmds
 from bzrlib.tests import (
     KnownFailure,
+    TestCaseWithTransport,
     TestSkipped,
     )
 
-class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
+class BisectTestCase(TestCaseWithTransport):
     """Test harness specific to the bisect plugin."""
 
     def assertRevno(self, rev):
@@ -57,8 +57,7 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
         # a branch from version 1 containing three revisions
         # merged at version 2.
 
-        bzrlib.tests.TestCaseWithTransport.setUp(self)
-
+        TestCaseWithTransport.setUp(self)
 
         self.tree = self.make_branch_and_tree(".")
 
@@ -74,8 +73,8 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
                                                      'test_file_append')))
         self.tree.commit(message = "add test files")
 
-        bzrlib.bzrdir.BzrDir.open(".").sprout("../temp-clone")
-        clone_bzrdir = bzrlib.bzrdir.BzrDir.open("../temp-clone")
+        BzrDir.open(".").sprout("../temp-clone")
+        clone_bzrdir = BzrDir.open("../temp-clone")
         clone_tree = clone_bzrdir.open_workingtree()
         for content in ["one dot one", "one dot two", "one dot three"]:
             test_file = open("../temp-clone/test_file", "w")
@@ -157,33 +156,33 @@ class BisectCurrentUnitTests(BisectTestCase):
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
         sio = StringIO()
-        bisect.BisectCurrent().show_rev_log(out=sio)
+        cmds.BisectCurrent().show_rev_log(out=sio)
 
     def testShowLogSubtree(self):
         """Test that a subtree's log can be shown."""
-        current = bisect.BisectCurrent()
+        current = cmds.BisectCurrent()
         current.switch(self.subtree_rev)
         sio = StringIO()
         current.show_rev_log(out=sio)
 
     def testSwitchVersions(self):
         """Test switching versions."""
-        current = bisect.BisectCurrent()
+        current = cmds.BisectCurrent()
         self.assertRevno(5)
         current.switch(4)
         self.assertRevno(4)
 
     def testReset(self):
         """Test resetting the working tree to a non-bisected state."""
-        current = bisect.BisectCurrent()
+        current = cmds.BisectCurrent()
         current.switch(4)
         current.reset()
         self.assertRevno(5)
-        assert not os.path.exists(bisect.bisect_rev_path)
+        assert not os.path.exists(cmds.bisect_rev_path)
 
     def testIsMergePoint(self):
         """Test merge point detection."""
-        current = bisect.BisectCurrent()
+        current = cmds.BisectCurrent()
         self.assertRevno(5)
         assert not current.is_merge_point()
         current.switch(2)
@@ -195,17 +194,17 @@ class BisectLogUnitTests(BisectTestCase):
 
     def testCreateBlank(self):
         """Test creation of new log."""
-        bisect_log = bisect.BisectLog()
+        bisect_log = cmds.BisectLog()
         bisect_log.save()
-        assert os.path.exists(bisect.bisect_info_path)
+        assert os.path.exists(cmds.bisect_info_path)
 
     def testLoad(self):
         """Test loading a log."""
-        preloaded_log = open(bisect.bisect_info_path, "w")
+        preloaded_log = open(cmds.bisect_info_path, "w")
         preloaded_log.write("rev1 yes\nrev2 no\nrev3 yes\n")
         preloaded_log.close()
 
-        bisect_log = bisect.BisectLog()
+        bisect_log = cmds.BisectLog()
         assert len(bisect_log._items) == 3
         assert bisect_log._items[0] == ("rev1", "yes")
         assert bisect_log._items[1] == ("rev2", "no")
@@ -213,11 +212,11 @@ class BisectLogUnitTests(BisectTestCase):
 
     def testSave(self):
         """Test saving the log."""
-        bisect_log = bisect.BisectLog()
+        bisect_log = cmds.BisectLog()
         bisect_log._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
         bisect_log.save()
 
-        logfile = open(bisect.bisect_info_path)
+        logfile = open(cmds.bisect_info_path)
         assert logfile.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
 
 
