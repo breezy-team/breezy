@@ -367,7 +367,8 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     def __ne__(self, other):
         return self.__class__ is not other.__class__
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
 
@@ -409,7 +410,8 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"
 
@@ -450,7 +452,8 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return 'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
 

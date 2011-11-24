@@ -504,7 +504,8 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     def _serializer(self):
         return xml5.serializer_v5
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Repository format 7"
 

@@ -1384,7 +1384,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')
 
     def get_format_description(self):
@@ -1406,7 +1407,8 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return ('Bazaar development format 8\n')
 
     def get_format_description(self):

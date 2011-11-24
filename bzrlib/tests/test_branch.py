@@ -40,7 +40,7 @@ class TestDefaultFormat(tests.TestCase):
 
     def test_default_format(self):
         # update this if you change the default branch format
-        self.assertEquals(_mod_branch.format_registry.get_default(),
+        self.assertIsInstance(_mod_branch.format_registry.get_default(),
                 _mod_branch.BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):

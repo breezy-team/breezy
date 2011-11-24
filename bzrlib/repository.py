@@ -1427,24 +1427,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         return not self == other
 
     @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir.
-
-        This is used by bzr native formats that have a "format" file in
-        the repository.  Other methods may be used by different types of
-        control directory.
-        """
-        try:
-            transport = a_bzrdir.get_repository_transport(None)
-            format_string = transport.get_bytes("format")
-            return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string,
-                                            kind='repository')
-
-    @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def register_format(klass, format):
         format_registry.register(format)
@@ -1460,7 +1442,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         """Return the current default format."""
         return format_registry.get_default()
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """Return the ASCII format string that identifies this format.
 
         Note that in pre format ?? repositories the format string is
@@ -1611,6 +1594,42 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     def network_name(self):
         """Metadir formats have matching disk and network format strings."""
         return self.get_format_string()
+
+    @classmethod
+    def from_string(cls, format_string):
+        ret = cls()
+        if not format_string.startswith(cls.get_format_string()):
+            raise ValueError("Invalid format header %r" % format_string)
+        try:
+            ret.features = bzrdir.FeatureFlags.from_string(
+                format_string.split("\n", 1)[1])
+        except IndexError:
+            pass
+        return ret
+
+    @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the repository object in a_bzrdir.
+
+        This is used by bzr native formats that have a "format" file in
+        the repository.  Other methods may be used by different types of
+        control directory.
+        """
+        try:
+            transport = a_bzrdir.get_repository_transport(None)
+            format_string = transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(a_bzrdir)
+        try:
+            first_line = format_string[:format_string.index("\n")+1]
+        except ValueError:
+            first_line = format_string
+        try:
+            cls = format_registry.get(first_line)
+        except KeyError:
+            raise errors.UnknownFormatError(format=format_string,
+                                            kind='repository')
+        return cls.from_string(format_string)
 
 
 # formats which have no format string are not discoverable or independently

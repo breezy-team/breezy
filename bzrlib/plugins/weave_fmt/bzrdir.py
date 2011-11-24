@@ -98,7 +98,8 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
@@ -161,7 +162,8 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
 
@@ -669,7 +671,8 @@ class BzrDirFormat4(BzrDirFormat):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 

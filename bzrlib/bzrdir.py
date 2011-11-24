@@ -1014,16 +1014,16 @@ class BzrDirMeta1(BzrDir):
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat
-        format = RepositoryFormat.find_format(self)
+        from bzrlib.repository import MetaDirRepositoryFormat
+        format = MetaDirRepositoryFormat.find_format(self)
         format.check_support_status(unsupported)
         return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.open_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat
-        format = WorkingTreeFormat.find_format(self)
+        from bzrlib.workingtree import WorkingTreeFormatMetaDir
+        format = WorkingTreeFormatMetaDir.find_format(self)
         format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
