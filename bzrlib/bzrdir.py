@@ -78,35 +78,28 @@ class FeatureFlags(object):
     """Feature flag container.
     """
 
-    def __init__(self, format_line, features):
-        if "\n" in format_line:
-            raise ValueError("format line %r contains newline" % format_line)
-        self._format_line = format_line
+    def __init__(self, features):
         self._features = features
 
-    def __eq__(self, other):
-        return (type(other) is FeatureFlags and
-                other._format_line == self._format_line and
-                other._features == self._features)
+    def __repr__(self):
+        return "<%s(%r)>" % (self.__class__.__name__, self._features)
 
-    def get_format_string(self):
-        """Get the format string."""
-        return self._format_line + "\n"
+    def __eq__(self, other):
+        return (isinstance(other, FeatureFlags) and
+                other._features == self._features)
 
     @classmethod
     def from_string(cls, format_text):
         """Create a feature flag list from a string."""
         lines = format_text.splitlines()
-        format_string = lines[0]
         features = {}
-        for line in lines[1:]:
+        for line in lines:
             (feature, necessity) = line.split("\t")
             features[feature] = necessity
-        return cls(format_string, features)
+        return cls(features)
 
     def as_string(self):
         return "\n".join(
-            [self._format_line] +
             [("%s\t%s" % item) for item in self._features.iteritems()] +
             [""])
 
@@ -128,6 +121,10 @@ class FeatureFlags(object):
             if necessity == "required":
                 missing_required.add(name)
         return missing_required
+
+    def copy(self):
+        """Make a deep copy."""
+        return FeatureFlags(self._features)
 
 
 class BzrDir(controldir.ControlDir):
@@ -1462,10 +1459,41 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     colocated_branches = False
 
+    _present_features = set()
+
     def __init__(self):
+        self.features = FeatureFlags({})
         self._workingtree_format = None
         self._branch_format = None
         self._repository_format = None
+
+    @classmethod
+    def from_string(cls, format_string):
+        ret = cls()
+        if not format_string.startswith(cls.get_format_string()):
+            raise ValueError("Invalid format header %r" % format_string)
+        try:
+            ret.features = FeatureFlags.from_string(
+                format_string.split("\n", 1)[1])
+        except IndexError:
+            pass
+        return ret
+
+    @classmethod
+    def register_feature(cls, name):
+        """Register a feature as being present.
+
+        :param name: Name of the feature
+        """
+        cls._present_features.add(name)
+
+    @classmethod
+    def unregister_feature(cls, name):
+        """Unregister a feature."""
+        cls._present_features.remove(name)
+
+    def check_support_status(self, unsupported=False):
+        self.features.check_features(self._present_features)
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
@@ -1659,6 +1687,10 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __set_workingtree_format(self, wt_format):
         self._workingtree_format = wt_format
+
+    def __repr__(self):
+        return "<%r, features %r>" % (
+            self.__class__.__name__, self.features)
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)

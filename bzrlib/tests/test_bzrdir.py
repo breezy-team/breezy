@@ -253,6 +253,10 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
     def open(self, transport, _found=None):
         return "opened branch."
 
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
+
 
 class BzrDirFormatTest1(bzrdir.BzrDirMetaFormat1):
 
@@ -1434,49 +1438,31 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
 
 
 class TestFeatureFlags(TestCase):
-
-    def test_format_line_with_newline(self):
-        self.assertRaises(ValueError, bzrdir.FeatureFlags, "With\n", {})
-
-    def test_format_string(self):
-        flags = bzrdir.FeatureFlags("Name", {
-            "nested trees": "required"})
-        self.assertEquals(
-            flags.get_format_string(),
-            "Name\n")
+    """Tests for FeatureFlags."""
 
     def test_as_string(self):
-        flags = bzrdir.FeatureFlags(
-            "Name", {"foo": "required"})
+        flags = bzrdir.FeatureFlags({"foo": "required"})
         self.assertEquals(flags.as_string(),
-            "Name\n"
             "foo\trequired\n")
 
     def test_from_string(self):
-        flags = bzrdir.FeatureFlags.from_string(
-            "Name\n"
-            "foo\trequired\n")
-        self.assertEquals("Name\n", flags.get_format_string())
+        flags = bzrdir.FeatureFlags.from_string("foo\trequired\n")
         self.assertEquals("required", flags.get_feature("foo"))
 
     def test_get_feature(self):
-        flags = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
-        self.assertEquals("optional",
-            flags.get_feature("nested trees"))
-        self.assertIs(None,
-            flags.get_feature("bar"))
+        flags = bzrdir.FeatureFlags({"nested trees": "optional"})
+        self.assertEquals("optional", flags.get_feature("nested trees"))
+        self.assertIs(None, flags.get_feature("bar"))
 
     def test_set_feature(self):
-        flags = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
+        flags = bzrdir.FeatureFlags({"nested trees": "optional"})
         flags.set_feature("foo", "required")
         self.assertEquals("required", flags.get_feature("foo"))
 
     def test_eq(self):
-        flags1 = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
-        flags2 = bzrdir.FeatureFlags("Name", {"nested trees": "optional"})
+        flags1 = bzrdir.FeatureFlags({"nested trees": "optional"})
+        flags2 = bzrdir.FeatureFlags({"nested trees": "optional"})
         self.assertEquals(flags1, flags1)
         self.assertEquals(flags1, flags2)
-        flags3 = bzrdir.FeatureFlags("Different", {"nested trees": "optional"})
+        flags3 = bzrdir.FeatureFlags({})
         self.assertNotEquals(flags1, flags3)
-        flags4 = bzrdir.FeatureFlags("Name", {})
-        self.assertNotEquals(flags1, flags4)
