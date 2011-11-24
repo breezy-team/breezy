@@ -1631,6 +1631,10 @@ class MetaDirRepositoryFormat(RepositoryFormat):
                                             kind='repository')
         return cls.from_string(format_string)
 
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__ and
+                self.features == other.features)
+
 
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're

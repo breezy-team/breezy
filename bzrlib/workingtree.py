@@ -3135,6 +3135,10 @@ class WorkingTreeFormatMetaDir(WorkingTreeFormat):
             recommend_upgrade=recommend_upgrade, basedir=basedir)
         self.features.check_features(self._present_features)
 
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__ and
+                self.features == other.features)
+
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat4")

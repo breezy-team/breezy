@@ -2144,6 +2144,10 @@ class BranchFormatMetadir(BranchFormat):
     def supports_leaving_lock(self):
         return True
 
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__ and
+                self.features == other.features)
+
 
 class BzrBranchFormat5(BranchFormatMetadir):
     """Bzr branch format 5.

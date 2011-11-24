@@ -91,6 +91,9 @@ class FeatureFlags(object):
         return (isinstance(other, FeatureFlags) and
                 other._features == self._features)
 
+    def __ne__(self, other):
+        return (not self.__eq__(other))
+
     @classmethod
     def from_string(cls, format_text):
         """Create a feature flag list from a string."""
