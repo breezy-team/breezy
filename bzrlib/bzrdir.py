@@ -78,8 +78,11 @@ class FeatureFlags(object):
     """Feature flag container.
     """
 
-    def __init__(self, features):
-        self._features = features
+    def __init__(self, features=None):
+        if features is None:
+            self._features = {}
+        else:
+            self._features = features
 
     def __repr__(self):
         return "<%s(%r)>" % (self.__class__.__name__, self._features)
