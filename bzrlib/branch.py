@@ -2016,6 +2016,32 @@ class SwitchHookParams(object):
 class BranchFormatMetadir(BranchFormat):
     """Common logic for meta-dir based branch formats."""
 
+    _present_features = set()
+
+    @classmethod
+    def register_feature(cls, name):
+        """Register a feature as being present.
+
+        :param name: Name of the feature
+        """
+        cls._present_features.add(name)
+
+    @classmethod
+    def unregister_feature(cls, name):
+        """Unregister a feature."""
+        cls._present_features.remove(name)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        super(BranchFormatMetadir, self).check_support_status(
+            allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
+        self.features.check_features(self._present_features)
+
+    def __init__(self):
+        super(BranchFormatMetadir, self).__init__()
+        self.features = bzrdir.FeatureFlags()
+
     def _branch_class(self):
         """What class to instantiate on open calls."""
         raise NotImplementedError(self._branch_class)
