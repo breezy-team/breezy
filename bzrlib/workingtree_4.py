@@ -71,7 +71,7 @@ from bzrlib.tree import (
 from bzrlib.workingtree import (
     InventoryWorkingTree,
     WorkingTree,
-    WorkingTreeFormat,
+    WorkingTreeFormatMetaDir,
     )
 
 
@@ -1446,7 +1446,7 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
         return views.PathBasedViews(self)
 
 
-class DirStateWorkingTreeFormat(WorkingTreeFormat):
+class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
 
     missing_parent_conflicts = True
 

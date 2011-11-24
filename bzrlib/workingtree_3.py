@@ -37,7 +37,7 @@ from bzrlib.lockdir import LockDir
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     InventoryWorkingTree,
-    WorkingTreeFormat,
+    WorkingTreeFormatMetaDir,
     )
 
 
@@ -136,7 +136,7 @@ class WorkingTree3(PreDirStateWorkingTree):
             self.branch.unlock()
 
 
-class WorkingTreeFormat3(WorkingTreeFormat):
+class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
     """The second working tree format updated to record a format marker.
 
     This format:

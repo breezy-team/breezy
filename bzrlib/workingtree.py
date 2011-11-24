@@ -3107,6 +3107,35 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingbzrdir
 
 
+class WorkingTreeFormatMetaDir(WorkingTreeFormat):
+
+    _present_features = set()
+
+    def __init__(self):
+        super(WorkingTreeFormat, self).__init__()
+        self.features = bzrdir.FeatureFlags()
+
+    @classmethod
+    def register_feature(cls, name):
+        """Register a feature as being present.
+
+        :param name: Name of the feature
+        """
+        cls._present_features.add(name)
+
+    @classmethod
+    def unregister_feature(cls, name):
+        """Unregister a feature."""
+        cls._present_features.remove(name)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        super(WorkingTreeFormatMetaDir, self).check_support_status(
+            allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
+        self.features.check_features(self._present_features)
+
+
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat4")
 format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
