@@ -498,6 +498,9 @@ request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch',
     'SmartServerBranchGetConfigFile')
 request_handlers.register_lazy(
+    'Branch.put_config_file', 'bzrlib.smart.branch',
+    'SmartServerBranchPutConfigFile')
+request_handlers.register_lazy(
     'Branch.get_parent', 'bzrlib.smart.branch', 'SmartServerBranchGetParent')
 request_handlers.register_lazy(
     'Branch.get_tags_bytes', 'bzrlib.smart.branch',
@@ -554,6 +557,12 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.get_config_file', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestConfigFile')
+request_handlers.register_lazy(
+    'BzrDir.has_workingtree', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestHasWorkingTree')
+request_handlers.register_lazy(
+    'BzrDir.destroy_repository', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestDestroyRepository')
 request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')

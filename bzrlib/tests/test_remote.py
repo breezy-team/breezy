@@ -485,6 +485,45 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirHasWorkingTree(TestRemote):
+
+    def test_has_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('yes',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertTrue(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+    def test_no_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('no',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertFalse(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+
+class TestBzrDirDestroyRepository(TestRemote):
+
+    def test_destroy_repository(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_repository', ('quack/',),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_repository()
+        self.assertFinished(client)
+
+
 class TestBzrDirOpen(TestRemote):
 
     def make_fake_client_and_transport(self, path='quack'):
@@ -1845,6 +1884,61 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         config.set_option(value_dict, 'name')
         self.assertLength(10, self.hpss_calls)
         self.assertEqual(value_dict, branch._get_config().get_option('name'))
+
+
+class TestBranchGetPutConfigStore(RemoteBranchTestCase):
+
+    def test_get_branch_conf(self):
+        # in an empty branch we decode the response properly
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_success_response_with_body('# config file body', 'ok')
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        config = branch.get_config_stack()
+        config.get("email")
+        config.get("log_format")
+        self.assertEqual(
+            [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',))],
+            client._calls)
+
+    def test_set_branch_conf(self):
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.lock_write', ('memory:///', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('memory:///', ),
+            'success', ('ok', ), "# line 1\n")
+        client.add_expected_call(
+            'Branch.put_config_file', ('memory:///', 'branch token',
+            'repo token'),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Branch.unlock', ('memory:///', 'branch token', 'repo token'),
+            'success', ('ok',))
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        branch.lock_write()
+        config = branch.get_config_stack()
+        config.set('email', 'The Dude <lebowski@example.com>')
+        branch.unlock()
+        self.assertFinished(client)
+        self.assertEqual(
+            [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
+             ('call', 'Branch.lock_write', ('memory:///', '', '')),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
+             ('call_with_body_bytes_expecting_body', 'Branch.put_config_file',
+                 ('memory:///', 'branch token', 'repo token'),
+                 '# line 1\nemail = The Dude <lebowski@example.com>\n'),
+             ('call', 'Branch.unlock', ('memory:///', 'branch token', 'repo token'))],
+            client._calls)
 
 
 class TestBranchLockWrite(RemoteBranchTestCase):

@@ -16,6 +16,7 @@
 
 """Test that lazy regexes are not compiled right away"""
 
+import pickle
 import re
 
 from bzrlib import errors
@@ -114,6 +115,16 @@ class TestLazyCompile(tests.TestCase):
     def test_split(self):
         pattern = lazy_regex.lazy_compile('[,;]*')
         self.assertEqual(['x', 'y', 'z'], pattern.split('x,y;z'))
+
+    def test_pickle(self):
+        # When pickling, just compile the regex.
+        # Sphinx, which we use for documentation, pickles
+        # some compiled regexes.
+        lazy_pattern = lazy_regex.lazy_compile('[,;]*')
+        pickled = pickle.dumps(lazy_pattern)
+        unpickled_lazy_pattern = pickle.loads(pickled)
+        self.assertEqual(['x', 'y', 'z'],
+            unpickled_lazy_pattern.split('x,y;z'))
 
 
 class TestInstallLazyCompile(tests.TestCase):

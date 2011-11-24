@@ -24,7 +24,6 @@ from bzrlib import (
     registry,
     revision,
     revisionspec,
-    symbol_versioning,
     tests,
     )
 
@@ -1636,3 +1635,4 @@ class TestLogDefaults(TestCaseForLogFormatter):
         log.Logger(b, request).show(log_formatter)
         # should now only have 2 revisions:
         self.assertEquals(len(log_formatter.revisions), 2)
+

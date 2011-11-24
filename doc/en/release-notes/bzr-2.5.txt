@@ -39,6 +39,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
+  pickled. (Jelmer Vernooij, #893149)
+
 * A new section local option ``basename`` is available to help support some
   ``bzr-pipeline`` workflows and more generally help mapping local paths to
   remote ones. See ``bzr help configuration`` for more details.
@@ -55,6 +58,11 @@ Bug Fixes
 
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
+
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
 
 Documentation
 *************
@@ -82,8 +90,13 @@ Internals
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
-* New HPSS calls ``Repository.has_signature_for_revision_id`` and
-  ``Repository.make_working_trees``.  (Jelmer Vernooij)
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
+
+* New HPSS calls ``Repository.has_signature_for_revision_id``,
+  ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
+  ``BzrDir.has_workingtree`` and ``Branch.put_config_file``.
+  (Jelmer Vernooij)
 
 Testing
 *******
