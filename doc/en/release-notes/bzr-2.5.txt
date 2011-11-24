@@ -50,6 +50,12 @@ Bug Fixes
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
+* Split segments from URLs for colocated branches without assuming the
+  combined form is a valid. (Martin Packman, #842233)
+
+* Support looking up revision numbers by revision id in empty branches.
+  (Jelmer Vernooij, #535031)
+
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 

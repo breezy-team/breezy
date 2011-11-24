@@ -501,6 +501,7 @@ class TestUrlToPath(TestCase):
 
     def test_split_segment_parameters_raw(self):
         split_segment_parameters_raw = urlutils.split_segment_parameters_raw
+        # Check relative references with absolute paths
         self.assertEquals(("/some/path", []),
             split_segment_parameters_raw("/some/path"))
         self.assertEquals(("/some/path", ["tip"]),
@@ -511,19 +512,22 @@ class TestUrlToPath(TestCase):
             split_segment_parameters_raw("/somedir/path,heads%2Ftip"))
         self.assertEquals(("/somedir/path", ["heads%2Ftip", "bar"]),
             split_segment_parameters_raw("/somedir/path,heads%2Ftip,bar"))
-        self.assertEquals(("/", ["key1=val1"]),
+        # Check relative references with relative paths
+        self.assertEquals(("", ["key1=val1"]),
             split_segment_parameters_raw(",key1=val1"))
         self.assertEquals(("foo/", ["key1=val1"]),
             split_segment_parameters_raw("foo/,key1=val1"))
-        self.assertEquals(("/foo", ["key1=val1"]),
+        self.assertEquals(("foo", ["key1=val1"]),
             split_segment_parameters_raw("foo,key1=val1"))
         self.assertEquals(("foo/base,la=bla/other/elements", []),
             split_segment_parameters_raw("foo/base,la=bla/other/elements"))
         self.assertEquals(("foo/base,la=bla/other/elements", ["a=b"]),
             split_segment_parameters_raw("foo/base,la=bla/other/elements,a=b"))
+        # TODO: Check full URLs as well as relative references
 
     def test_split_segment_parameters(self):
         split_segment_parameters = urlutils.split_segment_parameters
+        # Check relative references with absolute paths
         self.assertEquals(("/some/path", {}),
             split_segment_parameters("/some/path"))
         self.assertEquals(("/some/path", {"branch": "tip"}),
@@ -538,7 +542,8 @@ class TestUrlToPath(TestCase):
                 "/somedir/path,ref=heads%2Ftip,key1=val1"))
         self.assertEquals(("/somedir/path", {"ref": "heads%2F=tip"}),
             split_segment_parameters("/somedir/path,ref=heads%2F=tip"))
-        self.assertEquals(("/", {"key1": "val1"}),
+        # Check relative references with relative paths
+        self.assertEquals(("", {"key1": "val1"}),
             split_segment_parameters(",key1=val1"))
         self.assertEquals(("foo/", {"key1": "val1"}),
             split_segment_parameters("foo/,key1=val1"))
@@ -547,6 +552,7 @@ class TestUrlToPath(TestCase):
         self.assertEquals(("foo/base,key1=val1/other/elements",
             {"key2": "val2"}), split_segment_parameters(
                 "foo/base,key1=val1/other/elements,key2=val2"))
+        # TODO: Check full URLs as well as relative references
 
     def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash

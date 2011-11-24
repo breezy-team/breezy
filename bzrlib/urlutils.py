@@ -441,11 +441,15 @@ def split_segment_parameters_raw(url):
     :param url: A relative or absolute URL
     :return: (url, subsegments)
     """
-    (parent_url, child_dir) = split(url)
-    subsegments = child_dir.split(",")
-    if len(subsegments) == 1:
+    # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
+    #                operates on urls not url+segments, and Transport classes
+    #                should not be blindly adding slashes in the first place. 
+    lurl = strip_trailing_slash(url)
+    # Segments begin at first comma after last forward slash, if one exists
+    segment_start = lurl.find(",", lurl.rfind("/")+1)
+    if segment_start == -1:
         return (url, [])
-    return (join(parent_url, subsegments[0]), subsegments[1:])
+    return (lurl[:segment_start], lurl[segment_start+1:].split(","))
 
 
 def split_segment_parameters(url):
