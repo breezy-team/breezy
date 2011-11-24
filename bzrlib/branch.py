@@ -1659,9 +1659,10 @@ class BranchFormat(controldir.ControlComponentFormat):
         """
         raise NotImplementedError(self.set_reference)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(cls.get_format_string)
 
     def get_format_description(self):
         """Return the short format description for this format."""
@@ -2142,7 +2143,8 @@ class BzrBranchFormat5(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch5
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG branch format 5\n"
 
@@ -2178,7 +2180,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch6
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar Branch Format 6 (bzr 0.15)\n"
 
@@ -2210,7 +2213,8 @@ class BzrBranchFormat8(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch8
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar Branch Format 8 (needs bzr 1.15)\n"
 
@@ -2264,7 +2268,8 @@ class BzrBranchFormat7(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch7
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar Branch Format 7 (needs bzr 1.6)\n"
 
@@ -2296,7 +2301,8 @@ class BranchReferenceFormat(BranchFormatMetadir):
      - a format string
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG Branch Reference Format 1\n"
 

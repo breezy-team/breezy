@@ -40,7 +40,7 @@ class TestDefaultFormat(tests.TestCase):
 
     def test_default_format(self):
         # update this if you change the default branch format
-        self.assertIsInstance(_mod_branch.format_registry.get_default(),
+        self.assertEquals(_mod_branch.format_registry.get_default(),
                 _mod_branch.BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):
@@ -177,7 +177,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = _mod_branch.BranchFormat.find_format(dir)
+            found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
@@ -195,15 +195,26 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NotBranchError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
+
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.bzrdir.control_transport.put_bytes('branch-format',
+            tree.bzrdir._format.get_format_string() + 
+            "feature\tnecessity\n")
+        found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
+        self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
+        self.assertEquals(
+            found_format.features.get_feature("feature"),
+            "necessity")
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions
@@ -721,4 +732,3 @@ class TestPullResult(tests.TestCase):
         f = StringIO()
         r.report(f)
         self.assertEqual("No revisions or tags to pull.\n", f.getvalue())
-

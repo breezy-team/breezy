@@ -899,8 +899,8 @@ class BzrDirMeta1(BzrDir):
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
-        from bzrlib.branch import BranchFormat
-        return BranchFormat.find_format(self, name=name)
+        from bzrlib.branch import BranchFormatMetadir
+        return BranchFormatMetadir.find_format(self, name=name)
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
