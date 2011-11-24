@@ -355,9 +355,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file_size)
 
-    def get_file_by_path(self, path):
-        raise NotImplementedError(self.get_file_by_path)
-
     def is_executable(self, file_id, path=None):
         """Check if a file is executable.
 
@@ -827,6 +824,7 @@ class InventoryTree(Tree):
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids, yield_parents=yield_parents)
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
 

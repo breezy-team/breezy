@@ -148,9 +148,12 @@ class SubdirCommit(TestCaseWithTransport):
         new = b.repository.revision_tree(b.get_rev_id(2))
         new.lock_read()
 
-        self.assertEqual(new.get_file_by_path('b/two').read(), 'old contents')
-        self.assertEqual(new.get_file_by_path('top').read(), 'old contents')
-        self.assertEqual(new.get_file_by_path('a/one').read(), 'new contents')
+        def get_text_by_path(tree, path):
+            return tree.get_file_text(tree.path2id(path), path)
+
+        self.assertEqual(get_text_by_path(new, 'b/two').read(), 'old contents')
+        self.assertEqual(get_text_by_path(new, 'top').read(), 'old contents')
+        self.assertEqual(get_text_by_path(new, 'a/one').read(), 'new contents')
         new.unlock()
 
         os.chdir('a')
@@ -158,17 +161,17 @@ class SubdirCommit(TestCaseWithTransport):
         self.run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'])
         v3 = b.repository.revision_tree(b.get_rev_id(3))
         v3.lock_read()
-        self.assertEqual(v3.get_file_by_path('b/two').read(), 'old contents')
-        self.assertEqual(v3.get_file_by_path('top').read(), 'old contents')
-        self.assertEqual(v3.get_file_by_path('a/one').read(), 'new contents')
+        self.assertEqual(get_text_by_path(v3, 'b/two'), 'old contents')
+        self.assertEqual(get_text_by_path(v3, 'top'), 'old contents')
+        self.assertEqual(get_text_by_path(v3, 'a/one'), 'new contents')
         v3.unlock()
 
         # commit in subdirectory commits whole tree
         self.run_bzr(['commit', '-m', 'commit whole tree from subdir'])
         v4 = b.repository.revision_tree(b.get_rev_id(4))
         v4.lock_read()
-        self.assertEqual(v4.get_file_by_path('b/two').read(), 'new contents')
-        self.assertEqual(v4.get_file_by_path('top').read(), 'new contents')
+        self.assertEqual(get_text_by_path(v4, 'b/two'), 'new contents')
+        self.assertEqual(get_text_by_path(v4, 'top'), 'new contents')
         v4.unlock()
 
         # TODO: factor out some kind of assert_tree_state() method
