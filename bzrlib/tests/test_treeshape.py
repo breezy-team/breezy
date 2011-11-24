@@ -19,6 +19,9 @@ import os
 
 
 from bzrlib import tests
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestTreeShape(tests.TestCaseWithTransport):
@@ -35,7 +38,7 @@ class TestTreeShape(tests.TestCaseWithTransport):
         self.assertFileEqual('hello', '.bzr/README')
 
     def test_build_tree_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.build_tree_contents([('link@', 'target')])
         self.assertEqual('target',
             os.readlink('link'))

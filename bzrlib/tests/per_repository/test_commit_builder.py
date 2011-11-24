@@ -28,6 +28,9 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import per_repository
+from bzrlib.tests import (
+    features,
+    )
 
 
 class TestCommitBuilder(per_repository.TestCaseWithRepository):
@@ -145,6 +148,21 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
+    def test_updates_branch(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            will_update_branch = builder.updates_branch
+            rev_id = builder.commit('might update the branch')
+        finally:
+            tree.unlock()
+        actually_updated_branch = (tree.branch.last_revision() == rev_id)
+        self.assertEquals(actually_updated_branch, will_update_branch)
+
     def test_commit_with_revision_id_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -215,7 +233,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # on deserialisation, but thats all the current contract guarantees
         # anyway.
         self.assertEqual(revision_id,
-            tree.branch.repository.get_inventory(revision_id).revision_id)
+            tree.branch.repository.revision_tree(revision_id).get_revision_id())
 
     def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")
@@ -230,6 +248,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 except:
                     builder.abort()
                     raise
+                else:
+                    builder.commit("msg")
             self.assertRaises(errors.RootMissing, do_commit)
         finally:
             tree.unlock()
@@ -520,7 +540,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # Just a couple simple tests to ensure that it actually follows
             # the RevisionTree api.
             self.assertEqual(rev_id, rev_tree.get_revision_id())
-            self.assertEqual([], rev_tree.get_parent_ids())
+            self.assertEqual((), tuple(rev_tree.get_parent_ids()))
         finally:
             tree.unlock()
 
@@ -627,14 +647,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_commit_link_unchanged(self):
         # committing without changing a link does not change the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link')
 
     def test_last_modified_revision_after_commit_link_unchanged_ric(self):
         # committing without changing a link does not change the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link',
@@ -709,14 +729,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_rename_link_changes(self):
         # renaming a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link')
 
     def test_last_modified_revision_after_rename_link_changes_ric(self):
         # renaming a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link',
@@ -784,14 +804,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_reparent_link_changes(self):
         # reparenting a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_reparent_check_changed(tree, 'link')
 
     def test_last_modified_revision_after_reparent_link_changes_ric(self):
         # reparenting a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_reparent_check_changed(tree, 'link',
@@ -1019,7 +1039,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_content_link_changes(self):
         # changing a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         def change_link():
@@ -1032,7 +1052,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         if file_id is None:
             file_id = link
         # changing a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink(target, link)
         def change_link():
@@ -1048,7 +1068,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             'link', 'target', 'newtarget')
 
     def test_last_modified_rev_after_content_unicode_link_changes_ric(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_last_mod_rev_after_content_link_changes_ric(
             u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget',
 
@@ -1113,14 +1133,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_merge_link_changes(self):
         # merge a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge(tree1, 'link')
 
     def test_last_modified_revision_after_merge_link_changes_ric(self):
         # merge a link changes the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge(tree1, 'link',
@@ -1207,14 +1227,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_converged_merge_link_unchanged(self):
         # merge a link that changed preserves the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link')
 
     def test_last_modified_revision_after_converged_merge_link_unchanged_ric(self):
         # merge a link that changed preserves the last modified.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link',
@@ -1260,7 +1280,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.build_tree([name])
 
     def make_link(self, name):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         os.symlink('target', name)
 
     def make_reference(self, name):
@@ -1275,7 +1295,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            osutils.delete_any(path)
+            if osutils.file_kind(path) == "directory":
+                osutils.rmtree(path)
+            else:
+                osutils.delete_any(path)
             make_after(path)
 
         self._add_commit_change_check_changed(tree, path, change_kind,
@@ -1286,16 +1309,26 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=True)
 
     def test_last_modified_dir_file_ric(self):
-        self._check_kind_change(self.make_dir, self.make_file,
-            expect_fs_hash=True,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_file,
+                expect_fs_hash=True,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to file")
 
     def test_last_modified_dir_link(self):
         self._check_kind_change(self.make_dir, self.make_link)
 
     def test_last_modified_dir_link_ric(self):
-        self._check_kind_change(self.make_dir, self.make_link,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_link,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to link")
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,

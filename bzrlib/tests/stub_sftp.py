@@ -553,7 +553,7 @@ class SFTPHomeDirServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url("~/")
+        return self._get_sftp_url("%7E/")
 
 
 class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):

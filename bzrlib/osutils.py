@@ -42,10 +42,12 @@ import unicodedata
 
 from bzrlib import (
     cache_utf8,
+    config,
     errors,
     trace,
     win32utils,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.symbol_versioning import (
@@ -88,8 +90,8 @@ def get_unicode_argv():
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
     except UnicodeDecodeError:
-        raise errors.BzrError("Parameter %r encoding is unsupported by %s "
-            "application locale." % (a, user_encoding))
+        raise errors.BzrError(gettext("Parameter {0!r} encoding is unsupported by {1} "
+            "application locale.").format(a, user_encoding))
 
 
 def make_readonly(filename):
@@ -189,7 +191,7 @@ if lexists is None:
             if e.errno == errno.ENOENT:
                 return False;
             else:
-                raise errors.BzrError("lstat/stat of (%r): %r" % (f, e))
+                raise errors.BzrError(gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -939,7 +941,7 @@ def splitpath(p):
     rps = []
     for f in ps:
         if f == '..':
-            raise errors.BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
         elif (f == '.') or (f == ''):
             pass
         else:
@@ -950,7 +952,7 @@ def splitpath(p):
 def joinpath(p):
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
-            raise errors.BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
     return pathjoin(*p)
 
 
@@ -1000,8 +1002,7 @@ def failed_to_load_extension(exception):
 def report_extension_load_failures():
     if not _extension_load_failures:
         return
-    from bzrlib.config import GlobalConfig
-    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+    if config.GlobalStack().get('ignore_missing_extensions'):
         return
     # the warnings framework should by default show this only once
     from bzrlib.trace import warning
@@ -1169,7 +1170,7 @@ def relpath(base, path):
 
     if len(base) < MIN_ABS_PATHLENGTH:
         # must have space for e.g. a drive letter
-        raise ValueError('%r is too short to calculate a relative path'
+        raise ValueError(gettext('%r is too short to calculate a relative path')
             % (base,))
 
     rp = abspath(path)
@@ -2193,15 +2194,18 @@ def file_kind_from_stat_mode_thunk(mode):
     return file_kind_from_stat_mode(mode)
 file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
 
-
-def file_kind(f, _lstat=os.lstat):
+def file_stat(f, _lstat=os.lstat):
     try:
-        return file_kind_from_stat_mode(_lstat(f).st_mode)
+        # XXX cache?
+        return _lstat(f)
     except OSError, e:
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
+def file_kind(f, _lstat=os.lstat):
+    stat_value = file_stat(f, _lstat)
+    return file_kind_from_stat_mode(stat_value.st_mode)
 
 def until_no_eintr(f, *a, **kw):
     """Run f(*a, **kw), retrying if an EINTR error occurs.
@@ -2267,7 +2271,7 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-if sys.platform == 'linux2':
+if sys.platform.startswith('linux'):
     def _local_concurrency():
         try:
             return os.sysconf('SC_NPROCESSORS_ONLN')
@@ -2312,14 +2316,15 @@ def local_concurrency(use_cache=True):
     if concurrency is None:
         try:
             import multiprocessing
-        except ImportError:
+            concurrency = multiprocessing.cpu_count()
+        except (ImportError, NotImplementedError):
             # multiprocessing is only available on Python >= 2.6
+            # and multiprocessing.cpu_count() isn't implemented on all
+            # platforms
             try:
                 concurrency = _local_concurrency()
             except (OSError, IOError):
                 pass
-        else:
-            concurrency = multiprocessing.cpu_count()
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):

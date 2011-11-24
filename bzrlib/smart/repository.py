@@ -26,9 +26,11 @@ import threading
 from bzrlib import (
     bencode,
     errors,
+    estimate_compressed_size,
     graph,
     osutils,
     pack,
+    trace,
     ui,
     )
 from bzrlib.bzrdir import BzrDir
@@ -141,6 +143,7 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
+_lsprof_count = 0
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     """Bzr 1.2+ - get parent data for revisions during a graph search."""
@@ -180,27 +183,11 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
-    def _do_repository_request(self, body_bytes):
-        repository = self._repository
-        revision_ids = set(self._revision_ids)
-        include_missing = 'include-missing:' in revision_ids
-        if include_missing:
-            revision_ids.remove('include-missing:')
-        body_lines = body_bytes.split('\n')
-        search_result, error = self.recreate_search_from_recipe(
-            repository, body_lines)
-        if error is not None:
-            return error
-        # TODO might be nice to start up the search again; but thats not
-        # written or tested yet.
-        client_seen_revs = set(search_result.get_keys())
-        # Always include the requested ids.
-        client_seen_revs.difference_update(revision_ids)
-        lines = []
-        repo_graph = repository.get_graph()
+    def _expand_requested_revs(self, repo_graph, revision_ids, client_seen_revs,
+                               include_missing, max_size=65536):
         result = {}
         queried_revs = set()
-        size_so_far = 0
+        estimator = estimate_compressed_size.ZLibEstimator(max_size)
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
@@ -228,21 +215,47 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     # add parents to the result
                     result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
-                    size_so_far += 2 + len(encoded_id) + sum(map(len, parents))
+                    line = '%s %s\n' % (encoded_id, ' '.join(parents))
+                    estimator.add_content(line)
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
-            if self.no_extra_results or (
-                first_loop_done and size_so_far > 250000):
+            if self.no_extra_results or (first_loop_done and estimator.full()):
+                trace.mutter('size: %d, z_size: %d'
+                             % (estimator._uncompressed_size_added,
+                                estimator._compressed_size_added))
                 next_revs = set()
                 break
             # don't query things we've already queried
             next_revs = next_revs.difference(queried_revs)
             first_loop_done = True
+        return result
+
+    def _do_repository_request(self, body_bytes):
+        repository = self._repository
+        revision_ids = set(self._revision_ids)
+        include_missing = 'include-missing:' in revision_ids
+        if include_missing:
+            revision_ids.remove('include-missing:')
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
+        if error is not None:
+            return error
+        # TODO might be nice to start up the search again; but thats not
+        # written or tested yet.
+        client_seen_revs = set(search_result.get_keys())
+        # Always include the requested ids.
+        client_seen_revs.difference_update(revision_ids)
+
+        repo_graph = repository.get_graph()
+        result = self._expand_requested_revs(repo_graph, revision_ids,
+                                             client_seen_revs, include_missing)
 
         # sorting trivially puts lexographically similar revision ids together.
         # Compression FTW.
+        lines = []
         for revision, parents in sorted(result.items()):
             lines.append(' '.join((revision, ) + tuple(parents)))
 
@@ -320,13 +333,37 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to lookup.
-        :return: A smart server response of ('ok', ) if the revision is
-            present.
+        :return: A smart server response of ('yes', ) if the revision is
+            present. ('no', ) if it is missing.
         """
         if repository.has_revision(revision_id):
             return SuccessfulSmartServerResponse(('yes', ))
         else:
             return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerRequestHasSignatureForRevisionId(
+        SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id):
+        """Return ok if a signature is present for a revision.
+
+        Introduced in bzr 2.5.0.
+
+        :param repository: The repository to query in.
+        :param revision_id: The utf8 encoded revision_id to lookup.
+        :return: A smart server response of ('yes', ) if a
+            signature for the revision is present,
+            ('no', ) if it is missing.
+        """
+        try:
+            if repository.has_signature_for_revision_id(revision_id):
+                return SuccessfulSmartServerResponse(('yes', ))
+            else:
+                return SuccessfulSmartServerResponse(('no', ))
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('nosuchrevision', revision_id))
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
@@ -381,6 +418,23 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
             shared, and ('no', ) if it is not.
         """
         if repository.is_shared():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """Return the result of repository.make_working_trees().
+
+        Introduced in bzr 2.5.0.
+
+        :param repository: The repository to query in.
+        :return: A smart server response of ('yes', ) if the repository uses
+            working trees, and ('no', ) if it is not.
+        """
+        if repository.make_working_trees():
             return SuccessfulSmartServerResponse(('yes', ))
         else:
             return SuccessfulSmartServerResponse(('no', ))

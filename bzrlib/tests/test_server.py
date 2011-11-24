@@ -19,10 +19,12 @@ import socket
 import SocketServer
 import sys
 import threading
+import traceback
 
 
 from bzrlib import (
     cethread,
+    errors,
     osutils,
     transport,
     urlutils,
@@ -212,10 +214,10 @@ class TestingPathFilteringServer(pathfilter.PathFilteringServer):
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
         if backing_server is not None:
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 backing_server.get_url())
         else:
-            self.backing_transport = transport.get_transport('.')
+            self.backing_transport = transport.get_transport_from_path('.')
         self.backing_transport.clone('added-by-filter').ensure_base()
         self.filter_func = lambda x: 'added-by-filter/' + x
         super(TestingPathFilteringServer, self).start_server()
@@ -233,10 +235,10 @@ class TestingChrootServer(chroot.ChrootServer):
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
         if backing_server is not None:
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 backing_server.get_url())
         else:
-            self.backing_transport = transport.get_transport('.')
+            self.backing_transport = transport.get_transport_from_path('.')
         super(TestingChrootServer, self).start_server()
 
     def get_bogus_url(self):
@@ -265,7 +267,7 @@ class TestThread(cethread.CatchingExceptionThread):
             #raise AssertionError('thread %s hung' % (self.name,))
 
 
-class TestingTCPServerMixin:
+class TestingTCPServerMixin(object):
     """Mixin to support running SocketServer.TCPServer in a thread.
 
     Tests are connecting from the main thread, the server has to be run in a
@@ -311,7 +313,8 @@ class TestingTCPServerMixin:
                 self.process_request(request, client_address)
             except:
                 self.handle_error(request, client_address)
-                self.close_request(request)
+        else:
+            self.close_request(request)
 
     def get_request(self):
         return self.socket.accept()
@@ -331,8 +334,16 @@ class TestingTCPServerMixin:
         # The following can be used for debugging purposes, it will display the
         # exception and the traceback just when it occurs instead of waiting
         # for the thread to be joined.
-
         # SocketServer.BaseServer.handle_error(self, request, client_address)
+
+        # We call close_request manually, because we are going to raise an
+        # exception. The SocketServer implementation calls:
+        #   handle_error(...)
+        #   close_request(...)
+        # But because we raise the exception, close_request will never be
+        # triggered. This helps client not block waiting for a response when
+        # the server gets an exception.
+        self.close_request(request)
         raise
 
     def ignored_exceptions_during_shutdown(self, e):
@@ -418,7 +429,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         SocketServer.ThreadingTCPServer.__init__(self, server_address,
                                                  request_handler_class)
 
-    def get_request (self):
+    def get_request(self):
         """Get the request and client address from the socket."""
         sock, addr = TestingTCPServerMixin.get_request(self)
         # The thread is not created yet, it will be updated in process_request
@@ -594,16 +605,23 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
     def __init__(self, request, client_address, server):
         medium.SmartServerSocketStreamMedium.__init__(
             self, request, server.backing_transport,
-            server.root_client_path)
+            server.root_client_path,
+            timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
         request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         SocketServer.BaseRequestHandler.__init__(self, request, client_address,
                                                  server)
 
     def handle(self):
-        while not self.finished:
-            server_protocol = self._build_protocol()
-            self._serve_one_request(server_protocol)
+        try:
+            while not self.finished:
+                server_protocol = self._build_protocol()
+                self._serve_one_request(server_protocol)
+        except errors.ConnectionTimeout:
+            # idle connections aren't considered a failure of the server
+            return
 
+
+_DEFAULT_TESTING_CLIENT_TIMEOUT = 60.0
 
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 
@@ -612,7 +630,8 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
         TestingThreadingTCPServer.__init__(self, server_address,
                                            request_handler_class)
         server.SmartTCPServer.__init__(self, backing_transport,
-                                       root_client_path)
+            root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
+
     def serve(self):
         self.run_server_started_hooks()
         try:
@@ -670,7 +689,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         self.chroot_server = ChrootServer(
             self.get_backing_transport(backing_transport_server))
         self.chroot_server.start_server()
-        self.backing_transport = transport.get_transport(
+        self.backing_transport = transport.get_transport_from_url(
             self.chroot_server.get_url())
         super(SmartTCPServer_for_testing, self).start_server()
 
@@ -682,7 +701,8 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
-        return transport.get_transport(backing_transport_server.get_url())
+        return transport.get_transport_from_url(
+            backing_transport_server.get_url())
 
     def get_url(self):
         url = self.server.get_url()
@@ -699,7 +719,7 @@ class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
+        return transport.get_transport_from_url(url)
 
 
 class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
@@ -720,4 +740,4 @@ class ReadonlySmartTCPServer_for_testing_v2_only(
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
+        return transport.get_transport_from_url(url)

@@ -32,7 +32,10 @@ from bzrlib import (
     workingtree_4,
     )
 from bzrlib.transport import memory
-from bzrlib.tests import test_osutils
+from bzrlib.tests import (
+    features,
+    test_osutils,
+    )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
@@ -1209,7 +1212,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
         # bzr doesn't support fake symlinks on windows, yet.
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         os.symlink(target, link_name)
         stat = os.lstat(link_name)
         expected_entries = [
@@ -1240,7 +1243,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self._test_add_symlink_to_root_no_parents_all_data('a link', 'target')
 
     def test_add_symlink_unicode_to_root_no_parents_all_data(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_add_symlink_to_root_no_parents_all_data(
             u'\N{Euro Sign}link', u'targ\N{Euro Sign}et')
 

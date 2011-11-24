@@ -37,6 +37,7 @@ from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import basename, pathjoin, file_kind
 from bzrlib.tests import (
+    features,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     test_merge_core,
@@ -137,26 +138,15 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_unrelated_retains_root(self):
         wt = self.make_branch_and_tree('tree')
-        root_id_before_merge = wt.get_root_id()
         other_tree = self.make_branch_and_tree('other')
-        # Do a commit so there is something to merge
-        other_tree.commit('commit other')
-        self.assertNotEquals(root_id_before_merge, other_tree.get_root_id())
-        wt.merge_from_branch(other_tree.branch,
-                             from_revision=_mod_revision.NULL_REVISION)
-        self.assertEqual(root_id_before_merge, wt.get_root_id())
-
-    def test_merge_preview_unrelated_retains_root(self):
-        wt = self.make_branch_and_tree('tree')
-        other_tree = self.make_branch_and_tree('other')
-        # Do a commit so there is something to merge
-        other_tree.commit('commit other')
+        self.addCleanup(other_tree.lock_read().unlock)
         merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
                                          this_branch=wt.branch,
                                          do_merge=False)
-        with merger.make_preview_transform() as tt:
-            preview = tt.get_preview_tree()
-            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+        with transform.TransformPreview(wt) as merger.tt:
+            merger._compute_transform()
+            new_root_id = merger.tt.final_file_id(merger.tt.root)
+            self.assertEqual(wt.get_root_id(), new_root_id)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
@@ -430,8 +420,7 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(['a'])
         tree.add('a')
-        tree.commit("added a")
-        first_rev = tree.branch.revision_history()[0]
+        first_rev = tree.commit("added a")
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
@@ -519,9 +508,8 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(['a'])
         tree.add('a')
-        tree.commit("added a")
+        first_rev = tree.commit("added a")
         old_root_id = tree.get_root_id()
-        first_rev = tree.branch.revision_history()[0]
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
@@ -2195,7 +2183,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertTrue(wt.is_executable('foo-id'))
 
     def test_create_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A
         #  / \
         # B   C
@@ -2260,7 +2248,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                              wt.get_file_text('foo-id'))
 
     def test_modified_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2305,7 +2293,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_renamed_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B renames foo => barry
@@ -2361,7 +2349,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('blah', wt.id2path('foo-id'))
 
     def test_symlink_no_content_change(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2412,7 +2400,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_symlink_this_changed_kind(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Nothing
         #  / \
         # B   C     B creates symlink foo => bar
@@ -2465,7 +2453,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def test_symlink_all_wt(self):
         """Check behavior if all trees are Working Trees."""
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         # The big issue is that entry.symlink_target is None for WorkingTrees.
         # So we need to make sure we handle that case correctly.
         #   A   foo => bar

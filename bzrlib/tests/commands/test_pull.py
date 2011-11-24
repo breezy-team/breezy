@@ -54,5 +54,5 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
         # We don't care about the ouput but 'outf' should be defined
         pull.outf = tests.StringIOWrapper()
         pull.run(self.get_url('remote'), directory='local')
-        self.assertEquals(1, len(self.connections))
+        self.assertEquals(2, len(self.connections))
 

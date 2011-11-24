@@ -30,11 +30,10 @@ lazy_import.lazy_import(globals(), """
 from bzrlib import (
     annotate,
     bencode,
-    bzrdir,
+    controldir,
     commit,
     conflicts,
     delta,
-    errors,
     inventory,
     multiparent,
     osutils,
@@ -42,8 +41,9 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.i18n import gettext
 """)
-from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
+from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ReusingTransform, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
@@ -231,11 +231,6 @@ class TreeTransformBase(object):
         new_roots = [k for k, v in self._new_parent.iteritems() if v is
                      ROOT_PARENT]
         if len(new_roots) < 1:
-            if self.final_kind(self.root) is None:
-                self.cancel_deletion(self.root)
-            if self.final_file_id(self.root) is None:
-                self.version_file(self.tree_file_id(self.root),
-                                     self.root)
             return
         if len(new_roots) != 1:
             raise ValueError('A tree cannot have two roots!')
@@ -566,9 +561,7 @@ class TreeTransformBase(object):
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
             if file_id is not None:
-                # XXX: This seems like something that should go via a different
-                #      indirection.
-                if self._tree.inventory[file_id].kind == 'directory':
+                if self._tree.stored_kind(file_id) == 'directory':
                     parents.append(trans_id)
             elif self.tree_kind(trans_id) == 'directory':
                 parents.append(trans_id)
@@ -1731,7 +1724,7 @@ class TreeTransform(DiskTreeTransform):
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             if precomputed_delta is None:
-                child_pb.update('Apply phase', 0, 2)
+                child_pb.update(gettext('Apply phase'), 0, 2)
                 inventory_delta = self._generate_inventory_delta()
                 offset = 1
             else:
@@ -1742,9 +1735,9 @@ class TreeTransform(DiskTreeTransform):
             else:
                 mover = _mover
             try:
-                child_pb.update('Apply phase', 0 + offset, 2 + offset)
+                child_pb.update(gettext('Apply phase'), 0 + offset, 2 + offset)
                 self._apply_removals(mover)
-                child_pb.update('Apply phase', 1 + offset, 2 + offset)
+                child_pb.update(gettext('Apply phase'), 1 + offset, 2 + offset)
                 modified_paths = self._apply_insertions(mover)
             except:
                 mover.rollback()
@@ -1753,6 +1746,8 @@ class TreeTransform(DiskTreeTransform):
                 mover.apply_deletions()
         finally:
             child_pb.finished()
+        if self.final_file_id(self.root) is None:
+            inventory_delta = [e for e in inventory_delta if e[0] != '']
         self._tree.apply_inventory_delta(inventory_delta)
         self._apply_observed_sha1s()
         self._done = True
@@ -1768,7 +1763,7 @@ class TreeTransform(DiskTreeTransform):
         try:
             for num, trans_id in enumerate(self._removed_id):
                 if (num % 10) == 0:
-                    child_pb.update('removing file', num, total_entries)
+                    child_pb.update(gettext('removing file'), num, total_entries)
                 if trans_id == self._new_root:
                     file_id = self._tree.get_root_id()
                 else:
@@ -1786,7 +1781,7 @@ class TreeTransform(DiskTreeTransform):
             final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
-                    child_pb.update('adding file',
+                    child_pb.update(gettext('adding file'),
                                     num + len(self._removed_id), total_entries)
                 file_id = new_path_file_ids[trans_id]
                 if file_id is None:
@@ -1836,7 +1831,7 @@ class TreeTransform(DiskTreeTransform):
                 # do not attempt to move root into a subdirectory of itself.
                 if path == '':
                     continue
-                child_pb.update('removing file', num, len(tree_paths))
+                child_pb.update(gettext('removing file'), num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
                     delete_path = os.path.join(self._deletiondir, trans_id)
@@ -1871,7 +1866,7 @@ class TreeTransform(DiskTreeTransform):
         try:
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
-                    child_pb.update('adding file', num, len(new_paths))
+                    child_pb.update(gettext('adding file'), num, len(new_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._needs_rename:
                     try:
@@ -2261,6 +2256,18 @@ class _PreviewTree(tree.InventoryTree):
         else:
             return None
 
+    def get_file_verifier(self, file_id, path=None, stat_value=None):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        kind = self._transform._new_contents.get(trans_id)
+        if kind is None:
+            return self._transform._tree.get_file_verifier(file_id)
+        if kind == 'file':
+            fileobj = self.get_file(file_id)
+            try:
+                return ("SHA1", sha_file(fileobj))
+            finally:
+                fileobj.close()
+
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         trans_id = self._transform.trans_id_file_id(file_id)
         kind = self._transform._new_contents.get(trans_id)
@@ -2537,7 +2544,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     file_trans_id = {}
     top_pb = ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
-    if tree.inventory.root is not None:
+    if tree.get_root_id() is not None:
         # This is kind of a hack: we should be altering the root
         # as part of the regular tree shape diff logic.
         # The conditional test here is to avoid doing an
@@ -2558,7 +2565,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         try:
             deferred_contents = []
             num = 0
-            total = len(tree.inventory)
+            total = len(tree.all_file_ids())
             if delta_from_tree:
                 precomputed_delta = []
             else:
@@ -2573,8 +2580,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 for dir, files in wt.walkdirs():
                     existing_files.update(f[0] for f in files)
             for num, (tree_path, entry) in \
-                enumerate(tree.inventory.iter_entries_by_dir()):
-                pb.update("Building tree", num - len(deferred_contents), total)
+                enumerate(tree.iter_entries_by_dir()):
+                pb.update(gettext("Building tree"), num - len(deferred_contents), total)
                 if entry.parent_id is None:
                     continue
                 reparent = False
@@ -2586,7 +2593,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     kind = file_kind(target_path)
                     if kind == "directory":
                         try:
-                            bzrdir.BzrDir.open(target_path)
+                            controldir.ControlDir.open(target_path)
                         except errors.NotBranchError:
                             pass
                         else:
@@ -2664,7 +2671,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 new_desired_files.append((file_id,
                     (trans_id, tree_path, text_sha1)))
                 continue
-            pb.update('Adding file contents', count + offset, total)
+            pb.update(gettext('Adding file contents'), count + offset, total)
             if hardlink:
                 tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
                                    trans_id)
@@ -2691,7 +2698,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
             contents = filtered_output_bytes(contents, filters,
                 ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id, sha1=text_sha1)
-        pb.update('Adding file contents', count + offset, total)
+        pb.update(gettext('Adding file contents'), count + offset, total)
 
 
 def _reparent_children(tt, old_parent, new_parent):
@@ -2827,33 +2834,6 @@ def _get_backup_name(name, by_parent, parent_trans_id, tt):
     for new_name in name_gen():
         if not tt.has_named_child(by_parent, parent_trans_id, new_name):
             return new_name
-
-
-def _entry_changes(file_id, entry, working_tree):
-    """Determine in which ways the inventory entry has changed.
-
-    Returns booleans: has_contents, content_mod, meta_mod
-    has_contents means there are currently contents, but they differ
-    contents_mod means contents need to be modified
-    meta_mod means the metadata needs to be modified
-    """
-    cur_entry = working_tree.inventory[file_id]
-    try:
-        working_kind = working_tree.kind(file_id)
-        has_contents = True
-    except NoSuchFile:
-        has_contents = False
-        contents_mod = True
-        meta_mod = False
-    if has_contents is True:
-        if entry.kind != working_kind:
-            contents_mod, meta_mod = True, False
-        else:
-            cur_entry._read_tree_state(working_tree.id2path(file_id),
-                                       working_tree)
-            contents_mod, meta_mod = entry.detect_changes(cur_entry)
-            cur_entry._forget_tree_state()
-    return has_contents, contents_mod, meta_mod
 
 
 def revert(working_tree, target_tree, filenames, backups=False,
@@ -3038,7 +3018,7 @@ def resolve_conflicts(tt, pb=None, pass_func=None):
     pb = ui.ui_factory.nested_progress_bar()
     try:
         for n in range(10):
-            pb.update('Resolution pass', n+1, 10)
+            pb.update(gettext('Resolution pass'), n+1, 10)
             conflicts = tt.find_conflicts()
             if len(conflicts) == 0:
                 return new_conflicts
@@ -3068,7 +3048,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                 existing_file, new_file = conflict[2], conflict[1]
             else:
                 existing_file, new_file = conflict[1], conflict[2]
-            new_name = tt.final_name(existing_file)+'.moved'
+            new_name = tt.final_name(existing_file) + '.moved'
             tt.adjust_path(new_name, final_parent, existing_file)
             new_conflicts.add((c_type, 'Moved existing file to',
                                existing_file, new_file))

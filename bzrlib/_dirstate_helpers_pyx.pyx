@@ -812,7 +812,6 @@ cdef int minikind_from_mode(int mode): # cannot_raise
 _encode = binascii.b2a_base64
 
 
-from struct import pack
 cdef _pack_stat(stat_value):
     """return a string representing the stat value's key fields.
 
@@ -831,6 +830,11 @@ cdef _pack_stat(stat_value):
     aliased[5] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mode))
     packed = PyString_FromStringAndSize(result, 6*4)
     return _encode(packed)[:-1]
+
+
+def pack_stat(stat_value):
+    """Convert stat value into a packed representation quickly with pyrex"""
+    return _pack_stat(stat_value)
 
 
 def update_entry(self, entry, abspath, stat_value):

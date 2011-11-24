@@ -83,8 +83,8 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         to_file.write('\n\n')
 
         if self._include_history:
-            self._extract_revision_history()
-            revision_str = pprint.pformat(self._revision_history_info)
+            history = list(self._iter_revision_history())
+            revision_str = pprint.pformat(history)
             to_file.write('revisions = ')
             to_file.write(revision_str)
             to_file.write('\n\n')

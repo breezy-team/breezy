@@ -78,8 +78,8 @@ def file_relpath(base, path):
         raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
             (base, MIN_ABS_FILEURL_LENGTH))
-    base = local_path_from_url(base)
-    path = local_path_from_url(path)
+    base = osutils.normpath(local_path_from_url(base))
+    path = osutils.normpath(local_path_from_url(path))
     return escape(osutils.relpath(base, path))
 
 
@@ -181,6 +181,7 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
+    url = split_segment_parameters_raw(url)[0]
     file_localhost_prefix = 'file://localhost/'
     if url.startswith(file_localhost_prefix):
         path = url[len(file_localhost_prefix) - 1:]
@@ -208,6 +209,7 @@ def _win32_local_path_from_url(url):
     if not url.startswith('file://'):
         raise errors.InvalidURL(url, 'local urls must start with file:///, '
                                      'UNC path urls must start with file://')
+    url = split_segment_parameters_raw(url)[0]
     # We strip off all 3 slashes
     win32_url = url[len('file:'):]
     # check for UNC path: //HOST/path
@@ -385,7 +387,7 @@ def _win32_extract_drive_letter(url_base, path):
     """On win32 the drive letter needs to be added to the url base."""
     # Strip off the drive letter
     # path is currently /C:/foo
-    if len(path) < 3 or path[2] not in ':|' or path[3] != '/':
+    if len(path) < 4 or path[2] not in ':|' or path[3] != '/':
         raise errors.InvalidURL(url_base + path,
             'win32 file:/// paths need a drive letter')
     url_base += path[0:3] # file:// + /C:
@@ -439,11 +441,15 @@ def split_segment_parameters_raw(url):
     :param url: A relative or absolute URL
     :return: (url, subsegments)
     """
-    (parent_url, child_dir) = split(url)
-    subsegments = child_dir.split(",")
-    if len(subsegments) == 1:
+    # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
+    #                operates on urls not url+segments, and Transport classes
+    #                should not be blindly adding slashes in the first place. 
+    lurl = strip_trailing_slash(url)
+    # Segments begin at first comma after last forward slash, if one exists
+    segment_start = lurl.find(",", lurl.rfind("/")+1)
+    if segment_start == -1:
         return (url, [])
-    return (join(parent_url, subsegments[0]), subsegments[1:])
+    return (lurl[:segment_start], lurl[segment_start+1:].split(","))
 
 
 def split_segment_parameters(url):
@@ -729,6 +735,149 @@ def determine_relative_path(from_path, to_path):
     return osutils.pathjoin(*segments)
 
 
+class URL(object):
+    """Parsed URL."""
+
+    def __init__(self, scheme, quoted_user, quoted_password, quoted_host,
+            port, quoted_path):
+        self.scheme = scheme
+        self.quoted_host = quoted_host
+        self.host = urllib.unquote(self.quoted_host)
+        self.quoted_user = quoted_user
+        if self.quoted_user is not None:
+            self.user = urllib.unquote(self.quoted_user)
+        else:
+            self.user = None
+        self.quoted_password = quoted_password
+        if self.quoted_password is not None:
+            self.password = urllib.unquote(self.quoted_password)
+        else:
+            self.password = None
+        self.port = port
+        self.quoted_path = _url_hex_escapes_re.sub(_unescape_safe_chars, quoted_path)
+        self.path = urllib.unquote(self.quoted_path)
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                self.scheme == other.scheme and
+                self.host == other.host and
+                self.user == other.user and
+                self.password == other.password and
+                self.path == other.path)
+
+    def __repr__(self):
+        return "<%s(%r, %r, %r, %r, %r, %r)>" % (
+            self.__class__.__name__,
+            self.scheme, self.quoted_user, self.quoted_password,
+            self.quoted_host, self.port, self.quoted_path)
+
+    @classmethod
+    def from_string(cls, url):
+        """Create a URL object from a string.
+
+        :param url: URL as bytestring
+        """
+        if isinstance(url, unicode):
+            raise errors.InvalidURL('should be ascii:\n%r' % url)
+        url = url.encode('utf-8')
+        (scheme, netloc, path, params,
+         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        user = password = host = port = None
+        if '@' in netloc:
+            user, host = netloc.rsplit('@', 1)
+            if ':' in user:
+                user, password = user.split(':', 1)
+        else:
+            host = netloc
+
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'):
+            # there *is* port
+            host, port = host.rsplit(':',1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
+            host = host[1:-1]
+
+        return cls(scheme, user, password, host, port, path)
+
+    def __str__(self):
+        netloc = self.quoted_host
+        if ":" in netloc:
+            netloc = "[%s]" % netloc
+        if self.quoted_user is not None:
+            # Note that we don't put the password back even if we
+            # have one so that it doesn't get accidentally
+            # exposed.
+            netloc = '%s@%s' % (self.quoted_user, netloc)
+        if self.port is not None:
+            netloc = '%s:%d' % (netloc, self.port)
+        return urlparse.urlunparse(
+            (self.scheme, netloc, self.quoted_path, None, None, None))
+
+    @staticmethod
+    def _combine_paths(base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            t._combine_paths('/home/sarah', 'project/foo')
+                => '/home/sarah/project/foo'
+            t._combine_paths('/home/sarah', '../../etc')
+                => '/etc'
+            t._combine_paths('/home/sarah', '/etc')
+                => '/etc'
+
+        :param base_path: base path
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL(relpath)
+        relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        if not path.startswith('/'):
+            path = '/' + path
+        return path
+
+    def clone(self, offset=None):
+        """Return a new URL for a path relative to this URL.
+
+        :param offset: A relative path, already urlencoded
+        :return: `URL` instance
+        """
+        if offset is not None:
+            relative = unescape(offset).encode('utf-8')
+            path = self._combine_paths(self.path, relative)
+            path = urllib.quote(path, safe="/~")
+        else:
+            path = self.quoted_path
+        return self.__class__(self.scheme, self.quoted_user,
+                self.quoted_password, self.quoted_host, self.port,
+                path)
+
 
 def parse_url(url):
     """Extract the server address, the credentials and the path from the url.
@@ -737,36 +886,9 @@ def parse_url(url):
     chars.
 
     :param url: an quoted url
-
     :return: (scheme, user, password, host, port, path) tuple, all fields
         are unquoted.
     """
-    if isinstance(url, unicode):
-        raise errors.InvalidURL('should be ascii:\n%r' % url)
-    url = url.encode('utf-8')
-    (scheme, netloc, path, params,
-     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-    user = password = host = port = None
-    if '@' in netloc:
-        user, host = netloc.rsplit('@', 1)
-        if ':' in user:
-            user, password = user.split(':', 1)
-            password = urllib.unquote(password)
-        user = urllib.unquote(user)
-    else:
-        host = netloc
-
-    if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
-        host, port = host.rsplit(':',1)
-        try:
-            port = int(port)
-        except ValueError:
-            raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                    (port, url))
-    if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
-        host = host[1:-1]
-
-    host = urllib.unquote(host)
-    path = urllib.unquote(path)
-
-    return (scheme, user, password, host, port, path)
+    parsed_url = URL.from_string(url)
+    return (parsed_url.scheme, parsed_url.user, parsed_url.password,
+        parsed_url.host, parsed_url.port, parsed_url.path)

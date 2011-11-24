@@ -26,6 +26,7 @@ import gettext as _gettext
 import os
 import sys
 
+
 _translations = None
 
 
@@ -34,6 +35,7 @@ def gettext(message):
     
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ugettext(message)
 
 
@@ -46,6 +48,7 @@ def ngettext(singular, plural, number):
 
     :returns: translated message as unicode.
     """
+    install()
     return _translations.ungettext(singular, plural, number)
 
 
@@ -59,6 +62,7 @@ def gettext_per_paragraph(message):
 
     :returns: concatenated translated message as unicode.
     """
+    install()
     paragraphs = message.split(u'\n\n')
     ugettext = _translations.ugettext
     # Be careful not to translate the empty string -- it holds the
@@ -66,37 +70,78 @@ def gettext_per_paragraph(message):
     return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
 
 
+def disable_i18n():
+    """Do not allow i18n to be enabled.  Useful for third party users
+    of bzrlib."""
+    global _translations
+    _translations = _gettext.NullTranslations()
+
+
 def installed():
+    """Returns whether translations are in use or not."""
     return _translations is not None
 
 
 def install(lang=None):
+    """Enables gettext translations in bzr."""
     global _translations
+    if installed():
+        return
+    _translations = install_translations(lang)
+
+
+def install_translations(lang=None, domain='bzr', locale_base=None):
+    """Create a gettext translation object.
+    
+    :param lang: language to install.
+    :param domain: translation domain to install.
+    :param locale_base: plugins can specify their own directory.
+
+    :returns: a gettext translations object to use
+    """
     if lang is None:
         lang = _get_current_locale()
     if lang is not None:
         languages = lang.split(':')
     else:
         languages = None
-    _translations = _gettext.translation(
-            'bzr',
-            localedir=_get_locale_dir(),
+    translation = _gettext.translation(
+            domain,
+            localedir=_get_locale_dir(locale_base),
             languages=languages,
             fallback=True)
+    return translation
+
+
+def add_fallback(fallback):
+    """
+    Add a fallback translations object.  Typically used by plugins.
+
+    :param fallback: gettext.GNUTranslations object
+    """
+    install()
+    _translations.add_fallback(fallback)
 
 
 def uninstall():
+    """Disables gettext translations."""
     global _translations
     _translations = None
 
 
-def _get_locale_dir():
+def _get_locale_dir(base):
+    """Returns directory to find .mo translations file in, either local or system
+
+    :param base: plugins can specify their own local directory
+    """
     if hasattr(sys, 'frozen'):
-        base = os.path.dirname(
+        if base is None:
+            base = os.path.dirname(
                 unicode(sys.executable, sys.getfilesystemencoding()))
         return os.path.join(base, u'locale')
     else:
-        base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
+        if base is None:
+            base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
         dirpath = os.path.realpath(os.path.join(base, u'locale'))
         if os.path.exists(dirpath):
             return dirpath
@@ -134,7 +179,7 @@ def _check_win32_locale():
 def _get_current_locale():
     if not os.environ.get('LANGUAGE'):
         from bzrlib import config
-        lang = config.GlobalConfig().get_user_option('language')
+        lang = config.GlobalStack().get('language')
         if lang:
             os.environ['LANGUAGE'] = lang
             return lang
@@ -145,3 +190,16 @@ def _get_current_locale():
         if lang:
             return lang
     return None
+
+
+def load_plugin_translations(domain):
+    """Load the translations for a specific plugin.
+
+    :param domain: Gettext domain name (usually 'bzr-PLUGINNAME')
+    """
+    locale_base = os.path.dirname(
+        unicode(__file__, sys.getfilesystemencoding()))
+    translation = install_translations(domain=domain,
+        locale_base=locale_base)
+    add_fallback(translation)
+    return translation

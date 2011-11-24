@@ -29,14 +29,11 @@ from bzrlib import (
     osutils,
     ignores,
     msgeditor,
-    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
-    probe_bad_non_ascii,
     test_foreign,
-    TestSkipped,
-    UnicodeFilenameFeature,
+    features,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -138,7 +135,7 @@ bzr: ERROR: No changes to commit.\
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
         open(file_name, 'w').write('hello world')
@@ -332,7 +329,7 @@ bzr: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
-        self.run_bzr('commit -m ""', retcode=3)
+        self.run_bzr('commit -m ""')
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -599,6 +596,25 @@ altered in u2
             'commit -m add-b --fixes=xxx:123',
             working_dir='tree')
 
+    def test_fixes_bug_with_default_tracker(self):
+        """commit --fixes=234 uses the default bug tracker."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["bzr: ERROR: No tracker specified for bug 123. Use the form "
+            "'tracker:id' or specify a default bug tracker using the "
+            "`bugtracker` option.\n"
+            "See \"bzr help bugs\" for more information on this feature. "
+            "Commit refused."],
+            'commit -m add-b --fixes=123',
+            working_dir='tree')
+        tree.branch.get_config().set_user_option("bugtracker", "lp")
+        self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('https://launchpad.net/bugs/234 fixed',
+                         last_rev.properties['bugs'])
+
     def test_fixes_invalid_bug_number(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
@@ -616,10 +632,10 @@ altered in u2
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            [r"Invalid bug orange. Must be in the form of 'tracker:id'\. "
-             r"See \"bzr help bugs\" for more information on this feature.\n"
-             r"Commit refused\."],
-            'commit -m add-b --fixes=orange',
+            [r"Invalid bug orange:apples:bananas. Must be in the form of "
+             r"'tracker:id'\. See \"bzr help bugs\" for more information on "
+             r"this feature.\nCommit refused\."],
+            'commit -m add-b --fixes=orange:apples:bananas',
             working_dir='tree')
 
     def test_no_author(self):
@@ -688,6 +704,18 @@ altered in u2
         self.assertStartsWith(
             err, "bzr: ERROR: Could not parse --commit-time:")
 
+    def test_commit_time_missing_tz(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='2009-10-10 08:00:00' tree/hello.txt", retcode=3)
+        self.assertStartsWith(
+            err, "bzr: ERROR: Could not parse --commit-time:")
+        # Test that it is actually checking and does not simply crash with
+        # some other exception
+        self.assertContainsString(err, "missing a timezone offset")
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree('.')
@@ -741,6 +769,16 @@ altered in u2
         tree.add('hello.txt')
         return tree
 
+    def test_edit_empty_message(self):
+        tree = self.make_branch_and_tree('tree')
+        self.setup_editor()
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt", retcode=3,
+            stdin="y\n")
+        self.assertContainsRe(err,
+            "bzr: ERROR: Empty commit message specified")
+
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()
         out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
@@ -750,7 +788,10 @@ altered in u2
     def test_commit_hook_template_rejected(self):
         tree = self.setup_commit_with_template()
         expected = tree.last_revision()
-        out, err = self.run_bzr_error(["empty commit message"],
+        out, err = self.run_bzr_error(["Empty commit message specified."
+                  " Please specify a commit message with either"
+                  " --message or --file or leave a blank message"
+                  " with --message \"\"."],
             "commit tree/hello.txt", stdin="n\n")
         self.assertEqual(expected, tree.last_revision())
 

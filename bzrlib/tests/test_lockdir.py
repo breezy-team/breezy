@@ -17,7 +17,6 @@
 """Tests for LockDir"""
 
 import os
-import sys
 import time
 
 import bzrlib
@@ -46,7 +45,6 @@ from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
     )
-from bzrlib.trace import note
 
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport
@@ -465,7 +463,8 @@ class TestLockDir(TestCaseWithTransport):
     def test_lock_with_buggy_rename(self):
         # test that lock acquisition handles servers which pretend they
         # renamed correctly but that actually fail
-        t = transport.get_transport('brokenrename+' + self.get_url())
+        t = transport.get_transport_from_url(
+            'brokenrename+' + self.get_url())
         ld1 = LockDir(t, 'test_lock')
         ld1.create()
         ld1.attempt_lock()
@@ -684,11 +683,10 @@ class TestLockHeldInfo(TestCase):
 
     def test_lock_holder_dead_process(self):
         """Detect that the holder (this process) is still running."""
+        self.overrideAttr(lockdir, 'get_host_name',
+            lambda: 'aproperhostname')
         info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123'
-        if sys.platform == 'win32':
-            self.knownFailure(
-                'live lock holder detection not implemented yet on win32')
         self.assertTrue(info.is_lock_holder_known_dead())
 
     def test_lock_holder_other_machine(self):
@@ -731,6 +729,8 @@ class TestStaleLockDir(TestCaseWithTransport):
 
         This generates a warning but no other user interaction.
         """
+        self.overrideAttr(lockdir, 'get_host_name',
+            lambda: 'aproperhostname')
         # This is off by default at present; see the discussion in the bug.
         # If you change the default, don't forget to update the docs.
         config.GlobalConfig().set_user_option('locks.steal_dead', True)

@@ -21,7 +21,6 @@ from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
-    BzrDirMetaFormat1,
     BzrProber,
     )
 from bzrlib.controldir import (
@@ -121,6 +120,38 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         return '/'.join(segments)
 
 
+class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Check whether there is a working tree present.
+
+        New in 2.5.0.
+
+        :return: If there is a working tree present, 'yes'.
+            Otherwise 'no'.
+        """
+        if self._bzrdir.has_workingtree():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Destroy the repository.
+
+        New in 2.5.0.
+
+        :return: On success, 'ok'.
+        """
+        try:
+            self._bzrdir.destroy_repository()
+        except errors.NoRepositoryPresent, e:
+            return FailedSmartServerResponse(('norepository',))
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, require_stacking):
@@ -150,9 +181,7 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
         control_format = self._bzrdir.cloning_metadir(
             require_stacking=require_stacking)
         control_name = control_format.network_name()
-        # XXX: There should be a method that tells us that the format does/does
-        # not have subformats.
-        if isinstance(control_format, BzrDirMetaFormat1):
+        if not control_format.fixed_components:
             branch_name = ('branch',
                 control_format.get_branch_format().network_name())
             repository_name = control_format.repository_format.network_name()

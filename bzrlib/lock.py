@@ -46,7 +46,7 @@ from bzrlib import (
     trace,
     )
 from bzrlib.hooks import Hooks
-
+from bzrlib.i18n import gettext
 
 class LockHooks(Hooks):
 
@@ -535,7 +535,7 @@ class _RelockDebugMixin(object):
     locked the same way), and -Drelock is set, then this will trace.note a
     message about it.
     """
-    
+
     _prev_lock = None
 
     def _note_lock(self, lock_type):
@@ -544,6 +544,6 @@ class _RelockDebugMixin(object):
                 type_name = 'read'
             else:
                 type_name = 'write'
-            trace.note('%r was %s locked again', self, type_name)
+            trace.note(gettext('{0!r} was {1} locked again'), self, type_name)
         self._prev_lock = lock_type
 

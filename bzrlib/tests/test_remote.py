@@ -64,6 +64,7 @@ from bzrlib.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
     )
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
     test_server,
     )
@@ -115,10 +116,12 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     def test_remote_branch_revision_history(self):
         b = BzrDir.open_from_transport(self.transport).open_branch()
-        self.assertEqual([], b.revision_history())
+        self.assertEqual([],
+            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
         r1 = self.local_wt.commit('1st commit')
         r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8'.encode('utf8'))
-        self.assertEqual([r1, r2], b.revision_history())
+        self.assertEqual([r1, r2],
+            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
 
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
@@ -479,6 +482,45 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
         self.assertEqual(None, result._repository_format)
         self.assertEqual(None, result._branch_format)
+        self.assertFinished(client)
+
+
+class TestBzrDirHasWorkingTree(TestRemote):
+
+    def test_has_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('yes',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertTrue(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+    def test_no_workingtree(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.has_workingtree', ('quack/',),
+            'success', ('no',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertFalse(a_bzrdir.has_workingtree())
+        self.assertFinished(client)
+
+
+class TestBzrDirDestroyRepository(TestRemote):
+
+    def test_destroy_repository(self):
+        transport = self.get_transport('quack')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_repository', ('quack/',),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_repository()
         self.assertFinished(client)
 
 
@@ -1844,6 +1886,61 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         self.assertEqual(value_dict, branch._get_config().get_option('name'))
 
 
+class TestBranchGetPutConfigStore(RemoteBranchTestCase):
+
+    def test_get_branch_conf(self):
+        # in an empty branch we decode the response properly
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_success_response_with_body('# config file body', 'ok')
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        config = branch.get_config_stack()
+        config.get("email")
+        config.get("log_format")
+        self.assertEqual(
+            [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',))],
+            client._calls)
+
+    def test_set_branch_conf(self):
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.lock_write', ('memory:///', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        client.add_expected_call(
+            'Branch.get_config_file', ('memory:///', ),
+            'success', ('ok', ), "# line 1\n")
+        client.add_expected_call(
+            'Branch.put_config_file', ('memory:///', 'branch token',
+            'repo token'),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Branch.unlock', ('memory:///', 'branch token', 'repo token'),
+            'success', ('ok',))
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        branch.lock_write()
+        config = branch.get_config_stack()
+        config.set('email', 'The Dude <lebowski@example.com>')
+        branch.unlock()
+        self.assertFinished(client)
+        self.assertEqual(
+            [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
+             ('call', 'Branch.lock_write', ('memory:///', '', '')),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
+             ('call_with_body_bytes_expecting_body', 'Branch.put_config_file',
+                 ('memory:///', 'branch token', 'repo token'),
+                 '# line 1\nemail = The Dude <lebowski@example.com>\n'),
+             ('call', 'Branch.unlock', ('memory:///', 'branch token', 'repo token'))],
+            client._calls)
+
+
 class TestBranchLockWrite(RemoteBranchTestCase):
 
     def test_lock_write_unlockable(self):
@@ -2147,8 +2244,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', 'include-missing:',
-              rev_id), '\n\n0'),
+              'Repository.get_parent_map',
+              ('quack/', 'include-missing:', rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
@@ -2273,6 +2370,32 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         # Now asking for rev_id's ghost parent should not make calls
         self.assertEqual({}, repo.get_parent_map(['non-existant']))
         self.assertLength(0, self.hpss_calls)
+
+    def test_exposes_get_cached_parent_map(self):
+        """RemoteRepository exposes get_cached_parent_map from
+        _unstacked_provider
+        """
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = bz2.compress('\n'.join(lines))
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(encoded_body, 'ok')
+        repo.lock_read()
+        # get_cached_parent_map should *not* trigger an RPC
+        self.assertEqual({}, repo.get_cached_parent_map([r1]))
+        self.assertEqual([], client._calls)
+        self.assertEqual({r2: (r1,)}, repo.get_parent_map([r2]))
+        self.assertEqual({r1: (NULL_REVISION,)},
+            repo.get_cached_parent_map([r1]))
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
+            client._calls)
+        repo.unlock()
 
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
@@ -2450,6 +2573,33 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
                               call.call.method == verb])
 
 
+class TestRepositoryHasSignatureForRevisionId(TestRemoteRepository):
+
+    def test_has_signature_for_revision_id(self):
+        # ('yes', ) for Repository.has_signature_for_revision_id -> 'True'.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.has_signature_for_revision_id('A')
+        self.assertEqual(
+            [('call', 'Repository.has_signature_for_revision_id',
+              ('quack/', 'A'))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_is_not_shared(self):
+        # ('no', ) for Repository.has_signature_for_revision_id -> 'False'.
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.has_signature_for_revision_id('A')
+        self.assertEqual(
+            [('call', 'Repository.has_signature_for_revision_id',
+              ('qwack/', 'A'))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
@@ -2471,6 +2621,31 @@ class TestRepositoryIsShared(TestRemoteRepository):
         result = repo.is_shared()
         self.assertEqual(
             [('call', 'Repository.is_shared', ('qwack/',))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
+class TestRepositoryMakeWorkingTrees(TestRemoteRepository):
+
+    def test_make_working_trees(self):
+        # ('yes', ) for Repository.make_working_trees -> 'True'.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.make_working_trees()
+        self.assertEqual(
+            [('call', 'Repository.make_working_trees', ('quack/',))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_no_working_trees(self):
+        # ('no', ) for Repository.make_working_trees -> 'False'.
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.make_working_trees()
+        self.assertEqual(
+            [('call', 'Repository.make_working_trees', ('qwack/',))],
             client._calls)
         self.assertEqual(False, result)
 
@@ -3452,21 +3627,46 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.assertTrue(len(self.hpss_calls) > 1)
 
 
-class TestUpdateBoundBranch(tests.TestCaseWithTransport):
+class TestUpdateBoundBranchWithModifiedBoundLocation(
+    tests.TestCaseWithTransport):
+    """Ensure correct handling of bound_location modifications.
 
-    def test_bug_786980(self):
+    This is tested against a smart server as http://pad.lv/786980 was about a
+    ReadOnlyError (write attempt during a read-only transaction) which can only
+    happen in this context.
+    """
+
+    def setUp(self):
+        super(TestUpdateBoundBranchWithModifiedBoundLocation, self).setUp()
         self.transport_server = test_server.SmartTCPServer_for_testing
-        wt = self.make_branch_and_tree('master')
-        checkout = wt.branch.create_checkout('checkout')
-        wt.commit('add stuff')
-        last_revid = wt.commit('even more stuff')
-        bound_location = checkout.branch.get_bound_location()
+
+    def make_master_and_checkout(self, master_name, checkout_name):
+        # Create the master branch and its associated checkout
+        self.master = self.make_branch_and_tree(master_name)
+        self.checkout = self.master.branch.create_checkout(checkout_name)
+        # Modify the master branch so there is something to update
+        self.master.commit('add stuff')
+        self.last_revid = self.master.commit('even more stuff')
+        self.bound_location = self.checkout.branch.get_bound_location()
+
+    def assertUpdateSucceeds(self, new_location):
+        self.checkout.branch.set_bound_location(new_location)
+        self.checkout.update()
+        self.assertEquals(self.last_revid, self.checkout.last_revision())
+
+    def test_without_final_slash(self):
+        self.make_master_and_checkout('master', 'checkout')
         # For unclear reasons some users have a bound_location without a final
         # '/', simulate that by forcing such a value
-        self.assertEndsWith(bound_location, '/')
-        new_location = bound_location.rstrip('/')
-        checkout.branch.set_bound_location(new_location)
-        # bug 786980 was raising ReadOnlyError: A write attempt was made in a
-        # read only transaction during the update()
-        checkout.update()
-        self.assertEquals(last_revid, checkout.last_revision())
+        self.assertEndsWith(self.bound_location, '/')
+        self.assertUpdateSucceeds(self.bound_location.rstrip('/'))
+
+    def test_plus_sign(self):
+        self.make_master_and_checkout('+master', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2B', '+', 1))
+
+    def test_tilda(self):
+        # Embed ~ in the middle of the path just to avoid any $HOME
+        # interpretation
+        self.make_master_and_checkout('mas~ter', 'checkout')
+        self.assertUpdateSucceeds(self.bound_location.replace('%2E', '~', 1))

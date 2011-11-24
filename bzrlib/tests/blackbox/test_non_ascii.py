@@ -89,7 +89,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             normal_thing = unicodedata.normalize('NFD', path)
             mac_encoded = normal_thing.encode(fs_enc)
             if mac_encoded != encoded:
-                raise tests.KnownFailure(
+                self.knownFailure(
                     'Unable to roundtrip path %r on OSX filesystem'
                     ' using encoding "%s"'
                     % (path, fs_enc))
@@ -267,7 +267,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
         self.assertEqual(u'Using saved parent location: %s/\n'
-                'No revisions to pull.\n' % (expected,), txt)
+                'No revisions or tags to pull.\n' % (expected,), txt)
 
         self.build_tree_contents(
             [(osutils.pathjoin(dirname1, 'a'), 'and yet more\n')])

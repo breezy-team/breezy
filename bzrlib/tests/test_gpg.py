@@ -20,12 +20,21 @@
 # import system imports here
 import sys
 
-from bzrlib import errors, ui
-import bzrlib.gpg as gpg
-from bzrlib.tests import TestCase
-from bzrlib.tests import features
+from bzrlib import (
+    errors,
+    gpg,
+    trace,
+    ui,
+    )
+from bzrlib.tests import (
+    TestCase,
+    features,
+    )
 
 class FakeConfig(object):
+
+    def gpg_signing_key(self):
+        return "amy@example.com"
 
     def gpg_signing_command(self):
         return "false"
@@ -38,7 +47,7 @@ class TestCommandLine(TestCase):
 
     def test_signing_command_line(self):
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual(['false',  '--clearsign'],
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
                          my_gpg._command_line())
 
     def test_checks_return_code(self):
@@ -87,6 +96,8 @@ class TestCommandLine(TestCase):
         """You can't sign Unicode text; it must be encoded first."""
         self.assertRaises(errors.BzrBadParameterUnicode,
                           self.assertProduces, u'foo')
+
+class TestVerify(TestCase):
 
     def import_keys(self):
         from StringIO import StringIO
@@ -184,10 +195,59 @@ Gmk1tz5uh9/6Qiyhr9MAwvC0mhKtfWdebQre9l49EuciCbBXN2Q4iRpElQba1JAW
 -----END PGP PRIVATE KEY BLOCK-----
 """)
 
+        revoked_key = StringIO("""-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+mI0ETjlW5gEEAOb/6P+TVM59E897wRtatxys2BhsHCXM4T7xjIiANfDwejDdifqh
+tluTfSJLLxPembtrrEjux1C0AJgc+f0MIfsc3Pr3eFJzKB2ot/1IVG1/1KnA0zt3
+W2xPT3lRib27WJ9Fag+dMtQaIzgJ7/n2DFxsFZ33FD2kxrEXB2exGg6FABEBAAGI
+pgQgAQIAEAUCTjlXkAkdAHJldm9rZWQACgkQjs6dvEpb0cQPHAP/Wi9rbx0e+1Sf
+ziGgyVdr3m3A6uvze5oXKVgFRbGRUYSH4/I8GW0W9x4TcRg9h+YaQ8NUdADr9kNE
+tKAljLqYA5qdqSfYuaij1M++Xj+KUZ359R74sHuQqwnRy1XXQNfRs/QpXA7vLdds
+rjg+pbWuXO92TZJUdnqtWW+VEyZBsPy0G3Rlc3Qga2V5IDx0ZXN0QGV4YW1wbGUu
+Y29tPoi4BBMBAgAiBQJOOVbmAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAK
+CRCOzp28SlvRxNWzA/42WVmI0b+6mF/imEOlY1TiyvrcpK250rkSDsCtL4lOwy7G
+antZhpgNfnXRd/ySfsS3EB6dpOWgOSxGRvWQhA+vxBT9BYNk49qd3JIrSaSWpR12
+rET8qO1rEQQFWsw03CxTGujxGlmEO+a1yguRXp2UWaY7FngcQmD+8q7BUIVm7riN
+BE45VuYBBADTEH2jHTjNCc5CMOhea6EJTrkx3upcEqB2oyhWeSWJiBGOxlcddsjo
+3J3/EmBB8kK1hM9TidD3SG64x1N287lg8ELJBlKv+pQVyxohGJ1u/THgpTDMMQcL
+luG5rAHQGSfyzKTiOnaTyBYg3M/nzgUOU9dKEFB0EA3tjUXFOT+r3wARAQABiJ8E
+GAECAAkFAk45VuYCGwwACgkQjs6dvEpb0cRSLQP/fzCWX2lXwlwWiVF8BOPF7o9z
+icHErc7/X17RGb4qj1kVf+UkRdUWJrbEVh4h6MncBIuA70WsYogiw+Kz/0LCtQAR
+YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
+7dMv2kKTJPoXUpiXJbg=
+=hLYO
+-----END PGP PUBLIC KEY BLOCK-----
+""")
+
+        expired_key = StringIO("""-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+mI0ETjZ6PAEEALkR4GcFQidCCxV7pgQwQd5MZua0YO2l92fVqHX+PhnZ6egCLKdD
+2bWlMUd6MLPF3FlRL7BBAxvW/DazkBOp7ljsnpMpptEzY49Uem1irYLYiVb9zK96
+0sQZzFxFkfEYetQEXC68mIck8tbySOX5NAOw++3jFm3J7dsU1R3XtYzRABEBAAG0
+G3Rlc3Qga2V5IDx0ZXN0QGV4YW1wbGUuY29tPoi+BBMBAgAoBQJONno8AhsDBQkA
+AVGABgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRAc4m97T40VEz+DA/9PBphG
+Yp9cHVaHSfTUKGTGgIbvRe60sFNpDCYZeAGDrygOMuI8MNzbVpwefRBFHVPx7jWd
+rrYMsLkcsNUS9D0baU+0D/qp7JVg7ZSQtG0O6IG4eTZhibteY1fu0+unlXmg9NHx
+5VvhwzBiJDYji00M2p/CZEMiYFUuy76CsxUpN7iNBE42ejwBBACkv2/mX7IPQg0C
+A3KSrJsJv+sdvKm4b4xuI4OwagwTIVz4KlTqV4IBrVjSBfwyMXucXz0bTW85qjgA
++n67td8vyjYYZUEz1uY9lSquQQDnAN0txL3cLHZXWiWOkmzZVddQtlflK2a/J9o0
+QkHPVUm+hc4l64dIzStrNl2S66fAvQARAQABiKUEGAECAA8FAk42ejwCGwwFCQAB
+UYAACgkQHOJve0+NFROEYQP/epg+o8iBs31hkSERyZjrRR66LpywezWj30Rn/3mX
+Fzi9HkF4xLemWOzdNt9C5PYrOep85PQg8haEjknxVjZFS0ikT1h3OWk/TF1ZrLVm
+WzyX8DaHQEjKpLJJjXcAbTiZBNMk0QaVC9RvIeHpCf3n3DC49DdjsPJRMKOn8KDi
+kRk=
+=p0gt
+-----END PGP PUBLIC KEY BLOCK-----
+""")
         context.import_(key)
         context.import_(secret_key)
+        context.import_(revoked_key)
+        context.import_(expired_key)
 
-    def test_verify_valid(self):
+    def test_verify_untrusted_but_accepted(self):
+        #untrusted by gpg but listed as acceptable_keys by user
         self.requireFeature(features.gpgme)
         self.import_keys()
             
@@ -216,6 +276,67 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
         self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content,
+                            plain))
+
+    def test_verify_unacceptable_key(self):
+        self.requireFeature(features.gpgme)
+        self.import_keys()
+            
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQEcBAEBAgAGBQJN+ekFAAoJEIdoGx7jCA5FGtEH/i+XxJRvqU6wdBtLVrGBMAGk
+FZ5VP+KyXYtymSbgSstj/vM12NeMIeFs3xGnNnYuX1MIcY6We5TKtCH0epY6ym5+
+6g2Q2QpQ5/sT2d0mWzR0K4uVngmxVQaXTdk5PdZ40O7ULeDLW6CxzxMHyUL1rsIx
+7UBUTBh1O/1n3ZfD99hUkm3hVcnsN90uTKH59zV9NWwArU0cug60+5eDKJhSJDbG
+rIwlqbFAjDZ7L/48e+IaYIJwBZFzMBpJKdCxzALLtauMf+KK8hGiL2hrRbWm7ty6
+NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
+=iwsn
+-----END PGP SIGNATURE-----
+"""
+        plain = """bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        my_gpg.set_acceptable_keys("foo@example.com")
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'E3080E45'),
+                         my_gpg.verify(content, plain))
+
+    def test_verify_valid_but_untrusted(self):
+        self.requireFeature(features.gpgme)
+        self.import_keys()
+            
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQEcBAEBAgAGBQJN+ekFAAoJEIdoGx7jCA5FGtEH/i+XxJRvqU6wdBtLVrGBMAGk
+FZ5VP+KyXYtymSbgSstj/vM12NeMIeFs3xGnNnYuX1MIcY6We5TKtCH0epY6ym5+
+6g2Q2QpQ5/sT2d0mWzR0K4uVngmxVQaXTdk5PdZ40O7ULeDLW6CxzxMHyUL1rsIx
+7UBUTBh1O/1n3ZfD99hUkm3hVcnsN90uTKH59zV9NWwArU0cug60+5eDKJhSJDbG
+rIwlqbFAjDZ7L/48e+IaYIJwBZFzMBpJKdCxzALLtauMf+KK8hGiL2hrRbWm7ty6
+NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
+=iwsn
+-----END PGP SIGNATURE-----
+"""
+        plain = """bazaar-ng testament short form 1
+revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
+sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
+"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
                             plain))
 
     def test_verify_bad_testament(self):
@@ -249,8 +370,34 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
                             plain))
 
+
+    def test_verify_revoked_signature(self):
+        self.requireFeature(features.gpgme)
+        self.import_keys()
+            
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+asdf
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iJwEAQECAAYFAk45V18ACgkQjs6dvEpb0cSIZQP/eOGTXGPlrNwvDkcX2d8O///I
+ecB4sUIUEpv1XAk1MkNu58lsjjK72lRaLusEGqd7HwrFmpxVeVs0oWLg23PNPCFs
+yJBID9ma+VxFVPtkEFnrc1R72sBJLfBcTxMkwVTC8eeznjdtn+cg+aLkxbPdrGnr
+JFA6kUIJU2w9LU/b88Y=
+=UuRX
+-----END PGP SIGNATURE-----
+"""
+        plain = """asdf\n"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        my_gpg.set_acceptable_keys("test@example.com")
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
+                            plain))
+
     def test_verify_invalid(self):
         self.requireFeature(features.gpgme)
+        self.import_keys()
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -273,6 +420,57 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None),
                             my_gpg.verify(content, plain))
 
+    def test_verify_expired_but_valid(self):
+        self.requireFeature(features.gpgme)
+        self.import_keys()
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+ 
+bazaar-ng testament short form 1
+revision-id: test@example.com-20110801100657-f1dr1nompeex723z
+sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+ 
+iJwEAQECAAYFAk42esUACgkQHOJve0+NFRPc5wP7BoZkzBU8JaHMLv/LmqLr0sUz
+zuE51ofZZ19L7KVtQWsOi4jFy0fi4A5TFwO8u9SOfoREGvkw292Uty9subSouK5/
+mFmDOYPQ+O83zWgYZsBmMJWYDZ+X9I6XXZSbPtV/7XyTjaxtl5uRnDVJjg+AzKvD
+dTp8VatVVrwuvzOPDVc=
+=uHen
+-----END PGP SIGNATURE-----
+"""
+        plain = """bazaar-ng testament short form 1
+revision-id: test@example.com-20110801100657-f1dr1nompeex723z
+sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
+"""
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513'),
+                            my_gpg.verify(content, plain))
+
+    def test_verify_unknown_key(self):
+        self.requireFeature(features.gpgme)
+        self.import_keys()
+        content = """-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+asdf
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQEcBAEBAgAGBQJOORKwAAoJENf6AkFdUeVvJDYH/1Cz+AJn1Jvy5n64o+0fZ5Ow
+Y7UQb4QQTIOV7jI7n4hv/yBzuHrtImFzYvQl/o2Ezzi8B8L5gZtQy+xCUF+Q8iWs
+gytZ5JUtSze7hDZo1NUl4etjoRGYqRfrUcvE2LkVH2dFbDGyyQfVmoeSHa5akuuP
+QZmyg2F983rACVIpGvsqTH6RcBdvE9vx68lugeKQA8ArDn39/74FBFipFzrXSPij
+eKFpl+yZmIb3g6HkPIC8o4j/tMvc37xF1OG5sBu8FT0+FC+VgY7vAblneDftAbyP
+sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
+=RNR5
+-----END PGP SIGNATURE-----
+"""
+        plain = "asdf\n"
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F'),
+                            my_gpg.verify(content, plain))
+
     def test_set_acceptable_keys(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
@@ -284,8 +482,14 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_set_acceptable_keys_unknown(self):
         self.requireFeature(features.gpgme)
         my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.notes = []
+        def note(*args):
+            self.notes.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'note', note)
         my_gpg.set_acceptable_keys("unknown")
         self.assertEqual(my_gpg.acceptable_keys, [])
+        self.assertEqual(self.notes,
+            ['No GnuPG key results for pattern: unknown'])
 
 
 class TestDisabled(TestCase):

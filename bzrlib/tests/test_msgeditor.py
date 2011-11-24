@@ -34,6 +34,7 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
+    features,
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
@@ -251,9 +252,9 @@ if len(sys.argv) == 2:
         self.overrideEnv('VISUAL', 'visual')
         self.overrideEnv('EDITOR', 'editor')
 
-        conf = config.GlobalConfig.from_string('editor = config_editor\n',
-                                               save=True)
-
+        conf = config.GlobalStack()
+        conf.store._load_from_string('[DEFAULT]\neditor = config_editor\n')
+        conf.store.save()
         editors = list(msgeditor._get_editor())
         editors = [editor for (editor, cfg_src) in editors]
 
@@ -309,7 +310,7 @@ if len(sys.argv) == 2:
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         if hasattr(self, 'info'):
             tmpdir = self.info['directory']
             os.mkdir(tmpdir)

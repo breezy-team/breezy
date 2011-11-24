@@ -24,22 +24,35 @@ See `bzr help debug-flags` or `bzrlib/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 
-
 debug_flags = set()
 
 
 def set_debug_flags_from_config():
     """Turn on debug flags based on the global configuration"""
 
-    from bzrlib.config import GlobalConfig
+    from bzrlib import config
 
-    c = GlobalConfig()
-    value = c.get_user_option("debug_flags")
-    if value is not None:
-        # configobject gives us either a string if there's just one or a list
-        # if there's multiple
-        if isinstance(value, basestring):
-            value = [value]
-        for w in value:
-            w = w.strip()
-            debug_flags.add(w)
+    c = config.GlobalStack()
+    for f in c.get('debug_flags'):
+        debug_flags.add(f)
+
+
+def set_trace():
+    """Pdb using original stdin and stdout.
+
+    When debugging blackbox tests, sys.stdin and sys.stdout are captured for
+    test purposes and cannot be used for interactive debugging. This class uses
+    the origianl stdin/stdout to allow such use.
+
+    Instead of doing:
+
+       import pdb; pdb.set_trace()
+
+    you can do:
+
+       from bzrlib import debug; debug.set_trace()
+    """
+    import pdb
+    import sys
+    pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
+            ).set_trace(sys._getframe().f_back)

@@ -615,15 +615,16 @@ class TestModuleHelpTopic(tests.TestCase):
     def test_get_help_text_with_additional_see_also(self):
         mod = FakeModule('two lines of help\nand more', 'demo')
         topic = plugin.ModuleHelpTopic(mod)
-        self.assertEqual("two lines of help\nand more\nSee also: bar, foo\n",
-            topic.get_help_text(['foo', 'bar']))
+        self.assertEqual("two lines of help\nand more\n\n:See also: bar, foo\n",
+                         topic.get_help_text(['foo', 'bar']))
 
     def test_get_help_topic(self):
         """The help topic for a plugin is its module name."""
         mod = FakeModule('two lines of help\nand more', 'bzrlib.plugins.demo')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual('demo', topic.get_help_topic())
-        mod = FakeModule('two lines of help\nand more', 'bzrlib.plugins.foo_bar')
+        mod = FakeModule('two lines of help\nand more',
+                         'bzrlib.plugins.foo_bar')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual('foo_bar', topic.get_help_topic())
 

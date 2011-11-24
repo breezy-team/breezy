@@ -164,16 +164,6 @@ def _unsquish_command_name(cmd):
     return cmd[4:].replace('_','-')
 
 
-@deprecated_function(deprecated_in((2, 2, 0)))
-def _builtin_commands():
-    """Return a dict of {name: cmd_class} for builtin commands.
-
-    :deprecated: Use the builtin_command_registry registry instead
-    """
-    # return dict(name: cmd_class)
-    return dict(builtin_command_registry.items())
-
-
 def _register_builtin_commands():
     if builtin_command_registry.keys():
         # only load once
@@ -239,7 +229,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
     try:
         return _get_cmd_object(cmd_name, plugins_override)
     except KeyError:
-        raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
+        raise errors.BzrCommandError(gettext('unknown command "%s"') % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
@@ -442,19 +432,6 @@ class Command(object):
         """
         self._operation.cleanup_now()
 
-    @deprecated_method(deprecated_in((2, 1, 0)))
-    def _maybe_expand_globs(self, file_list):
-        """Glob expand file_list if the platform does not do that itself.
-
-        Not used anymore, now that the bzr command-line parser globs on
-        Windows.
-
-        :return: A possibly empty list of unicode paths.
-
-        Introduced in bzrlib 0.18.
-        """
-        return file_list
-
     def _usage(self):
         """Return single-line grammar for this command.
 
@@ -488,7 +465,7 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
-        if self.l10n and not i18n.installed():
+        if self.l10n:
             i18n.install()  # Install i18n only for get_help_text for now.
         doc = self.help()
         if doc:
@@ -577,7 +554,8 @@ class Command(object):
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = gettext(":doc:`%s <%s-help>`") % (item, item)
+                        link_text = gettext(":doc:`{0} <{1}-help>`").format(
+                                                                    item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
             result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
@@ -685,7 +663,6 @@ class Command(object):
             opts['quiet'] = trace.is_quiet()
         elif opts.has_key('quiet'):
             del opts['quiet']
-
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -722,11 +699,6 @@ class Command(object):
             finally:
                 del self._operation
         self.run = run
-
-    @deprecated_method(deprecated_in((2, 2, 0)))
-    def run_direct(self, *args, **kwargs):
-        """Deprecated thunk from bzrlib 2.1."""
-        return self.run(*args, **kwargs)
 
     def run(self):
         """Actually run the command.
@@ -843,7 +815,8 @@ def parse_args(command, argv, alias_argv=None):
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError,e:
-        raise errors.BzrCommandError('Only ASCII permitted in option names')
+        raise errors.BzrCommandError(
+            gettext('Only ASCII permitted in option names'))
 
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
@@ -867,29 +840,33 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise errors.BzrCommandError("command %r needs one or more %s"
-                                             % (cmd, argname.upper()))
+                raise errors.BzrCommandError(gettext(
+                      "command {0!r} needs one or more {1}").format(
+                      cmd, argname.upper()))
             else:
                 argdict[argname + '_list'] = args[:]
                 args = []
         elif ap[-1] == '$': # all but one
             if len(args) < 2:
-                raise errors.BzrCommandError("command %r needs one or more %s"
-                                             % (cmd, argname.upper()))
+                raise errors.BzrCommandError(
+                      gettext("command {0!r} needs one or more {1}").format(
+                                             cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
             args[:-1] = []
         else:
             # just a plain arg
             argname = ap
             if not args:
-                raise errors.BzrCommandError("command %r requires argument %s"
-                               % (cmd, argname.upper()))
+                raise errors.BzrCommandError(
+                     gettext("command {0!r} requires argument {1}").format(
+                               cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.BzrCommandError("extra argument to command %s: %s"
-                                     % (cmd, args[0]))
+        raise errors.BzrCommandError( gettext(
+                              "extra argument to command {0}: {1}").format(
+                                       cmd, args[0]) )
 
     return argdict
 
@@ -978,19 +955,15 @@ def exception_to_return_code(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    ret, stats = profile(exception_to_return_code, the_callable, *args, **kwargs)
+    ret, stats = profile(exception_to_return_code, the_callable,
+                         *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
     else:
         stats.save(filename)
-        trace.note('Profile data written to "%s".', filename)
+        trace.note(gettext('Profile data written to "%s".'), filename)
     return ret
-
-
-@deprecated_function(deprecated_in((2, 2, 0)))
-def shlex_split_unicode(unsplit):
-    return cmdline.split(unsplit)
 
 
 def get_alias(cmd, config=None):
@@ -1067,6 +1040,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     argv_copy = []
     i = 0
+    override_config = []
     while i < len(argv):
         a = argv[i]
         if a == '--profile':
@@ -1095,9 +1069,13 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             pass # already handled in startup script Bug #588277
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
+        elif a.startswith('-O'):
+            override_config.append(a[2:])
         else:
             argv_copy.append(a)
         i += 1
+
+    bzrlib.global_state.cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
 
@@ -1156,6 +1134,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         if 'memory' in debug.debug_flags:
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
+        # Reset the overrides 
+        bzrlib.global_state.cmdline_overrides._reset()
 
 
 def display_command(func):
@@ -1190,8 +1170,9 @@ def install_bzr_command_hooks():
         "bzr plugin commands")
     Command.hooks.install_named_hook("get_command", _get_external_command,
         "bzr external command lookup")
-    Command.hooks.install_named_hook("get_missing_command", _try_plugin_provider,
-        "bzr plugin-provider-db check")
+    Command.hooks.install_named_hook("get_missing_command",
+                                     _try_plugin_provider,
+                                     "bzr plugin-provider-db check")
 
 
 

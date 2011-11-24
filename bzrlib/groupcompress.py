@@ -18,10 +18,6 @@
 
 import time
 import zlib
-try:
-    import pylzma
-except ImportError:
-    pylzma = None
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -39,6 +35,7 @@ from bzrlib import (
     )
 
 from bzrlib.repofmt import pack_repo
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.btree_index import BTreeBuilder
@@ -55,8 +52,6 @@ from bzrlib.versionedfile import (
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
 BATCH_SIZE = 2**16
-
-_USE_LZMA = False and (pylzma is not None)
 
 # osutils.sha_string('')
 _null_sha1 = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
@@ -152,6 +147,7 @@ class GroupCompressBlock(object):
                 self._content = ''
             elif self._compressor_name == 'lzma':
                 # We don't do partial lzma decomp yet
+                import pylzma
                 self._content = pylzma.decompress(z_content)
             elif self._compressor_name == 'zlib':
                 # Start a zlib decompressor
@@ -298,16 +294,6 @@ class GroupCompressBlock(object):
         self._content = content
         self._z_content_chunks = None
 
-    def _create_z_content_using_lzma(self):
-        if self._content_chunks is not None:
-            self._content = ''.join(self._content_chunks)
-            self._content_chunks = None
-        if self._content is None:
-            raise AssertionError('Nothing to compress')
-        z_content = pylzma.compress(self._content)
-        self._z_content_chunks = (z_content,)
-        self._z_content_length = len(z_content)
-
     def _create_z_content_from_chunks(self, chunks):
         compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
         # Peak in this point is 1 fulltext, 1 compressed text, + zlib overhead
@@ -321,9 +307,6 @@ class GroupCompressBlock(object):
     def _create_z_content(self):
         if self._z_content_chunks is not None:
             return
-        if _USE_LZMA:
-            self._create_z_content_using_lzma()
-            return
         if self._content_chunks is not None:
             chunks = self._content_chunks
         else:
@@ -333,10 +316,7 @@ class GroupCompressBlock(object):
     def to_chunks(self):
         """Create the byte stream as a series of 'chunks'"""
         self._create_z_content()
-        if _USE_LZMA:
-            header = self.GCB_LZ_HEADER
-        else:
-            header = self.GCB_HEADER
+        header = self.GCB_HEADER
         chunks = ['%s%d\n%d\n'
                   % (header, self._z_content_length, self._content_length),
                  ]
@@ -1754,8 +1734,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 raise errors.RevisionNotPresent(record.key, self)
             if random_id:
                 if record.key in inserted_keys:
-                    trace.note('Insert claimed random_id=True,'
-                               ' but then inserted %r two times', record.key)
+                    trace.note(gettext('Insert claimed random_id=True,'
+                               ' but then inserted %r two times'), record.key)
                     continue
                 inserted_keys.add(record.key)
             if reuse_blocks:

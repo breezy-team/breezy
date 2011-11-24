@@ -71,11 +71,6 @@ import traceback
 
 import bzrlib
 
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
-
 lazy_import(globals(), """
 from bzrlib import (
     debug,
@@ -128,24 +123,6 @@ def note(*args, **kwargs):
 def warning(*args, **kwargs):
     ui.ui_factory.clear_term()
     _bzr_logger.warning(*args, **kwargs)
-
-
-@deprecated_function(deprecated_in((2, 1, 0)))
-def info(*args, **kwargs):
-    """Deprecated: use trace.note instead."""
-    note(*args, **kwargs)
-
-
-@deprecated_function(deprecated_in((2, 1, 0)))
-def log_error(*args, **kwargs):
-    """Deprecated: use bzrlib.trace.show_error instead"""
-    _bzr_logger.error(*args, **kwargs)
-
-
-@deprecated_function(deprecated_in((2, 1, 0)))
-def error(*args, **kwargs):
-    """Deprecated: use bzrlib.trace.show_error instead"""
-    _bzr_logger.error(*args, **kwargs)
 
 
 def show_error(*args, **kwargs):
@@ -582,6 +559,10 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
+    except ValueError, e:
+        # On Windows, I get ValueError calling stdout.flush() on a closed
+        # handle
+        pass
     except IOError, e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:

@@ -136,7 +136,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
-            t = transport.get_transport(url)
+            t = transport.get_transport_from_path(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")

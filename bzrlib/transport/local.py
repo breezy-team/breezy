@@ -72,6 +72,8 @@ class LocalTransport(transport.Transport):
 
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
+        if self._local_base[-1] != '/':
+            self._local_base = self._local_base + '/'
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
@@ -144,9 +146,7 @@ class LocalTransport(transport.Transport):
         if abspath is None:
             abspath = u'.'
 
-        return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base),
-            urlutils.strip_trailing_slash(abspath))
+        return urlutils.file_relpath(self.base, abspath)
 
     def has(self, relpath):
         return os.access(self._abspath(relpath), os.F_OK)
@@ -328,7 +328,10 @@ class LocalTransport(transport.Transport):
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
         abspath = self._abspath(relpath)
-        handle = osutils.open_file(abspath, 'wb')
+        try:
+            handle = osutils.open_file(abspath, 'wb')
+        except (IOError, OSError),e:
+            self._translate_error(e, abspath)
         handle.truncate()
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
@@ -535,9 +538,7 @@ class LocalTransport(transport.Transport):
             """See Transport.symlink."""
             abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
             source_rel = urlutils.file_relpath(
-                urlutils.strip_trailing_slash(abs_link_dirpath),
-                urlutils.strip_trailing_slash(self.abspath(source))
-            )
+                abs_link_dirpath, self.abspath(source))
 
             try:
                 os.symlink(source_rel, self._abspath(link_name))

@@ -121,6 +121,7 @@ class SignMyCommits(tests.TestCaseWithTransport):
         self.run_bzr('sign-my-commits')
         out = self.run_bzr('verify-signatures', retcode=1)
         self.assertEquals(('4 commits with valid signatures\n'
+                           '0 commits with key now expired\n'
                            '0 commits with unknown keys\n'
                            '0 commits not valid\n'
                            '1 commit not signed\n', ''), out)
@@ -132,6 +133,48 @@ class SignMyCommits(tests.TestCaseWithTransport):
         out = self.run_bzr(['verify-signatures', '--acceptable-keys=foo,bar'],
                             retcode=1)
         self.assertEquals(('4 commits with valid signatures\n'
+                           '0 commits with key now expired\n'
                            '0 commits with unknown keys\n'
                            '0 commits not valid\n'
                            '1 commit not signed\n', ''), out)
+
+
+class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
+
+    def monkey_patch_gpg(self):
+        """Monkey patch the gpg signing strategy to be a loopback.
+
+        This also registers the cleanup, so that we will revert to
+        the original gpg strategy when done.
+        """
+        # monkey patch gpg signing mechanism
+        self.overrideAttr(gpg, 'GPGStrategy', gpg.LoopbackGPGStrategy)
+
+    def test_sign_single_commit(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        self.monkey_patch_gpg()
+        out, err = self.run_bzr(['sign-my-commits', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(53, self.hpss_calls)
+
+    def test_verify_commits(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.monkey_patch_gpg()
+        out, err = self.run_bzr(['sign-my-commits', self.get_url('branch')])
+        self.reset_smart_call_log()
+        self.run_bzr('sign-my-commits')
+        out = self.run_bzr(['verify-signatures', self.get_url('branch')])
+        self.assertLength(21, self.hpss_calls)

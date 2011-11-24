@@ -28,6 +28,7 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.tests import (
+    features,
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
@@ -50,7 +51,7 @@ def load_tests(standard_tests, module, loader):
     transport_scenarios = [
         ('http', dict(server_class=PreCannedHTTPServer,)),
         ]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         transport_scenarios.append(
             ('https', dict(server_class=PreCannedHTTPSServer,)),
             )
@@ -119,6 +120,17 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         # care that you are asking for 'ubuntu'
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu',
                            'lp:ubuntu')
+
+    def test_ubuntu_invalid(self):
+        """Invalid ubuntu urls don't crash.
+
+        :seealso: http://pad.lv/843900
+        """
+        # This ought to be natty-updates.
+        self.assertRaises(errors.InvalidURL,
+            self.assertResolve,
+            '',
+            'ubuntu:natty/updates/smartpm')
 
     def test_ubuntu_apt(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/apt',
@@ -425,7 +437,7 @@ class PreCannedHTTPServer(PreCannedServerMixin, http_server.HttpServer):
     pass
 
 
-if tests.HTTPSServerFeature.available():
+if features.HTTPSServerFeature.available():
     from bzrlib.tests import https_server
     class PreCannedHTTPSServer(PreCannedServerMixin, https_server.HTTPSServer):
         pass

@@ -197,7 +197,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_backing_file, size = self._spill_mem_keys_without_combining()
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(transport.get_transport('.'),
+        new_backing = BTreeGraphIndex(transport.get_transport_from_path('.'),
                                       '<temp>', size)
         # GC will clean up the file
         new_backing._file = new_backing_file
@@ -294,8 +294,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
             flag when writing out. This is used by the _spill_mem_keys_to_disk
             functionality.
         """
+        new_leaf = False
         if rows[-1].writer is None:
             # opening a new leaf chunk;
+            new_leaf = True
             for pos, internal_row in enumerate(rows[:-1]):
                 # flesh out any internal nodes that are needed to
                 # preserve the height of the tree
@@ -320,6 +322,11 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
+            # if we failed to write, despite having an empty page to write to,
+            # then line is too big. raising the error avoids infinite recursion
+            # searching for a suitably large page that will not be found.
+            if new_leaf:
+                raise errors.BadIndexKey(string_key)
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + "\n"

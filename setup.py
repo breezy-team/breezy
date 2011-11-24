@@ -10,6 +10,7 @@ import os
 import os.path
 import sys
 import copy
+import glob
 
 if sys.version_info < (2, 6):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
@@ -70,10 +71,13 @@ PKG_DATA = {# install files from selftest suite
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
                                         'tests/ssl_certs/server.crt',
-                                        'locale/*/LC_MESSAGES/*.mo',
                                        ]},
            }
-
+I18N_FILES = []
+for filepath in glob.glob("bzrlib/locale/*/LC_MESSAGES/*.mo"):
+    langfile = filepath[len("bzrlib/locale/"):]
+    targetpath = os.path.dirname(os.path.join("share/locale", langfile))
+    I18N_FILES.append((targetpath, [filepath]))
 
 def get_bzrlib_packages():
     """Recurse through the bzrlib directory, and extract the package names"""
@@ -168,7 +172,7 @@ class bzr_build(build):
 ## Setup
 ########################
 
-from tools.build_mo import build_mo
+from bzrlib.bzr_distutils import build_mo
 
 command_classes = {'install_scripts': my_install_scripts,
                    'build': bzr_build,
@@ -513,12 +517,12 @@ if 'bdist_wininst' in sys.argv:
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
+    PKG_DATA['package_data']['bzrlib'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
 
     setup(**ARGS)
 
 elif 'py2exe' in sys.argv:
-    import glob
     # py2exe setup
     import py2exe
 
@@ -668,7 +672,7 @@ elif 'py2exe' in sys.argv:
                        'tools/win32/bzr_postinstall.py',
                        ]
     gui_targets = [gui_target]
-    data_files = topics_files + plugins_files
+    data_files = topics_files + plugins_files + I18N_FILES
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages, data_files)
@@ -752,6 +756,7 @@ else:
         # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
 
+    DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
     ARGS = {'scripts': ['bzr'],
             'data_files': DATA_FILES,

@@ -23,6 +23,10 @@ __all__ = [
 import sys
 
 import bzrlib
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import config
+""")
 
 
 class BzrLibraryState(object):
@@ -61,6 +65,9 @@ class BzrLibraryState(object):
         """
         self._ui = ui
         self._trace = trace
+        # There is no overrides by default, they are set later when the command
+        # arguments are parsed.
+        self.cmdline_overrides = config.CommandLineStore()
         self.started = False
 
     def __enter__(self):
@@ -69,8 +76,7 @@ class BzrLibraryState(object):
         return self # This is bound to the 'as' clause in a with statement.
 
     def _start(self):
-        """Do all initialization.
-        """        
+        """Do all initialization."""
         # NB: This function tweaks so much global state it's hard to test it in
         # isolation within the same interpreter.  It's not reached on normal
         # in-process run_bzr calls.  If it's broken, we expect that

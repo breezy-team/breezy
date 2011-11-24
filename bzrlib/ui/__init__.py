@@ -47,6 +47,7 @@ import warnings
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    config,
     osutils,
     progress,
     trace,
@@ -145,10 +146,18 @@ class UIFactory(object):
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
             ),
+        experimental_format_fetch=("Fetching into experimental format "
+            "%(to_format)s.\n"
+            "This format may be unreliable or change in the future "
+            "without an upgrade path.\n"),
         deprecated_command=(
             "The command 'bzr %(deprecated_name)s' "
             "has been deprecated in bzr %(deprecated_in_version)s. "
             "Please use 'bzr %(recommended_name)s' instead."),
+        deprecated_command_option=(
+            "The option '%(deprecated_name)s' to 'bzr %(command)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use '%(recommended_name)s' instead."),
         recommend_upgrade=("%(current_format_name)s is deprecated "
             "and a better format is available.\n"
             "It is recommended that you upgrade by "
@@ -243,9 +252,7 @@ class UIFactory(object):
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            from bzrlib import config
-            encoding = config.GlobalConfig().get_user_option(
-                'output_encoding')
+            encoding = config.GlobalStack().get('output_encoding')
         if encoding is None:
             encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:
@@ -317,6 +324,26 @@ class UIFactory(object):
             warnings.warn(fail)   # so tests will fail etc
             return fail
 
+    def choose(self, msg, choices, default=None):
+        """Prompt the user for a list of alternatives.
+
+        :param msg: message to be shown as part of the prompt.
+
+        :param choices: list of choices, with the individual choices separated
+            by '\n', e.g.: choose("Save changes?", "&Yes\n&No\n&Cancel"). The
+            letter after the '&' is the shortcut key for that choice. Thus you
+            can type 'c' to select "Cancel".  Shorcuts are case insensitive.
+            The shortcut does not need to be the first letter. If a shorcut key
+            is not provided, the first letter for the choice will be used.
+
+        :param default: default choice (index), returned for example when enter
+            is pressed for the console version.
+
+        :return: the index fo the user choice (so '0', '1' or '2' for
+            respectively yes/no/cancel in the previous example).
+        """
+        raise NotImplementedError(self.choose)
+
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user.
 
@@ -324,7 +351,8 @@ class UIFactory(object):
             line without terminating \\n.
         :return: True or False for y/yes or n/no.
         """
-        raise NotImplementedError(self.get_boolean)
+        choice = self.choose(prompt + '?', '&yes\n&no', default=None)
+        return 0 == choice
 
     def get_integer(self, prompt):
         """Get an integer from the user.
@@ -407,22 +435,6 @@ class UIFactory(object):
     def show_warning(self, msg):
         """Show a warning to the user."""
         raise NotImplementedError(self.show_warning)
-
-    def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer.
-        
-        This is deprecated in favor of show_user_warning, but retained for api
-        compatibility in 2.0 and 2.1.
-        """
-        self.show_user_warning('cross_format_fetch', from_format=from_format,
-            to_format=to_format)
-
-    def warn_experimental_format_fetch(self, inter):
-        """Warn about fetching into experimental repository formats."""
-        if inter.target._format.experimental:
-            trace.warning("Fetching into experimental format %s.\n"
-                "This format may be unreliable or change in the future "
-                "without an upgrade path.\n" % (inter.target._format,))
 
 
 class NoninteractiveUIFactory(UIFactory):

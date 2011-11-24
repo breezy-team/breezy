@@ -28,6 +28,10 @@ you should set it to "In Progress" and if you wish assign it to yourself.
 You might like to start with a bug tagged `easy
 <https://bugs.launchpad.net/bzr/+bugs?field.tag=easy>`_.
 
+If you are wondering if your understanding of the bug is correct, or if the 
+approach you have in mind is likely to work, feel to ask about it on the bug,
+in ``#bzr`` or on the mailing list.
+
 Making a branch
 ---------------
 

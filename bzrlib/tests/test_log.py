@@ -24,7 +24,6 @@ from bzrlib import (
     registry,
     revision,
     revisionspec,
-    symbol_versioning,
     tests,
     )
 
@@ -323,7 +322,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
     1 Joe Foo\t2005-11-22
       rev-1
 
-Use --include-merges or -n0 to see merged revisions.
+Use --include-merged or -n0 to see merged revisions.
 """,
             wt.branch, log.ShortLogFormatter,
             formatter_kwargs=dict(show_advice=True))
@@ -983,349 +982,6 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
             wt.branch, log.GnuChangelogLogFormatter,
             show_log_kwargs=dict(verbose=True))
 
-class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
-
-    def _get_view_revisions(self, *args, **kwargs):
-        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
-                                    log.get_view_revisions, *args, **kwargs)
-
-    def make_tree_with_commits(self):
-        """Create a tree with well-known revision ids"""
-        wt = self.make_branch_and_tree('tree1')
-        self.wt_commit(wt, 'commit one', rev_id='1')
-        self.wt_commit(wt, 'commit two', rev_id='2')
-        self.wt_commit(wt, 'commit three', rev_id='3')
-        mainline_revs = [None, '1', '2', '3']
-        rev_nos = {'1': 1, '2': 2, '3': 3}
-        return mainline_revs, rev_nos, wt
-
-    def make_tree_with_merges(self):
-        """Create a tree with well-known revision ids and a merge"""
-        mainline_revs, rev_nos, wt = self.make_tree_with_commits()
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
-        self.wt_commit(tree2, 'four-a', rev_id='4a')
-        wt.merge_from_branch(tree2.branch)
-        self.wt_commit(wt, 'four-b', rev_id='4b')
-        mainline_revs.append('4b')
-        rev_nos['4b'] = 4
-        # 4a: 3.1.1
-        return mainline_revs, rev_nos, wt
-
-    def make_branch_with_many_merges(self):
-        """Create a tree with well-known revision ids"""
-        builder = self.make_branch_builder('tree1')
-        builder.start_series()
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),
-            ('add', ('f', 'f-id', 'file', '1\n'))])
-        builder.build_snapshot('2', ['1'], [])
-        builder.build_snapshot('3a', ['2'], [
-            ('modify', ('f-id', '1\n2\n3a\n'))])
-        builder.build_snapshot('3b', ['2', '3a'], [
-            ('modify', ('f-id', '1\n2\n3a\n'))])
-        builder.build_snapshot('3c', ['2', '3b'], [
-            ('modify', ('f-id', '1\n2\n3a\n'))])
-        builder.build_snapshot('4a', ['3b'], [])
-        builder.build_snapshot('4b', ['3c', '4a'], [])
-        builder.finish_series()
-
-        # 1
-        # |
-        # 2-.
-        # |\ \
-        # | | 3a
-        # | |/
-        # | 3b
-        # |/|
-        # 3c4a
-        # |/
-        # 4b
-
-        mainline_revs = [None, '1', '2', '3c', '4b']
-        rev_nos = {'1':1, '2':2, '3c': 3, '4b':4}
-        full_rev_nos_for_reference = {
-            '1': '1',
-            '2': '2',
-            '3a': '2.1.1', #first commit tree 3
-            '3b': '2.2.1', # first commit tree 2
-            '3c': '3', #merges 3b to main
-            '4a': '2.2.2', # second commit tree 2
-            '4b': '4', # merges 4a to main
-            }
-        return mainline_revs, rev_nos, builder.get_branch()
-
-    def test_get_view_revisions_forward(self):
-        """Test the get_view_revisions method"""
-        mainline_revs, rev_nos, wt = self.make_tree_with_commits()
-        wt.lock_read()
-        self.addCleanup(wt.unlock)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'forward'))
-        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
-                         revisions)
-        revisions2 = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'forward',
-                include_merges=False))
-        self.assertEqual(revisions, revisions2)
-
-    def test_get_view_revisions_reverse(self):
-        """Test the get_view_revisions with reverse"""
-        mainline_revs, rev_nos, wt = self.make_tree_with_commits()
-        wt.lock_read()
-        self.addCleanup(wt.unlock)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'reverse'))
-        self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
-                         revisions)
-        revisions2 = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'reverse',
-                include_merges=False))
-        self.assertEqual(revisions, revisions2)
-
-    def test_get_view_revisions_merge(self):
-        """Test get_view_revisions when there are merges"""
-        mainline_revs, rev_nos, wt = self.make_tree_with_merges()
-        wt.lock_read()
-        self.addCleanup(wt.unlock)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'forward'))
-        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
-                          ('4b', '4', 0), ('4a', '3.1.1', 1)],
-                         revisions)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'forward',
-                include_merges=False))
-        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
-                          ('4b', '4', 0)],
-                         revisions)
-
-    def test_get_view_revisions_merge_reverse(self):
-        """Test get_view_revisions in reverse when there are merges"""
-        mainline_revs, rev_nos, wt = self.make_tree_with_merges()
-        wt.lock_read()
-        self.addCleanup(wt.unlock)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'reverse'))
-        self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
-                          ('3', '3', 0), ('2', '2', 0), ('1', '1', 0)],
-                         revisions)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'reverse',
-                include_merges=False))
-        self.assertEqual([('4b', '4', 0), ('3', '3', 0), ('2', '2', 0),
-                          ('1', '1', 0)],
-                         revisions)
-
-    def test_get_view_revisions_merge2(self):
-        """Test get_view_revisions when there are merges"""
-        mainline_revs, rev_nos, b = self.make_branch_with_many_merges()
-        b.lock_read()
-        self.addCleanup(b.unlock)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, b, 'forward'))
-        expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-                    ('3b', '2.2.1', 1), ('3a', '2.1.1', 2), ('4b', '4', 0),
-                    ('4a', '2.2.2', 1)]
-        self.assertEqual(expected, revisions)
-        revisions = list(self._get_view_revisions(
-                mainline_revs, rev_nos, b, 'forward',
-                include_merges=False))
-        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-                          ('4b', '4', 0)],
-                         revisions)
-
-    def test_file_id_for_range(self):
-        mainline_revs, rev_nos, b = self.make_branch_with_many_merges()
-        b.lock_read()
-        self.addCleanup(b.unlock)
-
-        def rev_from_rev_id(revid, branch):
-            revspec = revisionspec.RevisionSpec.from_string('revid:%s' % revid)
-            return revspec.in_history(branch)
-
-        def view_revs(start_rev, end_rev, file_id, direction):
-            revs = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 2, 0)),
-                log.calculate_view_revisions,
-                b,
-                start_rev, # start_revision
-                end_rev, # end_revision
-                direction, # direction
-                file_id, # specific_fileid
-                True, # generate_merge_revisions
-                )
-            return revs
-
-        rev_3a = rev_from_rev_id('3a', b)
-        rev_4b = rev_from_rev_id('4b', b)
-        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1),
-                          ('3a', '2.1.1', 2)],
-                          view_revs(rev_3a, rev_4b, 'f-id', 'reverse'))
-        # Note: 3c still appears before 3a here because of depth-based sorting
-        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1),
-                          ('3a', '2.1.1', 2)],
-                          view_revs(rev_3a, rev_4b, 'f-id', 'forward'))
-
-
-class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
-
-    def get_view_revisions(self, *args):
-        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
-                                    log.get_view_revisions, *args)
-
-    def create_tree_with_single_merge(self):
-        """Create a branch with a moderate layout.
-
-        The revision graph looks like:
-
-           A
-           |\
-           B C
-           |/
-           D
-
-        In this graph, A introduced files f1 and f2 and f3.
-        B modifies f1 and f3, and C modifies f2 and f3.
-        D merges the changes from B and C and resolves the conflict for f3.
-        """
-        # TODO: jam 20070218 This seems like it could really be done
-        #       with make_branch_and_memory_tree() if we could just
-        #       create the content of those files.
-        # TODO: jam 20070218 Another alternative is that we would really
-        #       like to only create this tree 1 time for all tests that
-        #       use it. Since 'log' only uses the tree in a readonly
-        #       fashion, it seems a shame to regenerate an identical
-        #       tree for each test.
-        # TODO: vila 20100122 One way to address the shame above will be to
-        #       create a memory tree during test parametrization and give a
-        #       *copy* of this tree to each test. Copying a memory tree ought
-        #       to be cheap, at least cheaper than creating them with such
-        #       complex setups.
-        tree = self.make_branch_and_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-
-        self.build_tree_contents([('tree/f1', 'A\n'),
-                                  ('tree/f2', 'A\n'),
-                                  ('tree/f3', 'A\n'),
-                                 ])
-        tree.add(['f1', 'f2', 'f3'], ['f1-id', 'f2-id', 'f3-id'])
-        tree.commit('A', rev_id='A')
-
-        self.build_tree_contents([('tree/f2', 'A\nC\n'),
-                                  ('tree/f3', 'A\nC\n'),
-                                 ])
-        tree.commit('C', rev_id='C')
-        # Revert back to A to build the other history.
-        tree.set_last_revision('A')
-        tree.branch.set_last_revision_info(1, 'A')
-        self.build_tree_contents([('tree/f1', 'A\nB\n'),
-                                  ('tree/f2', 'A\n'),
-                                  ('tree/f3', 'A\nB\n'),
-                                 ])
-        tree.commit('B', rev_id='B')
-        tree.set_parent_ids(['B', 'C'])
-        self.build_tree_contents([('tree/f1', 'A\nB\n'),
-                                  ('tree/f2', 'A\nC\n'),
-                                  ('tree/f3', 'A\nB\nC\n'),
-                                 ])
-        tree.commit('D', rev_id='D')
-
-        # Switch to a read lock for this tree.
-        # We still have an addCleanup(tree.unlock) pending
-        tree.unlock()
-        tree.lock_read()
-        return tree
-
-    def check_delta(self, delta, **kw):
-        """Check the filenames touched by a delta are as expected.
-
-        Caller only have to pass in the list of files for each part, all
-        unspecified parts are considered empty (and checked as such).
-        """
-        for n in 'added', 'removed', 'renamed', 'modified', 'unchanged':
-            # By default we expect an empty list
-            expected = kw.get(n, [])
-            # strip out only the path components
-            got = [x[0] for x in getattr(delta, n)]
-            self.assertEqual(expected, got)
-
-    def test_tree_with_single_merge(self):
-        """Make sure the tree layout is correct."""
-        tree = self.create_tree_with_single_merge()
-        rev_A_tree = tree.branch.repository.revision_tree('A')
-        rev_B_tree = tree.branch.repository.revision_tree('B')
-        rev_C_tree = tree.branch.repository.revision_tree('C')
-        rev_D_tree = tree.branch.repository.revision_tree('D')
-
-        self.check_delta(rev_B_tree.changes_from(rev_A_tree),
-                         modified=['f1', 'f3'])
-
-        self.check_delta(rev_C_tree.changes_from(rev_A_tree),
-                         modified=['f2', 'f3'])
-
-        self.check_delta(rev_D_tree.changes_from(rev_B_tree),
-                         modified=['f2', 'f3'])
-
-        self.check_delta(rev_D_tree.changes_from(rev_C_tree),
-                         modified=['f1', 'f3'])
-
-    def assertAllRevisionsForFileID(self, tree, file_id, revisions):
-        """Ensure _filter_revisions_touching_file_id returns the right values.
-
-        Get the return value from _filter_revisions_touching_file_id and make
-        sure they are correct.
-        """
-        # The api for _filter_revisions_touching_file_id is a little crazy.
-        # So we do the setup here.
-        mainline = tree.branch.revision_history()
-        mainline.insert(0, None)
-        revnos = dict((rev, idx+1) for idx, rev in enumerate(mainline))
-        view_revs_iter = self.get_view_revisions(
-            mainline, revnos, tree.branch, 'reverse', True)
-        actual_revs = log._filter_revisions_touching_file_id(
-            tree.branch, file_id, list(view_revs_iter))
-        self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
-
-    def test_file_id_f1(self):
-        tree = self.create_tree_with_single_merge()
-        # f1 should be marked as modified by revisions A and B
-        self.assertAllRevisionsForFileID(tree, 'f1-id', ['B', 'A'])
-
-    def test_file_id_f2(self):
-        tree = self.create_tree_with_single_merge()
-        # f2 should be marked as modified by revisions A, C, and D
-        # because D merged the changes from C.
-        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
-
-    def test_file_id_f3(self):
-        tree = self.create_tree_with_single_merge()
-        # f3 should be marked as modified by revisions A, B, C, and D
-        self.assertAllRevisionsForFileID(tree, 'f3-id', ['D', 'C', 'B', 'A'])
-
-    def test_file_id_with_ghosts(self):
-        # This is testing bug #209948, where having a ghost would cause
-        # _filter_revisions_touching_file_id() to fail.
-        tree = self.create_tree_with_single_merge()
-        # We need to add a revision, so switch back to a write-locked tree
-        # (still a single addCleanup(tree.unlock) pending).
-        tree.unlock()
-        tree.lock_write()
-        first_parent = tree.last_revision()
-        tree.set_parent_ids([first_parent, 'ghost-revision-id'])
-        self.build_tree_contents([('tree/f1', 'A\nB\nXX\n')])
-        tree.commit('commit with a ghost', rev_id='XX')
-        self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
-        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
-
-    def test_unknown_file_id(self):
-        tree = self.create_tree_with_single_merge()
-        self.assertAllRevisionsForFileID(tree, 'unknown', [])
-
-    def test_empty_branch_unknown_file_id(self):
-        tree = self.make_branch_and_tree('tree')
-        self.assertAllRevisionsForFileID(tree, 'unknown', [])
-
 
 class TestShowChangedRevisions(tests.TestCaseWithTransport):
 
@@ -1678,7 +1334,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2
-fixes bug(s): test://bug/id test://bug/2
+fixes bugs: test://bug/id test://bug/2
 author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: work
@@ -1689,7 +1345,7 @@ message:
   message
 ------------------------------------------------------------
 revno: 1
-fixes bug(s): test://bug/id
+fixes bug: test://bug/id
 committer: Joe Foo <joe@foo.com>
 branch nick: work
 timestamp: Tue 2005-11-22 00:00:00 +0000
@@ -1702,13 +1358,13 @@ message:
         tree = self.make_commits_with_bugs()
         self.assertFormatterResult("""\
     2 Joe Bar\t2005-11-22
-      fixes bug(s): test://bug/id test://bug/2
+      fixes bugs: test://bug/id test://bug/2
       multiline
       log
       message
 
     1 Joe Foo\t2005-11-22
-      fixes bug(s): test://bug/id
+      fixes bug: test://bug/id
       simple log message
 
 """,
@@ -1880,7 +1536,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
     def make_branch_with_alternate_ancestries(self, relpath='.'):
         # See test_merge_sorted_exclude_ancestry below for the difference with
         # bt.per_branch.test_iter_merge_sorted_revision.
-        # TestIterMergeSortedRevisionsBushyGraph. 
+        # TestIterMergeSortedRevisionsBushyGraph.
         # make_branch_with_alternate_ancestries
         # and test_merge_sorted_exclude_ancestry
         # See the FIXME in assertLogRevnos too.
@@ -1940,4 +1596,43 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2'],
                              b, '1', '3', exclude_common_ancestry=True,
                              generate_merge_revisions=True)
+
+
+class TestLogDefaults(TestCaseForLogFormatter):
+    def test_default_log_level(self):
+        """
+        Test to ensure that specifying 'levels=1' to make_log_request_dict
+        doesn't get overwritten when using a LogFormatter that supports more
+        detail.
+        Fixes bug #747958.
+        """
+        wt = self._prepare_tree_with_merges()
+        b = wt.branch
+
+        class CustomLogFormatter(log.LogFormatter):
+            def __init__(self, *args, **kwargs):
+                super(CustomLogFormatter, self).__init__(*args, **kwargs)
+                self.revisions = []
+            def get_levels(self):
+                # log formatter supports all levels:
+                return 0
+            def log_revision(self, revision):
+                self.revisions.append(revision)
+
+        log_formatter = LogCatcher()
+        # First request we don't specify number of levels, we should get a
+        # sensible default (whatever the LogFormatter handles - which in this
+        # case is 0/everything):
+        request = log.make_log_request_dict(limit=10)
+        log.Logger(b, request).show(log_formatter)
+        # should have all three revisions:
+        self.assertEquals(len(log_formatter.revisions), 3)
+
+        del log_formatter
+        log_formatter = LogCatcher()
+        # now explicitly request mainline revisions only:
+        request = log.make_log_request_dict(limit=10, levels=1)
+        log.Logger(b, request).show(log_formatter)
+        # should now only have 2 revisions:
+        self.assertEquals(len(log_formatter.revisions), 2)
 

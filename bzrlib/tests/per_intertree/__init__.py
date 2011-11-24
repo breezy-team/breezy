@@ -122,6 +122,7 @@ def load_tests(standard_tests, module, loader):
     default_tree_format = WorkingTreeFormat3()
     submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.per_intertree.test_compare',
+        'bzrlib.tests.per_intertree.test_file_content_matches',
         ])
     test_intertree_permutations = [
         # test InterTree with two default-format working trees.

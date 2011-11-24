@@ -17,11 +17,13 @@
 """Helper functions for adding files to working trees."""
 
 import sys
+import os
 
 from bzrlib import (
     osutils,
+    ui, 
     )
-
+from bzrlib.i18n import gettext
 
 class AddAction(object):
     """A class which defines what action to take when adding a file."""
@@ -52,6 +54,48 @@ class AddAction(object):
         if self.should_print:
             self._to_file.write('adding %s\n' % _quote(path))
         return None
+
+    def skip_file(self, tree, path, kind, stat_value = None):
+        """Test whether the given file should be skipped or not.
+        
+        The default action never skips. Note this is only called during
+        recursive adds
+        
+        :param tree: The tree we are working in
+        :param path: The path being added
+        :param kind: The kind of object being added.
+        :param stat: Stat result for this file, if available already
+        :return bool. True if the file should be skipped (not added)
+        """
+        return False
+
+
+class AddWithSkipLargeAction(AddAction):
+    """A class that can decide to skip a file if it's considered too large"""
+
+    # default 20 MB
+    _DEFAULT_MAX_FILE_SIZE = 20000000
+    _optionName = 'add.maximum_file_size'
+    _maxSize = None
+
+    def skip_file(self, tree, path, kind, stat_value = None):
+        if kind != 'file':
+            return False            
+        if self._maxSize is None:
+            config = tree.branch.get_config()
+            self._maxSize = config.get_user_option_as_int_from_SI(
+                self._optionName,  
+                self._DEFAULT_MAX_FILE_SIZE)
+        if stat_value is None:
+            file_size = os.path.getsize(path);
+        else:
+            file_size = stat_value.st_size;
+        if self._maxSize > 0 and file_size > self._maxSize:
+            ui.ui_factory.show_warning(gettext(
+                "skipping {0} (larger than {1} of {2} bytes)").format(
+                path, self._optionName,  self._maxSize))
+            return True
+        return False
 
 
 class AddFromBaseAction(AddAction):

@@ -111,6 +111,8 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_ui_get_boolean(self):
         stdin = tests.StringIOWrapper("y\n" # True
                                       "n\n" # False
+                                      " \n y \n" # True
+                                      " no \n" # False
                                       "yes with garbage\nY\n" # True
                                       "not an answer\nno\n" # False
                                       "I'm sure!\nyes\n" # True
@@ -125,9 +127,77 @@ class TestTextUIFactory(tests.TestCase):
         self.assertEqual(False, factory.get_boolean(u""))
         self.assertEqual(True, factory.get_boolean(u""))
         self.assertEqual(False, factory.get_boolean(u""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
+        # return false on EOF
+        self.assertEqual(False, factory.get_boolean(u""))
+
+    def test_text_ui_choose_bad_parameters(self):
+        stdin = tests.StringIOWrapper()
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        # invalid default index
+        self.assertRaises(ValueError, factory.choose, u"", u"&Yes\n&No", 3)
+        # duplicated choice
+        self.assertRaises(ValueError, factory.choose, u"", u"&choice\n&ChOiCe")
+        # duplicated shortcut
+        self.assertRaises(ValueError, factory.choose, u"", u"&choice1\nchoi&ce2")
+
+    def test_text_ui_choose_prompt(self):
+        stdin = tests.StringIOWrapper()
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        # choices with explicit shortcuts
+        factory.choose(u"prompt", u"&yes\n&No\nmore &info")
+        self.assertEqual("prompt ([y]es, [N]o, more [i]nfo): \n", factory.stderr.getvalue())
+        # automatic shortcuts
+        factory.stderr.truncate(0)
+        factory.choose(u"prompt", u"yes\nNo\nmore info")
+        self.assertEqual("prompt ([y]es, [N]o, [m]ore info): \n", factory.stderr.getvalue())
+
+    def test_text_ui_choose_return_values(self):
+        choose = lambda: factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
+        stdin = tests.StringIOWrapper("y\n" # 0
+                                      "n\n" # 1
+                                      " \n" # default: 3
+                                      " no \n" # 1
+                                      "b\na\nd \n" # bad shortcuts, all ignored
+                                      "yes with garbage\nY\n" # 0
+                                      "not an answer\nno\n" # 1
+                                      "info\nmore info\n" # 3
+                                      "Maybe\n" # 2
+                                      "foo\n")
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        self.assertEqual(0, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(3, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(0, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(3, choose())
+        self.assertEqual(2, choose())
+        self.assertEqual("foo\n", factory.stdin.read())
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+        # return None on EOF
+        self.assertEqual(None, choose())
+
+    def test_text_ui_choose_no_default(self):
+        stdin = tests.StringIOWrapper(" \n" # no default, invalid!
+                                      " yes \n" # 0
+                                      "foo\n")
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        self.assertEqual(0, factory.choose(u"", u"&Yes\n&No"))
+        self.assertEqual("foo\n", factory.stdin.read())
 
     def test_text_ui_get_integer(self):
         stdin = tests.StringIOWrapper(
@@ -170,8 +240,8 @@ class TestTextUIFactory(tests.TestCase):
         output = out.getvalue()
         self.assertContainsRe(output,
             "| foo *\r\r  *\r*")
-        self.assertContainsRe(output,
-            r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
+        self.assertContainsString(output,
+            r"what do you want? ([y]es, [n]o): what do you want? ([y]es, [n]o): ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
 

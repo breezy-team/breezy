@@ -16,7 +16,7 @@
 
 __doc__ = """Merge hook for GNU-format ChangeLog files
 
-To enable this plugin, add a section to your location.conf
+To enable this plugin, add a section to your locations.conf
 like::
 
     [/home/user/proj]
