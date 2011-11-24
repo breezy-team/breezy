@@ -125,6 +125,10 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
     def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
         return "opened branch."
 
+    @classmethod
+    def from_string(cls, text):
+        return cls()
+
 
 # Demonstrating how lazy loading is often implemented:
 # A constant string is created.
@@ -145,6 +149,10 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
 
     def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
         return "opened supported branch."
+
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
 
 
 class SampleExtraBranchFormat(_mod_branch.BranchFormat):
@@ -207,10 +215,10 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.bzrdir.control_transport.put_bytes('branch-format',
-            tree.bzrdir._format.get_format_string() + 
+        tree.branch.control_transport.put_bytes('format',
+            tree.branch._format.get_format_string() +
             "feature\tnecessity\n")
-        found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
+        found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
         self.assertEquals(
             found_format.features.get_feature("feature"),

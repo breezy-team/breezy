@@ -2053,7 +2053,7 @@ class BranchFormatMetadir(BranchFormat):
             raise errors.NotBranchError(path=transport.base, bzrdir=controldir)
         try:
             first_line = format_string[:format_string.index("\n")+1]
-        except IndexError:
+        except ValueError:
             first_line = format_string
         try:
             cls = format_registry.get(first_line)
