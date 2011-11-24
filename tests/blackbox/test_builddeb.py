@@ -179,6 +179,12 @@ class TestBuilddeb(BuilddebTestCase):
     hooks.install_named_hook("set_commit_message",
       builddeb.debian_changelog_commit, "Test builddeb set commit msg hook")
     tree = self.make_unpacked_source()
+    f = open("debian/bzr-builddeb.conf", 'wb')
+    try:
+      f.write("[BUILDDEB]\ncommit-message-from-changelog = true")
+    finally:
+      f.close()
+    tree.add("debian/bzr-builddeb.conf")
     # The changelog is only used for commit message when it already exists and
     # is then changed, so need to clear it, commit, then set the contents.
     open("debian/changelog", "w").close()

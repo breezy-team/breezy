@@ -39,13 +39,28 @@ class CommitMessageTests(TestCaseWithTransport):
         finally:
             f.close()
 
+    def _set_commit_message_from_changelog(self, value):
+        f = open("debian/bzr-builddeb.conf", 'wb')
+        try:
+            f.write("[BUILDDEB]\ncommit-message-from-changelog = %s" % value)
+        finally:
+            f.close()
+
     def test_leaves_existing_message(self):
-        self.assertEqual(debian_changelog_commit_message(None, "foo"), "foo")
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['a', 'debian/'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['a', 'debian', 'debian/bzr-builddeb.conf'])
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        commit = self._Commit(wt)
+        self.assertEqual(debian_changelog_commit_message(commit, "foo"), "foo")
 
     def test_ignores_commit_without_debian_changelog(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a'])
-        wt.add(['a'])
+        self.build_tree(['a', 'debian/'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['a', 'debian', 'debian/bzr-builddeb.conf'])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
@@ -54,7 +69,8 @@ class CommitMessageTests(TestCaseWithTransport):
     def test_ignores_commit_excluding_debian_changelog(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
         self.set_changelog_content("  * new line")
         wt.lock_read()
@@ -65,7 +81,8 @@ class CommitMessageTests(TestCaseWithTransport):
     def test_ignores_commit_specific_files(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
         self.set_changelog_content("  * new line\n")
         wt.add(['a'])
@@ -77,7 +94,8 @@ class CommitMessageTests(TestCaseWithTransport):
     def test_provides_stripped_message(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
         self.set_changelog_content("  * new line\n")
         wt.add(['a'])
@@ -90,7 +108,8 @@ class CommitMessageTests(TestCaseWithTransport):
     def test_provides_unstripped_message(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
         self.set_changelog_content("  * two\n  * changes\n")
         wt.add(['a'])
@@ -102,13 +121,9 @@ class CommitMessageTests(TestCaseWithTransport):
 
     def test_no_set_message_config_option(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/', 'debian/changelog', '.bzr-builddeb/', '.bzr-builddeb/default.conf'])
-        f = open(".bzr-builddeb/default.conf", 'wb')
-        try:
-            f.write("[BUILDDEB]\ncommit-message-from-changelog = false")
-        finally:
-            f.close()
-        wt.add(['debian/', 'debian/changelog', '.bzr-builddeb/', '.bzr-builddeb/default.conf'])
+        self.build_tree(['a', 'debian/', 'debian/changelog'])
+        self._set_commit_message_from_changelog(False)
+        wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
         self.set_changelog_content("  * a change\n")
         wt.add(['a'])
@@ -121,7 +136,8 @@ class CommitMessageTests(TestCaseWithTransport):
     def test_set_message_with_bugs(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
         self.set_changelog_content("  * fix LP: #1234\n  * close LP: #4321\n")
         wt.add(['a'])
@@ -137,7 +153,8 @@ class CommitMessageTests(TestCaseWithTransport):
     def test_set_message_returns_unicode(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self._set_commit_message_from_changelog(True)
+        wt.add(['debian/', 'debian/changelog', 'debian/bzr-builddeb.conf'])
         wt.commit("one")
         self.set_changelog_content("  * \xe2\x80\xa6real fix this time\n")
         wt.add(['a'])
