@@ -2232,6 +2232,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise SmartProtocolError('unexpected response code %s' % (response,))
         return (response[0] == 'yes')
 
+    @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
         if not self.has_signature_for_revision_id(revision_id):
             return gpg.SIGNATURE_NOT_SIGNED, None
