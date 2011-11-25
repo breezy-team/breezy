@@ -1328,9 +1328,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
-        # should be an API call to the server.
-        self._ensure_real()
-        return self._real_repository.get_physical_lock_status()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.get_physical_lock_status', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_physical_lock_status()
+        if response[0] not in ('yes', 'no'):
+            raise errors.UnexpectedSmartServerResponse(response)
+        return (response[0] == 'yes')
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -2875,9 +2881,15 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""
-        # should be an API call to the server, as branches must be lockable.
-        self._ensure_real()
-        return self._real_branch.get_physical_lock_status()
+        try:
+            response = self._client.call('Branch.get_physical_lock_status',
+                self._remote_path())
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch.get_physical_lock_status()
+        if response[0] not in ('yes', 'no'):
+            raise errors.UnexpectedSmartServerResponse(response)
+        return (response[0] == 'yes')
 
     def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.

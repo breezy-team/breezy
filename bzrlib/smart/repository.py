@@ -753,6 +753,19 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
+    """Get the physical lock status for a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        if repository.get_physical_lock_status():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
 class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, str_bool_new_value):
