@@ -1039,6 +1039,25 @@ class RemoteBranchTestCase(RemoteBzrDirTestCase):
         return RemoteBranch(bzrdir, repo, _client=client, format=format)
 
 
+class TestBranchBreakLock(RemoteBranchTestCase):
+
+    def test_break_lock(self):
+        transport_path = 'quack'
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.break_lock', ('quack/',),
+            'success', ('ok',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        branch.break_lock()
+        self.assertFinished(client)
+
+
 class TestBranchGetParent(RemoteBranchTestCase):
 
     def test_no_parent(self):
@@ -2203,6 +2222,18 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                           'firstrev': (123456.300, 3600),
                           'latestrev': (654231.400, 0),},
                          result)
+
+
+class TestRepositoryBreakLock(TestRemoteRepository):
+
+    def test_break_lock(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        repo.break_lock()
+        self.assertEqual(
+            [('call', 'Repository.break_lock', ('quack/',))],
+            client._calls)
 
 
 class TestRepositoryGetGraph(TestRemoteRepository):

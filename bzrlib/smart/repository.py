@@ -144,6 +144,15 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
+
+class SmartServerRepositoryBreakLock(SmartServerRepositoryRequest):
+    """Break a repository lock."""
+
+    def do_repository_request(self, repository):
+        repository.break_lock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
 _lsprof_count = 0
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
