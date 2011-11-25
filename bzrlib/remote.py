@@ -1940,8 +1940,19 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         return self._real_repository.reconcile(other=other, thorough=thorough)
 
     def all_revision_ids(self):
-        self._ensure_real()
-        return self._real_repository.all_revision_ids()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response_tuple, response_handler = self._call_expecting_body(
+                "Repository.all_revision_ids", path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.all_revision_ids()
+        if response_tuple != ("ok", ):
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        revids = set(response_handler.read_body_bytes().splitlines())
+        for fallback in self._fallback_repositories:
+            revids.update(set(fallback.all_revision_ids()))
+        return list(revids)
 
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):

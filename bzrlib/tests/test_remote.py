@@ -2121,6 +2121,31 @@ class TestRepositoryFormat(TestRemoteRepository):
             remote_repo_format.get_format_description())
 
 
+class TestRepositoryAllRevisionIds(TestRemoteRepository):
+
+    def test_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body('', 'ok')
+        self.assertEquals([], repo.all_revision_ids())
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.all_revision_ids',
+             ('quack/',))],
+            client._calls)
+
+    def test_with_some_content(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(
+            'rev1\nrev2\nanotherrev\n', 'ok')
+        self.assertEquals(["rev1", "rev2", "anotherrev"],
+            repo.all_revision_ids())
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.all_revision_ids',
+             ('quack/',))],
+            client._calls)
+
+
 class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
