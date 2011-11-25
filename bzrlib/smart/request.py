@@ -421,6 +421,8 @@ def _translate_error(err):
         return ('UnstackableBranchFormat', str(err.format), err.url)
     elif isinstance(err, errors.NotStacked):
         return ('NotStacked',)
+    elif isinstance(err, errors.BzrCheckError):
+        return ('BzrCheckError', err.msg)
     elif isinstance(err, UnicodeError):
         # If it is a DecodeError, than most likely we are starting
         # with a plain string
@@ -673,6 +675,18 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')
+request_handlers.register_lazy(
+    'Repository.start_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryStartWriteGroup')
+request_handlers.register_lazy(
+    'Repository.commit_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryCommitWriteGroup')
+request_handlers.register_lazy(
+    'Repository.abort_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryAbortWriteGroup')
+request_handlers.register_lazy(
+    'Repository.check_write_group', 'bzrlib.smart.repository',
+    'SmartServerRepositoryCheckWriteGroup')
 request_handlers.register_lazy(
     'VersionedFileRepository.get_serializer_format', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetSerializerFormat')
