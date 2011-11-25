@@ -44,6 +44,9 @@ Bug Fixes
   remote ones. See ``bzr help configuration`` for more details.
   (Vincent Ladeuil, #843211)
 
+* Add HPSS call for looking up revision numbers from revision ids on
+  remote repositories. (Jelmer Vernooij, #640253)
+
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
@@ -86,8 +89,7 @@ Internals
 
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
-  ``BzrDir.has_workingtree``, ``Branch.put_config_file`` and
-  ``Branch.revision_id_to_revno``.
+  ``BzrDir.has_workingtree`` and ``Branch.put_config_file``.
   (Jelmer Vernooij)
 
 Testing
