@@ -105,7 +105,8 @@ Internals
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
   ``BzrDir.has_workingtree``, ``Branch.put_config_file``,
-  ``Repository.all_revision_ids`` and ``BzrDir.destroy_branch``.
+  ``Repository.all_revision_ids``,``BzrDir.destroy_branch``.
+  ``Branch.break_lock`` and ``Repository.break_lock``.
   (Jelmer Vernooij)
 
 * Custom HPSS error handlers can now be installed in the smart server client
