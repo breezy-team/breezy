@@ -39,21 +39,36 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
+  pickled. (Jelmer Vernooij, #893149)
+
 * A new section local option ``basename`` is available to help support some
   ``bzr-pipeline`` workflows and more generally help mapping local paths to
   remote ones. See ``bzr help configuration`` for more details.
   (Vincent Ladeuil, #843211)
 
-* Resolve regression from colocated branch path handling, by ensuring that
-  unreserved characters are unquoted in URLs. (Martin Packman, #842223)
+* Cope with missing revision ids being specified to
+  ``Repository.gather_stats`` HPSS call. (Jelmer Vernooij, #411290)
 
-* Support verifying signatures on remote repositories.
-  (Jelmer Vernooij, #889694)
+* Fix test failures on windows related to locations.conf handling.
+  (Vincent Ladeuil, #892992)
 
 * Fixed parsing of the timestamp given to ``commit --commit-time``. Now
   prohibits several invalid strings, reads the correct number of seconds,
   and gives a better error message if the time zone offset is not given.
   (Matt Giuca, #892657)
+
+* Resolve regression from colocated branch path handling, by ensuring that
+  unreserved characters are unquoted in URLs. (Martin Packman, #842223)
+
+* Split segments from URLs for colocated branches without assuming the
+  combined form is a valid. (Martin Packman, #842233)
+
+* Support looking up revision numbers by revision id in empty branches.
+  (Jelmer Vernooij, #535031)
+
+* Support verifying signatures on remote repositories.
+  (Jelmer Vernooij, #889694)
 
 Documentation
 *************
@@ -68,6 +83,9 @@ API Changes
 
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
+
+* ``Tree.get_file_by_path`` is now deprecated. Use ``Tree.get_file`` instead.
+  (Jelmer Vernooij, #666897)
 
 * Some global options for use with commands have been removed, construct
   an ``Option`` with the name instead. (Martin Packman)
@@ -86,9 +104,13 @@ Internals
 
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
-  ``BzrDir.has_workingtree``, ``Branch.put_config_file`` and
-  ``BzrDir.destroy_branch``.
+  ``BzrDir.has_workingtree``, ``Branch.put_config_file``,
+  ``Repository.all_revision_ids`` and ``BzrDir.destroy_branch``.
   (Jelmer Vernooij)
+
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
 
 Testing
 *******
@@ -147,6 +169,9 @@ Improvements
 
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
+
+* ``bzr rmbranch`` can now remove colocated branches.
+  (Jelmer Vernooij, #831464)
 
 * ``bzr serve`` now can serve from URLs rather than just from the
   file system. I.e.: ``bzr serve -d lp:bzr`` or

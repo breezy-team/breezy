@@ -1443,6 +1443,34 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
             request.execute, 'subdir')
 
 
+class TestSmartServerRepositoryAllRevisionIds(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_empty(self):
+        """An empty body should be returned for an empty repository."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryAllRevisionIds(backing)
+        self.make_repository('.')
+        self.assertEquals(
+            smart_req.SuccessfulSmartServerResponse(("ok", ), ""),
+            request.execute(''))
+
+    def test_some_revisions(self):
+        """An empty body should be returned for an empty repository."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryAllRevisionIds(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        tree.commit(rev_id='origineel', message="message")
+        tree.commit(rev_id='nog-een-revisie', message="message")
+        tree.unlock()
+        self.assertEquals(
+            smart_req.SuccessfulSmartServerResponse(("ok", ),
+                "origineel\nnog-een-revisie"),
+            request.execute(''))
+
+
 class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
 
     def test_trivial_bzipped(self):
@@ -1751,6 +1779,17 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         self.assertEqual(smart_req.SmartServerResponse(('ok', ), expected_body),
                          request.execute('',
                                          rev_id_utf8, 'yes'))
+
+    def test_unknown_revid(self):
+        """An unknown revision id causes a 'nosuchrevision' error."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGatherStats(backing)
+        repository = self.make_repository('.')
+        expected_body = 'revisions: 0\n'
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('nosuchrevision', 'mia'), None),
+            request.execute('', 'mia', 'yes'))
 
 
 class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
@@ -2083,6 +2122,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerRequestOpenBranchV3)
         self.assertHandlerEqual('PackRepository.autopack',
             smart_packrepo.SmartServerPackRepositoryAutopack)
+        self.assertHandlerEqual('Repository.all_revision_ids',
+            smart_repo.SmartServerRepositoryAllRevisionIds)
         self.assertHandlerEqual('Repository.gather_stats',
             smart_repo.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
