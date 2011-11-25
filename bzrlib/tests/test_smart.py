@@ -1719,6 +1719,17 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
                          request.execute('',
                                          rev_id_utf8, 'yes'))
 
+    def test_unknown_revid(self):
+        """An unknown revision id causes a 'nosuchrevision' error."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGatherStats(backing)
+        repository = self.make_repository('.')
+        expected_body = 'revisions: 0\n'
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('nosuchrevision', 'mia'), None),
+            request.execute('', 'mia', 'yes'))
+
 
 class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
 
