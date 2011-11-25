@@ -2353,6 +2353,19 @@ class TestRepositoryGetSerializerFormat(TestRemoteRepository):
             client._calls)
 
 
+class TestRepositoryReconcile(TestRemoteRepository):
+
+    def test_reconcile(self):
+        transport_path = 'hill'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        self.assertIs(None, repo.reconcile())
+        self.assertEqual(
+            [('call', 'Repository.reconcile',
+              ('hill/', ))],
+            client._calls)
+
+
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):

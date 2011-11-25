@@ -1968,8 +1968,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         return self._real_repository._get_inventory_xml(revision_id)
 
     def reconcile(self, other=None, thorough=False):
-        self._ensure_real()
-        return self._real_repository.reconcile(other=other, thorough=thorough)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.reconcile', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.reconcile(other=other, thorough=thorough)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def all_revision_ids(self):
         path = self.bzrdir._path_for_remote_call(self._client)
