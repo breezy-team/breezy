@@ -115,6 +115,8 @@ Internals
   ``Repository.all_revision_ids``.
   (Jelmer Vernooij)
 
+* New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
+
 * Custom HPSS error handlers can now be installed in the smart server client
   using the ``error_translators`` and ``no_context_error_translators``
   registries. (Jelmer Vernooij)
