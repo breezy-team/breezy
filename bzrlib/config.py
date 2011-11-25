@@ -3397,10 +3397,8 @@ class LocationStack(_CompatibleStack):
         
         :param location: A URL prefix to """
         lstore = LocationStore()
-        if location is not None:
-            location = urlutils.normalize_url(location)
-            if location.startswith('file://'):
-                location = urlutils.local_path_from_url(location)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(

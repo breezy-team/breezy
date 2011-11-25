@@ -146,9 +146,7 @@ class LocalTransport(transport.Transport):
         if abspath is None:
             abspath = u'.'
 
-        return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base),
-            urlutils.strip_trailing_slash(abspath))
+        return urlutils.file_relpath(self.base, abspath)
 
     def has(self, relpath):
         return os.access(self._abspath(relpath), os.F_OK)
@@ -540,9 +538,7 @@ class LocalTransport(transport.Transport):
             """See Transport.symlink."""
             abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
             source_rel = urlutils.file_relpath(
-                urlutils.strip_trailing_slash(abs_link_dirpath),
-                urlutils.strip_trailing_slash(self.abspath(source))
-            )
+                abs_link_dirpath, self.abspath(source))
 
             try:
                 os.symlink(source_rel, self._abspath(link_name))
