@@ -1038,6 +1038,25 @@ class RemoteBranchTestCase(RemoteBzrDirTestCase):
         return RemoteBranch(bzrdir, repo, _client=client, format=format)
 
 
+class TestBranchBreakLock(RemoteBranchTestCase):
+
+    def test_break_lock(self):
+        transport_path = 'quack'
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.break_lock', ('quack/',),
+            'success', ('ok',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        branch.break_lock()
+        self.assertFinished(client)
+
+
 class TestBranchGetParent(RemoteBranchTestCase):
 
     def test_no_parent(self):
@@ -2164,6 +2183,31 @@ class TestRepositoryFormat(TestRemoteRepository):
             remote_repo_format.get_format_description())
 
 
+class TestRepositoryAllRevisionIds(TestRemoteRepository):
+
+    def test_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body('', 'ok')
+        self.assertEquals([], repo.all_revision_ids())
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.all_revision_ids',
+             ('quack/',))],
+            client._calls)
+
+    def test_with_some_content(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(
+            'rev1\nrev2\nanotherrev\n', 'ok')
+        self.assertEquals(["rev1", "rev2", "anotherrev"],
+            repo.all_revision_ids())
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.all_revision_ids',
+             ('quack/',))],
+            client._calls)
+
+
 class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
@@ -2220,6 +2264,18 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                           'firstrev': (123456.300, 3600),
                           'latestrev': (654231.400, 0),},
                          result)
+
+
+class TestRepositoryBreakLock(TestRemoteRepository):
+
+    def test_break_lock(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        repo.break_lock()
+        self.assertEqual(
+            [('call', 'Repository.break_lock', ('quack/',))],
+            client._calls)
 
 
 class TestRepositoryGetGraph(TestRemoteRepository):
@@ -3713,3 +3769,52 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
         # interpretation
         self.make_master_and_checkout('mas~ter', 'checkout')
         self.assertUpdateSucceeds(self.bound_location.replace('%2E', '~', 1))
+
+
+class TestWithCustomErrorHandler(RemoteBranchTestCase):
+
+    def test_no_context(self):
+        class OutOfCoffee(errors.BzrError):
+            """A dummy exception for testing."""
+
+            def __init__(self, urgency):
+                self.urgency = urgency
+        remote.no_context_error_translators.register("OutOfCoffee",
+            lambda err: OutOfCoffee(err.error_args[0]))
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info',
+            ('quack/',),
+            'error', ('OutOfCoffee', 'low'))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(OutOfCoffee, branch.last_revision_info)
+        self.assertFinished(client)
+
+    def test_with_context(self):
+        class OutOfTea(errors.BzrError):
+            def __init__(self, branch, urgency):
+                self.branch = branch
+                self.urgency = urgency
+        remote.error_translators.register("OutOfTea",
+            lambda err, find, path: OutOfTea(err.error_args[0],
+                find("branch")))
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info',
+            ('quack/',),
+            'error', ('OutOfTea', 'low'))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(OutOfTea, branch.last_revision_info)
+        self.assertFinished(client)
