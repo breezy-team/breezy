@@ -497,6 +497,9 @@ request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
+    'Branch.break_lock', 'bzrlib.smart.branch',
+    'SmartServerBranchBreakLock')
+request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch',
     'SmartServerBranchGetConfigFile')
 request_handlers.register_lazy(
@@ -519,6 +522,9 @@ request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
+request_handlers.register_lazy(
+    'Branch.get_physical_lock_status', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestGetPhysicalLockStatus')
 request_handlers.register_lazy( 'Branch.revision_history',
     'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
 request_handlers.register_lazy( 'Branch.set_config_option',
@@ -538,6 +544,8 @@ request_handlers.register_lazy(
     'SmartServerBranchRequestSetParentLocation')
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
+request_handlers.register_lazy(
+    'Branch.revision_id_to_revno', 'bzrlib.smart.branch', 'SmartServerBranchRequestRevisionIdToRevno')
 request_handlers.register_lazy(
     'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestCloningMetaDir')
@@ -560,11 +568,14 @@ request_handlers.register_lazy(
     'BzrDir.get_config_file', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestConfigFile')
 request_handlers.register_lazy(
-    'BzrDir.has_workingtree', 'bzrlib.smart.bzrdir',
-    'SmartServerBzrDirRequestHasWorkingTree')
+    'BzrDir.destroy_branch', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestDestroyBranch')
 request_handlers.register_lazy(
     'BzrDir.destroy_repository', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestDestroyRepository')
+request_handlers.register_lazy(
+    'BzrDir.has_workingtree', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestHasWorkingTree')
 request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
@@ -613,15 +624,21 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'PackRepository.autopack', 'bzrlib.smart.packrepository',
     'SmartServerPackRepositoryAutopack')
+request_handlers.register_lazy('Repository.all_revision_ids',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryAllRevisionIds')
+request_handlers.register_lazy('Repository.break_lock',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryBreakLock')
 request_handlers.register_lazy('Repository.gather_stats',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGatherStats')
 request_handlers.register_lazy('Repository.get_parent_map',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGetParentMap')
-request_handlers.register_lazy('Repository.add_signature_text',
-                               'bzrlib.smart.repository',
-                               'SmartServerRepositoryAddSignatureText')
+request_handlers.register_lazy(
+    'Repository.add_signature_text', 'bzrlib.smart.repository',
+    'SmartServerRepositoryAddSignatureText')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(
@@ -647,6 +664,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
 request_handlers.register_lazy(
+    'Repository.get_physical_lock_status', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetPhysicalLockStatus')
+request_handlers.register_lazy(
     'Repository.get_rev_id_for_revno', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetRevIdForRevno')
 request_handlers.register_lazy(
@@ -670,6 +690,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.check_write_group', 'bzrlib.smart.repository',
     'SmartServerRepositoryCheckWriteGroup')
+request_handlers.register_lazy(
+    'VersionedFileRepository.get_serializer_format', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetSerializerFormat')
 request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(

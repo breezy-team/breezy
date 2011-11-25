@@ -143,6 +143,15 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
 
+
+class SmartServerRepositoryBreakLock(SmartServerRepositoryRequest):
+    """Break a repository lock."""
+
+    def do_repository_request(self, repository):
+        repository.break_lock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
 _lsprof_count = 0
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
@@ -326,6 +335,20 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
                 ('history-incomplete', earliest_revno, earliest_revid))
 
 
+class SmartServerRepositoryGetSerializerFormat(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """Return the serializer format for this repository.
+
+        New in 2.5.0.
+
+        :param repository: The repository to query
+        :return: A smart server response ('ok', FORMAT)
+        """
+        serializer = repository.get_serializer_format()
+        return SuccessfulSmartServerResponse(('ok', serializer))
+
+
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id):
@@ -391,7 +414,11 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
             decoded_committers = True
         else:
             decoded_committers = None
-        stats = repository.gather_stats(decoded_revision_id, decoded_committers)
+        try:
+            stats = repository.gather_stats(decoded_revision_id,
+                decoded_committers)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(('nosuchrevision', revid))
 
         body = ''
         if stats.has_key('committers'):
@@ -726,6 +753,19 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
+    """Get the physical lock status for a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        if repository.get_physical_lock_status():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
 class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, str_bool_new_value):
@@ -1022,3 +1062,14 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
         finally:
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
+    """Retrieve all of the revision ids in a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        revids = repository.all_revision_ids()
+        return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))
