@@ -1968,14 +1968,29 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         return self._real_repository._get_inventory_xml(revision_id)
 
     def reconcile(self, other=None, thorough=False):
+        from bzrlib.reconcile import RepoReconciler
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            response = self._call('Repository.reconcile', path)
+            response, handler = self._call_expecting_body(
+                'Repository.reconcile', path)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.reconcile(other=other, thorough=thorough)
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
+        body = handler.read_body_bytes()
+        result = RepoReconciler(self)
+        for line in body.split('\n'):
+            if not line:
+                continue
+            key, val_text = line.split(':')
+            if key == "garbage_inventories":
+                result.garbage_inventories = int(val_text)
+            elif key == "inconsistent_parents":
+                result.inconsistent_parents = int(val_text)
+            else:
+                mutter("unknown reconcile key %r" % key)
+        return result
 
     def all_revision_ids(self):
         path = self.bzrdir._path_for_remote_call(self._client)

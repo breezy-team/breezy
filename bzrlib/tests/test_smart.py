@@ -2091,7 +2091,10 @@ class TestSmartServerRepositoryReconcile(tests.TestCaseWithTransport):
         self.addCleanup(repo.lock_write().unlock)
         request_class = smart_repo.SmartServerRepositoryReconcile
         request = request_class(backing)
-        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok', )),
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(
+            ('ok', ),
+             'garbage_inventories: 0\n'
+             'inconsistent_parents: 0\n'),
             request.execute('', ))
 
 

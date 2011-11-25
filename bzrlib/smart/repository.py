@@ -952,5 +952,9 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository):
-        repository.reconcile()
-        return SuccessfulSmartServerResponse(('ok', ))
+        reconciler = repository.reconcile()
+        body = [
+            "garbage_inventories: %d\n" % reconciler.garbage_inventories,
+            "inconsistent_parents: %d\n" % reconciler.inconsistent_parents,
+            ]
+        return SuccessfulSmartServerResponse(('ok', ), "".join(body))

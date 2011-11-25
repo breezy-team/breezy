@@ -2358,12 +2358,16 @@ class TestRepositoryReconcile(TestRemoteRepository):
     def test_reconcile(self):
         transport_path = 'hill'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_success_response('ok')
-        self.assertIs(None, repo.reconcile())
+        body = ("garbage_inventories: 2\n"
+                "inconsistent_parents: 3\n")
+        client.add_success_response_with_body(body, 'ok')
+        reconciler = repo.reconcile()
         self.assertEqual(
-            [('call', 'Repository.reconcile',
-              ('hill/', ))],
+            [('call_expecting_body', 'Repository.reconcile',
+                ('hill/', ))],
             client._calls)
+        self.assertEquals(2, reconciler.garbage_inventories)
+        self.assertEquals(3, reconciler.inconsistent_parents)
 
 
 class TestRepositoryGetGraph(TestRemoteRepository):
