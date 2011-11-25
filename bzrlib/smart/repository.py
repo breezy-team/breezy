@@ -943,3 +943,14 @@ class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     def do_repository_request(self, repository):
         revids = repository.all_revision_ids()
         return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))
+
+
+class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
+    """Reconcile a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        repository.reconcile()
+        return SuccessfulSmartServerResponse(('ok', ))
