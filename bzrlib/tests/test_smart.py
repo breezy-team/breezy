@@ -223,6 +223,39 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
 
+class TestSmartServerBzrDirRequestDestroyBranch(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.destroy_branch."""
+
+    def test_destroy_branch_default(self):
+        """The default branch can be removed."""
+        backing = self.get_transport()
+        dir = self.make_branch('.').bzrdir
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('ok',))
+        self.assertEqual(expected, request.execute('', None))
+
+    def test_destroy_branch_named(self):
+        """A named branch can be removed."""
+        backing = self.get_transport()
+        dir = self.make_repository('.', format="development-colo").bzrdir
+        dir.create_branch(name="branchname")
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.SuccessfulSmartServerResponse(('ok',))
+        self.assertEqual(expected, request.execute('', "branchname"))
+
+    def test_destroy_branch_missing(self):
+        """An error is raised if the branch didn't exist."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.', format="development-colo")
+        request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
+        request = request_class(backing)
+        expected = smart_req.FailedSmartServerResponse(('nobranch',), None)
+        self.assertEqual(expected, request.execute('', "branchname"))
+
+
 class TestSmartServerBzrDirRequestHasWorkingTree(
     tests.TestCaseWithTransport):
     """Tests for BzrDir.has_workingtree."""
@@ -782,6 +815,41 @@ class TestSmartServerBranchRequestLastRevisionInfo(
         self.assertEqual(
             smart_req.SmartServerResponse(('ok', '2', rev_id_utf8)),
             request.execute(''))
+
+
+class TestSmartServerBranchRequestRevisionIdToRevno(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_null(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        self.make_branch('.')
+        self.assertEqual(smart_req.SmartServerResponse(('ok', '0')),
+            request.execute('', 'null:'))
+
+    def test_simple(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        tree.unlock()
+        self.assertEqual(
+            smart_req.SmartServerResponse(('ok', '1')),
+            request.execute('', r1))
+
+    def test_not_found(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        branch = self.make_branch('.')
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('NoSuchRevision', 'idontexist')),
+            request.execute('', 'idontexist'))
 
 
 class TestSmartServerBranchRequestGetConfigFile(
@@ -2033,6 +2101,19 @@ class TestSmartServerRepositorySetMakeWorkingTrees(
         self.assertTrue(repo.make_working_trees())
 
 
+class TestSmartServerRepositoryGetSerializerFormat(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_get_serializer_format(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', format='2a')
+        request_class = smart_repo.SmartServerRepositoryGetSerializerFormat
+        request = request_class(backing)
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', '10')),
+            request.execute(''))
+
+
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def make_repo_needing_autopacking(self, path='.'):
@@ -2128,6 +2209,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchRequestLastRevisionInfo)
         self.assertHandlerEqual('Branch.revision_history',
             smart_branch.SmartServerRequestRevisionHistory)
+        self.assertHandlerEqual('Branch.revision_id_to_revno',
+            smart_branch.SmartServerBranchRequestRevisionIdToRevno)
         self.assertHandlerEqual('Branch.set_config_option',
             smart_branch.SmartServerBranchRequestSetConfigOption)
         self.assertHandlerEqual('Branch.set_last_revision',
@@ -2140,6 +2223,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchRequestSetParentLocation)
         self.assertHandlerEqual('Branch.unlock',
             smart_branch.SmartServerBranchRequestUnlock)
+        self.assertHandlerEqual('BzrDir.destroy_branch',
+            smart_dir.SmartServerBzrDirRequestDestroyBranch)
         self.assertHandlerEqual('BzrDir.find_repository',
             smart_dir.SmartServerRequestFindRepositoryV1)
         self.assertHandlerEqual('BzrDir.find_repositoryV2',
@@ -2194,6 +2279,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',
             smart_repo.SmartServerRepositoryUnlock)
+        self.assertHandlerEqual('VersionedFileRepository.get_serializer_format',
+            smart_repo.SmartServerRepositoryGetSerializerFormat)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
 

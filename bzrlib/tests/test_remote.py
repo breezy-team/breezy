@@ -486,6 +486,33 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirDestroyBranch(TestRemote):
+
+    def test_destroy_default(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_branch', ('quack/', ),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_branch()
+        self.assertFinished(client)
+
+    def test_destroy_named(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_branch', ('quack/', "foo"),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_branch("foo")
+        self.assertFinished(client)
+
+
 class TestBzrDirHasWorkingTree(TestRemote):
 
     def test_has_workingtree(self):
@@ -1979,6 +2006,49 @@ class TestBranchLockWrite(RemoteBranchTestCase):
         self.assertFinished(client)
 
 
+class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
+
+    def test_simple(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'null:'),
+            'success', ('ok', '0',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'unknown'),
+            'error', ('NoSuchRevision', 'unknown',),)
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertEquals(0, branch.revision_id_to_revno('null:'))
+        self.assertRaises(errors.NoSuchRevision,
+            branch.revision_id_to_revno, 'unknown')
+        self.assertFinished(client)
+
+    def test_dotted(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'null:'),
+            'success', ('ok', '0',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'unknown'),
+            'error', ('NoSuchRevision', 'unknown',),)
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertEquals((0, ), branch.revision_id_to_dotted_revno('null:'))
+        self.assertRaises(errors.NoSuchRevision,
+            branch.revision_id_to_dotted_revno, 'unknown')
+        self.assertFinished(client)
+
+
 class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
     def test__get_config(self):
@@ -2233,6 +2303,19 @@ class TestRepositoryBreakLock(TestRemoteRepository):
         repo.break_lock()
         self.assertEqual(
             [('call', 'Repository.break_lock', ('quack/',))],
+            client._calls)
+
+
+class TestRepositoryGetSerializerFormat(TestRemoteRepository):
+
+    def test_get_serializer_format(self):
+        transport_path = 'hill'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok', '7')
+        self.assertEquals('7', repo.get_serializer_format())
+        self.assertEqual(
+            [('call', 'VersionedFileRepository.get_serializer_format',
+              ('hill/', ))],
             client._calls)
 
 

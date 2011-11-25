@@ -581,9 +581,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
-        self._ensure_real()
-        self._real_bzrdir.destroy_branch(name=name)
+        path = self._path_for_remote_call(self._client)
+        try:
+            if name is not None:
+                args = (name, )
+            else:
+                args = ()
+            response = self._call('BzrDir.destroy_branch', path, *args)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_bzrdir.destroy_branch(name=name)
+            self._next_open_branch_result = None
+            return
         self._next_open_branch_result = None
+        if response[0] != 'ok':
+            raise SmartProtocolError('unexpected response code %s' % (response,))
 
     def create_workingtree(self, revision_id=None, from_branch=None,
         accelerator_tree=None, hardlink=False):
@@ -1593,8 +1605,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return list(self.revision_trees([revision_id]))[0]
 
     def get_serializer_format(self):
-        self._ensure_real()
-        return self._real_repository.get_serializer_format()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('VersionedFileRepository.get_serializer_format',
+                path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_serializer_format()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return response[1]
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -3301,9 +3321,40 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._lock_count >= 1
 
     @needs_read_lock
+    def revision_id_to_dotted_revno(self, revision_id):
+        """Given a revision id, return its dotted revno.
+
+        :return: a tuple like (1,) or (400,1,3).
+        """
+        try:
+            response = self._call('Branch.revision_id_to_revno',
+                self._remote_path(), revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch.revision_id_to_revno(revision_id)
+        if response[0] == 'ok':
+            return tuple([int(x) for x in response[1:]])
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    @needs_read_lock
     def revision_id_to_revno(self, revision_id):
-        self._ensure_real()
-        return self._real_branch.revision_id_to_revno(revision_id)
+        """Given a revision id on the branch mainline, return its revno.
+
+        :return: an integer
+        """
+        try:
+            response = self._call('Branch.revision_id_to_revno',
+                self._remote_path(), revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch.revision_id_to_revno(revision_id)
+        if response[0] == 'ok':
+            if len(response) == 2:
+                return int(response[1])
+            raise NoSuchRevision(self, revision_id)
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):

@@ -47,6 +47,14 @@ Bug Fixes
   remote ones. See ``bzr help configuration`` for more details.
   (Vincent Ladeuil, #843211)
 
+* Add HPSS call for looking up revision numbers from revision ids on
+  remote repositories. (Jelmer Vernooij, #640253)
+
+* Add HPSS call for retrieving file contents from remote repositories.
+  Should improve performance for lightweight checkouts and exports of
+  from remote repositories.  (Jelmer Vernooij, #368717, #762330,
+  #608640)
+
 * Cope with missing revision ids being specified to
   ``Repository.gather_stats`` HPSS call. (Jelmer Vernooij, #411290)
 
@@ -105,8 +113,9 @@ Internals
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
   ``BzrDir.has_workingtree``, ``Branch.put_config_file``,
-  ``Branch.break_lock``, ``Repository.break_lock``,
-  ``Repository.iter_file_bytes`` and ``Repository.all_revision_ids``.
+  ``Repository.all_revision_ids``, ``BzrDir.destroy_branch``.
+  ``Branch.break_lock``, ``Repository.break_lock`` and
+  ``VersionedFileRepository.get_serializer_format``.
   (Jelmer Vernooij)
 
 * Custom HPSS error handlers can now be installed in the smart server client

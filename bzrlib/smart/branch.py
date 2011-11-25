@@ -235,6 +235,23 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
 
 
+class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch, revid):
+        """Return branch.revision_id_to_revno().
+
+        New in 2.5.
+
+        The revno is encoded in decimal, the revision_id is encoded as utf8.
+        """
+        try:
+            dotted_revno = branch.revision_id_to_dotted_revno(revid)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(('NoSuchRevision', revid))
+        return SuccessfulSmartServerResponse(
+            ('ok', ) + tuple(map(str, dotted_revno)))
+
+
 class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
     """Base class for handling common branch request logic for requests that
     update the branch tip.
