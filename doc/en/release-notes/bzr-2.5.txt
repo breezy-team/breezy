@@ -84,6 +84,9 @@ API Changes
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
 
+* ``Tree.get_file_by_path`` is now deprecated. Use ``Tree.get_file`` instead.
+  (Jelmer Vernooij, #666897)
+
 * Some global options for use with commands have been removed, construct
   an ``Option`` with the name instead. (Martin Packman)
 
