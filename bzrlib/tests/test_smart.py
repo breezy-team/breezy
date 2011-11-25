@@ -783,6 +783,41 @@ class TestSmartServerBranchRequestLastRevisionInfo(
             request.execute(''))
 
 
+class TestSmartServerBranchRequestRevisionIdToRevno(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_null(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        self.make_branch('.')
+        self.assertEqual(smart_req.SmartServerResponse(('ok', '0')),
+            request.execute('', 'null:'))
+
+    def test_simple(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        tree.unlock()
+        self.assertEqual(
+            smart_req.SmartServerResponse(('ok', '1')),
+            request.execute('', r1))
+
+    def test_not_found(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        branch = self.make_branch('.')
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('NoSuchRevision', 'idontexist')),
+            request.execute('', 'idontexist'))
+
+
 class TestSmartServerBranchRequestGetConfigFile(
     tests.TestCaseWithMemoryTransport):
 
@@ -1153,6 +1188,26 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.assertEqual('child-1', self.tree.branch.last_revision())
 
 
+class TestSmartServerBranchBreakLock(tests.TestCaseWithMemoryTransport):
+
+    def test_lock_to_break(self):
+        base_branch = self.make_branch('base')
+        request = smart_branch.SmartServerBranchBreakLock(
+            self.get_transport())
+        base_branch.lock_write()
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute('base'))
+
+    def test_nothing_to_break(self):
+        base_branch = self.make_branch('base')
+        request = smart_branch.SmartServerBranchBreakLock(
+            self.get_transport())
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute('base'))
+
+
 class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
 
     def test_get_parent_none(self):
@@ -1436,6 +1491,54 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
         self.make_bzrdir('subdir')
         self.assertRaises(errors.NoRepositoryPresent,
             request.execute, 'subdir')
+
+
+class TestSmartServerRepositoryAllRevisionIds(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_empty(self):
+        """An empty body should be returned for an empty repository."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryAllRevisionIds(backing)
+        self.make_repository('.')
+        self.assertEquals(
+            smart_req.SuccessfulSmartServerResponse(("ok", ), ""),
+            request.execute(''))
+
+    def test_some_revisions(self):
+        """An empty body should be returned for an empty repository."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryAllRevisionIds(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        tree.commit(rev_id='origineel', message="message")
+        tree.commit(rev_id='nog-een-revisie', message="message")
+        tree.unlock()
+        self.assertEquals(
+            smart_req.SuccessfulSmartServerResponse(("ok", ),
+                "origineel\nnog-een-revisie"),
+            request.execute(''))
+
+
+class TestSmartServerRepositoryBreakLock(tests.TestCaseWithMemoryTransport):
+
+    def test_lock_to_break(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryBreakLock(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.branch.repository.lock_write()
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute(''))
+
+    def test_nothing_to_break(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryBreakLock(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), None),
+            request.execute(''))
 
 
 class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
@@ -1746,6 +1849,17 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
         self.assertEqual(smart_req.SmartServerResponse(('ok', ), expected_body),
                          request.execute('',
                                          rev_id_utf8, 'yes'))
+
+    def test_unknown_revid(self):
+        """An unknown revision id causes a 'nosuchrevision' error."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGatherStats(backing)
+        repository = self.make_repository('.')
+        expected_body = 'revisions: 0\n'
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('nosuchrevision', 'mia'), None),
+            request.execute('', 'mia', 'yes'))
 
 
 class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
@@ -2058,6 +2172,8 @@ class TestHandlers(tests.TestCase):
 
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""
+        self.assertHandlerEqual('Branch.break_lock',
+            smart_branch.SmartServerBranchBreakLock)
         self.assertHandlerEqual('Branch.get_config_file',
             smart_branch.SmartServerBranchGetConfigFile)
         self.assertHandlerEqual('Branch.put_config_file',
@@ -2074,6 +2190,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchRequestLastRevisionInfo)
         self.assertHandlerEqual('Branch.revision_history',
             smart_branch.SmartServerRequestRevisionHistory)
+        self.assertHandlerEqual('Branch.revision_id_to_revno',
+            smart_branch.SmartServerBranchRequestRevisionIdToRevno)
         self.assertHandlerEqual('Branch.set_config_option',
             smart_branch.SmartServerBranchRequestSetConfigOption)
         self.assertHandlerEqual('Branch.set_last_revision',
@@ -2106,6 +2224,10 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerRequestOpenBranchV3)
         self.assertHandlerEqual('PackRepository.autopack',
             smart_packrepo.SmartServerPackRepositoryAutopack)
+        self.assertHandlerEqual('Repository.all_revision_ids',
+            smart_repo.SmartServerRepositoryAllRevisionIds)
+        self.assertHandlerEqual('Repository.break_lock',
+            smart_repo.SmartServerRepositoryBreakLock)
         self.assertHandlerEqual('Repository.gather_stats',
             smart_repo.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',

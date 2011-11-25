@@ -24,13 +24,6 @@ from bzrlib import (
     trace,
     )
 from bzrlib.i18n import gettext
-from bzrlib.patches import (
-    MalformedHunkHeader,
-    MalformedLine,
-    MalformedPatchHeader,
-    PatchConflict,
-    PatchSyntax,
-    )
 
 
 # TODO: is there any value in providing the .args field used by standard
@@ -3368,3 +3361,54 @@ class UnsupportedKindChange(BzrError):
         self.from_kind = from_kind
         self.to_kind = to_kind
         self.format = format
+
+
+class PatchSyntax(BzrError):
+    """Base class for patch syntax errors."""
+
+
+class BinaryFiles(BzrError):
+
+    _fmt = 'Binary files section encountered.'
+
+    def __init__(self, orig_name, mod_name):
+        self.orig_name = orig_name
+        self.mod_name = mod_name
+
+
+class MalformedPatchHeader(PatchSyntax):
+
+    _fmt = "Malformed patch header.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class MalformedHunkHeader(PatchSyntax):
+
+    _fmt = "Malformed hunk header.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class MalformedLine(PatchSyntax):
+
+    _fmt = "Malformed line.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class PatchConflict(BzrError):
+
+    _fmt = ('Text contents mismatch at line %(line_no)d.  Original has '
+            '"%(orig_line)s", but patch says it should be "%(patch_line)s"')
+
+    def __init__(self, line_no, orig_line, patch_line):
+        self.line_no = line_no
+        self.orig_line = orig_line.rstrip('\n')
+        self.patch_line = patch_line.rstrip('\n')

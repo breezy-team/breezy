@@ -77,6 +77,15 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
             branch.repository.unlock()
 
 
+class SmartServerBranchBreakLock(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Break a branch lock.
+        """
+        branch.break_lock()
+        return SuccessfulSmartServerResponse(('ok', ), )
+
+
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
@@ -224,6 +233,23 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         """
         revno, last_revision = branch.last_revision_info()
         return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
+
+
+class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch, revid):
+        """Return branch.revision_id_to_revno().
+
+        New in 2.5.
+
+        The revno is encoded in decimal, the revision_id is encoded as utf8.
+        """
+        try:
+            dotted_revno = branch.revision_id_to_dotted_revno(revid)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(('NoSuchRevision', revid))
+        return SuccessfulSmartServerResponse(
+            ('ok', ) + tuple(map(str, dotted_revno)))
 
 
 class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
