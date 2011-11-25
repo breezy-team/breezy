@@ -2079,6 +2079,7 @@ register_metadir(controldir.format_registry, '1.14',
     help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    hidden=True,
     )
 register_metadir(controldir.format_registry, '1.14-rich-root',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
