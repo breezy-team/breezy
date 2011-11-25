@@ -665,6 +665,9 @@ request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')
 request_handlers.register_lazy(
+    'VersionedFileRepository.get_serializer_format', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetSerializerFormat')
+request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')
