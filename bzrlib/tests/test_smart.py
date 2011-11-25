@@ -783,6 +783,41 @@ class TestSmartServerBranchRequestLastRevisionInfo(
             request.execute(''))
 
 
+class TestSmartServerBranchRequestRevisionIdToRevno(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_null(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        self.make_branch('.')
+        self.assertEqual(smart_req.SmartServerResponse(('ok', '0')),
+            request.execute('', 'null:'))
+
+    def test_simple(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        tree.unlock()
+        self.assertEqual(
+            smart_req.SmartServerResponse(('ok', '1')),
+            request.execute('', r1))
+
+    def test_not_found(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        branch = self.make_branch('.')
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                ('NoSuchRevision', 'idontexist')),
+            request.execute('', 'idontexist'))
+
+
 class TestSmartServerBranchRequestGetConfigFile(
     tests.TestCaseWithMemoryTransport):
 
@@ -2097,6 +2132,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchRequestLastRevisionInfo)
         self.assertHandlerEqual('Branch.revision_history',
             smart_branch.SmartServerRequestRevisionHistory)
+        self.assertHandlerEqual('Branch.revision_id_to_revno',
+            smart_branch.SmartServerBranchRequestRevisionIdToRevno)
         self.assertHandlerEqual('Branch.set_config_option',
             smart_branch.SmartServerBranchRequestSetConfigOption)
         self.assertHandlerEqual('Branch.set_last_revision',

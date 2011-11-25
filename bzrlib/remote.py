@@ -3234,9 +3234,40 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._lock_count >= 1
 
     @needs_read_lock
+    def revision_id_to_dotted_revno(self, revision_id):
+        """Given a revision id, return its dotted revno.
+
+        :return: a tuple like (1,) or (400,1,3).
+        """
+        try:
+            response = self._call('Branch.revision_id_to_revno',
+                self._remote_path(), revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch.revision_id_to_revno(revision_id)
+        if response[0] == 'ok':
+            return tuple([int(x) for x in response[1:]])
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    @needs_read_lock
     def revision_id_to_revno(self, revision_id):
-        self._ensure_real()
-        return self._real_branch.revision_id_to_revno(revision_id)
+        """Given a revision id on the branch mainline, return its revno.
+
+        :return: an integer
+        """
+        try:
+            response = self._call('Branch.revision_id_to_revno',
+                self._remote_path(), revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch.revision_id_to_revno(revision_id)
+        if response[0] == 'ok':
+            if len(response) == 2:
+                return int(response[1])
+            raise NoSuchRevision(self, revision_id)
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):

@@ -47,6 +47,9 @@ Bug Fixes
   remote ones. See ``bzr help configuration`` for more details.
   (Vincent Ladeuil, #843211)
 
+* Add HPSS call for looking up revision numbers from revision ids on
+  remote repositories. (Jelmer Vernooij, #640253)
+
 * Cope with missing revision ids being specified to
   ``Repository.gather_stats`` HPSS call. (Jelmer Vernooij, #411290)
 
