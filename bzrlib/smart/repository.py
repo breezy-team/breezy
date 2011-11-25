@@ -400,7 +400,11 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
             decoded_committers = True
         else:
             decoded_committers = None
-        stats = repository.gather_stats(decoded_revision_id, decoded_committers)
+        try:
+            stats = repository.gather_stats(decoded_revision_id,
+                decoded_committers)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(('nosuchrevision', revid))
 
         body = ''
         if stats.has_key('committers'):
@@ -903,3 +907,12 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
+class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
+    """Retrieve all of the revision ids in a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        revids = repository.all_revision_ids()
+        return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))

@@ -614,6 +614,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'PackRepository.autopack', 'bzrlib.smart.packrepository',
     'SmartServerPackRepositoryAutopack')
+request_handlers.register_lazy('Repository.all_revision_ids',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryAllRevisionIds')
 request_handlers.register_lazy('Repository.break_lock',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryBreakLock')
