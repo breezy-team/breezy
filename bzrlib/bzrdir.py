@@ -2086,6 +2086,7 @@ register_metadir(controldir.format_registry, '1.14-rich-root',
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    hidden=True,
     )
 # The following un-numbered 'development' formats should always just be aliases.
 register_metadir(controldir.format_registry, 'development-subtree',
@@ -2124,7 +2125,7 @@ register_metadir(controldir.format_registry, 'development-colo',
     help='The 2a format with experimental support for colocated branches.\n',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
-    experimental=False,
+    experimental=True,
     bzrdir_format=BzrDirMetaFormat1Colo,
     )
 
