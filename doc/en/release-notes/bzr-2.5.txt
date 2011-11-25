@@ -110,7 +110,9 @@ Internals
   ``BzrDir.has_workingtree``, ``Repository.get_physical_lock_status``,
   ``Branch.get_physical_lock_status``, ``BzrDir.has_workingtree``,
   ``Branch.put_config_file``, ``Branch.break_lock``,
-  ``Repository.break_lock`` and ``Repository.all_revision_ids``.
+  ``BzrDir.destroy_branch``, ``Repository.break_lock``,
+  ``VersionedFileRepository.get_serializer_format`` and
+  ``Repository.all_revision_ids``.
   (Jelmer Vernooij)
 
 * Custom HPSS error handlers can now be installed in the smart server client

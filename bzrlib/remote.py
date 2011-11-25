@@ -579,9 +579,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
-        self._ensure_real()
-        self._real_bzrdir.destroy_branch(name=name)
+        path = self._path_for_remote_call(self._client)
+        try:
+            if name is not None:
+                args = (name, )
+            else:
+                args = ()
+            response = self._call('BzrDir.destroy_branch', path, *args)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_bzrdir.destroy_branch(name=name)
+            self._next_open_branch_result = None
+            return
         self._next_open_branch_result = None
+        if response[0] != 'ok':
+            raise SmartProtocolError('unexpected response code %s' % (response,))
 
     def create_workingtree(self, revision_id=None, from_branch=None,
         accelerator_tree=None, hardlink=False):
@@ -1597,8 +1609,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return list(self.revision_trees([revision_id]))[0]
 
     def get_serializer_format(self):
-        self._ensure_real()
-        return self._real_repository.get_serializer_format()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('VersionedFileRepository.get_serializer_format',
+                path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_serializer_format()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return response[1]
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,

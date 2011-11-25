@@ -335,6 +335,20 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
                 ('history-incomplete', earliest_revno, earliest_revid))
 
 
+class SmartServerRepositoryGetSerializerFormat(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """Return the serializer format for this repository.
+
+        New in 2.5.0.
+
+        :param repository: The repository to query
+        :return: A smart server response ('ok', FORMAT)
+        """
+        serializer = repository.get_serializer_format()
+        return SuccessfulSmartServerResponse(('ok', serializer))
+
+
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id):
