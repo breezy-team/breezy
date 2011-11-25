@@ -51,7 +51,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter, note, warning, log_exception_quietly
 
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -1038,6 +1038,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._format = format
         self._lock_mode = None
         self._lock_token = None
+        self._write_group_tokens = None
         self._lock_count = 0
         self._leave_lock = False
         # Cache of revision parents; misses are cached during read locks, and
@@ -1083,9 +1084,30 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
         :param suppress_errors: see Repository.abort_write_group.
         """
-        self._ensure_real()
-        return self._real_repository.abort_write_group(
-            suppress_errors=suppress_errors)
+        if self._real_repository:
+            self._ensure_real()
+            return self._real_repository.abort_write_group(
+                suppress_errors=suppress_errors)
+        if not self.is_in_write_group():
+            if suppress_errors:
+                mutter('(suppressed) not in write group')
+                return
+            raise errors.BzrError("not in write group")
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.abort_write_group', path,
+                self._lock_token, self._write_group_tokens)
+        except Exception, exc:
+            self._write_group = None
+            if not suppress_errors:
+                raise
+            mutter('abort_write_group failed')
+            log_exception_quietly()
+            note(gettext('bzr: ERROR (ignored): %s'), exc)
+        else:
+            if response != ('ok', ):
+                raise errors.UnexpectedSmartServerResponse(response)
+            self._write_group_tokens = None
 
     @property
     def chk_bytes(self):
@@ -1105,16 +1127,38 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
-        self._ensure_real()
-        return self._real_repository.commit_write_group()
+        if self._real_repository:
+            self._ensure_real()
+            return self._real_repository.commit_write_group()
+        if not self.is_in_write_group():
+            raise errors.BzrError("not in write group")
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._call('Repository.commit_write_group', path,
+            self._lock_token, self._write_group_tokens)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
+        self._write_group_tokens = None
 
     def resume_write_group(self, tokens):
-        self._ensure_real()
-        return self._real_repository.resume_write_group(tokens)
+        if self._real_repository:
+            return self._real_repository.resume_write_group(tokens)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.check_write_group', path,
+               self._lock_token, tokens)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.resume_write_group(tokens)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
+        self._write_group_tokens = tokens
 
     def suspend_write_group(self):
-        self._ensure_real()
-        return self._real_repository.suspend_write_group()
+        if self._real_repository:
+            return self._real_repository.suspend_write_group()
+        ret = self._write_group_tokens or []
+        self._write_group_tokens = None
+        return ret
 
     def get_missing_parent_inventories(self, check_for_missing_texts=True):
         self._ensure_real()
@@ -1330,15 +1374,23 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
-        # should be an API call to the server.
-        self._ensure_real()
-        return self._real_repository.get_physical_lock_status()
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.get_physical_lock_status', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_physical_lock_status()
+        if response[0] not in ('yes', 'no'):
+            raise errors.UnexpectedSmartServerResponse(response)
+        return (response[0] == 'yes')
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
 
         write groups are only applicable locally for the smart server..
         """
+        if self._write_group_tokens is not None:
+            return True
         if self._real_repository:
             return self._real_repository.is_in_write_group()
 
@@ -1479,6 +1531,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             self._real_repository.lock_write(self._lock_token)
         elif self._lock_mode == 'r':
             self._real_repository.lock_read()
+        if self._write_group_tokens is not None:
+            # if we are already in a write group, resume it
+            self._real_repository.resume_write_group(self._write_group_tokens)
+            self._write_group_tokens = None
 
     def start_write_group(self):
         """Start a write group on the decorated repository.
@@ -1488,8 +1544,23 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         for older plugins that don't use e.g. the CommitBuilder
         facility.
         """
-        self._ensure_real()
-        return self._real_repository.start_write_group()
+        if self._real_repository:
+            self._ensure_real()
+            return self._real_repository.start_write_group()
+        if not self.is_write_locked():
+            raise errors.NotWriteLocked(self)
+        if self._write_group_tokens is not None:
+            raise errors.BzrError('already in a write group')
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.start_write_group', path,
+                self._lock_token)
+        except (errors.UnknownSmartMethod, errors.UnsuspendableWriteGroup):
+            self._ensure_real()
+            return self._real_repository.start_write_group()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        self._write_group_tokens = response[1]
 
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1522,6 +1593,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             # This is just to let the _real_repository stay up to date.
             if self._real_repository is not None:
                 self._real_repository.unlock()
+            elif self._write_group_tokens is not None:
+                self.abort_write_group()
         finally:
             # The rpc-level lock should be released even if there was a
             # problem releasing the vfs-based lock.
@@ -2942,9 +3015,15 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""
-        # should be an API call to the server, as branches must be lockable.
-        self._ensure_real()
-        return self._real_branch.get_physical_lock_status()
+        try:
+            response = self._client.call('Branch.get_physical_lock_status',
+                self._remote_path())
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch.get_physical_lock_status()
+        if response[0] not in ('yes', 'no'):
+            raise errors.UnexpectedSmartServerResponse(response)
+        return (response[0] == 'yes')
 
     def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.
@@ -3695,6 +3774,13 @@ error_translators.register('ReadError',
     lambda err, find, get_path: errors.ReadError(get_path()))
 error_translators.register('NoSuchFile',
     lambda err, find, get_path: errors.NoSuchFile(get_path()))
+error_translators.register('UnsuspendableWriteGroup',
+    lambda err, find, get_path: errors.UnsuspendableWriteGroup(
+        repository=find('repository')))
+error_translators.register('UnresumableWriteGroup',
+    lambda err, find, get_path: errors.UnresumableWriteGroup(
+        repository=find('repository'), write_groups=err.error_args[0],
+        reason=err.error_args[1]))
 no_context_error_translators.register('IncompatibleRepositories',
     lambda err: errors.IncompatibleRepositories(
         err.error_args[0], err.error_args[1], err.error_args[2]))
@@ -3747,4 +3833,7 @@ no_context_error_translators.register('MemoryError',
         "Retry non-remotely, or contact the server admin for details."))
 no_context_error_translators.register('RevisionNotPresent',
     lambda err: errors.RevisionNotPresent(err.error_args[0], err.error_args[1]))
+
+no_context_error_translators.register('BzrCheckError',
+    lambda err: errors.BzrCheckError(msg=err.error_args[0]))
 

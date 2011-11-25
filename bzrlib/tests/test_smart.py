@@ -1429,6 +1429,34 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         self.assertEqual('LockFailed', error_name)
 
 
+class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
+
+    def setUp(self):
+        tests.TestCaseWithMemoryTransport.setUp(self)
+
+    def test_true(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestGetPhysicalLockStatus(
+            backing)
+        branch = self.make_branch('.')
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        self.assertEquals(True, branch.get_physical_lock_status())
+        response = request.execute('')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('yes',)), response)
+        branch.unlock()
+
+    def test_false(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestGetPhysicalLockStatus(
+            backing)
+        branch = self.make_branch('.')
+        self.assertEquals(False, branch.get_physical_lock_status())
+        response = request.execute('')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('no',)), response)
+
+
 class TestSmartServerBranchRequestUnlock(TestLockedBranch):
 
     def setUp(self):
@@ -2058,6 +2086,34 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
             smart_req.SmartServerResponse(('TokenMismatch',)), response)
 
 
+class TestSmartServerRepositoryGetPhysicalLockStatus(
+    tests.TestCaseWithTransport):
+
+    def test_with_write_lock(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        self.addCleanup(repo.lock_write().unlock)
+        # lock_write() doesn't necessarily actually take a physical
+        # lock out.
+        if repo.get_physical_lock_status():
+            expected = 'yes'
+        else:
+            expected = 'no'
+        request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse((expected,)),
+            request.execute('', ))
+
+    def test_without_write_lock(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        self.assertEquals(False, repo.get_physical_lock_status())
+        request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('no',)),
+            request.execute('', ))
+
+
 class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
 
     def test_is_readonly_no(self):
@@ -2112,6 +2168,79 @@ class TestSmartServerRepositoryGetSerializerFormat(
         self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(('ok', '10')),
             request.execute(''))
+
+
+class TestSmartServerRepositoryWriteGroup(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_start_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryStartWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok', [])),
+            request.execute('', lock_token))
+
+    def test_start_write_group_unsuspendable(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', format='knit')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryStartWriteGroup
+        request = request_class(backing)
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(('UnsuspendableWriteGroup',)),
+            request.execute('', lock_token))
+
+    def test_commit_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        tokens = repo.suspend_write_group()
+        request_class = smart_repo.SmartServerRepositoryCommitWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', lock_token, tokens))
+
+    def test_abort_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        repo.start_write_group()
+        tokens = repo.suspend_write_group()
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryAbortWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', lock_token, tokens))
+
+    def test_check_write_group(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        repo.start_write_group()
+        tokens = repo.suspend_write_group()
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryCheckWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', lock_token, tokens))
+
+    def test_check_write_group_invalid(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        lock_token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryCheckWriteGroup
+        request = request_class(backing)
+        self.assertEqual(smart_req.FailedSmartServerResponse(
+            ('UnresumableWriteGroup', ['random'],
+                'Malformed write group token')),
+            request.execute('', lock_token, ["random"]))
 
 
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
@@ -2201,6 +2330,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchPutConfigFile)
         self.assertHandlerEqual('Branch.get_parent',
             smart_branch.SmartServerBranchGetParent)
+        self.assertHandlerEqual('Branch.get_physical_lock_status',
+            smart_branch.SmartServerBranchRequestGetPhysicalLockStatus)
         self.assertHandlerEqual('Branch.get_tags_bytes',
             smart_branch.SmartServerBranchGetTagsBytes)
         self.assertHandlerEqual('Branch.lock_write',
@@ -2253,6 +2384,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
             smart_repo.SmartServerRepositoryGetParentMap)
+        self.assertHandlerEqual('Repository.get_physical_lock_status',
+            smart_repo.SmartServerRepositoryGetPhysicalLockStatus)
         self.assertHandlerEqual('Repository.get_rev_id_for_revno',
             smart_repo.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',
@@ -2279,6 +2412,14 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',
             smart_repo.SmartServerRepositoryUnlock)
+        self.assertHandlerEqual('Repository.start_write_group',
+            smart_repo.SmartServerRepositoryStartWriteGroup)
+        self.assertHandlerEqual('Repository.check_write_group',
+            smart_repo.SmartServerRepositoryCheckWriteGroup)
+        self.assertHandlerEqual('Repository.commit_write_group',
+            smart_repo.SmartServerRepositoryCommitWriteGroup)
+        self.assertHandlerEqual('Repository.abort_write_group',
+            smart_repo.SmartServerRepositoryAbortWriteGroup)
         self.assertHandlerEqual('VersionedFileRepository.get_serializer_format',
             smart_repo.SmartServerRepositoryGetSerializerFormat)
         self.assertHandlerEqual('Transport.is_readonly',

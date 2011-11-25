@@ -754,6 +754,19 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
+    """Get the physical lock status for a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        if repository.get_physical_lock_status():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
 class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, str_bool_new_value):
@@ -921,6 +934,96 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         repository.lock_write()
         self.do_insert_stream_request(repository, resume_tokens)
 
+
+class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
+    """Start a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token):
+        """Start a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            repository.start_write_group()
+            try:
+                tokens = repository.suspend_write_group()
+            except errors.UnsuspendableWriteGroup:
+                return FailedSmartServerResponse(('UnsuspendableWriteGroup',))
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', tokens))
+
+
+class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
+    """Commit a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token,
+            write_group_tokens):
+        """Commit a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+            try:
+                repository.commit_write_group()
+            except:
+                write_group_tokens = repository.suspend_write_group()
+                # FIXME JRV 2011-11-19: What if the write_group_tokens
+                # have changed?
+                raise
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
+    """Abort a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, write_group_tokens):
+        """Abort a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+                repository.abort_write_group()
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
+    """Check that a write group is still valid.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, write_group_tokens):
+        """Abort a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+            else:
+                repository.suspend_write_group()
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
 
 class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     """Retrieve all of the revision ids in a repository.

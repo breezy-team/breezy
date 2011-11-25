@@ -553,7 +553,7 @@ _global_option('change',
                param_name='revision',
                help='Select changes introduced by the specified revision. See also "help revisionspec".')
 _global_option('directory', short_name='d', type=unicode,
-               help='Branch to operate on, instead of working directory')
+               help='Branch to operate on, instead of working directory.')
 _global_option('file', type=unicode, short_name='F')
 _global_registry_option('log-format', "Use specified log format.",
                         lazy_registry=('bzrlib.log', 'log_formatter_registry'),

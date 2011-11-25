@@ -1085,6 +1085,41 @@ class TestBranchBreakLock(RemoteBranchTestCase):
         self.assertFinished(client)
 
 
+class TestBranchGetPhysicalLockStatus(RemoteBranchTestCase):
+
+    def test_get_physical_lock_status_yes(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_physical_lock_status', ('quack/',),
+            'success', ('yes',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_physical_lock_status()
+        self.assertFinished(client)
+        self.assertEqual(True, result)
+
+    def test_get_physical_lock_status_no(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_physical_lock_status', ('quack/',),
+            'success', ('no',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_physical_lock_status()
+        self.assertFinished(client)
+        self.assertEqual(False, result)
+
+
 class TestBranchGetParent(RemoteBranchTestCase):
 
     def test_no_parent(self):
@@ -1534,9 +1569,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         branch.lock_write()
         result = branch._set_last_revision(NULL_REVISION)
         branch.unlock()
@@ -1571,9 +1603,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         result = branch._set_last_revision('rev-id2')
@@ -1646,7 +1675,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        branch._ensure_real = lambda: None
         branch.lock_write()
         # The 'TipChangeRejected' error response triggered by calling
         # set_last_revision_info causes a TipChangeRejected exception.
@@ -2740,6 +2768,31 @@ class TestRepositoryHasSignatureForRevisionId(TestRemoteRepository):
         self.assertEqual(False, result)
 
 
+class TestRepositoryPhysicalLockStatus(TestRemoteRepository):
+
+    def test_get_physical_lock_status_yes(self):
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.get_physical_lock_status()
+        self.assertEqual(
+            [('call', 'Repository.get_physical_lock_status',
+              ('qwack/', ))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_get_physical_lock_status_no(self):
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.get_physical_lock_status()
+        self.assertEqual(
+            [('call', 'Repository.get_physical_lock_status',
+              ('qwack/', ))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
@@ -2819,6 +2872,91 @@ class TestRepositoryLockWrite(TestRemoteRepository):
         self.assertEqual(
             [('call', 'Repository.lock_write', ('quack/', ''))],
             client._calls)
+
+
+class TestRepositoryWriteGroups(TestRemoteRepository):
+
+    def test_start_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', 'token1'))
+        repo.lock_write()
+        repo.start_write_group()
+
+    def test_start_write_group_unsuspendable(self):
+        # Some repositories do not support suspending write
+        # groups. For those, fall back to the "real" repository.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        def stub_ensure_real():
+            client._calls.append(('_ensure_real',))
+            repo._real_repository = _StubRealPackRepository(client._calls)
+        repo._ensure_real = stub_ensure_real
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'error', ('UnsuspendableWriteGroup',))
+        repo.lock_write()
+        repo.start_write_group()
+        self.assertEquals(client._calls[-2:], [ 
+            ('_ensure_real',),
+            ('start_write_group',)])
+
+    def test_commit_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', ['token1']))
+        client.add_expected_call(
+            'Repository.commit_write_group', ('quack/', 'a token', ['token1']),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.start_write_group()
+        repo.commit_write_group()
+
+    def test_abort_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', ['token1']))
+        client.add_expected_call(
+            'Repository.abort_write_group', ('quack/', 'a token', ['token1']),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.start_write_group()
+        repo.abort_write_group(False)
+
+    def test_suspend_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        self.assertEquals([], repo.suspend_write_group())
+
+    def test_resume_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.check_write_group', ('quack/', 'a token', ['token1']),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.resume_write_group(['token1'])
 
 
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
@@ -3191,6 +3329,9 @@ class _StubRealPackRepository(object):
     def __init__(self, calls):
         self.calls = calls
         self._pack_collection = _StubPackCollection(calls)
+
+    def start_write_group(self):
+        self.calls.append(('start_write_group',))
 
     def is_in_write_group(self):
         return False
