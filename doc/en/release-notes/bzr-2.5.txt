@@ -108,7 +108,7 @@ Internals
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
   ``BzrDir.has_workingtree``, ``Repository.get_physical_lock_status``,
-  ``Branch.get_physical_lock_status``, ``BzrDir.has_workingtree``,
+  ``Branch.get_physical_lock_status``,
   ``Branch.put_config_file``, ``Branch.break_lock``,
   ``BzrDir.destroy_branch``, ``Repository.break_lock``,
   ``VersionedFileRepository.get_serializer_format`` and
