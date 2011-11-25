@@ -5,7 +5,7 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.4.2
+bzr 2.4.3
 #########
 
 :2.4.2: NOT RELEASED YET
@@ -25,6 +25,69 @@ Improvements
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* During merges, when two entries end up using the same path for two
+  different file-ids (the same file being 'bzr added' in two different
+  branches) , 'duplicate' conflicts are created instead of 'content'
+  ones. This was previously leading to a 'Malformed tramsform' exception.
+  (Vincent Ladeuil, #880701)
+
+* 'Malformed transform' exceptions are now recognized as internal errors
+  instead of user errors and report a traceback. This will reduce user
+  confusion as there is generally nothing users can do about them.
+  (Vincent Ladeuil, #880701)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.4.2
+#########
+
+:2.4.2: 2011-10-27
+
+This is a bugfix release. Most of the bugs dealt with portability
+issues. Upgrading is recommended for all users of earlier 2.4 releases.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
 
 * Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
   every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
@@ -59,26 +122,24 @@ Bug Fixes
 Documentation
 *************
 
-.. Improved or updated documentation.
+* Corrected documentation for ``bzr serve`` in the Admin Guide.
+  (Morten Bøgeskov, Martin Pool, #832576)
 
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+None.
 
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+No changes.
 
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
+* Accept both old and new style testtools output in selftest tests.
+  (Jelmer Vernooij, Martin Packman, #815423)
 
 * Fix the race for TestingThreadingTCPServer in
   test_server_crash_while_responding. (Vincent Ladeuil, #869366)

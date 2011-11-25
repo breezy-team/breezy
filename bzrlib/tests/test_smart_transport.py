@@ -499,6 +499,27 @@ class SmartClientMediumTests(tests.TestCase):
             ],
             vendor.calls)
 
+    def test_ssh_client_repr(self):
+        client_medium = medium.SmartSSHClientMedium(
+            'base', medium.SSHParams("example.com", "4242", "username"))
+        self.assertEquals(
+            "SmartSSHClientMedium(bzr+ssh://username@example.com:4242/)",
+            repr(client_medium))
+
+    def test_ssh_client_repr_no_port(self):
+        client_medium = medium.SmartSSHClientMedium(
+            'base', medium.SSHParams("example.com", None, "username"))
+        self.assertEquals(
+            "SmartSSHClientMedium(bzr+ssh://username@example.com/)",
+            repr(client_medium))
+
+    def test_ssh_client_repr_no_username(self):
+        client_medium = medium.SmartSSHClientMedium(
+            'base', medium.SSHParams("example.com", None, None))
+        self.assertEquals(
+            "SmartSSHClientMedium(bzr+ssh://example.com/)",
+            repr(client_medium))
+
     def test_ssh_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
         # does not fail.  It's ok to disconnect an unconnected medium.
@@ -4241,7 +4262,7 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         # still work correctly.
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
         new_transport = base_transport.clone('c')
-        self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
+        self.assertEqual(base_transport.base + 'c/', new_transport.base)
         self.assertEqual(
             'c/',
             new_transport._client.remote_path_from_transport(new_transport))

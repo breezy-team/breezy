@@ -970,10 +970,14 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             maybe_port = ''
         else:
             maybe_port = ':%s' % self._ssh_params.port
-        return "%s(%s://%s@%s%s/)" % (
+        if self._ssh_params.username is None:
+            maybe_user = ''
+        else:
+            maybe_user = '%s@' % self._ssh_params.username
+        return "%s(%s://%s%s%s/)" % (
             self.__class__.__name__,
             self._scheme,
-            self._ssh_params.username,
+            maybe_user,
             self._ssh_params.host,
             maybe_port)
 

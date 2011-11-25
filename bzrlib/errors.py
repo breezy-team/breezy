@@ -24,13 +24,6 @@ from bzrlib import (
     trace,
     )
 from bzrlib.i18n import gettext
-from bzrlib.patches import (
-    MalformedHunkHeader,
-    MalformedLine,
-    MalformedPatchHeader,
-    PatchConflict,
-    PatchSyntax,
-    )
 
 
 # TODO: is there any value in providing the .args field used by standard
@@ -1579,6 +1572,7 @@ class RetryWithNewPacks(BzrError):
             problem we can raise the original error (value from sys.exc_info())
         """
         BzrError.__init__(self)
+        self.context = context
         self.reload_occurred = reload_occurred
         self.exc_info = exc_info
         self.orig_error = exc_info[1]
@@ -1666,6 +1660,7 @@ class SmartMessageHandlerError(InternalBzrError):
 
     def __init__(self, exc_info):
         import traceback
+        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
         self.exc_type, self.exc_value, self.exc_tb = exc_info
         self.exc_info = exc_info
         traceback_strings = traceback.format_exception(
@@ -1984,7 +1979,7 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class MalformedTransform(BzrError):
+class MalformedTransform(InternalBzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
 
@@ -3354,3 +3349,66 @@ class HpssVfsRequestNotAllowed(BzrError):
     def __init__(self, method, arguments):
         self.method = method
         self.arguments = arguments
+
+
+class UnsupportedKindChange(BzrError):
+
+    _fmt = ("Kind change from %(from_kind)s to %(to_kind)s for "
+            "%(path)s not supported by format %(format)r")
+
+    def __init__(self, path, from_kind, to_kind, format):
+        self.path = path
+        self.from_kind = from_kind
+        self.to_kind = to_kind
+        self.format = format
+
+
+class PatchSyntax(BzrError):
+    """Base class for patch syntax errors."""
+
+
+class BinaryFiles(BzrError):
+
+    _fmt = 'Binary files section encountered.'
+
+    def __init__(self, orig_name, mod_name):
+        self.orig_name = orig_name
+        self.mod_name = mod_name
+
+
+class MalformedPatchHeader(PatchSyntax):
+
+    _fmt = "Malformed patch header.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class MalformedHunkHeader(PatchSyntax):
+
+    _fmt = "Malformed hunk header.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class MalformedLine(PatchSyntax):
+
+    _fmt = "Malformed line.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class PatchConflict(BzrError):
+
+    _fmt = ('Text contents mismatch at line %(line_no)d.  Original has '
+            '"%(orig_line)s", but patch says it should be "%(patch_line)s"')
+
+    def __init__(self, line_no, orig_line, patch_line):
+        self.line_no = line_no
+        self.orig_line = orig_line.rstrip('\n')
+        self.patch_line = patch_line.rstrip('\n')

@@ -25,7 +25,6 @@ import threading
 
 from bzrlib import (
     bencode,
-    commands,
     errors,
     estimate_compressed_size,
     graph,
@@ -143,6 +142,15 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
             return self.do_readlocked_repository_request(repository, *args)
         finally:
             repository.unlock()
+
+
+class SmartServerRepositoryBreakLock(SmartServerRepositoryRequest):
+    """Break a repository lock."""
+
+    def do_repository_request(self, repository):
+        repository.break_lock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
 
 _lsprof_count = 0
 
@@ -327,6 +335,20 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
                 ('history-incomplete', earliest_revno, earliest_revid))
 
 
+class SmartServerRepositoryGetSerializerFormat(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """Return the serializer format for this repository.
+
+        New in 2.5.0.
+
+        :param repository: The repository to query
+        :return: A smart server response ('ok', FORMAT)
+        """
+        serializer = repository.get_serializer_format()
+        return SuccessfulSmartServerResponse(('ok', serializer))
+
+
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id):
@@ -334,13 +356,37 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to lookup.
-        :return: A smart server response of ('ok', ) if the revision is
-            present.
+        :return: A smart server response of ('yes', ) if the revision is
+            present. ('no', ) if it is missing.
         """
         if repository.has_revision(revision_id):
             return SuccessfulSmartServerResponse(('yes', ))
         else:
             return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerRequestHasSignatureForRevisionId(
+        SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, revision_id):
+        """Return ok if a signature is present for a revision.
+
+        Introduced in bzr 2.5.0.
+
+        :param repository: The repository to query in.
+        :param revision_id: The utf8 encoded revision_id to lookup.
+        :return: A smart server response of ('yes', ) if a
+            signature for the revision is present,
+            ('no', ) if it is missing.
+        """
+        try:
+            if repository.has_signature_for_revision_id(revision_id):
+                return SuccessfulSmartServerResponse(('yes', ))
+            else:
+                return SuccessfulSmartServerResponse(('no', ))
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('nosuchrevision', revision_id))
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
@@ -368,7 +414,11 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
             decoded_committers = True
         else:
             decoded_committers = None
-        stats = repository.gather_stats(decoded_revision_id, decoded_committers)
+        try:
+            stats = repository.gather_stats(decoded_revision_id,
+                decoded_committers)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(('nosuchrevision', revid))
 
         body = ''
         if stats.has_key('committers'):
@@ -395,6 +445,23 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
             shared, and ('no', ) if it is not.
         """
         if repository.is_shared():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """Return the result of repository.make_working_trees().
+
+        Introduced in bzr 2.5.0.
+
+        :param repository: The repository to query in.
+        :return: A smart server response of ('yes', ) if the repository uses
+            working trees, and ('no', ) if it is not.
+        """
+        if repository.make_working_trees():
             return SuccessfulSmartServerResponse(('yes', ))
         else:
             return SuccessfulSmartServerResponse(('no', ))
@@ -686,6 +753,19 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
+    """Get the physical lock status for a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        if repository.get_physical_lock_status():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
 class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, str_bool_new_value):
@@ -854,3 +934,102 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
+class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
+    """Start a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token):
+        """Start a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            repository.start_write_group()
+            try:
+                tokens = repository.suspend_write_group()
+            except errors.UnsuspendableWriteGroup:
+                return FailedSmartServerResponse(('UnsuspendableWriteGroup',))
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', tokens))
+
+
+class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
+    """Commit a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token,
+            write_group_tokens):
+        """Commit a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+            try:
+                repository.commit_write_group()
+            except:
+                write_group_tokens = repository.suspend_write_group()
+                # FIXME JRV 2011-11-19: What if the write_group_tokens
+                # have changed?
+                raise
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
+    """Abort a write group.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, write_group_tokens):
+        """Abort a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+                repository.abort_write_group()
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
+    """Check that a write group is still valid.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, write_group_tokens):
+        """Abort a write group."""
+        repository.lock_write(token=lock_token)
+        try:
+            try:
+                repository.resume_write_group(write_group_tokens)
+            except errors.UnresumableWriteGroup, e:
+                return FailedSmartServerResponse(
+                    ('UnresumableWriteGroup', e.write_groups, e.reason))
+            else:
+                repository.suspend_write_group()
+        finally:
+            repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
+    """Retrieve all of the revision ids in a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository):
+        revids = repository.all_revision_ids()
+        return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))

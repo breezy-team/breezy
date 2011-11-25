@@ -24,6 +24,10 @@ Bazaar 2.4.1 includes all the fixes in the un-released 2.0.7, 2.1.5, 2.2.6
 and 2.3.5 versions that weren't included in 2.4.0 and fixes some bugs on its
 own.
 
+Bazaar 2.4.2 includes all the fixes in the un-released 2.0.7, 2.1.5, 2.2.6
+and 2.3.5 versions that weren't included in 2.4.1 and fixes some bugs on its
+own.
+
 
 Dropping Python2.4 and Python2.5 support
 ****************************************

@@ -78,8 +78,8 @@ def file_relpath(base, path):
         raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
             (base, MIN_ABS_FILEURL_LENGTH))
-    base = local_path_from_url(base)
-    path = local_path_from_url(path)
+    base = osutils.normpath(local_path_from_url(base))
+    path = osutils.normpath(local_path_from_url(path))
     return escape(osutils.relpath(base, path))
 
 
@@ -441,11 +441,15 @@ def split_segment_parameters_raw(url):
     :param url: A relative or absolute URL
     :return: (url, subsegments)
     """
-    (parent_url, child_dir) = split(url)
-    subsegments = child_dir.split(",")
-    if len(subsegments) == 1:
+    # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
+    #                operates on urls not url+segments, and Transport classes
+    #                should not be blindly adding slashes in the first place. 
+    lurl = strip_trailing_slash(url)
+    # Segments begin at first comma after last forward slash, if one exists
+    segment_start = lurl.find(",", lurl.rfind("/")+1)
+    if segment_start == -1:
         return (url, [])
-    return (join(parent_url, subsegments[0]), subsegments[1:])
+    return (lurl[:segment_start], lurl[segment_start+1:].split(","))
 
 
 def split_segment_parameters(url):
@@ -750,7 +754,7 @@ class URL(object):
         else:
             self.password = None
         self.port = port
-        self.quoted_path = quoted_path
+        self.quoted_path = _url_hex_escapes_re.sub(_unescape_safe_chars, quoted_path)
         self.path = urllib.unquote(self.quoted_path)
 
     def __eq__(self, other):
@@ -835,6 +839,7 @@ class URL(object):
         """
         if not isinstance(relpath, str):
             raise errors.InvalidURL(relpath)
+        relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):
             base_parts = []
         else:
@@ -866,7 +871,7 @@ class URL(object):
         if offset is not None:
             relative = unescape(offset).encode('utf-8')
             path = self._combine_paths(self.path, relative)
-            path = urllib.quote(path)
+            path = urllib.quote(path, safe="/~")
         else:
             path = self.quoted_path
         return self.__class__(self.scheme, self.quoted_user,

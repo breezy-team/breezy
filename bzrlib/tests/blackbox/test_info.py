@@ -17,11 +17,13 @@
 
 """Tests for the info command of bzr."""
 
+import shutil
 import sys
 
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     info,
     osutils,
@@ -44,6 +46,27 @@ class TestInfo(tests.TestCaseWithTransport):
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
+
+    def test_info_empty_controldir(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info ctrl')
+        self.assertEquals(out,
+            'Empty control directory (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n')
+        self.assertEquals(err, '')
+
+    def test_info_dangling_branch_reference(self):
+        br = self.make_branch('target')
+        br.create_checkout('from', lightweight=True)
+        shutil.rmtree('target')
+        out, err = self.run_bzr('info from')
+        self.assertEquals(out,
+            'Dangling branch reference (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Location:\n'
+            '   control directory: from\n'
+            '  checkout of branch: target\n')
+        self.assertEquals(err, '')
 
     def test_info_standalone(self):
         transport = self.get_transport()
@@ -187,7 +210,7 @@ Repository:
         branch1.bzrdir.sprout('bound')
         knit1_format = bzrdir.format_registry.make_bzrdir('knit')
         upgrade.upgrade('bound', knit1_format)
-        branch3 = bzrdir.BzrDir.open('bound').open_branch()
+        branch3 = controldir.ControlDir.open('bound').open_branch()
         branch3.bind(branch1)
         bound_tree = branch3.bzrdir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
@@ -232,7 +255,7 @@ Repository:
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
-        branch4 = bzrdir.BzrDir.create_branch_convenience('checkout',
+        branch4 = controldir.ControlDir.create_branch_convenience('checkout',
             format=knit1_format)
         branch4.bind(branch1)
         branch4.bzrdir.open_workingtree().update()
@@ -529,8 +552,8 @@ Repository:
 
         # Create branch inside shared repository
         repo.bzrdir.root_transport.mkdir('branch')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch',
-            format=format)
+        branch1 = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=format)
         out, err = self.run_bzr('info -v repo/branch')
         self.assertEqualDiff(
 """Repository branch (format: dirstate or knit)
@@ -803,7 +826,7 @@ Repository:
 
         # Create two branches
         repo.bzrdir.root_transport.mkdir('branch1')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch1',
+        branch1 = controldir.ControlDir.create_branch_convenience('repo/branch1',
             format=format)
         branch2 = branch1.bzrdir.sprout('repo/branch2').open_branch()
 
@@ -1221,13 +1244,13 @@ Repository:
                                     format=bzrdir.BzrDirMetaFormat1())
         repo.set_make_working_trees(False)
         repo.bzrdir.root_transport.mkdir('branch')
-        repo_branch = repo.bzrdir.create_branch_convenience('repo/branch',
-                                    format=bzrdir.BzrDirMetaFormat1())
+        repo_branch = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=bzrdir.BzrDirMetaFormat1())
         # Do a heavy checkout
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
-        co_branch = bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-            format=bzrdir.BzrDirMetaFormat1())
+        co_branch = controldir.ControlDir.create_branch_convenience(
+            'tree/checkout', format=bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
@@ -1375,3 +1398,63 @@ In the working tree:
          0 versioned subdirectories
 """, out)
         self.assertEqual("", err)
+
+    def test_info_shows_colocated_branches(self):
+        bzrdir = self.make_branch('.', format='development-colo').bzrdir
+        bzrdir.create_branch(name="colo1")
+        bzrdir.create_branch(name="colo2")
+        bzrdir.create_branch(name="colo3")
+        out, err = self.run_bzr('info -v .')
+        self.assertEqualDiff(
+"""Standalone branch (format: development-colo)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1 with support for colocated branches
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+Control directory:
+         4 branches
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""", out)
+        self.assertEqual("", err)
+
+
+class TestSmartServerInfo(tests.TestCaseWithTransport):
+
+    def test_simple_branch_info(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['info', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(12, self.hpss_calls)
+
+    def test_verbose_branch_info(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['info', '-v', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(16, self.hpss_calls)

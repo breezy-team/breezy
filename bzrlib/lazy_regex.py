@@ -71,6 +71,19 @@ class LazyRegex(object):
             # cleaner message to the user.
             raise errors.InvalidPattern('"' + args[0] + '" ' +str(e))
 
+    def __getstate__(self):
+        """Return the state to use when pickling."""
+        return {
+            "args": self._regex_args,
+            "kwargs": self._regex_kwargs,
+            }
+
+    def __setstate__(self, dict):
+        """Restore from a pickled state."""
+        self._real_regex = None
+        setattr(self, "_regex_args", dict["args"])
+        setattr(self, "_regex_kwargs", dict["kwargs"])
+
     def __getattr__(self, attr):
         """Return a member from the proxied regex object.
 

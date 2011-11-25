@@ -16,7 +16,6 @@
 
 
 from cStringIO import StringIO
-import os
 import shutil
 import sys
 import tempfile
@@ -252,46 +251,10 @@ class Shelver(object):
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
 
-    def _char_based(self):
-        # FIXME: A bit hackish to use INSIDE_EMACS here, but there is another
-        # work in progress moving this method (and more importantly prompt()
-        # below) into the ui area and address the issue in better ways.
-        # -- vila 2011-09-28
-        return os.environ.get('INSIDE_EMACS', None) is None
+    def prompt(self, message, choices, default):
+        return ui.ui_factory.choose(message, choices, default=default)
 
-    def prompt(self, message):
-        """Prompt the user for a character.
-
-        :param message: The message to prompt a user with.
-        :return: A character.
-        """
-        char_based = self._char_based()
-        if char_based and not sys.stdin.isatty():
-            # Since there is no controlling terminal we will hang when
-            # trying to prompt the user, better abort now.  See
-            # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
-            # for more context.
-            raise errors.BzrError(gettext("You need a controlling terminal."))
-        sys.stdout.write(message)
-        if char_based:
-            # We peek one char at a time which requires a real term here
-            char = osutils.getchar()
-        else:
-            # While running tests (or under emacs) the input is line buffered
-            # so we must not use osutils.getchar(). Instead we switch to a mode
-            # where each line is terminated by a new line
-            line = sys.stdin.readline()
-            if line:
-                # XXX: Warn if more than one char is typed ?
-                char = line[0]
-            else:
-                # Empty input, callers handle it as enter
-                char = ''
-        sys.stdout.write("\r" + ' ' * len(message) + '\r')
-        sys.stdout.flush()
-        return char
-
-    def prompt_bool(self, question, long=False, allow_editor=False):
+    def prompt_bool(self, question, allow_editor=False):
         """Prompt the user with a yes/no question.
 
         This may be overridden by self.auto.  It may also *set* self.auto.  It
@@ -301,16 +264,19 @@ class Shelver(object):
         """
         if self.auto:
             return True
-        editor_string = ''
-        if long:
-            if allow_editor:
-                editor_string = '(E)dit manually, '
-            prompt = ' [(y)es, (N)o, %s(f)inish, or (q)uit]' % editor_string
+        alternatives_chars = 'yn'
+        alternatives = '&yes\n&No'
+        if allow_editor:
+            alternatives_chars += 'e'
+            alternatives += '\n&edit manually'
+        alternatives_chars += 'fq'
+        alternatives += '\n&finish\n&quit'
+        choice = self.prompt(question, alternatives, 1)
+        if choice is None:
+            # EOF.
+            char = 'n'
         else:
-            if allow_editor:
-                editor_string = 'e'
-            prompt = ' [yN%sfq?]' % editor_string
-        char = self.prompt(question + prompt)
+            char = alternatives_chars[choice]
         if char == 'y':
             return True
         elif char == 'e' and allow_editor:
@@ -318,8 +284,6 @@ class Shelver(object):
         elif char == 'f':
             self.auto = True
             return True
-        elif char == '?':
-            return self.prompt_bool(question, long=True)
         if char == 'q':
             raise errors.UserAbort()
         else:

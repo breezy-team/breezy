@@ -18,6 +18,8 @@
 
 import os
 
+import bzrlib.bzrdir
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
@@ -29,7 +31,7 @@ from bzrlib import (
     bugtracker,
     bundle,
     btree_index,
-    bzrdir,
+    controldir,
     directory_service,
     delta,
     config as _mod_config,
@@ -197,7 +199,7 @@ def _open_directory_or_containing_tree_or_branch(filename, directory):
     the --directory option is used to specify a different branch."""
     if directory is not None:
         return (None, Branch.open(directory), filename)
-    return bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+    return controldir.ControlDir.open_containing_tree_or_branch(filename)
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -339,7 +341,7 @@ class cmd_cat_revision(Command):
             raise errors.BzrCommandError(gettext('You must supply either'
                                          ' --revision or a revision_id'))
 
-        b = bzrdir.BzrDir.open_containing_tree_or_branch(directory)[1]
+        b = controldir.ControlDir.open_containing_tree_or_branch(directory)[1]
 
         revisions = b.repository.revisions
         if revisions is None:
@@ -473,8 +475,8 @@ class cmd_remove_tree(Command):
             location_list=['.']
 
         for location in location_list:
-            d = bzrdir.BzrDir.open(location)
-            
+            d = controldir.ControlDir.open(location)
+
             try:
                 working = d.open_workingtree()
             except errors.NoWorkingTree:
@@ -556,7 +558,7 @@ class cmd_revno(Command):
     _see_also = ['info']
     takes_args = ['location?']
     takes_options = [
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         'revision',
         ]
 
@@ -604,7 +606,7 @@ class cmd_revision_info(Command):
         custom_help('directory',
             help='Branch to examine, '
                  'rather than the one containing the working directory.'),
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         ]
 
     @display_command
@@ -882,6 +884,9 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError(gettext("missing file argument"))
         tree, rel_names = WorkingTree.open_containing_paths(names_list, canonicalize=False)
+        for file_name in rel_names[0:-1]:
+            if file_name == '':
+                raise errors.BzrCommandError(gettext("can not move root of branch"))
         self.add_cleanup(tree.lock_tree_write().unlock)
         self._run(tree, names_list, rel_names, after)
 
@@ -1185,7 +1190,7 @@ class cmd_push(Command):
             directory = '.'
         # Get the source branch
         (tree, br_from,
-         _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
+         _unused) = controldir.ControlDir.open_containing_tree_or_branch(directory)
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
@@ -1288,7 +1293,7 @@ class cmd_branch(Command):
                 deprecated_name=self.invoked_as,
                 recommended_name='branch',
                 deprecated_in_version='2.4')
-        accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
+        accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
             # accelerator_tree is usually slower because you have to read N
@@ -1307,17 +1312,25 @@ class cmd_branch(Command):
             # RBC 20060209
             revision_id = br_from.last_revision()
         if to_location is None:
-            to_location = urlutils.derive_to_location(from_location)
+            to_location = getattr(br_from, "name", None)
+            if to_location is None:
+                to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
-            if not use_existing_dir:
-                raise errors.BzrCommandError(gettext('Target directory "%s" '
-                    'already exists.') % to_location)
+            try:
+                to_dir = controldir.ControlDir.open_from_transport(
+                    to_transport)
+            except errors.NotBranchError:
+                if not use_existing_dir:
+                    raise errors.BzrCommandError(gettext('Target directory "%s" '
+                        'already exists.') % to_location)
+                else:
+                    to_dir = None
             else:
                 try:
-                    bzrdir.BzrDir.open_from_transport(to_transport)
+                    to_dir.open_branch()
                 except errors.NotBranchError:
                     pass
                 else:
@@ -1325,21 +1338,26 @@ class cmd_branch(Command):
         except errors.NoSuchFile:
             raise errors.BzrCommandError(gettext('Parent of "%s" does not exist.')
                                          % to_location)
-        try:
-            # preserve whatever source format we have.
-            dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                        possible_transports=[to_transport],
-                                        accelerator_tree=accelerator_tree,
-                                        hardlink=hardlink, stacked=stacked,
-                                        force_new_repo=standalone,
-                                        create_tree_if_local=not no_tree,
-                                        source_branch=br_from)
-            branch = dir.open_branch()
-        except errors.NoSuchRevision:
-            to_transport.delete_tree('.')
-            msg = gettext("The branch {0} has no revision {1}.").format(
-                from_location, revision)
-            raise errors.BzrCommandError(msg)
+        else:
+            to_dir = None
+        if to_dir is None:
+            try:
+                # preserve whatever source format we have.
+                to_dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
+                                            possible_transports=[to_transport],
+                                            accelerator_tree=accelerator_tree,
+                                            hardlink=hardlink, stacked=stacked,
+                                            force_new_repo=standalone,
+                                            create_tree_if_local=not no_tree,
+                                            source_branch=br_from)
+                branch = to_dir.open_branch()
+            except errors.NoSuchRevision:
+                to_transport.delete_tree('.')
+                msg = gettext("The branch {0} has no revision {1}.").format(
+                    from_location, revision)
+                raise errors.BzrCommandError(msg)
+        else:
+            branch = br_from.sprout(to_dir, revision_id=revision_id)
         _merge_tags_if_possible(br_from, branch)
         # If the source branch is stacked, the new branch may
         # be stacked whether we asked for that explicitly or not.
@@ -1382,12 +1400,12 @@ class cmd_branches(Command):
             if not t.listable():
                 raise errors.BzrCommandError(
                     "Can't scan this type of location.")
-            for b in bzrdir.BzrDir.find_branches(t):
+            for b in controldir.ControlDir.find_branches(t):
                 self.outf.write("%s\n" % urlutils.unescape_for_display(
                     urlutils.relative_url(t.base, b.base),
                     self.outf.encoding).rstrip("/"))
         else:
-            dir = bzrdir.BzrDir.open_containing(location)[0]
+            dir = controldir.ControlDir.open_containing(location)[0]
             for branch in dir.list_branches():
                 if branch.name is None:
                     self.outf.write(gettext(" (default)\n"))
@@ -1440,7 +1458,7 @@ class cmd_checkout(Command):
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
-        accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
+        accelerator_tree, source = controldir.ControlDir.open_tree_or_branch(
             branch_location)
         if not (hardlink or files_from):
             # accelerator_tree is usually slower because you have to read N
@@ -1654,7 +1672,7 @@ class cmd_info(Command):
         else:
             noise_level = 0
         from bzrlib.info import show_bzrdir_info
-        show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
+        show_bzrdir_info(controldir.ControlDir.open_containing(location)[0],
                          verbose=noise_level, outfile=self.outf)
 
 
@@ -1792,7 +1810,7 @@ class cmd_reconcile(Command):
 
     def run(self, branch=".", canonicalize_chks=False):
         from bzrlib.reconcile import reconcile
-        dir = bzrdir.BzrDir.open(branch)
+        dir = controldir.ControlDir.open(branch)
         reconcile(dir, canonicalize_chks=canonicalize_chks)
 
 
@@ -1807,7 +1825,11 @@ class cmd_revision_history(Command):
     @display_command
     def run(self, location="."):
         branch = Branch.open_containing(location)[0]
-        for revid in branch.revision_history():
+        self.add_cleanup(branch.lock_read().unlock)
+        graph = branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
+        for revid in reversed(history):
             self.outf.write(revid)
             self.outf.write('\n')
 
@@ -1874,7 +1896,7 @@ class cmd_init(Command):
                 help='Specify a format for this branch. '
                 'See "help formats".',
                 lazy_registry=('bzrlib.bzrdir', 'format_registry'),
-                converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+                converter=lambda name: controldir.format_registry.make_bzrdir(name),
                 value_switches=True,
                 title="Branch format",
                 ),
@@ -1887,7 +1909,7 @@ class cmd_init(Command):
     def run(self, location=None, format=None, append_revisions_only=False,
             create_prefix=False, no_tree=False):
         if format is None:
-            format = bzrdir.format_registry.make_bzrdir('default')
+            format = controldir.format_registry.make_bzrdir('default')
         if location is None:
             location = u'.'
 
@@ -1910,10 +1932,10 @@ class cmd_init(Command):
             to_transport.create_prefix()
 
         try:
-            a_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
+            a_bzrdir = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
-            create_branch = bzrdir.BzrDir.create_branch_convenience
+            create_branch = controldir.ControlDir.create_branch_convenience
             if no_tree:
                 force_new_tree = False
             else:
@@ -1992,8 +2014,8 @@ class cmd_init_repository(Command):
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
                                  ' "bzr help formats" for details.',
-                            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
-                            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+                            lazy_registry=('bzrlib.controldir', 'format_registry'),
+                            converter=lambda name: controldir.format_registry.make_bzrdir(name),
                             value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
@@ -2003,7 +2025,7 @@ class cmd_init_repository(Command):
 
     def run(self, location, format=None, no_trees=False):
         if format is None:
-            format = bzrdir.format_registry.make_bzrdir('default')
+            format = controldir.format_registry.make_bzrdir('default')
 
         if location is None:
             location = '.'
@@ -2492,10 +2514,10 @@ class cmd_log(Command):
                    help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
-                   ' of both ancestries (require -rX..Y)'
+                   ' of both ancestries (require -rX..Y).'
                    ),
             Option('signatures',
-                   help='Show digital signature validity'),
+                   help='Show digital signature validity.'),
             ListOption('match',
                 short_name='m',
                 help='Show revisions whose properties match this '
@@ -2614,7 +2636,7 @@ class cmd_log(Command):
                 location = revision[0].get_branch()
             else:
                 location = '.'
-            dir, relpath = bzrdir.BzrDir.open_containing(location)
+            dir, relpath = controldir.ControlDir.open_containing(location)
             b = dir.open_branch()
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
@@ -3603,8 +3625,8 @@ class cmd_upgrade(Command):
         RegistryOption('format',
             help='Upgrade to a specific format.  See "bzr help'
                  ' formats" for details.',
-            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
-            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+            lazy_registry=('bzrlib.controldir', 'format_registry'),
+            converter=lambda name: controldir.format_registry.make_bzrdir(name),
             value_switches=True, title='Branch format'),
         Option('clean',
             help='Remove the backup.bzr directory if successful.'),
@@ -4855,7 +4877,7 @@ class cmd_pack(Command):
         ]
 
     def run(self, branch_or_repo='.', clean_obsolete_packs=False):
-        dir = bzrdir.BzrDir.open_containing(branch_or_repo)[0]
+        dir = controldir.ControlDir.open_containing(branch_or_repo)[0]
         try:
             branch = dir.open_branch()
             repository = branch.repository
@@ -5138,7 +5160,7 @@ class cmd_uncommit(Command):
             revision=None, force=False, local=False, keep_tags=False):
         if location is None:
             location = u'.'
-        control, relpath = bzrdir.BzrDir.open_containing(location)
+        control, relpath = controldir.ControlDir.open_containing(location)
         try:
             tree = control.open_workingtree()
             b = tree.branch
@@ -5248,7 +5270,7 @@ class cmd_break_lock(Command):
             conf = _mod_config.LockableConfig(file_name=location)
             conf.break_lock()
         else:
-            control, relpath = bzrdir.BzrDir.open_containing(location)
+            control, relpath = controldir.ControlDir.open_containing(location)
             try:
                 control.break_lock()
             except NotImplementedError:
@@ -5329,10 +5351,10 @@ class cmd_serve(Command):
         if protocol is None:
             protocol = transport.transport_server_registry.get()
         host, port = self.get_host_and_port(port)
-        url = urlutils.local_path_to_url(directory)
+        url = transport.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        t = transport.get_transport(url)
+        t = transport.get_transport_from_url(url)
         try:
             protocol(t, host, port, inet, client_timeout)
         except TypeError, e:
@@ -5939,7 +5961,7 @@ class cmd_reconfigure(Command):
     def run(self, location=None, bind_to=None, force=False,
             tree_type=None, repository_type=None, repository_trees=None,
             stacked_on=None, unstacked=None):
-        directory = bzrdir.BzrDir.open(location)
+        directory = controldir.ControlDir.open(location)
         if stacked_on and unstacked:
             raise errors.BzrCommandError(gettext("Can't use both --stacked-on and --unstacked"))
         elif stacked_on is not None:
@@ -6027,7 +6049,7 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
-        control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        control_dir = controldir.ControlDir.open_containing(tree_location)[0]
         if to_location is None:
             if revision is None:
                 raise errors.BzrCommandError(gettext('You must supply either a'
@@ -6048,17 +6070,35 @@ class cmd_switch(Command):
             if '/' not in to_location and '\\' not in to_location:
                 # This path is meant to be relative to the existing branch
                 this_url = self._get_branch_location(control_dir)
-                to_location = urlutils.join(this_url, '..', to_location)
+                # Perhaps the target control dir supports colocated branches?
+                try:
+                    root = controldir.ControlDir.open(this_url,
+                        possible_transports=[control_dir.user_transport])
+                except errors.NotBranchError:
+                    colocated = False
+                else:
+                    colocated = root._format.colocated_branches
+                if colocated:
+                    to_location = urlutils.join_segment_parameters(this_url,
+                        {"branch": urlutils.escape(to_location)})
+                else:
+                    to_location = urlutils.join(
+                        this_url, '..', urlutils.escape(to_location))
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
         else:
+            # Perhaps it's a colocated branch?
             try:
-                to_branch = Branch.open(to_location)
-            except errors.NotBranchError:
-                this_url = self._get_branch_location(control_dir)
-                to_branch = Branch.open(
-                    urlutils.join(this_url, '..', to_location))
+                to_branch = control_dir.open_branch(to_location)
+            except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+                try:
+                    to_branch = Branch.open(to_location)
+                except errors.NotBranchError:
+                    this_url = self._get_branch_location(control_dir)
+                    to_branch = Branch.open(
+                        urlutils.join(
+                            this_url, '..', urlutils.escape(to_location)))
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
@@ -6460,7 +6500,7 @@ class cmd_reference(Command):
         if path is not None:
             branchdir = path
         tree, branch, relpath =(
-            bzrdir.BzrDir.open_containing_tree_or_branch(branchdir))
+            controldir.ControlDir.open_containing_tree_or_branch(branchdir))
         if path is not None:
             path = relpath
         if tree is None:
