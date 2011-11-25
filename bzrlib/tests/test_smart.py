@@ -2035,6 +2035,19 @@ class TestSmartServerRepositorySetMakeWorkingTrees(
         self.assertTrue(repo.make_working_trees())
 
 
+class TestSmartServerRepositoryGetSerializerFormat(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_get_serializer_format(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', format='2a')
+        request_class = smart_repo.SmartServerRepositoryGetSerializerFormat
+        request = request_class(backing)
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', '10')),
+            request.execute(''))
+
+
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def make_repo_needing_autopacking(self, path='.'):
@@ -2196,6 +2209,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',
             smart_repo.SmartServerRepositoryUnlock)
+        self.assertHandlerEqual('VersionedFileRepository.get_serializer_format',
+            smart_repo.SmartServerRepositoryGetSerializerFormat)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
 
