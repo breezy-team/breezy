@@ -2142,7 +2142,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         try:
             response, handler = self._call_with_body_bytes_expecting_body(
                 'Repository.pack', (path, self._lock_token,
-                    clean_obsolete_packs), body)
+                    str(clean_obsolete_packs)), body)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.pack(hint=hint,

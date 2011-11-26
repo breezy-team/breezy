@@ -2448,8 +2448,9 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryPack(backing)
         tree = self.make_branch_and_memory_tree('.')
+        repo_token = tree.branch.repository.lock_write().repository_token
 
-        self.assertIs(None, request.execute('', False))
+        self.assertIs(None, request.execute('', repo_token, False))
 
         self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(('ok', ), ),

@@ -1042,9 +1042,13 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def do_repository_request(self, repository, clean_obsolete_packs):
+    def do_repository_request(self, repository, lock_token, clean_obsolete_packs):
         self._repository = repository
-        self._clean_obsolete_packs = clean_obsolete_packs
+        self._lock_token = lock_token
+        if clean_obsolete_packs == 'True':
+            self._clean_obsolete_packs = True
+        else:
+            self._clean_obsolete_packs = False
         return None
 
     def do_body(self, body_bytes):
@@ -1052,5 +1056,9 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
             hint = None
         else:
             hint = body_bytes.splitlines()
-        self._repository.pack(hint, self._clean_obsolete_packs)
+        self._repository.lock_write(token=self._lock_token)
+        try:
+            self._repository.pack(hint, self._clean_obsolete_packs)
+        finally:
+            self._repository.unlock()
         return SuccessfulSmartServerResponse(("ok", ), )
