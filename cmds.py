@@ -1307,6 +1307,8 @@ class cmd_dep3_patch(Command):
         if revision is not None and len(revision) >= 1:
             revision_id = revision[-1].as_revision_id(branch)
         else:
+            revision_id = None
+        if revision_id is None:
             revision_id = branch.last_revision()
         graph = branch.repository.get_graph(packaging_branch.repository)
         if revision is not None and len(revision) == 2:

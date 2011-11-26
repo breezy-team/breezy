@@ -126,3 +126,11 @@ class TestDep3Patch(ExternalBase):
             "-bar\n"
             "+bla\n"
             "\n")
+
+    def test_open_ended_range(self):
+        # If there is a single revision the commit message from
+        # that revision will be used.
+        self.feature_tree.commit(message="A message", timestamp=1304850124,
+            timezone=0, authors=["Jelmer <jelmer@debian.org>"])
+        (out, err) = self.run_bzr("dep3-patch -d packaging feature -r-2..")
+        self.assertContainsRe(out, "Description: A message\n")
