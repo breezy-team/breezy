@@ -4010,8 +4010,8 @@ class TestRepositoryPack(TestRemoteRepository):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', 'token'))
         client.add_expected_call(
-            'Repository.pack', ('quack/', 'token', None, False),
-            'success', ('ok',))
+            'Repository.pack', ('quack/', 'token', False),
+            'success', ('ok',), )
         repo.pack()
 
     def test_pack_with_hint(self):
@@ -4021,6 +4021,6 @@ class TestRepositoryPack(TestRemoteRepository):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', 'token'))
         client.add_expected_call(
-            'Repository.pack', ('quack/', 'token', ['hinta', 'hintb'], False),
-            'success', ('ok',))
+            'Repository.pack', ('quack/', 'token', False),
+            'success', ('ok',), )
         repo.pack(['hinta', 'hintb'])

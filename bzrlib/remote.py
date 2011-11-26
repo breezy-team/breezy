@@ -2134,14 +2134,20 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
         This is not currently implemented within the smart server.
         """
+        if hint is None:
+            body = ""
+        else:
+            body = "".join([l+"\n" for l in hint])
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            response = self._call('Repository.pack', path, self._lock_token,
-                hint, clean_obsolete_packs)
+            response, handler = self._call_with_body_bytes_expecting_body(
+                'Repository.pack', (path, self._lock_token,
+                    clean_obsolete_packs), body)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.pack(hint=hint,
                 clean_obsolete_packs=clean_obsolete_packs)
+        handler.cancel_read_body()
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
 
