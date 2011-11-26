@@ -3343,7 +3343,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self._remote_path(), revision_id)
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            return self._real_branch.revision_id_to_revno(revision_id)
+            return self._real_branch.revision_id_to_dotted_revno(revision_id)
         if response[0] == 'ok':
             return tuple([int(x) for x in response[1:]])
         else:

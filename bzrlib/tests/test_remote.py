@@ -2075,6 +2075,15 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
             branch.revision_id_to_dotted_revno, 'unknown')
         self.assertFinished(client)
 
+    def test_dotted_no_smart_verb(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        self.disable_verb('Branch.revision_id_to_revno')
+        self.reset_smart_call_log()
+        self.assertEquals((0, ),
+            branch.revision_id_to_dotted_revno('null:'))
+        self.assertLength(7, self.hpss_calls)
+
 
 class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
