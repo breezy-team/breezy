@@ -1024,6 +1024,7 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok', ))
 
+
 class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     """Retrieve all of the revision ids in a repository.
 
@@ -1033,3 +1034,14 @@ class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     def do_repository_request(self, repository):
         revids = repository.all_revision_ids()
         return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))
+
+
+class SmartServerRepositoryPack(SmartServerRepositoryRequest):
+    """Pack a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, hint, clean_obsolete_packs):
+        repository.pack(hint, clean_obsolete_packs)
+        return SuccessfulSmartServerResponse(("ok", ), )

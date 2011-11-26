@@ -2375,6 +2375,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryLockWrite)
         self.assertHandlerEqual('Repository.make_working_trees',
             smart_repo.SmartServerRepositoryMakeWorkingTrees)
+        self.assertHandlerEqual('Repository.pack',
+            smart_repo.SmartServerRepositoryPack)
         self.assertHandlerEqual('Repository.tarball',
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',
@@ -2438,3 +2440,16 @@ class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
         self.server.run_server_stopped_hooks()
         self.assertEquals(stopped_calls,
             [([self.get_transport().base], 'bzr://example.com:42/')])
+
+
+class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
+
+    def test_pack(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryPack(backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(
+            smart_req.SuccessfulSmartServerResponse(('ok', ), ),
+            request.execute('', [], False))
+
