@@ -2134,8 +2134,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
         This is not currently implemented within the smart server.
         """
-        self._ensure_real()
-        return self._real_repository.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('Repository.pack', path, self._lock_token,
+                hint, clean_obsolete_packs)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.pack(hint=hint,
+                clean_obsolete_packs=clean_obsolete_packs)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     @property
     def revisions(self):
