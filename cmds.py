@@ -1301,51 +1301,49 @@ class cmd_dep3_patch(Command):
             )
         packaging_tree, packaging_branch = BzrDir.open_containing_tree_or_branch(
             directory)[:2]
+        self.add_cleanup(packaging_branch.lock_read().unlock)
         tree, branch = BzrDir.open_containing_tree_or_branch(location)[:2]
-        branch.lock_read()
-        try:
-            if revision is not None and len(revision) >= 1:
-                revision_id = revision[-1].as_revision_id(branch)
-            else:
-                revision_id = branch.last_revision()
-            graph = branch.repository.get_graph(packaging_branch.repository)
-            if revision is not None and len(revision) == 2:
-                base_revid = revision[0].as_revision_id(branch)
-            else:
-                base_revid = graph.find_unique_lca(revision_id,
-                    packaging_branch.last_revision())
-            interesting_revision_ids = graph.find_unique_ancestors(revision_id,
-                [base_revid])
-            if len(interesting_revision_ids) == 0:
-                raise BzrCommandError("No unmerged revisions")
-            (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
-                interesting_revision_ids)
-            config = branch.get_config()
-            description = config.get_user_option("description")
-            if description is None:
-                # if there's just one revision in the mainline history, use
-                # that revisions commits message
-                lhs_history = graph.iter_lefthand_ancestry(revision_id, [base_revid])
-                rev = branch.repository.get_revision(lhs_history.next())
-                try:
-                    lhs_history.next()
-                except StopIteration:
-                    description = rev.message
-            origin = describe_origin(branch, revision_id)
-            if packaging_tree is None:
-                packaging_tree = packaging_branch.basis_tree()
-            builddeb_config = debuild_config(packaging_tree, True)
-            if not no_upstream_check and builddeb_config.upstream_branch:
-                upstream_branch = Branch.open(builddeb_config.upstream_branch)
-                applied_upstream = determine_applied_upstream(upstream_branch, branch,
-                    revision_id)
-                forwarded = determine_forwarded(upstream_branch, branch, revision_id)
-            else:
-                applied_upstream = None
-                forwarded = None
-            write_dep3_patch(self.outf, branch, base_revid,
-                revision_id, bugs=bugs, authors=authors, origin=origin,
-                forwarded=forwarded, applied_upstream=applied_upstream,
-                description=description, last_update=last_update)
-        finally:
-            branch.unlock()
+        self.add_cleanup(branch.lock_read().unlock)
+        if revision is not None and len(revision) >= 1:
+            revision_id = revision[-1].as_revision_id(branch)
+        else:
+            revision_id = branch.last_revision()
+        graph = branch.repository.get_graph(packaging_branch.repository)
+        if revision is not None and len(revision) == 2:
+            base_revid = revision[0].as_revision_id(branch)
+        else:
+            base_revid = graph.find_unique_lca(revision_id,
+                packaging_branch.last_revision())
+        interesting_revision_ids = graph.find_unique_ancestors(revision_id,
+            [base_revid])
+        if len(interesting_revision_ids) == 0:
+            raise BzrCommandError("No unmerged revisions")
+        (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
+            interesting_revision_ids)
+        config = branch.get_config()
+        description = config.get_user_option("description")
+        if description is None:
+            # if there's just one revision in the mainline history, use
+            # that revisions commits message
+            lhs_history = graph.iter_lefthand_ancestry(revision_id, [base_revid])
+            rev = branch.repository.get_revision(lhs_history.next())
+            try:
+                lhs_history.next()
+            except StopIteration:
+                description = rev.message
+        origin = describe_origin(branch, revision_id)
+        if packaging_tree is None:
+            packaging_tree = packaging_branch.basis_tree()
+        builddeb_config = debuild_config(packaging_tree, True)
+        if not no_upstream_check and builddeb_config.upstream_branch:
+            upstream_branch = Branch.open(builddeb_config.upstream_branch)
+            applied_upstream = determine_applied_upstream(upstream_branch, branch,
+                revision_id)
+            forwarded = determine_forwarded(upstream_branch, branch, revision_id)
+        else:
+            applied_upstream = None
+            forwarded = None
+        write_dep3_patch(self.outf, branch, base_revid,
+            revision_id, bugs=bugs, authors=authors, origin=origin,
+            forwarded=forwarded, applied_upstream=applied_upstream,
+            description=description, last_update=last_update)
