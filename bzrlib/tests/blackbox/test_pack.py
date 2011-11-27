@@ -95,9 +95,10 @@ class TestSmartServerPack(tests.TestCaseWithTransport):
         t.commit("message")
         self.reset_smart_call_log()
         out, err = self.run_bzr(['pack', self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
+        # This figure represent the amount of HPSS calls to perform this use
+        # case. It is entirely ok to reduce this number if a test fails due to
+        # rpc_count # being too low. If rpc_count increases, more network
+        # roundtrips have become necessary for this use case. Please do not
+        # adjust this number upwards without agreement from bzr's network
+        # support maintainers.
         self.assertLength(6, self.hpss_calls)

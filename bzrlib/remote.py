@@ -2131,8 +2131,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     @needs_write_lock
     def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
-
-        This is not currently implemented within the smart server.
         """
         if hint is None:
             body = ""
