@@ -206,8 +206,9 @@ class BzrFastExporter(object):
             start_rev_id = None
             end_rev_id = None
         self.note("Calculating the revisions to include ...")
-        view_revisions = reversed([rev_id for rev_id, _, _, _ in
-            self.branch.iter_merge_sorted_revisions(end_rev_id, start_rev_id)])
+        view_revisions = [rev_id for rev_id, _, _, _ in
+            self.branch.iter_merge_sorted_revisions(end_rev_id, start_rev_id)]
+        view_revisions.reverse()
         # If a starting point was given, we need to later check that we don't
         # start emitting revisions from before that point. Collect the
         # revisions to exclude now ...

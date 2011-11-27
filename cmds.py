@@ -564,9 +564,9 @@ class cmd_fast_export(Command):
     :Round-tripping:
 
      Recent versions of the fast-import specification support features
-     that allow effective round-tripping of many Bazaar branches. As
-     such, fast-exporting a branch and fast-importing the data produced
-     will create a new repository with equivalent history, i.e.
+     that allow effective round-tripping most of the metadata in Bazaar
+     branches. As such, fast-exporting a branch and fast-importing the data
+     produced will create a new repository with roughly equivalent history, i.e.
      "bzr log -v -p --include-merges --forward" on the old branch and
      new branch should produce similar, if not identical, results.
 
@@ -608,13 +608,11 @@ class cmd_fast_export(Command):
 
     :History truncation:
 
-     When code has been significantly refactored over time (e.g., to separate 
-     proprietary code from open source code), it is sometimes convenient to
-     simply truncate the revision history at a certain point.  The --baseline 
-     option, to be used in conjunction with -r, emits a baseline commit
-     containing the state of the entire source tree at the first requested 
-     revision.  This allows a user to produce a tree identical to the original 
-     without munging multiple exports.
+     It is sometimes convenient to simply truncate the revision history at a
+     certain point.  The --baseline option, to be used in conjunction with -r,
+     emits a baseline commit containing the state of the entire source tree at
+     the first requested revision.  This allows a user to produce a tree
+     identical to the original without munging multiple exports.
 
     :Examples:
 
