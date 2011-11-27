@@ -953,14 +953,15 @@ class BzrDirMeta1(BzrDir):
         return False
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False):
-        """See BzrDir.open_branch."""
+                    ignore_fallbacks=False, possible_transports=None):
+        """See ControlDir.open_branch."""
         if name is None:
             name = self._get_selected_branch()
         format = self.find_branch_format(name=name)
         format.check_support_status(unsupported)
         return format.open(self, name=name,
-            _found=True, ignore_fallbacks=ignore_fallbacks)
+            _found=True, ignore_fallbacks=ignore_fallbacks,
+            possible_transports=possible_transports)
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""

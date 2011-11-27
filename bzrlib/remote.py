@@ -653,7 +653,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return None, self.open_branch(name=name)
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False):
+                    ignore_fallbacks=False, possible_transports=None):
         if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -666,7 +666,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
             return format.open(self, name=name, _found=True,
-                location=response[1], ignore_fallbacks=ignore_fallbacks)
+                location=response[1], ignore_fallbacks=ignore_fallbacks,
+                possible_transports=possible_transports)
         branch_format_name = response[1]
         if not branch_format_name:
             branch_format_name = None

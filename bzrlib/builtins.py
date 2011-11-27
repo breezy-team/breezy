@@ -1350,7 +1350,9 @@ class cmd_branch(Command):
                                             force_new_repo=standalone,
                                             create_tree_if_local=not no_tree,
                                             source_branch=br_from)
-                branch = to_dir.open_branch()
+                branch = to_dir.open_branch(
+                    possible_transports=[
+                        br_from.control_transport, to_transport])
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(

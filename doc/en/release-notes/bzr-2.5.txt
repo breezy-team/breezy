@@ -33,7 +33,7 @@ Improvements
 * ``bzr switch`` now accepts colocated branch names to switch to.
   (Jelmer Vernooij, #826814)
 
-* ``bzr branch --stacked`` now only makes two connections to the remote
+* ``bzr branch --stacked`` now only makes a single connection to the remote
   server rather than three. (Jelmer Vernooij, #444293)
 
 Bug Fixes
@@ -86,6 +86,9 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``BzrDir.open_branch`` and ``BranchFormat.open`` now take an optional
+  ``possible_transports`` argument. (Jelmer Vernooij)
 
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
