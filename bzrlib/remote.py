@@ -2935,7 +2935,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self.bzrdir, self._client)
         return self._control_files
 
-    def _get_checkout_format(self, lightweight=False):
+    def _get_checkout_format_vfs(self, lightweight=False):
         self._ensure_real()
         if lightweight:
             format = RemoteBzrDirFormat()
@@ -2945,6 +2945,24 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return format
         else:
             return self._real_branch._get_checkout_format(lightweight=False)
+
+    def _get_checkout_format(self, lightweight=False):
+        try:
+            response = self._client.call('Branch.get_checkout_format',
+                self._remote_path(), lightweight)
+        except errors.UnknownSmartMethod:
+            return self._get_checkout_format_vfs(lightweight)
+        if len(response) != 3:
+            raise errors.UnexpectedSmartServerResponse(response)
+        control_name, repo_name, branch_name = response
+        format = controldir.network_format_registry.get(control_name)
+        if repo_name:
+            format.repository_format = _mod_repository.network_format_registry.get(
+                repo_name)
+        if branch_name:
+            format.set_branch_format(
+                branch.network_format_registry.get(branch_name))
+        return format
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""
