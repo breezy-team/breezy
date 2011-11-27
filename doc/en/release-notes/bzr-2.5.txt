@@ -73,6 +73,9 @@ Bug Fixes
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
+* When a remote format is unknown, bzr will now print a single-line error
+  message rather than a backtrace. (Jelmer Vernooij, #687226)
+
 Documentation
 *************
 
