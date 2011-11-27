@@ -117,6 +117,8 @@ Internals
   and ``Repository.check_write_group``.
   (Jelmer Vernooij)
 
+* New HPSS call ``Branch.get_checkout_format``. (Jelmer Vernooij, #894459)
+
 * Custom HPSS error handlers can now be installed in the smart server client
   using the ``error_translators`` and ``no_context_error_translators``
   registries. (Jelmer Vernooij)

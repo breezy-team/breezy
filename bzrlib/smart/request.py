@@ -523,6 +523,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
 request_handlers.register_lazy(
+    'Branch.get_checkout_format', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestGetCheckoutFormat')
+request_handlers.register_lazy(
     'Branch.get_physical_lock_status', 'bzrlib.smart.branch',
     'SmartServerBranchRequestGetPhysicalLockStatus')
 request_handlers.register_lazy( 'Branch.revision_history',

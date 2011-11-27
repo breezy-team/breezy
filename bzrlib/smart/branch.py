@@ -446,3 +446,22 @@ class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
             return SuccessfulSmartServerResponse(('yes',))
         else:
             return SuccessfulSmartServerResponse(('no',))
+
+
+class SmartServerBranchRequestGetCheckoutFormat(SmartServerBranchRequest):
+    """Get the format to use for checkouts of a branch.
+
+    New in 2.5.
+    """
+
+    def do_with_branch(self, branch, lightweight):
+        control_format = branch._get_checkout_format(lightweight)
+        control_name = control_format.network_name()
+        if not control_format.fixed_components:
+            branch_name = control_format.get_branch_format().network_name()
+            repo_name = control_format.repository_format.network_name()
+        else:
+            branch_name = ''
+            repo_name = ''
+        return SuccessfulSmartServerResponse(
+            (control_name, repo_name, branch_name))
