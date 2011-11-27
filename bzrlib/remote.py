@@ -2959,13 +2959,25 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
         control_name, repo_name, branch_name = response
-        format = controldir.network_format_registry.get(control_name)
+        try:
+            format = controldir.network_format_registry.get(control_name)
+        except KeyError:
+            raise errors.UnknownFormatError(kind='control', format=control_name)
         if repo_name:
-            format.repository_format = _mod_repository.network_format_registry.get(
-                repo_name)
+            try:
+                repo_format = _mod_repository.network_format_registry.get(
+                    repo_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='repository',
+                    format=repo_name)
+            format.repository_format = repo_format
         if branch_name:
-            format.set_branch_format(
-                branch.network_format_registry.get(branch_name))
+            try:
+                format.set_branch_format(
+                    branch.network_format_registry.get(branch_name))
+            except KeyError:
+                raise errors.UnknownFormatError(kind='branch',
+                    format=branch_name)
         return format
 
     def get_physical_lock_status(self):

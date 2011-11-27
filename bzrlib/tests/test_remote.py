@@ -1108,6 +1108,22 @@ class TestBranchGetCheckoutFormat(RemoteBranchTestCase):
         self.assertEqual(None, result._branch_format)
         self.assertFinished(client)
 
+    def test_unknown_format(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_checkout_format', ('quack/', False),
+            'success', ('dontknow', '', ''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(errors.UnknownFormatError,
+            branch._get_checkout_format)
+        self.assertFinished(client)
+
 
 class TestBranchGetPhysicalLockStatus(RemoteBranchTestCase):
 
