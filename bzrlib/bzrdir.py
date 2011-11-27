@@ -370,6 +370,11 @@ class BzrDir(controldir.ControlDir):
         if revision_id is not None:
             fetch_spec_factory.add_revision_ids([revision_id])
             fetch_spec_factory.source_branch_stop_revision_id = revision_id
+        if possible_transports is None:
+            possible_transports = []
+        else:
+            possible_transports = list(possible_transports) + [
+                self.control_transport]
         target_transport = _mod_transport.get_transport(url,
             possible_transports)
         target_transport.ensure_base()
@@ -390,7 +395,8 @@ class BzrDir(controldir.ControlDir):
             stacked_branch_url = None
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
-        result_repo, is_new_repo = repository_policy.acquire_repository()
+        result_repo, is_new_repo = repository_policy.acquire_repository(
+            possible_transports=possible_transports)
         add_cleanup(result_repo.lock_write().unlock)
         fetch_spec_factory.source_repo = source_repository
         fetch_spec_factory.target_repo = result_repo
@@ -1845,7 +1851,8 @@ class RepositoryAcquisitionPolicy(object):
         else:
             self._require_stacking = True
 
-    def acquire_repository(self, make_working_trees=None, shared=False):
+    def acquire_repository(self, make_working_trees=None, shared=False,
+            possible_transports=None):
         """Acquire a repository for this bzrdir.
 
         Implementations may create a new repository or use a pre-exising
@@ -1876,23 +1883,29 @@ class CreateRepository(RepositoryAcquisitionPolicy):
                                              require_stacking)
         self._bzrdir = bzrdir
 
-    def acquire_repository(self, make_working_trees=None, shared=False):
+    def acquire_repository(self, make_working_trees=None, shared=False,
+            possible_transports=None):
         """Implementation of RepositoryAcquisitionPolicy.acquire_repository
 
         Creates the desired repository in the bzrdir we already have.
         """
+        if possible_transports is None:
+            possible_transports = []
+        else:
+            possible_transports = list(possible_transports)
+        possible_transports.append(self._bzrdir.root_transport)
         stack_on = self._get_full_stack_on()
         if stack_on:
             format = self._bzrdir._format
             format.require_stacking(stack_on=stack_on,
-                                    possible_transports=[self._bzrdir.root_transport])
+                                    possible_transports=possible_transports)
             if not self._require_stacking:
                 # We have picked up automatic stacking somewhere.
                 note(gettext('Using default stacking branch {0} at {1}').format(
                     self._stack_on, self._stack_on_pwd))
         repository = self._bzrdir.create_repository(shared=shared)
         self._add_fallback(repository,
-                           possible_transports=[self._bzrdir.transport])
+                           possible_transports=possible_transports)
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository, True
@@ -1914,13 +1927,19 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
                                              require_stacking)
         self._repository = repository
 
-    def acquire_repository(self, make_working_trees=None, shared=False):
+    def acquire_repository(self, make_working_trees=None, shared=False,
+            possible_transports=None):
         """Implementation of RepositoryAcquisitionPolicy.acquire_repository
 
         Returns an existing repository to use.
         """
+        if possible_transports is None:
+            possible_transports = []
+        else:
+            possible_transports = list(possible_transports)
+        possible_transports.append(self._repository.bzrdir.transport)
         self._add_fallback(self._repository,
-                       possible_transports=[self._repository.bzrdir.transport])
+                       possible_transports=possible_transports)
         return self._repository, False
 
 

@@ -33,6 +33,9 @@ Improvements
 * ``bzr switch`` now accepts colocated branch names to switch to.
   (Jelmer Vernooij, #826814)
 
+* ``bzr branch --stacked`` now only makes two connections to the remote
+  server rather than three. (Jelmer Vernooij, #444293)
+
 Bug Fixes
 *********
 
