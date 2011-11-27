@@ -673,7 +673,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             branch_format_name = None
         format = RemoteBranchFormat(network_name=branch_format_name)
         return RemoteBranch(self, self.find_repository(), format=format,
-            setup_stacking=not ignore_fallbacks, name=name)
+            setup_stacking=not ignore_fallbacks, name=name,
+            possible_transports=possible_transports)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
@@ -2778,7 +2779,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """
 
     def __init__(self, remote_bzrdir, remote_repository, real_branch=None,
-        _client=None, format=None, setup_stacking=True, name=None):
+        _client=None, format=None, setup_stacking=True, name=None,
+        possible_transports=None):
         """Create a RemoteBranch instance.
 
         :param real_branch: An optional local implementation of the branch
@@ -2849,9 +2851,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             hook(self)
         self._is_stacked = False
         if setup_stacking:
-            self._setup_stacking()
+            self._setup_stacking(possible_transports)
 
-    def _setup_stacking(self):
+    def _setup_stacking(self, possible_transports):
         # configure stacking into the remote repository, by reading it from
         # the vfs branch.
         try:
@@ -2860,8 +2862,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             errors.UnstackableRepositoryFormat), e:
             return
         self._is_stacked = True
+        if possible_transports is None:
+            possible_transports = []
+        else:
+            possible_transports = list(possible_transports)
+        possible_transports.append(self.bzrdir.root_transport)
         self._activate_fallback_location(fallback_url,
-            possible_transports=[self.bzrdir.root_transport])
+            possible_transports=possible_transports)
 
     def _get_config(self):
         return RemoteBranchConfig(self)
