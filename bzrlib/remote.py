@@ -2947,10 +2947,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._real_branch._get_checkout_format(lightweight=False)
 
     def _get_checkout_format(self, lightweight=False):
+        medium = self._client._medium
+        if medium._is_remote_before((2, 5)):
+            return self._get_checkout_format_vfs(lightweight)
         try:
             response = self._client.call('Branch.get_checkout_format',
                 self._remote_path(), lightweight)
         except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((2, 5))
             return self._get_checkout_format_vfs(lightweight)
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
