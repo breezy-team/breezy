@@ -1039,6 +1039,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             # has the bzr revid, then this will cause us to show a tag as updated
             # that hasn't actually been updated. 
             return True
+        # FIXME: Check for diverged branches
         for ref, (git_sha, revid) in new_refs.iteritems():
             if ref not in ret or overwrite:
                 if not ref_equals(ret, ref, git_sha, revid):
@@ -1052,14 +1053,17 @@ class InterToGitBranch(branch.GenericInterBranch):
             elif ref_equals(ret, ref, git_sha, revid):
                 pass
             else:
-                try:
-                    name = ref_to_tag_name(ref)
-                except ValueError:
-                    pass
+                # FIXME: Check diverged
+                diverged = False
+                if diverged:
+                    try:
+                        name = ref_to_tag_name(ref)
+                    except ValueError:
+                        pass
+                    else:
+                        result.tag_conflicts.append((name, revid, ret[name][1]))
                 else:
-                    result.tag_conflicts.append((name, revid, ret[name][1]))
-        # FIXME: Check for diverged branches
-        ret.update(new_refs)
+                    ret[ref] = (git_sha, revid)
         return ret
 
     def pull(self, overwrite=False, stop_revision=None, local=False,

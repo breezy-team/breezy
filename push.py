@@ -204,16 +204,23 @@ class InterToLocalGitRepository(InterToGitRepository):
             else:
                 assert revid is not None
                 stop_revids.append(revid)
-        missing = []
+        missing = set()
         graph = self.source.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for revid, _ in graph.iter_ancestry(stop_revids):
-                assert type(revid) is str
+            while stop_revids:
+                new_stop_revids = []
+                for revid in stop_revids:
+                    sha1 = revid_sha_map.get(revid)
+                    if (not revid in missing and
+                        self._revision_needs_fetching(sha1, revid)):
+                        missing.add(revid)
+                        new_stop_revids.append(revid)
+                stop_revids = set()
+                parent_map = graph.get_parent_map(new_stop_revids)
+                for parent_revids in parent_map.itervalues():
+                    stop_revids.update(parent_revids)
                 pb.update("determining revisions to fetch", len(missing))
-                sha1 = revid_sha_map.get(revid)
-                if self._revision_needs_fetching(sha1, revid):
-                    missing.append(revid)
         finally:
             pb.finished()
         return graph.iter_topo_order(missing)
@@ -246,7 +253,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
             revidmap = self.fetch_objects(
-                new_refs.values(), roundtrip=not lossy)
+                [(git_sha, bzr_revid) for (git_sha, bzr_revid) in new_refs.values() if git_sha is None or not git_sha.startswith('ref:')], roundtrip=not lossy)
             for name, (gitid, revid) in new_refs.iteritems():
                 if gitid is None:
                     try:
