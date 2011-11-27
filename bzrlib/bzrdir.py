@@ -374,7 +374,7 @@ class BzrDir(controldir.ControlDir):
             possible_transports = []
         else:
             possible_transports = list(possible_transports) + [
-                self.control_transport]
+                self.root_transport]
         target_transport = _mod_transport.get_transport(url,
             possible_transports)
         target_transport.ensure_base()

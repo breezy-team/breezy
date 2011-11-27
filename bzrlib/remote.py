@@ -2861,7 +2861,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return
         self._is_stacked = True
         self._activate_fallback_location(fallback_url,
-            possible_transports=[self.control_transport])
+            possible_transports=[self.bzrdir.root_transport])
 
     def _get_config(self):
         return RemoteBranchConfig(self)

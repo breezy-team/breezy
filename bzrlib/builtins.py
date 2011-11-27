@@ -1352,7 +1352,7 @@ class cmd_branch(Command):
                                             source_branch=br_from)
                 branch = to_dir.open_branch(
                     possible_transports=[
-                        br_from.control_transport, to_transport])
+                        br_from.bzrdir.root_transport, to_transport])
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(

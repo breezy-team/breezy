@@ -2830,7 +2830,7 @@ class BzrBranch8(BzrBranch):
         if self._ignore_fallbacks:
             return
         if possible_transports is None:
-            possible_transports = [self.bzrdir.control_transport]
+            possible_transports = [self.bzrdir.root_transport]
         try:
             url = self.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
