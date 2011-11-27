@@ -2860,7 +2860,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             errors.UnstackableRepositoryFormat), e:
             return
         self._is_stacked = True
-        self._activate_fallback_location(fallback_url)
+        self._activate_fallback_location(fallback_url,
+            possible_transports=[self.control_transport])
 
     def _get_config(self):
         return RemoteBranchConfig(self)
