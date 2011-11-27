@@ -40,3 +40,22 @@ class GitBranchConfig(config.BranchConfig):
     def _get_user_id(self):
         # TODO: Read from ~/.gitconfig
         return self._get_best_value('_get_user_id')
+
+
+class GitBranchStack(config._CompatibleStack):
+    """GitBranch stack."""
+
+    def __init__(self, branch):
+        lstore = config.LocationStore()
+        loc_matcher = config.LocationMatcher(lstore, branch.base)
+        # FIXME: This should also be looking in .git/config for
+        # local git branches.
+        gstore = config.GlobalStore()
+        super(GitBranchStack, self).__init__(
+            [self._get_overrides,
+             loc_matcher.get_sections,
+             gstore.get_sections],
+            # All modifications go to the corresponding section in
+            # locations.conf
+            lstore, branch.base)
+        self.branch = branch

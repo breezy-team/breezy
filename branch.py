@@ -51,6 +51,7 @@ from bzrlib.trace import (
 
 from bzrlib.plugins.git.config import (
     GitBranchConfig,
+    GitBranchStack,
     )
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
@@ -382,6 +383,9 @@ class GitBranch(ForeignBranch):
 
     def get_config(self):
         return GitBranchConfig(self)
+
+    def get_config_stack(self):
+        return GitBranchStack(self)
 
     def _get_nick(self, local=False, possible_master_transports=None):
         """Find the nick name for this branch.
