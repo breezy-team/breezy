@@ -679,7 +679,7 @@ class TestBzrDirOpenBranch(TestRemote):
         # _get_tree_branch is a form of open_branch, but it should only ask for
         # branch opening, not any other network requests.
         calls = []
-        def open_branch(name=None):
+        def open_branch(name=None, possible_transports=None):
             calls.append("Called")
             return "a-branch"
         transport = MemoryTransport()
