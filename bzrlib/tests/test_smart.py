@@ -25,6 +25,7 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
+import zlib
 
 from bzrlib import (
     branch as _mod_branch,
@@ -45,6 +46,7 @@ from bzrlib.smart import (
     server,
     vfs,
     )
+from bzrlib.testament import Testament
 from bzrlib.tests import test_server
 from bzrlib.transport import (
     chroot,
@@ -1539,7 +1541,7 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         tree.branch.repository.start_write_group()
         write_group_tokens = tree.branch.repository.suspend_write_group()
         self.assertEqual(None, request.execute('', write_token,
-            write_group_tokens, 'rev1'))
+            'rev1', *write_group_tokens))
         response = request.do_body('somesignature')
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args[0], 'ok')
@@ -1724,6 +1726,50 @@ class TestSmartServerRepositoryGetRevIdForRevno(
             request.execute('stacked', 1, (3, r3)))
 
 
+class TestSmartServerRepositoryIterRevisions(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_basic(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterRevisions(backing)
+        tree = self.make_branch_and_memory_tree('.', format='2a')
+        tree.lock_write()
+        tree.add('')
+        tree.commit('1st commit', rev_id="rev1")
+        tree.commit('2nd commit', rev_id="rev2")
+        tree.unlock()
+
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("rev1\nrev2")
+        self.assertTrue(response.is_successful())
+        # Format 2a uses serializer format 10
+        self.assertEquals(response.args, ("ok", "10"))
+
+        self.addCleanup(tree.branch.lock_read().unlock)
+        entries = [zlib.compress(record.get_bytes_as("fulltext")) for record in
+            tree.branch.repository.revisions.get_record_stream(
+            [("rev1", ), ("rev2", )], "unordered", True)]
+
+        contents = "".join(response.body_stream)
+        self.assertTrue(contents in (
+            "".join([entries[0], entries[1]]),
+            "".join([entries[1], entries[0]])))
+
+    def test_missing(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterRevisions(backing)
+        tree = self.make_branch_and_memory_tree('.', format='2a')
+
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("rev1\nrev2")
+        self.assertTrue(response.is_successful())
+        # Format 2a uses serializer format 10
+        self.assertEquals(response.args, ("ok", "10"))
+
+        contents = "".join(response.body_stream)
+        self.assertEquals(contents, "")
+
+
 class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
@@ -1801,6 +1847,36 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
         self.assertTrue(tree.branch.repository.has_revision(rev_id_utf8))
         self.assertEqual(smart_req.SmartServerResponse(('yes', )),
             request.execute('', rev_id_utf8))
+
+
+class TestSmartServerRepositoryIterFilesBytes(tests.TestCaseWithTransport):
+
+    def test_single(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterFilesBytes(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", "somecontents")])
+        t.add(["file"], ["thefileid"])
+        t.commit(rev_id='somerev', message="add file")
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("thefileid\0somerev\n")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals("".join(response.body_stream),
+            "ok\x000\n" + zlib.compress("somecontents"))
+
+    def test_missing(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterFilesBytes(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("thefileid\0revision\n")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals("".join(response.body_stream),
+            "absent\x00thefileid\x00revision\x000\n")
 
 
 class TestSmartServerRequestHasSignatureForRevisionId(
@@ -1937,6 +2013,30 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
         self.make_repository('.', shared=False)
         self.assertEqual(smart_req.SmartServerResponse(('no', )),
             request.execute('', ))
+
+
+class TestSmartServerRepositoryGetRevisionSignatureText(
+        tests.TestCaseWithMemoryTransport):
+
+    def test_get_signature(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetRevisionSignatureText(
+            backing)
+        bb = self.make_branch_builder('.')
+        bb.build_commit(rev_id='A')
+        repo = bb.get_branch().repository
+        strategy = gpg.LoopbackGPGStrategy(None)
+        self.addCleanup(repo.lock_write().unlock)
+        repo.start_write_group()
+        repo.sign_revision('A', strategy)
+        repo.commit_write_group()
+        expected_body = (
+            '-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+            Testament.from_revision(repo, 'A').as_short_text() +
+            '-----END PSEUDO-SIGNED CONTENT-----\n')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('ok', ), expected_body),
+            request.execute('', 'A'))
 
 
 class TestSmartServerRepositoryMakeWorkingTrees(
@@ -2389,10 +2489,14 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',
             smart_repo.SmartServerRepositoryGetRevisionGraph)
+        self.assertHandlerEqual('Repository.get_revision_signature_text',
+            smart_repo.SmartServerRepositoryGetRevisionSignatureText)
         self.assertHandlerEqual('Repository.get_stream',
             smart_repo.SmartServerRepositoryGetStream)
         self.assertHandlerEqual('Repository.get_stream_1.19',
             smart_repo.SmartServerRepositoryGetStream_1_19)
+        self.assertHandlerEqual('Repository.iter_revisions',
+            smart_repo.SmartServerRepositoryIterRevisions)
         self.assertHandlerEqual('Repository.has_revision',
             smart_repo.SmartServerRequestHasRevision)
         self.assertHandlerEqual('Repository.insert_stream',
@@ -2401,6 +2505,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryInsertStreamLocked)
         self.assertHandlerEqual('Repository.is_shared',
             smart_repo.SmartServerRepositoryIsShared)
+        self.assertHandlerEqual('Repository.iter_files_bytes',
+            smart_repo.SmartServerRepositoryIterFilesBytes)
         self.assertHandlerEqual('Repository.lock_write',
             smart_repo.SmartServerRepositoryLockWrite)
         self.assertHandlerEqual('Repository.make_working_trees',

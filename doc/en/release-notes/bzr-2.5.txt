@@ -53,6 +53,11 @@ Bug Fixes
 * Add HPSS call for looking up revision numbers from revision ids on
   remote repositories. (Jelmer Vernooij, #640253)
 
+* Add HPSS call for retrieving file contents from remote repositories.
+  Should improve performance for lightweight checkouts and exports of
+  from remote repositories.  (Jelmer Vernooij, #368717, #762330,
+  #608640)
+
 * Cope with missing revision ids being specified to
   ``Repository.gather_stats`` HPSS call. (Jelmer Vernooij, #411290)
 
@@ -133,8 +138,9 @@ Internals
   ``VersionedFileRepository.get_serializer_format``,
   ``Repository.all_revision_ids``, ``Repository.start_write_group``,
   ``Repository.commit_write_group``, ``Repository.abort_write_group``
-  ``Repository.check_write_group`` and
-  ``Repository.add_signature_revision_text``.
+  ``Repository.check_write_group``, ``Repository.iter_revisions``,
+  ``Repository.add_signature_revision_text`` and
+  ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
 
 * Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)

@@ -415,6 +415,8 @@ def _translate_error(err):
     elif isinstance(err, errors.ShortReadvError):
         return ('ShortReadvError', err.path, str(err.offset), str(err.length),
                 str(err.actual))
+    elif isinstance(err, errors.RevisionNotPresent):
+        return ('RevisionNotPresent', err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
         return (('UnstackableRepositoryFormat', str(err.format), err.url))
     elif isinstance(err, errors.UnstackableBranchFormat):
@@ -680,6 +682,9 @@ request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetRevisionGraph', info='read')
 request_handlers.register_lazy(
+    'Repository.get_revision_signature_text', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetRevisionSignatureText', info='read')
+request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository',
     'SmartServerRequestHasRevision', info='read')
 request_handlers.register_lazy(
@@ -697,6 +702,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository',
     'SmartServerRepositoryIsShared', info='read')
+request_handlers.register_lazy(
+    'Repository.iter_files_bytes', 'bzrlib.smart.repository',
+    'SmartServerRepositoryIterFilesBytes', info='read')
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository',
     'SmartServerRepositoryLockWrite', info='semi')
@@ -721,6 +729,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.get_stream_1.19', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream_1_19', info='read')
+request_handlers.register_lazy(
+    'Repository.iter_revisions', 'bzrlib.smart.repository',
+    'SmartServerRepositoryIterRevisions')
 request_handlers.register_lazy(
     'Repository.pack', 'bzrlib.smart.repository',
     'SmartServerRepositoryPack', info='idem')

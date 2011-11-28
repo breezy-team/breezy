@@ -164,7 +164,7 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(53, self.hpss_calls)
+        self.assertLength(54, self.hpss_calls)
 
     def test_verify_commits(self):
         self.setup_smart_server_with_call_log()
@@ -186,6 +186,6 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # The number of readv requests seems to vary depending on the generated
         # repository and how well it compresses, so allow for a bit of
         # variation:
-        if len(self.hpss_calls) not in (21, 22):
-            self.fail("Incorrect length: wanted 21 or 22, got %d for %r" % (
+        if len(self.hpss_calls) not in (18, 19):
+            self.fail("Incorrect length: wanted 18 or 19, got %d for %r" % (
                 len(self.hpss_calls), self.hpss_calls))
