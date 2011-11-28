@@ -20,14 +20,11 @@ To enable this plugin, add a section to your branch.conf or location.conf
 like::
 
     [/home/user/code/bzr]
-    po_merge.pot_file = po/xxx.pot
-    po_merge.po_files = po/*.po
+    po_merge.pot_dirs = po,doc/po4a/po
 
-The ``po_merge.pot_file`` config option takes a list of file paths, separated
-by commas.
-
-The ``po_merge.po_files`` config option takes a list of file globs, separated
-by commas.
+The ``po_merge.pot_dirs`` config option takes a list of directories that can
+contain ``.po`` files, separated by commas (if several directories are
+needed). Each directory should contain a single ``.pot`` file.
 
 The ``po_merge.command`` is the command whose output is used as the result of
 the merge. It defaults to::
@@ -41,18 +38,17 @@ where:
 * ``pot_file`` is the path to the ``.pot`` file corresponding to the ``.po``
   file being merged.
 
-In the simple case where a single ``.pot`` file and a single set of ``.po``
-files exist, each config option can specify a single value.
+If conflicts occur in a ``.pot`` file during a given merge, the ``.po`` files
+will use the ``.pot`` file present in tree before the merge. If this doesn't
+suit your needs, you should can disable the plugin during the merge with::
 
-When several ``(.pot file, .po fileset)`` exist, both lists should be
-synchronized. For example::
+  bzr merge <usual merge args> -Opo_merge.po_dirs=
 
-    [/home/user/code/bzr]
-    po_merge.pot_file = po/adduser.pot,doc/po4a/po/adduser.pot
-    po_merge.po_files = po/*.po,doc/po4a/po/*.po
+This will allow you to resolve the conflicts in the ``.pot`` file and then
+merge the ``.po`` files again with::
 
-``po/adduser.pot`` will be used for ``po/*.po`` and ``doc/po4a/po/adduser.pot``
-will be used for ``doc/po4a/po/*.po``.
+  bzr remerge po/*.po doc/po4a/po/*.po
+
 """
 
 # Since we are a built-in plugin we share the bzrlib version

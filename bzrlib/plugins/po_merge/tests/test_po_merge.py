@@ -42,8 +42,8 @@ class BlackboxTestPoMerger(script.TestCaseWithTransportAndScript):
 
     def test_merge_with_hook_gives_unexpected_results(self):
         # Since the conflicts in .pot are not seen *during* the merge, the .po
-        # merge triggers the hook and creates no conflicts. But the .pot used
-        # is the one present in the tree *before* the merge.
+        # merge triggers the hook and creates no conflicts for fr.po. But the
+        # .pot used is the one present in the tree *before* the merge.
         self.run_script("""\
 $ bzr branch adduser -rrevid:this work
 2>Branched 2 revisions.
@@ -62,8 +62,7 @@ $ bzr branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
 # set po_dirs to an empty list
-$ bzr config po_merge.po_dirs=
-$ bzr merge ../adduser -rrevid:other
+$ bzr merge ../adduser -rrevid:other -Opo_merge.po_dirs=
 2> M  po/adduser.pot
 2> M  po/fr.po
 2>Text conflict in po/adduser.pot
