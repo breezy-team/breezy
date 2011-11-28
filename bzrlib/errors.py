@@ -19,7 +19,6 @@
 
 from bzrlib import (
     osutils,
-    symbol_versioning,
     i18n,
     trace,
     )
@@ -141,12 +140,6 @@ class BzrError(StandardError):
             if type(fmt) == unicode:
                 trace.mutter("Unicode strings in error.fmt are deprecated")
             return gettext(unicode_fmt)
-        fmt = getattr(self, '__doc__', None)
-        if fmt is not None:
-            symbol_versioning.warn("%s uses its docstring as a format, "
-                    "it should use _fmt instead" % self.__class__.__name__,
-                    DeprecationWarning)
-            return fmt
         return 'Unprintable exception %s: dict=%r, fmt=%r' \
             % (self.__class__.__name__,
                self.__dict__,
@@ -168,39 +161,6 @@ class InternalBzrError(BzrError):
     """
 
     internal_error = True
-
-
-class BzrNewError(BzrError):
-    """Deprecated error base class."""
-    # base classes should override the docstring with their human-
-    # readable explanation
-
-    def __init__(self, *args, **kwds):
-        # XXX: Use the underlying BzrError to always generate the args
-        # attribute if it doesn't exist.  We can't use super here, because
-        # exceptions are old-style classes in python2.4 (but new in 2.5).
-        # --bmc, 20060426
-        symbol_versioning.warn('BzrNewError was deprecated in bzr 0.13; '
-             'please convert %s to use BzrError instead'
-             % self.__class__.__name__,
-             DeprecationWarning,
-             stacklevel=2)
-        BzrError.__init__(self, *args)
-        for key, value in kwds.items():
-            setattr(self, key, value)
-
-    def __str__(self):
-        try:
-            # __str__() should always return a 'str' object
-            # never a 'unicode' object.
-            s = self.__doc__ % self.__dict__
-            if isinstance(s, unicode):
-                return s.encode('utf8')
-            return s
-        except (TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s(%r): %r' \
-                % (self.__class__.__name__,
-                   self.__dict__, e)
 
 
 class AlreadyBuilding(BzrError):
@@ -790,19 +750,6 @@ class NoRepositoryPresent(BzrError):
         self.path = bzrdir.transport.clone('..').base
 
 
-class FileInWrongBranch(BzrError):
-
-    _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
-
-    # use PathNotChild instead
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 3, 0)))
-    def __init__(self, branch, path):
-        BzrError.__init__(self)
-        self.branch = branch
-        self.branch_base = branch.base
-        self.path = path
-
-
 class UnsupportedFormatError(BzrError):
 
     _fmt = "Unsupported branch format: %(format)s\nPlease run 'bzr upgrade'"
@@ -1294,17 +1241,6 @@ class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
         BzrError.__init__(self, rev_id=rev_id,
             not_ancestor_id=not_ancestor_id)
-
-
-class AmbiguousBase(BzrError):
-
-    def __init__(self, bases):
-        symbol_versioning.warn("BzrError AmbiguousBase has been deprecated "
-            "as of bzrlib 0.8.", DeprecationWarning, stacklevel=2)
-        msg = ("The correct base is unclear, because %s are all equally close"
-                % ", ".join(bases))
-        BzrError.__init__(self, msg)
-        self.bases = bases
 
 
 class NoCommits(BranchError):
@@ -2077,22 +2013,6 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
-
-
-class BzrRemoveChangedFilesError(BzrError):
-    """Used when user is trying to remove changed files."""
-
-    _fmt = ("Can't safely remove modified or unknown files:\n"
-        "%(changes_as_text)s"
-        "Use --keep to not delete them, or --force to delete them regardless.")
-
-    def __init__(self, tree_delta):
-        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 3, 0)) %
-            "BzrRemoveChangedFilesError", DeprecationWarning, stacklevel=2)
-        BzrError.__init__(self)
-        self.changes_as_text = tree_delta.get_changes_as_text()
-        #self.paths_as_string = '\n'.join(changed_files)
-        #self.paths_as_string = '\n'.join([quotefn(p) for p in changed_files])
 
 
 class BzrBadParameterNotString(BzrBadParameter):
@@ -3099,31 +3019,6 @@ class UnknownRules(BzrError):
 
     def __init__(self, unknowns):
         BzrError.__init__(self, unknowns_str=", ".join(unknowns))
-
-
-class HookFailed(BzrError):
-    """Raised when a pre_change_branch_tip hook function fails anything other
-    than TipChangeRejected.
-
-    Note that this exception is no longer raised, and the import is only left
-    to be nice to code which might catch it in a plugin.
-    """
-
-    _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
-            "%(traceback_text)s%(exc_value)s")
-
-    def __init__(self, hook_stage, hook_name, exc_info, warn=True):
-        if warn:
-            symbol_versioning.warn("BzrError HookFailed has been deprecated "
-                "as of bzrlib 2.1.", DeprecationWarning, stacklevel=2)
-        import traceback
-        self.hook_stage = hook_stage
-        self.hook_name = hook_name
-        self.exc_info = exc_info
-        self.exc_type = exc_info[0]
-        self.exc_value = exc_info[1]
-        self.exc_tb = exc_info[2]
-        self.traceback_text = ''.join(traceback.format_tb(self.exc_tb))
 
 
 class TipChangeRejected(BzrError):
