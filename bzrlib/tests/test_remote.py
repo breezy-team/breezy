@@ -2076,6 +2076,15 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
             branch.revision_id_to_dotted_revno, 'unknown')
         self.assertFinished(client)
 
+    def test_dotted_no_smart_verb(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        self.disable_verb('Branch.revision_id_to_revno')
+        self.reset_smart_call_log()
+        self.assertEquals((0, ),
+            branch.revision_id_to_dotted_revno('null:'))
+        self.assertLength(7, self.hpss_calls)
+
 
 class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
@@ -2355,6 +2364,33 @@ class TestRepositoryGetGraph(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
         self.assertNotEqual(graph._parents_provider, repo)
+
+
+class TestRepositoryAddSignatureText(TestRemoteRepository):
+
+    def test_add_signature_text(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', ('token1', )))
+        client.add_expected_call(
+            'Repository.add_signature_text', ('quack/', 'a token', 'rev1',
+                'token1'),
+            'success', ('ok', ), None)
+        repo.lock_write()
+        repo.start_write_group()
+        self.assertIs(None,
+            repo.add_signature_text("rev1", "every bloody emperor"))
+        self.assertEqual(
+            ('call_with_body_bytes',
+              'Repository.add_signature_text',
+                ('quack/', 'a token', 'rev1', 'token1'),
+              'every bloody emperor'),
+            client._calls[-1])
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):
@@ -2884,7 +2920,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             'success', ('ok', 'a token'))
         client.add_expected_call(
             'Repository.start_write_group', ('quack/', 'a token'),
-            'success', ('ok', 'token1'))
+            'success', ('ok', ('token1', )))
         repo.lock_write()
         repo.start_write_group()
 

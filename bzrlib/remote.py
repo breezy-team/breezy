@@ -25,6 +25,7 @@ from bzrlib import (
     controldir,
     debug,
     errors,
+    gpg,
     graph,
     lock,
     lockdir,
@@ -34,6 +35,7 @@ from bzrlib import (
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
+    testament as _mod_testament,
     urlutils,
     vf_repository,
     )
@@ -2244,8 +2246,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        self._ensure_real()
-        return self._real_repository.sign_revision(revision_id, gpg_strategy)
+        testament = _mod_testament.Testament.from_revision(self, revision_id)
+        plaintext = testament.as_short_text()
+        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     @property
     def texts(self):
@@ -2280,8 +2283,19 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
-        self._ensure_real()
-        return self._real_repository.add_signature_text(revision_id, signature)
+        if self._real_repository:
+            # If there is a real repository the write group will
+            # be in the real repository as well, so use that:
+            self._ensure_real()
+            return self._real_repository.add_signature_text(
+                revision_id, signature)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._call_with_body_bytes(
+            'Repository.add_signature_text', (path, self._lock_token,
+                revision_id) + tuple(self._write_group_tokens), signature)
+        self.refresh_data()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def has_signature_for_revision_id(self, revision_id):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -2296,10 +2310,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise SmartProtocolError('unexpected response code %s' % (response,))
         return (response[0] == 'yes')
 
+    @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
-        self._ensure_real()
-        return self._real_repository.verify_revision_signature(
-            revision_id, gpg_strategy)
+        if not self.has_signature_for_revision_id(revision_id):
+            return gpg.SIGNATURE_NOT_SIGNED, None
+        signature = self.get_signature_text(revision_id)
+
+        testament = _mod_testament.Testament.from_revision(self, revision_id)
+        plaintext = testament.as_short_text()
+
+        return gpg_strategy.verify(signature, plaintext)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
         self._ensure_real()
@@ -3410,7 +3430,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self._remote_path(), revision_id)
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            return self._real_branch.revision_id_to_revno(revision_id)
+            return self._real_branch.revision_id_to_dotted_revno(revision_id)
         if response[0] == 'ok':
             return tuple([int(x) for x in response[1:]])
         else:
