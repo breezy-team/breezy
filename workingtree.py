@@ -106,6 +106,17 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.branch.lock_read()
         return lock.LogicalLockResult(self.unlock)
 
+    def lock_tree_write(self):
+        if not self._lock_mode:
+            self._lock_mode = 'w'
+            self._lock_count = 1
+        elif self._lock_mode == 'r':
+            raise errors.ReadOnlyError(self)
+        else:
+            self._lock_count +=1
+        self.branch.lock_read()
+        return lock.LogicalLockResult(self.unlock)
+
     def lock_write(self, token=None):
         if not self._lock_mode:
             self._lock_mode = 'w'
