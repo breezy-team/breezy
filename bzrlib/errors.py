@@ -100,12 +100,15 @@ class BzrError(StandardError):
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
                 return s
-        except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
-                % (self.__class__.__name__,
-                   self.__dict__,
-                   getattr(self, '_fmt', None),
-                   e)
+        except Exception, e:
+            pass # just bind to 'e' for formatting below
+        else:
+            e = None
+        return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
+            % (self.__class__.__name__,
+               self.__dict__,
+               getattr(self, '_fmt', None),
+               e)
 
     def __unicode__(self):
         u = self._format()
@@ -136,11 +139,6 @@ class BzrError(StandardError):
         if fmt is not None:
             i18n.install()
             return gettext(unicode(fmt)) # _fmt strings should be ascii
-        return 'Unprintable exception %s: dict=%r, fmt=%r' \
-            % (self.__class__.__name__,
-               self.__dict__,
-               getattr(self, '_fmt', None),
-               )
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
