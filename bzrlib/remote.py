@@ -53,6 +53,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
+from bzrlib.serializer import format_registry as serializer_format_registry
 from bzrlib.trace import mutter, note, warning, log_exception_quietly
 
 
@@ -121,8 +122,13 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
 
     def get_format_description(self):
         if self._network_name:
-            real_format = controldir.network_format_registry.get(self._network_name)
-            return 'Remote: ' + real_format.get_format_description()
+            try:
+                real_format = controldir.network_format_registry.get(
+                        self._network_name)
+            except KeyError:
+                pass
+            else:
+                return 'Remote: ' + real_format.get_format_description()
         return 'bzr remote bzrdir'
 
     def get_format_string(self):
@@ -518,10 +524,18 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if len(branch_info) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         branch_ref, branch_name = branch_info
-        format = controldir.network_format_registry.get(control_name)
+        try:
+            format = controldir.network_format_registry.get(control_name)
+        except KeyError:
+            raise errors.UnknownFormatError(kind='control', format=control_name)
+
         if repo_name:
-            format.repository_format = _mod_repository.network_format_registry.get(
-                repo_name)
+            try:
+                format.repository_format = _mod_repository.network_format_registry.get(
+                    repo_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='repository',
+                    format=repo_name)
         if branch_ref == 'ref':
             # XXX: we need possible_transports here to avoid reopening the
             # connection to the referenced location
@@ -530,8 +544,13 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             format.set_branch_format(branch_format)
         elif branch_ref == 'branch':
             if branch_name:
-                format.set_branch_format(
-                    branch.network_format_registry.get(branch_name))
+                try:
+                    branch_format = branch.network_format_registry.get(
+                        branch_name)
+                except KeyError:
+                    raise errors.UnknownFormatError(kind='branch',
+                        format=branch_name)
+                format.set_branch_format(branch_format)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
         return format
@@ -657,7 +676,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return None, self.open_branch(name=name)
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False):
+                    ignore_fallbacks=False, possible_transports=None):
         if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -670,13 +689,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
             return format.open(self, name=name, _found=True,
-                location=response[1], ignore_fallbacks=ignore_fallbacks)
+                location=response[1], ignore_fallbacks=ignore_fallbacks,
+                possible_transports=possible_transports)
         branch_format_name = response[1]
         if not branch_format_name:
             branch_format_name = None
         format = RemoteBranchFormat(network_name=branch_format_name)
         return RemoteBranch(self, self.find_repository(), format=format,
-            setup_stacking=not ignore_fallbacks, name=name)
+            setup_stacking=not ignore_fallbacks, name=name,
+            possible_transports=possible_transports)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
@@ -967,8 +988,12 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     def _ensure_real(self):
         if self._custom_format is None:
-            self._custom_format = _mod_repository.network_format_registry.get(
-                self._network_name)
+            try:
+                self._custom_format = _mod_repository.network_format_registry.get(
+                    self._network_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='repository',
+                    format=self._network_name)
 
     @property
     def _fetch_order(self):
@@ -2272,10 +2297,69 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository.texts
 
+    def _iter_revisions_rpc(self, revision_ids):
+        body = "\n".join(revision_ids)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response_tuple, response_handler = (
+            self._call_with_body_bytes_expecting_body(
+            "Repository.iter_revisions", (path, ), body))
+        if response_tuple[0] != "ok":
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        serializer_format = response_tuple[1]
+        serializer = serializer_format_registry.get(serializer_format)
+        byte_stream = response_handler.read_streamed_body()
+        decompressor = zlib.decompressobj()
+        chunks = []
+        for bytes in byte_stream:
+            chunks.append(decompressor.decompress(bytes))
+            if decompressor.unused_data != "":
+                chunks.append(decompressor.flush())
+                yield serializer.read_revision_from_string("".join(chunks))
+                unused = decompressor.unused_data
+                decompressor = zlib.decompressobj()
+                chunks = [decompressor.decompress(unused)]
+        chunks.append(decompressor.flush())
+        text = "".join(chunks)
+        if text != "":
+            yield serializer.read_revision_from_string("".join(chunks))
+
     @needs_read_lock
     def get_revisions(self, revision_ids):
-        self._ensure_real()
-        return self._real_repository.get_revisions(revision_ids)
+        if revision_ids is None:
+            revision_ids = self.all_revision_ids()
+        else:
+            for rev_id in revision_ids:
+                if not rev_id or not isinstance(rev_id, basestring):
+                    raise errors.InvalidRevisionId(
+                        revision_id=rev_id, branch=self)
+        try:
+            missing = set(revision_ids)
+            revs = {}
+            for rev in self._iter_revisions_rpc(revision_ids):
+                missing.remove(rev.revision_id)
+                revs[rev.revision_id] = rev
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_revisions(revision_ids)
+        for fallback in self._fallback_repositories:
+            if not missing:
+                break
+            for revid in list(missing):
+                # XXX JRV 2011-11-20: It would be nice if there was a
+                # public method on Repository that could be used to query
+                # for revision objects *without* failing completely if one
+                # was missing. There is VersionedFileRepository._iter_revisions,
+                # but unfortunately that's private and not provided by
+                # all repository implementations.
+                try:
+                    revs[revid] = fallback.get_revision(revid)
+                except errors.NoSuchRevision:
+                    pass
+                else:
+                    missing.remove(revid)
+        if missing:
+            raise errors.NoSuchRevision(self, list(missing)[0])
+        return [revs[revid] for revid in revision_ids]
 
     def supports_rich_root(self):
         return self._format.rich_root_data
@@ -2676,8 +2760,12 @@ class RemoteBranchFormat(branch.BranchFormat):
 
     def _ensure_real(self):
         if self._custom_format is None:
-            self._custom_format = branch.network_format_registry.get(
-                self._network_name)
+            try:
+                self._custom_format = branch.network_format_registry.get(
+                    self._network_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='branch',
+                    format=self._network_name)
 
     def get_format_description(self):
         self._ensure_real()
@@ -2877,7 +2965,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """
 
     def __init__(self, remote_bzrdir, remote_repository, real_branch=None,
-        _client=None, format=None, setup_stacking=True, name=None):
+        _client=None, format=None, setup_stacking=True, name=None,
+        possible_transports=None):
         """Create a RemoteBranch instance.
 
         :param real_branch: An optional local implementation of the branch
@@ -2948,9 +3037,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             hook(self)
         self._is_stacked = False
         if setup_stacking:
-            self._setup_stacking()
+            self._setup_stacking(possible_transports)
 
-    def _setup_stacking(self):
+    def _setup_stacking(self, possible_transports):
         # configure stacking into the remote repository, by reading it from
         # the vfs branch.
         try:
@@ -2959,7 +3048,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             errors.UnstackableRepositoryFormat), e:
             return
         self._is_stacked = True
-        self._activate_fallback_location(fallback_url)
+        if possible_transports is None:
+            possible_transports = []
+        else:
+            possible_transports = list(possible_transports)
+        possible_transports.append(self.bzrdir.root_transport)
+        self._activate_fallback_location(fallback_url,
+            possible_transports=possible_transports)
 
     def _get_config(self):
         return RemoteBranchConfig(self)

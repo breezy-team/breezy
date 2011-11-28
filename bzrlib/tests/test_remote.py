@@ -49,6 +49,7 @@ from bzrlib.bzrdir import (
     BzrDirFormat,
     RemoteBzrProber,
     )
+from bzrlib.chk_serializer import chk_bencode_serializer
 from bzrlib.remote import (
     RemoteBranch,
     RemoteBranchFormat,
@@ -58,7 +59,10 @@ from bzrlib.remote import (
     RemoteRepositoryFormat,
     )
 from bzrlib.repofmt import groupcompress_repo, knitpack_repo
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import (
+    NULL_REVISION,
+    Revision,
+    )
 from bzrlib.smart import medium, request
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import (
@@ -485,6 +489,18 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertEqual(None, result._branch_format)
         self.assertFinished(client)
 
+    def test_unknown(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        expected = referenced.bzrdir.cloning_metadir()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.cloning_metadir', ('quack/', 'False'),
+            'success', ('unknown', 'unknown', ('branch', ''))),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertRaises(errors.UnknownFormatError, a_bzrdir.cloning_metadir)
+
 
 class TestBzrDirDestroyBranch(TestRemote):
 
@@ -680,7 +696,7 @@ class TestBzrDirOpenBranch(TestRemote):
         # _get_tree_branch is a form of open_branch, but it should only ask for
         # branch opening, not any other network requests.
         calls = []
-        def open_branch(name=None):
+        def open_branch(name=None, possible_transports=None):
             calls.append("Called")
             return "a-branch"
         transport = MemoryTransport()
@@ -2619,6 +2635,43 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
         tree.commit('message', rev_id='rev1')
         graph = tree.branch.repository.get_graph()
         self.assertEqual({'rev1': ('null:',)}, graph.get_parent_map(['rev1']))
+
+
+class TestRepositoryGetRevisions(TestRemoteRepository):
+
+    def test_hpss_missing_revision(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(
+            '', 'ok', '10')
+        self.assertRaises(errors.NoSuchRevision, repo.get_revisions,
+            ['somerev1', 'anotherrev2'])
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body', 'Repository.iter_revisions',
+             ('quack/', ), "somerev1\nanotherrev2")],
+            client._calls)
+
+    def test_hpss_get_single_revision(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        somerev1 = Revision("somerev1")
+        somerev1.committer = "Joe Committer <joe@example.com>"
+        somerev1.timestamp = 1321828927
+        somerev1.timezone = -60
+        somerev1.inventory_sha1 = "691b39be74c67b1212a75fcb19c433aaed903c2b"
+        somerev1.message = "Message"
+        body = zlib.compress(chk_bencode_serializer.write_revision_to_string(
+            somerev1))
+        # Split up body into two bits to make sure the zlib compression object
+        # gets data fed twice.
+        client.add_success_response_with_body(
+                [body[:10], body[10:]], 'ok', '10')
+        revs = repo.get_revisions(['somerev1'])
+        self.assertEquals(revs, [somerev1])
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body', 'Repository.iter_revisions',
+             ('quack/', ), "somerev1")],
+            client._calls)
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):

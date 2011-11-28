@@ -1725,6 +1725,50 @@ class TestSmartServerRepositoryGetRevIdForRevno(
             request.execute('stacked', 1, (3, r3)))
 
 
+class TestSmartServerRepositoryIterRevisions(
+    tests.TestCaseWithMemoryTransport):
+
+    def test_basic(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterRevisions(backing)
+        tree = self.make_branch_and_memory_tree('.', format='2a')
+        tree.lock_write()
+        tree.add('')
+        tree.commit('1st commit', rev_id="rev1")
+        tree.commit('2nd commit', rev_id="rev2")
+        tree.unlock()
+
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("rev1\nrev2")
+        self.assertTrue(response.is_successful())
+        # Format 2a uses serializer format 10
+        self.assertEquals(response.args, ("ok", "10"))
+
+        self.addCleanup(tree.branch.lock_read().unlock)
+        entries = [zlib.compress(record.get_bytes_as("fulltext")) for record in
+            tree.branch.repository.revisions.get_record_stream(
+            [("rev1", ), ("rev2", )], "unordered", True)]
+
+        contents = "".join(response.body_stream)
+        self.assertTrue(contents in (
+            "".join([entries[0], entries[1]]),
+            "".join([entries[1], entries[0]])))
+
+    def test_missing(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterRevisions(backing)
+        tree = self.make_branch_and_memory_tree('.', format='2a')
+
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("rev1\nrev2")
+        self.assertTrue(response.is_successful())
+        # Format 2a uses serializer format 10
+        self.assertEquals(response.args, ("ok", "10"))
+
+        contents = "".join(response.body_stream)
+        self.assertEquals(contents, "")
+
+
 class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
@@ -2421,6 +2465,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetStream)
         self.assertHandlerEqual('Repository.get_stream_1.19',
             smart_repo.SmartServerRepositoryGetStream_1_19)
+        self.assertHandlerEqual('Repository.iter_revisions',
+            smart_repo.SmartServerRepositoryIterRevisions)
         self.assertHandlerEqual('Repository.has_revision',
             smart_repo.SmartServerRequestHasRevision)
         self.assertHandlerEqual('Repository.insert_stream',
