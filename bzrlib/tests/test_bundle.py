@@ -15,10 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
-import errno
 import os
-import select
 import socket
+import SocketServer
 import sys
 import threading
 
@@ -43,16 +42,12 @@ from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
-    test_read_bundle,
+    features,
     test_commit,
+    test_read_bundle,
+    test_server,
     )
 from bzrlib.transform import TreeTransform
-from bzrlib.tests import (
-    features,
-    )
-from bzrlib.tests.servers import (
-    DisconnectingTCPServer,
-    )
 
 
 def get_text(vf, key):
@@ -1841,10 +1836,29 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         bundle, then the ConnectionReset error should be propagated.
         """
         # Instantiate a server that will provoke a ConnectionReset
-        sock_server = DisconnectingTCPServer()
-        self.addCleanup(sock_server.stop_server)
+        sock_server = DisconnectingServer()
         self.start_server(sock_server)
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
         url = sock_server.get_url()
         self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
+
+
+class DisconnectingHandler(SocketServer.BaseRequestHandler):
+    """A request handler that immediately closes any connection made to it."""
+
+    def handle(self):
+        self.request.close()
+
+
+class DisconnectingServer(test_server.TestingTCPServerInAThread):
+
+    def __init__(self):
+        super(DisconnectingServer, self).__init__(
+            ('127.0.0.1', 0),
+            test_server.TestingTCPServer,
+            DisconnectingHandler)
+
+    def get_url(self):
+        """Return the url of the server"""
+        return "bzr://%s:%d/" % self.server.server_address
