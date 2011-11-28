@@ -436,6 +436,28 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok', ), body)
 
 
+class SmartServerRepositoryGetRevisionSignatureText(
+        SmartServerRepositoryRequest):
+    """Return the signature text of a revision.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, revision_id):
+        """Return the result of repository.get_signature_text().
+
+        :param repository: The repository to query in.
+        :return: A smart server response of with the signature text as
+            body.
+        """
+        try:
+            text = repository.get_signature_text(revision_id)
+        except errors.NoSuchRevision, err:
+            return FailedSmartServerResponse(
+                ('nosuchrevision', err.revision))
+        return SuccessfulSmartServerResponse(('ok', ), text)
+
+
 class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository):

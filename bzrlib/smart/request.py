@@ -644,6 +644,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(
+    'Repository.get_revision_signature_text', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetRevisionSignatureText')
+request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
 request_handlers.register_lazy(
     'Repository.has_signature_for_revision_id', 'bzrlib.smart.repository',

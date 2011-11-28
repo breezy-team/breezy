@@ -2123,8 +2123,24 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_signature_text(revision_id)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response_tuple, response_handler = self._call_expecting_body(
+                'Repository.get_revision_signature_text', path, revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_signature_text(revision_id)
+        except errors.NoSuchRevision, err:
+            for fallback in self._fallback_repositories:
+                try:
+                    return fallback.get_signature_text(revision_id)
+                except errors.NoSuchRevision:
+                    pass
+            raise err
+        else:
+            if response_tuple[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response_tuple)
+            return response_handler.read_body_bytes()
 
     @needs_read_lock
     def _get_inventory_xml(self, revision_id):
@@ -2386,9 +2402,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return self._real_repository.add_signature_text(
                 revision_id, signature)
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._call_with_body_bytes(
+        response, handler = self._call_with_body_bytes_expecting_body(
             'Repository.add_signature_text', (path, self._lock_token,
                 revision_id) + tuple(self._write_group_tokens), signature)
+        handler.cancel_read_body()
         self.refresh_data()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
@@ -2405,7 +2422,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 revision_id)
         if response[0] not in ('yes', 'no'):
             raise SmartProtocolError('unexpected response code %s' % (response,))
-        return (response[0] == 'yes')
+        if response[0] == 'yes':
+            return True
+        for fallback in self._fallback_repositories:
+            if fallback.has_signature_for_revision_id(revision_id):
+                return True
+        return False
 
     @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
@@ -2612,9 +2634,9 @@ class RemoteStreamSource(vf_repository.StreamSource):
 
     def _real_stream(self, repo, search):
         """Get a stream for search from repo.
-        
-        This never called RemoteStreamSource.get_stream, and is a heler
-        for RemoteStreamSource._get_stream to allow getting a stream 
+
+        This never called RemoteStreamSource.get_stream, and is a helper
+        for RemoteStreamSource._get_stream to allow getting a stream
         reliably whether fallback back because of old servers or trying
         to stream from a non-RemoteRepository (which the stacked support
         code will do).
@@ -3794,7 +3816,6 @@ class RemoteBzrDirConfig(RemoteConfig):
     def _real_object(self):
         self._bzrdir._ensure_real()
         return self._bzrdir._real_bzrdir
-
 
 
 def _extract_tar(tar, to_dir):

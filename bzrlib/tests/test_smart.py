@@ -46,6 +46,7 @@ from bzrlib.smart import (
     server,
     vfs,
     )
+from bzrlib.testament import Testament
 from bzrlib.tests import test_server
 from bzrlib.transport import (
     chroot,
@@ -2014,6 +2015,30 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
             request.execute('', ))
 
 
+class TestSmartServerRepositoryGetRevisionSignatureText(
+        tests.TestCaseWithMemoryTransport):
+
+    def test_get_signature(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetRevisionSignatureText(
+            backing)
+        bb = self.make_branch_builder('.')
+        bb.build_commit(rev_id='A')
+        repo = bb.get_branch().repository
+        strategy = gpg.LoopbackGPGStrategy(None)
+        self.addCleanup(repo.lock_write().unlock)
+        repo.start_write_group()
+        repo.sign_revision('A', strategy)
+        repo.commit_write_group()
+        expected_body = (
+            '-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+            Testament.from_revision(repo, 'A').as_short_text() +
+            '-----END PSEUDO-SIGNED CONTENT-----\n')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('ok', ), expected_body),
+            request.execute('', 'A'))
+
+
 class TestSmartServerRepositoryMakeWorkingTrees(
         tests.TestCaseWithMemoryTransport):
 
@@ -2461,6 +2486,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',
             smart_repo.SmartServerRepositoryGetRevisionGraph)
+        self.assertHandlerEqual('Repository.get_revision_signature_text',
+            smart_repo.SmartServerRepositoryGetRevisionSignatureText)
         self.assertHandlerEqual('Repository.get_stream',
             smart_repo.SmartServerRepositoryGetStream)
         self.assertHandlerEqual('Repository.get_stream_1.19',

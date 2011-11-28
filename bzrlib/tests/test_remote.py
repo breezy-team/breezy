@@ -2372,6 +2372,32 @@ class TestRepositoryGetSerializerFormat(TestRemoteRepository):
             client._calls)
 
 
+class TestRepositoryGetRevisionSignatureText(TestRemoteRepository):
+
+    def test_text(self):
+        # ('ok',), body with signature text
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(
+            'THETEXT', 'ok')
+        self.assertEquals("THETEXT", repo.get_signature_text("revid"))
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_signature_text',
+             ('quack/', 'revid'))],
+            client._calls)
+
+    def test_no_signature(self):
+        transport_path = 'quick'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_error_response('nosuchrevision', 'unknown')
+        self.assertRaises(errors.NoSuchRevision, repo.get_signature_text,
+                "unknown")
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_signature_text',
+              ('quick/', 'unknown'))],
+            client._calls)
+
+
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):
@@ -2402,7 +2428,7 @@ class TestRepositoryAddSignatureText(TestRemoteRepository):
         self.assertIs(None,
             repo.add_signature_text("rev1", "every bloody emperor"))
         self.assertEqual(
-            ('call_with_body_bytes',
+            ('call_with_body_bytes_expecting_body',
               'Repository.add_signature_text',
                 ('quack/', 'a token', 'rev1', 'token1'),
               'every bloody emperor'),
