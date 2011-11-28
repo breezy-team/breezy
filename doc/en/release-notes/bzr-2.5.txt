@@ -73,6 +73,11 @@ Bug Fixes
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
+
 * Teach the bzr client how to reconnect if we get ``ConnectionReset``
   while making an RPC request. This doesn't handle all possible network
   disconnects, but it should at least handle when the server is asked to
@@ -119,8 +124,11 @@ Internals
   ``VersionedFileRepository.get_serializer_format``,
   ``Repository.all_revision_ids``, ``Repository.start_write_group``,
   ``Repository.commit_write_group``, ``Repository.abort_write_group``
-  and ``Repository.check_write_group``.
+  ``Repository.check_write_group`` and
+  ``Repository.add_signature_revision_text``.
   (Jelmer Vernooij)
+
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
 
 * Custom HPSS error handlers can now be installed in the smart server client
   using the ``error_translators`` and ``no_context_error_translators``

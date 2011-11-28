@@ -659,6 +659,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'rename', 'bzrlib.smart.vfs', 'RenameRequest', info='semivfs')
 request_handlers.register_lazy(
+    'Repository.add_signature_text', 'bzrlib.smart.repository',
+    'SmartServerRepositoryAddSignatureText', info='idem')
+request_handlers.register_lazy(
     'Repository.all_revision_ids', 'bzrlib.smart.repository',
     'SmartServerRepositoryAllRevisionIds', info='read')
 request_handlers.register_lazy(
@@ -719,6 +722,9 @@ request_handlers.register_lazy(
     'Repository.get_stream_1.19', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream_1_19', info='read')
 request_handlers.register_lazy(
+    'Repository.pack', 'bzrlib.smart.repository',
+    'SmartServerRepositoryPack', info='idem')
+request_handlers.register_lazy(
     'Repository.start_write_group', 'bzrlib.smart.repository',
     'SmartServerRepositoryStartWriteGroup', info='semi')
 request_handlers.register_lazy(
@@ -726,7 +732,7 @@ request_handlers.register_lazy(
     'SmartServerRepositoryCommitWriteGroup', info='semi')
 request_handlers.register_lazy(
     'Repository.abort_write_group', 'bzrlib.smart.repository',
-    'SmartServerRepositoryAbortWriteGroup')
+    'SmartServerRepositoryAbortWriteGroup', info='semi')
 request_handlers.register_lazy(
     'Repository.check_write_group', 'bzrlib.smart.repository',
     'SmartServerRepositoryCheckWriteGroup', info='read')

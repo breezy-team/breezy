@@ -352,16 +352,22 @@ class TestOptionDefinitions(TestCase):
     def test_option_grammar(self):
         msgs = []
         # Option help should be written in sentence form, and have a final
-        # period and be all on a single line, because the display code will
-        # wrap it.
-        option_re = re.compile(r'^[A-Z][^\n]+\.$')
+        # period with an optional bracketed suffix. All the text should be on
+        # one line, because the display code will wrap it.
+        option_re = re.compile(r'^[A-Z][^\n]+\.(?: \([^\n]+\))?$')
         for scope, opt in self.get_builtin_command_options():
-            if not opt.help:
-                msgs.append('%-16s %-16s %s' %
-                       ((scope or 'GLOBAL'), opt.name, 'NO HELP'))
-            elif not option_re.match(opt.help):
-                msgs.append('%-16s %-16s %s' %
-                        ((scope or 'GLOBAL'), opt.name, opt.help))
+            for name, _, _, helptxt in opt.iter_switches():
+                if name != opt.name:
+                    name = "/".join([opt.name, name])
+                if not helptxt:
+                    msgs.append('%-16s %-16s %s' %
+                           ((scope or 'GLOBAL'), name, 'NO HELP'))
+                elif not option_re.match(helptxt):
+                    if name.startswith("format/"):
+                        # Don't complain about the odd format registry help
+                        continue
+                    msgs.append('%-16s %-16s %s' %
+                            ((scope or 'GLOBAL'), name, helptxt))
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))

@@ -2075,6 +2075,15 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
             branch.revision_id_to_dotted_revno, 'unknown')
         self.assertFinished(client)
 
+    def test_dotted_no_smart_verb(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        self.disable_verb('Branch.revision_id_to_revno')
+        self.reset_smart_call_log()
+        self.assertEquals((0, ),
+            branch.revision_id_to_dotted_revno('null:'))
+        self.assertLength(7, self.hpss_calls)
+
 
 class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
@@ -2354,6 +2363,21 @@ class TestRepositoryGetGraph(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
         self.assertNotEqual(graph._parents_provider, repo)
+
+
+class TestRepositoryAddSignatureText(TestRemoteRepository):
+
+    def test_add_signature_text(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        self.assertIs(None,
+            repo.add_signature_text("rev1", "every bloody emperor"))
+        self.assertEqual(
+            [('call_with_body_bytes',
+              'Repository.add_signature_text', ('quack/', 'rev1', ),
+              'every bloody emperor')],
+            client._calls)
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):
@@ -3999,3 +4023,34 @@ class TestWithCustomErrorHandler(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         self.assertRaises(OutOfTea, branch.last_revision_info)
         self.assertFinished(client)
+
+
+class TestRepositoryPack(TestRemoteRepository):
+
+    def test_pack(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'token'))
+        client.add_expected_call(
+            'Repository.pack', ('quack/', 'token', 'False'),
+            'success', ('ok',), )
+        client.add_expected_call(
+            'Repository.unlock', ('quack/', 'token'),
+            'success', ('ok', ))
+        repo.pack()
+
+    def test_pack_with_hint(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'token'))
+        client.add_expected_call(
+            'Repository.pack', ('quack/', 'token', 'False'),
+            'success', ('ok',), )
+        client.add_expected_call(
+            'Repository.unlock', ('quack/', 'token', 'False'),
+            'success', ('ok', ))
+        repo.pack(['hinta', 'hintb'])

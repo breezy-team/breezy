@@ -180,12 +180,18 @@ class _PotExporter(object):
 def _write_option(exporter, context, opt, note):
     if getattr(opt, 'hidden', False):
         return   
+    optname = opt.name
     if getattr(opt, 'title', None):
         exporter.poentry_in_context(context, opt.title,
-            "title of {name!r} {what}".format(name=opt.name, what=note))
-    if getattr(opt, 'help', None):
-        exporter.poentry_in_context(context, opt.help,
-            "help of {name!r} {what}".format(name=opt.name, what=note))
+            "title of {name!r} {what}".format(name=optname, what=note))
+    for name, _, _, helptxt in opt.iter_switches():
+        if name != optname:
+            if opt.is_hidden(name):
+                continue
+            name = "=".join([optname, name])
+        if helptxt:
+            exporter.poentry_in_context(context, helptxt,
+                "help of {name!r} {what}".format(name=name, what=note))
 
 
 def _standard_options(exporter):

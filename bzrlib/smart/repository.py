@@ -934,6 +934,45 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked)
         self.do_insert_stream_request(repository, resume_tokens)
 
 
+class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
+    """Add a revision signature text.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, write_group_tokens,
+            revision_id):
+        """Add a revision signature text.
+
+        :param repository: Repository to operate on
+        :param lock_token: Lock token
+        :param write_group_tokens: Write group tokens
+        :param revision_id: Revision for which to add signature
+        """
+        self._lock_token = lock_token
+        self._write_group_tokens = write_group_tokens
+        self._revision_id = revision_id
+        return None
+
+    def do_body(self, body_bytes):
+        """Add a signature text.
+
+        :param body_bytes: GPG signature text
+        :return: SuccessfulSmartServerResponse with arguments 'ok' and
+            the list of new write group tokens.
+        """
+        self._repository.lock_write(token=self._lock_token)
+        try:
+            self._repository.resume_write_group(self._write_group_tokens)
+            try:
+                self._repository.add_signature_text(self._revision_id, body_bytes)
+            finally:
+                new_write_group_tokens = self._repository.suspend_write_group()
+        finally:
+            self._repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ) + tuple(new_write_group_tokens))
+
+
 class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
     """Start a write group.
 
@@ -1024,6 +1063,7 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok', ))
 
+
 class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     """Retrieve all of the revision ids in a repository.
 
@@ -1033,3 +1073,31 @@ class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     def do_repository_request(self, repository):
         revids = repository.all_revision_ids()
         return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))
+
+
+class SmartServerRepositoryPack(SmartServerRepositoryRequest):
+    """Pack a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, clean_obsolete_packs):
+        self._repository = repository
+        self._lock_token = lock_token
+        if clean_obsolete_packs == 'True':
+            self._clean_obsolete_packs = True
+        else:
+            self._clean_obsolete_packs = False
+        return None
+
+    def do_body(self, body_bytes):
+        if body_bytes == "":
+            hint = None
+        else:
+            hint = body_bytes.splitlines()
+        self._repository.lock_write(token=self._lock_token)
+        try:
+            self._repository.pack(hint, self._clean_obsolete_packs)
+        finally:
+            self._repository.unlock()
+        return SuccessfulSmartServerResponse(("ok", ), )

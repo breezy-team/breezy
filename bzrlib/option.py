@@ -526,13 +526,13 @@ class MergeTypeRegistry(_mod_registry.Registry):
 
 _merge_type_registry = MergeTypeRegistry()
 _merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
-                                   "Merge using external diff3")
+                                   "Merge using external diff3.")
 _merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
-                                   "LCA-newness merge")
+                                   "LCA-newness merge.")
 _merge_type_registry.register_lazy('merge3', 'bzrlib.merge', 'Merge3Merger',
-                                   "Native diff3-style merge")
+                                   "Native diff3-style merge.")
 _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
-                                   "Weave-based merge")
+                                   "Weave-based merge.")
 
 # Declare the standard options
 _standard_option('help', short_name='h',
