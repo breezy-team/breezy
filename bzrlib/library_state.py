@@ -112,6 +112,5 @@ class BzrLibraryState(object):
         self._ui.__exit__(None, None, None)
         self._trace.__exit__(None, None, None)
         bzrlib.ui.ui_factory = self._orig_ui
-        global global_state
-        global_state = self.saved_state
+        bzrlib.global_state = self.saved_state
         return False # propogate exceptions.
