@@ -3397,10 +3397,8 @@ class LocationStack(_CompatibleStack):
         
         :param location: A URL prefix to """
         lstore = LocationStore()
-        if location is not None:
-            location = urlutils.normalize_url(location)
-            if location.startswith('file://'):
-                location = urlutils.local_path_from_url(location)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
@@ -3483,13 +3481,13 @@ class cmd_config(commands.Command):
         # their own config files (or not) and will also address
         # http://pad.lv/788991 -- vila 20101115
         commands.Option('scope', help='Reduce the scope to the specified'
-                        ' configuration file',
+                        ' configuration file.',
                         type=unicode),
         commands.Option('all',
             help='Display all the defined values for the matching options.',
             ),
         commands.Option('remove', help='Remove the option from'
-                        ' the configuration file'),
+                        ' the configuration file.'),
         ]
 
     _see_also = ['configuration']

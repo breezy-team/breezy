@@ -120,6 +120,21 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         return '/'.join(segments)
 
 
+class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Destroy the branch with the specified name.
+
+        New in 2.5.0.
+        :return: On success, 'ok'.
+        """
+        try:
+            self._bzrdir.destroy_branch(name)
+        except errors.NotBranchError, e:
+            return FailedSmartServerResponse(('nobranch',))
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, name=None):

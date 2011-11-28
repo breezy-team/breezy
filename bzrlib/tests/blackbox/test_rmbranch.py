@@ -27,14 +27,15 @@ from bzrlib.tests import (
 
 class TestRemoveBranch(TestCaseWithTransport):
 
-    def example_branch(self, path='.'):
-        tree = self.make_branch_and_tree(path)
+    def example_branch(self, path='.', format=None):
+        tree = self.make_branch_and_tree(path, format=format)
         self.build_tree_contents([(path + '/hello', 'foo')])
         tree.add('hello')
         tree.commit(message='setup')
         self.build_tree_contents([(path + '/goodbye', 'baz')])
         tree.add('goodbye')
         tree.commit(message='setup')
+        return tree
 
     def test_remove_local(self):
         # Remove a local branch.
@@ -58,6 +59,16 @@ class TestRemoveBranch(TestCaseWithTransport):
         dir = bzrdir.BzrDir.open('a')
         self.assertFalse(dir.has_branch())
 
+    def test_remove_colo(self):
+        # Remove a colocated branch.
+        tree = self.example_branch('a', format='development-colo')
+        tree.bzrdir.create_branch(name="otherbranch")
+        self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
+        self.run_bzr('rmbranch %s,branch=otherbranch' % tree.bzrdir.user_url)
+        dir = bzrdir.BzrDir.open('a')
+        self.assertFalse(dir.has_branch('otherbranch'))
+        self.assertTrue(dir.has_branch())
+
 
 class TestSmartServerRemoveBranch(TestCaseWithTransport):
 
@@ -71,4 +82,4 @@ class TestSmartServerRemoveBranch(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(18, self.hpss_calls)
+        self.assertLength(5, self.hpss_calls)
