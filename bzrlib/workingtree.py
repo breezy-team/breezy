@@ -88,10 +88,6 @@ from bzrlib.osutils import (
     )
 from bzrlib.trace import mutter, note
 from bzrlib.revision import CURRENT_REVISION
-from bzrlib.symbol_versioning import (
-    deprecated_passed,
-    DEPRECATED_PARAMETER,
-    )
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
@@ -171,9 +167,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return views.DisabledViews(self)
 
     def __init__(self, basedir='.',
-                 branch=DEPRECATED_PARAMETER,
-                 _control_files=None,
                  _internal=False,
+                 _transport=None,
                  _format=None,
                  _bzrdir=None):
         """Construct a WorkingTree instance. This is not a public API.
@@ -187,13 +182,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 "WorkingTree.open() to obtain a WorkingTree.")
         basedir = safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
-        if deprecated_passed(branch):
-            self._branch = branch
-        else:
-            self._branch = self.bzrdir.open_branch()
+        self._branch = self.bzrdir.open_branch()
         self.basedir = realpath(basedir)
-        self._control_files = _control_files
-        self._transport = self._control_files._transport
+        self._transport = _transport
         self._rules_searcher = None
         self.views = self._make_views()
 
@@ -237,8 +228,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         This will probe the repository for its lock as well.
         """
-        self._control_files.break_lock()
-        self.branch.break_lock()
+        raise NotImplementedError(self.break_lock)
 
     def requires_rich_root(self):
         return self._format.requires_rich_root
@@ -741,11 +731,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
     @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
-        def iter_stanzas():
-            for file_id, hash in modified_hashes.iteritems():
-                yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
-                    hash=hash)
-        self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+        """Set the merge modified hashes."""
+        raise NotImplementedError(self.set_merge_modified)
 
     def _sha_from_stat(self, path, stat_result):
         """Get a sha digest from the tree's stat cache.
@@ -756,12 +743,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         :param stat_result: The stat result being looked up.
         """
         return None
-
-    def _put_rio(self, filename, stanzas, header):
-        self._must_be_locked()
-        my_file = _mod_rio.rio_file(stanzas, header)
-        self._transport.put_file(filename, my_file,
-            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
@@ -1148,11 +1129,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return _mod_revision.ensure_null(self.branch.last_revision())
 
     def is_locked(self):
-        return self._control_files.is_locked()
-
-    def _must_be_locked(self):
-        if not self.is_locked():
-            raise errors.ObjectNotLocked(self)
+        """Check if this tree is locked."""
+        raise NotImplementedError(self.is_locked)
 
     def lock_read(self):
         """Lock the tree for reading.
@@ -1161,52 +1139,24 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         :return: A bzrlib.lock.LogicalLockResult.
         """
-        if not self.is_locked():
-            self._reset_data()
-        self.branch.lock_read()
-        try:
-            self._control_files.lock_read()
-            return LogicalLockResult(self.unlock)
-        except:
-            self.branch.unlock()
-            raise
+        raise NotImplementedError(self.lock_read)
 
     def lock_tree_write(self):
         """See MutableTree.lock_tree_write, and WorkingTree.unlock.
 
         :return: A bzrlib.lock.LogicalLockResult.
         """
-        if not self.is_locked():
-            self._reset_data()
-        self.branch.lock_read()
-        try:
-            self._control_files.lock_write()
-            return LogicalLockResult(self.unlock)
-        except:
-            self.branch.unlock()
-            raise
+        raise NotImplementedError(self.lock_tree_write)
 
     def lock_write(self):
         """See MutableTree.lock_write, and WorkingTree.unlock.
 
         :return: A bzrlib.lock.LogicalLockResult.
         """
-        if not self.is_locked():
-            self._reset_data()
-        self.branch.lock_write()
-        try:
-            self._control_files.lock_write()
-            return LogicalLockResult(self.unlock)
-        except:
-            self.branch.unlock()
-            raise
+        raise NotImplementedError(self.lock_write)
 
     def get_physical_lock_status(self):
-        return self._control_files.get_physical_lock_status()
-
-    def _reset_data(self):
-        """Reset transient data that cannot be revalidated."""
-        raise NotImplementedError(self._reset_data)
+        raise NotImplementedError(self.get_physical_lock_status)
 
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
@@ -1777,7 +1727,6 @@ class InventoryWorkingTree(WorkingTree,
     """
 
     def __init__(self, basedir='.',
-                 branch=DEPRECATED_PARAMETER,
                  _inventory=None,
                  _control_files=None,
                  _internal=False,
@@ -1788,8 +1737,8 @@ class InventoryWorkingTree(WorkingTree,
         :param branch: A branch to override probing for the branch.
         """
         super(InventoryWorkingTree, self).__init__(basedir=basedir,
-            branch=branch, _control_files=_control_files, _internal=_internal,
-            _format=_format, _bzrdir=_bzrdir)
+            _transport=_control_files.transport,
+            _internal=_internal, _format=_format, _bzrdir=_bzrdir)
 
         self._detect_case_handling()
 
@@ -1834,6 +1783,76 @@ class InventoryWorkingTree(WorkingTree,
 
     def _deserialize(selt, in_file):
         return xml5.serializer_v5.read_inventory(in_file)
+
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self._control_files.break_lock()
+        self.branch.break_lock()
+
+    def is_locked(self):
+        return self._control_files.is_locked()
+
+    def _must_be_locked(self):
+        if not self.is_locked():
+            raise errors.ObjectNotLocked(self)
+
+    def lock_read(self):
+        """Lock the tree for reading.
+
+        This also locks the branch, and can be unlocked via self.unlock().
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
+        if not self.is_locked():
+            self._reset_data()
+        self.branch.lock_read()
+        try:
+            self._control_files.lock_read()
+            return LogicalLockResult(self.unlock)
+        except:
+            self.branch.unlock()
+            raise
+
+    def lock_tree_write(self):
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
+        if not self.is_locked():
+            self._reset_data()
+        self.branch.lock_read()
+        try:
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
+        except:
+            self.branch.unlock()
+            raise
+
+    def lock_write(self):
+        """See MutableTree.lock_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
+        if not self.is_locked():
+            self._reset_data()
+        self.branch.lock_write()
+        try:
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
+        except:
+            self.branch.unlock()
+            raise
+
+    def get_physical_lock_status(self):
+        return self._control_files.get_physical_lock_status()
+
+ 
 
     @needs_tree_write_lock
     def _write_inventory(self, inv):
@@ -2258,6 +2277,20 @@ class InventoryWorkingTree(WorkingTree,
         annotations = [(key[-1], line)
                        for key, line in annotator.annotate_flat(this_key)]
         return annotations
+
+    def _put_rio(self, filename, stanzas, header):
+        self._must_be_locked()
+        my_file = _mod_rio.rio_file(stanzas, header)
+        self._transport.put_file(filename, my_file,
+            mode=self.bzrdir._get_file_mode())
+
+    @needs_tree_write_lock
+    def set_merge_modified(self, modified_hashes):
+        def iter_stanzas():
+            for file_id, hash in modified_hashes.iteritems():
+                yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
+                    hash=hash)
+        self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
     @needs_read_lock
     def merge_modified(self):
