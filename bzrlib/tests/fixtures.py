@@ -138,3 +138,25 @@ def make_branch_and_populated_tree(testcase):
     testcase.build_tree_contents([('t/hello', 'hello world')])
     tree.add(['hello'], ['hello-id'])
     return tree
+
+
+class TimeoutFixture(object):
+    """Kill a test with sigalarm if it runs too long.
+    
+    Only works on Unix.
+    """
+
+    def __init__(self, timeout_secs):
+        self.timeout_secs = timeout_secs
+
+    def setUp(self):
+        import signal
+        self.alarm_fn = getattr(signal, 'alarm', None)
+        if self.alarm_fn is None:
+            return  # Windows etc
+        self.alarm_fn(self.timeout_secs)
+
+    def cleanUp(self):
+        if self.alarm_fn is None:
+            return  # Windows etc
+        self.alarm_fn(0)
