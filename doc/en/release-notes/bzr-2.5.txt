@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Provides a ``po_merge`` plugin to automatically merge ``.po`` files with
+  ``msgmerge``. See ``bzr help po_merge`` for details.
+  (Vincent Ladeuil, #884270)
+
 Improvements
 ************
 
