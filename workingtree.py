@@ -43,8 +43,7 @@ from bzrlib import (
     conflicts as _mod_conflicts,
     ignores,
     inventory,
-    lockable_files,
-    lockdir,
+    lock,
     osutils,
     trace,
     transport,
@@ -83,17 +82,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.mapping = self.repository.get_mapping()
         self._branch = branch
         self._transport = bzrdir.transport
-
-        self.controldir = self.bzrdir.transport.local_abspath('bzr')
-
-        try:
-            os.makedirs(self.controldir)
-            os.makedirs(os.path.join(self.controldir, 'lock'))
-        except OSError:
-            pass
-
-        self._control_files = lockable_files.LockableFiles(
-            transport.get_transport(self.controldir), 'lock', lockdir.LockDir)
         self._format = GitWorkingTreeFormat()
         self.index = index
         self._versioned_dirs = None
@@ -102,6 +90,48 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._detect_case_handling()
         self._reset_data()
         self._fileid_map = self._basis_fileid_map.copy()
+        self._lock_mode = None
+        self._lock_count = 0
+
+    def lock_read(self):
+        """Lock the repository for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
+        if not self._lock_mode:
+            self._lock_mode = 'r'
+            self._lock_count = 1
+        else:
+            self._lock_count += 1
+        self.branch.lock_read()
+        return lock.LogicalLockResult(self.unlock)
+
+    def lock_write(self, token=None):
+        if not self._lock_mode:
+            self._lock_mode = 'w'
+            self._lock_count = 1
+        elif self._lock_mode == 'r':
+            raise errors.ReadOnlyError(self)
+        else:
+            self._lock_count +=1
+        self.branch.lock_write()
+        return lock.LogicalLockResult(self.unlock)
+
+    def is_locked(self):
+        return self._lock_count >= 1
+
+    def get_physical_lock_status(self):
+        return False
+
+    def unlock(self):
+        if not self._lock_count:
+            return lock.cant_unlock_not_held(self)
+        self._cleanup()
+        self._lock_count -= 1
+        if self._lock_count > 0:
+            return
+        self._lock_mode = None
+        self.branch.unlock()
 
     def _detect_case_handling(self):
         try:
@@ -384,16 +414,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree.
         """
         return set(self._iter_files_recursive()) - set(self.index)
-
-    def unlock(self):
-        # non-implementation specific cleanup
-        self._cleanup()
-
-        # reverse order of locking.
-        try:
-            return self._control_files.unlock()
-        finally:
-            self.branch.unlock()
 
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
