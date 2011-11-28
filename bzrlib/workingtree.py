@@ -1853,8 +1853,6 @@ class InventoryWorkingTree(WorkingTree,
     def get_physical_lock_status(self):
         return self._control_files.get_physical_lock_status()
 
- 
-
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
