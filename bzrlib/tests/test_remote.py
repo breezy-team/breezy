@@ -25,6 +25,7 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import bz2
 from cStringIO import StringIO
+import zlib
 
 from bzrlib import (
     branch,
@@ -48,6 +49,7 @@ from bzrlib.bzrdir import (
     BzrDirFormat,
     RemoteBzrProber,
     )
+from bzrlib.chk_serializer import chk_bencode_serializer
 from bzrlib.remote import (
     RemoteBranch,
     RemoteBranchFormat,
@@ -57,7 +59,10 @@ from bzrlib.remote import (
     RemoteRepositoryFormat,
     )
 from bzrlib.repofmt import groupcompress_repo, knitpack_repo
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import (
+    NULL_REVISION,
+    Revision,
+    )
 from bzrlib.smart import medium, request
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import (
@@ -2618,6 +2623,43 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
         tree.commit('message', rev_id='rev1')
         graph = tree.branch.repository.get_graph()
         self.assertEqual({'rev1': ('null:',)}, graph.get_parent_map(['rev1']))
+
+
+class TestRepositoryGetRevisions(TestRemoteRepository):
+
+    def test_hpss_missing_revision(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(
+            '', 'ok', '10')
+        self.assertRaises(errors.NoSuchRevision, repo.get_revisions,
+            ['somerev1', 'anotherrev2'])
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body', 'Repository.iter_revisions',
+             ('quack/', ), "somerev1\nanotherrev2")],
+            client._calls)
+
+    def test_hpss_get_single_revision(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        somerev1 = Revision("somerev1")
+        somerev1.committer = "Joe Committer <joe@example.com>"
+        somerev1.timestamp = 1321828927
+        somerev1.timezone = -60
+        somerev1.inventory_sha1 = "691b39be74c67b1212a75fcb19c433aaed903c2b"
+        somerev1.message = "Message"
+        body = zlib.compress(chk_bencode_serializer.write_revision_to_string(
+            somerev1))
+        # Split up body into two bits to make sure the zlib compression object
+        # gets data fed twice.
+        client.add_success_response_with_body(
+                [body[:10], body[10:]], 'ok', '10')
+        revs = repo.get_revisions(['somerev1'])
+        self.assertEquals(revs, [somerev1])
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body', 'Repository.iter_revisions',
+             ('quack/', ), "somerev1")],
+            client._calls)
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
