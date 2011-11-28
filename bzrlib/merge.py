@@ -44,6 +44,7 @@ from bzrlib import (
     decorators,
     errors,
     hooks,
+    registry,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -2038,13 +2039,24 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 
-def get_merge_type_registry():
-    """Merge type registry is in bzrlib.option to avoid circular imports.
 
-    This method provides a sanctioned way to retrieve it.
+merge_type_registry = registry.Registry()
+merge_type_registry.register('diff3', Diff3Merger,
+                             "Merge using external diff3.")
+merge_type_registry.register('lca', LCAMerger,
+                             "LCA-newness merge.")
+merge_type_registry.register('merge3', Merge3Merger,
+                             "Native diff3-style merge.")
+merge_type_registry.register('weave', WeaveMerger,
+                             "Weave-based merge.")
+
+
+def get_merge_type_registry():
+    """Merge type registry was previously in bzrlib.option
+
+    This method provides a backwards compatible way to retrieve it.
     """
-    from bzrlib import option
-    return option._merge_type_registry
+    return merge_type_registry
 
 
 def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):

@@ -22,7 +22,6 @@ from bzrlib.conflicts import TextConflict
 from bzrlib import (
     errors,
     merge as _mod_merge,
-    option,
     )
 from bzrlib.tests import (
     multiply_tests,
@@ -38,7 +37,7 @@ def load_tests(standard_tests, module, loader):
     result = loader.suiteClass()
     scenarios = [
         (name, {'merge_type': merger})
-        for name, merger in option._merge_type_registry.items()]
+        for name, merger in _mod_merge.merge_type_registry.items()]
     return multiply_tests(standard_tests, scenarios, result)
 
 
