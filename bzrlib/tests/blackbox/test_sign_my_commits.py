@@ -177,4 +177,15 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         self.reset_smart_call_log()
         self.run_bzr('sign-my-commits')
         out = self.run_bzr(['verify-signatures', self.get_url('branch')])
-        self.assertLength(21, self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+
+        # The number of readv requests seems to vary depending on the generated
+        # repository and how well it compresses, so allow for a bit of
+        # variation:
+        if len(self.hpss_calls) not in (21, 22):
+            self.fail("Incorrect length: wanted 21 or 22, got %d for %r" % (
+                len(self.hpss_calls), self.hpss_calls))
