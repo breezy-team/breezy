@@ -1073,3 +1073,31 @@ class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     def do_repository_request(self, repository):
         revids = repository.all_revision_ids()
         return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))
+
+
+class SmartServerRepositoryPack(SmartServerRepositoryRequest):
+    """Pack a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token, clean_obsolete_packs):
+        self._repository = repository
+        self._lock_token = lock_token
+        if clean_obsolete_packs == 'True':
+            self._clean_obsolete_packs = True
+        else:
+            self._clean_obsolete_packs = False
+        return None
+
+    def do_body(self, body_bytes):
+        if body_bytes == "":
+            hint = None
+        else:
+            hint = body_bytes.splitlines()
+        self._repository.lock_write(token=self._lock_token)
+        try:
+            self._repository.pack(hint, self._clean_obsolete_packs)
+        finally:
+            self._repository.unlock()
+        return SuccessfulSmartServerResponse(("ok", ), )

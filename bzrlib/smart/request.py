@@ -676,6 +676,9 @@ request_handlers.register_lazy(
     'Repository.get_stream_1.19', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream_1_19')
 request_handlers.register_lazy(
+    'Repository.pack', 'bzrlib.smart.repository',
+    'SmartServerRepositoryPack')
+request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')
 request_handlers.register_lazy(

@@ -2133,11 +2133,23 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     @needs_write_lock
     def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
-
-        This is not currently implemented within the smart server.
         """
-        self._ensure_real()
-        return self._real_repository.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
+        if hint is None:
+            body = ""
+        else:
+            body = "".join([l+"\n" for l in hint])
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response, handler = self._call_with_body_bytes_expecting_body(
+                'Repository.pack', (path, self._lock_token,
+                    str(clean_obsolete_packs)), body)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.pack(hint=hint,
+                clean_obsolete_packs=clean_obsolete_packs)
+        handler.cancel_read_body()
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
 
     @property
     def revisions(self):
