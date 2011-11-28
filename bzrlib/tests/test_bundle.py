@@ -15,7 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
+import errno
 import os
+import select
 import socket
 import sys
 import threading
@@ -1837,6 +1839,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         """
         # Instantiate a server that will provoke a ConnectionReset
         sock_server = _DisconnectingTCPServer()
+        self.addCleanup(sock_server.stop_server)
         self.start_server(sock_server)
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
@@ -1858,9 +1861,24 @@ class _DisconnectingTCPServer(object):
         self.thread.start()
 
     def accept_and_close(self):
-        conn, addr = self.sock.accept()
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
+        # We apparently can't do a blocking accept() because Python
+        # can get jammed up between here and the main thread - see
+        # https://code.launchpad.net/~jelmer/bzr/2.5-client-reconnect-819604/+merge/83425
+        fd = self.sock.fileno()
+        self.sock.setblocking(False)
+        while True:
+            try:
+                select.select([fd], [], [fd], 1.0)
+                conn, addr = self.sock.accept()
+            except socket.error, e:
+                if e.errno == errno.EBADF:
+                    # Probably (hopefully) because the stop method was called
+                    # and we should stop.
+                    return
+                else:
+                    raise
+            conn.shutdown(socket.SHUT_RDWR)
+            conn.close()
 
     def get_url(self):
         return 'bzr://127.0.0.1:%d/' % (self.port,)
