@@ -1877,6 +1877,12 @@ class _DisconnectingTCPServer(object):
                     return
                 else:
                     raise
+            except select.error, e:
+                # Gratuituous incompatibility: no errno attribute.
+                if e[0] == errno.EBADF:
+                    return
+                else:
+                    raise
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
 
