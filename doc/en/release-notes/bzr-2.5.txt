@@ -128,6 +128,8 @@ Internals
   ``Repository.add_signature_revision_text``.
   (Jelmer Vernooij)
 
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
 * Custom HPSS error handlers can now be installed in the smart server client
   using the ``error_translators`` and ``no_context_error_translators``
   registries. (Jelmer Vernooij)

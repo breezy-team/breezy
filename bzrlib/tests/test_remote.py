@@ -4063,3 +4063,34 @@ class TestWithCustomErrorHandler(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         self.assertRaises(OutOfTea, branch.last_revision_info)
         self.assertFinished(client)
+
+
+class TestRepositoryPack(TestRemoteRepository):
+
+    def test_pack(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'token'))
+        client.add_expected_call(
+            'Repository.pack', ('quack/', 'token', 'False'),
+            'success', ('ok',), )
+        client.add_expected_call(
+            'Repository.unlock', ('quack/', 'token'),
+            'success', ('ok', ))
+        repo.pack()
+
+    def test_pack_with_hint(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'token'))
+        client.add_expected_call(
+            'Repository.pack', ('quack/', 'token', 'False'),
+            'success', ('ok',), )
+        client.add_expected_call(
+            'Repository.unlock', ('quack/', 'token', 'False'),
+            'success', ('ok', ))
+        repo.pack(['hinta', 'hintb'])
