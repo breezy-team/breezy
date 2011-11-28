@@ -35,14 +35,14 @@ class DisconnectingTCPServer(object):
         self.thread.start()
 
     def accept_and_close(self):
-        # We apparently can't do a blocking accept() because Python
-        # can get jammed up between here and the main thread - see
-        # https://code.launchpad.net/~jelmer/bzr/2.5-client-reconnect-819604/+merge/83425
         fd = self.sock.fileno()
         self.sock.setblocking(False)
         while True:
             try:
-                select.select([fd], [], [fd], 1.0)
+                # We can't just accept here, because accept is not interrupted
+                # by the listen socket being asynchronously closed by
+                # stop_server.  However, select will be interrupted.
+                select.select([fd], [], [fd])
                 conn, addr = self.sock.accept()
             except socket.error, e:
                 if e.errno == errno.EBADF:
