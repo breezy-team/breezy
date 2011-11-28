@@ -81,6 +81,9 @@ Bug Fixes
   and gives a better error message if the time zone offset is not given.
   (Matt Giuca, #892657)
 
+* When a remote format is unknown, bzr will now print a single-line error
+  message rather than a backtrace. (Jelmer Vernooij, #687226)
+
 Documentation
 *************
 

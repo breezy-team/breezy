@@ -119,8 +119,13 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
 
     def get_format_description(self):
         if self._network_name:
-            real_format = controldir.network_format_registry.get(self._network_name)
-            return 'Remote: ' + real_format.get_format_description()
+            try:
+                real_format = controldir.network_format_registry.get(
+                        self._network_name)
+            except KeyError:
+                pass
+            else:
+                return 'Remote: ' + real_format.get_format_description()
         return 'bzr remote bzrdir'
 
     def get_format_string(self):
@@ -516,10 +521,18 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if len(branch_info) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         branch_ref, branch_name = branch_info
-        format = controldir.network_format_registry.get(control_name)
+        try:
+            format = controldir.network_format_registry.get(control_name)
+        except KeyError:
+            raise errors.UnknownFormatError(kind='control', format=control_name)
+
         if repo_name:
-            format.repository_format = _mod_repository.network_format_registry.get(
-                repo_name)
+            try:
+                format.repository_format = _mod_repository.network_format_registry.get(
+                    repo_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='repository',
+                    format=repo_name)
         if branch_ref == 'ref':
             # XXX: we need possible_transports here to avoid reopening the
             # connection to the referenced location
@@ -528,8 +541,13 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             format.set_branch_format(branch_format)
         elif branch_ref == 'branch':
             if branch_name:
-                format.set_branch_format(
-                    branch.network_format_registry.get(branch_name))
+                try:
+                    branch_format = branch.network_format_registry.get(
+                        branch_name)
+                except KeyError:
+                    raise errors.UnknownFormatError(kind='branch',
+                        format=branch_name)
+                format.set_branch_format(branch_format)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
         return format
@@ -967,8 +985,12 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     def _ensure_real(self):
         if self._custom_format is None:
-            self._custom_format = _mod_repository.network_format_registry.get(
-                self._network_name)
+            try:
+                self._custom_format = _mod_repository.network_format_registry.get(
+                    self._network_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='repository',
+                    format=self._network_name)
 
     @property
     def _fetch_order(self):
@@ -2610,8 +2632,12 @@ class RemoteBranchFormat(branch.BranchFormat):
 
     def _ensure_real(self):
         if self._custom_format is None:
-            self._custom_format = branch.network_format_registry.get(
-                self._network_name)
+            try:
+                self._custom_format = branch.network_format_registry.get(
+                    self._network_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='branch',
+                    format=self._network_name)
 
     def get_format_description(self):
         self._ensure_real()

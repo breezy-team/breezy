@@ -484,6 +484,18 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertEqual(None, result._branch_format)
         self.assertFinished(client)
 
+    def test_unknown(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        expected = referenced.bzrdir.cloning_metadir()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.cloning_metadir', ('quack/', 'False'),
+            'success', ('unknown', 'unknown', ('branch', ''))),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertRaises(errors.UnknownFormatError, a_bzrdir.cloning_metadir)
+
 
 class TestBzrDirDestroyBranch(TestRemote):
 
