@@ -1737,9 +1737,10 @@ class InventoryWorkingTree(WorkingTree,
         :param branch: A branch to override probing for the branch.
         """
         super(InventoryWorkingTree, self).__init__(basedir=basedir,
-            _transport=_control_files.transport,
+            _transport=_control_files._transport,
             _internal=_internal, _format=_format, _bzrdir=_bzrdir)
 
+        self._control_files = _control_files
         self._detect_case_handling()
 
         if _inventory is None:

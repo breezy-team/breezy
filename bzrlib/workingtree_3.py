@@ -207,7 +207,6 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         # inv = Inventory(root_id=gen_root_id())
         inv = self._initial_inventory()
         wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
-                         branch,
                          inv,
                          _internal=True,
                          _format=self,
