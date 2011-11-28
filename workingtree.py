@@ -428,7 +428,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
-        if self._control_files._lock_mode != 'w':
+        if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
         self.index.write()
 
