@@ -552,13 +552,15 @@ class TestRepository(per_repository.TestCaseWithRepository):
         b = builder.get_branch()
         b.lock_write()
         self.addCleanup(b.unlock)
-        b.repository.start_write_group()
-        self.addCleanup(b.repository.abort_write_group)
         if b.repository._format.supports_revision_signatures:
+            b.repository.start_write_group()
             b.repository.add_signature_text('A', 'This might be a signature')
+            b.repository.commit_write_group()
             self.assertEqual('This might be a signature',
                              b.repository.get_signature_text('A'))
         else:
+            b.repository.start_write_group()
+            self.addCleanup(b.repository.abort_write_group)
             self.assertRaises(errors.UnsupportedOperation,
                 b.repository.add_signature_text, 'A',
                 'This might be a signature')
