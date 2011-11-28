@@ -2213,8 +2213,19 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
-        self._ensure_real()
-        return self._real_repository.add_signature_text(revision_id, signature)
+        if self._real_repository:
+            # If there is a real repository the write group will
+            # be in the real repository as well, so use that:
+            self._ensure_real()
+            return self._real_repository.add_signature_text(
+                revision_id, signature)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response, response_handler = self._call_with_body_bytes(
+            'Repository.add_signature_text', (path, revision_id),
+            signature)
+        self.refresh_data()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def has_signature_for_revision_id(self, revision_id):
         path = self.bzrdir._path_for_remote_call(self._client)
