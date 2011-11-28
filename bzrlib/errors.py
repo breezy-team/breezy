@@ -17,12 +17,6 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-from bzrlib import (
-    i18n,
-    )
-from bzrlib.i18n import gettext
-
-
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
 # to me.
@@ -136,7 +130,7 @@ class BzrError(StandardError):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
-            i18n.install()
+            from bzrlib.i18n import gettext
             return gettext(unicode(fmt)) # _fmt strings should be ascii
 
     def __eq__(self, other):
