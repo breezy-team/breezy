@@ -58,15 +58,18 @@ relative.
 
 
 config.option_registry.register(config.Option(
-        'po_merge.po_files', default=[],
+        'po_merge.po_dirs', default='po,',
         from_unicode=config.list_from_store,
-        help='List of globs the po_merge hook applies to.'))
+        help='List of dirs containing .po files that the hook applies to.'))
 
 
 config.option_registry.register(config.Option(
-        'po_merge.pot_file', default=[],
-        from_unicode=config.list_from_store,
-        help='List of ``.pot`` filenames related to ``po_merge.po_files``.'))
+        'po_merge.po_glob', default='*.po',
+        help='Glob matching all ``.po`` files in one of ``po_merge.po_dirs``.'))
+
+config.option_registry.register(config.Option(
+        'po_merge.pot_glob', default='*.pot',
+        help='Glob matching the ``.pot`` file in one of ``po_merge.po_dirs``.'))
 
 
 class PoMerger(merge.PerFileMerger):
@@ -80,49 +83,56 @@ class PoMerger(merge.PerFileMerger):
         # FIXME: We use the branch config as there is no tree config
         # -- vila 2011-11-23
         self.conf = merger.this_branch.get_config_stack()
+        # Which dirs are targeted by the hook 
+        self.po_dirs = self.conf.get('po_merge.po_dirs')
         # Which files are targeted by the hook 
-        self.po_files = self.conf.get('po_merge.po_files')
+        self.po_glob = self.conf.get('po_merge.po_glob')
         # Which .pot file should be used
-        self.pot_file = self.conf.get('po_merge.pot_file')
+        self.pot_glob = self.conf.get('po_merge.pot_glob')
         self.command = self.conf.get('po_merge.command', expand=False)
         # file_matches() will set the following for merge_text()
         self.selected_po_file = None
         self.selected_pot_file = None
+        trace.mutter('PoMerger created')
 
     def file_matches(self, params):
         """Return True if merge_matching should be called on this file."""
-        if not self.po_files or not self.pot_file or not self.command:
+        if not self.po_dirs or not self.command:
             # Return early if there is no options defined
             return False
-        match = False
+        po_dir = None
         po_path = self.get_filepath(params, self.merger.this_tree)
-        # Does the merged file match one of the globs
-        for idx, glob in enumerate(self.po_files):
+        for po_dir in self.po_dirs:
+            glob = osutils.pathjoin(po_dir, self.po_glob)
             if fnmatch.fnmatch(po_path, glob):
-                match = True
+                trace.mutter('po %s matches: %s' % (po_path, glob))
                 break
-        if not match:
+        else:
+            trace.mutter('PoMerger did not match for %s and %s'
+                         % (self.po_dirs, self.po_glob))
             return False
         # Do we have the corresponding .pot file
-        try:
-            pot_path = self.pot_file[idx]
-        except KeyError:
-            trace.note('po_merge.po_files and po_merge.pot_file mismatch'
-                       ' for index %d' %d)
+        for inv_entry in self.merger.this_tree.list_files(from_dir=po_dir,
+                                                          recursive=False):
+            pot_name = inv_entry[0]
+            if fnmatch.fnmatch(pot_name, self.pot_glob):
+                self.selected_pot_file = osutils.pathjoin(po_dir, pot_name)
+                self.selected_po_file = po_path
+                # FIXME: I can't find an easy way to know if the .pot file has
+                # conflicts *during* the merge itself. So either the actual
+                # content on disk is fine and msgmerge will work OR it's not
+                # and it will fail. Conversely, either the result is ok for the
+                # user and he's happy OR the user needs to resolve the
+                # conflicts in the .pot file and use remerge.
+                # -- vila 2011-11-24
+                trace.mutter('will msgmerge with %s and %s'
+                             % (self.selected_po_file, self.selected_pot_file))
+                return True
+        else:
             return False
-        if self.merger.this_tree.has_filename(pot_path):
-            self.selected_pot_file = pot_path
-            self.selected_po_file = po_path
-            # FIXME: I can't find an easy way to know if the .pot file has
-            # conflicts *during* the merge itself. So either the actual content
-            # on disk is fine and msgmerge will work OR it's not and it will
-            # fail. Conversely, either the result is ok for the user and he's
-            # happy OR the user needs to resolve the conflicts in the .pot file
-            # and use remerge. -- vila 2011-11-24
-            return True
-        return False
 
     def _invoke(self, command):
+        trace.mutter('Will msgmerge: %s' % (command,))
         proc = subprocess.Popen(cmdline.split(command),
                                 # FIXME: cwd= ? -- vila 2011-11-24
                                 stdout=subprocess.PIPE,

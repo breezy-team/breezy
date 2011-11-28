@@ -16,7 +16,6 @@
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
-        'test_blackbox_po_merge',
         'test_po_merge',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
