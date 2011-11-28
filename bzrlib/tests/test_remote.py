@@ -490,6 +490,33 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirDestroyBranch(TestRemote):
+
+    def test_destroy_default(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_branch', ('quack/', ),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_branch()
+        self.assertFinished(client)
+
+    def test_destroy_named(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.destroy_branch', ('quack/', "foo"),
+            'success', ('ok',)),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        a_bzrdir.destroy_branch("foo")
+        self.assertFinished(client)
+
+
 class TestBzrDirHasWorkingTree(TestRemote):
 
     def test_has_workingtree(self):
@@ -657,7 +684,7 @@ class TestBzrDirOpenBranch(TestRemote):
         # _get_tree_branch is a form of open_branch, but it should only ask for
         # branch opening, not any other network requests.
         calls = []
-        def open_branch(name=None):
+        def open_branch(name=None, possible_transports=None):
             calls.append("Called")
             return "a-branch"
         transport = MemoryTransport()
@@ -1041,6 +1068,60 @@ class RemoteBranchTestCase(RemoteBzrDirTestCase):
         branch_format = self.get_branch_format()
         format = RemoteBranchFormat(network_name=branch_format.network_name())
         return RemoteBranch(bzrdir, repo, _client=client, format=format)
+
+
+class TestBranchBreakLock(RemoteBranchTestCase):
+
+    def test_break_lock(self):
+        transport_path = 'quack'
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.break_lock', ('quack/',),
+            'success', ('ok',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        branch.break_lock()
+        self.assertFinished(client)
+
+
+class TestBranchGetPhysicalLockStatus(RemoteBranchTestCase):
+
+    def test_get_physical_lock_status_yes(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_physical_lock_status', ('quack/',),
+            'success', ('yes',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_physical_lock_status()
+        self.assertFinished(client)
+        self.assertEqual(True, result)
+
+    def test_get_physical_lock_status_no(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_physical_lock_status', ('quack/',),
+            'success', ('no',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_physical_lock_status()
+        self.assertFinished(client)
+        self.assertEqual(False, result)
 
 
 class TestBranchGetParent(RemoteBranchTestCase):
@@ -1492,9 +1573,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         branch.lock_write()
         result = branch._set_last_revision(NULL_REVISION)
         branch.unlock()
@@ -1529,9 +1607,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        # This is a hack to work around the problem that RemoteBranch currently
-        # unnecessarily invokes _ensure_real upon a call to lock_write.
-        branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
         result = branch._set_last_revision('rev-id2')
@@ -1604,7 +1679,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             'Branch.unlock', ('branch/', 'branch token', 'repo token'),
             'success', ('ok',))
         branch = self.make_remote_branch(transport, client)
-        branch._ensure_real = lambda: None
         branch.lock_write()
         # The 'TipChangeRejected' error response triggered by calling
         # set_last_revision_info causes a TipChangeRejected exception.
@@ -1964,6 +2038,58 @@ class TestBranchLockWrite(RemoteBranchTestCase):
         self.assertFinished(client)
 
 
+class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
+
+    def test_simple(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'null:'),
+            'success', ('ok', '0',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'unknown'),
+            'error', ('NoSuchRevision', 'unknown',),)
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertEquals(0, branch.revision_id_to_revno('null:'))
+        self.assertRaises(errors.NoSuchRevision,
+            branch.revision_id_to_revno, 'unknown')
+        self.assertFinished(client)
+
+    def test_dotted(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'null:'),
+            'success', ('ok', '0',),)
+        client.add_expected_call(
+            'Branch.revision_id_to_revno', ('quack/', 'unknown'),
+            'error', ('NoSuchRevision', 'unknown',),)
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertEquals((0, ), branch.revision_id_to_dotted_revno('null:'))
+        self.assertRaises(errors.NoSuchRevision,
+            branch.revision_id_to_dotted_revno, 'unknown')
+        self.assertFinished(client)
+
+    def test_dotted_no_smart_verb(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        self.disable_verb('Branch.revision_id_to_revno')
+        self.reset_smart_call_log()
+        self.assertEquals((0, ),
+            branch.revision_id_to_dotted_revno('null:'))
+        self.assertLength(7, self.hpss_calls)
+
+
 class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
 
     def test__get_config(self):
@@ -2126,6 +2252,31 @@ class TestRepositoryFormat(TestRemoteRepository):
             remote_repo_format.get_format_description())
 
 
+class TestRepositoryAllRevisionIds(TestRemoteRepository):
+
+    def test_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body('', 'ok')
+        self.assertEquals([], repo.all_revision_ids())
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.all_revision_ids',
+             ('quack/',))],
+            client._calls)
+
+    def test_with_some_content(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(
+            'rev1\nrev2\nanotherrev\n', 'ok')
+        self.assertEquals(["rev1", "rev2", "anotherrev"],
+            repo.all_revision_ids())
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.all_revision_ids',
+             ('quack/',))],
+            client._calls)
+
+
 class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
@@ -2184,6 +2335,31 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                          result)
 
 
+class TestRepositoryBreakLock(TestRemoteRepository):
+
+    def test_break_lock(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        repo.break_lock()
+        self.assertEqual(
+            [('call', 'Repository.break_lock', ('quack/',))],
+            client._calls)
+
+
+class TestRepositoryGetSerializerFormat(TestRemoteRepository):
+
+    def test_get_serializer_format(self):
+        transport_path = 'hill'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok', '7')
+        self.assertEquals('7', repo.get_serializer_format())
+        self.assertEqual(
+            [('call', 'VersionedFileRepository.get_serializer_format',
+              ('hill/', ))],
+            client._calls)
+
+
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):
@@ -2192,6 +2368,21 @@ class TestRepositoryGetGraph(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
         self.assertNotEqual(graph._parents_provider, repo)
+
+
+class TestRepositoryAddSignatureText(TestRemoteRepository):
+
+    def test_add_signature_text(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('ok')
+        self.assertIs(None,
+            repo.add_signature_text("rev1", "every bloody emperor"))
+        self.assertEqual(
+            [('call_with_body_bytes',
+              'Repository.add_signature_text', ('quack/', 'rev1', ),
+              'every bloody emperor')],
+            client._calls)
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):
@@ -2642,6 +2833,31 @@ class TestRepositoryHasSignatureForRevisionId(TestRemoteRepository):
         self.assertEqual(False, result)
 
 
+class TestRepositoryPhysicalLockStatus(TestRemoteRepository):
+
+    def test_get_physical_lock_status_yes(self):
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('yes')
+        result = repo.get_physical_lock_status()
+        self.assertEqual(
+            [('call', 'Repository.get_physical_lock_status',
+              ('qwack/', ))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_get_physical_lock_status_no(self):
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('no')
+        result = repo.get_physical_lock_status()
+        self.assertEqual(
+            [('call', 'Repository.get_physical_lock_status',
+              ('qwack/', ))],
+            client._calls)
+        self.assertEqual(False, result)
+
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
@@ -2721,6 +2937,91 @@ class TestRepositoryLockWrite(TestRemoteRepository):
         self.assertEqual(
             [('call', 'Repository.lock_write', ('quack/', ''))],
             client._calls)
+
+
+class TestRepositoryWriteGroups(TestRemoteRepository):
+
+    def test_start_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', 'token1'))
+        repo.lock_write()
+        repo.start_write_group()
+
+    def test_start_write_group_unsuspendable(self):
+        # Some repositories do not support suspending write
+        # groups. For those, fall back to the "real" repository.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        def stub_ensure_real():
+            client._calls.append(('_ensure_real',))
+            repo._real_repository = _StubRealPackRepository(client._calls)
+        repo._ensure_real = stub_ensure_real
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'error', ('UnsuspendableWriteGroup',))
+        repo.lock_write()
+        repo.start_write_group()
+        self.assertEquals(client._calls[-2:], [ 
+            ('_ensure_real',),
+            ('start_write_group',)])
+
+    def test_commit_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', ['token1']))
+        client.add_expected_call(
+            'Repository.commit_write_group', ('quack/', 'a token', ['token1']),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.start_write_group()
+        repo.commit_write_group()
+
+    def test_abort_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', ['token1']))
+        client.add_expected_call(
+            'Repository.abort_write_group', ('quack/', 'a token', ['token1']),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.start_write_group()
+        repo.abort_write_group(False)
+
+    def test_suspend_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        self.assertEquals([], repo.suspend_write_group())
+
+    def test_resume_write_group(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.check_write_group', ('quack/', 'a token', ['token1']),
+            'success', ('ok',))
+        repo.lock_write()
+        repo.resume_write_group(['token1'])
 
 
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
@@ -3066,6 +3367,9 @@ class _StubRealPackRepository(object):
     def __init__(self, calls):
         self.calls = calls
         self._pack_collection = _StubPackCollection(calls)
+
+    def start_write_group(self):
+        self.calls.append(('start_write_group',))
 
     def is_in_write_group(self):
         return False
@@ -3712,3 +4016,83 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
         # interpretation
         self.make_master_and_checkout('mas~ter', 'checkout')
         self.assertUpdateSucceeds(self.bound_location.replace('%2E', '~', 1))
+
+
+class TestWithCustomErrorHandler(RemoteBranchTestCase):
+
+    def test_no_context(self):
+        class OutOfCoffee(errors.BzrError):
+            """A dummy exception for testing."""
+
+            def __init__(self, urgency):
+                self.urgency = urgency
+        remote.no_context_error_translators.register("OutOfCoffee",
+            lambda err: OutOfCoffee(err.error_args[0]))
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info',
+            ('quack/',),
+            'error', ('OutOfCoffee', 'low'))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(OutOfCoffee, branch.last_revision_info)
+        self.assertFinished(client)
+
+    def test_with_context(self):
+        class OutOfTea(errors.BzrError):
+            def __init__(self, branch, urgency):
+                self.branch = branch
+                self.urgency = urgency
+        remote.error_translators.register("OutOfTea",
+            lambda err, find, path: OutOfTea(err.error_args[0],
+                find("branch")))
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info',
+            ('quack/',),
+            'error', ('OutOfTea', 'low'))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(OutOfTea, branch.last_revision_info)
+        self.assertFinished(client)
+
+
+class TestRepositoryPack(TestRemoteRepository):
+
+    def test_pack(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'token'))
+        client.add_expected_call(
+            'Repository.pack', ('quack/', 'token', 'False'),
+            'success', ('ok',), )
+        client.add_expected_call(
+            'Repository.unlock', ('quack/', 'token'),
+            'success', ('ok', ))
+        repo.pack()
+
+    def test_pack_with_hint(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'token'))
+        client.add_expected_call(
+            'Repository.pack', ('quack/', 'token', 'False'),
+            'success', ('ok',), )
+        client.add_expected_call(
+            'Repository.unlock', ('quack/', 'token', 'False'),
+            'success', ('ok', ))
+        repo.pack(['hinta', 'hintb'])
