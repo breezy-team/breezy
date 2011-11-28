@@ -1791,6 +1791,18 @@ class TransportTests(TestTransportImplementation):
         transport = _mod_transport.get_transport_from_url(url)
         self.assertEquals(parameters, transport.get_segment_parameters())
 
+    def test_set_segment_parameters(self):
+        """Segment parameters can be set and show up in base."""
+        transport = self.get_transport("foo")
+        orig_base = transport.base
+        transport.set_segment_parameter("arm", "board")
+        self.assertEquals("%s,arm=board" % orig_base, transport.base)
+        self.assertEquals({"arm": "board"}, transport.get_segment_parameters())
+        transport.set_segment_parameter("arm", None)
+        transport.set_segment_parameter("nonexistant", None)
+        self.assertEquals({}, transport.get_segment_parameters())
+        self.assertEquals(orig_base, transport.base)
+
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks
         # at all) you can tell this.  helps with bug 32669.
@@ -1802,3 +1814,25 @@ class TransportTests(TestTransportImplementation):
         t2 = t.clone('link')
         st = t2.stat('')
         self.assertTrue(stat.S_ISLNK(st.st_mode))
+
+    def test_abspath_url_unquote_unreserved(self):
+        """URLs from abspath should have unreserved characters unquoted
+        
+        Need consistent quoting notably for tildes, see lp:842223 for more.
+        """
+        t = self.get_transport()
+        needlessly_escaped_dir = "%2D%2E%30%39%41%5A%5F%61%7A%7E/"
+        self.assertEqual(t.base + "-.09AZ_az~",
+            t.abspath(needlessly_escaped_dir))
+
+    def test_clone_url_unquote_unreserved(self):
+        """Base URL of a cloned branch needs unreserved characters unquoted
+        
+        Cloned transports should be prefix comparable for things like the
+        isolation checking of tests, see lp:842223 for more.
+        """
+        t1 = self.get_transport()
+        needlessly_escaped_dir = "%2D%2E%30%39%41%5A%5F%61%7A%7E/"
+        self.build_tree([needlessly_escaped_dir], transport=t1)
+        t2 = t1.clone(needlessly_escaped_dir)
+        self.assertEqual(t1.base + "-.09AZ_az~/", t2.base)

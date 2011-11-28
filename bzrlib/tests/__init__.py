@@ -100,6 +100,7 @@ from bzrlib.tests import (
     )
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
+from bzrlib.tests.features import _CompatabilityThunkFeature
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -999,7 +1000,7 @@ class TestCase(testtools.TestCase):
         self._cleanEnvironment()
         if bzrlib.global_state is not None:
             self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
-                              config.CommandLineSection())
+                              config.CommandLineStore())
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -4462,8 +4463,28 @@ except ImportError:
     pass
 
 
-@deprecated_function(deprecated_in((2, 5, 0)))
-def ModuleAvailableFeature(name):
-    from bzrlib.tests import features
-    return features.ModuleAvailableFeature(name)
-    
+# API compatibility for old plugins; see bug 892622.
+for name in [
+    'Feature',
+    'HTTPServerFeature', 
+    'ModuleAvailableFeature',
+    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
+    'OsFifoFeature', 'UnicodeFilenameFeature',
+    'ByteStringNamedFilesystem', 'UTF8Filesystem',
+    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
+    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
+    'posix_permissions_feature',
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', name,
+        name, 'bzrlib.tests.features')
+
+
+for (old_name, new_name) in [
+    ('UnicodeFilename', 'UnicodeFilenameFeature'),
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', old_name,
+        new_name, 'bzrlib.tests.features')

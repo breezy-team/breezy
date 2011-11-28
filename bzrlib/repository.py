@@ -642,6 +642,12 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
 
     def suspend_write_group(self):
+        """Suspend a write group.
+
+        :raise UnsuspendableWriteGroup: If the write group can not be
+            suspended.
+        :return: List of tokens
+        """
         raise errors.UnsuspendableWriteGroup(self)
 
     def refresh_data(self):
@@ -1188,7 +1194,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     @needs_read_lock
-    def verify_revision(self, revision_id, gpg_strategy):
+    def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
         
         :param revision_id: the revision to verify

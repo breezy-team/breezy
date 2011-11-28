@@ -2632,8 +2632,12 @@ class Section(object):
         # We re-use the dict-like object received
         self.options = options
 
-    def get(self, name, default=None):
+    def get(self, name, default=None, expand=True):
         return self.options.get(name, default)
+
+    def iter_option_names(self):
+        for k in self.options.iterkeys():
+            yield k
 
     def __repr__(self):
         # Mostly for debugging use
@@ -2663,31 +2667,6 @@ class MutableSection(Section):
         if name not in self.orig:
             self.orig[name] = self.get(name, None)
         del self.options[name]
-
-
-class CommandLineSection(MutableSection):
-    """A section used to carry command line overrides for the config options."""
-
-    def __init__(self, opts=None):
-        if opts is None:
-            opts = {}
-        super(CommandLineSection, self).__init__('cmdline-overrides', opts)
-
-    def _reset(self):
-        # The dict should be cleared but not replaced so it can be shared.
-        self.options.clear()
-
-    def _from_cmdline(self, overrides):
-        # Reset before accepting new definitions
-        self._reset()
-        for over in overrides:
-            try:
-                name, value = over.split('=', 1)
-            except ValueError:
-                raise errors.BzrCommandError(
-                    gettext("Invalid '%s', should be of the form 'name=value'")
-                    % (over,))
-            self.set(name, value)
 
 
 class Store(object):
@@ -2734,14 +2713,14 @@ class Store(object):
     def get_sections(self):
         """Returns an ordered iterable of existing sections.
 
-        :returns: An iterable of (name, dict).
+        :returns: An iterable of (store, section).
         """
         raise NotImplementedError(self.get_sections)
 
-    def get_mutable_section(self, section_name=None):
+    def get_mutable_section(self, section_id=None):
         """Returns the specified mutable section.
 
-        :param section_name: The section identifier
+        :param section_id: The section identifier
         """
         raise NotImplementedError(self.get_mutable_section)
 
@@ -2749,6 +2728,41 @@ class Store(object):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__,
                                     self.external_url())
+
+
+class CommandLineStore(Store):
+    "A store to carry command line overrides for the config options."""
+
+    def __init__(self, opts=None):
+        super(CommandLineStore, self).__init__()
+        if opts is None:
+            opts = {}
+        self.options = {}
+
+    def _reset(self):
+        # The dict should be cleared but not replaced so it can be shared.
+        self.options.clear()
+
+    def _from_cmdline(self, overrides):
+        # Reset before accepting new definitions
+        self._reset()
+        for over in overrides:
+            try:
+                name, value = over.split('=', 1)
+            except ValueError:
+                raise errors.BzrCommandError(
+                    gettext("Invalid '%s', should be of the form 'name=value'")
+                    % (over,))
+            self.options[name] = value
+
+    def external_url(self):
+        # Not an url but it makes debugging easier and it never needed
+        # otherwise
+        return 'cmdline'
+
+    def get_sections(self):
+        yield self,  self.readonly_section_class('cmdline_overrides',
+                                                 self.options)
 
 
 class IniFileStore(Store):
@@ -2762,16 +2776,10 @@ class IniFileStore(Store):
         serialize/deserialize the config file.
     """
 
-    def __init__(self, transport, file_name):
+    def __init__(self):
         """A config Store using ConfigObj for storage.
-
-        :param transport: The transport object where the config file is located.
-
-        :param file_name: The config file basename in the transport directory.
         """
         super(IniFileStore, self).__init__()
-        self.transport = transport
-        self.file_name = file_name
         self._config_obj = None
 
     def is_loaded(self):
@@ -2780,16 +2788,29 @@ class IniFileStore(Store):
     def unload(self):
         self._config_obj = None
 
+    def _load_content(self):
+        """Load the config file bytes.
+
+        This should be provided by subclasses
+
+        :return: Byte string
+        """
+        raise NotImplementedError(self._load_content)
+
+    def _save_content(self, content):
+        """Save the config file bytes.
+
+        This should be provided by subclasses
+
+        :param content: Config file bytes to write
+        """
+        raise NotImplementedError(self._save_content)
+
     def load(self):
         """Load the store from the associated file."""
         if self.is_loaded():
             return
-        try:
-            content = self.transport.get_bytes(self.file_name)
-        except errors.PermissionDenied:
-            trace.warning("Permission denied while trying to load "
-                          "configuration store %s.", self.external_url())
-            raise
+        content = self._load_content()
         self._load_from_string(content)
         for hook in ConfigHooks['load']:
             hook(self)
@@ -2818,22 +2839,14 @@ class IniFileStore(Store):
             return
         out = StringIO()
         self._config_obj.write(out)
-        self.transport.put_bytes(self.file_name, out.getvalue())
+        self._save_content(out.getvalue())
         for hook in ConfigHooks['save']:
             hook(self)
-
-    def external_url(self):
-        # FIXME: external_url should really accepts an optional relpath
-        # parameter (bug #750169) :-/ -- vila 2011-04-04
-        # The following will do in the interim but maybe we don't want to
-        # expose a path here but rather a config ID and its associated
-        # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name)
 
     def get_sections(self):
         """Get the configobj section in the file order.
 
-        :returns: An iterable of (name, dict).
+        :returns: An iterable of (store, section).
         """
         # We need a loaded store
         try:
@@ -2843,22 +2856,58 @@ class IniFileStore(Store):
             return
         cobj = self._config_obj
         if cobj.scalars:
-            yield self.readonly_section_class(None, cobj)
+            yield self, self.readonly_section_class(None, cobj)
         for section_name in cobj.sections:
-            yield self.readonly_section_class(section_name, cobj[section_name])
+            yield (self,
+                   self.readonly_section_class(section_name,
+                                               cobj[section_name]))
 
-    def get_mutable_section(self, section_name=None):
+    def get_mutable_section(self, section_id=None):
         # We need a loaded store
         try:
             self.load()
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string('')
-        if section_name is None:
+        if section_id is None:
             section = self._config_obj
         else:
-            section = self._config_obj.setdefault(section_name, {})
-        return self.mutable_section_class(section_name, section)
+            section = self._config_obj.setdefault(section_id, {})
+        return self.mutable_section_class(section_id, section)
+
+
+class TransportIniFileStore(IniFileStore):
+    """IniFileStore that loads files from a transport.
+    """
+
+    def __init__(self, transport, file_name):
+        """A Store using a ini file on a Transport
+
+        :param transport: The transport object where the config file is located.
+        :param file_name: The config file basename in the transport directory.
+        """
+        super(TransportIniFileStore, self).__init__()
+        self.transport = transport
+        self.file_name = file_name
+
+    def _load_content(self):
+        try:
+            return self.transport.get_bytes(self.file_name)
+        except errors.PermissionDenied:
+            trace.warning("Permission denied while trying to load "
+                          "configuration store %s.", self.external_url())
+            raise
+
+    def _save_content(self, content):
+        self.transport.put_bytes(self.file_name, content)
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return urlutils.join(self.transport.external_url(), self.file_name)
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -2867,7 +2916,7 @@ class IniFileStore(Store):
 # they may face the same issue.
 
 
-class LockableIniFileStore(IniFileStore):
+class LockableIniFileStore(TransportIniFileStore):
     """A ConfigObjStore using locks on save to ensure store integrity."""
 
     def __init__(self, transport, file_name, lock_dir_name=None):
@@ -2923,6 +2972,7 @@ class GlobalStore(LockableIniFileStore):
         t = transport.get_transport_from_path(
             config_dir(), possible_transports=possible_transports)
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
+        self.id = 'bazaar'
 
 
 class LocationStore(LockableIniFileStore):
@@ -2931,14 +2981,16 @@ class LocationStore(LockableIniFileStore):
         t = transport.get_transport_from_path(
             config_dir(), possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
+        self.id = 'locations'
 
 
-class BranchStore(IniFileStore):
+class BranchStore(TransportIniFileStore):
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
         self.branch = branch
+        self.id = 'branch'
 
     def lock_write(self, token=None):
         return self.branch.lock_write(token)
@@ -2978,9 +3030,9 @@ class SectionMatcher(object):
         # sections.
         sections = self.store.get_sections()
         # Walk the revisions in the order provided
-        for s in sections:
+        for store, s in sections:
             if self.match(s):
-                yield s
+                yield store, s
 
     def match(self, section):
         """Does the proposed section match.
@@ -3008,11 +3060,12 @@ class LocationSection(Section):
         super(LocationSection, self).__init__(section.id, section.options)
         self.length = length
         self.extra_path = extra_path
-        self.locals = {'relpath': extra_path}
+        self.locals = {'relpath': extra_path,
+                       'basename': urlutils.basename(extra_path)}
 
-    def get(self, name, default=None):
+    def get(self, name, default=None, expand=True):
         value = super(LocationSection, self).get(name, default)
-        if value is not None:
+        if value is not None and expand:
             policy_name = self.get(name + ':policy', None)
             policy = _policy_value.get(policy_name, POLICY_NONE)
             if policy == POLICY_APPENDPATH:
@@ -3049,7 +3102,7 @@ class LocationMatcher(SectionMatcher):
         all_sections = []
         # Filter out the no_name_section so _iter_for_location_by_parts can be
         # used (it assumes all sections have a name).
-        for section in self.store.get_sections():
+        for _, section in self.store.get_sections():
             if section.id is None:
                 no_name_section = section
             else:
@@ -3092,7 +3145,7 @@ class LocationMatcher(SectionMatcher):
             if ignore:
                 break
             # Finally, we have a valid section
-            yield section
+            yield self.store, section
 
 
 _option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
@@ -3115,7 +3168,7 @@ def iter_option_refs(string):
 class Stack(object):
     """A stack of configurations where an option can be defined"""
 
-    def __init__(self, sections_def, store=None, mutable_section_name=None):
+    def __init__(self, sections_def, store=None, mutable_section_id=None):
         """Creates a stack of sections with an optional store for changes.
 
         :param sections_def: A list of Section or callables that returns an
@@ -3125,13 +3178,13 @@ class Stack(object):
         :param store: The optional Store where modifications will be
             recorded. If none is specified, no modifications can be done.
 
-        :param mutable_section_name: The name of the MutableSection where
-            changes are recorded. This requires the ``store`` parameter to be
+        :param mutable_section_id: The id of the MutableSection where changes
+            are recorded. This requires the ``store`` parameter to be
             specified.
         """
         self.sections_def = sections_def
         self.store = store
-        self.mutable_section_name = mutable_section_name
+        self.mutable_section_id = mutable_section_id
 
     def get(self, name, expand=None):
         """Return the *first* option value found in the sections.
@@ -3156,13 +3209,8 @@ class Stack(object):
         # implies querying the persistent storage) until it can't be avoided
         # anymore by using callables to describe (possibly empty) section
         # lists.
-        for section_or_callable in self.sections_def:
-            # Each section can expand to multiple ones when a callable is used
-            if callable(section_or_callable):
-                sections = section_or_callable()
-            else:
-                sections = [section_or_callable]
-            for section in sections:
+        for sections in self.sections_def:
+            for store, section in sections():
                 value = section.get(name)
                 if value is not None:
                     break
@@ -3269,9 +3317,9 @@ class Stack(object):
         This is where we guarantee that the mutable section is lazily loaded:
         this means we won't load the corresponding store before setting a value
         or deleting an option. In practice the store will often be loaded but
-        this allows helps catching some programming errors.
+        this helps catching some programming errors.
         """
-        section = self.store.get_mutable_section(self.mutable_section_name)
+        section = self.store.get_mutable_section(self.mutable_section_id)
         return section
 
     def set(self, name, value):
@@ -3295,7 +3343,7 @@ class Stack(object):
     def _get_overrides(self):
         # Hack around library_state.initialize never called
         if bzrlib.global_state is not None:
-            return [bzrlib.global_state.cmdline_overrides]
+            return bzrlib.global_state.cmdline_overrides.get_sections()
         return []
 
 
@@ -3308,8 +3356,8 @@ class _CompatibleStack(Stack):
     One assumption made here is that the daughter classes will all use Stores
     derived from LockableIniFileStore).
 
-    It implements set() by re-loading the store before applying the
-    modification and saving it.
+    It implements set() and remove () by re-loading the store before applying
+    the modification and saving it.
 
     The long term plan being to implement a single write by store to save
     all modifications, this class should not be used in the interim.
@@ -3322,6 +3370,13 @@ class _CompatibleStack(Stack):
         # Force a write to persistent storage
         self.store.save()
 
+    def remove(self, name):
+        # Force a reload
+        self.store.unload()
+        super(_CompatibleStack, self).remove(name)
+        # Force a write to persistent storage
+        self.store.save()
+
 
 class GlobalStack(_CompatibleStack):
     """Global options only stack."""
@@ -3330,8 +3385,8 @@ class GlobalStack(_CompatibleStack):
         # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
-            [self._get_overrides, gstore.get_sections],
-            gstore)
+            [self._get_overrides, NameMatcher(gstore, 'DEFAULT').get_sections],
+            gstore, mutable_section_id='DEFAULT')
 
 
 class LocationStack(_CompatibleStack):
@@ -3342,25 +3397,28 @@ class LocationStack(_CompatibleStack):
         
         :param location: A URL prefix to """
         lstore = LocationStore()
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, gstore.get_sections],
-            lstore)
+             matcher.get_sections, NameMatcher(gstore, 'DEFAULT').get_sections],
+            lstore, mutable_section_id=location)
 
 
 class BranchStack(_CompatibleStack):
     """Per-location options falling back to branch then global options stack."""
 
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         lstore = LocationStore()
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, bstore.get_sections, gstore.get_sections],
+             matcher.get_sections, bstore.get_sections,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             bstore)
         self.branch = branch
 
@@ -3368,8 +3426,12 @@ class BranchStack(_CompatibleStack):
 class RemoteControlStack(_CompatibleStack):
     """Remote control-only options stack."""
 
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote bzr dirs. RemoteControlStack only uses
+    # control.conf and is used only for stack options.
+
     def __init__(self, bzrdir):
-        cstore = ControlStore(bzrdir)
+        cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
             [cstore.get_sections],
             cstore)
@@ -3379,13 +3441,21 @@ class RemoteControlStack(_CompatibleStack):
 class RemoteBranchStack(_CompatibleStack):
     """Remote branch-only options stack."""
 
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote branches. RemoteBranchStack only uses
+    # branch.conf and is used only for the stack options.
+
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
             [bstore.get_sections],
             bstore)
         self.branch = branch
 
+# Use a an empty dict to initialize an empty configobj avoiding all
+# parsing and encoding checks
+_quoting_config = configobj.ConfigObj(
+    {}, encoding='utf-8', interpolation=False)
 
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
@@ -3408,15 +3478,16 @@ class cmd_config(commands.Command):
     takes_options = [
         'directory',
         # FIXME: This should be a registry option so that plugins can register
-        # their own config files (or not) -- vila 20101002
+        # their own config files (or not) and will also address
+        # http://pad.lv/788991 -- vila 20101115
         commands.Option('scope', help='Reduce the scope to the specified'
-                        ' configuration file',
+                        ' configuration file.',
                         type=unicode),
         commands.Option('all',
             help='Display all the defined values for the matching options.',
             ),
         commands.Option('remove', help='Remove the option from'
-                        ' the configuration file'),
+                        ' the configuration file.'),
         ]
 
     _see_also = ['configuration']
@@ -3452,53 +3523,44 @@ class cmd_config(commands.Command):
                 # Set the option value
                 self._set_config_option(name, value, directory, scope)
 
-    def _get_configs(self, directory, scope=None):
-        """Iterate the configurations specified by ``directory`` and ``scope``.
+    def _get_stack(self, directory, scope=None):
+        """Get the configuration stack specified by ``directory`` and ``scope``.
 
         :param directory: Where the configurations are derived from.
 
         :param scope: A specific config to start from.
         """
+        # FIXME: scope should allow access to plugin-specific stacks (even
+        # reduced to the plugin-specific store), related to
+        # http://pad.lv/788991 -- vila 2011-11-15
         if scope is not None:
             if scope == 'bazaar':
-                yield GlobalConfig()
+                return GlobalStack()
             elif scope == 'locations':
-                yield LocationConfig(directory)
+                return LocationStack(directory)
             elif scope == 'branch':
                 (_, br, _) = (
                     controldir.ControlDir.open_containing_tree_or_branch(
                         directory))
-                yield br.get_config()
+                return br.get_config_stack()
+            raise errors.NoSuchConfig(scope)
         else:
             try:
                 (_, br, _) = (
                     controldir.ControlDir.open_containing_tree_or_branch(
                         directory))
-                yield br.get_config()
+                return br.get_config_stack()
             except errors.NotBranchError:
-                yield LocationConfig(directory)
-                yield GlobalConfig()
+                return LocationStack(directory)
 
     def _show_value(self, name, directory, scope):
-        displayed = False
-        for c in self._get_configs(directory, scope):
-            if displayed:
-                break
-            for (oname, value, section, conf_id, parser) in c._get_options():
-                if name == oname:
-                    # Display only the first value and exit
-
-                    # FIXME: We need to use get_user_option to take policies
-                    # into account and we need to make sure the option exists
-                    # too (hence the two for loops), this needs a better API
-                    # -- vila 20101117
-                    value = c.get_user_option(name)
-                    # Quote the value appropriately
-                    value = parser._quote(value)
-                    self.outf.write('%s\n' % (value,))
-                    displayed = True
-                    break
-        if not displayed:
+        conf = self._get_stack(directory, scope)
+        value = conf.get(name, expand=True)
+        if value is not None:
+            # Quote the value appropriately
+            value = _quoting_config._quote(value)
+            self.outf.write('%s\n' % (value,))
+        else:
             raise errors.NoSuchConfigOption(name)
 
     def _show_matching_options(self, name, directory, scope):
@@ -3507,54 +3569,42 @@ class cmd_config(commands.Command):
         # avoid the delay introduced by the lazy regexp.  But, we still do
         # want the nicer errors raised by lazy_regex.
         name._compile_and_collapse()
-        cur_conf_id = None
+        cur_store_id = None
         cur_section = None
-        for c in self._get_configs(directory, scope):
-            for (oname, value, section, conf_id, parser) in c._get_options():
-                if name.search(oname):
-                    if cur_conf_id != conf_id:
-                        # Explain where the options are defined
-                        self.outf.write('%s:\n' % (conf_id,))
-                        cur_conf_id = conf_id
-                        cur_section = None
-                    if (section not in (None, 'DEFAULT')
-                        and cur_section != section):
-                        # Display the section if it's not the default (or only)
-                        # one.
-                        self.outf.write('  [%s]\n' % (section,))
-                        cur_section = section
-                    self.outf.write('  %s = %s\n' % (oname, value))
+        conf = self._get_stack(directory, scope)
+        for sections in conf.sections_def:
+            for store, section in sections():
+                for oname in section.iter_option_names():
+                    if name.search(oname):
+                        if cur_store_id != store.id:
+                            # Explain where the options are defined
+                            self.outf.write('%s:\n' % (store.id,))
+                            cur_store_id = store.id
+                            cur_section = None
+                        if (section.id not in (None, 'DEFAULT')
+                            and cur_section != section.id):
+                            # Display the section if it's not the default (or
+                            # only) one.
+                            self.outf.write('  [%s]\n' % (section.id,))
+                            cur_section = section.id
+                        value = section.get(oname, expand=False)
+                        value = _quoting_config._quote(value)
+                        self.outf.write('  %s = %s\n' % (oname, value))
 
     def _set_config_option(self, name, value, directory, scope):
-        for conf in self._get_configs(directory, scope):
-            conf.set_user_option(name, value)
-            break
-        else:
-            raise errors.NoSuchConfig(scope)
+        conf = self._get_stack(directory, scope)
+        conf.set(name, value)
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
             raise errors.BzrCommandError(
                 '--remove expects an option to remove.')
-        removed = False
-        for conf in self._get_configs(directory, scope):
-            for (section_name, section, conf_id) in conf._get_sections():
-                if scope is not None and conf_id != scope:
-                    # Not the right configuration file
-                    continue
-                if name in section:
-                    if conf_id != conf.config_id():
-                        conf = self._get_configs(directory, conf_id).next()
-                    # We use the first section in the first config where the
-                    # option is defined to remove it
-                    conf.remove_user_option(name, section_name)
-                    removed = True
-                    break
-            break
-        else:
-            raise errors.NoSuchConfig(scope)
-        if not removed:
+        conf = self._get_stack(directory, scope)
+        try:
+            conf.remove(name)
+        except KeyError:
             raise errors.NoSuchConfigOption(name)
+
 
 # Test registries
 #

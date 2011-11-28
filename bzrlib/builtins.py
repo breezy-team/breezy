@@ -558,7 +558,7 @@ class cmd_revno(Command):
     _see_also = ['info']
     takes_args = ['location?']
     takes_options = [
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         'revision',
         ]
 
@@ -606,7 +606,7 @@ class cmd_revision_info(Command):
         custom_help('directory',
             help='Branch to examine, '
                  'rather than the one containing the working directory.'),
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         ]
 
     @display_command
@@ -1312,27 +1312,29 @@ class cmd_branch(Command):
             # RBC 20060209
             revision_id = br_from.last_revision()
         if to_location is None:
-            to_location = urlutils.derive_to_location(from_location)
+            to_location = getattr(br_from, "name", None)
+            if to_location is None:
+                to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
-            if not use_existing_dir:
-                raise errors.BzrCommandError(gettext('Target directory "%s" '
-                    'already exists.') % to_location)
+            try:
+                to_dir = controldir.ControlDir.open_from_transport(
+                    to_transport)
+            except errors.NotBranchError:
+                if not use_existing_dir:
+                    raise errors.BzrCommandError(gettext('Target directory "%s" '
+                        'already exists.') % to_location)
+                else:
+                    to_dir = None
             else:
                 try:
-                    to_dir = controldir.ControlDir.open_from_transport(
-                        to_transport)
+                    to_dir.open_branch()
                 except errors.NotBranchError:
-                    to_dir = None
+                    pass
                 else:
-                    try:
-                        to_dir.open_branch()
-                    except errors.NotBranchError:
-                        pass
-                    else:
-                        raise errors.AlreadyBranchError(to_location)
+                    raise errors.AlreadyBranchError(to_location)
         except errors.NoSuchFile:
             raise errors.BzrCommandError(gettext('Parent of "%s" does not exist.')
                                          % to_location)
@@ -1348,7 +1350,9 @@ class cmd_branch(Command):
                                             force_new_repo=standalone,
                                             create_tree_if_local=not no_tree,
                                             source_branch=br_from)
-                branch = to_dir.open_branch()
+                branch = to_dir.open_branch(
+                    possible_transports=[
+                        br_from.bzrdir.root_transport, to_transport])
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(
@@ -2512,10 +2516,10 @@ class cmd_log(Command):
                    help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
-                   ' of both ancestries (require -rX..Y)'
+                   ' of both ancestries (require -rX..Y).'
                    ),
             Option('signatures',
-                   help='Show digital signature validity'),
+                   help='Show digital signature validity.'),
             ListOption('match',
                 short_name='m',
                 help='Show revisions whose properties match this '
@@ -6068,17 +6072,35 @@ class cmd_switch(Command):
             if '/' not in to_location and '\\' not in to_location:
                 # This path is meant to be relative to the existing branch
                 this_url = self._get_branch_location(control_dir)
-                to_location = urlutils.join(this_url, '..', to_location)
+                # Perhaps the target control dir supports colocated branches?
+                try:
+                    root = controldir.ControlDir.open(this_url,
+                        possible_transports=[control_dir.user_transport])
+                except errors.NotBranchError:
+                    colocated = False
+                else:
+                    colocated = root._format.colocated_branches
+                if colocated:
+                    to_location = urlutils.join_segment_parameters(this_url,
+                        {"branch": urlutils.escape(to_location)})
+                else:
+                    to_location = urlutils.join(
+                        this_url, '..', urlutils.escape(to_location))
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
         else:
+            # Perhaps it's a colocated branch?
             try:
-                to_branch = Branch.open(to_location)
-            except errors.NotBranchError:
-                this_url = self._get_branch_location(control_dir)
-                to_branch = Branch.open(
-                    urlutils.join(this_url, '..', to_location))
+                to_branch = control_dir.open_branch(to_location)
+            except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+                try:
+                    to_branch = Branch.open(to_location)
+                except errors.NotBranchError:
+                    this_url = self._get_branch_location(control_dir)
+                    to_branch = Branch.open(
+                        urlutils.join(
+                            this_url, '..', urlutils.escape(to_location)))
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
