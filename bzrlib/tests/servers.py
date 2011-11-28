@@ -32,29 +32,27 @@ class DisconnectingTCPServer(object):
         self.thread = threading.Thread(
             name='%s (port %d)' % (self.__class__.__name__, self.port),
             target=self.accept_and_close)
+        self._please_stop = False
         self.thread.start()
 
     def accept_and_close(self):
         fd = self.sock.fileno()
         self.sock.setblocking(False)
-        while True:
+        while not self._please_stop:
             try:
                 # We can't just accept here, because accept is not interrupted
                 # by the listen socket being asynchronously closed by
                 # stop_server.  However, select will be interrupted.
-                select.select([fd], [], [fd])
+                select.select([fd], [fd], [fd], 10)
                 conn, addr = self.sock.accept()
-            except socket.error, e:
-                if e.errno == errno.EBADF:
+            except (select.error, socket.error), e:
+                en = getattr(e, 'errno') or e[0]
+                if en == errno.EBADF:
                     # Probably (hopefully) because the stop method was called
                     # and we should stop.
-                    return
-                else:
-                    raise
-            except select.error, e:
-                # Gratuituous incompatibility: no errno attribute.
-                if e[0] == errno.EBADF:
-                    return
+                    break
+                elif en == errno.EAGAIN or en == errno.EWOULDBLOCK:
+                    continue
                 else:
                     raise
             conn.shutdown(socket.SHUT_RDWR)
@@ -64,6 +62,7 @@ class DisconnectingTCPServer(object):
         return 'bzr://127.0.0.1:%d/' % (self.port,)
 
     def stop_server(self):
+        self._please_stop = True
         try:
             # make sure the thread dies by connecting to the listening socket,
             # just in case the test failed to do so.
