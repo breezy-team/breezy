@@ -88,6 +88,10 @@ from bzrlib.osutils import (
     )
 from bzrlib.trace import mutter, note
 from bzrlib.revision import CURRENT_REVISION
+from bzrlib.symbol_versioning import (
+    deprecated_passed,
+    DEPRECATED_PARAMETER,
+    )
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
@@ -167,6 +171,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return views.DisabledViews(self)
 
     def __init__(self, basedir='.',
+                 branch=DEPRECATED_PARAMETER,
                  _internal=False,
                  _transport=None,
                  _format=None,
@@ -182,7 +187,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 "WorkingTree.open() to obtain a WorkingTree.")
         basedir = safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
-        self._branch = self.bzrdir.open_branch()
+        if deprecated_passed(branch):
+            self._branch = branch
+        else:
+            self._branch = self.bzrdir.open_branch()
         self.basedir = realpath(basedir)
         self._transport = _transport
         self._rules_searcher = None
@@ -1727,6 +1735,7 @@ class InventoryWorkingTree(WorkingTree,
     """
 
     def __init__(self, basedir='.',
+                 branch=DEPRECATED_PARAMETER,
                  _inventory=None,
                  _control_files=None,
                  _internal=False,
@@ -1737,7 +1746,7 @@ class InventoryWorkingTree(WorkingTree,
         :param branch: A branch to override probing for the branch.
         """
         super(InventoryWorkingTree, self).__init__(basedir=basedir,
-            _transport=_control_files._transport,
+            branch=branch, _transport=_control_files._transport,
             _internal=_internal, _format=_format, _bzrdir=_bzrdir)
 
         self._control_files = _control_files
