@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bz2
+import zlib
 
 from bzrlib import (
     bencode,
@@ -51,6 +52,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
+from bzrlib.serializer import format_registry as serializer_format_registry
 from bzrlib.trace import mutter, note, warning, log_exception_quietly
 
 
@@ -2245,10 +2247,69 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository.texts
 
+    def _iter_revisions_rpc(self, revision_ids):
+        body = "\n".join(revision_ids)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response_tuple, response_handler = (
+            self._call_with_body_bytes_expecting_body(
+            "Repository.iter_revisions", (path, ), body))
+        if response_tuple[0] != "ok":
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        serializer_format = response_tuple[1]
+        serializer = serializer_format_registry.get(serializer_format)
+        byte_stream = response_handler.read_streamed_body()
+        decompressor = zlib.decompressobj()
+        chunks = []
+        for bytes in byte_stream:
+            chunks.append(decompressor.decompress(bytes))
+            if decompressor.unused_data != "":
+                chunks.append(decompressor.flush())
+                yield serializer.read_revision_from_string("".join(chunks))
+                unused = decompressor.unused_data
+                decompressor = zlib.decompressobj()
+                chunks = [decompressor.decompress(unused)]
+        chunks.append(decompressor.flush())
+        text = "".join(chunks)
+        if text != "":
+            yield serializer.read_revision_from_string("".join(chunks))
+
     @needs_read_lock
     def get_revisions(self, revision_ids):
-        self._ensure_real()
-        return self._real_repository.get_revisions(revision_ids)
+        if revision_ids is None:
+            revision_ids = self.all_revision_ids()
+        else:
+            for rev_id in revision_ids:
+                if not rev_id or not isinstance(rev_id, basestring):
+                    raise errors.InvalidRevisionId(
+                        revision_id=rev_id, branch=self)
+        try:
+            missing = set(revision_ids)
+            revs = {}
+            for rev in self._iter_revisions_rpc(revision_ids):
+                missing.remove(rev.revision_id)
+                revs[rev.revision_id] = rev
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.get_revisions(revision_ids)
+        for fallback in self._fallback_repositories:
+            if not missing:
+                break
+            for revid in list(missing):
+                # XXX JRV 2011-11-20: It would be nice if there was a
+                # public method on Repository that could be used to query
+                # for revision objects *without* failing completely if one
+                # was missing. There is VersionedFileRepository._iter_revisions,
+                # but unfortunately that's private and not provided by
+                # all repository implementations.
+                try:
+                    revs[revid] = fallback.get_revision(revid)
+                except errors.NoSuchRevision:
+                    pass
+                else:
+                    missing.remove(revid)
+        if missing:
+            raise errors.NoSuchRevision(self, list(missing)[0])
+        return [revs[revid] for revid in revision_ids]
 
     def supports_rich_root(self):
         return self._format.rich_root_data
