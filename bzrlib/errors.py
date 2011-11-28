@@ -20,7 +20,6 @@
 from bzrlib import (
     osutils,
     i18n,
-    trace,
     )
 from bzrlib.i18n import gettext
 
@@ -136,10 +135,7 @@ class BzrError(StandardError):
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
             i18n.install()
-            unicode_fmt = unicode(fmt) #_fmt strings should be ascii
-            if type(fmt) == unicode:
-                trace.mutter("Unicode strings in error.fmt are deprecated")
-            return gettext(unicode_fmt)
+            return gettext(unicode(fmt)) # _fmt strings should be ascii
         return 'Unprintable exception %s: dict=%r, fmt=%r' \
             % (self.__class__.__name__,
                self.__dict__,
