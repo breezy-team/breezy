@@ -966,12 +966,14 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
         try:
             self._repository.resume_write_group(self._write_group_tokens)
             try:
-                self._repository.add_signature_text(self._revision_id, body_bytes)
+                self._repository.add_signature_text(self._revision_id,
+                    body_bytes)
             finally:
                 new_write_group_tokens = self._repository.suspend_write_group()
         finally:
             self._repository.unlock()
-        return SuccessfulSmartServerResponse(('ok', ) + tuple(new_write_group_tokens))
+        return SuccessfulSmartServerResponse(
+            ('ok', ) + tuple(new_write_group_tokens))
 
 
 class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
