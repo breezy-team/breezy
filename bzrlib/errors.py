@@ -18,7 +18,6 @@
 """
 
 from bzrlib import (
-    osutils,
     i18n,
     )
 from bzrlib.i18n import gettext
@@ -2948,7 +2947,7 @@ class UnableEncodePath(BzrError):
         from bzrlib.osutils import get_user_encoding
         self.path = path
         self.kind = kind
-        self.user_encoding = osutils.get_user_encoding()
+        self.user_encoding = get_user_encoding()
 
 
 class NoSuchConfig(BzrError):
