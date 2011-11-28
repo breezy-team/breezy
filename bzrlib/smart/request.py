@@ -415,6 +415,8 @@ def _translate_error(err):
     elif isinstance(err, errors.ShortReadvError):
         return ('ShortReadvError', err.path, str(err.offset), str(err.length),
                 str(err.actual))
+    elif isinstance(err, errors.RevisionNotPresent):
+        return ('RevisionNotPresent', err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
         return (('UnstackableRepositoryFormat', str(err.format), err.url))
     elif isinstance(err, errors.UnstackableBranchFormat):
@@ -657,6 +659,9 @@ request_handlers.register_lazy(
     'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
+request_handlers.register_lazy(
+    'Repository.iter_files_bytes', 'bzrlib.smart.repository',
+    'SmartServerRepositoryIterFilesBytes')
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
 request_handlers.register_lazy(

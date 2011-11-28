@@ -29,6 +29,7 @@ from bzrlib import (
     graph,
     lock,
     lockdir,
+    osutils,
     registry,
     repository as _mod_repository,
     revision as _mod_revision,
@@ -1784,8 +1785,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_read_lock
     def get_inventory(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.get_inventory(revision_id)
+        return list(self.iter_inventories([revision_id]))[0]
 
     def iter_inventories(self, revision_ids, ordering=None):
         self._ensure_real()
@@ -1918,11 +1918,80 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         return self._real_repository._get_versioned_file_checker(
             revisions, revision_versions_cache)
 
+    def _iter_files_bytes_rpc(self, desired_files, absent):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        lines = []
+        identifiers = []
+        for (file_id, revid, identifier) in desired_files:
+            lines.append("%s\0%s" % (
+                osutils.safe_file_id(file_id),
+                osutils.safe_revision_id(revid)))
+            identifiers.append(identifier)
+        (response_tuple, response_handler) = (
+            self._call_with_body_bytes_expecting_body(
+            "Repository.iter_files_bytes", (path, ), "\n".join(lines)))
+        if response_tuple != ('ok', ):
+            response_handler.cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        byte_stream = response_handler.read_streamed_body()
+        def decompress_stream(start, byte_stream, unused):
+            decompressor = zlib.decompressobj()
+            yield decompressor.decompress(start)
+            while decompressor.unused_data == "":
+                try:
+                    data = byte_stream.next()
+                except StopIteration:
+                    break
+                yield decompressor.decompress(data)
+            yield decompressor.flush()
+            unused.append(decompressor.unused_data)
+        unused = ""
+        while True:
+            while not "\n" in unused:
+                unused += byte_stream.next()
+            header, rest = unused.split("\n", 1)
+            args = header.split("\0")
+            if args[0] == "absent":
+                absent[identifiers[int(args[3])]] = (args[1], args[2])
+                unused = rest
+                continue
+            elif args[0] == "ok":
+                idx = int(args[1])
+            else:
+                raise errors.UnexpectedSmartServerResponse(args)
+            unused_chunks = []
+            yield (identifiers[idx],
+                decompress_stream(rest, byte_stream, unused_chunks))
+            unused = "".join(unused_chunks)
+
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.
         """
-        self._ensure_real()
-        return self._real_repository.iter_files_bytes(desired_files)
+        try:
+            absent = {}
+            for (identifier, bytes_iterator) in self._iter_files_bytes_rpc(
+                    desired_files, absent):
+                yield identifier, bytes_iterator
+            for fallback in self._fallback_repositories:
+                if not absent:
+                    break
+                desired_files = [(key[0], key[1], identifier) for
+                    (identifier, key) in absent.iteritems()]
+                for (identifier, bytes_iterator) in fallback.iter_files_bytes(desired_files):
+                    del absent[identifier]
+                    yield identifier, bytes_iterator
+            if absent:
+                # There may be more missing items, but raise an exception
+                # for just one.
+                missing_identifier = absent.keys()[0]
+                missing_key = absent[missing_identifier]
+                raise errors.RevisionNotPresent(revision_id=missing_key[1],
+                    file_id=missing_key[0])
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            for (identifier, bytes_iterator) in (
+                self._real_repository.iter_files_bytes(desired_files)):
+                yield identifier, bytes_iterator
 
     def get_cached_parent_map(self, revision_ids):
         """See bzrlib.CachingParentsProvider.get_cached_parent_map"""
@@ -2111,8 +2180,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_read_lock
     def revision_trees(self, revision_ids):
-        self._ensure_real()
-        return self._real_repository.revision_trees(revision_ids)
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            yield InventoryRevisionTree(self, inv, inv.revision_id)
 
     @needs_read_lock
     def get_revision_reconcile(self, revision_id):
@@ -2137,7 +2207,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def _copy_repository_tarball(self, to_bzrdir, revision_id=None):
         # get a tarball of the remote repository, and copy from that into the
         # destination
-        from bzrlib import osutils
         import tarfile
         # TODO: Maybe a progress bar while streaming the tarball?
         note(gettext("Copying repository content as tarball..."))
@@ -2196,9 +2265,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     @property
     def revisions(self):
         """Decorate the real repository for now.
-
-        In the short term this should become a real object to intercept graph
-        lookups.
 
         In the long term a full blown network facility is needed.
         """
@@ -2336,12 +2402,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return self._real_repository.add_signature_text(
                 revision_id, signature)
         path = self.bzrdir._path_for_remote_call(self._client)
-        response, response_handler = self._call_with_body_bytes(
-            'Repository.add_signature_text', (path, revision_id),
-            signature)
+        response, handler = self._call_with_body_bytes_expecting_body(
+            'Repository.add_signature_text', (path, self._lock_token,
+                revision_id) + tuple(self._write_group_tokens), signature)
+        handler.cancel_read_body()
         self.refresh_data()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+        self._write_group_tokens = response[1:]
 
     def has_signature_for_revision_id(self, revision_id):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -3855,6 +3923,13 @@ error_translators.register('ReadError',
     lambda err, find, get_path: errors.ReadError(get_path()))
 error_translators.register('NoSuchFile',
     lambda err, find, get_path: errors.NoSuchFile(get_path()))
+error_translators.register('UnsuspendableWriteGroup',
+    lambda err, find, get_path: errors.UnsuspendableWriteGroup(
+        repository=find('repository')))
+error_translators.register('UnresumableWriteGroup',
+    lambda err, find, get_path: errors.UnresumableWriteGroup(
+        repository=find('repository'), write_groups=err.error_args[0],
+        reason=err.error_args[1]))
 no_context_error_translators.register('IncompatibleRepositories',
     lambda err: errors.IncompatibleRepositories(
         err.error_args[0], err.error_args[1], err.error_args[2]))
@@ -3905,14 +3980,9 @@ no_context_error_translators.register('ReadOnlyError',
 no_context_error_translators.register('MemoryError',
     lambda err: errors.BzrError("remote server out of memory\n"
         "Retry non-remotely, or contact the server admin for details."))
+no_context_error_translators.register('RevisionNotPresent',
+    lambda err: errors.RevisionNotPresent(err.error_args[0], err.error_args[1]))
 
 no_context_error_translators.register('BzrCheckError',
     lambda err: errors.BzrCheckError(msg=err.error_args[0]))
 
-error_translators.register('UnsuspendableWriteGroup',
-    lambda err, find, get_path: errors.UnsuspendableWriteGroup(
-        repository=find('repository')))
-error_translators.register('UnresumableWriteGroup',
-    lambda err, find, get_path: errors.UnresumableWriteGroup(
-        repository=find('repository'), write_groups=err.error_args[0],
-        reason=err.error_args[1]))

@@ -963,18 +963,18 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def do_repository_request(self, repository, lock_token, write_group_tokens,
-            revision_id):
+    def do_repository_request(self, repository, lock_token, revision_id,
+            *write_group_tokens):
         """Add a revision signature text.
 
         :param repository: Repository to operate on
         :param lock_token: Lock token
-        :param write_group_tokens: Write group tokens
         :param revision_id: Revision for which to add signature
+        :param write_group_tokens: Write group tokens
         """
         self._lock_token = lock_token
-        self._write_group_tokens = write_group_tokens
         self._revision_id = revision_id
+        self._write_group_tokens = write_group_tokens
         return None
 
     def do_body(self, body_bytes):
@@ -988,12 +988,14 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
         try:
             self._repository.resume_write_group(self._write_group_tokens)
             try:
-                self._repository.add_signature_text(self._revision_id, body_bytes)
+                self._repository.add_signature_text(self._revision_id,
+                    body_bytes)
             finally:
                 new_write_group_tokens = self._repository.suspend_write_group()
         finally:
             self._repository.unlock()
-        return SuccessfulSmartServerResponse(('ok', ) + tuple(new_write_group_tokens))
+        return SuccessfulSmartServerResponse(
+            ('ok', ) + tuple(new_write_group_tokens))
 
 
 class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
@@ -1124,6 +1126,63 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
         finally:
             self._repository.unlock()
         return SuccessfulSmartServerResponse(("ok", ), )
+
+
+class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
+    """Iterate over the contents of files.
+
+    The client sends a list of desired files to stream, one
+    per line, and as tuples of file id and revision, separated by
+    \0.
+
+    The server replies with a stream. Each entry is preceded by a header,
+    which can either be:
+
+    * "ok\x00IDX\n" where IDX is the index of the entry in the desired files
+        list sent by the client. This header is followed by the contents of
+        the file, bzip2-compressed.
+    * "absent\x00FILEID\x00REVISION\x00IDX" to indicate a text is missing.
+        The client can then raise an appropriate RevisionNotPresent error
+        or check its fallback repositories.
+
+    New in 2.5.
+    """
+
+    def body_stream(self, repository, desired_files):
+        self._repository.lock_read()
+        try:
+            text_keys = {}
+            for i, key in enumerate(desired_files):
+                text_keys[key] = i
+            for record in repository.texts.get_record_stream(text_keys,
+                    'unordered', True):
+                identifier = text_keys[record.key]
+                if record.storage_kind == 'absent':
+                    yield "absent\0%s\0%s\0%d\n" % (record.key[0],
+                        record.key[1], identifier)
+                    # FIXME: Way to abort early?
+                    continue
+                yield "ok\0%d\n" % identifier
+                compressor = zlib.compressobj()
+                for bytes in record.get_bytes_as('chunked'):
+                    data = compressor.compress(bytes)
+                    if data:
+                        yield data
+                data = compressor.flush()
+                if data:
+                    yield data
+        finally:
+            self._repository.unlock()
+
+    def do_body(self, body_bytes):
+        desired_files = [
+            tuple(l.split("\0")) for l in body_bytes.splitlines()]
+        return SuccessfulSmartServerResponse(('ok', ),
+            body_stream=self.body_stream(self._repository, desired_files))
+
+    def do_repository_request(self, repository):
+        # Signal that we want a body
+        return None
 
 
 class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):

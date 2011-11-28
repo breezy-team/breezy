@@ -1541,7 +1541,7 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         tree.branch.repository.start_write_group()
         write_group_tokens = tree.branch.repository.suspend_write_group()
         self.assertEqual(None, request.execute('', write_token,
-            write_group_tokens, 'rev1'))
+            'rev1', *write_group_tokens))
         response = request.do_body('somesignature')
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args[0], 'ok')
@@ -1847,6 +1847,36 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
         self.assertTrue(tree.branch.repository.has_revision(rev_id_utf8))
         self.assertEqual(smart_req.SmartServerResponse(('yes', )),
             request.execute('', rev_id_utf8))
+
+
+class TestSmartServerRepositoryIterFilesBytes(tests.TestCaseWithTransport):
+
+    def test_single(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterFilesBytes(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", "somecontents")])
+        t.add(["file"], ["thefileid"])
+        t.commit(rev_id='somerev', message="add file")
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("thefileid\0somerev\n")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals("".join(response.body_stream),
+            "ok\x000\n" + zlib.compress("somecontents"))
+
+    def test_missing(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterFilesBytes(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.assertIs(None, request.execute(''))
+        response = request.do_body("thefileid\0revision\n")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals("".join(response.body_stream),
+            "absent\x00thefileid\x00revision\x000\n")
 
 
 class TestSmartServerRequestHasSignatureForRevisionId(
@@ -2472,6 +2502,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryInsertStreamLocked)
         self.assertHandlerEqual('Repository.is_shared',
             smart_repo.SmartServerRepositoryIsShared)
+        self.assertHandlerEqual('Repository.iter_files_bytes',
+            smart_repo.SmartServerRepositoryIterFilesBytes)
         self.assertHandlerEqual('Repository.lock_write',
             smart_repo.SmartServerRepositoryLockWrite)
         self.assertHandlerEqual('Repository.make_working_trees',

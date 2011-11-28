@@ -2413,14 +2413,26 @@ class TestRepositoryAddSignatureText(TestRemoteRepository):
     def test_add_signature_text(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_success_response('ok')
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.start_write_group', ('quack/', 'a token'),
+            'success', ('ok', ('token1', )))
+        client.add_expected_call(
+            'Repository.add_signature_text', ('quack/', 'a token', 'rev1',
+                'token1'),
+            'success', ('ok', ), None)
+        repo.lock_write()
+        repo.start_write_group()
         self.assertIs(None,
             repo.add_signature_text("rev1", "every bloody emperor"))
         self.assertEqual(
-            [('call_with_body_bytes',
-              'Repository.add_signature_text', ('quack/', 'rev1', ),
-              'every bloody emperor')],
-            client._calls)
+            ('call_with_body_bytes_expecting_body',
+              'Repository.add_signature_text',
+                ('quack/', 'a token', 'rev1', 'token1'),
+              'every bloody emperor'),
+            client._calls[-1])
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):
@@ -2987,7 +2999,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             'success', ('ok', 'a token'))
         client.add_expected_call(
             'Repository.start_write_group', ('quack/', 'a token'),
-            'success', ('ok', 'token1'))
+            'success', ('ok', ('token1', )))
         repo.lock_write()
         repo.start_write_group()
 
@@ -3124,6 +3136,33 @@ class TestRepositoryHasRevision(TestRemoteRepository):
 
         # The remote repo shouldn't be accessed.
         self.assertEqual([], client._calls)
+
+
+class TestRepositoryIterFilesBytes(TestRemoteRepository):
+    """Test Repository.iter_file_bytes."""
+
+    def test_single(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.iter_files_bytes', ('quack/', ),
+            'success', ('ok',), iter(["ok\x000", "\n", zlib.compress("mydata" * 10)]))
+        for (identifier, byte_stream) in repo.iter_files_bytes([("somefile",
+                "somerev", "myid")]):
+            self.assertEquals("myid", identifier)
+            self.assertEquals("".join(byte_stream), "mydata" * 10)
+
+    def test_missing(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.iter_files_bytes',
+                ('quack/', ),
+            'error', ('RevisionNotPresent', 'somefile', 'somerev'),
+            iter(["absent\0somefile\0somerev\n"]))
+        self.assertRaises(errors.RevisionNotPresent, list,
+                repo.iter_files_bytes(
+                [("somefile", "somerev", "myid")]))
 
 
 class TestRepositoryInsertStreamBase(TestRemoteRepository):
