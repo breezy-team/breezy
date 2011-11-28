@@ -867,12 +867,13 @@ class BzrDirPreSplitOut(BzrDir):
         return not isinstance(self._format, format.__class__)
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False):
+                    ignore_fallbacks=False, possible_transports=None):
         """See BzrDir.open_branch."""
         from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         format.check_support_status(unsupported)
-        return format.open(self, name, _found=True)
+        return format.open(self, name, _found=True,
+            possible_transports=possible_transports)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
