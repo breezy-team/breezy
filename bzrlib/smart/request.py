@@ -637,6 +637,9 @@ request_handlers.register_lazy('Repository.get_parent_map',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGetParentMap')
 request_handlers.register_lazy(
+    'Repository.add_signature_text', 'bzrlib.smart.repository',
+    'SmartServerRepositoryAddSignatureText')
+request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
@@ -672,6 +675,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.get_stream_1.19', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream_1_19')
+request_handlers.register_lazy(
+    'Repository.pack', 'bzrlib.smart.repository',
+    'SmartServerRepositoryPack')
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')

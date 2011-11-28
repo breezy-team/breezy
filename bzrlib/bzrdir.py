@@ -1979,34 +1979,33 @@ register_metadir(controldir.format_registry, 'knit',
     deprecated=True)
 register_metadir(controldir.format_registry, 'dirstate',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
-    help='New in 0.15: Fast local operations. Compatible with bzr 0.8 and '
-        'above when accessed over the network.',
+    help='Format using dirstate for working trees. '
+        'Compatible with bzr 0.8 and '
+        'above when accessed over the network. Introduced in bzr 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
 register_metadir(controldir.format_registry, 'dirstate-tags',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
-    help='New in 0.15: Fast local operations and improved scaling for '
-        'network operations. Additionally adds support for tags.'
-        ' Incompatible with bzr < 0.15.',
+    help='Variant of dirstate with support for tags. '
+        'Introduced in bzr 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
 register_metadir(controldir.format_registry, 'rich-root',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
-    help='New in 1.0.  Better handling of tree roots.  Incompatible with'
-        ' bzr < 1.0.',
+    help='Variant of dirstate with better handling of tree roots. '
+        'Introduced in bzr 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
 register_metadir(controldir.format_registry, 'dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
-    help='New in 0.15: Fast local operations and improved scaling for '
-        'network operations. Additionally adds support for versioning nested '
-        'bzr branches. Incompatible with bzr < 0.15.',
+    help='Variant of dirstate with support for nested trees. '
+         'Introduced in 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     experimental=True,
@@ -2014,31 +2013,34 @@ register_metadir(controldir.format_registry, 'dirstate-with-subtree',
     )
 register_metadir(controldir.format_registry, 'pack-0.92',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack1',
-    help='New in 0.92: Pack-based format with data compatible with '
-        'dirstate-tags format repositories. Interoperates with '
-        'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
+    help='Pack-based format used in 1.x series. Introduced in 0.92. '
+        'Interoperates with bzr repositories before 0.92 but cannot be '
+        'read by bzr < 0.92. '
         ,
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
+    deprecated=True,
     )
 register_metadir(controldir.format_registry, 'pack-0.92-subtree',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack3',
-    help='New in 0.92: Pack-based format with data compatible with '
-        'dirstate-with-subtree format repositories. Interoperates with '
+    help='Pack-based format used in 1.x series, with subtree support. '
+        'Introduced in 0.92. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
         ,
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
+    deprecated=True,
     experimental=True,
     )
 register_metadir(controldir.format_registry, 'rich-root-pack',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack4',
-    help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
-         '(needed for bzr-svn and bzr-git).',
+    help='A variant of pack-0.92 that supports rich-root data '
+         '(needed for bzr-svn and bzr-git). Introduced in 1.0.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
+    deprecated=True,
     )
 register_metadir(controldir.format_registry, '1.6',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack5',
@@ -2048,6 +2050,7 @@ register_metadir(controldir.format_registry, '1.6',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
+    deprecated=True,
     )
 register_metadir(controldir.format_registry, '1.6.1-rich-root',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack5RichRoot',
@@ -2056,6 +2059,7 @@ register_metadir(controldir.format_registry, '1.6.1-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
+    deprecated=True,
     )
 register_metadir(controldir.format_registry, '1.9',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6',
@@ -2065,6 +2069,7 @@ register_metadir(controldir.format_registry, '1.9',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
+    deprecated=True,
     )
 register_metadir(controldir.format_registry, '1.9-rich-root',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
@@ -2073,12 +2078,15 @@ register_metadir(controldir.format_registry, '1.9-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
+    deprecated=True,
     )
 register_metadir(controldir.format_registry, '1.14',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    hidden=True,
+    deprecated=True,
     )
 register_metadir(controldir.format_registry, '1.14-rich-root',
     'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
@@ -2086,6 +2094,8 @@ register_metadir(controldir.format_registry, '1.14-rich-root',
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    hidden=True,
+    deprecated=True,
     )
 # The following un-numbered 'development' formats should always just be aliases.
 register_metadir(controldir.format_registry, 'development-subtree',
@@ -2124,7 +2134,7 @@ register_metadir(controldir.format_registry, 'development-colo',
     help='The 2a format with experimental support for colocated branches.\n',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
-    experimental=False,
+    experimental=True,
     bzrdir_format=BzrDirMetaFormat1Colo,
     )
 
@@ -2134,7 +2144,7 @@ register_metadir(controldir.format_registry, 'development-colo',
 # Finally, the current format.
 register_metadir(controldir.format_registry, '2a',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
-    help='First format for bzr 2.0 series.\n'
+    help='Format for the bzr 2.0 series.\n'
         'Uses group-compress storage.\n'
         'Provides rich roots which are a one-way transition.\n',
         # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
