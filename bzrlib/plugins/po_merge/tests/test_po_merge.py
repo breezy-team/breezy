@@ -61,7 +61,8 @@ $ bzr merge ../adduser -rrevid:other
 $ bzr branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
-$ bzr config po_merge.po_dirs=dont-exist
+# set po_dirs to an empty list
+$ bzr config po_merge.po_dirs=
 $ bzr merge ../adduser -rrevid:other
 2> M  po/adduser.pot
 2> M  po/fr.po
@@ -81,7 +82,6 @@ $ bzr resolve po/adduser.pot
         self.run_script("""\
 $ bzr config po_merge.po_dirs=po,
 """)
-        self.debug()
         # Use remerge to trigger the hook, 
         self.run_script("""\
 $ bzr remerge po/*.po
