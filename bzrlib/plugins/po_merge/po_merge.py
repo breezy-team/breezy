@@ -91,7 +91,7 @@ class PoMerger(merge.PerFileMerger):
 
     def file_matches(self, params):
         """Return True if merge_matching should be called on this file."""
-        if not self.po_files or not self.pot_file:
+        if not self.po_files or not self.pot_file or not self.command:
             # Return early if there is no options defined
             return False
         match = False
@@ -113,9 +113,9 @@ class PoMerger(merge.PerFileMerger):
         if self.merger.this_tree.has_filename(pot_path):
             self.selected_pot_file = pot_path
             self.selected_po_file = po_path
-            # FIXME: I can't find a way to know if the .pot file has conflicts
-            # *during* the merge itself. So either the actual content on disk
-            # is fine and msgmerge will work OR it's not and it will
+            # FIXME: I can't find an easy way to know if the .pot file has
+            # conflicts *during* the merge itself. So either the actual content
+            # on disk is fine and msgmerge will work OR it's not and it will
             # fail. Conversely, either the result is ok for the user and he's
             # happy OR the user needs to resolve the conflicts in the .pot file
             # and use remerge. -- vila 2011-11-24

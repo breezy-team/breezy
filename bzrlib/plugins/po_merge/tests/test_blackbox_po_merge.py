@@ -42,8 +42,8 @@ class BlackboxTestPoMerger(script.TestCaseWithTransportAndScript):
 
     def test_merge_with_hook_gives_unexpected_results(self):
         # Since the conflicts in .pot are not seen *during* the merge, the .po
-        # merge triggers the hook and create no conflicts. But the .pot used is
-        # the one present in the tree *before* the merge.
+        # merge triggers the hook and creates no conflicts. But the .pot used
+        # is the one present in the tree *before* the merge.
         self.run_script("""\
 $ bzr branch adduser -rrevid:this work
 2>Branched 2 revisions.
@@ -72,7 +72,7 @@ $ bzr merge ../adduser -rrevid:other
 """)
         # Fix the conflicts in the .pot file
         with open('adduser.pot', 'w') as f:
-            f.write(_adduser_branch['resolved_pot'])
+            f.write(_Adduser['resolved_pot'])
         # Tell bzr the conflict is resolved
         self.run_script("""\
 $ bzr resolve adduser.pot
@@ -106,21 +106,21 @@ def make_adduser_branch(test, relpath):
                            [('add', ('', 'root-id', 'directory', '')),
                             # Create empty files
                             ('add', ('adduser.pot', 'pot-id', 'file',
-                                     _adduser_branch['base_pot'])),
+                                     _Adduser['base_pot'])),
                             ('add', ('fr.po', 'po-id', 'file',
-                                     _adduser_branch['base_po'])),
+                                     _Adduser['base_po'])),
             ])
     # The 'other' branch
     builder.build_snapshot('other', ['base'],
                            [('modify', ('pot-id',
-                                        _adduser_branch['other_pot'])),
+                                        _Adduser['other_pot'])),
                             ('modify', ('po-id',
-                                        _adduser_branch['other_po'])),
+                                        _Adduser['other_po'])),
                             ])
     # The 'this' branch
     builder.build_snapshot('this', ['base'],
-                           [('modify', ('pot-id', _adduser_branch['this_pot'])),
-                            ('modify', ('po-id', _adduser_branch['this_po'])),
+                           [('modify', ('pot-id', _Adduser['this_pot'])),
+                            ('modify', ('po-id', _Adduser['this_po'])),
                             ])
     # builder.get_branch() tip is now 'this'
     builder.finish_series()
@@ -139,9 +139,9 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
         self.run_script("""\
 $ bzr branch adduser -rrevid:%(revid)s %(branch_name)s
 """ % env, null_output_matches_anything=True)
-        self.assertFileEqual(_adduser_branch['%(revid)s_pot' % env],
+        self.assertFileEqual(_Adduser['%(revid)s_pot' % env],
                              '%(branch_name)s/adduser.pot' % env)
-        self.assertFileEqual(_adduser_branch['%(revid)s_po' % env],
+        self.assertFileEqual(_Adduser['%(revid)s_po' % env],
                              '%(branch_name)s/fr.po' % env )
 
     def test_base(self):
@@ -158,7 +158,7 @@ $ bzr branch adduser -rrevid:%(revid)s %(branch_name)s
 # details. This is declared at the end of the file to avoid cluttering the
 # beginning of the file.
 
-_adduser_branch = dict(
+_Adduser = dict(
     base_pot = r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
