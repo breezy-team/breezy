@@ -128,8 +128,9 @@ Internals
   ``VersionedFileRepository.get_serializer_format``,
   ``Repository.all_revision_ids``, ``Repository.start_write_group``,
   ``Repository.commit_write_group``, ``Repository.abort_write_group``
-  ``Repository.iter_revisions``, ``Repository.check_write_group`` and
-  ``Repository.add_signature_revision_text``.
+  ``Repository.check_write_group``, ``Repository.iter_revisions``,
+  ``Repository.add_signature_revision_text`` and
+  ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
 
 * Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)

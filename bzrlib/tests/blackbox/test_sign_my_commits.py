@@ -186,6 +186,6 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # The number of readv requests seems to vary depending on the generated
         # repository and how well it compresses, so allow for a bit of
         # variation:
-        if len(self.hpss_calls) not in (20, 21):
-            self.fail("Incorrect length: wanted 20 or 21, got %d for %r" % (
+        if len(self.hpss_calls) not in (18, 19):
+            self.fail("Incorrect length: wanted 18 or 19, got %d for %r" % (
                 len(self.hpss_calls), self.hpss_calls))
