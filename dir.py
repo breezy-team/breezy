@@ -368,7 +368,7 @@ class LocalGitDir(GitDir):
         raise bzr_errors.IncompatibleFormat(format, self._format)
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None,
-            ref=None):
+            ref=None, possible_transports=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
