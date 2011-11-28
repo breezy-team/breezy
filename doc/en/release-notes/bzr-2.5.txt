@@ -144,6 +144,9 @@ Internals
   using the ``error_translators`` and ``no_context_error_translators``
   registries. (Jelmer Vernooij)
 
+* The registry of merge types has been moved to ``merge`` from ``option`` but
+  ``merge.get_merge_type_registry`` remains as an accessor. (Martin Packman)
+
 Testing
 *******
 
