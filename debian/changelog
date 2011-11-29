@@ -1,5 +1,8 @@
 bzr-builddeb (2.7.10) UNRELEASED; urgency=low
 
+  [ Vincent Ladeuil ]
+  * Refactor _default_config_for_tree to avoid tree locking issues. LP: #897690
+
   [ Jonathan Riddell ]
   * Add get-orig-source command which will get the upstream tar file.
     LP: #862188
