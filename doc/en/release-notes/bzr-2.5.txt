@@ -86,6 +86,11 @@ Bug Fixes
   and gives a better error message if the time zone offset is not given.
   (Matt Giuca, #892657)
 
+* Teach the bzr client how to reconnect if we get ``ConnectionReset``
+  while making an RPC request. This doesn't handle all possible network
+  disconnects, but it should at least handle when the server is asked to
+  shutdown gracefully. (John Arbash Meinel, #819604)
+
 * When a remote format is unknown, bzr will now print a single-line error
   message rather than a backtrace. (Jelmer Vernooij, #687226)
 
