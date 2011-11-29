@@ -91,7 +91,7 @@ class PoMerger(merge.PerFileMerger):
         self.pot_glob = self.conf.get('po_merge.pot_glob')
         self.command = self.conf.get('po_merge.command', expand=False)
         # file_matches() will set the following for merge_text()
-        self.selected_pot_file = None
+        self.pot_file_abspath = None
         trace.mutter('PoMerger created')
 
     def file_matches(self, params):
@@ -113,9 +113,11 @@ class PoMerger(merge.PerFileMerger):
         # Do we have the corresponding .pot file
         for inv_entry in self.merger.this_tree.list_files(from_dir=po_dir,
                                                           recursive=False):
-            pot_name = inv_entry[0]
+            trace.mutter('inv_entry: %r' % (inv_entry,))
+            pot_name, pot_file_id = inv_entry[0], inv_entry[3]
             if fnmatch.fnmatch(pot_name, self.pot_glob):
-                self.selected_pot_file = osutils.pathjoin(po_dir, pot_name)
+                relpath = osutils.pathjoin(po_dir, pot_name)
+                self.pot_file_abspath = self.merger.this_tree.abspath(relpath)
                 # FIXME: I can't find an easy way to know if the .pot file has
                 # conflicts *during* the merge itself. So either the actual
                 # content on disk is fine and msgmerge will work OR it's not
@@ -124,15 +126,15 @@ class PoMerger(merge.PerFileMerger):
                 # conflicts in the .pot file and use remerge.
                 # -- vila 2011-11-24
                 trace.mutter('will msgmerge %s using %s'
-                             % (po_path, self.selected_pot_file))
+                             % (po_path, self.pot_file_abspath))
                 return True
         else:
             return False
 
     def _invoke(self, command):
         trace.mutter('Will msgmerge: %s' % (command,))
+        # We use only absolute paths so we don't care about the cwd
         proc = subprocess.Popen(cmdline.split(command),
-                                # FIXME: cwd= ? -- vila 2011-11-24
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 stdin=subprocess.PIPE)
@@ -153,7 +155,7 @@ class PoMerger(merge.PerFileMerger):
         env['this'] = osutils.pathjoin(tmpdir, 'this')
         env['other'] = osutils.pathjoin(tmpdir, 'other')
         env['result'] = osutils.pathjoin(tmpdir, 'result')
-        env['pot_file'] = self.selected_pot_file
+        env['pot_file'] = self.pot_file_abspath
         try:
             with osutils.open_file(env['this'], 'wb') as f:
                 f.writelines(params.this_lines)
