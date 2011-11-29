@@ -31,7 +31,7 @@ if __name__ == '__main__':
             series_string, version_string, version_string),
           download_url='http://launchpad.net/bzr-upload',
           author='Vincent Ladeuil, Martin Albisetti',
-          author_email='v.ladeuil+lp@free.fr',
+          author_email='v.ladeuil@canonical.com',
           license='GPL',
           long_description="""\
 Web sites are often hosted on servers where bzr can't be
