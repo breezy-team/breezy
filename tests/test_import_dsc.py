@@ -1210,7 +1210,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.addCleanup(self.tree1.unlock)
         self.assertTrue(self.db1.is_version_native(version))
         revtree = self.tree1.branch.repository.revision_tree(rev_id1)
-        config_fileid, current_config = self.db1._default_config_for_tree(revtree)
+        (config_fileid, config_relpath,
+         current_config) = self.db1._default_config_for_tree(revtree)
         self.assertTrue(self.db1._is_tree_native(current_config))
 
     def test_import_native_two(self):
