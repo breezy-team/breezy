@@ -33,7 +33,7 @@ Bug Fixes
    or undesirable results.
 
 * Fix a typo to avoid crashing when encountering symlinks during
-  an full upload. (Jonathan Paugh)
+  a full upload. (Jonathan Paugh)
 
 Documentation
 *************
@@ -58,6 +58,9 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Now requires bzr >= 2.5 for testing. The plugin itself should still work
+  with previous versions. (Vincent Ladeuil)
 
 * Use assertPathDoesNotExist and assertPathExist instead of failIfExists and
   failUnlessExists in the test suite. This requires bzr-2.4 to run the tests
