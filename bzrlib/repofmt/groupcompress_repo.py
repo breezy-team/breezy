@@ -978,20 +978,27 @@ class CHKInventoryRepository(PackRepository):
             if record.storage_kind != 'absent':
                 texts[record.key] = record.get_bytes_as('fulltext')
             else:
-                raise errors.NoSuchRevision(self, record.key)
+                texts[record.key] = None
         for key in keys:
-            yield inventory.CHKInventory.deserialise(self.chk_bytes, texts[key], key)
+            bytes = texts[key]
+            if bytes is None:
+                yield (None, key[-1])
+            else:
+                yield (inventory.CHKInventory.deserialise(
+                    self.chk_bytes, bytes, key), key[-1])
 
-    def _iter_inventory_xmls(self, revision_ids, ordering):
+    def _get_inventory_xml(self, revision_id):
+        """Get serialized inventory as a string."""
         # Without a native 'xml' inventory, this method doesn't make sense.
         # However older working trees, and older bundles want it - so we supply
         # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
-        # iteration interface offered at all for repositories. We could make
-        # _iter_inventory_xmls be part of the contract, even if kept private.
-        inv_to_str = self._serializer.write_inventory_to_string
-        for inv in self.iter_inventories(revision_ids, ordering=ordering):
-            yield inv_to_str(inv), inv.revision_id
+        # iteration interface offered at all for repositories.
+        try:
+            return self._serializer.write_inventory_to_string(
+                self.get_inventory(revision_id))
+        except errors.NoSuchRevision:
+            raise errors.HistoryMissing(self, 'inventory', revision_id)
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)

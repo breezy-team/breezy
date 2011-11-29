@@ -1700,13 +1700,19 @@ class VersionedFileRepository(Repository):
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
-        return self._iter_inventories(revision_ids, ordering)
+        for inv, revid in self._iter_inventories(revision_ids, ordering):
+            if inv is None:
+                raise errors.NoSuchRevision(revid)
+            yield inv
 
     def _iter_inventories(self, revision_ids, ordering):
         """single-document based inventory iteration."""
         inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
         for text, revision_id in inv_xmls:
-            yield self._deserialise_inventory(revision_id, text)
+            if text is None:
+                yield None, revision_id
+            else:
+                yield self._deserialise_inventory(revision_id, text), revision_id
 
     def _iter_inventory_xmls(self, revision_ids, ordering):
         if ordering is None:
@@ -1730,7 +1736,7 @@ class VersionedFileRepository(Repository):
                 else:
                     yield ''.join(chunks), record.key[-1]
             else:
-                raise errors.NoSuchRevision(self, record.key)
+                yield None, record.key[-1]
             if order_as_requested:
                 # Yield as many results as we can while preserving order.
                 while next_key in text_chunks:
@@ -1765,9 +1771,8 @@ class VersionedFileRepository(Repository):
     def _get_inventory_xml(self, revision_id):
         """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
-        try:
-            text, revision_id = texts.next()
-        except StopIteration:
+        text, revision_id = texts.next()
+        if text is None:
             raise errors.HistoryMissing(self, 'inventory', revision_id)
         return text
 

@@ -207,7 +207,7 @@ class TestRepository(TestCaseWithRepository):
         self.addCleanup(tree.unlock)
         revs = (first_revision, second_revision)
         invs = tree.branch.repository.iter_inventories(revs)
-        for rev_id, inv in zip(revs, invs):
+        for rev_id, inv in invs:
             self.assertEqual(rev_id, inv.revision_id)
             self.assertIsInstance(inv, inventory.CommonInventory)
 

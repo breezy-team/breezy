@@ -4174,3 +4174,22 @@ class TestRepositoryPack(TestRemoteRepository):
             'Repository.unlock', ('quack/', 'token', 'False'),
             'success', ('ok', ))
         repo.pack(['hinta', 'hintb'])
+
+
+class TestRepositoryIterInventoryDeltas(TestRemoteRepository):
+    """Test Repository._iter_inventory_deltas_rpc."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return "".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'VersionedFileRepository.iter_inventory_deltas', ('quack/', ''),
+            'success', ('ok', ),
+            iter([zlib.compress(self._serialize_inv_delta("oldname", "newname",
+                []))]))
+        ret = list(repo._iter_inventory_deltas_rpc(["somerevid\n"]))
+        self.assertEquals(ret, [('oldname', 'newname', True, False, [])])
