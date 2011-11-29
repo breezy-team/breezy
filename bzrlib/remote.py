@@ -1817,23 +1817,44 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             chunks.append(decompressor.decompress(bytes))
             if decompressor.unused_data != "":
                 chunks.append(decompressor.flush())
-                yield unpack_inv(prev_inv, "".join(chunks))
+                inv = unpack_inv(prev_inv, "".join(chunks))
+                yield inv, inv.revision_id
+                prev_inv = inv
                 unused = decompressor.unused_data
                 decompressor = zlib.decompressobj()
                 chunks = [decompressor.decompress(unused)]
         chunks.append(decompressor.flush())
         bytes = "".join(chunks)
         if bytes:
-            yield unpack_inv(prev_inv, bytes)
+            inv = unpack_inv(prev_inv, bytes)
+            yield inv, inv.revision_id
 
     def _iter_inventories_vfs(self, revision_ids, ordering=None):
         self._ensure_real()
-        return self._real_repository.iter_inventories(revision_ids, ordering)
+        return self._real_repository._iter_inventories(revision_ids, ordering)
 
     def iter_inventories(self, revision_ids, ordering=None):
+        """Get many inventories by revision_ids.
+
+        This will buffer some or all of the texts used in constructing the
+        inventories in memory, but will only parse a single inventory at a
+        time.
+
+        :param revision_ids: The expected revision ids of the inventories.
+        :param ordering: optional ordering, e.g. 'topological'.  If not
+            specified, the order of revision_ids will be preserved (by
+            buffering if necessary).
+        :return: An iterator of inventories.
+        """
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
+        for inv, revid in self._iter_inventories(revision_ids, ordering):
+            if inv is None:
+                raise errors.NoSuchRevision(self, revid)
+            yield inv
+
+    def _iter_inventories(self, revision_ids, ordering=None):
         if len(revision_ids) == 0:
             return
         missing = set(revision_ids)
@@ -1853,17 +1874,17 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         try:
             for iter_inv in iter_inv_fns:
                 request = [revid for revid in revision_ids if revid in missing]
-                for inv in iter_inv(request, ordering):
+                for inv, revid in iter_inv(request, ordering):
                     missing.remove(inv.revision_id)
                     if ordering != 'unordered':
-                        invs[inv.revision_id] = inv
+                        invs[revid] = inv
                     else:
-                        yield inv
+                        yield inv, revid
                 if order_as_requested:
                     # Yield as many results as we can while preserving order.
                     while next_revid in invs:
                         inv = invs.pop(next_revid)
-                        yield inv
+                        yield inv, inv.revision_id
                         try:
                             next_revid = order.pop()
                         except IndexError:
@@ -1871,12 +1892,17 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                             # in case it is not actually finished at this point
                             next_revid = None
                             break
-            if missing:
-                raise errors.NoSuchRevision(self, iter(missing).next())
         except errors.UnknownSmartMethod:
             for inv in self._iter_inventories_vfs(revision_ids, ordering):
-                yield inv
+                yield inv, inv.revision_id
             return
+        # Report missing
+        if order_as_requested:
+            while order:
+                yield None, order.pop()
+        else:
+            while missing:
+                yield None, missing.pop()
 
     @needs_read_lock
     def get_revision(self, revision_id):

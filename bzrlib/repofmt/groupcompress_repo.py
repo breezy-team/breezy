@@ -998,7 +998,8 @@ class CHKInventoryRepository(PackRepository):
             return self._serializer.write_inventory_to_string(
                 self.get_inventory(revision_id))
         except errors.NoSuchRevision:
-            raise errors.HistoryMissing(self, 'inventory', revision_id)
+            raise errors.HistoryMissing(branch=self, object_type='inventory',
+                    object_id=revision_id)
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)

@@ -1773,7 +1773,8 @@ class VersionedFileRepository(Repository):
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
         text, revision_id = texts.next()
         if text is None:
-            raise errors.HistoryMissing(self, 'inventory', revision_id)
+            raise errors.HistoryMissing(branch=self, object_type='inventory',
+                    object_id=revision_id)
         return text
 
     @needs_read_lock
