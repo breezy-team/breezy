@@ -27,6 +27,7 @@ from bzrlib import (
     errors,
     gpg,
     graph,
+    inventory_delta,
     lock,
     lockdir,
     osutils,
@@ -1787,33 +1788,55 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def get_inventory(self, revision_id):
         return list(self.iter_inventories([revision_id]))[0]
 
-    def _iter_inventories_rpc(self, revision_ids, ordering=None):
+    def _iter_inventory_deltas_rpc(self, revision_ids, ordering=None):
         if ordering is None:
-            order_as_requested = True
-            ordering = 'unordered'
-        else:
-            order_as_requested = False
+            ordering = ''
         path = self.bzrdir._path_for_remote_call(self._client)
-        body = "\n".join(revision_ids)
+        lines = []
+        for requested in revision_ids:
+            lines.append("\0".join(requested) + "\n")
         response_tuple, response_handler = (
             self._call_with_body_bytes_expecting_body(
-                "VersionedFileRepository.iter_inventories",
-                (path, ordering), body))
-        if response_tuple != ("ok", ):
+                "VersionedFileRepository.iter_inventory_deltas",
+                (path, ordering), "".join(lines)))
+        if response_tuple[0] != "ok":
             raise errors.UnexpectedSmartServerResponse(response_tuple)
+        deserializer = inventory_delta.InventoryDeltaDeserializer()
         byte_stream = response_handler.read_streamed_body()
-        # FIXME
+        decompressor = zlib.decompressobj()
+        chunks = []
+        for bytes in byte_stream:
+            chunks.append(decompressor.decompress(bytes))
+            if decompressor.unused_data != "":
+                chunks.append(decompressor.flush())
+                yield deserializer.parse_text_bytes("".join(chunks))
+                unused = decompressor.unused_data
+                decompressor = zlib.decompressobj()
+                chunks = [decompressor.decompress(unused)]
+        chunks.append(decompressor.flush())
+        yield deserializer.parse_text_bytes("".join(chunks))
 
     def iter_inventories(self, revision_ids, ordering=None):
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
         try:
-            for inv in self._iter_inventories_rpc(revision_ids, ordering):
+            prev_inv = None
+            for entry in self._iter_inventory_deltas_rpc(revision_ids, ordering):
+                (parent_id, new_id, versioned_root,
+                        tree_references, inventory_delta) = entry
+                if parent_id == NULL_REVISION:
+                    prev_inv = Inventory(root_id=None,
+                        revision_id=NULL_REVISION)
+                assert parent_id == prev_inv.revision_id
+                inv = prev_inv.create_by_apply_delta(inventory_delta, new_id)
                 yield inv
+                prev_inv = inv
         except errors.UnknownSmartMethod:
             self._ensure_real()
-            return self._real_repository.iter_inventories(revision_ids, ordering)
+            for inv in self._real_repository.iter_inventories(revision_ids,
+                    ordering):
+                yield inv
 
     @needs_read_lock
     def get_revision(self, revision_id):
