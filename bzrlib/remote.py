@@ -2255,13 +2255,31 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             revids.update(set(fallback.all_revision_ids()))
         return list(revids)
 
+    def _filtered_revision_trees(self, revision_ids, file_ids):
+        """Return Tree for a revision on this branch with only some files.
+
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        :param file_ids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            # Should we introduce a FilteredRevisionTree class rather
+            # than pre-filter the inventory here?
+            filtered_inv = inv.filter(file_ids)
+            yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
+
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         medium = self._client._medium
         if medium._is_remote_before((1, 2)):
             self._ensure_real()
-            return self._real_repository.get_deltas_for_revisions(
-                revisions, specific_fileids)
+            for delta in self._real_repository.get_deltas_for_revisions(
+                    revisions, specific_fileids):
+                yield delta
+            return
         # Get the revision-ids of interest
         required_trees = set()
         for revision in revisions:
