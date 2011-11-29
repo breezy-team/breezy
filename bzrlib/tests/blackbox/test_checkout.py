@@ -16,11 +16,7 @@
 
 """Tests for the 'checkout' CLI command."""
 
-from cStringIO import StringIO
 import os
-import re
-import shutil
-import sys
 
 from bzrlib import (
     branch as _mod_branch,
@@ -30,9 +26,6 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
-    )
-from bzrlib.tests import (
-    KnownFailure,
     )
 from bzrlib.tests.features import (
     HardlinkFeature,
@@ -175,3 +168,36 @@ class TestCheckout(TestCaseWithTransport):
         second_stat = os.stat('second/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(second_stat, target_stat)
+
+
+class TestSmartServerCheckout(TestCaseWithTransport):
+
+    def test_heavyweight_checkout(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['checkout', self.get_url('from'),
+            'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(17, self.hpss_calls)
+
+    def test_lightweight_checkout(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
+            'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(41, self.hpss_calls)
