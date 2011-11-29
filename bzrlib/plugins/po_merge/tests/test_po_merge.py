@@ -76,18 +76,10 @@ $ bzr merge ../adduser -rrevid:other -Opo_merge.po_dirs=
         self.run_script("""\
 $ bzr resolve po/adduser.pot
 2>1 conflict resolved, 1 remaining
-""")
-        # set config options to activate the hook
-        self.run_script("""\
-$ bzr config po_merge.po_dirs=po,
-""")
-        # Use remerge to trigger the hook, 
-        self.run_script("""\
+# Use remerge to trigger the hook, we use the default config options here
 $ bzr remerge po/*.po
 2>All changes applied successfully.
-""")
-        # There should be no conflicts anymore
-        self.run_script("""\
+# There should be no conflicts anymore
 $ bzr conflicts
 """)
 
