@@ -121,6 +121,9 @@ API Changes
 * Some global options for use with commands have been removed, construct
   an ``Option`` with the name instead. (Martin Packman)
 
+* The unused exception ``HistoryMissing`` has been removed.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
@@ -146,6 +149,11 @@ Internals
   ``Repository.add_signature_revision_text`` and
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
+
+* Add HPSS calls for ``Repository.iter_files_bytes`` and
+  ``VersionedFileRepository.iter_inventories``, speeding up
+  several commands including ``bzr export`` and ``bzr co --lightweight``.
+  (Jelmer Vernooij, #608640)
 
 * Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
 
