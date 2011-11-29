@@ -35,6 +35,12 @@ Bug Fixes
 * Cope with Unix filesystems, such as smbfs, where chmod gives 'permission
   denied'.  (Martin Pool, #606537)
 
+* When the ``limbo`` or ``pending-deletion`` directories exist, typically
+  because of an interrupted tree update, but are empty, bzr no longer
+  errors out, because there is nothing for the user to clean up.  Also,
+  errors in creation of these directories are no longer squelched.
+  (Martin Pool, #427773)
+
 * During merges, when two entries end up using the same path for two
   different file-ids (the same file being 'bzr added' in two different
   branches) , 'duplicate' conflicts are created instead of 'content'
