@@ -2602,6 +2602,14 @@ If true (default), repository changes are flushed through the OS buffers
 to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
 '''))
+
+option_registry.register(
+    Option('selftest.timeout',
+        default='600',
+        from_unicode=int_from_store,
+        help='Abort selftest if one test takes longer than this many seconds',
+        ))
+
 option_registry.register(
     Option('send_strict', default=None,
            from_unicode=bool_from_store,

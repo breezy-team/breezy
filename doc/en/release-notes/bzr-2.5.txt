@@ -157,6 +157,11 @@ Testing
 * Avoid failures in test_transform when OS error messages are localised.
   (Martin Packman, #891582)
 
+* Tests are now subject to a time limit: by default 300s, and 120s when
+  run from 'make check', controlled by the `selftest.timeout`
+  configuration option.  This is currently not supported on Windows.
+  (Martin Pool)
+
 bzr 2.5b3
 #########
 
