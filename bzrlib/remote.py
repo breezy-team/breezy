@@ -1875,6 +1875,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             for iter_inv in iter_inv_fns:
                 request = [revid for revid in revision_ids if revid in missing]
                 for inv, revid in iter_inv(request, ordering):
+                    if inv is None:
+                        continue
                     missing.remove(inv.revision_id)
                     if ordering != 'unordered':
                         invs[revid] = inv
@@ -1898,6 +1900,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return
         # Report missing
         if order_as_requested:
+            if next_revid is not None:
+                yield None, next_revid
             while order:
                 revid = order.pop()
                 yield invs.get(revid), revid
