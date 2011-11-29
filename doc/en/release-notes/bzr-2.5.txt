@@ -43,6 +43,9 @@ Improvements
 * ``bzr branch --stacked`` now only makes a single connection to the remote
   server rather than three. (Jelmer Vernooij, #444293)
 
+* Plugins can now register additional "location aliases".
+  (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
