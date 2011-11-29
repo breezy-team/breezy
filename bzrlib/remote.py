@@ -2257,9 +2257,38 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        self._ensure_real()
-        return self._real_repository.get_deltas_for_revisions(revisions,
-            specific_fileids=specific_fileids)
+        medium = self._client._medium
+        if medium._is_remote_before((1, 2)):
+            self._ensure_real()
+            return self._real_repository.get_deltas_for_revisions(
+                revisions, specific_fileids)
+        # Get the revision-ids of interest
+        required_trees = set()
+        for revision in revisions:
+            required_trees.add(revision.revision_id)
+            required_trees.update(revision.parent_ids[:1])
+
+        # Get the matching filtered trees. Note that it's more
+        # efficient to pass filtered trees to changes_from() rather
+        # than doing the filtering afterwards. changes_from() could
+        # arguably do the filtering itself but it's path-based, not
+        # file-id based, so filtering before or afterwards is
+        # currently easier.
+        if specific_fileids is None:
+            trees = dict((t.get_revision_id(), t) for
+                t in self.revision_trees(required_trees))
+        else:
+            trees = dict((t.get_revision_id(), t) for
+                t in self._filtered_revision_trees(required_trees,
+                specific_fileids))
+
+        # Calculate the deltas
+        for revision in revisions:
+            if not revision.parent_ids:
+                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+            else:
+                old_tree = trees[revision.parent_ids[0]]
+            yield trees[revision.revision_id].changes_from(old_tree)
 
     @needs_read_lock
     def get_revision_delta(self, revision_id, specific_fileids=None):
