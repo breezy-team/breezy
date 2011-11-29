@@ -155,6 +155,8 @@ Internals
   several commands including ``bzr export`` and ``bzr co --lightweight``.
   (Jelmer Vernooij, #608640)
 
+* Add HPSS call for ``Branch.get_checkout_format``. (Jelmer Vernooij, #894459)
+
 * Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
 
 * Custom HPSS error handlers can now be installed in the smart server client

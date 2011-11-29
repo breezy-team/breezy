@@ -1101,6 +1101,47 @@ class TestBranchBreakLock(RemoteBranchTestCase):
         self.assertFinished(client)
 
 
+class TestBranchGetCheckoutFormat(RemoteBranchTestCase):
+
+    def test__get_checkout_format(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        control_name = reference_bzrdir_format.network_name()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_checkout_format', ('quack/', False),
+            'success', (control_name, '', ''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch._get_checkout_format()
+        # We should have got a reference control dir with default branch and
+        # repository formats.
+        self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
+        self.assertEqual(None, result._repository_format)
+        self.assertEqual(None, result._branch_format)
+        self.assertFinished(client)
+
+    def test_unknown_format(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_checkout_format', ('quack/', False),
+            'success', ('dontknow', '', ''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(errors.UnknownFormatError,
+            branch._get_checkout_format)
+        self.assertFinished(client)
+
+
 class TestBranchGetPhysicalLockStatus(RemoteBranchTestCase):
 
     def test_get_physical_lock_status_yes(self):

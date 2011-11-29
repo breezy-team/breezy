@@ -1459,6 +1459,29 @@ class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
             smart_req.SmartServerResponse(('no',)), response)
 
 
+class TestSmartServerBranchRequestGetCheckoutFormat(TestLockedBranch):
+
+    def test_lightweight(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestGetCheckoutFormat(
+            backing)
+        branch = self.make_branch('.', format='2a')
+        response = request.execute('', 'True')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('ok', )), response)
+        branch.unlock()
+
+    def test_heavyweight(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestGetCheckoutFormat(
+            backing)
+        branch = self.make_branch('.', format='2a')
+        response = request.execute('', 'False')
+        self.assertEqual(
+            smart_req.SmartServerResponse(('ok', )), response)
+        branch.unlock()
+
+
 class TestSmartServerBranchRequestUnlock(TestLockedBranch):
 
     def setUp(self):
@@ -2428,6 +2451,8 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchPutConfigFile)
         self.assertHandlerEqual('Branch.get_parent',
             smart_branch.SmartServerBranchGetParent)
+        self.assertHandlerEqual('Branch.get_checkout_format',
+            smart_branch.SmartServerBranchRequestGetCheckoutFormat)
         self.assertHandlerEqual('Branch.get_physical_lock_status',
             smart_branch.SmartServerBranchRequestGetPhysicalLockStatus)
         self.assertHandlerEqual('Branch.get_tags_bytes',
