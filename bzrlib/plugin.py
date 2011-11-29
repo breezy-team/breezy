@@ -631,7 +631,7 @@ class _PluginImporter(object):
         return None
 
     def load_module(self, fullname):
-        """Load a plugin from a specific directory."""
+        """Load a plugin from a specific directory (or file)."""
         # We are called only for specific paths
         plugin_path = self.specific_paths[fullname]
         loading_path = None
