@@ -73,17 +73,17 @@ class AliasDirectory(object):
 
     branch_aliases = registry.Registry()
     branch_aliases.register('parent', lambda b: b.get_parent(),
-        help="the parent of this branch")
+        help="The parent of this branch.")
     branch_aliases.register('submit', lambda b: b.get_submit_branch(),
-        help="the submit branch for this branch")
+        help="The submit branch for this branch.")
     branch_aliases.register('public', lambda b: b.get_public_branch(),
-        help="the public location of this branch")
+        help="The public location of this branch.")
     branch_aliases.register('bound', lambda b: b.get_bound_location(),
-        help="the branch this branch is bound to, for bound branches")
+        help="The branch this branch is bound to, for bound branches.")
     branch_aliases.register('push', lambda b: b.get_push_location(),
-        help="the saved location used for `bzr push` with no arguments")
+        help="The saved location used for `bzr push` with no arguments.")
     branch_aliases.register('this', lambda b: b.base,
-        help="this branch")
+        help="This branch.")
 
     def look_up(self, name, url):
         branch = _mod_branch.Branch.open_containing('.')[0]
