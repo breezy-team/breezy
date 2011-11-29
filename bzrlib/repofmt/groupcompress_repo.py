@@ -994,12 +994,8 @@ class CHKInventoryRepository(PackRepository):
         # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories.
-        try:
-            return self._serializer.write_inventory_to_string(
-                self.get_inventory(revision_id))
-        except errors.NoSuchRevision:
-            raise errors.HistoryMissing(branch=self, object_type='inventory',
-                    object_id=revision_id)
+        return self._serializer.write_inventory_to_string(
+            self.get_inventory(revision_id))
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)

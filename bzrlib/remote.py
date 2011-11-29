@@ -1790,7 +1790,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def _iter_inventories_rpc(self, revision_ids, ordering):
         if ordering is None:
-            ordering = ''
+            ordering = 'unordered'
         path = self.bzrdir._path_for_remote_call(self._client)
         body = "\n".join(revision_ids)
         response_tuple, response_handler = (
@@ -1899,7 +1899,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         # Report missing
         if order_as_requested:
             while order:
-                yield None, order.pop()
+                revid = order.pop()
+                yield invs.get(revid), revid
         else:
             while missing:
                 yield None, missing.pop()
