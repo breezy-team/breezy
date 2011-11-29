@@ -178,7 +178,6 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         for count in range(9):
             t.commit(message='commit %d' % count)
         self.reset_smart_call_log()
-        from bzrlib.debug import debug_flags; debug_flags.add("hpss_client_no_vfs")
         out, err = self.run_bzr(['checkout', self.get_url('from'), 'target'])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
@@ -200,4 +199,4 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(41, self.hpss_calls)
+        self.assertLength(21, self.hpss_calls)
