@@ -473,7 +473,7 @@ class DistributionBranch(object):
             if c_fileid is not None:
                 break
         else:
-            return None, None
+            return None, None, None
         tree.lock_read()
         try:
             config = ConfigObj(tree.get_file(c_fileid, path))
@@ -483,7 +483,7 @@ class DistributionBranch(object):
                 config['BUILDDEB'] = {}
         finally:
             tree.unlock()
-        return c_fileid, config
+        return c_fileid, path, config
 
     def _is_tree_native(self, config):
         if config is not None:
@@ -504,7 +504,8 @@ class DistributionBranch(object):
         """
         revid = self.revid_of_version(version)
         rev_tree = self.branch.repository.revision_tree(revid)
-        config_fileid, current_config = self._default_config_for_tree(rev_tree)
+        (config_fileid, config_path,
+         current_config) = self._default_config_for_tree(rev_tree)
         if self._is_tree_native(current_config):
             return True
         rev = self.branch.repository.get_revision(revid)
@@ -924,20 +925,20 @@ class DistributionBranch(object):
 
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.basis_tree()
-        config_fileid, current_config = self._default_config_for_tree(poss_native_tree)
+        (config_fileid, config_relpath,
+         current_config) = self._default_config_for_tree(poss_native_tree)
         current_native = self._is_tree_native(current_config)
         if current_config is not None:
             # Add that back to the current tree
-            current_config.filename = os.path.join(self.tree.basedir,
-                poss_native_tree.id2path(config_fileid))
+            current_config.filename = self.tree.abspath(config_relpath)
             dir_path = osutils.dirname(current_config.filename)
             if not os.path.exists(dir_path):
                 os.mkdir(dir_path)
             current_config.write()
-            dirname = osutils.dirname(poss_native_tree.id2path(config_fileid))
+            dirname = osutils.dirname(config_relpath)
             dir_id = poss_native_tree.path2id(dirname)
-            self.tree.add([dirname, poss_native_tree.id2path(config_fileid)],
-                    ids=[dir_id, config_fileid])
+            self.tree.add([dirname, config_relpath],
+                          ids=[dir_id, config_fileid])
         if native != current_native:
             if current_config is None:
                 needs_add = True
