@@ -1,0 +1,7 @@
+A plugin for merging .po files.
+
+This plugin is controlled via configuration variables, see 'bzr help po_merge'.
+
+This hook can avoid conflicts in ``.po` files by invoking msgmerge with the
+appropriate options. If it can't apply, it falls back to the default bzr
+merge algorithm.

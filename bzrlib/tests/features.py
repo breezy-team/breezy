@@ -408,8 +408,9 @@ class ExecutableFeature(Feature):
 
 
 bash_feature = ExecutableFeature('bash')
-sed_feature = ExecutableFeature('sed')
 diff_feature = ExecutableFeature('diff')
+sed_feature = ExecutableFeature('sed')
+msgmerge_feature = ExecutableFeature('msgmerge')
 
 
 class _PosixPermissionsFeature(Feature):

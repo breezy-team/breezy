@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Provides a ``po_merge`` plugin to automatically merge ``.po`` files with
+  ``msgmerge``. See ``bzr help po_merge`` for details.
+  (Vincent Ladeuil, #884270)
+
 Improvements
 ************
 
@@ -33,19 +37,50 @@ Improvements
 * ``bzr switch`` now accepts colocated branch names to switch to.
   (Jelmer Vernooij, #826814)
 
+* ``bzr branch --stacked`` now only makes a single connection to the remote
+  server rather than three. (Jelmer Vernooij, #444293)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
+  pickled. (Jelmer Vernooij, #893149)
+
 * A new section local option ``basename`` is available to help support some
   ``bzr-pipeline`` workflows and more generally help mapping local paths to
   remote ones. See ``bzr help configuration`` for more details.
   (Vincent Ladeuil, #843211)
 
+* Add HPSS call for looking up revision numbers from revision ids on
+  remote repositories. (Jelmer Vernooij, #640253)
+
+* Add HPSS call for retrieving file contents from remote repositories.
+  Should improve performance for lightweight checkouts and exports of
+  from remote repositories.  (Jelmer Vernooij, #368717, #762330,
+  #608640)
+
+* Cope with missing revision ids being specified to
+  ``Repository.gather_stats`` HPSS call. (Jelmer Vernooij, #411290)
+
+* Fix test failures on windows related to locations.conf handling.
+  (Vincent Ladeuil, #892992)
+
+* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
+  prohibits several invalid strings, reads the correct number of seconds,
+  and gives a better error message if the time zone offset is not given.
+  (Matt Giuca, #892657)
+
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
+
+* Split segments from URLs for colocated branches without assuming the
+  combined form is a valid. (Martin Packman, #842233)
+
+* Support looking up revision numbers by revision id in empty branches.
+  (Jelmer Vernooij, #535031)
 
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
@@ -54,6 +89,14 @@ Bug Fixes
   prohibits several invalid strings, reads the correct number of seconds,
   and gives a better error message if the time zone offset is not given.
   (Matt Giuca, #892657)
+
+* Teach the bzr client how to reconnect if we get ``ConnectionReset``
+  while making an RPC request. This doesn't handle all possible network
+  disconnects, but it should at least handle when the server is asked to
+  shutdown gracefully. (John Arbash Meinel, #819604)
+
+* When a remote format is unknown, bzr will now print a single-line error
+  message rather than a backtrace. (Jelmer Vernooij, #687226)
 
 Documentation
 *************
@@ -66,8 +109,14 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``BzrDir.open_branch`` and ``BranchFormat.open`` now take an optional
+  ``possible_transports`` argument. (Jelmer Vernooij)
+
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
+
+* ``Tree.get_file_by_path`` is now deprecated. Use ``Tree.get_file`` instead.
+  (Jelmer Vernooij, #666897)
 
 * Some global options for use with commands have been removed, construct
   an ``Option`` with the name instead. (Martin Packman)
@@ -81,9 +130,31 @@ Internals
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
-* New HPSS calls ``Repository.has_signature_for_revision_id`` and
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
+
+* New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
-  ``BzrDir.has_workingtree``.  (Jelmer Vernooij)
+  ``BzrDir.has_workingtree``, ``Repository.get_physical_lock_status``,
+  ``Branch.get_physical_lock_status``,
+  ``Branch.put_config_file``, ``Branch.break_lock``,
+  ``BzrDir.destroy_branch``, ``Repository.break_lock``,
+  ``VersionedFileRepository.get_serializer_format``,
+  ``Repository.all_revision_ids``, ``Repository.start_write_group``,
+  ``Repository.commit_write_group``, ``Repository.abort_write_group``
+  ``Repository.check_write_group``, ``Repository.iter_revisions``,
+  ``Repository.add_signature_revision_text`` and
+  ``Repository.get_revision_signature_text``.
+  (Jelmer Vernooij)
+
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
+
+* The registry of merge types has been moved to ``merge`` from ``option`` but
+  ``merge.get_merge_type_registry`` remains as an accessor. (Martin Packman)
 
 Testing
 *******
@@ -94,6 +165,11 @@ Testing
 
 * Avoid failures in test_transform when OS error messages are localised.
   (Martin Packman, #891582)
+
+* Tests are now subject to a time limit: by default 300s, and 120s when
+  run from 'make check', controlled by the `selftest.timeout`
+  configuration option.  This is currently not supported on Windows.
+  (Martin Pool)
 
 bzr 2.5b3
 #########
@@ -142,6 +218,9 @@ Improvements
 
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
+
+* ``bzr rmbranch`` can now remove colocated branches.
+  (Jelmer Vernooij, #831464)
 
 * ``bzr serve`` now can serve from URLs rather than just from the
   file system. I.e.: ``bzr serve -d lp:bzr`` or
