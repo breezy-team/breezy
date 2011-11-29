@@ -1788,55 +1788,95 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def get_inventory(self, revision_id):
         return list(self.iter_inventories([revision_id]))[0]
 
-    def _iter_inventory_deltas_rpc(self, revision_ids, ordering=None):
+    def _iter_inventories_rpc(self, revision_ids, ordering):
         if ordering is None:
             ordering = ''
         path = self.bzrdir._path_for_remote_call(self._client)
-        lines = []
-        for requested in revision_ids:
-            lines.append("\0".join(requested) + "\n")
+        body = "\n".join(revision_ids)
         response_tuple, response_handler = (
             self._call_with_body_bytes_expecting_body(
-                "VersionedFileRepository.iter_inventory_deltas",
-                (path, ordering), "".join(lines)))
+                "VersionedFileRepository.iter_inventories",
+                (path, ordering), body))
         if response_tuple[0] != "ok":
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         byte_stream = response_handler.read_streamed_body()
         decompressor = zlib.decompressobj()
+        prev_inv = Inventory(root_id=None,
+            revision_id=_mod_revision.NULL_REVISION)
+        def unpack_inv(prev_inv, bytes):
+            (parent_id, new_id, versioned_root, tree_references, invdelta) = (
+                deserializer.parse_text_bytes(bytes))
+            if parent_id != prev_inv.revision_id:
+                raise AssertionError("invalid base %r != %r" % (parent_id,
+                    prev_inv.revision_id))
+            return prev_inv.create_by_apply_delta(invdelta, new_id)
+
         chunks = []
         for bytes in byte_stream:
             chunks.append(decompressor.decompress(bytes))
             if decompressor.unused_data != "":
                 chunks.append(decompressor.flush())
-                yield deserializer.parse_text_bytes("".join(chunks))
+                yield unpack_inv(prev_inv, "".join(chunks))
                 unused = decompressor.unused_data
                 decompressor = zlib.decompressobj()
                 chunks = [decompressor.decompress(unused)]
         chunks.append(decompressor.flush())
-        yield deserializer.parse_text_bytes("".join(chunks))
+        bytes = "".join(chunks)
+        if bytes:
+            yield unpack_inv(prev_inv, bytes)
+
+    def _iter_inventories_vfs(self, revision_ids, ordering=None):
+        self._ensure_real()
+        return self._real_repository.iter_inventories(revision_ids, ordering)
 
     def iter_inventories(self, revision_ids, ordering=None):
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
+        if len(revision_ids) == 0:
+            return
+        missing = set(revision_ids)
+        if ordering is None:
+            order_as_requested = True
+            invs = {}
+            order = list(revision_ids)
+            order.reverse()
+            next_revid = order.pop()
+        elif ordering == 'unordered':
+            order_as_requested = False
+        else:
+            raise ValueError('unsupported ordering %r' % ordering)
+        iter_inv_fns = [self._iter_inventories_rpc] + [
+            fallback._iter_inventories for fallback in
+            self._fallback_repositories]
         try:
-            prev_inv = None
-            for entry in self._iter_inventory_deltas_rpc(revision_ids, ordering):
-                (parent_id, new_id, versioned_root,
-                        tree_references, inventory_delta) = entry
-                if parent_id == NULL_REVISION:
-                    prev_inv = Inventory(root_id=None,
-                        revision_id=NULL_REVISION)
-                assert parent_id == prev_inv.revision_id
-                inv = prev_inv.create_by_apply_delta(inventory_delta, new_id)
-                yield inv
-                prev_inv = inv
+            for iter_inv in iter_inv_fns:
+                request = [revid for revid in revision_ids if revid in missing]
+                for inv in iter_inv(request, ordering):
+                    missing.remove(inv.revision_id)
+                    if ordering != 'unordered':
+                        invs[inv.revision_id] = inv
+                    else:
+                        yield inv
+                if order_as_requested:
+                    # Yield as many results as we can while preserving order.
+                    while next_revid in invs:
+                        inv = invs.pop(next_revid)
+                        yield inv
+                        try:
+                            next_revid = order.pop()
+                        except IndexError:
+                            # We still want to fully consume the stream, just
+                            # in case it is not actually finished at this point
+                            next_revid = None
+                            break
+            if missing:
+                raise errors.NoSuchRevision(self, iter(missing).next())
         except errors.UnknownSmartMethod:
-            self._ensure_real()
-            for inv in self._real_repository.iter_inventories(revision_ids,
-                    ordering):
+            for inv in self._iter_inventories_vfs(revision_ids, ordering):
                 yield inv
+            return
 
     @needs_read_lock
     def get_revision(self, revision_id):

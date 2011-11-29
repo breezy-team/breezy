@@ -4176,20 +4176,37 @@ class TestRepositoryPack(TestRemoteRepository):
         repo.pack(['hinta', 'hintb'])
 
 
-class TestRepositoryIterInventoryDeltas(TestRemoteRepository):
-    """Test Repository._iter_inventory_deltas_rpc."""
+class TestRepositoryIterInventories(TestRemoteRepository):
+    """Test Repository.iter_inventories."""
 
     def _serialize_inv_delta(self, old_name, new_name, delta):
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
         return "".join(serializer.delta_to_lines(old_name, new_name, delta))
 
-    def test_empty(self):
+    def test_single_empty(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'VersionedFileRepository.iter_inventory_deltas', ('quack/', ''),
+            'VersionedFileRepository.iter_inventories', ('quack/', ''),
             'success', ('ok', ),
-            iter([zlib.compress(self._serialize_inv_delta("oldname", "newname",
+            iter([zlib.compress(self._serialize_inv_delta("null:", "somerevid",
                 []))]))
-        ret = list(repo._iter_inventory_deltas_rpc(["somerevid\n"]))
-        self.assertEquals(ret, [('oldname', 'newname', True, False, [])])
+        ret = list(repo.iter_inventories(["somerevid"]))
+        self.assertLength(1, ret)
+        inv = ret[0]
+        self.assertEquals("somerevid", inv.revision_id)
+
+    def test_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        ret = list(repo.iter_inventories([]))
+        self.assertEquals(ret, [])
+
+    def test_missing(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'VersionedFileRepository.iter_inventories', ('quack/', ''),
+            'success', ('ok', ), iter([]))
+        self.assertRaises(errors.NoSuchRevision, list, repo.iter_inventories(
+            ["somerevid"]))

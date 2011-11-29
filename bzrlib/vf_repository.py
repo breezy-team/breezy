@@ -1702,7 +1702,7 @@ class VersionedFileRepository(Repository):
             raise ValueError('cannot get null revision inventory')
         for inv, revid in self._iter_inventories(revision_ids, ordering):
             if inv is None:
-                raise errors.NoSuchRevision(revid)
+                raise errors.NoSuchRevision(self, revid)
             yield inv
 
     def _iter_inventories(self, revision_ids, ordering):
