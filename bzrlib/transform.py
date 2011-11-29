@@ -1562,18 +1562,14 @@ class TreeTransform(DiskTreeTransform):
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
-            try:
-                os.mkdir(limbodir)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    raise ExistingLimbo(limbodir)
+            osutils.ensure_empty_directory_exists(
+                limbodir,
+                errors.ExistingLimbo)
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
-            try:
-                os.mkdir(deletiondir)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    raise errors.ExistingPendingDeletion(deletiondir)
+            osutils.ensure_empty_directory_exists(
+                deletiondir,
+                errors.ExistingPendingDeletion)
         except:
             tree.unlock()
             raise
