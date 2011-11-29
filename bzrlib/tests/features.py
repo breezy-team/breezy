@@ -140,7 +140,8 @@ class _CompatabilityThunkFeature(Feature):
                                             % (self._module, self._name))
             use_msg = ' Use %s.%s instead.' % (self._replacement_module,
                                                self._replacement_name)
-            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning,
+                                   stacklevel=5)
             # Import the new feature and use it as a replacement for the
             # deprecated one.
             self._feature = pyutils.get_named_object(
