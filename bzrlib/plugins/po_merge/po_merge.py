@@ -38,6 +38,39 @@ from bzrlib import (
 """)
 
 
+command_option = config.Option(
+        'po_merge.command',
+        default='msgmerge -N "{other}" "{pot_file}" -C "{this}" -o "{result}"',
+        help='''\
+Command used to create a conflict-free .po file during merge.
+
+The following parameters are provided by the hook:
+``this`` is the ``.po`` file content before the merge in the current branch,
+``other`` is the ``.po`` file content in the branch merged from,
+``pot_file`` is the path to the ``.pot`` file corresponding to the ``.po``
+file being merged.
+``result`` is the path where ``msgmerge`` will output its result. The hook will
+use the content of this file to produce the resulting ``.po`` file.
+
+All paths are absolute.
+''')
+
+
+po_dirs_option = config.Option(
+        'po_merge.po_dirs', default='po,debian/po',
+        from_unicode=config.list_from_store,
+        help='List of dirs containing .po files that the hook applies to.')
+
+
+po_glob_option = config.Option(
+        'po_merge.po_glob', default='*.po',
+        help='Glob matching all ``.po`` files in one of ``po_merge.po_dirs``.')
+
+pot_glob_option = config.Option(
+        'po_merge.pot_glob', default='*.pot',
+        help='Glob matching the ``.pot`` file in one of ``po_merge.po_dirs``.')
+
+
 class PoMerger(merge.PerFileMerger):
     """Merge .po files."""
 
