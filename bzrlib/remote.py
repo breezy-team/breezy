@@ -1599,9 +1599,33 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def get_inventory(self, revision_id):
         return list(self.iter_inventories([revision_id]))[0]
 
+    def _iter_inventories_rpc(self, revision_ids, ordering=None):
+        if ordering is None:
+            order_as_requested = True
+            ordering = 'unordered'
+        else:
+            order_as_requested = False
+        path = self.bzrdir._path_for_remote_call(self._client)
+        body = "\n".join(revision_ids)
+        response_tuple, response_handler = (
+            self._call_with_body_bytes_expecting_body(
+                "VersionedFileRepository.iter_inventories",
+                (path, ordering), body))
+        if response_tuple != ("ok", ):
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        byte_stream = response_handler.read_streamed_body()
+        # FIXME
+
     def iter_inventories(self, revision_ids, ordering=None):
-        self._ensure_real()
-        return self._real_repository.iter_inventories(revision_ids, ordering)
+        if ((None in revision_ids)
+            or (_mod_revision.NULL_REVISION in revision_ids)):
+            raise ValueError('cannot get null revision inventory')
+        try:
+            for inv in self._iter_inventories_rpc(revision_ids, ordering):
+                yield inv
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_repository.iter_inventories(revision_ids, ordering)
 
     @needs_read_lock
     def get_revision(self, revision_id):
