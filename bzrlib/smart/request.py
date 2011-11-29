@@ -731,7 +731,7 @@ request_handlers.register_lazy(
     'SmartServerRepositoryGetStream_1_19', info='read')
 request_handlers.register_lazy(
     'Repository.iter_revisions', 'bzrlib.smart.repository',
-    'SmartServerRepositoryIterRevisions')
+    'SmartServerRepositoryIterRevisions', info='read')
 request_handlers.register_lazy(
     'Repository.pack', 'bzrlib.smart.repository',
     'SmartServerRepositoryPack', info='idem')
