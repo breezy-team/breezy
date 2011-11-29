@@ -91,7 +91,6 @@ class PoMerger(merge.PerFileMerger):
         self.pot_glob = self.conf.get('po_merge.pot_glob')
         self.command = self.conf.get('po_merge.command', expand=False)
         # file_matches() will set the following for merge_text()
-        self.selected_po_file = None
         self.selected_pot_file = None
         trace.mutter('PoMerger created')
 
@@ -117,7 +116,6 @@ class PoMerger(merge.PerFileMerger):
             pot_name = inv_entry[0]
             if fnmatch.fnmatch(pot_name, self.pot_glob):
                 self.selected_pot_file = osutils.pathjoin(po_dir, pot_name)
-                self.selected_po_file = po_path
                 # FIXME: I can't find an easy way to know if the .pot file has
                 # conflicts *during* the merge itself. So either the actual
                 # content on disk is fine and msgmerge will work OR it's not
@@ -125,8 +123,8 @@ class PoMerger(merge.PerFileMerger):
                 # user and he's happy OR the user needs to resolve the
                 # conflicts in the .pot file and use remerge.
                 # -- vila 2011-11-24
-                trace.mutter('will msgmerge with %s and %s'
-                             % (self.selected_po_file, self.selected_pot_file))
+                trace.mutter('will msgmerge %s using %s'
+                             % (po_path, self.selected_pot_file))
                 return True
         else:
             return False
