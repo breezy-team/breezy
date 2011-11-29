@@ -1843,10 +1843,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             order = list(revision_ids)
             order.reverse()
             next_revid = order.pop()
-        elif ordering == 'unordered':
-            order_as_requested = False
         else:
-            raise ValueError('unsupported ordering %r' % ordering)
+            order_as_requested = False
+            if ordering != 'unordered' and self._fallback_repositories:
+                raise ValueError('unsupported ordering %r' % ordering)
         iter_inv_fns = [self._iter_inventories_rpc] + [
             fallback._iter_inventories for fallback in
             self._fallback_repositories]

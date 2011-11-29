@@ -2528,8 +2528,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryAbortWriteGroup)
         self.assertHandlerEqual('VersionedFileRepository.get_serializer_format',
             smart_repo.SmartServerRepositoryGetSerializerFormat)
-        self.assertHandlerEqual('VersionedFileRepository.iter_inventory_deltas',
-            smart_repo.SmartServerRepositoryIterInventoryDeltas)
+        self.assertHandlerEqual('VersionedFileRepository.iter_inventories',
+            smart_repo.SmartServerRepositoryIterInventories)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
 
@@ -2596,7 +2596,7 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
             request.do_body(''))
 
 
-class TestSmartServerRepositoryIterInventoryDeltas(tests.TestCaseWithTransport):
+class TestSmartServerRepositoryIterInventories(tests.TestCaseWithTransport):
 
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
         base_inv = repository.revision_tree(base_revid).inventory
@@ -2607,7 +2607,7 @@ class TestSmartServerRepositoryIterInventoryDeltas(tests.TestCaseWithTransport):
 
     def test_single(self):
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterInventoryDeltas(backing)
+        request = smart_repo.SmartServerRepositoryIterInventories(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", "somecontents")])
@@ -2621,3 +2621,17 @@ class TestSmartServerRepositoryIterInventoryDeltas(tests.TestCaseWithTransport):
             "".join(response.body_stream),
             zlib.compress(self._get_serialized_inventory_delta(t.branch.repository,
                 'null:', 'somerev')))
+
+    def test_empty(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterInventories(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", "somecontents")])
+        t.add(["file"], ["thefileid"])
+        t.commit(rev_id='somerev', message="add file")
+        self.assertIs(None, request.execute('', 'unordered'))
+        response = request.do_body("")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals("".join(response.body_stream), "")

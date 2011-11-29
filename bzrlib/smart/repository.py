@@ -1223,7 +1223,7 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
             self._repository.unlock()
 
 
-class SmartServerRepositoryIterInventoryDeltas(SmartServerRepositoryRequest):
+class SmartServerRepositoryIterInventories(SmartServerRepositoryRequest):
     """Iterate over inventory deltas.
 
     This accepts a list of revision ids of inventory deltas to generate.
@@ -1243,11 +1243,13 @@ class SmartServerRepositoryIterInventoryDeltas(SmartServerRepositoryRequest):
             repository.supports_rich_root(),
             repository._format.supports_tree_reference)
 
-        prev_inv = self._repository.revision_tree(
-            _mod_revision.NULL_REVISION).inventory
+        prev_inv = _mod_inventory.Inventory(root_id=None,
+            revision_id=_mod_revision.NULL_REVISION)
         self._repository.lock_read()
         try:
             for inv, revid in repository._iter_inventories(revids, ordering):
+                if inv is None:
+                    continue
                 inv_delta = inv._make_delta(prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta)
