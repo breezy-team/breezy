@@ -64,7 +64,6 @@ class DirectoryServiceRegistry(registry.Registry):
 
 directories = DirectoryServiceRegistry()
 
-
 class AliasDirectory(object):
     """Directory lookup for locations associated with a branch.
 
@@ -72,16 +71,22 @@ class AliasDirectory(object):
     supported.  On error, a subclass of DirectoryLookupFailure will be raised.
     """
 
+    branch_aliases = registry.Registry()
+    branch_aliases.register('parent', lambda b: b.get_parent(),
+        help="the parent of this branch")
+    branch_aliases.register('submit', lambda b: b.get_submit_branch(),
+        help="the submit branch for this branch")
+    branch_aliases.register('public', lambda b: b.get_public_branch(),
+        help="the public location of this branch")
+    branch_aliases.register('bound', lambda b: b.get_bound_location(),
+        help="the branch this branch is bound to, for bound branches")
+    branch_aliases.register('push', lambda b: b.get_push_location(),
+        help="the saved location used for `bzr push` with no arguments")
+    branch_aliases.register('this', lambda b: b.base,
+        help="this branch")
+
     def look_up(self, name, url):
         branch = _mod_branch.Branch.open_containing('.')[0]
-        lookups = {
-            'parent': branch.get_parent,
-            'submit': branch.get_submit_branch,
-            'public': branch.get_public_branch,
-            'bound': branch.get_bound_location,
-            'push': branch.get_push_location,
-            'this': lambda: branch.base
-        }
         parts = url.split('/', 1)
         if len(parts) == 2:
             name, extra = parts
@@ -89,16 +94,38 @@ class AliasDirectory(object):
             (name,) = parts
             extra = None
         try:
-            method = lookups[name[1:]]
+            method = self.branch_aliases.get(name[1:])
         except KeyError:
             raise errors.InvalidLocationAlias(url)
         else:
-            result = method()
+            result = method(branch)
         if result is None:
             raise errors.UnsetLocationAlias(url)
         if extra is not None:
             result = urlutils.join(result, extra)
         return result
+
+    @classmethod
+    def help_text(cls, topic):
+        alias_lines = []
+        for key in cls.branch_aliases.keys():
+            help = cls.branch_aliases.get_help(key)
+            alias_lines.append("  :%-10s%s\n" % (key, help))
+        return """\
+Location aliases
+================
+
+Bazaar defines several aliases for locations associated with a branch.  These
+can be used with most commands that expect a location, such as `bzr push`.
+
+The aliases are::
+
+%s
+For example, to push to the parent location::
+
+    bzr push :parent
+""" % "".join(alias_lines)
+
 
 directories.register(':', AliasDirectory,
                      'Easy access to remembered branch locations')
