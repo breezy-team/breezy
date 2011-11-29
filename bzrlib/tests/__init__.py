@@ -1000,9 +1000,11 @@ class TestCase(testtools.TestCase):
             self.requireFeature(feature)
         self._cleanEnvironment()
 
-        timeout_fixture = fixtures.TimeoutFixture(config.GlobalStack().get('selftest.timeout'))
-        timeout_fixture.setUp()
-        self.addCleanup(timeout_fixture.cleanUp)
+        timeout = config.GlobalStack().get('selftest.timeout')
+        if timeout:
+            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture.setUp()
+            self.addCleanup(timeout_fixture.cleanUp)
 
         if bzrlib.global_state is not None:
             self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
