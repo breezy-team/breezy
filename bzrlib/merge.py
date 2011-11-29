@@ -140,7 +140,7 @@ class PerFileMerger(AbstractPerFileMerger):
             params.winner == 'other' or
             # THIS and OTHER aren't both files.
             not params.is_file_merge() or
-            # The filename doesn't match *.xml
+            # The filename doesn't match
             not self.file_matches(params)):
             return 'not_applicable', None
         return self.merge_matching(params)
@@ -855,14 +855,18 @@ class Merge3Merger(object):
         else:
             entries = self._entries_lca()
             resolver = self._lca_multi_way
+        # Prepare merge hooks
+        factories = Merger.hooks['merge_file_content']
+        # One hook for each registered one plus our default merger
+        hooks = [factory(self) for factory in factories] + [self]
+        self.active_hooks = [hook for hook in hooks if hook is not None]
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            factories = Merger.hooks['merge_file_content']
-            hooks = [factory(self) for factory in factories] + [self]
-            self.active_hooks = [hook for hook in hooks if hook is not None]
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
-                child_pb.update(gettext('Preparing file merge'), num, len(entries))
+                # Try merging each entry
+                child_pb.update(gettext('Preparing file merge'),
+                                num, len(entries))
                 self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
                     file_status = self._do_merge_contents(file_id)
