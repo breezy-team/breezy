@@ -51,9 +51,46 @@ merge the ``.po`` files again with::
 
 """
 
-# Since we are a built-in plugin we share the bzrlib version
-from bzrlib import version_info
+from bzrlib import (
+    config,
+    # Since we are a built-in plugin we share the bzrlib version
+    version_info,
+    )
 from bzrlib.hooks import install_lazy_named_hook
+
+
+config.option_registry.register(config.Option(
+        'po_merge.command',
+        default='msgmerge -N "{other}" "{pot_file}" -C "{this}" -o "{result}"',
+        help='''\
+Command used to create a conflict-free .po file during merge.
+
+The following parameters are provided by the hook:
+``this`` is the ``.po`` file content before the merge in the current branch,
+``other`` is the ``.po`` file content in the branch merged from,
+``pot_file`` is the path to the ``.pot`` file corresponding to the ``.po``
+file being merged.
+``result`` is the path where ``msgmerge`` will output its result. The hook will
+use the content of this file to produce the resulting ``.po`` file.
+
+The command is invoked at the root of the working tree so all paths are
+relative.
+'''))
+
+
+config.option_registry.register(config.Option(
+        'po_merge.po_dirs', default='po,debian/po',
+        from_unicode=config.list_from_store,
+        help='List of dirs containing .po files that the hook applies to.'))
+
+
+config.option_registry.register(config.Option(
+        'po_merge.po_glob', default='*.po',
+        help='Glob matching all ``.po`` files in one of ``po_merge.po_dirs``.'))
+
+config.option_registry.register(config.Option(
+        'po_merge.pot_glob', default='*.pot',
+        help='Glob matching the ``.pot`` file in one of ``po_merge.po_dirs``.'))
 
 
 def po_merge_hook(merger):
