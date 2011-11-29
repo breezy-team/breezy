@@ -32,6 +32,7 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
+    inventory_delta,
     tests,
     transport,
     urlutils,
@@ -2594,3 +2595,29 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
             smart_req.SuccessfulSmartServerResponse(('ok', ), ),
             request.do_body(''))
 
+
+class TestSmartServerRepositoryIterInventoryDeltas(tests.TestCaseWithTransport):
+
+    def _get_serialized_inventory_delta(self, repository, base_revid, revid):
+        base_inv = repository.revision_tree(base_revid).inventory
+        inv = repository.revision_tree(revid).inventory
+        inv_delta = inv._make_delta(base_inv)
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
+
+    def test_single(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryIterInventoryDeltas(backing)
+        t = self.make_branch_and_tree('.')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", "somecontents")])
+        t.add(["file"], ["thefileid"])
+        t.commit(rev_id='somerev', message="add file")
+        self.assertIs(None, request.execute('', 'unordered'))
+        response = request.do_body("somerev\n")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals(
+            "".join(response.body_stream),
+            zlib.compress(self._get_serialized_inventory_delta(t.branch.repository,
+                'null:', 'somerev')))

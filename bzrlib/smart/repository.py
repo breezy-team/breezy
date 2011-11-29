@@ -1254,7 +1254,7 @@ class SmartServerRepositoryIterInventoryDeltas(SmartServerRepositoryRequest):
 
         serializer = inventory_delta.InventoryDeltaSerializer(
             repository.supports_rich_root(),
-            repository._format.supports_tree_reference())
+            repository._format.supports_tree_reference)
 
         prev_inv = None
         self._repository.lock_read()
