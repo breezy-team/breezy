@@ -2527,6 +2527,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryAbortWriteGroup)
         self.assertHandlerEqual('VersionedFileRepository.get_serializer_format',
             smart_repo.SmartServerRepositoryGetSerializerFormat)
+        self.assertHandlerEqual('VersionedFileRepository.iter_inventory_deltas',
+            smart_repo.SmartServerRepositoryIterInventoryDeltas)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
 

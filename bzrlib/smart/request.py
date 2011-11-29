@@ -751,6 +751,9 @@ request_handlers.register_lazy(
     'VersionedFileRepository.get_serializer_format', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetSerializerFormat', info='read')
 request_handlers.register_lazy(
+    'VersionedFileRepository.iter_inventory_deltas', 'bzrlib.smart.repository',
+    'SmartServerRepositoryIterInventoryDeltas', info='read')
+request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball', info='read')
 request_handlers.register_lazy(

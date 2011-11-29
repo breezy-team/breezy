@@ -29,6 +29,8 @@ from bzrlib import (
     errors,
     estimate_compressed_size,
     graph,
+    inventory as _mod_inventory,
+    inventory_delta,
     osutils,
     pack,
     trace,
@@ -1219,3 +1221,82 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
                 yield zlib.compress(record.get_bytes_as('fulltext'))
         finally:
             self._repository.unlock()
+
+
+class SmartServerRepositoryIterInventoryDeltas(SmartServerRepositoryRequest):
+    """Iterate over inventory deltas.
+
+    This accepts a list of revision ids of inventory deltas to generate.
+    An optional base inventory revision id can be specified as well.
+
+    The server writes back zlibbed serialized inventory deltas,
+    in the ordering specified. The base for each inventory delta
+    is either that specified by the client, or if the client
+    didn't specify a base it will be the previous inventory or the
+    null inventory.
+
+    New in 2.5.
+    """
+
+    def body_stream(self, repository, ordering, revids):
+        base = {}
+        todo = []
+        for entry in revids:
+            revid = entry[0]
+            if len(entry) > 1:
+                base_revid = entry[1]
+                if len(todo) and todo[-1] != base_revid:
+                    todo.append(base_revid)
+            else:
+                base_revid = None
+            todo.append(revid)
+            base[revid] = base_revid
+
+        serializer = inventory_delta.InventoryDeltaSerializer(
+            repository.supports_rich_root(),
+            repository._format.supports_tree_reference())
+
+        prev_inv = None
+        self._repository.lock_read()
+        try:
+            for inv in repository.iter_inventories(todo, ordering):
+                try:
+                    base_revid = base[inv.revision_id]
+                except KeyError:
+                    # Only requested because it is a delta base
+                    prev_inv = inv
+                    continue
+                if base_revid is None and prev_inv is not None:
+                    old_inv = prev_inv
+                elif (base_revid is None or
+                      base_revid == _mod_revision.NULL_REVISION):
+                    old_inv = _mod_inventory.Inventory(root_id=None,
+                        revision_id=_mod_revision.NULL_REVISION)
+                else:
+                    if base_revid != prev_inv.revision_id:
+                        raise AssertionError("invalid base")
+                    old_inv = prev_inv
+                inv_delta = inv._make_delta(old_inv)
+                lines = serializer.delta_to_lines(old_inv.revision_id, inv.revision_id,
+                    inv_delta)
+                yield zlib.compress("".join(lines))
+                prev_inv = inv
+        finally:
+            self._repository.unlock()
+
+    def do_body(self, body_bytes):
+        revids = [
+            tuple(tuple(l.split("\0"))) for l in body_bytes.splitlines()]
+        return SuccessfulSmartServerResponse(('ok', ),
+            body_stream=self.body_stream(self._repository, self._ordering, revids))
+
+    def do_repository_request(self, repository, ordering):
+        if ordering == '':
+            ordering = None
+        if ordering == 'unordered':
+            # inventory deltas for a topologically sorted stream
+            # are likely to be smaller
+            ordering = 'topological'
+        self._ordering = ordering
+        # Signal that we want a body
+        return None
