@@ -184,7 +184,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(17, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
 
     def test_lightweight_checkout(self):
         self.setup_smart_server_with_call_log()
@@ -199,4 +199,4 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(21, self.hpss_calls)
+        self.assertLength(15, self.hpss_calls)
