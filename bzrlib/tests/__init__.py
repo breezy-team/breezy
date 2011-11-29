@@ -996,15 +996,16 @@ class TestCase(testtools.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
-        for feature in getattr(self, '_test_needs_features', []):
-            self.requireFeature(feature)
-        self._cleanEnvironment()
 
         timeout = config.GlobalStack().get('selftest.timeout')
         if timeout:
             timeout_fixture = fixtures.TimeoutFixture(timeout)
             timeout_fixture.setUp()
             self.addCleanup(timeout_fixture.cleanUp)
+
+        for feature in getattr(self, '_test_needs_features', []):
+            self.requireFeature(feature)
+        self._cleanEnvironment()
 
         if bzrlib.global_state is not None:
             self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
