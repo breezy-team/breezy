@@ -473,7 +473,7 @@ class DistributionBranch(object):
             if c_fileid is not None:
                 break
         else:
-            return None, None
+            return None, None, None
         tree.lock_read()
         try:
             config = ConfigObj(tree.get_file(c_fileid, path))
