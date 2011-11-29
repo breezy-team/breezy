@@ -30,6 +30,7 @@ from bzrlib import (
     uncommit,
     )
 from bzrlib.tests import (
+    features,
     per_branch,
     per_transport,
     stub_sftp,
@@ -198,13 +199,13 @@ class UploadUtilsMixin(object):
         self.tree.commit('change %s from file to dir' % path)
 
     def add_symlink(self, path, target, base=branch_dir):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         os.symlink(target, osutils.pathjoin(base, path))
         self.tree.add(path)
         self.tree.commit('add symlink %s -> %s' % (path, target))
 
     def modify_symlink(self, path, target, base=branch_dir):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         full_path = osutils.pathjoin(base, path)
         os.unlink(full_path)
         os.symlink(target, full_path)
@@ -254,7 +255,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_create_file('hello')
 
     def test_unicode_create_file(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_create_file(u'hell\u00d8')
 
     def _test_create_file_in_dir(self, dir_name, file_name):
@@ -275,7 +276,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_create_file_in_dir('dir', 'goodbye')
 
     def test_unicode_create_file_in_dir(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_create_file_in_dir(u'dir\u00d8', u'goodbye\u00d8')
 
     def test_modify_file(self):
@@ -306,7 +307,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_rename_one_file('hello', 'goodbye')
 
     def test_unicode_rename_one_file(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_rename_one_file(u'hello\u00d8', u'goodbye\u00d8')
 
     def test_rename_and_change_file(self):
@@ -391,7 +392,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_change_file_into_dir('hello')
 
     def test_unicode_change_file_into_dir(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_change_file_into_dir(u'hello\u00d8')
 
     def test_change_dir_into_file(self):
@@ -425,7 +426,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_make_file_executable('hello')
 
     def test_unicode_make_file_executable(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_make_file_executable(u'hello\u00d8')
 
     def test_create_symlink(self):

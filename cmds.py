@@ -171,7 +171,10 @@ class BzrUploader(object):
     def _get_ignored(self):
         if self._ignored is None:
             try:
-                ignore_file = self.tree.get_file_by_path('.bzrignore-upload')
+                ignore_file_path = '.bzrignore-upload'
+                ignore_file_id = self.tree.path2id(ignore_file_path)
+                ignore_file = self.tree.get_file(ignore_file_id,
+                                                 ignore_file_path)
                 ignored_patterns = ignores.parse_ignore_file(ignore_file)
             except errors.NoSuchId:
                 ignored_patterns = []
