@@ -378,8 +378,7 @@ def gather_orig_files(package, version, path):
     :param version: package upstream version string
     :return: List of orig tarfile paths, or None if none were found
     """
-    prefix = "%s_%s.orig" % (osutils.safe_utf8(package),
-            osutils.safe_utf8(version))
+    prefix = "%s_%s.orig" % (package.encode('ascii'), version.encode('ascii'))
     ret = []
     path = os.path.abspath(path)
     if not os.path.isdir(path):
