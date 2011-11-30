@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2011 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,18 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-"""Black-box tests for bzr lookup-revision.
-"""
-
-from bzrlib import tests
-
-class TestLookupRevision(tests.TestCaseWithTransport):
-
-    def test_lookup_revison_directory(self):
-        """Test --directory option"""
-        tree = self.make_branch_and_tree('a')
-        tree.commit('This revision', rev_id='abcd')
-        out, err = self.run_bzr(['lookup-revision', '-d', 'a', '1'])
-        self.assertEqual('abcd\n', out)
-        self.assertEqual('', err)
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'test_po_merge',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests

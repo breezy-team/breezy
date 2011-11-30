@@ -64,6 +64,11 @@ class TestContainerSerialiser(tests.TestCase):
             errors.InvalidRecordError,
             serialiser.bytes_record, 'bytes', [('bad name',)])
 
+    def test_bytes_record_header(self):
+        serialiser = pack.ContainerSerialiser()
+        record = serialiser.bytes_header(32, [('name1',), ('name2',)])
+        self.assertEqual('B32\nname1\nname2\n\n', record)
+
 
 class TestContainerWriter(tests.TestCase):
 
@@ -126,12 +131,40 @@ class TestContainerWriter(tests.TestCase):
     def test_add_bytes_record_one_name(self):
         """Add a bytes record with one name."""
         self.writer.begin()
+
         offset, length = self.writer.add_bytes_record(
             'abc', names=[('name1', )])
         self.assertEqual((42, 13), (offset, length))
         self.assertOutput(
             'Bazaar pack format 1 (introduced in 0.18)\n'
             'B3\nname1\n\nabc')
+
+    def test_add_bytes_record_split_writes(self):
+        """Write a large record which does multiple IOs"""
+
+        writes = []
+        real_write = self.writer.write_func
+
+        def record_writes(bytes):
+            writes.append(bytes)
+            return real_write(bytes)
+
+        self.writer.write_func = record_writes
+        self.writer._JOIN_WRITES_THRESHOLD = 2
+
+        self.writer.begin()
+        offset, length = self.writer.add_bytes_record(
+            'abcabc', names=[('name1', )])
+        self.assertEqual((42, 16), (offset, length))
+        self.assertOutput(
+            'Bazaar pack format 1 (introduced in 0.18)\n'
+            'B6\nname1\n\nabcabc')
+
+        self.assertEquals([
+            'Bazaar pack format 1 (introduced in 0.18)\n',
+            'B6\nname1\n\n',
+            'abcabc'],
+            writes)
 
     def test_add_bytes_record_two_names(self):
         """Add a bytes record with two names."""
@@ -207,8 +240,8 @@ class TestContainerReader(tests.TestCase):
     def test_construct(self):
         """Test constructing a ContainerReader.
 
-        This uses None as the output stream to show that the constructor doesn't
-        try to use the input stream.
+        This uses None as the output stream to show that the constructor
+        doesn't try to use the input stream.
         """
         reader = pack.ContainerReader(None)
 
@@ -259,7 +292,8 @@ class TestContainerReader(tests.TestCase):
 
     def test_validate_empty_container(self):
         """validate does not raise an error for a container with no records."""
-        reader = self.get_reader_for("Bazaar pack format 1 (introduced in 0.18)\nE")
+        reader = self.get_reader_for(
+            "Bazaar pack format 1 (introduced in 0.18)\nE")
         # No exception raised
         reader.validate()
 
@@ -705,5 +739,3 @@ class TestContainerPushParserBytesParsing(PushParserTestCase):
         parser.accept_bytes("6\n\nabcdef")
         self.assertEqual([([], 'abcdef')], parser.read_pending_records())
         self.assertEqual([], parser.read_pending_records())
-
-

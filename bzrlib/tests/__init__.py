@@ -94,6 +94,7 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 from bzrlib.tests import (
+    fixtures,
     test_server,
     TestUtil,
     treeshape,
@@ -995,12 +996,21 @@ class TestCase(testtools.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
+
+        timeout = config.GlobalStack().get('selftest.timeout')
+        if timeout:
+            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture.setUp()
+            self.addCleanup(timeout_fixture.cleanUp)
+
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
+
         if bzrlib.global_state is not None:
             self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
                               config.CommandLineStore())
+
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -2370,8 +2380,10 @@ class TestCase(testtools.TestCase):
         from bzrlib.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
+        orig_info = request_handlers.get_info(verb)
         request_handlers.remove(verb)
-        self.addCleanup(request_handlers.register, verb, orig_method)
+        self.addCleanup(request_handlers.register, verb, orig_method,
+            info=orig_info)
 
 
 class CapturedCall(object):
