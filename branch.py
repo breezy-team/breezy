@@ -1029,29 +1029,33 @@ class InterToGitBranch(branch.GenericInterBranch):
                 return False
             if (value[0] is not None and
                 git_sha is not None and
-                value[0] != git_sha):
-                return False
+                value[0] == git_sha):
+                return True
             if (value[1] is not None and
                 revid is not None and
-                value[1] != revid):
-                return False
+                value[1] == revid):
+                return True
             # FIXME: If one side only has the git sha available and the other only
             # has the bzr revid, then this will cause us to show a tag as updated
             # that hasn't actually been updated. 
-            return True
+            return False
         # FIXME: Check for diverged branches
         for ref, (git_sha, revid) in new_refs.iteritems():
-            if ref not in ret or overwrite:
-                if not ref_equals(ret, ref, git_sha, revid):
-                    try:
-                        tag_name = ref_to_tag_name(ref)
-                    except ValueError:
-                        pass
-                    else:
-                        result.tag_updates[tag_name] = revid
+            if ref_equals(ret, ref, git_sha, revid):
+                # Already up to date
+                if git_sha is None:
+                    git_sha = old_refs[ref][0]
+                if revid is None:
+                    revid = old_refs[ref][1]
+                ret[ref] = new_refs[ref] = (git_sha, revid)
+            elif ref not in ret or overwrite:
+                try:
+                    tag_name = ref_to_tag_name(ref)
+                except ValueError:
+                    pass
+                else:
+                    result.tag_updates[tag_name] = revid
                 ret[ref] = (git_sha, revid)
-            elif ref_equals(ret, ref, git_sha, revid):
-                pass
             else:
                 # FIXME: Check diverged
                 diverged = False
