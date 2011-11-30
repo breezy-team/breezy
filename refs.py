@@ -26,19 +26,22 @@ from bzrlib import (
     )
 
 is_tag = lambda x: x.startswith("refs/tags/")
+is_head = lambda x: x.startswith("refs/heads/")
+is_peeled = lambda x: x.endswith("^{}")
 
 
 def gather_peeled(refs):
     ret = {}
     for k, v in refs.iteritems():
-        if not k.endswith("^{}"):
-            try:
-                peeled = refs[k+"^{}"]
-                unpeeled = v
-            except KeyError:
-                peeled = v
-                unpeeled = None
-            ret[k] = (peeled, unpeeled)
+        if is_peeled(k):
+            continue
+        try:
+            peeled = refs[k+"^{}"]
+            unpeeled = v
+        except KeyError:
+            peeled = v
+            unpeeled = None
+        ret[k] = (peeled, unpeeled)
     return ret
 
 

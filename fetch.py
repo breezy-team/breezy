@@ -87,7 +87,7 @@ from bzrlib.plugins.git.object_store import (
     )
 from bzrlib.plugins.git.refs import (
     extract_tags,
-    gather_peeled,
+    is_peeled,
     )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
@@ -545,8 +545,7 @@ class InterFromGitRepository(InterRepository):
         return determine_wants
 
     def determine_wants_all(self, refs):
-        potential = set([peeled for (peeled, unpeeled) in
-            gather_peeled(refs).itervalues()])
+        potential = set([v for (k, v) in refs.iteritems() if not is_peeled(k)])
         return list(potential - self._target_has_shas(potential))
 
     @staticmethod
@@ -585,6 +584,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
     def _target_has_shas(self, shas):
         revids = {}
+        # FIXME: Check unpeel map
         for sha in shas:
             try:
                 revid = self.source.lookup_foreign_revision_id(sha)

@@ -5,6 +5,9 @@
   * Warn about ignoring path segment parameters when using bzr
     2.4. (Jelmer Vernooij, #887785)
 
+  * Don't request unpeeled objects, newer versions of github refuse it.
+    (Jelmer Vernooij, #897951)
+
 0.6.5	2011-11-08
 
  CHANGES
