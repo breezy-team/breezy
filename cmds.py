@@ -466,8 +466,15 @@ class cmd_builddeb(Command):
 class cmd_get_orig_source(Command):
     """Gets the upstream tar file for the packaging branch."""
 
-    def run(self):
-        tree = WorkingTree.open_containing('.')[0]
+    directory_opt = Option('directory',
+        help='Directory from which to retrieve the packaging data',
+        short_name='d', type=unicode)
+
+    takes_options = [directory_opt]
+    takes_args = ["version?"]
+
+    def run(self, directory='.', version=None):
+        tree = WorkingTree.open_containing(directory)[0]
         config = debuild_config(tree, tree)
 
         (changelog, larstiq) = find_changelog(tree, True)
@@ -475,8 +482,11 @@ class cmd_get_orig_source(Command):
         if orig_dir is None:
             orig_dir = default_orig_dir
 
+        if version is None:
+            version = changelog.version.upstream_version
+
         upstream_provider = UpstreamProvider(changelog.package,
-                changelog.version.upstream_version, orig_dir,
+                str(version), orig_dir,
                 [PristineTarSource(tree, tree.branch),
                  AptSource(),
                  GetOrigSourceSource(tree, larstiq),
