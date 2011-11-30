@@ -25,8 +25,11 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
     unless 'commit-message-from-changelog' is explicitly set to True. LP: #812749
   * Support running dep3-patch against remote repositories, and with
     open-ended revision ranges. LP: #893608
+  * bzr-builddeb now prefers the 'get-packaged-orig-source' rule to
+    retrieve the packaged upstream source, and warns about
+    'get-orig-source'. LP: #409862
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 26 Nov 2011 16:01:16 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 30 Nov 2011 17:13:38 +0100
 
 bzr-builddeb (2.7.9) unstable; urgency=low
 

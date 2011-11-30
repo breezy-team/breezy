@@ -64,7 +64,7 @@ def new_tarball_name(package, version, old_name):
 
 
 class UpstreamSource(object):
-    """A source for upstream versions (uscan, get-orig-source, etc)."""
+    """A source for upstream versions (uscan, debian/rules, etc)."""
 
     def get_latest_version(self, package, current_version):
         """Check what the latest upstream version is.
@@ -171,59 +171,77 @@ class AptSource(UpstreamSource):
         return True
 
 
-class GetOrigSourceSource(UpstreamSource):
-    """Upstream source that uses the get-orig-source rule in debian/rules."""
+class DebianRulesSource(UpstreamSource):
+    """Upstream source that uses rules in debian/rules."""
 
     def __init__(self, tree, top_level):
         self.tree = tree
         self.top_level = top_level
 
-    def _get_orig_source(self, source_dir, prefix, target_dir):
-        note("Trying to use get-orig-source to retrieve needed tarball.")
-        command = ["make", "-f", "debian/rules", "get-orig-source"]
+    def _get_rule_source(self, source_dir, rule, make_vars=None):
+        command = ["make", "-f", "debian/rules", rule]
+        if make_vars is not None:
+            command.append(["%s=%s" % item for item in make_vars.iteritems()])
+
         proc = subprocess.Popen(command, cwd=source_dir)
         ret = proc.wait()
         if ret != 0:
-            note("Trying to run get-orig-source rule failed")
-            return None
-        filenames = []
-        for filename in os.listdir(source_dir):
-            if not filename.startswith(prefix):
-                continue
-            fetched_tarball = os.path.join(source_dir, filename)
-            if os.path.exists(fetched_tarball):
-                repack_tarball(fetched_tarball, filename,
-                               target_dir=target_dir)
-                filenames.append(os.path.join(target_dir, filename))
-        if filenames:
-            return filenames
-        note("get-orig-source did not create file with prefix %s", prefix)
-        return None
+            note("Trying to run %s rule failed" % rule)
+            return False
+        return True
 
-    def fetch_tarballs(self, package, version, target_dir, components=None):
+    def _get_current_source(self, source_dir, package, version, target_dir):
+        rule = "get-packaged-orig-source"
+        note("Trying to use %s to retrieve needed tarball." % rule)
+        if not self._get_rule_source(source_dir, rule, {
+                "ORIG_VERSION": version,
+                "ORIG_PACKAGE": package}):
+            rule = "get-orig-source"
+            note("Trying to use %s to retrieve needed tarball (deprecated)." % rule)
+            if not self._get_rule_source(source_dir, rule):
+                return None
+        filenames = gather_orig_files(package, version, source_dir)
+        if not filenames:
+            note("%s did not create file for %s version %s", rule, package, version)
+            return None
+        if rule == "get-orig-source":
+            warning("Using get-orig-source to retrieve the packaged orig tarball "
+                    "is deprecated (see debian policy section 4.9). Provide the "
+                    "'get-packaged-orig-source' target instead.")
+        ret = []
+        for filename in filenames:
+            repack_tarball(
+                filename, os.path.basename(filename), target_dir=target_dir)
+            ret.append(os.path.join(target_dir, os.path.basename(filename)))
+        return ret
+
+    def _get_rules_id(self):
         if self.top_level:
             rules_name = 'rules'
         else:
             rules_name = 'debian/rules'
-        rules_id = self.tree.path2id(rules_name)
-        if rules_id is not None:
-            tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
-            try:
-                base_export_dir = os.path.join(tmpdir, "export")
-                export_dir = base_export_dir
-                if self.top_level:
-                    os.mkdir(export_dir)
-                    export_dir = os.path.join(export_dir, "debian")
-                export(self.tree, export_dir, format="dir")
-                tarball_paths = self._get_orig_source(base_export_dir,
-                        "%s_%s.orig" % (package, version), target_dir)
-                if tarball_paths is None:
-                    raise PackageVersionNotPresent(package, version, self)
-                return tarball_paths
-            finally:
-                shutil.rmtree(tmpdir)
-        note("No debian/rules file to try and use for a get-orig-source rule")
-        raise PackageVersionNotPresent(package, version, self)
+        return self.tree.path2id(rules_name)
+
+    def fetch_tarballs(self, package, version, target_dir, components=None):
+        rules_id = self._get_rules_id()
+        if rules_id is None:
+            note("No debian/rules file to use to retrieve upstream tarball.")
+            raise PackageVersionNotPresent(package, version, self)
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-get-source-")
+        try:
+            base_export_dir = os.path.join(tmpdir, "export")
+            export_dir = base_export_dir
+            if self.top_level:
+                os.mkdir(export_dir)
+                export_dir = os.path.join(export_dir, "debian")
+            export(self.tree, export_dir, format="dir")
+            tarball_paths = self._get_current_source(base_export_dir,
+                    package, version, target_dir)
+            if tarball_paths is None:
+                raise PackageVersionNotPresent(package, version, self)
+            return tarball_paths
+        finally:
+            shutil.rmtree(tmpdir)
 
 
 class UScanSource(UpstreamSource):
@@ -418,7 +436,7 @@ class UpstreamProvider(object):
              retrieved.
            - Else if uscan knows about that version it will be downloaded
              and repacked as needed.
-           - Else a call will be made to get-orig-source to try and retrieve
+           - Else a call will be made to debian/rules to try and retrieve
              the tarball.
 
         If the tarball can't be found at all then MissingUpstreamTarball
@@ -561,7 +579,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
             warning("More than one release file for release %s of package %s"
                     "found on Launchpad. Using the first.", version, package)
         hosted_file = release_files[0]
-        tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-launchpad-source-")
         try:
             inf = hosted_file.open()
             try:

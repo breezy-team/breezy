@@ -88,7 +88,7 @@ from bzrlib.plugins.builddeb.source_distiller import (
         )
 from bzrlib.plugins.builddeb.upstream import (
         AptSource,
-        GetOrigSourceSource,
+        DebianRulesSource,
         SelfSplitSource,
         TarfileSource,
         UScanSource,
@@ -396,7 +396,7 @@ class cmd_builddeb(Command):
             elif not native and config.upstream_branch is not None:
                 upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
             upstream_sources.extend([
-                GetOrigSourceSource(tree, top_level),
+                DebianRulesSource(tree, top_level),
                 UScanSource(tree, top_level),
                 ])
             if build_type == BUILD_TYPE_SPLIT:
@@ -479,7 +479,7 @@ class cmd_get_orig_source(Command):
                 changelog.version.upstream_version, orig_dir,
                 [PristineTarSource(tree, tree.branch),
                  AptSource(),
-                 GetOrigSourceSource(tree, larstiq),
+                 DebianRulesSource(tree, larstiq),
                  UScanSource(tree, larstiq) ])
 
         result = upstream_provider.provide(orig_dir)
@@ -1084,7 +1084,7 @@ class cmd_builddeb_do(Command):
                 changelog.version.upstream_version, orig_dir,
                 [PristineTarSource(t, t.branch),
                  AptSource(),
-                 GetOrigSourceSource(t, top_level),
+                 DebianRulesSource(t, top_level),
                  UScanSource(t, top_level) ])
 
         distiller = MergeModeDistiller(t, upstream_provider,
