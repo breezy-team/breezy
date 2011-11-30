@@ -82,6 +82,10 @@ Bug Fixes
   and gives a better error message if the time zone offset is not given.
   (Matt Giuca, #892657)
 
+* Give meaningful file/line references when reporting deprecation warnings
+  for _CompatabilityThunkFeature based test features.
+  (Vincent Ladeuil, #897718)
+
 * Raise BadIndexKey exception in btree_index when a key is too large, fixing 
   an infinite recursion issue. (Shannon Weyrick, #720853)
 

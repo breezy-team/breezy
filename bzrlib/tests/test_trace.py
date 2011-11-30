@@ -254,7 +254,7 @@ class TestTrace(TestCase):
         # have to do a replaceent here as well.
         self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
             'replace'))
-        
+
     def test_show_error(self):
         show_error('error1')
         show_error(u'error2 \xb5 blah')
