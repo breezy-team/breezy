@@ -19,7 +19,6 @@
 #
 
 import os
-import tarfile
 
 try:
     from debian.changelog import (Changelog,
@@ -67,21 +66,19 @@ class TestGetOrigSource(BuilddebTestCase):
         tree.add(source_files)
         return tree
 
-    def make_source_with_upstream(self):
+    def make_source_with_upstream(self, path="."):
         """Create a source tree in a branch with an upstream tag."""
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(path)
         source_files = ['README']
-        self.build_tree(source_files)
+        self.build_tree([os.path.join(path, f) for f in source_files])
         tree.add(source_files)
         tree.commit("one", rev_id='revid1')
         tree.branch.tags.set_tag("upstream-0.1", tree.branch.last_revision())
 
-        cl_file = 'debian/changelog'
-        source_files = ['debian/'] + [cl_file]
-        self.build_tree(source_files)
+        os.mkdir(os.path.join(path, 'debian'))
         c = self.make_changelog()
-        self.write_changelog(c, cl_file)
-        tree.add(source_files)
+        self.write_changelog(c, os.path.join(path, 'debian/changelog'))
+        tree.add(['debian', 'debian/changelog'])
         tree.commit("two", rev_id='revid2')
         return tree
 
@@ -104,3 +101,22 @@ class TestGetOrigSource(BuilddebTestCase):
         tree = self.make_source_with_upstream()
         self.run_bzr(['get-orig-source'])
         self.assertPathExists('../test_0.1.orig.tar.gz')
+
+    def test_get_orig_source_directory(self):
+        tree = self.make_source_with_upstream("somedir")
+        self.run_bzr(['get-orig-source', '-d', 'somedir'])
+        self.assertPathExists('../test_0.1.orig.tar.gz')
+
+    def test_get_orig_source_explicit_version(self):
+        tree = self.make_source_with_upstream()
+        c = self.make_changelog("0.3-1")
+        self.write_changelog(c, 'debian/changelog')
+        tree.commit("package 0.3")
+        self.run_bzr(['get-orig-source', '0.1'])
+        self.assertPathExists('../test_0.1.orig.tar.gz')
+
+    def test_get_orig_source_explicit_version_not_found(self):
+        tree = self.make_source_with_upstream()
+        self.run_bzr_error([
+            'bzr: ERROR: Unable to find the needed upstream tarball for package test, version 0.3.'],
+            'get-orig-source 0.3')
