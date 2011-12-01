@@ -2532,3 +2532,18 @@ def fdatasync(fileno):
     fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
     if fn is not None:
         fn(fileno)
+
+
+def ensure_empty_directory_exists(path, exception_class):
+    """Make sure a local directory exists and is empty.
+    
+    If it does not exist, it is created.  If it exists and is not empty, an
+    instance of exception_class is raised.
+    """
+    try:
+        os.mkdir(path)
+    except OSError, e:
+        if e.errno != errno.EEXIST:
+            raise
+        if os.listdir(path) != []:
+            raise exception_class(path)
