@@ -127,6 +127,7 @@ class Hooks(dict):
         """
         dict.__init__(self)
         self._callable_names = {}
+        self._lazy_callable_names = {}
         self._module = module
         self._member_name = member_name
 
@@ -196,7 +197,15 @@ class Hooks(dict):
         the code names are rarely meaningful for end users and this is not
         intended for debugging.
         """
-        return self._callable_names.get(a_callable, "No hook name")
+        name = self._callable_names.get(a_callable, None)
+        if name is None and a_callable is not None:
+            name = self._lazy_callable_names.get((a_callable.__module__,
+                                                  a_callable.__name__),
+                                                 None)
+        if name is None:
+            return 'No hook name'
+        return name
+
 
     def install_named_hook_lazy(self, hook_name, callable_module,
         callable_member, name):
@@ -221,6 +230,8 @@ class Hooks(dict):
                 self)
         else:
             hook_lazy(callable_module, callable_member, name)
+        if name is not None:
+            self.name_hook_lazy(callable_module, callable_member, name)
 
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
@@ -265,6 +276,10 @@ class Hooks(dict):
     def name_hook(self, a_callable, name):
         """Associate name with a_callable to show users what is running."""
         self._callable_names[a_callable] = name
+
+    def name_hook_lazy(self, callable_module, callable_member, callable_name):
+        self._lazy_callable_names[(callable_module, callable_member)]= \
+            callable_name
 
 
 class HookPoint(object):
