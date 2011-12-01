@@ -2764,7 +2764,7 @@ class CommandLineStore(Store):
             self.options[name] = value
 
     def external_url(self):
-        # Not an url but it makes debugging easier and it never needed
+        # Not an url but it makes debugging easier and is never needed
         # otherwise
         return 'cmdline'
 
@@ -3622,7 +3622,7 @@ class cmd_config(commands.Command):
 # ready-to-use store or stack.  Plugins that define new store/stacks can also
 # register themselves here to be tested against the tests defined in
 # bzrlib.tests.test_config. Note that the builder can be called multiple times
-# for the same tests.
+# for the same test.
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store

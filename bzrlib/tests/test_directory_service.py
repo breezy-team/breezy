@@ -21,7 +21,11 @@ from bzrlib import (
     transport,
     urlutils,
     )
-from bzrlib.directory_service import DirectoryServiceRegistry, directories
+from bzrlib.directory_service import (
+    AliasDirectory,
+    DirectoryServiceRegistry,
+    directories,
+    )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
@@ -107,3 +111,10 @@ class TestAliasDirectory(TestCaseWithTransport):
         e = self.assertRaises(errors.UnsetLocationAlias,
                               directories.dereference, ':parent')
         self.assertEqual('No parent location assigned.', str(e))
+
+    def test_register_location_alias(self):
+        branch = self.make_branch('.')
+        self.addCleanup(AliasDirectory.branch_aliases.remove, "booga")
+        AliasDirectory.branch_aliases.register("booga",
+            lambda b: "UHH?", help="Nobody knows")
+        self.assertEquals("UHH?", directories.dereference(":booga"))
