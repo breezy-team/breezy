@@ -34,6 +34,9 @@ Improvements
   branch, the relative branch name should no longer be url-encoded.
   (Jelmer Vernooij)
 
+* ``bzr export --uncommitted`` will export the uncommitted tree.
+  (Jelmer Vernooij, #555613)
+
 * ``bzr rmbranch`` can now remove colocated branches.
   (Jelmer Vernooij, #831464)
 
