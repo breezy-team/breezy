@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-11-10 13:40+0100\n"
-"PO-Revision-Date: 2011-11-14 11:34+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"PO-Revision-Date: 2011-11-30 13:57+0000\n"
+"Last-Translator: Jelmer Vernooij <Unknown>\n"
 "Language-Team: Dutch <nl@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2011-11-15 04:38+0000\n"
-"X-Generator: Launchpad (build 14291)\n"
+"X-Launchpad-Export-Date: 2011-12-01 04:30+0000\n"
+"X-Generator: Launchpad (build 14414)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -2488,7 +2488,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4032
 msgid "It sure does!\n"
-msgstr ""
+msgstr "Dat doet het zeker!\n"
 
 #: bzrlib/builtins.py:4056
 #, python-format
