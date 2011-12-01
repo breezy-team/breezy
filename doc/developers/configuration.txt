@@ -8,6 +8,36 @@ A configuration option has:
 
 * a value: a unicode string or a list of unicode strings.
 
+The short story
+---------------
+
+As a Bazaar developer there are three things you need to know about
+configuration.
+
+1: To get a value, you construct or get a reference to a ConfigStack
+subclass that's relevant to the context where you want to look up a value.
+For instance, given a branch::
+
+  print branch.get_config_stack().get('log_format')
+
+This will look up the stack through all relevant configuration sources.
+The value returned is of the type declared for that Option and if nothing
+is specifically declared you will get the default for that option.
+
+2: To add a new option, you add a new `Option` to the `option_registry`,
+either inside ``bzrlib/config.py`` or during initialization of your
+plugin.  New plugins should have systematic hierarchical names so that
+related values are grouped together.  ::
+
+  option_registry.register(
+      Option('dirstate.fdatasync', default=True,
+            from_unicode=bool_from_store,
+            help="Flush dirstate changes onto physical disk? ...."))
+
+3: There is (as of late 2011) some older and some newer configuration
+code.  The old code has specific methods for various checks or uses
+classes like `GlobalConfig`.  Don't add to to it; try to remove it.
+
 Option
 ------
 
