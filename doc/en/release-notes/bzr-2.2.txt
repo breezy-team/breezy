@@ -19,11 +19,6 @@ New Features
 Bug Fixes
 *********
 
-* Teach the bzr client how to reconnect if we get ``ConnectionReset``
-  while making an RPC request. This doesn't handle all possible network
-  disconnects, but it should at least handle when the server is asked to
-  shutdown gracefully. (John Arbash Meinel, #819604)
-
 Improvements
 ************
 

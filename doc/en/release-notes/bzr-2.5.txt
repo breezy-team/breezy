@@ -34,11 +34,17 @@ Improvements
   branch, the relative branch name should no longer be url-encoded.
   (Jelmer Vernooij)
 
+* ``bzr rmbranch`` can now remove colocated branches.
+  (Jelmer Vernooij, #831464)
+
 * ``bzr switch`` now accepts colocated branch names to switch to.
   (Jelmer Vernooij, #826814)
 
 * ``bzr branch --stacked`` now only makes a single connection to the remote
   server rather than three. (Jelmer Vernooij, #444293)
+
+* Plugins can now register additional "location aliases".
+  (Jelmer Vernooij)
 
 Bug Fixes
 *********
@@ -62,6 +68,9 @@ Bug Fixes
   from remote repositories.  (Jelmer Vernooij, #368717, #762330,
   #608640)
 
+* ``bzr info`` no longer shows empty output if only a control
+  directory is present. (Jelmer Vernooij, #159098)
+
 * Cope with missing revision ids being specified to
   ``Repository.gather_stats`` HPSS call. (Jelmer Vernooij, #411290)
 
@@ -72,6 +81,17 @@ Bug Fixes
   prohibits several invalid strings, reads the correct number of seconds,
   and gives a better error message if the time zone offset is not given.
   (Matt Giuca, #892657)
+
+* Give meaningful file/line references when reporting deprecation warnings
+  for _CompatabilityThunkFeature based test features.
+  (Vincent Ladeuil, #897718)
+
+* Provide names for lazily registered hooks. 
+  (Neil Martinsen-Burrell, #894609)
+
+
+* Raise BadIndexKey exception in btree_index when a key is too large, fixing 
+  an infinite recursion issue. (Shannon Weyrick, #720853)
 
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
@@ -111,6 +131,8 @@ API Changes
 
 * ``BzrDir.open_branch`` and ``BranchFormat.open`` now take an optional
   ``possible_transports`` argument. (Jelmer Vernooij)
+
+* New method ``Transport.set_segment_parameter``.  (Jelmer Vernooij)
 
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
@@ -219,9 +241,6 @@ Improvements
 * ``bzr revno`` now takes a ``--revision`` argument.
   (Jelmer Vernooij, #870649)
 
-* ``bzr rmbranch`` can now remove colocated branches.
-  (Jelmer Vernooij, #831464)
-
 * ``bzr serve`` now can serve from URLs rather than just from the
   file system. I.e.: ``bzr serve -d lp:bzr`` or
   ``bzr serve -d file:///data/bzr`` (Jelmer Vernooij)
@@ -236,9 +255,6 @@ Bug Fixes
 
 * ``bzr info`` now shows the master branch location too for
   treeless local branches. (Jelmer Vernooij, #258355)
-
-* ``bzr info`` no longer shows empty output if only a control
-  directory is present. (Jelmer Vernooij, #159098)
 
 * ``bzr mkdir --quiet`` now does not print a line for every created
   directory. (Martin von Gagern, #869915)
@@ -285,8 +301,6 @@ API Changes
   indicates whether revisions can be present in a repository without
   being referenced from e.g. a branch history at the same time.
   (Jelmer Vernooij)
-
-* New method ``Transport.set_segment_parameter``.  (Jelmer Vernooij)
 
 * ``UIFactory.choose`` has been added: prompt the user for a list of
   choices. (Benoît Pierre)
@@ -632,9 +646,6 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
-
-* Raise BadIndexKey exception in btree_index when a key is too large, fixing 
-  an infinite recursion issue. (Shannon Weyrick, #720853)
 
 Documentation
 *************
