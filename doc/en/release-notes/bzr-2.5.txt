@@ -86,6 +86,10 @@ Bug Fixes
   for _CompatabilityThunkFeature based test features.
   (Vincent Ladeuil, #897718)
 
+* Provide names for lazily registered hooks. 
+  (Neil Martinsen-Burrell, #894609)
+
+
 * Raise BadIndexKey exception in btree_index when a key is too large, fixing 
   an infinite recursion issue. (Shannon Weyrick, #720853)
 
