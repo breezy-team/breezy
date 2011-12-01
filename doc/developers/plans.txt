@@ -2,29 +2,12 @@ Plans
 =====
 
 .. toctree::
-   :hidden:
+   :maxdepth: 1
 
-   performance-roadmap
+   Performance roadmap <performance-roadmap>
    colocated-branches
    feature-flags
+   new-config-rationale
    tortoise-strategy
    improved_chk_index
 
-
-* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap
-  for fixing performance in bzr over the next few releases.
-
-* `Co-located branches <colocated-branches.html>`_ |--| Planned(?) support
-  for storing multiple branches in one file-system directory.
-
-* `Bazaar Windows Shell Extension Options <tortoise-strategy.html>`_ |--|
-  Implementation strategy for Bazaar Windows Shell Extensions, aka
-  TortoiseBzr.
-
-* `CHK Optimized index <improved_chk_index.html>`_
-
-
-.. |--| unicode:: U+2014
-
-..
-   vim: ft=rst tw=74 ai
