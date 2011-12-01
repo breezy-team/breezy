@@ -194,8 +194,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         wt = self.make_branch_and_tree('this')
         (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
-        self.assertRaises(errors.ExistingPendingDeletion, self.do_merge, wt, wt)
-        self.assertRaises(errors.LockError, wt.unlock)
+        self.do_merge(wt, wt)
 
     def test_merge_with_pending_deletion_non_empty(self):
         """Also see bug 427773"""
