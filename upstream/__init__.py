@@ -372,7 +372,13 @@ class StackedUpstreamSource(UpstreamSource):
 
 
 def gather_orig_files(package, version, path):
-    prefix = "%s_%s.orig" % (package, version)
+    """Grab the orig files for a particular package.
+
+    :param package: package name
+    :param version: package upstream version string
+    :return: List of orig tarfile paths, or None if none were found
+    """
+    prefix = "%s_%s.orig" % (package.encode('ascii'), version.encode('ascii'))
     ret = []
     path = os.path.abspath(path)
     if not os.path.isdir(path):

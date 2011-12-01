@@ -1010,3 +1010,21 @@ class TestGatherOrigTarballs(TestCaseWithTransport):
         self.assertEquals(
             [os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz")],
             gather_orig_files("mypkg", "1.0", "."))
+
+    def test_multiple(self):
+        self.build_tree(["mypkg_1.0.orig.tar.gz", "mypkg_1.0.orig-foo.tar.gz"])
+        self.assertEquals(
+            set([os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz"),
+             os.path.join(self.test_dir, "mypkg_1.0.orig-foo.tar.gz")]),
+            set(gather_orig_files("mypkg", "1.0", ".")))
+
+    def test_utf8_invalid_file(self):
+        f = open("\xf6o.tar.gz", "w")
+        try:
+            f.write("foo")
+        finally:
+            f.close()
+        self.build_tree(["mypkg_1.0.orig.tar.gz"])
+        self.assertEquals(
+            [os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz")],
+            gather_orig_files(u"mypkg", "1.0", "."))

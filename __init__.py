@@ -27,7 +27,10 @@ import os
 
 import bzrlib
 from bzrlib.commands import plugin_cmds
-from bzrlib.directory_service import directories
+from bzrlib.directory_service import (
+    AliasDirectory,
+    directories,
+    )
 
 from info import (
     bzr_plugin_version as version_info,
@@ -68,6 +71,20 @@ default_result_dir = '..'
 directories.register_lazy("apt:", 'bzrlib.plugins.builddeb.directory',
         'VcsDirectory',
         "Directory that uses Debian Vcs-* control fields to look up branches")
+
+branch_aliases = getattr(AliasDirectory, "branch_aliases", None)
+if branch_aliases is not None:
+    def upstream_branch_alias(b):
+        from bzrlib.plugins.builddeb.util import debuild_config
+        b.lock_read()
+        try:
+            tree = b.basis_tree()
+            config = debuild_config(tree, False)
+            return directories.dereference(config.upstream_branch)
+        finally:
+            b.unlock()
+    branch_aliases.register("upstream", upstream_branch_alias,
+        help="upstream branch (for packaging branches)")
 
 
 def debian_changelog_commit_message(commit, start_message):
