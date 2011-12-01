@@ -36,6 +36,7 @@ import pprint
 import random
 import re
 import shlex
+import site
 import stat
 import subprocess
 import sys
@@ -2184,6 +2185,11 @@ class TestCase(testtools.TestCase):
 
         if env_changes is None:
             env_changes = {}
+        # Because $HOME is set to a tempdir for the context of a test, modules
+        # installed in the user dir will not be found unless $PYTHONUSERBASE
+        # gets set to the computed directory of this parent process.
+        if site.USER_BASE is not None:
+            env_changes["PYTHONUSERBASE"] = site.USER_BASE
         old_env = {}
 
         def cleanup_environment():
