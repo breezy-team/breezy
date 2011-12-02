@@ -615,3 +615,10 @@ elif has_ctypes and sys.platform == 'win32':
         _CloseHandle(handle)
         return False
     is_local_pid_dead = _ctypes_is_local_pid_dead
+
+
+def _is_pywintypes_error(evalue):
+    """True if exception instance is a error from pywin32"""
+    if has_win32file and isinstance(evalue, pywintypes.error):
+        return True
+    return False
