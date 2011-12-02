@@ -1,3 +1,15 @@
+bzr-builddeb (2.7.10) precise; urgency=low
+
+  bzr-builddeb now warns when using the get-orig-source target in debian/rules
+  to fetch the currently package upstream tarball. get-packaged-orig-source
+  should be provided instead.
+
+  Debian policy (section 4.9) dictates that get-orig-source should fetch the
+  latest upstream tarball rather than the upstream tarball for the upstream
+  version that is currently packaged.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 30 Nov 2011 17:13:49 +0100
+
 bzr-builddeb (2.5.1) unstable; urgency=low
 
   The 'deb:' directory service has been renamed to 'apt:' to avoid confusion.

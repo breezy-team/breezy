@@ -27,8 +27,11 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
     open-ended revision ranges. LP: #893608
   * Fix finding orig tarballs in directories also containing filenames
     with non-utf8 characters. LP: #865753
+  * bzr-builddeb now prefers the 'get-packaged-orig-source' rule to
+    retrieve the packaged upstream source, and warns about
+    'get-orig-source'. LP: #409862
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 30 Nov 2011 16:32:05 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 30 Nov 2011 17:13:38 +0100
 
 bzr-builddeb (2.7.9) unstable; urgency=low
 
