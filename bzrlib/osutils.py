@@ -2006,6 +2006,26 @@ def get_diff_header_encoding():
     return get_terminal_encoding()
 
 
+_message_encoding = None
+
+
+def get_message_encoding():
+    """Return the encoding used for system messages"""
+    global _message_encoding
+    if _message_encoding is None:
+        if os.name == "posix":
+            import locale
+            # This is a process-global setting that can change, but should in
+            # general just get set once at process startup then be constant.
+            _message_encoding = locale.getlocale(locale.LC_MESSAGES)[1]
+            if _message_encoding is None:
+                _message_encoding = "ascii"
+        else:
+            # On windows want the result of GetACP() which this boils down to.
+            _message_encoding = get_user_encoding()
+    return _message_encoding
+        
+
 def get_host_name():
     """Return the current unicode host name.
 
