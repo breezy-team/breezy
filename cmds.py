@@ -279,14 +279,6 @@ class cmd_fast_import(Command):
         from bzrlib.plugins.fastimport.helpers import (
             open_destination_directory,
             )
-        # If no format is given and the user is running a release
-        # leading up to 2.0, select 2a for them. Otherwise, use
-        # the default format.
-        if format is None:
-            import bzrlib
-            bzr_version = bzrlib.version_info[0:2]
-            if bzr_version in [(1,17), (1,18), (2,0)]:
-                format = bzrdir.format_registry.make_bzrdir('2a')
         control = open_destination_directory(destination, format=format)
 
         # If an information file was given and the source isn't stdin,
