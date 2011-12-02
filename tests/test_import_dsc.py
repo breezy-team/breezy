@@ -146,6 +146,27 @@ class DistributionBranchTests(BuilddebTestCase):
     def do_commit_with_md5(self, tree, message, md5):
         return tree.commit(message, revprops={"deb-md5":md5})
 
+    def tag_upstream_version(self, db, version):
+        """Tags the upstream branch's last revision with an upstream version.
+
+        Sets a tag on the last revision of the upstream branch and on the main
+        branch with a tag that refers to the upstream part of the version
+        provided.
+
+        :param version: the upstream part of the version number to derive the 
+            tag name from.
+        :param revid: the revid to associate the tag with, or None for the
+            tip of self.pristine_upstream_branch.
+        :return The tag name, revid of the added tag.
+        """
+        assert isinstance(version, str)
+        tag_name = db.pristine_upstream_source.tag_name(version)
+        revid = db.pristine_upstream_branch.last_revision()
+        db.pristine_upstream_source.tag_version(version, revid)
+        db.branch.fetch(db.pristine_upstream_branch)
+        db.branch.tags.set_tag(tag_name, revid)
+        return tag_name, revid
+
     def test_create(self):
         db = self.db1
         self.assertNotEqual(db, None)
@@ -174,7 +195,7 @@ class DistributionBranchTests(BuilddebTestCase):
         tree = self.up_tree1
         version = "0.1"
         revid = tree.commit("one")
-        db.tag_upstream_version(version)
+        self.tag_upstream_version(db, version)
         tag_name = db.pristine_upstream_source.tag_name(version)
         self.assertEqual(tree.branch.tags.lookup_tag(tag_name), revid)
 
@@ -200,7 +221,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertFalse(db.pristine_upstream_source.has_version("package", version,
             [("foo.tar.gz", None, self.fake_md5_1)]))
         self.do_commit_with_md5(self.up_tree1, "one", self.fake_md5_1)
-        db.tag_upstream_version(version)
+        self.tag_upstream_version(db, version)
         self.assertTrue(db.pristine_upstream_source.has_version("package", version))
         self.assertTrue(db.pristine_upstream_source.has_version("package",
             version, [("foo.tar.gz", None, self.fake_md5_1)]))
@@ -232,7 +253,7 @@ class DistributionBranchTests(BuilddebTestCase):
         tree = self.up_tree1
         version = "0.1"
         revid = tree.commit("one")
-        db.tag_upstream_version(version)
+        self.tag_upstream_version(db, version)
         self.assertEqual(
             db.pristine_upstream_source.version_as_revisions("package", version), 
             { None: revid })
@@ -424,13 +445,13 @@ class DistributionBranchTests(BuilddebTestCase):
         db = self.db1
         version1 = Version("0.1-1")
         up_revid = self.up_tree1.commit("one")
-        db.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(db, version1.upstream_version)
         self.assertEqual(
             db.get_parents_with_upstream("package", version1, [version1], None),
             [up_revid])
         db = self.db2
         self.up_tree2.pull(self.up_tree1.branch)
-        db.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(db, version1.upstream_version)
         self.assertEqual(
             db.get_parents_with_upstream("package", version1, [version1], None),
             [up_revid])
@@ -442,7 +463,7 @@ class DistributionBranchTests(BuilddebTestCase):
         revid1 = self.tree1.commit("one")
         db.tag_version(version1)
         up_revid = self.up_tree1.commit("upstream one")
-        db.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(db, version1.upstream_version)
         # No upstream parent
         self.assertEqual(db.get_parents_with_upstream(
             "package", version2, [version2, version1], None), [revid1])
@@ -457,8 +478,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.db2.tag_version(version2)
         up_revid1 = self.up_tree1.commit("upstream one")
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db1.tag_upstream_version(version1.upstream_version)
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         versions = [version3, version1, version2]
         # No upstream parent
         self.assertEqual(self.db2.get_parents_with_upstream(
@@ -474,8 +495,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.db2.tag_version(version2)
         up_revid1 = self.up_tree1.commit("upstream one")
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db1.tag_upstream_version(version1.upstream_version)
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         versions = [version3, version2, version1]
         # No upstream parent
         self.assertEqual(self.db1.get_parents_with_upstream(
@@ -490,8 +511,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.db2.tag_version(version1)
         up_revid1 = self.up_tree1.commit("upstream one")
         up_revid2 = self.up_tree2.commit("upstream two")
-        self.db1.tag_upstream_version(version1.upstream_version)
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         versions = [version2, version1]
         # Upstream parent as it is new upstream version
         self.assertEqual(self.db2.get_parents_with_upstream(
@@ -509,13 +530,13 @@ class DistributionBranchTests(BuilddebTestCase):
         revid3 = self.tree1.commit("three")
         self.db1.tag_version(version3)
         up_revid1 = self.up_tree1.commit("upstream one")
-        self.db1.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         up_revid2 = self.up_tree1.commit("upstream two")
-        self.db1.tag_upstream_version(version3.upstream_version)
+        self.tag_upstream_version(self.db1, version3.upstream_version)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db2.tag_upstream_version(version4.upstream_version)
+        self.tag_upstream_version(self.db2, version4.upstream_version)
         versions = [version4, version3, version2, version1]
         # no upstream parent as the lesser branch has already merged it
         self.assertEqual(self.db2.get_parents_with_upstream(
@@ -527,9 +548,9 @@ class DistributionBranchTests(BuilddebTestCase):
         revid1 = self.tree1.commit("one")
         self.db1.tag_version(version1)
         up_revid1 = self.up_tree1.commit("upstream one")
-        self.db1.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
         up_revid2 = self.up_tree2.commit("different upstream one")
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         versions = [version2, version1]
         # a previous test checked that this wouldn't give an
         # upstream parent, but we are requiring one.
@@ -548,9 +569,9 @@ class DistributionBranchTests(BuilddebTestCase):
         self.db2.tag_version(version2)
         self.db1.tag_version(version3)
         up_revid1 = self.up_tree1.commit("upstream one")
-        self.db1.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         versions = [version3, version2, version1]
         # This is a sync but we are diverged so we should get two
         # parents
@@ -568,11 +589,11 @@ class DistributionBranchTests(BuilddebTestCase):
         self.db2.tag_version(version2)
         self.db1.tag_version(version3)
         up_revid1 = self.up_tree1.commit("upstream one")
-        self.db1.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         up_revid2 = self.up_tree1.commit("upstream two")
-        self.db1.tag_upstream_version(version3.upstream_version)
+        self.tag_upstream_version(self.db1, version3.upstream_version)
         versions = [version3, version2, version1]
         # This a sync, but we are diverged, so we should get two
         # parents. There should be no upstream as the synced
@@ -591,14 +612,14 @@ class DistributionBranchTests(BuilddebTestCase):
         self.db2.tag_version(version2)
         self.db1.tag_version(version3)
         up_revid1 = self.up_tree1.commit("upstream one")
-        self.db1.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db2.tag_upstream_version(version2.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         up_revid2 = self.up_tree1.commit("upstream two")
-        self.db1.tag_upstream_version(version3.upstream_version)
+        self.tag_upstream_version(self.db1, version3.upstream_version)
         versions = [version3, version2, version1]
         up_revid3 = self.up_tree2.commit("different upstream two")
-        self.db2.tag_upstream_version(version3.upstream_version)
+        self.tag_upstream_version(self.db2, version3.upstream_version)
         versions = [version3, version2, version1]
         # test_get_parents_with_upstream_sync_new_upstream
         # checks that there is not normally an upstream parent
@@ -675,7 +696,7 @@ class DistributionBranchTests(BuilddebTestCase):
                 version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, None)
         self.do_commit_with_md5(self.up_tree1, "one", self.fake_md5_1)
-        self.db1.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version)
         # Version and md5 available, so we get the correct branch.
         branch = self.db2.branch_to_pull_upstream_from("package",
                 version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
@@ -698,7 +719,7 @@ class DistributionBranchTests(BuilddebTestCase):
                 version1.upstream_version, [("foo.tar.gz", None, self.fake_md5_1)])
         self.assertEqual(branch, None)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.db2.tag_upstream_version(version1.upstream_version)
+        self.tag_upstream_version(self.db2, version1.upstream_version)
         # And we get the greatest branch when two lesser branches
         # have what we are looking for.
         branch = self.db3.branch_to_pull_upstream_from("package",
@@ -714,10 +735,10 @@ class DistributionBranchTests(BuilddebTestCase):
         version = Version("0.1-1")
         self.do_commit_with_md5(self.up_tree1, "upstream one",
                 self.fake_md5_1)
-        self.db1.tag_upstream_version(version.upstream_version)
+        self.tag_upstream_version(self.db1, version.upstream_version)
         up_revid = self.do_commit_with_md5(self.up_tree2, "upstream two",
                 self.fake_md5_1)
-        self.db2.tag_upstream_version(version.upstream_version)
+        self.tag_upstream_version(self.db2, version.upstream_version)
         revid = self.do_commit_with_md5(self.tree1, "one", self.fake_md5_2)
         self.db1.tag_version(version)
         self.assertNotEqual(self.tree2.branch.last_revision(), revid)
@@ -732,7 +753,7 @@ class DistributionBranchTests(BuilddebTestCase):
         version = Version("0.1-1")
         up_revid = self.do_commit_with_md5(self.up_tree1, "upstream one",
                 self.fake_md5_1)
-        self.db1.tag_upstream_version(version.upstream_version)
+        self.tag_upstream_version(self.db1, version.upstream_version)
         revid = self.do_commit_with_md5(self.tree1, "one", self.fake_md5_2)
         self.db1.tag_version(version)
         self.assertNotEqual(self.tree2.branch.last_revision(), revid)
@@ -748,7 +769,7 @@ class DistributionBranchTests(BuilddebTestCase):
         version = "0.1"
         up_revid = self.do_commit_with_md5(self.up_tree1, "upstream one",
                 self.fake_md5_1)
-        self.db1.tag_upstream_version(version)
+        self.tag_upstream_version(self.db1, version)
         self.assertNotEqual(self.up_tree2.branch.last_revision(), up_revid)
         self.db2.pull_upstream_from_branch(self.db1, "package", version)
         self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
