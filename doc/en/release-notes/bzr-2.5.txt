@@ -49,6 +49,10 @@ Improvements
 * Plugins can now register additional "location aliases".
   (Jelmer Vernooij)
 
+* Revision specifiers will now only browse as much history as they
+  need to, rather than grabbing the whole history unnecessarily in some
+  cases. (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
@@ -139,6 +143,10 @@ API Changes
 
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
+
+* ``RevisionSpec.wants_revision_history`` now defaults to ``False`` and
+  is deprecated. The ``revs`` argument of
+  ``RevisionInfo.from_revision_id`` is now deprecated. (Jelmer Vernooij)
 
 * ``Tree.get_file_by_path`` is now deprecated. Use ``Tree.get_file`` instead.
   (Jelmer Vernooij, #666897)
