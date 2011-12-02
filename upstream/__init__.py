@@ -181,7 +181,7 @@ class DebianRulesSource(UpstreamSource):
     def _get_rule_source(self, source_dir, rule, make_vars=None):
         command = ["make", "-f", "debian/rules", rule]
         if make_vars is not None:
-            command.append(["%s=%s" % item for item in make_vars.iteritems()])
+            command.extend(["%s=%s" % item for item in make_vars.iteritems()])
 
         proc = subprocess.Popen(command, cwd=source_dir)
         ret = proc.wait()
