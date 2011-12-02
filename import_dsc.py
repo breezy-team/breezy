@@ -444,27 +444,6 @@ class DistributionBranch(object):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name
 
-    def tag_upstream_version(self, version, revid=None):
-        """Tags the upstream branch's last revision with an upstream version.
-
-        Sets a tag on the last revision of the upstream branch and on the main
-        branch with a tag that refers to the upstream part of the version
-        provided.
-
-        :param version: the upstream part of the version number to derive the 
-            tag name from.
-        :param revid: the revid to associate the tag with, or None for the
-            tip of self.pristine_upstream_branch.
-        :return The tag name, revid of the added tag.
-        """
-        assert isinstance(version, str)
-        tag_name = self.pristine_upstream_source.tag_name(version)
-        if revid is None:
-            revid = self.pristine_upstream_branch.last_revision()
-        self.pristine_upstream_source.tag_version(version, revid)
-        self.branch.fetch(self.pristine_upstream_branch)
-        self.branch.tags.set_tag(tag_name, revid)
-        return tag_name, revid
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
