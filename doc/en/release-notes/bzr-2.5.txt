@@ -30,10 +30,6 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* When using ``bzr switch`` to switch to a sibling of the current
-  branch, the relative branch name should no longer be url-encoded.
-  (Jelmer Vernooij)
-
 * ``bzr export --uncommitted`` will export the uncommitted tree.
   (Jelmer Vernooij, #555613)
 
@@ -49,9 +45,16 @@ Improvements
 * Plugins can now register additional "location aliases".
   (Jelmer Vernooij)
 
+* ``bzr status`` no longer shows shelves if files are specified.
+  (Francis Devereux)
+
 * Revision specifiers will now only browse as much history as they
   need to, rather than grabbing the whole history unnecessarily in some
   cases. (Jelmer Vernooij)
+
+* When using ``bzr switch`` to switch to a sibling of the current
+  branch, the relative branch name should no longer be url-encoded.
+  (Jelmer Vernooij)
 
 Bug Fixes
 *********
@@ -96,7 +99,6 @@ Bug Fixes
 * Provide names for lazily registered hooks. 
   (Neil Martinsen-Burrell, #894609)
 
-
 * Raise BadIndexKey exception in btree_index when a key is too large, fixing 
   an infinite recursion issue. (Shannon Weyrick, #720853)
 
@@ -111,11 +113,6 @@ Bug Fixes
 
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
-
-* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
-  prohibits several invalid strings, reads the correct number of seconds,
-  and gives a better error message if the time zone offset is not given.
-  (Matt Giuca, #892657)
 
 * Teach the bzr client how to reconnect if we get ``ConnectionReset``
   while making an RPC request. This doesn't handle all possible network
@@ -163,8 +160,11 @@ Internals
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
-* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
-  will now use HPSS calls where possible. (Jelmer Vernooij)
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
 
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
@@ -180,11 +180,8 @@ Internals
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
 
-* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
-
-* Custom HPSS error handlers can now be installed in the smart server client
-  using the ``error_translators`` and ``no_context_error_translators``
-  registries. (Jelmer Vernooij)
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
 
 * The registry of merge types has been moved to ``merge`` from ``option`` but
   ``merge.get_merge_type_registry`` remains as an accessor. (Martin Packman)

@@ -453,6 +453,10 @@ def _show_shelve_summary(params):
 
     :param params: StatusHookParams.
     """
+    # Don't show shelves if status of specific files is being shown, only if
+    # no file arguments have been passed
+    if params.specific_files:
+        return
     get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
     if get_shelf_manager is None:
         return
