@@ -144,9 +144,9 @@ API Changes
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
 
-* ``RevisionSpec.wants_revision_history`` now defaults to ``False``.
-  The ``revs`` argument of ``RevisionInfo.from_revision_id`` is now
-  deprecated. (Jelmer Vernooij)
+* ``RevisionSpec.wants_revision_history`` now defaults to ``False`` and
+  is deprecated. The ``revs`` argument of
+  ``RevisionInfo.from_revision_id`` is now deprecated. (Jelmer Vernooij)
 
 * ``Tree.get_file_by_path`` is now deprecated. Use ``Tree.get_file`` instead.
   (Jelmer Vernooij, #666897)
