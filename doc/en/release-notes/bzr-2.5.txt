@@ -151,6 +151,9 @@ API Changes
 * Some global options for use with commands have been removed, construct
   an ``Option`` with the name instead. (Martin Packman)
 
+* The unused exception ``HistoryMissing`` has been removed.
+  (Jelmer Vernooij)
+
 Internals
 *********
 

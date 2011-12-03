@@ -1155,11 +1155,6 @@ class InvalidRevisionSpec(BzrError):
             self.extra = ''
 
 
-class HistoryMissing(BzrError):
-
-    _fmt = "%(branch)s is missing %(object_type)s {%(object_id)s}"
-
-
 class AppendRevisionsOnlyViolation(BzrError):
 
     _fmt = ('Operation denied because it would change the main history,'
