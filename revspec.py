@@ -36,6 +36,7 @@ class RevisionSpec_package(RevisionSpec):
     specify the revision corresponding to the upload of that version of
     the package.
     """
+    wants_revision_history = False
     prefix = 'package:'
 
     def _match_on(self, branch, revs):
