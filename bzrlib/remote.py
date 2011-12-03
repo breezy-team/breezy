@@ -1895,8 +1895,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                             next_revid = None
                             break
         except errors.UnknownSmartMethod:
-            for inv in self._iter_inventories_vfs(revision_ids, ordering):
-                yield inv, inv.revision_id
+            for inv, revid in self._iter_inventories_vfs(revision_ids, ordering):
+                yield inv, revid
             return
         # Report missing
         if order_as_requested:
