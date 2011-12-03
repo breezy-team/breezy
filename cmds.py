@@ -56,6 +56,7 @@ from bzrlib.plugins.builddeb import (
     default_orig_dir,
     default_result_dir,
     dh_make,
+    gettext,
     )
 from bzrlib.plugins.builddeb.builder import (
                      DebBuild,
@@ -229,7 +230,7 @@ class cmd_builddeb(Command):
 
     def _get_build_tree(self, revision, tree, branch):
         if revision is None and tree is not None:
-            note("Building using working tree")
+            note(gettext("Building using working tree"))
             working_tree = True
         else:
             if revision is None:
@@ -237,9 +238,10 @@ class cmd_builddeb(Command):
             elif len(revision) == 1:
                 revid = revision[0].in_history(branch).rev_id
             else:
-                raise BzrCommandError('bzr builddeb --revision takes exactly one '
-                                      'revision specifier.')
-            note("Building branch from revision %s", revid)
+                raise BzrCommandError(gettext(
+                    'bzr builddeb --revision takes exactly one '
+                    'revision specifier.'))
+            note(gettext("Building branch from revision %s"), revid)
             tree = branch.repository.revision_tree(revid)
             working_tree = False
         return tree, working_tree
@@ -326,7 +328,7 @@ class cmd_builddeb(Command):
             source=False, revision=None, result=None, package_merge=None,
             strict=False):
         if result is not None:
-            warning("--result is deprecated, use --result-dir instead")
+            warning(gettext("--result is deprecated, use --result-dir instead"))
         location, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
         tree, branch, is_local, location = self._get_tree_and_branch(location)
@@ -344,7 +346,7 @@ class cmd_builddeb(Command):
         try:
             config = debuild_config(tree, working_tree)
             if reuse:
-                note("Reusing existing build dir")
+                note(gettext("Reusing existing build dir"))
                 dont_purge = True
                 use_existing = True
             build_type = self._build_type(merge, native, split)
@@ -356,7 +358,7 @@ class cmd_builddeb(Command):
                 build_type = guess_build_type(tree, changelog.version,
                     contains_upstream_source)
 
-            note("Building package in %s mode" % build_type)
+            note(gettext("Building package in %s mode") % build_type)
 
             if package_merge:
                 try:
@@ -384,8 +386,8 @@ class cmd_builddeb(Command):
             if build_type == BUILD_TYPE_MERGE:
                 if export_upstream is None and config.export_upstream:
                     export_upstream = config.export_upstream
-                    warning("The 'export-upstream' configuration option is deprecated. "
-                            "Use 'upstream-branch' instead.")
+                    warning(gettext("The 'export-upstream' configuration "
+                        "option is deprecated. Use 'upstream-branch' instead."))
                 if export_upstream is None and config.upstream_branch:
                     export_upstream = config.upstream_branch
                 if export_upstream:
@@ -494,7 +496,7 @@ class cmd_get_orig_source(Command):
 
         result = upstream_provider.provide(orig_dir)
         for tar, component in result:
-            note("Tar now in " + tar)
+            note(gettext("Tar now in %s") % tar)
 
 
 class cmd_merge_upstream(Command):
@@ -646,7 +648,7 @@ class cmd_merge_upstream(Command):
             if distribution is None:
                 distribution = find_last_distribution(changelog)
                 if distribution is not None:
-                    note("Using distribution %s" % distribution)
+                    note(gettext("Using distribution %s") % distribution)
         except MissingChangelogError:
             top_level = False
             changelog = None
@@ -662,7 +664,7 @@ class cmd_merge_upstream(Command):
         distribution = distribution.lower()
         distribution_name = lookup_distribution(distribution)
         if distribution_name is None:
-            raise BzrCommandError("Unknown target distribution: %s" \
+            raise BzrCommandError(gettext("Unknown target distribution: %s") \
                         % distribution)
         return (current_version, package, distribution, distribution_name,
                 changelog, top_level)
@@ -694,8 +696,8 @@ class cmd_merge_upstream(Command):
                     contains_upstream_source)
             need_upstream_tarball = (build_type != BUILD_TYPE_MERGE)
             if build_type == BUILD_TYPE_NATIVE:
-                raise BzrCommandError("Merge upstream in native mode is not "
-                        "supported.")
+                raise BzrCommandError(gettext("Merge upstream in native mode "
+                        "is not supported."))
 
             if launchpad:
                 from bzrlib.plugins.builddeb.launchpad import (
@@ -703,7 +705,7 @@ class cmd_merge_upstream(Command):
                     )
                 upstream_branch = lp_get_upstream_branch_url(package,
                     distribution_name, distribution)
-                note("Using upstream branch %s" % upstream_branch)
+                note(gettext("Using upstream branch %s") % upstream_branch)
 
             if upstream_branch is not None:
                 upstream_branch = Branch.open(upstream_branch)
@@ -732,19 +734,19 @@ class cmd_merge_upstream(Command):
             else:
                 if snapshot:
                     if upstream_branch_source is None:
-                        raise BzrCommandError("--snapshot requires an upstream"
-                            " branch source")
+                        raise BzrCommandError(gettext("--snapshot requires "
+                            "an upstream branch source"))
                     primary_upstream_source = upstream_branch_source
                 else:
                     primary_upstream_source = UScanSource(tree, top_level)
 
             if revision is not None:
                 if upstream_branch is None:
-                    raise BzrCommandError("--revision can only be used with a "
-                        "valid upstream branch")
+                    raise BzrCommandError(gettext("--revision can only be "
+                        "used with a valid upstream branch"))
                 if len(revision) > 1:
-                    raise BzrCommandError("merge-upstream takes only a "
-                        "single --revision")
+                    raise BzrCommandError(gettext("merge-upstream takes "
+                        "only a single --revision"))
                 upstream_revspec = revision[0]
                 upstream_revisions = { None: upstream_revspec.as_revision_id(
                     upstream_branch) }
@@ -760,14 +762,15 @@ class cmd_merge_upstream(Command):
                     package, current_version)
             if version is None:
                 if upstream_branch_source is not None:
-                    raise BzrCommandError("You must specify the version "
-                        "number using --version or specify --snapshot to "
-                        "merge a snapshot from the upstream branch.")
+                    raise BzrCommandError(gettext("You must specify "
+                        "the version number using --version or specify "
+                        "--snapshot to merge a snapshot from the upstream "
+                        "branch."))
                 else:
-                    raise BzrCommandError("You must specify the version "
-                                          "number using --version.")
+                    raise BzrCommandError(gettext("You must specify the "
+                        "version number using --version."))
             assert isinstance(version, str)
-            note("Using version string %s." % (version))
+            note(gettext("Using version string %s.") % (version))
             # Look up the revision id from the version string
             if upstream_revisions is None and upstream_branch_source is not None:
                 try:
@@ -803,7 +806,8 @@ class cmd_merge_upstream(Command):
             if (current_version is not None and
                 Version(current_version) >= Version(version)):
                 raise BzrCommandError(
-                    "Upstream version %s has already been merged." % version)
+                    gettext("Upstream version %s has already been merged.") %
+                    version)
             if not tree.has_filename("debian"):
                 tree.mkdir("debian")
             self._add_changelog_entry(tree, package, version,
@@ -812,15 +816,16 @@ class cmd_merge_upstream(Command):
         finally:
             tree.unlock()
         if not need_upstream_tarball:
-            note("An entry for the new upstream version has been added "
-                 "to the changelog.")
+            note(gettext("An entry for the new upstream version has been "
+                 "added to the changelog."))
         else:
-            note("The new upstream version has been imported.")
+            note(gettext("The new upstream version has been imported."))
             if conflicts:
-                note("You should now resolve the conflicts, review the "
-                     "changes, and then commit.")
+                note(gettext("You should now resolve the conflicts, review "
+                     "the changes, and then commit."))
             else:
-                note("You should now review the changes and then commit.")
+                note(gettext("You should now review the changes and "
+                             "then commit."))
 
 
 class cmd_import_dsc(Command):
@@ -880,13 +885,14 @@ class cmd_import_dsc(Command):
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:
-            raise BzrCommandError("There is no tree to import the packages in to")
+            raise BzrCommandError(gettext(
+                "There is no tree to import the packages in to"))
         tree.lock_write()
         try:
             if tree.changes_from(tree.basis_tree()).has_changed():
-                raise BzrCommandError("There are uncommitted changes in the "
-                        "working tree. You must commit before using this "
-                        "command")
+                raise BzrCommandError(gettext("There are uncommitted "
+                        "changes in the working tree. You must commit "
+                        "before using this command"))
             if files_list is None:
                 files_list = []
             if file is not None:
@@ -898,13 +904,13 @@ class cmd_import_dsc(Command):
                     if len(line) > 0:
                         files_list.append(line)
             if len(files_list) < 1:
-                raise BzrCommandError("You must give the location of at least one "
-                                      "source package to install, or use the "
-                                      "--file option.")
+                raise BzrCommandError(gettext("You must give the location of "
+                    "at least one source package to install, or use the "
+                    "--file option."))
             config = debuild_config(tree, tree)
             if config.build_type == BUILD_TYPE_MERGE:
-                raise BzrCommandError("import-dsc in merge mode is not "
-                        "yet supported.")
+                raise BzrCommandError(
+                    gettext("import-dsc in merge mode is not yet supported."))
             orig_dir = config.orig_dir or default_orig_dir
             orig_target = os.path.join(tree.basedir, default_orig_dir)
             db = DistributionBranch(tree.branch, tree.branch, tree=tree)
@@ -921,13 +927,14 @@ class cmd_import_dsc(Command):
                 if last_version is not None:
                     if not db.pristine_upstream_source.has_version(
                             changelog.package, last_version.upstream_version):
-                        raise BzrCommandError("Unable to find the tag for the "
-                            "previous upstream version, %s, in the branch."
-                            " Consider importing it via import-upstream. If "
-                            "it is already present in the branch please make "
-                            "sure it is tagged as %r." % (last_version,
-                                    db.pristine_upstream_source.tag_name(
-                                        last_version.upstream_version)))
+                        raise BzrCommandError(gettext("Unable to find the tag "
+                            "for the previous upstream version, %(version)s, in the "
+                            "branch. Consider importing it via import-upstream."
+                            "If it is already present in the branch please "
+                            "make sure it is tagged as %(tag)r.") %
+                            {"version": last_version,
+                                "tag": db.pristine_upstream_source.tag_name(
+                                        last_version.upstream_version)})
                     upstream_tips = db.pristine_upstream_source.version_as_revisions(
                         changelog.package, last_version.upstream_version)
                     db.extract_upstream_tree(upstream_tips, tempdir)
@@ -995,7 +1002,7 @@ class cmd_import_upstream(Command):
         self.add_cleanup(shutil.rmtree, tempdir)
         db = DistributionBranch(branch, pristine_upstream_branch=branch)
         if db.pristine_upstream_source.has_version(None, version):
-            raise BzrCommandError("Version %s is already present." % version)
+            raise BzrCommandError(gettext("Version %s is already present.") % version)
         tagged_versions = {}
         for tversion, tcomponents in db.pristine_upstream_source.iter_versions():
             tagged_versions[Version(tversion)] = tcomponents
@@ -1025,18 +1032,23 @@ class cmd_import_upstream(Command):
         elif len(revision) == 1:
             upstream_revid = revision[0].in_history(upstream).rev_id
         else:
-            raise BzrCommandError('bzr import-upstream --revision takes exactly'
-                                  ' one revision specifier.')
+            raise BzrCommandError(gettext(
+                'bzr import-upstream --revision takes exactly'
+                ' one revision specifier.'))
         tarballs = [(location, None, md5sum_filename(location))]
         for (component, tag_name, revid) in db.import_upstream_tarballs(
                 tarballs, None, version, parents, upstream_branch=upstream,
                 upstream_revisions={ None: upstream_revid }):
             if component is None:
-                self.outf.write('Imported %s as tag:%s.\n' % (
-                    location, tag_name))
+                self.outf.write(gettext(
+                    'Imported %(location)s as tag:%(tag)s.\n') % {
+                        "location": location, "tag": tag_name})
             else:
-                self.outf.write('Imported %s (%s) as tag:%s.\n' % (
-                    location, component, tag_name))
+                self.outf.write(gettext(
+                    'Imported %(location)s (%(component)s) as tag:%(tag)s.\n') % {
+                    "location": location,
+                    "component": component,
+                    "tag": tag_name})
 
 
 class cmd_builddeb_do(Command):
@@ -1071,9 +1083,9 @@ class cmd_builddeb_do(Command):
         t = WorkingTree.open_containing('.')[0]
         config = debuild_config(t, t)
         if config.build_type != BUILD_TYPE_MERGE:
-            raise BzrCommandError("This command only works for merge mode "
-                                  "packages. See /usr/share/doc/bzr-builddeb"
-                                  "/user_manual/merge.html for more information.")
+            raise BzrCommandError(gettext("This command only works for merge "
+                "mode packages. See /usr/share/doc/bzr-builddeb"
+                "/user_manual/merge.html for more information."))
 
         give_instruction = False
         if command_list is None:
@@ -1109,16 +1121,16 @@ class cmd_builddeb_do(Command):
         builder.prepare()
         run_hook(t, 'pre-export', config)
         builder.export()
-        note('Running "%s" in the exported directory.' % (command))
+        note(gettext('Running "%s" in the exported directory.') % (command))
         if give_instruction:
-            note('If you want to cancel your changes then exit with a non-zero '
-                 'exit code, e.g. run "exit 1".')
+            note(gettext('If you want to cancel your changes then exit '
+                 'with a non-zero exit code, e.g. run "exit 1".'))
         try:
             builder.build()
         except BuildFailedError:
-            raise BzrCommandError('Not updating the working tree as the '
-                    'command failed.')
-        note("Copying debian/ back")
+            raise BzrCommandError(gettext('Not updating the working tree as '
+                'the command failed.'))
+        note(gettext("Copying debian/ back"))
         if top_level:
             destination = ''
         else:
@@ -1131,10 +1143,10 @@ class cmd_builddeb_do(Command):
                  shell=True)
             proc.wait()
             if proc.returncode != 0:
-                raise BzrCommandError('Copying back debian/ failed')
+                raise BzrCommandError(gettext('Copying back debian/ failed'))
         builder.clean()
-        note('If any files were added or removed you should run "bzr add" or '
-             '"bzr rm" as appropriate.')
+        note(gettext('If any files were added or removed you should run '
+                     '"bzr add" or "bzr rm" as appropriate.'))
 
 
 class cmd_mark_uploaded(Command):
@@ -1155,28 +1167,29 @@ class cmd_mark_uploaded(Command):
         t.lock_write()
         try:
             if t.changes_from(t.basis_tree()).has_changed():
-              raise BzrCommandError("There are uncommitted changes in the "
-                      "working tree. You must commit before using this "
-                      "command")
+              raise BzrCommandError(gettext("There are uncommitted "
+                      "changes in the working tree. You must commit "
+                      "before using this command"))
             config = debuild_config(t, t)
             if merge is None:
                 merge = (config.build_type == BUILD_TYPE_MERGE)
             (changelog, top_level) = find_changelog(t, merge)
             if changelog.distributions == 'UNRELEASED':
                 if not force:
-                    raise BzrCommandError("The changelog still targets "
+                    raise BzrCommandError(gettext("The changelog still targets "
                             "'UNRELEASED', so apparently hasn't been "
-                            "uploaded.")
+                            "uploaded."))
             db = DistributionBranch(t.branch, None)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             if db.has_version(changelog.version):
                 if not force:
-                    raise BzrCommandError("This version has already been "
-                            "marked uploaded. Use --force to force marking "
-                            "this new version.")
+                    raise BzrCommandError(gettext(
+                        "This version has already been "
+                        "marked uploaded. Use --force to force marking "
+                        "this new version."))
             tag_name = db.tag_version(changelog.version)
-            self.outf.write("Tag '%s' created.\n" % tag_name)
+            self.outf.write(gettext("Tag '%s' created.\n") % tag_name)
         finally:
             t.unlock()
 
@@ -1201,20 +1214,20 @@ class cmd_merge_package(Command):
             tree = WorkingTree.open_containing('.')[0]
         except (NotBranchError, NoWorkingTree):
             raise BzrCommandError(
-                "There is no tree to merge the source branch in to")
+                gettext("There is no tree to merge the source branch in to"))
         # Get the source branch.
         try:
             source_branch = Branch.open(source)
         except NotBranchError:
-            raise BzrCommandError("Invalid source branch URL?")
+            raise BzrCommandError(gettext("Invalid source branch URL?"))
 
         if revision is None:
             revid = source_branch.last_revision()
         elif len(revision) == 1:
             revid = revision[0].in_history(source_branch).rev_id
         else:
-            raise BzrCommandError('bzr merge-package --revision takes '
-                'exactly one argument')
+            raise BzrCommandError(gettext('bzr merge-package --revision takes '
+                'exactly one argument'))
 
         tree.lock_write()
         self.add_cleanup(tree.unlock)
@@ -1231,11 +1244,12 @@ class cmd_merge_package(Command):
         _merge_tags_if_possible(source_branch, tree.branch)
         conflicts = tree.merge_from_branch(source_branch, to_revision=revid)
         if conflicts > 0:
-            note('The merge resulted in %s conflicts. Please resolve these '
-                 'and commit the changes with "bzr commit".' % conflicts)
+            note(gettext(
+                'The merge resulted in %s conflicts. Please resolve these '
+                'and commit the changes with "bzr commit".') % conflicts)
         else:
-            note('The merge resulted in no conflicts. You may commit the '
-            'changes by running "bzr commit".')
+            note(gettext('The merge resulted in no conflicts. You may '
+                'commit the changes by running "bzr commit".'))
 
 
 class cmd_dh_make(Command):
@@ -1281,7 +1295,7 @@ class cmd_dh_make(Command):
                 dh_make.run_dh_make(tree, package_name, version, use_v3=v3)
             finally:
                 tree.unlock()
-        note('Package prepared in %s',
+        note(gettext('Package prepared in %s'),
             urlutils.unescape_for_display(tree.basedir, self.outf.encoding))
 
 
@@ -1329,7 +1343,7 @@ class cmd_dep3_patch(Command):
         interesting_revision_ids = graph.find_unique_ancestors(revision_id,
             [base_revid])
         if len(interesting_revision_ids) == 0:
-            raise BzrCommandError("No unmerged revisions")
+            raise BzrCommandError(gettext("No unmerged revisions"))
         (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
             interesting_revision_ids)
         config = branch.get_config()
