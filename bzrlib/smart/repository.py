@@ -119,15 +119,16 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 except StopIteration:
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
-            search_result = search.get_result()
-            if (not discard_excess and
-                search_result.get_recipe()[3] != revision_count):
+            (started_keys, excludes, included_keys) = search.get_state()
+            if (not discard_excess and len(included_keys) != revision_count):
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
+            search_result = vf_search.SearchResult(started_keys, excludes,
+                len(included_keys), included_keys)
             return (search_result, None)
         finally:
             repository.unlock()

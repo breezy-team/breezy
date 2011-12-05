@@ -501,9 +501,9 @@ def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
         return [], [], 0
     heads = _find_possible_heads(parent_map, tip_keys, depth)
     s, found_heads = _run_search(parent_map, heads, set(tip_keys))
-    _, start_keys, exclude_keys, key_count = s.get_result().get_recipe()
+    start_keys, exclude_keys, keys = s.get_state()
     if found_heads:
         # Anything in found_heads are redundant start_keys, we hit them while
         # walking, so we can exclude them from the start list.
         start_keys = set(start_keys).difference(found_heads)
-    return start_keys, exclude_keys, key_count
+    return start_keys, exclude_keys, len(keys)

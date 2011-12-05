@@ -1346,12 +1346,10 @@ class _BreadthFirstSearcher(object):
         return ('_BreadthFirstSearcher(iterations=%d, %s,'
                 ' seen=%r)' % (self._iterations, search, list(self.seen)))
 
-    def get_result(self):
-        """Get a SearchResult for the current state of this searcher.
+    def get_state(self):
+        """Get the current state of this searcher.
 
-        :return: A SearchResult for this search so far. The SearchResult is
-            static - the search can be advanced and the search result will not
-            be invalidated or altered.
+        :return: Tuple with started keys, excludes and included keys
         """
         if self._returning == 'next':
             # We have to know the current nodes children to be able to list the
@@ -1368,8 +1366,18 @@ class _BreadthFirstSearcher(object):
             next_query = self._next_query
         excludes = self._stopped_keys.union(next_query)
         included_keys = self.seen.difference(excludes)
+        return self._started_keys, excludes, included_keys
+
+    def _get_result(self):
+        """Get a SearchResult for the current state of this searcher.
+
+        :return: A SearchResult for this search so far. The SearchResult is
+            static - the search can be advanced and the search result will not
+            be invalidated or altered.
+        """
         from bzrlib.vf_search import SearchResult
-        return SearchResult(self._started_keys, excludes, len(included_keys),
+        (started_keys, excludes, included_keys) = self.get_state()
+        return SearchResult(started_keys, excludes, len(included_keys),
             included_keys)
 
     def step(self):

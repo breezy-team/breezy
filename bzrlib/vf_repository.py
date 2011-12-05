@@ -2635,7 +2635,9 @@ class InterVersionedFileRepository(InterRepository):
                 searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
-        return searcher.get_result()
+        (started_keys, excludes, included_keys) = searcher.get_state()
+        return vf_search.SearchResult(started_keys, excludes,
+            len(included_keys), included_keys)
 
     @needs_read_lock
     def search_missing_revision_ids(self,

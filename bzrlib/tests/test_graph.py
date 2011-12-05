@@ -1029,9 +1029,8 @@ class TestGraph(TestCaseWithMemoryTransport):
                 search.start_searching(starts)
             if stops is not None:
                 search.stop_searching_any(stops)
-            result = search.get_result()
-            self.assertEqual(recipe, result.get_recipe())
-            self.assertEqual(set(included_keys), result.get_keys())
+            state = search.get_state()
+            self.assertEqual(set(included_keys), state[2])
             self.assertEqual(seen, search.seen)
 
     def test_breadth_first_get_result_excludes_current_pending(self):
@@ -1042,10 +1041,9 @@ class TestGraph(TestCaseWithMemoryTransport):
             })
         search = graph._make_breadth_first_searcher(['head'])
         # At the start, nothing has been seen, to its all excluded:
-        result = search.get_result()
-        self.assertEqual(('search', set(['head']), set(['head']), 0),
-            result.get_recipe())
-        self.assertEqual(set(), result.get_keys())
+        state = search.get_state()
+        self.assertEqual((set(['head']), set(['head']), set()),
+            state)
         self.assertEqual(set(), search.seen)
         # using next:
         expected = [
@@ -1074,10 +1072,9 @@ class TestGraph(TestCaseWithMemoryTransport):
         # Starting with nothing and adding a search works:
         search.start_searching(['head'])
         # head has been seen:
-        result = search.get_result()
-        self.assertEqual(('search', set(['head']), set(['child']), 1),
-            result.get_recipe())
-        self.assertEqual(set(['head']), result.get_keys())
+        state = search.get_state()
+        self.assertEqual((set(['head']), set(['child']), set(['head'])),
+            state)
         self.assertEqual(set(['head']), search.seen)
         # using next:
         expected = [
@@ -1234,19 +1231,21 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertSeenAndResult(expected, search, search.next)
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
-        result = search.get_result()
-        self.assertEqual(('search', set(['ghost', 'head']), set(['ghost']), 2),
-            result.get_recipe())
-        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
+        state = search.get_state()
+        self.assertEqual(
+            (set(['ghost', 'head']), set(['ghost']),
+                set(['head', NULL_REVISION])),
+            state)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
-        result = search.get_result()
-        self.assertEqual(('search', set(['ghost', 'head']), set(['ghost']), 2),
-            result.get_recipe())
-        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
+        state = search.get_state()
+        self.assertEqual(
+            (set(['ghost', 'head']), set(['ghost']),
+                set(['head', NULL_REVISION])),
+            state)
 
 
 class TestFindUniqueAncestors(TestGraphBase):
