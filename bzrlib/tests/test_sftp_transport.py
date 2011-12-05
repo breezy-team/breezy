@@ -295,7 +295,9 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor"""
-        self.set_vendor(None, file(os.devnull, "wb"))
+        f = file(os.devnull, "wb")
+        self.addCleanup(f.close)
+        self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
             t.ensure_base()
