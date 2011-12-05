@@ -1895,6 +1895,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         # the InterRepository base class, which raises an
         # IncompatibleRepositories when asked to fetch.
         inter = _mod_repository.InterRepository.get(source, self)
+        if (fetch_spec is not None and
+            not getattr(inter, "supports_fetch_spec", False)):
+            raise errors.UnsupportedOperation(
+                "fetch_spec not supported for %r" % inter)
         return inter.fetch(revision_id=revision_id,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
