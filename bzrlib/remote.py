@@ -1795,7 +1795,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         body = "\n".join(revision_ids)
         response_tuple, response_handler = (
             self._call_with_body_bytes_expecting_body(
-                "VersionedFileRepository.iter_inventories",
+                "VersionedFileRepository.get_inventories",
                 (path, ordering), body))
         if response_tuple[0] != "ok":
             raise errors.UnexpectedSmartServerResponse(response_tuple)

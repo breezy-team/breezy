@@ -2553,8 +2553,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryAbortWriteGroup)
         self.assertHandlerEqual('VersionedFileRepository.get_serializer_format',
             smart_repo.SmartServerRepositoryGetSerializerFormat)
-        self.assertHandlerEqual('VersionedFileRepository.iter_inventories',
-            smart_repo.SmartServerRepositoryIterInventories)
+        self.assertHandlerEqual('VersionedFileRepository.get_inventories',
+            smart_repo.SmartServerRepositoryGetInventories)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
 
@@ -2621,7 +2621,7 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
             request.do_body(''))
 
 
-class TestSmartServerRepositoryIterInventories(tests.TestCaseWithTransport):
+class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
 
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
         base_inv = repository.revision_tree(base_revid).inventory
@@ -2632,7 +2632,7 @@ class TestSmartServerRepositoryIterInventories(tests.TestCaseWithTransport):
 
     def test_single(self):
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterInventories(backing)
+        request = smart_repo.SmartServerRepositoryGetInventories(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", "somecontents")])
@@ -2649,7 +2649,7 @@ class TestSmartServerRepositoryIterInventories(tests.TestCaseWithTransport):
 
     def test_empty(self):
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryIterInventories(backing)
+        request = smart_repo.SmartServerRepositoryGetInventories(backing)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", "somecontents")])

@@ -1223,8 +1223,8 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
             self._repository.unlock()
 
 
-class SmartServerRepositoryIterInventories(SmartServerRepositoryRequest):
-    """Iterate over inventory deltas.
+class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
+    """Get the inventory deltas for a set of revision ids.
 
     This accepts a list of revision ids, and then sends a chain
     of deltas for the inventories of those revisions. The first
