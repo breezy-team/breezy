@@ -2010,7 +2010,11 @@ _message_encoding = None
 
 
 def get_message_encoding():
-    """Return the encoding used for system messages"""
+    """Return the encoding used for messages
+
+    While the message encoding is a general setting it should usually only be
+    needed for decoding system error strings such as from OSError instances.
+    """
     global _message_encoding
     if _message_encoding is None:
         if os.name == "posix":
