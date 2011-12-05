@@ -46,6 +46,9 @@ Bug Fixes
   confusion as there is generally nothing users can do about them.
   (Vincent Ladeuil, #880701)
 
+* Prevent a traceback being printed to stderr when logging has problems and
+  accept utf-8 byte string without breaking. (Martin Packman, #714449)
+
 Documentation
 *************
 
