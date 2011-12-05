@@ -491,11 +491,7 @@ def report_exception(exc_info, err_file):
         print_exception(exc_info, err_file)
         return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
-    if (isinstance(exc_object, IOError)
-        and getattr(exc_object, 'errno', None) == errno.EPIPE):
-        err_file.write("bzr: broken pipe\n")
-        return errors.EXIT_ERROR
-    elif isinstance(exc_object, KeyboardInterrupt):
+    if isinstance(exc_object, KeyboardInterrupt):
         err_file.write("bzr: interrupted\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
@@ -513,9 +509,10 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, (OSError, IOError)) or (
-        # GZ 2010-05-20: Like (exc_type is pywintypes.error) but avoid import
-        exc_type.__name__ == "error" and exc_type.__module__ == "pywintypes"):
+    elif osutils.is_environment_error(exc_object):
+        if getattr(exc_object, 'errno', None) == errno.EPIPE:
+            err_file.write("bzr: broken pipe\n")
+            return errors.EXIT_ERROR
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)

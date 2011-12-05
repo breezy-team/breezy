@@ -28,6 +28,7 @@ from datetime import datetime
 import getpass
 import ntpath
 import posixpath
+import select
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
 import shutil
@@ -2518,3 +2519,16 @@ def fdatasync(fileno):
     fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
     if fn is not None:
         fn(fileno)
+
+
+def is_environment_error(evalue):
+    """True if exception instance is due to a process environment issue
+
+    This includes OSError and IOError, but also other errors that come from
+    the operating system or core libraries but are not subclasses of those.
+    """
+    if isinstance(evalue, (EnvironmentError, select.error)):
+        return True
+    if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
+        return True
+    return False
