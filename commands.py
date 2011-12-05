@@ -97,7 +97,7 @@ class cmd_git_import(Command):
 
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
-            raise BzrCommandError("%r is not a git repository" % src_location)
+            raise BzrCommandError(gettext("%r is not a git repository") % src_location)
         try:
             target_bzrdir = BzrDir.open_from_transport(dest_transport)
         except NotBranchError:
@@ -109,7 +109,7 @@ class cmd_git_import(Command):
             target_repo = target_bzrdir.create_repository(shared=True)
 
         if not target_repo.supports_rich_root():
-            raise BzrCommandError("Target repository doesn't support rich roots")
+            raise BzrCommandError(gettext("Target repository doesn't support rich roots"))
 
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
@@ -191,7 +191,7 @@ class cmd_git_object(Command):
                 try:
                     obj = object_store[str(sha1)]
                 except KeyError:
-                    raise BzrCommandError("Object not found: %s" % sha1)
+                    raise BzrCommandError(gettext("Object not found: %s") % sha1)
                 if pretty:
                     text = obj.as_pretty_string()
                 else:
@@ -270,7 +270,7 @@ class cmd_git_apply(Command):
         p.communicate(diff)
         exitcode = p.wait()
         if exitcode != 0:
-            raise BzrCommandError("error running patch")
+            raise BzrCommandError(gettext("error running patch"))
         message = c.message
         if signoff:
             signed_off_by = wt.branch.get_config().username()

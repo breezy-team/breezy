@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bzr-git\n"
 "Report-Msgid-Bugs-To: <bazaar@lists.canonical.com>\n"
-"POT-Creation-Date: 2011-11-15 14:52+0100\n"
+"POT-Creation-Date: 2011-12-05 02:21+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,6 +17,15 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: commands.py:100
+#, python-format
+msgid "%r is not a git repository"
+msgstr ""
+
+#: commands.py:112
+msgid "Target repository doesn't support rich roots"
+msgstr ""
+
 #: commands.py:132
 msgid "creating branches"
 msgstr ""
@@ -24,6 +33,15 @@ msgstr ""
 #: commands.py:153
 msgid ""
 "Use 'bzr checkout' to create a working tree in the newly created branches."
+msgstr ""
+
+#: commands.py:194
+#, python-format
+msgid "Object not found: %s"
+msgstr ""
+
+#: commands.py:273
+msgid "error running patch"
 msgstr ""
 
 #: commands.py:33
