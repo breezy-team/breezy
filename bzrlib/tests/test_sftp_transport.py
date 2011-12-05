@@ -300,16 +300,11 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
-            t.ensure_base()
-        except errors.ConnectionError:
-            # Correct error
-            pass
+            self.assertRaises(errors.ConnectionError, t.get, 'foobar')
         except NameError, e:
             if "global name 'SSHException'" in str(e):
-                raise TestSkipped('Known NameError bug in paramiko 1.6.1')
+                self.knownFailure('Known NameError bug in paramiko 1.6.1')
             raise
-        else:
-            self.fail('Excepted ConnectionError to be raised')
 
 
 class SFTPLatencyKnob(TestCaseWithSFTPServer):
