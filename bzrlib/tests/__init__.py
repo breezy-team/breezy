@@ -4093,6 +4093,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
+        'bzrlib.tests.test_vf_search',
         'bzrlib.tests.test_weave',
         'bzrlib.tests.test_whitebox',
         'bzrlib.tests.test_win32utils',
