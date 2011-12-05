@@ -1939,8 +1939,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
-        handler = logging.StreamHandler(stderr)
-        handler.setLevel(logging.INFO)
+        handler = trace.EncodedStreamHandler(stderr, errors="replace",
+            level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
         old_ui_factory = ui.ui_factory

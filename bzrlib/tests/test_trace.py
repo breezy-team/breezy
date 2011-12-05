@@ -20,6 +20,7 @@
 
 from cStringIO import StringIO
 import errno
+import logging
 import os
 import re
 import sys
@@ -343,6 +344,72 @@ class TestVerbosityLevel(TestCase):
         self.assertEqual(-1, get_verbosity_level())
         be_quiet(False)
         self.assertEqual(0, get_verbosity_level())
+
+
+class TestLogging(TestCase):
+    """Check logging functionality robustly records information"""
+
+    def test_note(self):
+        trace.note("Noted")
+        self.assertEqual("    INFO  Noted\n", self.get_log())
+
+    def test_warning(self):
+        trace.warning("Warned")
+        self.assertEqual(" WARNING  Warned\n", self.get_log())
+
+    def test_log(self):
+        logging.getLogger("bzr").error("Errored")
+        self.assertEqual("   ERROR  Errored\n", self.get_log())
+
+    def test_log_sub(self):
+        logging.getLogger("bzr.test_log_sub").debug("Whispered")
+        self.assertEqual("   DEBUG  Whispered\n", self.get_log())
+
+    def test_log_unicode_msg(self):
+        logging.getLogger("bzr").debug(u"\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_unicode_arg(self):
+        logging.getLogger("bzr").debug("%s", u"\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_utf8_msg(self):
+        logging.getLogger("bzr").debug("\xc2\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_utf8_arg(self):
+        logging.getLogger("bzr").debug("%s", "\xc2\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_bytes_msg(self):
+        logging.getLogger("bzr").debug("\xa7")
+        log = self.get_log()
+        self.assertContainsString(log, "UnicodeDecodeError: ")
+        self.assertContainsString(log,
+            "Logging record unformattable: '\\xa7' % ()\n")
+
+    def test_log_bytes_arg(self):
+        logging.getLogger("bzr").debug("%s", "\xa7")
+        log = self.get_log()
+        self.assertContainsString(log, "UnicodeDecodeError: ")
+        self.assertContainsString(log,
+            "Logging record unformattable: '%s' % ('\\xa7',)\n")
+
+    def test_log_mixed_strings(self):
+        logging.getLogger("bzr").debug(u"%s", "\xa7")
+        log = self.get_log()
+        self.assertContainsString(log, "UnicodeDecodeError: ")
+        self.assertContainsString(log,
+            "Logging record unformattable: u'%s' % ('\\xa7',)\n")
+
+    def test_log_repr_broken(self):
+        class BadRepr(object):
+            def __repr__(self):
+                raise ValueError("Broken object")
+        logging.getLogger("bzr").debug("%s", BadRepr())
+        log = self.get_log()
+        self.assertContainsRe(log, "ValueError: Broken object\n")
+        self.assertContainsRe(log, "Logging record unformattable: '%s' % .*\n")
 
 
 class TestBzrLog(TestCaseInTempDir):
