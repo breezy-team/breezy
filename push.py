@@ -89,6 +89,9 @@ class MissingObjectsIterator(object):
             if obj.type_name == "commit":
                 commit = obj
             self._pending.append((obj, path))
+        if commit is None:
+            raise AssertionError("no commit object generated for revision %s" %
+                revid)
         return commit.id
 
     def __len__(self):
