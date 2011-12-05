@@ -2022,12 +2022,10 @@ def get_message_encoding():
             # This is a process-global setting that can change, but should in
             # general just get set once at process startup then be constant.
             _message_encoding = locale.getlocale(locale.LC_MESSAGES)[1]
-            if _message_encoding is None:
-                _message_encoding = "ascii"
         else:
             # On windows want the result of GetACP() which this boils down to.
             _message_encoding = get_user_encoding()
-    return _message_encoding
+    return _message_encoding or "ascii"
         
 
 def get_host_name():
