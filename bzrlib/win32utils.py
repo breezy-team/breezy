@@ -577,11 +577,11 @@ if has_ctypes and winver != 'Windows 98':
         return argv
     
 
-    def get_environ_unicode(key, default=None, _size=0):
+    def get_environ_unicode(key, default=None):
         """Get `key` from environment as unicode or `default` if unset
 
-        A large enough buffer will be allocated to retrieve the value, unless
-        `_size` is set which will act as a hard limit.
+        A large enough buffer will be allocated to retrieve the value, though
+        it may take two calls to the underlying library function.
 
         This needs ctypes because pywin32 does not expose the wide version.
         """
@@ -591,7 +591,7 @@ if has_ctypes and winver != 'Windows 98':
             cfunc = ctypes.WINFUNCTYPE(DWORD, LPCWSTR, LPWSTR, DWORD)(
                 ("GetEnvironmentVariableW", ctypes.windll.kernel32))
             get_environ_unicode._c_function = cfunc
-        buffer_size = _size or 256 # heuristic, 256 characters often enough
+        buffer_size = 256 # heuristic, 256 characters often enough
         while True:
             buffer = ctypes.create_unicode_buffer(buffer_size)
             length = cfunc(key, buffer, buffer_size)
@@ -602,10 +602,6 @@ if has_ctypes and winver != 'Windows 98':
                 raise ctypes.WinError(code)
             if buffer_size > length:
                 return buffer[:length]
-            if _size:
-                raise ValueError(
-                    "Size %d buffer to small for %d size variable %r" %
-                    (_size, length, key))
             buffer_size = length
 else:
     get_unicode_argv = None

@@ -369,12 +369,6 @@ class TestGetEnvironUnicode(tests.TestCase):
         os.environ["TEST"] = big_val
         self.assertEqual(big_val, win32utils.get_environ_unicode("TEST"))
 
-    def test_buffer_sizing(self):
-        """Need buffer for the length of the variable plus null terminal"""
-        self.assertRaises(ValueError,
-            win32utils.get_environ_unicode, "TEST", _size=1)
-        self.assertEqual("1", win32utils.get_environ_unicode("TEST", _size=2))
-
     def test_unexpected_error(self):
         """An error from the underlying platform function is propogated"""
         ERROR_INVALID_PARAMETER = 87
