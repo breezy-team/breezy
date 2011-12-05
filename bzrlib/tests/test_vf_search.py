@@ -22,8 +22,60 @@ from bzrlib import (
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.test_graph import TestGraphBase
 
+# Ancestry 1:
+#
+#  NULL_REVISION
+#       |
+#     rev1
+#      /\
+#  rev2a rev2b
+#     |    |
+#   rev3  /
+#     |  /
+#   rev4
+ancestry_1 = {'rev1': [NULL_REVISION], 'rev2a': ['rev1'], 'rev2b': ['rev1'],
+              'rev3': ['rev2a'], 'rev4': ['rev3', 'rev2b']}
 
-class TestSearchResultRefine(TestGraphBase):
+# Ancestry 2:
+#
+#  NULL_REVISION
+#    /    \
+# rev1a  rev1b
+#   |
+# rev2a
+#   |
+# rev3a
+#   |
+# rev4a
+ancestry_2 = {'rev1a': [NULL_REVISION], 'rev2a': ['rev1a'],
+              'rev1b': [NULL_REVISION], 'rev3a': ['rev2a'], 'rev4a': ['rev3a']}
+
+
+# Extended history shortcut
+#  NULL_REVISION
+#       |
+#       a
+#       |\
+#       b |
+#       | |
+#       c |
+#       | |
+#       d |
+#       |\|
+#       e f
+extended_history_shortcut = {'a': [NULL_REVISION],
+                             'b': ['a'],
+                             'c': ['b'],
+                             'd': ['c'],
+                             'e': ['d'],
+                             'f': ['a', 'd'],
+                            }
+
+
+class TestSearchResultRefine(tests.TestCase):
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
 
     def test_refine(self):
         # Used when pulling from a stacked repository, so test some revisions
@@ -31,7 +83,7 @@ class TestSearchResultRefine(TestGraphBase):
         g = self.make_graph(
             {"tip":["mid"], "mid":["base"], "tag":["base"],
              "base":[NULL_REVISION], NULL_REVISION:[]})
-        result = _mod_graph.SearchResult(set(['tip', 'tag']),
+        result = vf_search.SearchResult(set(['tip', 'tag']),
             set([NULL_REVISION]), 4, set(['tip', 'mid', 'tag', 'base']))
         result = result.refine(set(['tip']), set(['mid']))
         recipe = result.get_recipe()
@@ -58,7 +110,7 @@ class TestSearchResultFromParentMap(TestGraphBase):
 
     def assertSearchResult(self, start_keys, stop_keys, key_count, parent_map,
                            missing_keys=()):
-        (start, stop, count) = _mod_graph.search_result_from_parent_map(
+        (start, stop, count) = vf_search.search_result_from_parent_map(
             parent_map, missing_keys)
         self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
                          (sorted(start), sorted(stop), count))
@@ -99,7 +151,7 @@ class TestLimitedSearchResultFromParentMap(TestGraphBase):
 
     def assertSearchResult(self, start_keys, stop_keys, key_count, parent_map,
                            missing_keys, tip_keys, depth):
-        (start, stop, count) = _mod_graph.limited_search_result_from_parent_map(
+        (start, stop, count) = vf_search.limited_search_result_from_parent_map(
             parent_map, missing_keys, tip_keys, depth)
         self.assertEqual((sorted(start_keys), sorted(stop_keys), key_count),
                          (sorted(start), sorted(stop), count))
@@ -125,7 +177,10 @@ class TestLimitedSearchResultFromParentMap(TestGraphBase):
                                 extended_history_shortcut, (), ['a'], 2)
 
 
-class TestPendingAncestryResultRefine(TestGraphBase):
+class TestPendingAncestryResultRefine(tests.TestCase):
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
 
     def test_refine(self):
         # Used when pulling from a stacked repository, so test some revisions
@@ -133,7 +188,7 @@ class TestPendingAncestryResultRefine(TestGraphBase):
         g = self.make_graph(
             {"tip":["mid"], "mid":["base"], "tag":["base"],
              "base":[NULL_REVISION], NULL_REVISION:[]})
-        result = _mod_graph.PendingAncestryResult(['tip', 'tag'], None)
+        result = vf_search.PendingAncestryResult(['tip', 'tag'], None)
         result = result.refine(set(['tip']), set(['mid']))
         self.assertEqual(set(['mid', 'tag']), result.heads)
         result = result.refine(set(['mid', 'tag', 'base']),
@@ -155,7 +210,7 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        result = vf_search.PendingAncestryResult(['rev-2'], repo)
         self.assertEqual(set(['rev-1', 'rev-2']), set(result.get_keys()))
 
     def test_get_keys_excludes_ghosts(self):
@@ -168,7 +223,7 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        result = vf_search.PendingAncestryResult(['rev-2'], repo)
         self.assertEqual(sorted(['rev-1', 'rev-2']), sorted(result.get_keys()))
 
     def test_get_keys_excludes_null(self):
@@ -178,10 +233,7 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         class StubGraph(object):
             def iter_ancestry(self, keys):
                 return [(NULL_REVISION, ()), ('foo', (NULL_REVISION,))]
-        result = _mod_graph.PendingAncestryResult(['rev-3'], None)
+        result = vf_search.PendingAncestryResult(['rev-3'], None)
         result_keys = result._get_keys(StubGraph())
         # Only the non-null keys from the ancestry appear.
         self.assertEqual(set(['foo']), set(result_keys))
-
-
-

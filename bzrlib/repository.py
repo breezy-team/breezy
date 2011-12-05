@@ -1147,19 +1147,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def revision_ids_to_search_result(self, result_set):
-        """Convert a set of revision ids to a graph SearchResult."""
-        result_parents = set()
-        for parents in self.get_graph().get_parent_map(
-            result_set).itervalues():
-            result_parents.update(parents)
-        included_keys = result_set.intersection(result_parents)
-        start_keys = result_set.difference(included_keys)
-        exclude_keys = result_parents.difference(result_set)
-        result = graph.SearchResult(start_keys, exclude_keys,
-            len(result_set), result_set)
-        return result
-
     @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.

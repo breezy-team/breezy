@@ -28,11 +28,11 @@ from bzrlib import (
     bencode,
     errors,
     estimate_compressed_size,
-    graph,
     osutils,
     pack,
     trace,
     ui,
+    vf_search,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -85,11 +85,11 @@ class SmartServerRepositoryRequest(SmartServerRequest):
             they expected and get it from elsewhere.
         """
         if search_bytes == 'everything':
-            return graph.EverythingResult(repository), None
+            return vf_search.EverythingResult(repository), None
         lines = search_bytes.split('\n')
         if lines[0] == 'ancestry-of':
             heads = lines[1:]
-            search_result = graph.PendingAncestryResult(heads, repository)
+            search_result = vf_search.PendingAncestryResult(heads, repository)
             return search_result, None
         elif lines[0] == 'search':
             return self.recreate_search_from_recipe(repository, lines[1:],

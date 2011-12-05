@@ -42,6 +42,7 @@ from bzrlib import (
     transport,
     treebuilder,
     versionedfile,
+    vf_search,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (
@@ -3891,7 +3892,7 @@ class TestStacking(tests.TestCaseWithTransport):
         revs = [r for (r,ps) in graph.iter_ancestry([tip])
                 if r != NULL_REVISION]
         revs.reverse()
-        search = _mod_graph.PendingAncestryResult([tip], stacked.repository)
+        search = vf_search.PendingAncestryResult([tip], stacked.repository)
         self.reset_smart_call_log()
         stream = source.get_stream(search)
         # We trust that if a revision is in the stream the rest of the new
@@ -4003,7 +4004,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.hpss_calls = []
         local.repository.fetch(
             remote_branch.repository,
-            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
+            fetch_spec=vf_search.EverythingResult(remote_branch.repository))
         self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
 
     def override_verb(self, verb_name, verb):
@@ -4043,7 +4044,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.hpss_calls = []
         local.repository.fetch(
             remote_branch.repository,
-            fetch_spec=_mod_graph.EverythingResult(remote_branch.repository))
+            fetch_spec=vf_search.EverythingResult(remote_branch.repository))
         # make sure the overridden verb was used
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback

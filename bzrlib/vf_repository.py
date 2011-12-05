@@ -38,6 +38,7 @@ from bzrlib import (
     tsort,
     ui,
     versionedfile,
+    vf_search,
     )
 
 from bzrlib.recordcounter import RecordCounter
@@ -1896,6 +1897,19 @@ class VersionedFileRepository(Repository):
     def get_file_graph(self):
         """Return the graph walker for text revisions."""
         return graph.Graph(self.texts)
+
+    def revision_ids_to_search_result(self, result_set):
+        """Convert a set of revision ids to a graph SearchResult."""
+        result_parents = set()
+        for parents in self.get_graph().get_parent_map(
+            result_set).itervalues():
+            result_parents.update(parents)
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        result = vf_search.SearchResult(start_keys, exclude_keys,
+            len(result_set), result_set)
+        return result
 
     def _get_versioned_file_checker(self, text_key_references=None,
         ancestors=None):
