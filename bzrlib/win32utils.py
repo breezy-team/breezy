@@ -71,7 +71,7 @@ try:
     import pywintypes
     has_pywintypes = True
 except ImportError:
-    has_pywintypes = False
+    has_pywintypes = has_win32file = has_win32api = False
 else:
     try:
         import win32file
