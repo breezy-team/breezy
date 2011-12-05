@@ -382,7 +382,8 @@ class TestGetEnvironUnicode(tests.TestCase):
         def failer(*args, **kwargs):
             SetLastError(ERROR_INVALID_PARAMETER)
             return 0
-        self.overrideAttr(win32utils.get_environ_unicode, "_func", failer)
+        self.overrideAttr(win32utils.get_environ_unicode, "_c_function",
+            failer)
         e = self.assertRaises(WindowsError,
             win32utils.get_environ_unicode, "TEST")
         self.assertEqual(e.winerror, ERROR_INVALID_PARAMETER)
