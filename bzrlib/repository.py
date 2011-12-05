@@ -675,12 +675,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def fetch(self, source, revision_id=None, find_ghosts=False,
-            fetch_spec=None):
+    def fetch(self, source, revision_id=None, find_ghosts=False):
         """Fetch the content required to construct revision_id from source.
 
-        If revision_id is None and fetch_spec is None, then all content is
-        copied.
+        If revision_id is None, then all content is copied.
 
         fetch() may not be used when the repository is in a write group -
         either finish the current write group before using fetch, or use
@@ -692,14 +690,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param revision_id: If specified, all the content needed for this
             revision ID will be copied to the target.  Fetch will determine for
             itself which content needs to be copied.
-        :param fetch_spec: If specified, a SearchResult or
-            PendingAncestryResult that describes which revisions to copy.  This
-            allows copying multiple heads at once.  Mutually exclusive with
-            revision_id.
         """
-        if fetch_spec is not None and revision_id is not None:
-            raise AssertionError(
-                "fetch_spec and revision_id are mutually exclusive.")
         if self.is_in_write_group():
             raise errors.InternalBzrError(
                 "May not fetch while in a write group.")
@@ -707,7 +698,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         # TODO: lift out to somewhere common with RemoteRepository
         # <https://bugs.launchpad.net/bzr/+bug/401646>
         if (self.has_same_location(source)
-            and fetch_spec is None
             and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
@@ -716,8 +706,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
-        return inter.fetch(revision_id=revision_id,
-            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+        return inter.fetch(revision_id=revision_id, find_ghosts=find_ghosts)
 
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
@@ -1716,8 +1705,7 @@ class InterRepository(InterObject):
         self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, find_ghosts=False,
-            fetch_spec=None):
+    def fetch(self, revision_id=None, find_ghosts=False):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
