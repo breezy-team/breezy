@@ -96,6 +96,10 @@ Bug Fixes
   for _CompatabilityThunkFeature based test features.
   (Vincent Ladeuil, #897718)
 
+* Make reporting of mistakes involving unversioned files with non-ascii
+  filenames work again without 'Unprintable exception' being shown.
+  (Martin Packman, #898408)
+
 * Provide names for lazily registered hooks. 
   (Neil Martinsen-Burrell, #894609)
 
