@@ -38,7 +38,7 @@ Current issues
   provided at the repository level and too many plugins define their own
   section or even their own config file. (config.Stack now provides a way to
   chain config files, BranchStack properly implements the desired behavior,
-  ``bzr config uses the new design).
+  ``bzr config`` uses the new design).
 
 * ``locations.conf`` defines the options that need to override any setting
   in ``branch.conf`` for both local and remotes branches (but some remote
