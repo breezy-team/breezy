@@ -1108,12 +1108,17 @@ class BzrFormat(object):
     This provides the base for all formats which have a "format" or
     "branch-format" file with a single line containing the base format name and
     then an optional set of features.
+
+    Features are supported as of bzr 2.5. Setting features on formats
+    will render them inaccessible to older versions of bzr.
+
+    :ivar features: Dictionary mapping feature names to their necessity
     """
 
     _present_features = set()
 
     def __init__(self):
-        self._features = {}
+        self.features = {}
 
     @classmethod
     def register_feature(cls, name):
@@ -1128,29 +1133,9 @@ class BzrFormat(object):
         """Unregister a feature."""
         cls._present_features.remove(name)
 
-    def set_feature(self, name, necessity):
-        """Set a feature.
-
-        Note that this may render the format unopenable by bzr < 2.5.
-
-        :param name: Feature name
-        :param necessity: Feature necessity (None to remove)
-        """
-        if necessity is None:
-            del self._features[name]
-        else:
-            self._features[name] = necessity
-
-    def get_feature(self, name):
-        """Get a feature.
-
-        :return: None if the feature is missing, a necessity otherwise
-        """
-        return self._features.get(name)
-
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
-        for name, necessity in self._features.iteritems():
+        for name, necessity in self.features.iteritems():
             if name in self._present_features:
                 continue
             if necessity == "optional":
@@ -1180,7 +1165,7 @@ class BzrFormat(object):
             if command != "feature":
                 raise ValueError("Invalid command %r on line %d" %
                     (command, lineno))
-            ret._features[feature] = necessity
+            ret.features[feature] = necessity
         return ret
 
     def as_string(self):
@@ -1188,7 +1173,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([("%s feature %s\n" % (item[1], item[0])) for item in
-            self._features.iteritems()])
+            self.features.iteritems()])
         return "".join(lines)
 
     @classmethod
@@ -1212,7 +1197,7 @@ class BzrFormat(object):
 
     def __eq__(self, other):
         return (self.__class__ is other.__class__ and
-                self._features == other._features)
+                self.features == other.features)
 
 
 class BzrProber(controldir.Prober):
@@ -1502,10 +1487,20 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             compatible with whatever sub formats are supported by self.
         :return: None.
         """
+        other_format.features = dict(self.features)
 
     def supports_transport(self, transport):
         # bzr formats can be opened over all known transports
         return True
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        controldir.ControlDirFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
+
 
 
 class BzrDirMetaFormat1(BzrDirFormat):
@@ -1540,7 +1535,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return False
         if other.workingtree_format != self.workingtree_format:
             return False
-        if other._features != self._features:
+        if other.features != self.features:
             return False
         return True
 
@@ -1680,7 +1675,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
         # problems.
         format = BzrDirMetaFormat1()
         self._supply_sub_formats_to(format)
-        format._features = dict(format._features)
         return BzrDirMeta1(transport, format)
 
     def __return_repository_format(self):
@@ -1708,6 +1702,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             compatible with whatever sub formats are supported by self.
         :return: None.
         """
+        super(BzrDirMetaFormat1, self)._supply_sub_formats_to(other_format)
         if getattr(self, '_repository_format', None) is not None:
             other_format.repository_format = self.repository_format
         if self._branch_format is not None:

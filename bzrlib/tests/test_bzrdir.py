@@ -1033,7 +1033,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertRaises(errors.MissingFeature, bzrdir.BzrDir.open, 'tree')
         bzrdir.BzrDirMetaFormat1.register_feature('bar')
         dir = bzrdir.BzrDir.open('tree')
-        self.assertEquals("required", dir._format.get_feature("bar"))
+        self.assertEquals("required", dir._format.features.get("bar"))
 
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
@@ -1460,7 +1460,7 @@ class TestBzrFormat(TestCase):
 
     def test_from_string(self):
         flags = bzrdir.BzrFormat.from_string("required feature foo\n")
-        self.assertEquals("required", flags.get_feature("foo"))
+        self.assertEquals("required", flags.features.get("foo"))
 
     def test_get_feature(self):
         flags = bzrdir.FeatureFlags({"nested trees": "optional"})

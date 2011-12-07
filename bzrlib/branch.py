@@ -1587,7 +1587,7 @@ class BranchFormat(controldir.ControlComponentFormat):
 
     Formats provide three things:
      * An initialization routine,
-     * a format string,
+     * a format description
      * an open routine.
 
     Formats are placed in an dict by their format string for reference

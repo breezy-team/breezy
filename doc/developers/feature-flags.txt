@@ -109,8 +109,8 @@ when there is an un unsupported mandatory feature required for write access.
 Methods will also be added to BzrFormat to allow plugins, etc,
 to check whether a feature is present and adding new features:
 
- * BzrFormat.set_feature(name, necessity)
- * BzrFormat.get_feature(name) -> necessity
+ * BzrFormat.features.set(name, necessity)
+ * BzrFormat.features.get(name) -> necessity
 
 See also
 --------

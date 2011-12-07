@@ -223,7 +223,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             "optional feature name\n")
         found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
-        self.assertEquals(found_format.get_feature("name"), "optional")
+        self.assertEquals(found_format.features.get("name"), "optional")
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions
