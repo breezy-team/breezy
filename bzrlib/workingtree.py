@@ -46,7 +46,6 @@ import re
 
 from bzrlib import (
     branch,
-    bzrdir,
     conflicts as _mod_conflicts,
     controldir,
     errors,
@@ -69,7 +68,10 @@ from bzrlib import (
     )
 """)
 
-from bzrlib import symbol_versioning
+from bzrlib import (
+    bzrdir,
+    symbol_versioning,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.i18n import gettext
 from bzrlib.lock import LogicalLockResult

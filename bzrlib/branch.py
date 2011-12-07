@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import bzrlib.bzrdir
-
 from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
@@ -47,6 +45,7 @@ from bzrlib.i18n import gettext, ngettext
 """)
 
 from bzrlib import (
+    bzrdir,
     controldir,
     )
 from bzrlib.decorators import (
