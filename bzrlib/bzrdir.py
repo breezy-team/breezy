@@ -976,9 +976,9 @@ class BzrDirMeta1(BzrDir):
         Note: if you're going to open the working tree, you should just go
         ahead and try, and not ask permission first.
         """
-        from bzrlib.workingtree import WorkingTreeFormat
+        from bzrlib.workingtree import WorkingTreeFormatMetaDir
         try:
-            WorkingTreeFormat.find_format_string(self)
+            WorkingTreeFormatMetaDir.find_format_string(self)
         except errors.NoWorkingTree:
             return False
         return True
@@ -1025,8 +1025,8 @@ class BzrDirMeta1(BzrDir):
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import MetaDirRepositoryFormat
-        format = MetaDirRepositoryFormat.find_format(self)
+        from bzrlib.repository import RepositoryFormatMetaDir
+        format = RepositoryFormatMetaDir.find_format(self)
         format.check_support_status(unsupported)
         return format.open(self, _found=True)
 
@@ -1161,7 +1161,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         return self.transport.clone(path)
 
 
-class BzrMetaDirComponentFormat(object):
+class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
     """Base class for all formats of things living in metadirs."""
 
     _present_features = set()
@@ -1194,7 +1194,7 @@ class BzrMetaDirComponentFormat(object):
     @classmethod
     def get_format_string(cls):
         """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
+        raise NotImplementedError(cls.get_format_string)
 
     @classmethod
     def from_string(cls, format_string):
@@ -1728,6 +1728,12 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1"
 
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise ValueError("Invalid format string %r" % format_string)
+        return cls()
+
     def network_name(self):
         return self.get_format_string()
 
@@ -1785,8 +1791,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         self._workingtree_format = wt_format
 
     def __repr__(self):
-        return "<%r, features %r>" % (
-            self.__class__.__name__, self.features)
+        return "<%r>" % (self.__class__.__name__,)
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)

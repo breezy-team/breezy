@@ -78,6 +78,10 @@ class ControlComponent(object):
     def user_url(self):
         return self.user_transport.base
 
+    @classmethod
+    def get_format_string(cls):
+        raise NotImplementedError(self.get_format_string)
+
 
 class ControlDir(ControlComponent):
     """A control directory.

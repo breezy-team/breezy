@@ -38,7 +38,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
     IsInWriteGroupError,
-    MetaDirRepositoryFormat,
+    RepositoryFormatMetaDir,
     )
 from bzrlib.vf_repository import (
     InterSameDataRepository,
@@ -321,7 +321,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = MetaDirRepositoryFormat.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

@@ -1495,7 +1495,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             hook(params)
 
 
-class MetaDirRepositoryFormat(RepositoryFormat,bzrdir.BzrMetaDirComponentFormat):
+class RepositoryFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
@@ -1512,7 +1512,7 @@ class MetaDirRepositoryFormat(RepositoryFormat,bzrdir.BzrMetaDirComponentFormat)
 
     def __init__(self):
         RepositoryFormat.__init__(self)
-        bzrdir.BzrMetaDirComponentFormat.__init__(self)
+        bzrdir.BzrDirMetaComponentFormat.__init__(self)
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""

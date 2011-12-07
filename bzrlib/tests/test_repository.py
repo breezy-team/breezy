@@ -141,21 +141,21 @@ class TestRepositoryFormat(TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
             t = transport.get_transport_from_path(url)
-            found_format = repository.MetaDirRepositoryFormat.find_format(dir)
+            found_format = repository.RepositoryFormatMetaDir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
-                          repository.MetaDirRepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleRepositoryFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          repository.MetaDirRepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_find_format_with_features(self):
