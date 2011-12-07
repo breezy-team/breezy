@@ -1557,6 +1557,14 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
             raise errors.NoRepositoryPresent(a_bzrdir)
         return klass._find_format(format_registry, 'repository', format_string)
 
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        RepositoryFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
+
 
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're

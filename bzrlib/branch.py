@@ -2096,6 +2096,14 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
     def supports_leaving_lock(self):
         return True
 
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        BranchFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
+
 
 class BzrBranchFormat5(BranchFormatMetadir):
     """Bzr branch format 5.
