@@ -1649,11 +1649,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         """
         raise NotImplementedError(self.set_reference)
 
-    @classmethod
-    def get_format_string(cls):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(cls.get_format_string)
-
     def get_format_description(self):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -2032,6 +2027,10 @@ class BranchFormatMetadir(BranchFormat):
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()
         self.features = bzrdir.FeatureFlags()
+
+    def get_format_string(self):
+        """Return the ASCII format string that identifies this format."""
+        raise NotImplementedError(self.get_format_string)
 
     @classmethod
     def from_string(cls, format_string):

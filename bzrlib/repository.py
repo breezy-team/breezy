@@ -1424,15 +1424,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         """Return the current default format."""
         return format_registry.get_default()
 
-    @classmethod
-    def get_format_string(cls):
-        """Return the ASCII format string that identifies this format.
-
-        Note that in pre format ?? repositories the format string is
-        not permitted nor written to disk.
-        """
-        raise NotImplementedError(cls.get_format_string)
-
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -1574,6 +1565,14 @@ class MetaDirRepositoryFormat(RepositoryFormat):
                     mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
+
+    def get_format_string(self):
+        """Return the ASCII format string that identifies this format.
+
+        Note that in pre format ?? repositories the format string is
+        not permitted nor written to disk.
+        """
+        raise NotImplementedError(self.get_format_string)
 
     def network_name(self):
         """Metadir formats have matching disk and network format strings."""

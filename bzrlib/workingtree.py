@@ -3078,10 +3078,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         """Return the current default format."""
         return format_registry.get_default()
 
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
-
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -3155,6 +3151,10 @@ class WorkingTreeFormatMetaDir(WorkingTreeFormat):
     def __init__(self):
         super(WorkingTreeFormat, self).__init__()
         self.features = bzrdir.FeatureFlags()
+
+    def get_format_string(self):
+        """Return the ASCII format string that identifies this format."""
+        raise NotImplementedError(self.get_format_string)
 
     @classmethod
     def register_feature(cls, name):
