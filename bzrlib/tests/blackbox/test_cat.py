@@ -238,4 +238,4 @@ class TestSmartServerCat(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(17, self.hpss_calls)
+        self.assertLength(16, self.hpss_calls)

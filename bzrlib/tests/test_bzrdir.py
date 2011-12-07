@@ -1256,7 +1256,7 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
         self.test_branch = _TestBranch(self.transport)
         self.test_branch.repository = self.create_repository()
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, possible_transports=None):
         return self.test_branch
 
     def cloning_metadir(self, require_stacking=False):

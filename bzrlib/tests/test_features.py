@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for test feature dependencies.
-"""
+"""Tests for test feature dependencies."""
+
+import sys
 
 from bzrlib import (
     symbol_versioning,
@@ -87,6 +88,27 @@ class Test_CompatibilityFeature(tests.TestCase):
              'Use bzrlib.tests.features.UnicodeFilenameFeature instead.'],
             simple_thunk_feature.available)
         self.assertEqual(features.UnicodeFilenameFeature.available(), res)
+
+    def test_reports_correct_location(self):
+        a_feature = features._CompatabilityThunkFeature(
+            symbol_versioning.deprecated_in((2, 1, 0)),
+            'bzrlib.tests.test_features',
+            'a_feature',
+            'UnicodeFilenameFeature',
+            replacement_module='bzrlib.tests.features')
+        def test_caller(message, category=None, stacklevel=1):
+            # Find ourselves back from the right frame
+            caller = sys._getframe(stacklevel)
+            reported_file = caller.f_globals['__file__']
+            reported_lineno = caller.f_lineno
+            self.assertEquals(__file__, reported_file)
+            # The call we're tracking occurred the line after we grabbed the
+            # lineno.
+            self.assertEquals(self.lineno + 1, reported_lineno)
+        self.overrideAttr(symbol_versioning, 'warn', test_caller)
+        # Grab the current lineno
+        self.lineno = sys._getframe().f_lineno
+        self.requireFeature(a_feature)
 
 
 class TestModuleAvailableFeature(tests.TestCase):

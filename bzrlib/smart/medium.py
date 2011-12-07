@@ -881,6 +881,14 @@ class SmartClientStreamMedium(SmartClientMedium):
         """
         return SmartClientStreamMediumRequest(self)
 
+    def reset(self):
+        """We have been disconnected, reset current state.
+
+        This resets things like _current_request and connected state.
+        """
+        self.disconnect()
+        self._current_request = None
+
 
 class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """A client medium using simple pipes.
@@ -895,11 +903,20 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
-        self._writeable_pipe.write(bytes)
+        try:
+            self._writeable_pipe.write(bytes)
+        except IOError, e:
+            if e.errno in (errno.EINVAL, errno.EPIPE):
+                raise errors.ConnectionReset(
+                    "Error trying to write to subprocess:\n%s" % (e,))
+            raise
         self._report_activity(len(bytes), 'write')
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
+        # Note: If flush were to fail, we'd like to raise ConnectionReset, etc.
+        #       However, testing shows that even when the child process is
+        #       gone, this doesn't error.
         self._writeable_pipe.flush()
 
     def _read_bytes(self, count):
@@ -924,8 +941,8 @@ class SSHParams(object):
 
 class SmartSSHClientMedium(SmartClientStreamMedium):
     """A client medium using SSH.
-    
-    It delegates IO to a SmartClientSocketMedium or
+
+    It delegates IO to a SmartSimplePipesClientMedium or
     SmartClientAlreadyConnectedSocketMedium (depending on platform).
     """
 
@@ -1168,5 +1185,3 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         This invokes self._medium._flush to ensure all bytes are transmitted.
         """
         self._medium._flush()
-
-

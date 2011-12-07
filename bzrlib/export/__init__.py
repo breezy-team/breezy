@@ -195,6 +195,8 @@ def _export_iter_entries(tree, subdir, skip_special=True):
     :param tree: A tree object.
     :param subdir: None or the path of an entry to start exporting from.
     :param skip_special: Whether to skip .bzr files.
+    :return: iterator over tuples with final path, tree path and inventory
+        entry for each entry to export
     """
     if subdir == '':
         subdir = None
@@ -221,7 +223,7 @@ def _export_iter_entries(tree, subdir, skip_special=True):
         if not tree.has_filename(path):
             continue
 
-        yield final_path, entry
+        yield final_path, path, entry
 
 
 register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter',

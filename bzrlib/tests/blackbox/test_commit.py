@@ -167,6 +167,26 @@ bzr: ERROR: No changes to commit.\
         finally:
             osutils.get_terminal_encoding = default_get_terminal_enc
 
+    def test_non_ascii_file_unversioned_utf8(self):
+        self.requireFeature(features.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["f"])
+        tree.add(["f"])
+        out, err = self.run_bzr(["commit", "-m", "Wrong filename", u"\xa7"],
+            encoding="utf-8", retcode=3)
+        self.assertContainsRe(err, "(?m)not versioned: \"\xc2\xa7\"$")
+
+    def test_non_ascii_file_unversioned_iso_8859_5(self):
+        self.requireFeature(features.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["f"])
+        tree.add(["f"])
+        out, err = self.run_bzr(["commit", "-m", "Wrong filename", u"\xa7"],
+            encoding="iso-8859-5", retcode=3)
+        self.expectFailure("Error messages are always written as UTF-8",
+            self.assertNotContainsString, err, "\xc2\xa7")
+        self.assertContainsRe(err, "(?m)not versioned: \"\xfd\"$")
+
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
         wt = self.make_branch_and_tree('.')
@@ -833,3 +853,24 @@ altered in u2
         self.assertEqual(out, '')
         self.assertContainsRe(err,
             'Branch.*test_checkout.*appears to be bound to itself')
+
+
+class TestSmartServerCommit(TestCaseWithTransport):
+
+    def test_commit_to_lightweight(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
+            'target'])
+        self.reset_smart_call_log()
+        self.build_tree(['target/afile'])
+        self.run_bzr(['add', 'target/afile'])
+        out, err = self.run_bzr(['commit', '-m', 'do something', 'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(220, self.hpss_calls)

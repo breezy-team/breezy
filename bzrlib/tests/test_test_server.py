@@ -212,10 +212,12 @@ class TestTCPServerInAThread(tests.TestCase):
 
         class FailingDuringResponseHandler(TCPConnectionHandler):
 
+            # We use 'request' instead of 'self' below because the test matters
+            # more and we need a container to properly set connection_thread.
             def handle_connection(request):
                 req = request.readline()
                 # Capture the thread and make it use 'caught' so we can wait on
-                # the even that will be set when the exception is caught. We
+                # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
                 self.connection_thread = threading.currentThread()
                 self.connection_thread.set_sync_event(caught)
@@ -232,20 +234,12 @@ class TestTCPServerInAThread(tests.TestCase):
         # Check that the connection thread did catch the exception,
         # http://pad.lv/869366 was wrongly checking the server thread which
         # works for TestingTCPServer where the connection is handled in the
-        # same thread than the server one but is racy for
-        # TestingThreadingTCPServer where the server thread may be in a
-        # blocking accept() call (or not).
-        try:
-            self.connection_thread.pending_exception()
-        except FailToRespond:
-            # Great, the test succeeded
-            pass
-        else:
-            # If the exception is not in the connection thread anymore, it's in
-            # the server's one. 
-            server.server.stopped.wait()
-            # The exception is available now
-            self.assertRaises(FailToRespond, server.pending_exception)
+        # same thread than the server one but was racy for
+        # TestingThreadingTCPServer. Since the connection thread detaches
+        # itself before handling the request, we are guaranteed that the
+        # exception won't leak into the server thread anymore.
+        self.assertRaises(FailToRespond,
+                          self.connection_thread.pending_exception)
 
     def test_exception_swallowed_while_serving(self):
         # We need to ensure the exception has been caught
@@ -260,9 +254,11 @@ class TestTCPServerInAThread(tests.TestCase):
 
         class FailingWhileServingConnectionHandler(TCPConnectionHandler):
 
+            # We use 'request' instead of 'self' below because the test matters
+            # more and we need a container to properly set connection_thread.
             def handle(request):
                 # Capture the thread and make it use 'caught' so we can wait on
-                # the even that will be set when the exception is caught. We
+                # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
                 self.connection_thread = threading.currentThread()
                 self.connection_thread.set_sync_event(caught)
@@ -270,6 +266,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
         server = self.get_server(
             connection_handler_class=FailingWhileServingConnectionHandler)
+        self.assertEquals(True, server.server.serving)
         # Install the exception swallower
         server.set_ignored_exceptions(CantServe)
         client = self.get_client()
@@ -284,8 +281,8 @@ class TestTCPServerInAThread(tests.TestCase):
         # here). More precisely, the exception *has* been caught and captured
         # but it is cleared when joining the thread (or trying to acquire the
         # exception) and as such won't propagate to the server thread.
-        self.connection_thread.pending_exception()
-        server.pending_exception()
+        self.assertIs(None, self.connection_thread.pending_exception())
+        self.assertIs(None, server.pending_exception())
 
     def test_handle_request_closes_if_it_doesnt_process(self):
         server = self.get_server()

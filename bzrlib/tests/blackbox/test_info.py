@@ -51,7 +51,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.make_bzrdir('ctrl')
         out, err = self.run_bzr('info ctrl')
         self.assertEquals(out,
-            'Empty control directory (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Empty control directory (format: 2a or pack-0.92)\n'
             'Location:\n'
             '  control directory: ctrl\n')
         self.assertEquals(err, '')
@@ -62,7 +62,7 @@ class TestInfo(tests.TestCaseWithTransport):
         shutil.rmtree('target')
         out, err = self.run_bzr('info from')
         self.assertEquals(out,
-            'Dangling branch reference (format: 1.14 or 1.14-rich-root or 2a or pack-0.92)\n'
+            'Dangling branch reference (format: 2a or pack-0.92)\n'
             'Location:\n'
             '   control directory: from\n'
             '  checkout of branch: target\n')
@@ -1457,4 +1457,4 @@ class TestSmartServerInfo(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(25, self.hpss_calls)
+        self.assertLength(16, self.hpss_calls)
