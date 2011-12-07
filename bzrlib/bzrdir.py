@@ -100,14 +100,17 @@ class FeatureFlags(object):
         """Create a feature flag list from a string."""
         lines = format_text.splitlines()
         features = {}
-        for line in lines:
-            (feature, necessity) = line.split("\t")
+        for lineno, line in enumerate(lines):
+            (command, feature, necessity) = line.split("\t")
+            if command != "feature":
+                raise ValueError("Invalid command %r on line %d" %
+                    (command, lineno))
             features[feature] = necessity
         return cls(features)
 
     def as_string(self):
         return "\n".join(
-            [("%s\t%s" % item) for item in self._features.iteritems()] +
+            [("feature %s\t%s" % item) for item in self._features.iteritems()] +
             [""])
 
     def set_feature(self, name, necessity):
@@ -1184,7 +1187,7 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
-        super(BzrMetaDirComponentFormat, self).check_support_status(
+        super(BzrDirMetaComponentFormat, self).check_support_status(
             allow_unsupported=allow_unsupported,
             recommend_upgrade=recommend_upgrade, basedir=basedir)
         missing_required = self.features.check_features(self._present_features)

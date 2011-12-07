@@ -1450,10 +1450,14 @@ class TestFeatureFlags(TestCase):
     def test_as_string(self):
         flags = bzrdir.FeatureFlags({"foo": "required"})
         self.assertEquals(flags.as_string(),
-            "foo\trequired\n")
+            "feature foo\trequired\n")
+        flags.set_feature("another", "optional")
+        self.assertEquals(flags.as_string(),
+            "feature foo\trequired\n"
+            "feature another\toptional\n")
 
     def test_from_string(self):
-        flags = bzrdir.FeatureFlags.from_string("foo\trequired\n")
+        flags = bzrdir.FeatureFlags.from_string("feature\tfoo\trequired\n")
         self.assertEquals("required", flags.get_feature("foo"))
 
     def test_get_feature(self):
