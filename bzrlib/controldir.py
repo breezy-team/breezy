@@ -78,10 +78,6 @@ class ControlComponent(object):
     def user_url(self):
         return self.user_transport.base
 
-    @classmethod
-    def get_format_string(cls):
-        raise NotImplementedError(self.get_format_string)
-
 
 class ControlDir(ControlComponent):
     """A control directory.
@@ -865,6 +861,10 @@ class ControlComponentFormat(object):
         if recommend_upgrade and self.upgrade_recommended:
             ui.ui_factory.recommend_upgrade(
                 self.get_format_description(), basedir)
+
+    @classmethod
+    def get_format_string(cls):
+        raise NotImplementedError(cls.get_format_string)
 
 
 class ControlComponentFormatRegistry(registry.FormatRegistry):
