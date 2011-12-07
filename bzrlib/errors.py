@@ -3368,3 +3368,12 @@ class UnsupportedKindChange(BzrError):
         self.from_kind = from_kind
         self.to_kind = to_kind
         self.format = format
+
+
+class MissingFeature(BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature

@@ -1685,3 +1685,27 @@ class Test_LazyListJoin(tests.TestCase):
         lazy = repository._LazyListJoin(['a'], ['b'])
         self.assertEqual("bzrlib.repository._LazyListJoin((['a'], ['b']))",
                          repr(lazy))
+
+
+class TestFeatures(tests.TestCaseWithTransport):
+
+    def test_open_with_present_feature(self):
+        self.addCleanup(
+            repository.MetaDirRepositoryFormat.unregister_feature,
+            "makes-cheese-sandwich")
+        repository.MetaDirRepositoryFormat.register_feature(
+            "makes-cheese-sandwich")
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo._format.features.set_feature("makes-cheese-sandwich",
+            "required")
+        repo._format.check_support_status(False)
+        repo.unlock()
+
+    def test_open_with_missing_required_feature(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo._format.features.set_feature("makes-cheese-sandwich",
+            "required")
+        self.assertRaises(errors.MissingFeature,
+            repo._format.check_support_status, False)

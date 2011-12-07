@@ -1551,7 +1551,9 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         super(MetaDirRepositoryFormat, self).check_support_status(
             allow_unsupported=allow_unsupported,
             recommend_upgrade=recommend_upgrade, basedir=basedir)
-        self.features.check_features(self._present_features)
+        missing_required = self.features.check_features(self._present_features)
+        if missing_required:
+            raise errors.MissingFeature(iter(missing_required).next())
 
     @property
     def _matchingbzrdir(self):
