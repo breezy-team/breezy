@@ -94,23 +94,23 @@ revisions with nested trees.
 API Changes
 -----------
 
-Class methods will be added to ``BzrDirComponentFormat`` to allow registering
+Class methods will be added to ``BzrFormat`` to allow registering
 and deregistering the presence of particular features. This class is inherited
 by ``BzrBranchFormat``, ``VersionedFileRepositoryFormat`` and
 ``InventoryWorkingTreeFormat``.
 
- * BzrDirMetaComponentFormat.register_feature(name)
- * BzrDirMetaComponentFormat.unregister_feature(name)
+ * BzrFormat.register_feature(name)
+ * BzrFormat.unregister_feature(name)
 
-Upon opening, BzrDirComponentFormat will be responsible for checking that the
+Upon opening, BzrFormat will be responsible for checking that the
 required features are present.  lock_write will raise an exception
 when there is an un unsupported mandatory feature required for write access.
 
-Methods will also be added to BzrDirComponentFormat to allow plugins, etc,
+Methods will also be added to BzrFormat to allow plugins, etc,
 to check whether a feature is present and adding new features:
 
- * BzrDirMetaComponentFormat.set_feature(name, necessity)
- * BzrDirMetaComponentFormat.get_feature(name) -> necessity
+ * BzrFormat.set_feature(name, necessity)
+ * BzrFormat.get_feature(name) -> necessity
 
 See also
 --------

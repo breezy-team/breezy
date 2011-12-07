@@ -220,12 +220,10 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.control_transport.put_bytes('format',
             tree.branch._format.get_format_string() +
-            "feature\tname\tnecessity\n")
+            "optional feature name\n")
         found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
-        self.assertEquals(
-            found_format.features.get_feature("name"),
-            "necessity")
+        self.assertEquals(found_format.get_feature("name"), "optional")
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions

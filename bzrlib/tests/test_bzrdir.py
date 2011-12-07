@@ -1033,7 +1033,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertRaises(errors.MissingFeature, bzrdir.BzrDir.open, 'tree')
         bzrdir.BzrDirMetaFormat1.register_feature('bar')
         dir = bzrdir.BzrDir.open('tree')
-        self.assertEquals("required", dir._format.features.get_feature("bar"))
+        self.assertEquals("required", dir._format.get_feature("bar"))
 
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
@@ -1446,8 +1446,8 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
             None)
 
 
-class TestFeatureFlags(TestCase):
-    """Tests for FeatureFlags."""
+class TestBzrFormat(TestCase):
+    """Tests for BzrFormat."""
 
     def test_as_string(self):
         flags = bzrdir.FeatureFlags({"foo": "required"})
@@ -1459,7 +1459,7 @@ class TestFeatureFlags(TestCase):
             "optional feature another\n")
 
     def test_from_string(self):
-        flags = bzrdir.FeatureFlags.from_string("required feature foo\n")
+        flags = bzrdir.BzrFormat.from_string("required feature foo\n")
         self.assertEquals("required", flags.get_feature("foo"))
 
     def test_get_feature(self):
@@ -1498,9 +1498,9 @@ class TestFeatureFlags(TestCase):
 
     def test_check_support_status_unknown(self):
         # treat unknown necessity as required
-        flags = bzrdir.FeatureFlags({"nested trees": "unknown"})
-        self.assertRaises(errors.MissingFeature, flags.check_support_status,
+        format = bzrdir.FeatureFlags({"nested trees": "unknown"})
+        self.assertRaises(errors.MissingFeature, format.check_support_status,
             [])
-        self.assertRaises(errors.MissingFeature, flags.check_support_status,
+        self.assertRaises(errors.MissingFeature, format.check_support_status,
             ["otherfeature"])
-        flags.check_support_status(["nested trees"])
+        format.check_support_status(["nested trees"])

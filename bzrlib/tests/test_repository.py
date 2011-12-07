@@ -166,7 +166,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
         self.assertEquals(
-            found_format.features.get_feature("name"),
+            found_format.get_feature("name"),
             "necessity")
 
     def test_register_unregister_format(self):
@@ -1697,15 +1697,13 @@ class TestFeatures(tests.TestCaseWithTransport):
             "makes-cheese-sandwich")
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features.set_feature("makes-cheese-sandwich",
-            "required")
+        repo._format.set_feature("makes-cheese-sandwich", "required")
         repo._format.check_support_status(False)
         repo.unlock()
 
     def test_open_with_missing_required_feature(self):
         repo = self.make_repository('.')
         repo.lock_write()
-        repo._format.features.set_feature("makes-cheese-sandwich",
-            "required")
+        repo._format.set_feature("makes-cheese-sandwich", "required")
         self.assertRaises(errors.MissingFeature,
             repo._format.check_support_status, False)

@@ -75,89 +75,6 @@ from bzrlib.symbol_versioning import (
     )
 
 
-class FeatureFlags(object):
-    """Feature flag container.
-    """
-
-    def __init__(self, features=None):
-        if features is None:
-            self._features = {}
-        else:
-            self._features = features
-
-    def __repr__(self):
-        return "<%s(%r)>" % (self.__class__.__name__, self._features)
-
-    def __eq__(self, other):
-        return (isinstance(other, FeatureFlags) and
-                other._features == self._features)
-
-    def __ne__(self, other):
-        return (not self.__eq__(other))
-
-    @classmethod
-    def from_string(cls, format_text):
-        """Create a feature flag list from a string.
-
-        :param format_text: Format text to parse
-        :return: A FeatureFlags instance
-        """
-        lines = format_text.splitlines()
-        features = {}
-        for lineno, line in enumerate(lines):
-            (necessity, command, feature) = line.split(" ")
-            if command != "feature":
-                raise ValueError("Invalid command %r on line %d" %
-                    (command, lineno))
-            features[feature] = necessity
-        return cls(features)
-
-    def as_string(self):
-        """Serialize this feature flags dictionary.
-        """
-        return "\n".join(
-            [("%s feature %s" % (item[1], item[0])) for item in self._features.iteritems()] +
-            [""])
-
-    def set_feature(self, name, necessity):
-        """Set a feature.
-
-        :param name: Feature name
-        :param necessity: Feature necessity
-        """
-        self._features[name] = necessity
-
-    def get_feature(self, name):
-        """Get a feature.
-
-        :return: None if the feature is missing, a necessity otherwise
-        """
-        return self._features.get(name)
-
-    def check_support_status(self, present):
-        """Check if all necessary features are present.
-
-        :param present: Features to consider present
-        :raise MissingFeature: When a required feature is missing
-        """
-        for name, necessity in self._features.iteritems():
-            if name in present:
-                continue
-            if necessity == "optional":
-                mutter("ignoring optional missing feature %s", name)
-                continue
-            elif necessity == "required":
-                raise errors.MissingFeature(name)
-            else:
-                mutter("treating unknown necessity as require for %s",
-                       name)
-                raise errors.MissingFeature(name)
-
-    def copy(self):
-        """Make a deep copy."""
-        return FeatureFlags(self._features)
-
-
 class BzrDir(controldir.ControlDir):
     """A .bzr control diretory.
 
@@ -1196,7 +1113,7 @@ class BzrFormat(object):
     _present_features = set()
 
     def __init__(self):
-        self.features = FeatureFlags()
+        self._features = {}
 
     @classmethod
     def register_feature(cls, name):
@@ -1211,12 +1128,40 @@ class BzrFormat(object):
         """Unregister a feature."""
         cls._present_features.remove(name)
 
+    def set_feature(self, name, necessity):
+        """Set a feature.
+
+        Note that this may render the format unopenable by bzr < 2.5.
+
+        :param name: Feature name
+        :param necessity: Feature necessity (None to remove)
+        """
+        if necessity is None:
+            del self._features[name]
+        else:
+            self._features[name] = necessity
+
+    def get_feature(self, name):
+        """Get a feature.
+
+        :return: None if the feature is missing, a necessity otherwise
+        """
+        return self._features.get(name)
+
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
-        super(BzrFormat, self).check_support_status(
-            allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-        self.features.check_support_status(self._present_features)
+        for name, necessity in self._features.iteritems():
+            if name in self._present_features:
+                continue
+            if necessity == "optional":
+                mutter("ignoring optional missing feature %s", name)
+                continue
+            elif necessity == "required":
+                raise errors.MissingFeature(name)
+            else:
+                mutter("treating unknown necessity as require for %s",
+                       name)
+                raise errors.MissingFeature(name)
 
     @classmethod
     def get_format_string(cls):
@@ -1224,19 +1169,27 @@ class BzrFormat(object):
         raise NotImplementedError(cls.get_format_string)
 
     @classmethod
-    def from_string(cls, format_string):
+    def from_string(cls, text):
         ret = cls()
-        if not format_string.startswith(cls.get_format_string()):
-            raise ValueError("Invalid format header %r" % format_string)
-        try:
-            ret.features = FeatureFlags.from_string(
-                format_string.split("\n", 1)[1])
-        except IndexError:
-            pass
+        format_string = cls.get_format_string()
+        if not text.startswith(format_string):
+            raise ValueError("Invalid format header %r" % text)
+        lines = text[len(format_string):].splitlines()
+        for lineno, line in enumerate(lines):
+            (necessity, command, feature) = line.split(" ")
+            if command != "feature":
+                raise ValueError("Invalid command %r on line %d" %
+                    (command, lineno))
+            ret._features[feature] = necessity
         return ret
 
     def as_string(self):
-        return self.get_format_string() + self.features.as_string()
+        """Return the string representation of this format.
+        """
+        lines = [self.get_format_string()]
+        lines.extend([("%s feature %s\n" % (item[1], item[0])) for item in
+            self._features.iteritems()])
+        return "".join(lines)
 
     @classmethod
     def _find_format(klass, registry, kind, format_string):
@@ -1259,7 +1212,7 @@ class BzrFormat(object):
 
     def __eq__(self, other):
         return (self.__class__ is other.__class__ and
-                self.features == other.features)
+                self._features == other._features)
 
 
 class BzrProber(controldir.Prober):
@@ -1587,7 +1540,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return False
         if other.workingtree_format != self.workingtree_format:
             return False
-        if other.features != self.features:
+        if other._features != self._features:
             return False
         return True
 
@@ -1727,7 +1680,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         # problems.
         format = BzrDirMetaFormat1()
         self._supply_sub_formats_to(format)
-        format.features = self.features.copy()
+        format._features = dict(format._features)
         return BzrDirMeta1(transport, format)
 
     def __return_repository_format(self):
