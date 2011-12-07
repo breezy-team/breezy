@@ -1446,61 +1446,80 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
             None)
 
 
+class SampleBzrFormat(bzrdir.BzrFormat):
+
+    @classmethod
+    def get_format_string(cls):
+        return "First line\n"
+
+
 class TestBzrFormat(TestCase):
     """Tests for BzrFormat."""
 
     def test_as_string(self):
-        flags = bzrdir.FeatureFlags({"foo": "required"})
-        self.assertEquals(flags.as_string(),
+        format = SampleBzrFormat()
+        format.features = {"foo": "required"}
+        self.assertEquals(format.as_string(),
+            "First line\n"
             "required feature foo\n")
-        flags.set_feature("another", "optional")
-        self.assertEquals(flags.as_string(),
+        format.features["another"] = "optional"
+        self.assertEquals(format.as_string(),
+            "First line\n"
             "required feature foo\n"
             "optional feature another\n")
 
     def test_from_string(self):
-        flags = bzrdir.BzrFormat.from_string("required feature foo\n")
-        self.assertEquals("required", flags.features.get("foo"))
+        format = SampleBzrFormat.from_string(
+            "First line\nrequired feature foo\n")
+        self.assertEquals("required", format.features.get("foo"))
 
     def test_get_feature(self):
-        flags = bzrdir.FeatureFlags({"nested trees": "optional"})
-        self.assertEquals("optional", flags.get_feature("nested trees"))
-        self.assertIs(None, flags.get_feature("bar"))
+        format = SampleBzrFormat()
+        format.features = {"nested trees": "optional"}
+        self.assertEquals("optional", format.features.get("nested trees"))
+        self.assertIs(None, format.features.get("bar"))
 
     def test_set_feature(self):
-        flags = bzrdir.FeatureFlags({"nested trees": "optional"})
-        flags.set_feature("foo", "required")
-        self.assertEquals("required", flags.get_feature("foo"))
+        format = SampleBzrFormat()
+        format.features = {"nested trees": "optional"}
+        format.features["foo"] = "required"
+        self.assertEquals("required", format.features.get("foo"))
 
     def test_eq(self):
-        flags1 = bzrdir.FeatureFlags({"nested trees": "optional"})
-        flags2 = bzrdir.FeatureFlags({"nested trees": "optional"})
-        self.assertEquals(flags1, flags1)
-        self.assertEquals(flags1, flags2)
-        flags3 = bzrdir.FeatureFlags({})
-        self.assertNotEquals(flags1, flags3)
+        format1 = SampleBzrFormat()
+        format1.features = {"nested trees": "optional"}
+        format2 = SampleBzrFormat()
+        format2.features = {"nested trees": "optional"}
+        self.assertEquals(format1, format1)
+        self.assertEquals(format1, format2)
+        format3 = SampleBzrFormat()
+        self.assertNotEquals(format1, format3)
 
     def test_check_support_status_optional(self):
         # Optional, so silently ignore
-        flags = bzrdir.FeatureFlags({"nested trees": "optional"})
-        flags.check_support_status([])
-        flags.check_support_status(["otherfeature"])
-        flags.check_support_status(["nested trees"])
+        format = SampleBzrFormat()
+        format.features = {"nested trees": "optional"}
+        format.check_support_status(True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested trees")
+        SampleBzrFormat.register_feature("nested trees")
+        format.check_support_status(True)
 
     def test_check_support_status_required(self):
         # Optional, so trigger an exception
-        flags = bzrdir.FeatureFlags({"nested trees": "required"})
-        self.assertRaises(errors.MissingFeature, flags.check_support_status,
-            [])
-        self.assertRaises(errors.MissingFeature, flags.check_support_status,
-            ["otherfeature"])
-        flags.check_support_status(["nested trees"])
+        format = SampleBzrFormat()
+        format.features = {"nested trees": "required"}
+        self.assertRaises(errors.MissingFeature, format.check_support_status,
+            True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested trees")
+        SampleBzrFormat.register_feature("nested trees")
+        format.check_support_status(True)
 
     def test_check_support_status_unknown(self):
         # treat unknown necessity as required
-        format = bzrdir.FeatureFlags({"nested trees": "unknown"})
+        format = SampleBzrFormat()
+        format.features = {"nested trees": "unknown"}
         self.assertRaises(errors.MissingFeature, format.check_support_status,
-            [])
-        self.assertRaises(errors.MissingFeature, format.check_support_status,
-            ["otherfeature"])
-        format.check_support_status(["nested trees"])
+            True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested trees")
+        SampleBzrFormat.register_feature("nested trees")
+        format.check_support_status(True)
