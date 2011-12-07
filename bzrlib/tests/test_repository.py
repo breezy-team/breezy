@@ -115,6 +115,10 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
     def open(self, a_bzrdir, _found=False):
         return "opened repository."
 
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
+
 
 class SampleExtraRepositoryFormat(repository.RepositoryFormat):
     """A sample format that can not be used in a metadir
@@ -137,21 +141,21 @@ class TestRepositoryFormat(TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
             t = transport.get_transport_from_path(url)
-            found_format = repository.RepositoryFormat.find_format(dir)
+            found_format = repository.RepositoryFormatMetaDir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleRepositoryFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_register_unregister_format(self):
@@ -438,13 +442,15 @@ class TestInterRepository(TestCaseWithTransport):
 
 class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 1"
 
 
 class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 2"
 
 

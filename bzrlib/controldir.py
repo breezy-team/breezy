@@ -78,6 +78,10 @@ class ControlComponent(object):
     def user_url(self):
         return self.user_transport.base
 
+    @classmethod
+    def get_format_string(cls):
+        raise NotImplementedError(self.get_format_string)
+
 
 class ControlDir(ControlComponent):
     """A control directory.
@@ -829,10 +833,6 @@ class ControlComponentFormat(object):
     """A component that can live inside of a .bzr meta directory."""
 
     upgrade_recommended = False
-
-    def get_format_string(self):
-        """Return the format of this format, if usable in meta directories."""
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""

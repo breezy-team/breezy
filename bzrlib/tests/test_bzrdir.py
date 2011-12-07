@@ -253,6 +253,10 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
     def open(self, transport, _found=None):
         return "opened branch."
 
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
+
 
 class BzrDirFormatTest1(bzrdir.BzrDirMetaFormat1):
 

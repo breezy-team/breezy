@@ -126,6 +126,10 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
              possible_transports=None):
         return "opened branch."
 
+    @classmethod
+    def from_string(cls, text):
+        return cls()
+
 
 # Demonstrating how lazy loading is often implemented:
 # A constant string is created.
@@ -147,6 +151,10 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
     def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
              possible_transports=None):
         return "opened supported branch."
+
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
 
 
 class SampleExtraBranchFormat(_mod_branch.BranchFormat):
@@ -180,7 +188,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = _mod_branch.BranchFormat.find_format(dir)
+            found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
@@ -198,14 +206,14 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NotBranchError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_register_unregister_format(self):
