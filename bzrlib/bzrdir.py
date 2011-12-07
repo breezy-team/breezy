@@ -1107,9 +1107,9 @@ class BzrFormat(object):
 
     This provides the base for all formats which have a "format" or
     "branch-format" file with a single line containing the base format name and
-    then an optional set of features.
+    then an optional list of feature flags.
 
-    Features are supported as of bzr 2.5. Setting features on formats
+    Feature flags are supported as of bzr 2.5. Setting feature flags on formats
     will render them inaccessible to older versions of bzr.
 
     :ivar features: Dictionary mapping feature names to their necessity
