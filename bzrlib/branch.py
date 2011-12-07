@@ -1781,7 +1781,7 @@ class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
         """
         registry._LazyObjectGetter.__init__(self, module_name, member_name)
         self._format_string = format_string
-        
+
     def get_format_string(self):
         """See BranchFormat.get_format_string."""
         return self._format_string
@@ -1999,50 +1999,12 @@ class SwitchHookParams(object):
             self.revision_id)
 
 
-class BranchFormatMetadir(BranchFormat):
+class BranchFormatMetadir(BranchFormat,bzrdir.BzrMetaDirComponentFormat):
     """Common logic for meta-dir based branch formats."""
 
-    _present_features = set()
-
-    @classmethod
-    def register_feature(cls, name):
-        """Register a feature as being present.
-
-        :param name: Name of the feature
-        """
-        cls._present_features.add(name)
-
-    @classmethod
-    def unregister_feature(cls, name):
-        """Unregister a feature."""
-        cls._present_features.remove(name)
-
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
-        super(BranchFormatMetadir, self).check_support_status(
-            allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-        self.features.check_features(self._present_features)
-
     def __init__(self):
-        super(BranchFormatMetadir, self).__init__()
-        self.features = bzrdir.FeatureFlags()
-
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
-
-    @classmethod
-    def from_string(cls, format_string):
-        ret = cls()
-        if not format_string.startswith(cls.get_format_string()):
-            raise ValueError("Invalid format header %r" % format_string)
-        try:
-            ret.features = bzrdir.FeatureFlags.from_string(
-                format_string.split("\n", 1)[1])
-        except IndexError:
-            pass
-        return ret
+        BranchFormat.__init__(self)
+        bzrdir.BzrMetaDirComponentFormat.__init__(self)
 
     @classmethod
     def find_format(klass, controldir, name=None):
@@ -2055,15 +2017,7 @@ class BranchFormatMetadir(BranchFormat):
             format_string = transport.get_bytes("format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=controldir)
-        try:
-            first_line = format_string[:format_string.index("\n")+1]
-        except ValueError:
-            first_line = format_string
-        try:
-            cls = format_registry.get(first_line)
-        except KeyError:
-            raise errors.UnknownFormatError(format=first_line, kind='branch')
-        return cls.from_string(format_string)
+        return klass._find_format(format_registry, 'branch', format_string)
 
     def _branch_class(self):
         """What class to instantiate on open calls."""
@@ -2094,7 +2048,7 @@ class BranchFormatMetadir(BranchFormat):
         control_files.create_lock()
         control_files.lock_write()
         try:
-            utf8_files += [('format', self.get_format_string())]
+            utf8_files += [('format', self.as_string())]
             for (filename, content) in utf8_files:
                 branch_transport.put_bytes(
                     filename, content,
@@ -2105,13 +2059,6 @@ class BranchFormatMetadir(BranchFormat):
                 found_repository=repository)
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
-
-    def network_name(self):
-        """A simple byte string uniquely identifying this format for RPC calls.
-
-        Metadir branch formats use their format string.
-        """
-        return self.get_format_string()
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None, possible_transports=None):
@@ -2148,10 +2095,6 @@ class BranchFormatMetadir(BranchFormat):
 
     def supports_leaving_lock(self):
         return True
-
-    def __eq__(self, other):
-        return (self.__class__ is other.__class__ and
-                self.features == other.features)
 
 
 class BzrBranchFormat5(BranchFormatMetadir):
@@ -2360,7 +2303,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.user_url)
-        branch_transport.put_bytes('format', self.get_format_string())
+        branch_transport.put_bytes('format', self.as_string())
         branch = self.open(
             a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
@@ -3275,7 +3218,7 @@ class Converter5to6(object):
 
         # Copying done; now update target format
         new_branch._transport.put_bytes('format',
-            format.get_format_string(),
+            format.as_string(),
             mode=new_branch.bzrdir._get_file_mode())
 
         # Clean up old files
@@ -3294,7 +3237,7 @@ class Converter6to7(object):
         format = BzrBranchFormat7()
         branch._set_config_location('stacked_on_location', '')
         # update target format
-        branch._transport.put_bytes('format', format.get_format_string())
+        branch._transport.put_bytes('format', format.as_string())
 
 
 class Converter7to8(object):
@@ -3304,7 +3247,7 @@ class Converter7to8(object):
         format = BzrBranchFormat8()
         branch._transport.put_bytes('references', '')
         # update target format
-        branch._transport.put_bytes('format', format.get_format_string())
+        branch._transport.put_bytes('format', format.as_string())
 
 
 class InterBranch(InterObject):

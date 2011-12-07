@@ -1484,7 +1484,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.get_format_string(),
+        transport.put_bytes('format', self.as_string(),
             mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
@@ -1620,7 +1620,8 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree4
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
 
@@ -1637,7 +1638,8 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree5
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 5 (bzr 1.11)\n"
 
@@ -1657,7 +1659,8 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree6
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 6 (bzr 1.14)\n"
 
@@ -2263,7 +2266,7 @@ class Converter3to4(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())
 
 
@@ -2286,7 +2289,7 @@ class Converter4to5(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())
 
 
@@ -2315,5 +2318,5 @@ class Converter4or5to6(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())

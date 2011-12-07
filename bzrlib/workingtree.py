@@ -3029,25 +3029,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_versioned_directories = None
 
-    @classmethod
-    def find_format_string(klass, controldir):
-        """Return format name for the working tree object in controldir."""
-        try:
-            transport = controldir.get_workingtree_transport(None)
-            return transport.get_bytes("format")
-        except errors.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
-
-    @classmethod
-    def find_format(klass, controldir):
-        """Return the format for the working tree object in controldir."""
-        try:
-            format_string = klass.find_format_string(controldir)
-            return format_registry.get(format_string)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string,
-                                            kind="working tree")
-
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """Initialize a new working tree in controldir.
@@ -3144,41 +3125,27 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingbzrdir
 
 
-class WorkingTreeFormatMetaDir(WorkingTreeFormat):
-
-    _present_features = set()
+class WorkingTreeFormatMetaDir(WorkingTreeFormat,bzrdir.BzrMetaDirComponentFormat):
 
     def __init__(self):
-        super(WorkingTreeFormat, self).__init__()
-        self.features = bzrdir.FeatureFlags()
-
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
+        WorkingTreeFormat.__init__(self)
+        bzrdir.BzrMetaDirComponentFormat.__init__(self)
 
     @classmethod
-    def register_feature(cls, name):
-        """Register a feature as being present.
-
-        :param name: Name of the feature
-        """
-        cls._present_features.add(name)
+    def find_format_string(klass, controldir):
+        """Return format name for the working tree object in controldir."""
+        try:
+            transport = controldir.get_workingtree_transport(None)
+            return transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoWorkingTree(base=transport.base)
 
     @classmethod
-    def unregister_feature(cls, name):
-        """Unregister a feature."""
-        cls._present_features.remove(name)
-
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
-        super(WorkingTreeFormatMetaDir, self).check_support_status(
-            allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-        self.features.check_features(self._present_features)
-
-    def __eq__(self, other):
-        return (self.__class__ is other.__class__ and
-                self.features == other.features)
+    def find_format(klass, controldir):
+        """Return the format for the working tree object in controldir."""
+        format_string = klass.find_format_string(controldir)
+        return klass._find_format(format_registry, 'working tree',
+                format_string)
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",

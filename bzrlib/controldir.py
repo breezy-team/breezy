@@ -826,13 +826,9 @@ ControlDir.hooks = ControlDirHooks()
 
 
 class ControlComponentFormat(object):
-    """A component that can live inside of a .bzr meta directory."""
+    """A component that can live inside of a control directory."""
 
     upgrade_recommended = False
-
-    def get_format_string(self):
-        """Return the format of this format, if usable in meta directories."""
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""
