@@ -3125,12 +3125,12 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingbzrdir
 
 
-class WorkingTreeFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, WorkingTreeFormat):
+class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)
-        bzrdir.BzrDirMetaComponentFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
 
     @classmethod
     def find_format_string(klass, controldir):

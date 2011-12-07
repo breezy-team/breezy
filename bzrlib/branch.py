@@ -1999,12 +1999,12 @@ class SwitchHookParams(object):
             self.revision_id)
 
 
-class BranchFormatMetadir(bzrdir.BzrDirMetaComponentFormat, BranchFormat):
+class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
     """Common logic for meta-dir based branch formats."""
 
     def __init__(self):
         BranchFormat.__init__(self)
-        bzrdir.BzrDirMetaComponentFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
 
     @classmethod
     def find_format(klass, controldir, name=None):

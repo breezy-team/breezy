@@ -1185,8 +1185,13 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         return self.transport.clone(path)
 
 
-class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
-    """Base class for all formats of things living in metadirs."""
+class BzrFormat(object):
+    """Base class for all bzr formats.
+
+    This provides the base for all formats which have a "format" or
+    "branch-format" file with a single line containing the base format name and
+    then an optional set of features.
+    """
 
     _present_features = set()
 
@@ -1208,7 +1213,7 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
-        super(BzrDirMetaComponentFormat, self).check_support_status(
+        super(BzrFormat, self).check_support_status(
             allow_unsupported=allow_unsupported,
             recommend_upgrade=recommend_upgrade, basedir=basedir)
         self.features.check_support_status(self._present_features)
@@ -1337,7 +1342,7 @@ class RemoteBzrProber(controldir.Prober):
         return set([RemoteBzrDirFormat()])
 
 
-class BzrDirFormat(controldir.ControlDirFormat):
+class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
     """ControlDirFormat base class for .bzr/ directories.
 
     Formats are placed in a dict by their format string for reference
@@ -1353,11 +1358,6 @@ class BzrDirFormat(controldir.ControlDirFormat):
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
-
-    @classmethod
-    def get_format_string(cls):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(cls.get_format_string)
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -1574,41 +1574,11 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     colocated_branches = False
 
-    _present_features = set()
-
     def __init__(self):
-        self.features = FeatureFlags({})
+        BzrDirFormat.__init__(self)
         self._workingtree_format = None
         self._branch_format = None
         self._repository_format = None
-
-    @classmethod
-    def from_string(cls, format_string):
-        ret = cls()
-        if not format_string.startswith(cls.get_format_string()):
-            raise ValueError("Invalid format header %r" % format_string)
-        try:
-            ret.features = FeatureFlags.from_string(
-                format_string.split("\n", 1)[1])
-        except IndexError:
-            pass
-        return ret
-
-    @classmethod
-    def register_feature(cls, name):
-        """Register a feature as being present.
-
-        :param name: Name of the feature
-        """
-        cls._present_features.add(name)
-
-    @classmethod
-    def unregister_feature(cls, name):
-        """Unregister a feature."""
-        cls._present_features.remove(name)
-
-    def check_support_status(self, unsupported=False):
-        self.features.check_support_status(self._present_features)
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
@@ -1749,9 +1719,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1"
-
-    def network_name(self):
-        return self.get_format_string()
 
     def _open(self, transport):
         """See BzrDirFormat._open."""
