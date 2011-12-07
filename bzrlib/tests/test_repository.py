@@ -162,11 +162,11 @@ class TestRepositoryFormat(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.repository.control_transport.put_bytes('format',
             tree.branch.repository._format.get_format_string() +
-            "feature\tnecessity\n")
-        found_format = repository.MetaDirRepositoryFormat.find_format(tree.bzrdir)
-        self.assertIsInstance(found_format, repository.MetaDirRepositoryFormat)
+            "feature\tname\tnecessity\n")
+        found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
         self.assertEquals(
-            found_format.features.get_feature("feature"),
+            found_format.features.get_feature("name"),
             "necessity")
 
     def test_register_unregister_format(self):
@@ -1691,9 +1691,9 @@ class TestFeatures(tests.TestCaseWithTransport):
 
     def test_open_with_present_feature(self):
         self.addCleanup(
-            repository.MetaDirRepositoryFormat.unregister_feature,
+            repository.RepositoryFormatMetaDir.unregister_feature,
             "makes-cheese-sandwich")
-        repository.MetaDirRepositoryFormat.register_feature(
+        repository.RepositoryFormatMetaDir.register_feature(
             "makes-cheese-sandwich")
         repo = self.make_repository('.')
         repo.lock_write()

@@ -1029,7 +1029,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree', format='2a')
         tree.bzrdir.control_transport.put_bytes(
             'branch-format',
-            tree.bzrdir._format.get_format_string() + "bar\trequired\n")
+            tree.bzrdir._format.get_format_string() + "feature\tbar\trequired\n")
         dir = bzrdir.BzrDir.open('tree')
         self.assertEquals("required", dir._format.features.get_feature("bar"))
 

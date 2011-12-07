@@ -1731,12 +1731,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1"
 
-    @classmethod
-    def from_string(cls, format_string):
-        if format_string != cls.get_format_string():
-            raise ValueError("Invalid format string %r" % format_string)
-        return cls()
-
     def network_name(self):
         return self.get_format_string()
 
