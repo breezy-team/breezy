@@ -1468,22 +1468,24 @@ class TestBzrFormat(TestCase):
             "required feature foo\n"
             "optional feature another\n")
 
+    def test_network_string(self):
+        # The network string should include the feature info
+        format = SampleBzrFormat()
+        format.features = {"foo": "required"}
+        self.assertEquals(
+            "First line\nrequired feature foo\n",
+            format.network_string())
+
     def test_from_string(self):
         format = SampleBzrFormat.from_string(
             "First line\nrequired feature foo\n")
         self.assertEquals("required", format.features.get("foo"))
-
-    def test_get_feature(self):
-        format = SampleBzrFormat()
-        format.features = {"nested trees": "optional"}
-        self.assertEquals("optional", format.features.get("nested trees"))
-        self.assertIs(None, format.features.get("bar"))
-
-    def test_set_feature(self):
-        format = SampleBzrFormat()
-        format.features = {"nested trees": "optional"}
-        format.features["foo"] = "required"
-        self.assertEquals("required", format.features.get("foo"))
+        self.assertRaises(ValueError, SampleBzrFormat.from_string,
+            "Second line\nrequired feature foo\n")
+        self.assertRaises(ValueError, SampleBzrFormat.from_string,
+            "First line\nrequired bla foo\n")
+        self.assertRaises(ValueError, SampleBzrFormat.from_string,
+            "First line\nfoo\n")
 
     def test_eq(self):
         format1 = SampleBzrFormat()
