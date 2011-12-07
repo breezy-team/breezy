@@ -1123,7 +1123,7 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
             cls = registry.get(format_string)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind=kind)
-        return cls.from_string(format_string)
+        return cls
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
