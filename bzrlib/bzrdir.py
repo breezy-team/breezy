@@ -46,6 +46,7 @@ from bzrlib import (
     transport as _mod_transport,
     ui,
     urlutils,
+    vf_search,
     win32utils,
     workingtree_3,
     workingtree_4,
@@ -200,7 +201,7 @@ class BzrDir(controldir.ControlDir):
                 if (result_repo.user_url == result.user_url
                     and not require_stacking and
                     revision_id is not None):
-                    fetch_spec = graph.PendingAncestryResult(
+                    fetch_spec = vf_search.PendingAncestryResult(
                         [revision_id], local_repo)
                     result_repo.fetch(local_repo, fetch_spec=fetch_spec)
                 else:
