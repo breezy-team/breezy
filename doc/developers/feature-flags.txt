@@ -82,10 +82,10 @@ roundtrips when opening a remote format. An example .bzr/repository/format
 file could then look like this::
 
   Bazaar repository format 2a (needs bzr 1.16 or later)
-  optional git
-  optional search
-  optional tiplog
-  required nested-trees
+  optional feature git
+  optional feature search
+  optional feature tiplog
+  required feature nested-trees
 
 In other words, this is a "2a" bzr format which also stores a cache of
 Git Tree/Commit objects, a bzr-search index, and a reflog. It also contains
@@ -99,8 +99,8 @@ and deregistering the presence of particular features. This class is inherited
 by ``BzrBranchFormat``, ``VersionedFileRepositoryFormat`` and
 ``InventoryWorkingTreeFormat``.
 
- * BzrDirComponentFormat.register_feature(name)
- * BzrDirComponentFormat.unregister_feature(name)
+ * BzrDirMetaComponentFormat.register_feature(name)
+ * BzrDirMetaComponentFormat.unregister_feature(name)
 
 Upon opening, BzrDirComponentFormat will be responsible for checking that the
 required features are present.  lock_write will raise an exception
@@ -109,8 +109,8 @@ when there is an un unsupported mandatory feature required for write access.
 Methods will also be added to BzrDirComponentFormat to allow plugins, etc,
 to check whether a feature is present and adding new features:
 
- * BzrDirComponentFormat.set_feature(name, necessity)
- * BzrDirComponentFormat.get_feature(name) -> necessity
+ * BzrDirMetaComponentFormat.set_feature(name, necessity)
+ * BzrDirMetaComponentFormat.get_feature(name) -> necessity
 
 See also
 --------

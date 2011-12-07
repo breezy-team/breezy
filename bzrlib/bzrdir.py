@@ -97,11 +97,15 @@ class FeatureFlags(object):
 
     @classmethod
     def from_string(cls, format_text):
-        """Create a feature flag list from a string."""
+        """Create a feature flag list from a string.
+
+        :param format_text: Format text to parse
+        :return: A FeatureFlags instance
+        """
         lines = format_text.splitlines()
         features = {}
         for lineno, line in enumerate(lines):
-            (command, feature, necessity) = line.split("\t")
+            (necessity, command, feature) = line.split(" ")
             if command != "feature":
                 raise ValueError("Invalid command %r on line %d" %
                     (command, lineno))
@@ -109,28 +113,45 @@ class FeatureFlags(object):
         return cls(features)
 
     def as_string(self):
+        """Serialize this feature flags dictionary.
+        """
         return "\n".join(
-            [("feature %s\t%s" % item) for item in self._features.iteritems()] +
+            [("%s feature %s" % (item[1], item[0])) for item in self._features.iteritems()] +
             [""])
 
     def set_feature(self, name, necessity):
-        """Set a feature."""
+        """Set a feature.
+
+        :param name: Feature name
+        :param necessity: Feature necessity
+        """
         self._features[name] = necessity
 
     def get_feature(self, name):
-        """Get a feature."""
+        """Get a feature.
+
+        :return: None if the feature is missing, a necessity otherwise
+        """
         return self._features.get(name)
 
-    def check_features(self, present):
-        """Check if all features required are present.
+    def check_support_status(self, present):
+        """Check if all necessary features are present.
+
+        :param present: Features to consider present
+        :raise MissingFeature: When a required feature is missing
         """
-        missing_required = set()
         for name, necessity in self._features.iteritems():
             if name in present:
                 continue
-            if necessity == "required":
-                missing_required.add(name)
-        return missing_required
+            if necessity == "optional":
+                mutter("ignoring optional missing feature %s", name)
+                continue
+            elif necessity == "required":
+                raise errors.MissingFeature(name)
+            else:
+                mutter("treating unknown necessity as require for %s",
+                       name)
+                raise errors.MissingFeature(name)
 
     def copy(self):
         """Make a deep copy."""
@@ -1190,9 +1211,7 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
         super(BzrDirMetaComponentFormat, self).check_support_status(
             allow_unsupported=allow_unsupported,
             recommend_upgrade=recommend_upgrade, basedir=basedir)
-        missing_required = self.features.check_features(self._present_features)
-        if missing_required:
-            raise errors.MissingFeature(iter(missing_required).next())
+        self.features.check_support_status(self._present_features)
 
     @classmethod
     def get_format_string(cls):
@@ -1589,7 +1608,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         cls._present_features.remove(name)
 
     def check_support_status(self, unsupported=False):
-        self.features.check_features(self._present_features)
+        self.features.check_support_status(self._present_features)
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:

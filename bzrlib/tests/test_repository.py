@@ -162,7 +162,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.repository.control_transport.put_bytes('format',
             tree.branch.repository._format.get_format_string() +
-            "feature\tname\tnecessity\n")
+            "necessity feature name\n")
         found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
         self.assertEquals(
