@@ -22,7 +22,7 @@ from bzrlib import bugtracker, errors, osutils, patiencediff
 """)
 import re
 
-_BUG_MATCH = re.compile(r'#(\d+)')
+_BUG_MATCH = re.compile(r'lp:(\d+)')
 
 class CommitTemplate(object):
 

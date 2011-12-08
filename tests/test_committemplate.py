@@ -128,11 +128,11 @@ IMPROVEMENTS
 * Created plugin, basic functionality of looking for NEWS and including the
   NEWS diff.
 
-* Fixed a horrible bug. (#523423)
+* Fixed a horrible bug. (lp:523423)
 
 """
         change_content = """
-* Fixed a horrible bug. (#523423)
+* Fixed a horrible bug. (lp:523423)
 
 """
         builder.build_snapshot('BASE-id', None,
