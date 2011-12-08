@@ -134,7 +134,7 @@ class BzrBranchFormat4(BranchFormat):
         return "Branch format 4"
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
-            found_repository=None):
+            found_repository=None, possible_transports=None):
         """See BranchFormat.open()."""
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
@@ -147,7 +147,8 @@ class BzrBranchFormat4(BranchFormat):
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,
-                         _repository=found_repository)
+                         _repository=found_repository,
+                         possible_transports=possible_transports)
 
     def __str__(self):
         return "Bazaar-NG branch format 4"

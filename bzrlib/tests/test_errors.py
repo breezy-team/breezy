@@ -349,13 +349,6 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual("The value 'foo' is not a valid value.",
             str(error))
 
-    def test_bzrnewerror_is_deprecated(self):
-        class DeprecatedError(errors.BzrNewError):
-            pass
-        self.callDeprecated(['BzrNewError was deprecated in bzr 0.13; '
-             'please convert DeprecatedError to use BzrError instead'],
-            DeprecatedError)
-
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
         # no further formatting is done.  (I'm not sure raising the base class
@@ -572,23 +565,6 @@ class TestErrors(TestCaseWithTransport):
         err = errors.UnknownRules(['foo', 'bar'])
         self.assertEquals("Unknown rules detected: foo, bar.", str(err))
 
-    def test_hook_failed(self):
-        # Create an exc_info tuple by raising and catching an exception.
-        try:
-            1/0
-        except ZeroDivisionError:
-            err = errors.HookFailed('hook stage', 'hook name', sys.exc_info(),
-                warn=False)
-        # GZ 2010-11-08: Should not store exc_info in exception instances, but
-        #                HookFailed is deprecated anyway and could maybe go.
-        try:
-            self.assertStartsWith(
-                str(err), 'Hook \'hook name\' during hook stage failed:\n')
-            self.assertEndsWith(
-                str(err), 'integer division or modulo by zero')
-        finally:
-            del err
-
     def test_tip_change_rejected(self):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
         self.assertEquals(
@@ -719,6 +695,14 @@ class TestErrors(TestCaseWithTransport):
             'Please use `bzr unbind` to fix.')
         self.assertEqualDiff(msg, str(error))
 
+    def test_retry_with_new_packs(self):
+        fake_exc_info = ('{exc type}', '{exc value}', '{exc traceback}')
+        error = errors.RetryWithNewPacks(
+            '{context}', reload_occurred=False, exc_info=fake_exc_info)
+        self.assertEqual(
+            'Pack files have changed, reload and retry. context: '
+            '{context} {exc value}', str(error))
+
 
 class PassThroughError(errors.BzrError):
 
@@ -751,12 +735,8 @@ class TestErrorFormatting(TestCase):
 
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')
-        s = self.callDeprecated(
-                ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
-                lambda x: str(x), e)
-        ## s = str(e)
-        self.assertEqual(s,
-                "This class has a docstring but no format string.")
+        self.assertStartsWith(str(e),
+            "Unprintable exception ErrorWithNoFormat")
 
     def test_mismatched_format_args(self):
         # Even though ErrorWithBadFormat's format string does not match the

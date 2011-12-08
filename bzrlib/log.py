@@ -341,7 +341,7 @@ def format_signature_validity(rev_id, repo):
     from bzrlib import gpg
 
     gpg_strategy = gpg.GPGStrategy(None)
-    result = repo.verify_revision(rev_id, gpg_strategy)
+    result = repo.verify_revision_signature(rev_id, gpg_strategy)
     if result[0] == gpg.SIGNATURE_VALID:
         return "valid signature from {0}".format(result[1])
     if result[0] == gpg.SIGNATURE_KEY_MISSING:
@@ -1807,13 +1807,13 @@ log_formatter_registry = LogFormatterRegistry()
 
 
 log_formatter_registry.register('short', ShortLogFormatter,
-                                'Moderately short log format')
+                                'Moderately short log format.')
 log_formatter_registry.register('long', LongLogFormatter,
-                                'Detailed log format')
+                                'Detailed log format.')
 log_formatter_registry.register('line', LineLogFormatter,
-                                'Log format with one line per revision')
+                                'Log format with one line per revision.')
 log_formatter_registry.register('gnu-changelog', GnuChangelogLogFormatter,
-                                'Format used by GNU ChangeLog files')
+                                'Format used by GNU ChangeLog files.')
 
 
 def register_formatter(name, formatter):

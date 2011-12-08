@@ -1,3 +1,9 @@
+bzr (2.5.0~beta4-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 08 Dec 2011 12:24:34 +0100
+
 bzr (2.5.0~beta3-2) experimental; urgency=low
 
   * Build-depend on python-paramiko, python-pycurl and python-gpgme for use in

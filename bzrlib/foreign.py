@@ -264,7 +264,6 @@ class cmd_dpush(Command):
     branch unless the --no-rebase option is used, in which case 
     the two branches will be out of sync after the push. 
     """
-    hidden = True
     takes_args = ['location?']
     takes_options = [
         'remember',
