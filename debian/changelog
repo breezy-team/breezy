@@ -1,4 +1,4 @@
-bzr (2.5.0~beta4-2) UNRELEASED; urgency=low
+bzr (2.5.0~beta4-2) unstable; urgency=low
 
   * Fix Vcs-Bzr URL.
   * Drop python-gpgme from build-depends again until 0.2 lands in sid,
