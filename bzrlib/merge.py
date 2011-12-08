@@ -44,6 +44,7 @@ from bzrlib import (
     decorators,
     errors,
     hooks,
+    registry,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -139,7 +140,7 @@ class PerFileMerger(AbstractPerFileMerger):
             params.winner == 'other' or
             # THIS and OTHER aren't both files.
             not params.is_file_merge() or
-            # The filename doesn't match *.xml
+            # The filename doesn't match
             not self.file_matches(params)):
             return 'not_applicable', None
         return self.merge_matching(params)
@@ -854,14 +855,18 @@ class Merge3Merger(object):
         else:
             entries = self._entries_lca()
             resolver = self._lca_multi_way
+        # Prepare merge hooks
+        factories = Merger.hooks['merge_file_content']
+        # One hook for each registered one plus our default merger
+        hooks = [factory(self) for factory in factories] + [self]
+        self.active_hooks = [hook for hook in hooks if hook is not None]
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            factories = Merger.hooks['merge_file_content']
-            hooks = [factory(self) for factory in factories] + [self]
-            self.active_hooks = [hook for hook in hooks if hook is not None]
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
-                child_pb.update(gettext('Preparing file merge'), num, len(entries))
+                # Try merging each entry
+                child_pb.update(gettext('Preparing file merge'),
+                                num, len(entries))
                 self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
                     file_status = self._do_merge_contents(file_id)
@@ -2038,13 +2043,24 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 
-def get_merge_type_registry():
-    """Merge type registry is in bzrlib.option to avoid circular imports.
 
-    This method provides a sanctioned way to retrieve it.
+merge_type_registry = registry.Registry()
+merge_type_registry.register('diff3', Diff3Merger,
+                             "Merge using external diff3.")
+merge_type_registry.register('lca', LCAMerger,
+                             "LCA-newness merge.")
+merge_type_registry.register('merge3', Merge3Merger,
+                             "Native diff3-style merge.")
+merge_type_registry.register('weave', WeaveMerger,
+                             "Weave-based merge.")
+
+
+def get_merge_type_registry():
+    """Merge type registry was previously in bzrlib.option
+
+    This method provides a backwards compatible way to retrieve it.
     """
-    from bzrlib import option
-    return option._merge_type_registry
+    return merge_type_registry
 
 
 def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):

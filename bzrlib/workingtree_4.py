@@ -969,7 +969,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     all_versioned = False
                     break
             if not all_versioned:
-                raise errors.PathsNotVersionedError(paths)
+                raise errors.PathsNotVersionedError(
+                    [p.decode('utf-8') for p in paths])
         # -- remove redundancy in supplied paths to prevent over-scanning --
         search_paths = osutils.minimum_path_selection(paths)
         # sketch:
@@ -1024,7 +1025,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
             found_dir_names = set(dir_name_id[:2] for dir_name_id in found)
             for dir_name in split_paths:
                 if dir_name not in found_dir_names:
-                    raise errors.PathsNotVersionedError(paths)
+                    raise errors.PathsNotVersionedError(
+                        [p.decode('utf-8') for p in paths])
 
         for dir_name_id, trees_info in found.iteritems():
             for index in search_indexes:
@@ -2174,7 +2176,7 @@ class InterDirStateTree(InterTree):
                 path_entries = state._entries_for_path(path)
                 if not path_entries:
                     # this specified path is not present at all: error
-                    not_versioned.append(path)
+                    not_versioned.append(path.decode('utf-8'))
                     continue
                 found_versioned = False
                 # for each id at this path
@@ -2188,7 +2190,7 @@ class InterDirStateTree(InterTree):
                 if not found_versioned:
                     # none of the indexes was not 'absent' at all ids for this
                     # path.
-                    not_versioned.append(path)
+                    not_versioned.append(path.decode('utf-8'))
             if len(not_versioned) > 0:
                 raise errors.PathsNotVersionedError(not_versioned)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --

@@ -84,7 +84,7 @@ boil down to the following new API functions:
   of the result to match any existing items.
 
 * Tree.get_canonical_inventory_path - somewhat like Tree.get_symlink_target(),
-  Tree.get_file_by_path() etc; returns a name with the case adjusted to match
+  Tree.get_file() etc; returns a name with the case adjusted to match
   existing inventory items.
 
 * osutils.canonical_relpaths() and Tree.get_canonical_inventory_paths() - like

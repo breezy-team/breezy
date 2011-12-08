@@ -26,7 +26,6 @@ import tempfile
 from bzrlib import (
     osutils,
     symbol_versioning,
-    tests,
     )
 
 
@@ -141,7 +140,8 @@ class _CompatabilityThunkFeature(Feature):
                                             % (self._module, self._name))
             use_msg = ' Use %s.%s instead.' % (self._replacement_module,
                                                self._replacement_name)
-            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning,
+                                   stacklevel=5)
             # Import the new feature and use it as a replacement for the
             # deprecated one.
             self._feature = pyutils.get_named_object(
@@ -290,6 +290,8 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         if CaseInsCasePresFilenameFeature.available():
             return False
 
+        from bzrlib import tests
+
         if tests.TestCaseWithMemoryTransport.TEST_ROOT is None:
             root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
             tests.TestCaseWithMemoryTransport.TEST_ROOT = root
@@ -407,8 +409,9 @@ class ExecutableFeature(Feature):
 
 
 bash_feature = ExecutableFeature('bash')
-sed_feature = ExecutableFeature('sed')
 diff_feature = ExecutableFeature('diff')
+sed_feature = ExecutableFeature('sed')
+msgmerge_feature = ExecutableFeature('msgmerge')
 
 
 class _PosixPermissionsFeature(Feature):
@@ -421,7 +424,7 @@ class _PosixPermissionsFeature(Feature):
             f = tempfile.mkstemp(prefix='bzr_perms_chk_')
             fd, name = f
             os.close(fd)
-            os.chmod(name, write_perms)
+            osutils.chmod_if_possible(name, write_perms)
 
             read_perms = os.stat(name).st_mode & 0777
             os.unlink(name)
@@ -490,26 +493,3 @@ class Win32Feature(Feature):
 
 
 win32_feature = Win32Feature()
-
-
-for name in ['HTTPServerFeature', 
-    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
-    'OsFifoFeature', 'UnicodeFilenameFeature',
-    'ByteStringNamedFilesystem', 'UTF8Filesystem',
-    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
-    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
-    'posix_permissions_feature',
-    ]:
-    setattr(tests, name, _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 5, 0)),
-        'bzrlib.tests', name,
-        name, 'bzrlib.tests.features'))
-
-
-for (old_name, new_name) in [
-    ('UnicodeFilename', 'UnicodeFilenameFeature'),
-    ]:
-    setattr(tests, name, _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 5, 0)),
-        'bzrlib.tests', old_name,
-        new_name, 'bzrlib.tests.features'))

@@ -38,9 +38,6 @@ from bzrlib import (
     )
 
 
-_marker = []
-
-
 class RevisionInfo(object):
     """The results of applying a revision specification to a branch."""
 
@@ -58,17 +55,24 @@ class RevisionInfo(object):
     or treat the result as a tuple.
     """
 
-    def __init__(self, branch, revno, rev_id=_marker):
+    def __init__(self, branch, revno=None, rev_id=None):
         self.branch = branch
-        self.revno = revno
-        if rev_id is _marker:
+        self._has_revno = (revno is not None)
+        self._revno = revno
+        self.rev_id = rev_id
+        if self.rev_id is None and self._revno is not None:
             # allow caller to be lazy
-            if self.revno is None:
-                self.rev_id = None
-            else:
-                self.rev_id = branch.get_rev_id(self.revno)
-        else:
-            self.rev_id = rev_id
+            self.rev_id = branch.get_rev_id(self._revno)
+
+    @property
+    def revno(self):
+        if not self._has_revno and self.rev_id is not None:
+            try:
+                self._revno = self.branch.revision_id_to_revno(self.rev_id)
+            except errors.NoSuchRevision:
+                self._revno = None
+            self._has_revno = True
+        return self._revno
 
     def __nonzero__(self):
         # first the easy ones...
@@ -104,18 +108,17 @@ class RevisionInfo(object):
             self.revno, self.rev_id, self.branch)
 
     @staticmethod
-    def from_revision_id(branch, revision_id, revs):
+    def from_revision_id(branch, revision_id, revs=symbol_versioning.DEPRECATED_PARAMETER):
         """Construct a RevisionInfo given just the id.
 
         Use this if you don't know or care what the revno is.
         """
-        if revision_id == revision.NULL_REVISION:
-            return RevisionInfo(branch, 0, revision_id)
-        try:
-            revno = revs.index(revision_id) + 1
-        except ValueError:
-            revno = None
-        return RevisionInfo(branch, revno, revision_id)
+        if symbol_versioning.deprecated_passed(revs):
+            symbol_versioning.warn(
+                'RevisionInfo.from_revision_id(revs) was deprecated in 2.5.',
+                DeprecationWarning,
+                stacklevel=2)
+        return RevisionInfo(branch, revno=None, rev_id=revision_id)
 
 
 class RevisionSpec(object):
@@ -138,7 +141,8 @@ class RevisionSpec(object):
     """
 
     prefix = None
-    wants_revision_history = True
+    # wants_revision_history has been deprecated in 2.5.
+    wants_revision_history = False
     dwim_catchable_exceptions = (errors.InvalidRevisionSpec,)
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
@@ -209,7 +213,10 @@ class RevisionSpec(object):
     def in_history(self, branch):
         if branch:
             if self.wants_revision_history:
-                # TODO: avoid looking at all of history
+                symbol_versioning.warn(
+                    "RevisionSpec.wants_revision_history was "
+                    "deprecated in 2.5 (%s)." % self.__class__.__name__,
+                    DeprecationWarning)
                 branch.lock_read()
                 try:
                     graph = branch.repository.get_graph()
@@ -303,9 +310,6 @@ class RevisionSpec_dwim(RevisionSpec):
     """
 
     help_txt = None
-    # We don't need to build the revision history ourself, that's delegated to
-    # each revspec we try.
-    wants_revision_history = False
 
     _revno_regex = lazy_regex.lazy_compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
 
@@ -389,14 +393,13 @@ class RevisionSpec_revno(RevisionSpec):
                                    your history is very long.
     """
     prefix = 'revno:'
-    wants_revision_history = False
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
-        branch, revno, revision_id = self._lookup(branch, revs)
+        branch, revno, revision_id = self._lookup(branch)
         return RevisionInfo(branch, revno, revision_id)
 
-    def _lookup(self, branch, revs_or_none):
+    def _lookup(self, branch):
         loc = self.spec.find(':')
         if loc == -1:
             revno_spec = self.spec
@@ -426,12 +429,8 @@ class RevisionSpec_revno(RevisionSpec):
                 dotted = True
 
         if branch_spec:
-            # the user has override the branch to look in.
-            # we need to refresh the revision_history map and
-            # the branch object.
-            from bzrlib.branch import Branch
-            branch = Branch.open(branch_spec)
-            revs_or_none = None
+            # the user has overriden the branch to look in.
+            branch = _mod_branch.Branch.open(branch_spec)
 
         if dotted:
             try:
@@ -441,7 +440,7 @@ class RevisionSpec_revno(RevisionSpec):
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
-                # so for  API compatability we return None.
+                # so for API compatibility we return None.
                 return branch, None, revision_id
         else:
             last_revno, last_revision_id = branch.last_revision_info()
@@ -453,14 +452,14 @@ class RevisionSpec_revno(RevisionSpec):
                 else:
                     revno = last_revno + revno + 1
             try:
-                revision_id = branch.get_rev_id(revno, revs_or_none)
+                revision_id = branch.get_rev_id(revno)
             except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return branch, revno, revision_id
 
     def _as_revision_id(self, context_branch):
         # We would have the revno here, but we don't really care
-        branch, revno, revision_id = self._lookup(context_branch, None)
+        branch, revno, revision_id = self._lookup(context_branch)
         return revision_id
 
     def needs_branch(self):
@@ -476,12 +475,11 @@ class RevisionSpec_revno(RevisionSpec):
 RevisionSpec_int = RevisionSpec_revno
 
 
-
 class RevisionIDSpec(RevisionSpec):
 
     def _match_on(self, branch, revs):
         revision_id = self.as_revision_id(branch)
-        return RevisionInfo.from_revision_id(branch, revision_id, revs)
+        return RevisionInfo.from_revision_id(branch, revision_id)
 
 
 class RevisionSpec_revid(RevisionIDSpec):
@@ -523,10 +521,10 @@ class RevisionSpec_last(RevisionSpec):
     prefix = 'last:'
 
     def _match_on(self, branch, revs):
-        revno, revision_id = self._revno_and_revision_id(branch, revs)
+        revno, revision_id = self._revno_and_revision_id(branch)
         return RevisionInfo(branch, revno, revision_id)
 
-    def _revno_and_revision_id(self, context_branch, revs_or_none):
+    def _revno_and_revision_id(self, context_branch):
         last_revno, last_revision_id = context_branch.last_revision_info()
 
         if self.spec == '':
@@ -545,7 +543,7 @@ class RevisionSpec_last(RevisionSpec):
 
         revno = last_revno - offset + 1
         try:
-            revision_id = context_branch.get_rev_id(revno, revs_or_none)
+            revision_id = context_branch.get_rev_id(revno)
         except errors.NoSuchRevision:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch)
         return revno, revision_id
@@ -553,7 +551,7 @@ class RevisionSpec_last(RevisionSpec):
     def _as_revision_id(self, context_branch):
         # We compute the revno as part of the process, but we don't really care
         # about it.
-        revno, revision_id = self._revno_and_revision_id(context_branch, None)
+        revno, revision_id = self._revno_and_revision_id(context_branch)
         return revision_id
 
 
@@ -591,14 +589,10 @@ class RevisionSpec_before(RevisionSpec):
             # We need to use the repository history here
             rev = branch.repository.get_revision(r.rev_id)
             if not rev.parent_ids:
-                revno = 0
                 revision_id = revision.NULL_REVISION
             else:
                 revision_id = rev.parent_ids[0]
-                try:
-                    revno = revs.index(revision_id) + 1
-                except ValueError:
-                    revno = None
+            revno = None
         else:
             revno = r.revno - 1
             try:
@@ -609,8 +603,7 @@ class RevisionSpec_before(RevisionSpec):
         return RevisionInfo(branch, revno, revision_id)
 
     def _as_revision_id(self, context_branch):
-        base_revspec = RevisionSpec.from_string(self.spec)
-        base_revision_id = base_revspec.as_revision_id(context_branch)
+        base_revision_id = RevisionSpec.from_string(self.spec)._as_revision_id(context_branch)
         if base_revision_id == revision.NULL_REVISION:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
                                          'cannot go before the null: revision')
@@ -646,8 +639,7 @@ class RevisionSpec_tag(RevisionSpec):
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
         return RevisionInfo.from_revision_id(branch,
-            branch.tags.lookup_tag(self.spec),
-            revs)
+            branch.tags.lookup_tag(self.spec))
 
     def _as_revision_id(self, context_branch):
         return context_branch.tags.lookup_tag(self.spec)
@@ -657,20 +649,19 @@ class RevisionSpec_tag(RevisionSpec):
 class _RevListToTimestamps(object):
     """This takes a list of revisions, and allows you to bisect by date"""
 
-    __slots__ = ['revs', 'branch']
+    __slots__ = ['branch']
 
-    def __init__(self, revs, branch):
-        self.revs = revs
+    def __init__(self, branch):
         self.branch = branch
 
     def __getitem__(self, index):
         """Get the date of the index'd item"""
-        r = self.branch.repository.get_revision(self.revs[index])
+        r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
         # TODO: Handle timezone.
         return datetime.datetime.fromtimestamp(r.timestamp)
 
     def __len__(self):
-        return len(self.revs)
+        return self.branch.revno()
 
 
 class RevisionSpec_date(RevisionSpec):
@@ -750,13 +741,12 @@ class RevisionSpec_date(RevisionSpec):
                     hour=hour, minute=minute, second=second)
         branch.lock_read()
         try:
-            rev = bisect.bisect(_RevListToTimestamps(revs, branch), dt)
+            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1)
         finally:
             branch.unlock()
-        if rev == len(revs):
+        if rev == branch.revno():
             raise errors.InvalidRevisionSpec(self.user_spec, branch)
-        else:
-            return RevisionInfo(branch, rev + 1)
+        return RevisionInfo(branch, rev)
 
 
 
@@ -793,11 +783,7 @@ class RevisionSpec_ancestor(RevisionSpec):
     def _find_revision_info(branch, other_location):
         revision_id = RevisionSpec_ancestor._find_revision_id(branch,
                                                               other_location)
-        try:
-            revno = branch.revision_id_to_revno(revision_id)
-        except errors.NoSuchRevision:
-            revno = None
-        return RevisionInfo(branch, revno, revision_id)
+        return RevisionInfo(branch, None, revision_id)
 
     @staticmethod
     def _find_revision_id(branch, other_location):
@@ -857,11 +843,7 @@ class RevisionSpec_branch(RevisionSpec):
                 branch.fetch(other_branch, revision_b)
             except errors.ReadOnlyError:
                 branch = other_branch
-        try:
-            revno = branch.revision_id_to_revno(revision_b)
-        except errors.NoSuchRevision:
-            revno = None
-        return RevisionInfo(branch, revno, revision_b)
+        return RevisionInfo(branch, None, revision_b)
 
     def _as_revision_id(self, context_branch):
         from bzrlib.branch import Branch
