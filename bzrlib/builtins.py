@@ -6550,11 +6550,15 @@ class cmd_export_pot(Command):
     takes_options = [Option('plugin', 
                             help='Export help text from named command '\
                                  '(defaults to all built in commands).',
-                            type=str)]
+                            type=str),
+                     Option('include-duplicates',
+                            help='Output multiple copies of the same msgid '
+                                 'string if it appears more than once.'),
+                            ]
 
-    def run(self, plugin=None):
+    def run(self, plugin=None, include_duplicates=False):
         from bzrlib.export_pot import export_pot
-        export_pot(self.outf, plugin)
+        export_pot(self.outf, plugin, include_duplicates)
 
 
 def _register_lazy_builtins():
