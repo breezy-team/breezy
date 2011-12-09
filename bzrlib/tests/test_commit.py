@@ -25,7 +25,10 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
-from bzrlib.config import BranchConfig
+from bzrlib.config import (
+    SIGN_ALWAYS,
+    Stack,
+    )
 from bzrlib.errors import (
     PointlessCommit,
     BzrError,
@@ -44,19 +47,22 @@ from bzrlib.tests.matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
-class MustSignConfig(BranchConfig):
+class MustSignConfig(Stack):
 
-    def signature_needed(self):
-        return True
+    def get(self, name):
+        if name == "gpg_signing_command":
+            return "cat -"
+        elif name == "signing_policy":
+            return SIGN_ALWAYS
+        return None
 
-    def gpg_signing_command(self):
-        return ['cat', '-']
 
+class BranchWithHooks(Stack):
 
-class BranchWithHooks(BranchConfig):
-
-    def post_commit(self):
-        return "bzrlib.ahook bzrlib.ahook"
+    def get(self, name):
+        if name == "post_commit":
+            return "bzrlib.ahook bzrlib.ahook"
+        return None
 
 
 class CapturingReporter(NullCommitReporter):
@@ -431,7 +437,7 @@ class TestCommit(TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            commit.Commit(config=MustSignConfig(branch)).commit(message="base",
+            commit.Commit(config_stack=MustSignConfig(branch)).commit(message="base",
                                                       allow_pointless=True,
                                                       rev_id='B',
                                                       working_tree=wt)
@@ -456,7 +462,7 @@ class TestCommit(TestCaseWithTransport):
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
             config = MustSignConfig(branch)
             self.assertRaises(SigningFailed,
-                              commit.Commit(config=config).commit,
+                              commit.Commit(config_stack=config).commit,
                               message="base",
                               allow_pointless=True,
                               rev_id='B',
@@ -477,7 +483,7 @@ class TestCommit(TestCaseWithTransport):
         bzrlib.ahook = called
         try:
             config = BranchWithHooks(branch)
-            commit.Commit(config=config).commit(
+            commit.Commit(config_stack=config).commit(
                             message = "base",
                             allow_pointless=True,
                             rev_id='A', working_tree = wt)

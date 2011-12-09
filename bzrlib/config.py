@@ -55,7 +55,7 @@ check_signatures - this option will control whether bzr will require good gpg
                    turns on create_signatures.
 create_signatures - this option controls whether bzr will always create
                     gpg signatures or not on commits.  There is an unused
-                    option which in future is expected to work if
+                    option which in future is expected to work if               
                     branch settings require signatures.
 log_format - this option sets the default log format.  Possible values are
              long, short, line, or a plugin can register new formats.
@@ -73,6 +73,7 @@ up=pull
 """
 
 import os
+import string
 import sys
 
 
@@ -441,7 +442,7 @@ class Config(object):
             l = [l]
         return l
         
-    def get_user_option_as_int_from_SI(self,  option_name,  default=None):
+    def get_user_option_as_int_from_SI(self, option_name, default=None):
         """Get a generic option from a human readable size in SI units, e.g 10MB
         
         Accepted suffixes are K,M,G. It is case-insensitive and may be followed
@@ -2330,8 +2331,7 @@ class Option(object):
     """
 
     def __init__(self, name, default=None, default_from_env=None,
-                 help=None,
-                 from_unicode=None, invalid=None):
+                 help=None, from_unicode=None, invalid=None):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
@@ -2374,6 +2374,8 @@ class Option(object):
         elif isinstance(default, (str, unicode, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
+        elif callable(default):
+            self.default = default
         else:
             # other python objects are not expected
             raise AssertionError('%r is not supported as a default value'
@@ -2414,7 +2416,12 @@ class Option(object):
                 continue
         if value is None:
             # Otherwise, fallback to the value defined at registration
-            value = self.default
+            if callable(self.default):
+                value = self.default()
+                if type(value) != unicode:
+                    raise ValueError("%r is not unicode" % value)
+            else:
+                value = self.default
         return value
 
     def get_help_text(self, additional_see_also=None, plain=True):
@@ -2584,6 +2591,21 @@ custom bzr metadata.
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
+
+
+def default_email():
+    name, email = _auto_user_id()
+    if name and email:
+        return '%s <%s>' % (name, email)
+    elif email:
+        return email
+    raise errors.NoWhoami()
+
+
+option_registry.register(
+    Option('email', default=default_email,
+           default_from_env=['BZR_EMAIL', 'EMAIL'],
+           help='The users identity'))
 option_registry.register(
     Option('gpg_signing_command',
            default='gpg',

@@ -200,7 +200,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                 else:
                     parent_revids = [parent_revid]
                 builder = self.target.get_commit_builder(parent_revids, 
-                        self.target.get_config(), rev.timestamp,
+                        self.target.get_config_stack(), rev.timestamp,
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
                 try:
