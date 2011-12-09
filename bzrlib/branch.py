@@ -41,6 +41,7 @@ from bzrlib import (
     transport,
     ui,
     urlutils,
+    vf_search,
     )
 from bzrlib.i18n import gettext, ngettext
 """)
@@ -937,7 +938,7 @@ class Branch(controldir.ControlComponent):
                     tags_to_fetch = set(self.tags.get_reverse_tag_dict())
                 except errors.TagsNotSupported:
                     tags_to_fetch = set()
-                fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
+                fetch_spec = vf_search.NotInOtherForRevs(self.repository,
                     old_repository, required_ids=[self.last_revision()],
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)

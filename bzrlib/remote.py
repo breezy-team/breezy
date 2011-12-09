@@ -38,6 +38,7 @@ from bzrlib import (
     testament as _mod_testament,
     urlutils,
     vf_repository,
+    vf_search,
     )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
@@ -1841,7 +1842,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         included_keys = result_set.intersection(result_parents)
         start_keys = result_set.difference(included_keys)
         exclude_keys = result_parents.difference(result_set)
-        result = graph.SearchResult(start_keys, exclude_keys,
+        result = vf_search.SearchResult(start_keys, exclude_keys,
             len(result_set), result_set)
         return result
 
@@ -1895,6 +1896,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         # the InterRepository base class, which raises an
         # IncompatibleRepositories when asked to fetch.
         inter = _mod_repository.InterRepository.get(source, self)
+        if (fetch_spec is not None and
+            not getattr(inter, "supports_fetch_spec", False)):
+            raise errors.UnsupportedOperation(
+                "fetch_spec not supported for %r" % inter)
         return inter.fetch(revision_id=revision_id,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
@@ -2062,11 +2067,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             parents_map = {}
         if _DEFAULT_SEARCH_DEPTH <= 0:
             (start_set, stop_keys,
-             key_count) = graph.search_result_from_parent_map(
+             key_count) = vf_search.search_result_from_parent_map(
                 parents_map, self._unstacked_provider.missing_keys)
         else:
             (start_set, stop_keys,
-             key_count) = graph.limited_search_result_from_parent_map(
+             key_count) = vf_search.limited_search_result_from_parent_map(
                 parents_map, self._unstacked_provider.missing_keys,
                 keys, depth=_DEFAULT_SEARCH_DEPTH)
         recipe = ('manual', start_set, stop_keys, key_count)
@@ -2684,7 +2689,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before(version)
             except errors.UnknownErrorFromSmartServer, e:
-                if isinstance(search, graph.EverythingResult):
+                if isinstance(search, vf_search.EverythingResult):
                     error_verb = e.error_from_smart_server.error_verb
                     if error_verb == 'BadSearch':
                         # Pre-2.4 servers don't support this sort of search.

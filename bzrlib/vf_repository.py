@@ -38,6 +38,7 @@ from bzrlib import (
     tsort,
     ui,
     versionedfile,
+    vf_search,
     )
 
 from bzrlib.recordcounter import RecordCounter
@@ -1220,6 +1221,54 @@ class VersionedFileRepository(Repository):
         # rather copying them?
         self._safe_to_return_from_cache = False
 
+    def fetch(self, source, revision_id=None, find_ghosts=False,
+            fetch_spec=None):
+        """Fetch the content required to construct revision_id from source.
+
+        If revision_id is None and fetch_spec is None, then all content is
+        copied.
+
+        fetch() may not be used when the repository is in a write group -
+        either finish the current write group before using fetch, or use
+        fetch before starting the write group.
+
+        :param find_ghosts: Find and copy revisions in the source that are
+            ghosts in the target (and not reachable directly by walking out to
+            the first-present revision in target from revision_id).
+        :param revision_id: If specified, all the content needed for this
+            revision ID will be copied to the target.  Fetch will determine for
+            itself which content needs to be copied.
+        :param fetch_spec: If specified, a SearchResult or
+            PendingAncestryResult that describes which revisions to copy.  This
+            allows copying multiple heads at once.  Mutually exclusive with
+            revision_id.
+        """
+        if fetch_spec is not None and revision_id is not None:
+            raise AssertionError(
+                "fetch_spec and revision_id are mutually exclusive.")
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not fetch while in a write group.")
+        # fast path same-url fetch operations
+        # TODO: lift out to somewhere common with RemoteRepository
+        # <https://bugs.launchpad.net/bzr/+bug/401646>
+        if (self.has_same_location(source)
+            and fetch_spec is None
+            and self._has_same_fallbacks(source)):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if (revision_id is not None and
+                not _mod_revision.is_null(revision_id)):
+                self.get_revision(revision_id)
+            return 0, []
+        inter = InterRepository.get(source, self)
+        if (fetch_spec is not None and
+            not getattr(inter, "supports_fetch_spec", False)):
+            raise errors.UnsupportedOperation(
+                "fetch_spec not supported for %r" % inter)
+        return inter.fetch(revision_id=revision_id,
+            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+
     @needs_read_lock
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -1700,13 +1749,19 @@ class VersionedFileRepository(Repository):
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
-        return self._iter_inventories(revision_ids, ordering)
+        for inv, revid in self._iter_inventories(revision_ids, ordering):
+            if inv is None:
+                raise errors.NoSuchRevision(self, revid)
+            yield inv
 
     def _iter_inventories(self, revision_ids, ordering):
         """single-document based inventory iteration."""
         inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
         for text, revision_id in inv_xmls:
-            yield self._deserialise_inventory(revision_id, text)
+            if text is None:
+                yield None, revision_id
+            else:
+                yield self._deserialise_inventory(revision_id, text), revision_id
 
     def _iter_inventory_xmls(self, revision_ids, ordering):
         if ordering is None:
@@ -1730,7 +1785,7 @@ class VersionedFileRepository(Repository):
                 else:
                     yield ''.join(chunks), record.key[-1]
             else:
-                raise errors.NoSuchRevision(self, record.key)
+                yield None, record.key[-1]
             if order_as_requested:
                 # Yield as many results as we can while preserving order.
                 while next_key in text_chunks:
@@ -1765,10 +1820,9 @@ class VersionedFileRepository(Repository):
     def _get_inventory_xml(self, revision_id):
         """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
-        try:
-            text, revision_id = texts.next()
-        except StopIteration:
-            raise errors.HistoryMissing(self, 'inventory', revision_id)
+        text, revision_id = texts.next()
+        if text is None:
+            raise errors.NoSuchRevision(self, revision_id)
         return text
 
     @needs_read_lock
@@ -1848,6 +1902,19 @@ class VersionedFileRepository(Repository):
     def get_file_graph(self):
         """Return the graph walker for text revisions."""
         return graph.Graph(self.texts)
+
+    def revision_ids_to_search_result(self, result_set):
+        """Convert a set of revision ids to a graph SearchResult."""
+        result_parents = set()
+        for parents in self.get_graph().get_parent_map(
+            result_set).itervalues():
+            result_parents.update(parents)
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        result = vf_search.SearchResult(start_keys, exclude_keys,
+            len(result_set), result_set)
+        return result
 
     def _get_versioned_file_checker(self, text_key_references=None,
         ancestors=None):
@@ -2490,6 +2557,8 @@ class InterVersionedFileRepository(InterRepository):
 
     _walk_to_common_revisions_batch_size = 50
 
+    supports_fetch_spec = True
+
     @needs_write_lock
     def fetch(self, revision_id=None, find_ghosts=False,
             fetch_spec=None):
@@ -2571,7 +2640,9 @@ class InterVersionedFileRepository(InterRepository):
                 searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
-        return searcher.get_result()
+        (started_keys, excludes, included_keys) = searcher.get_state()
+        return vf_search.SearchResult(started_keys, excludes,
+            len(included_keys), included_keys)
 
     @needs_read_lock
     def search_missing_revision_ids(self,

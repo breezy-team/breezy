@@ -20,6 +20,7 @@ from cStringIO import StringIO
 import errno
 import os
 import re
+import select
 import socket
 import sys
 import time
@@ -2179,3 +2180,29 @@ class TestFindExecutableInPath(tests.TestCase):
         self.assertTrue(osutils.find_executable_on_path('sh') is not None)
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+
+
+class TestEnvironmentErrors(tests.TestCase):
+    """Test handling of environmental errors"""
+
+    def test_is_oserror(self):
+        self.assertTrue(osutils.is_environment_error(
+            OSError(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_ioerror(self):
+        self.assertTrue(osutils.is_environment_error(
+            IOError(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_socket_error(self):
+        self.assertTrue(osutils.is_environment_error(
+            socket.error(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_select_error(self):
+        self.assertTrue(osutils.is_environment_error(
+            select.error(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_pywintypes_error(self):
+        self.requireFeature(features.pywintypes)
+        import pywintypes
+        self.assertTrue(osutils.is_environment_error(
+            pywintypes.error(errno.EINVAL, "Invalid parameter", "Caller")))

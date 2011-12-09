@@ -3493,6 +3493,9 @@ class TestIterOptionRefs(tests.TestCase):
                          (False, ''),],
                         '{foo}{bar}')
 
+    def test_newline_in_refs_are_not_matched(self):
+        self.assertRefs([(False, '{\nxx}{xx\n}{{\n}}')], '{\nxx}{xx\n}{{\n}}')
+
 
 class TestStackExpandOptions(tests.TestCaseWithTransport):
 

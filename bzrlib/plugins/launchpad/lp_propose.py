@@ -25,6 +25,7 @@ import webbrowser
 from bzrlib import (
     msgeditor,
     )
+from bzrlib.i18n import gettext
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,

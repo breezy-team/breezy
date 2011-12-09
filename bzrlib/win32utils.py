@@ -68,16 +68,21 @@ else:
         create_buffer = ctypes.create_unicode_buffer
         suffix = 'W'
 try:
-    import win32file
     import pywintypes
-    has_win32file = True
+    has_pywintypes = True
 except ImportError:
-    has_win32file = False
-try:
-    import win32api
-    has_win32api = True
-except ImportError:
-    has_win32api = False
+    has_pywintypes = has_win32file = has_win32api = False
+else:
+    try:
+        import win32file
+        has_win32file = True
+    except ImportError:
+        has_win32file = False
+    try:
+        import win32api
+        has_win32api = True
+    except ImportError:
+        has_win32api = False
 
 # pulling in win32com.shell is a bit of overhead, and normally we don't need
 # it as ctypes is preferred and common.  lazy_imports and "optional"
@@ -615,3 +620,10 @@ elif has_ctypes and sys.platform == 'win32':
         _CloseHandle(handle)
         return False
     is_local_pid_dead = _ctypes_is_local_pid_dead
+
+
+def _is_pywintypes_error(evalue):
+    """True if exception instance is an error from pywin32"""
+    if has_pywintypes and isinstance(evalue, pywintypes.error):
+        return True
+    return False

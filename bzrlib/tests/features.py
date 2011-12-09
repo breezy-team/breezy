@@ -424,7 +424,7 @@ class _PosixPermissionsFeature(Feature):
             f = tempfile.mkstemp(prefix='bzr_perms_chk_')
             fd, name = f
             os.close(fd)
-            os.chmod(name, write_perms)
+            osutils.chmod_if_possible(name, write_perms)
 
             read_perms = os.stat(name).st_mode & 0777
             os.unlink(name)

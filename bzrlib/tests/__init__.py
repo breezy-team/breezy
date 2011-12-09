@@ -36,6 +36,7 @@ import pprint
 import random
 import re
 import shlex
+import site
 import stat
 import subprocess
 import sys
@@ -1989,8 +1990,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
-        handler = logging.StreamHandler(stderr)
-        handler.setLevel(logging.INFO)
+        handler = trace.EncodedStreamHandler(stderr, errors="replace",
+            level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
         old_ui_factory = ui.ui_factory
@@ -2184,6 +2185,11 @@ class TestCase(testtools.TestCase):
 
         if env_changes is None:
             env_changes = {}
+        # Because $HOME is set to a tempdir for the context of a test, modules
+        # installed in the user dir will not be found unless $PYTHONUSERBASE
+        # gets set to the computed directory of this parent process.
+        if site.USER_BASE is not None:
+            env_changes["PYTHONUSERBASE"] = site.USER_BASE
         old_env = {}
 
         def cleanup_environment():
@@ -4087,6 +4093,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
+        'bzrlib.tests.test_vf_search',
         'bzrlib.tests.test_weave',
         'bzrlib.tests.test_whitebox',
         'bzrlib.tests.test_win32utils',

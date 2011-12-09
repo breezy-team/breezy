@@ -31,6 +31,7 @@ from bzrlib import (
     upgrade,
     urlutils,
     )
+from bzrlib.tests.matchers import NoVfsCalls
 from bzrlib.transport import memory
 
 
@@ -1443,6 +1444,7 @@ class TestSmartServerInfo(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(12, self.hpss_calls)
+        self.assertThat(self.hpss_calls, NoVfsCalls)
 
     def test_verbose_branch_info(self):
         self.setup_smart_server_with_call_log()
@@ -1458,3 +1460,4 @@ class TestSmartServerInfo(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(16, self.hpss_calls)
+        self.assertThat(self.hpss_calls, NoVfsCalls)

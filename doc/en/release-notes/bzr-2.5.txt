@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5b4
+bzr 2.5b5
 #########
 
-:2.5b4: NOT RELEASED YET
+:2.5b5: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -20,31 +20,11 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* Provides a ``po_merge`` plugin to automatically merge ``.po`` files with
-  ``msgmerge``. See ``bzr help po_merge`` for details.
-  (Vincent Ladeuil, #884270)
-
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
-
-* When using ``bzr switch`` to switch to a sibling of the current
-  branch, the relative branch name should no longer be url-encoded.
-  (Jelmer Vernooij)
-
-* ``bzr rmbranch`` can now remove colocated branches.
-  (Jelmer Vernooij, #831464)
-
-* ``bzr switch`` now accepts colocated branch names to switch to.
-  (Jelmer Vernooij, #826814)
-
-* ``bzr branch --stacked`` now only makes a single connection to the remote
-  server rather than three. (Jelmer Vernooij, #444293)
-
-* Plugins can now register additional "location aliases".
-  (Jelmer Vernooij)
 
 Bug Fixes
 *********
@@ -52,8 +32,95 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
-  pickled. (Jelmer Vernooij, #893149)
+* Properly ignore '\n' in an option reference since this cannot be part of a
+  config option identifier. (Vincent Ladeuil, #902125)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+* New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.5b4
+#########
+
+:2.5b4: 2011-12-08
+
+This is the fourth beta of the 2.5 series, leading to a 2.5.0 release in
+February 2012. Beta releases are suitable for everyday use but may cause
+some incompatibilities with plugins.
+
+This release includes many improvements in the smart server, UI polish for
+the colocated branches, optimizations for revision specifiers to avoid
+history sized operations, enhancements to the config framework, bug fixes
+related to unicode paths and more.
+
+This release includes all bug fixed in previous series known at the time of
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+* Provides a ``po_merge`` plugin to automatically merge ``.po`` files with
+  ``msgmerge``. See ``bzr help po_merge`` for details.
+  (Vincent Ladeuil, #884270)
+
+Improvements
+************
+
+* ``bzr branch --stacked`` now only makes a single connection to the remote
+  server rather than three. (Jelmer Vernooij, #444293)
+
+* ``bzr export --uncommitted`` will export the uncommitted tree.
+  (Jelmer Vernooij, #555613)
+
+* ``bzr rmbranch`` can now remove colocated branches.
+  (Jelmer Vernooij, #831464)
+
+* ``bzr status`` no longer shows shelves if files are specified.
+  (Francis Devereux)
+
+* ``bzr switch`` now accepts colocated branch names to switch to.
+  (Jelmer Vernooij, #826814)
+
+* Plugins can now register additional "location aliases".
+  (Jelmer Vernooij)
+
+* Revision specifiers will now only browse as much history as they
+  need to, rather than grabbing the whole history unnecessarily in some
+  cases. (Jelmer Vernooij)
+
+* When using ``bzr switch`` to switch to a sibling of the current
+  branch, the relative branch name should no longer be url-encoded.
+  (Jelmer Vernooij)
+
+Bug Fixes
+*********
 
 * A new section local option ``basename`` is available to help support some
   ``bzr-pipeline`` workflows and more generally help mapping local paths to
@@ -67,6 +134,9 @@ Bug Fixes
   Should improve performance for lightweight checkouts and exports of
   from remote repositories.  (Jelmer Vernooij, #368717, #762330,
   #608640)
+
+* Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
+  pickled. (Jelmer Vernooij, #893149)
 
 * ``bzr info`` no longer shows empty output if only a control
   directory is present. (Jelmer Vernooij, #159098)
@@ -86,9 +156,12 @@ Bug Fixes
   for _CompatabilityThunkFeature based test features.
   (Vincent Ladeuil, #897718)
 
+* Make reporting of mistakes involving unversioned files with non-ascii
+  filenames work again without 'Unprintable exception' being shown.
+  (Martin Packman, #898408)
+
 * Provide names for lazily registered hooks. 
   (Neil Martinsen-Burrell, #894609)
-
 
 * Raise BadIndexKey exception in btree_index when a key is too large, fixing 
   an infinite recursion issue. (Shannon Weyrick, #720853)
@@ -105,11 +178,6 @@ Bug Fixes
 * Support verifying signatures on remote repositories.
   (Jelmer Vernooij, #889694)
 
-* Fixed parsing of the timestamp given to ``commit --commit-time``. Now
-  prohibits several invalid strings, reads the correct number of seconds,
-  and gives a better error message if the time zone offset is not given.
-  (Matt Giuca, #892657)
-
 * Teach the bzr client how to reconnect if we get ``ConnectionReset``
   while making an RPC request. This doesn't handle all possible network
   disconnects, but it should at least handle when the server is asked to
@@ -118,16 +186,8 @@ Bug Fixes
 * When a remote format is unknown, bzr will now print a single-line error
   message rather than a backtrace. (Jelmer Vernooij, #687226)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
-
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * ``BzrDir.open_branch`` and ``BranchFormat.open`` now take an optional
   ``possible_transports`` argument. (Jelmer Vernooij)
@@ -137,23 +197,30 @@ API Changes
 * ``Repository.verify_revision`` has been renamed to
   ``Repository.verify_revision_signature``. (Jelmer Vernooij)
 
+* ``RevisionSpec.wants_revision_history`` now defaults to ``False`` and
+  is deprecated. The ``revs`` argument of
+  ``RevisionInfo.from_revision_id`` is now deprecated. (Jelmer Vernooij)
+
 * ``Tree.get_file_by_path`` is now deprecated. Use ``Tree.get_file`` instead.
   (Jelmer Vernooij, #666897)
 
 * Some global options for use with commands have been removed, construct
   an ``Option`` with the name instead. (Martin Packman)
 
+* The unused exception ``HistoryMissing`` has been removed.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
 
 * ``bzr config`` uses the new configuration implementation.
   (Vincent Ladeuil)
 
-* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
-  will now use HPSS calls where possible. (Jelmer Vernooij)
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
 
 * New HPSS calls ``Repository.has_signature_for_revision_id``,
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
@@ -169,23 +236,20 @@ Internals
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
 
-* New HPSS call ``Branch.get_checkout_format``. (Jelmer Vernooij, #894459)
-
 * Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
 
 * Custom HPSS error handlers can now be installed in the smart server client
   using the ``error_translators`` and ``no_context_error_translators``
   registries. (Jelmer Vernooij)
 
+* ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
+  will now use HPSS calls where possible. (Jelmer Vernooij)
+
 * The registry of merge types has been moved to ``merge`` from ``option`` but
   ``merge.get_merge_type_registry`` remains as an accessor. (Martin Packman)
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Avoid failures in test_transform when OS error messages are localised.
   (Martin Packman, #891582)

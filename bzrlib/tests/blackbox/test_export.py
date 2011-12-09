@@ -33,6 +33,7 @@ from bzrlib.tests import (
     features,
     TestCaseWithTransport,
     )
+from bzrlib.tests.matchers import NoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -402,6 +403,23 @@ class TestExport(TestCaseWithTransport):
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
         self.check_file_contents('latest/goodbye', 'baz')
 
+    def test_export_uncommitted(self):
+        """Test --uncommitted option"""
+        self.example_branch()
+        os.chdir('branch')
+        self.build_tree_contents([('goodbye', 'uncommitted data')])
+        self.run_bzr(['export', '--uncommitted', 'latest'])
+        self.check_file_contents('latest/goodbye', 'uncommitted data')
+
+    def test_export_uncommitted_no_tree(self):
+        """Test --uncommitted option only works with a working tree."""
+        tree = self.example_branch()
+        tree.bzrdir.destroy_workingtree()
+        os.chdir('branch')
+        self.run_bzr_error(
+            ['bzr: ERROR: --uncommitted requires a working tree'],
+            'export --uncommitted latest')
+
     def test_zip_export_per_file_timestamps(self):
         tree = self.example_branch()
         self.build_tree_contents([('branch/har', 'foo')])
@@ -431,3 +449,5 @@ class TestSmartServerExport(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(16, self.hpss_calls)
+        self.expectFailure("export requires inventory access which requires VFS",
+            self.assertThat, self.hpss_calls, NoVfsCalls)
