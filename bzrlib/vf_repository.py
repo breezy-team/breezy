@@ -1046,7 +1046,7 @@ class VersionedFileRepository(Repository):
         #       rev.parent_ids?
         _mod_revision.check_not_reserved_id(revision_id)
         if (config is not None and
-            config.get('check_signatures') == _mod_config.SIGN_ALWAYS):
+            config.get('create_signatures') == _mod_config.SIGN_ALWAYS):
             if inv is None:
                 inv = self.get_inventory(revision_id)
             tree = InventoryRevisionTree(self, inv, revision_id)

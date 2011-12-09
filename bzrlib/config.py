@@ -2595,8 +2595,6 @@ option_registry.register(
 
 def default_email():
     name, email = _auto_user_id()
-    assert name is None or type(name) == unicode
-    assert email is None or type(email) == unicode
     if name and email:
         return u'%s <%s>' % (name, email)
     elif email:

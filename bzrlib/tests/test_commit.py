@@ -52,7 +52,7 @@ class MustSignConfig(BranchStack):
     def get(self, name):
         if name == "gpg_signing_command":
             return u"cat -"
-        elif name == "signing_policy":
+        elif name == "create_signatures":
             return SIGN_ALWAYS
         return super(MustSignConfig, self).get(name)
 
