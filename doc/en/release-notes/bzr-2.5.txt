@@ -85,6 +85,11 @@ Internals
   ``Repository.make_working_trees``, ``BzrDir.destroy_repository``,
   ``BzrDir.has_workingtree``.  (Jelmer Vernooij)
 
+* ControlDir now has a get_branches method that returns a dictionary
+  whose keys are the names of the branches and whose values are the
+  branches themselves.  Branches without names use the key None.
+  (Neil Martinsen-Burrell)
+
 Testing
 *******
 
