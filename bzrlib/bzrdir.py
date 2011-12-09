@@ -1048,17 +1048,28 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
     def list_branches(self):
         """See ControlDir.list_branches."""
-        # colocated branches
-        ret = [self.open_branch(name.decode("utf-8")) for name in
-               self._read_branch_list()]
-
+        ret = []
         # Default branch
         try:
-            current = self.open_branch()
-            if not any([current.base == b.base for b in ret]):
-                ret.append(current)
+            ret.append(self.open_branch())
         except (errors.NotBranchError, errors.NoRepositoryPresent):
             pass
+
+        # colocated branches
+        ret.extend([self.open_branch(name.decode("utf-8")) for name in
+                    self._read_branch_list()])
+        return ret
+
+    def get_branches(self):
+        """See ControlDir.get_branches."""
+        ret = {}
+        try:
+            ret[None] = self.open_branch()
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
+            pass
+
+        for name in self._read_branch_list():
+            ret[name] = self.open_branch(name.decode('utf-8'))
 
         return ret
 

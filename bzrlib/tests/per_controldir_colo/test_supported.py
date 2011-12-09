@@ -18,6 +18,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib import (
+    branch,
     errors,
     tests,
     urlutils,
@@ -127,3 +128,14 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         made_branch = Branch.open(made_branch.user_url)
         self.assertEquals(u"col\xe9", made_branch.name)
         made_control.destroy_branch(u"col\xe9")
+
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        reference = branch.BranchReferenceFormat().initialize(
+            repo.bzrdir, target_branch=target_branch)
+        tree = repo.bzrdir.create_workingtree()
+        self.assertEqual(set(repo.bzrdir.get_branches().keys()),
+                         set([None, 'foo']))
+        self.assertEqual(repo.bzrdir.get_branches()['foo'].base,
+                         target_branch.base)

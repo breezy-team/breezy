@@ -111,6 +111,14 @@ class ControlDir(ControlComponent):
         except (errors.NotBranchError, errors.NoRepositoryPresent):
             return []
 
+    def get_branches(self):
+        """Return a dictionary with branch_names and branch objects."""
+        branches = self.list_branches()
+        if branches:
+           return {None:branches[0]}
+        else:
+           return {}
+
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for
         controldirs.
