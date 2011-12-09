@@ -27,7 +27,7 @@ from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import (
     SIGN_ALWAYS,
-    Stack,
+    BranchStack,
     )
 from bzrlib.errors import (
     PointlessCommit,
@@ -47,22 +47,22 @@ from bzrlib.tests.matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
-class MustSignConfig(Stack):
+class MustSignConfig(BranchStack):
 
     def get(self, name):
         if name == "gpg_signing_command":
-            return "cat -"
+            return u"cat -"
         elif name == "signing_policy":
             return SIGN_ALWAYS
-        return None
+        return super(MustSignConfig, self).get(name)
 
 
-class BranchWithHooks(Stack):
+class BranchWithHooks(BranchStack):
 
     def get(self, name):
         if name == "post_commit":
             return "bzrlib.ahook bzrlib.ahook"
-        return None
+        return super(BranchWithHooks, self).get(name)
 
 
 class CapturingReporter(NullCommitReporter):

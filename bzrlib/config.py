@@ -2410,7 +2410,7 @@ class Option(object):
         for var in self.default_from_env:
             try:
                 # If the env variable is defined, its value is the default one
-                value = os.environ[var]
+                value = os.environ[var].decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2595,6 +2595,8 @@ option_registry.register(
 
 def default_email():
     name, email = _auto_user_id()
+    assert name is None or type(name) == unicode
+    assert email is None or type(email) == unicode
     if name and email:
         return u'%s <%s>' % (name, email)
     elif email:
