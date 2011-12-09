@@ -2602,6 +2602,14 @@ If true (default), repository changes are flushed through the OS buffers
 to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
 '''))
+
+option_registry.register(
+    Option('selftest.timeout',
+        default='600',
+        from_unicode=int_from_store,
+        help='Abort selftest if one test takes longer than this many seconds',
+        ))
+
 option_registry.register(
     Option('send_strict', default=None,
            from_unicode=bool_from_store,
@@ -2756,7 +2764,7 @@ class CommandLineStore(Store):
             self.options[name] = value
 
     def external_url(self):
-        # Not an url but it makes debugging easier and it never needed
+        # Not an url but it makes debugging easier and is never needed
         # otherwise
         return 'cmdline'
 
@@ -3148,7 +3156,7 @@ class LocationMatcher(SectionMatcher):
             yield self.store, section
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+_option_ref_re = lazy_regex.lazy_compile('({[^{}\n]+})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.
@@ -3481,13 +3489,13 @@ class cmd_config(commands.Command):
         # their own config files (or not) and will also address
         # http://pad.lv/788991 -- vila 20101115
         commands.Option('scope', help='Reduce the scope to the specified'
-                        ' configuration file',
+                        ' configuration file.',
                         type=unicode),
         commands.Option('all',
             help='Display all the defined values for the matching options.',
             ),
         commands.Option('remove', help='Remove the option from'
-                        ' the configuration file'),
+                        ' the configuration file.'),
         ]
 
     _see_also = ['configuration']
@@ -3614,7 +3622,7 @@ class cmd_config(commands.Command):
 # ready-to-use store or stack.  Plugins that define new store/stacks can also
 # register themselves here to be tested against the tests defined in
 # bzrlib.tests.test_config. Note that the builder can be called multiple times
-# for the same tests.
+# for the same test.
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store

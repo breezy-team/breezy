@@ -43,7 +43,8 @@ check-nodocs: extensions
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	$(PYTHON) -Werror -Wignore::ImportWarning -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	$(PYTHON) -Werror -Wignore::ImportWarning -O ./bzr selftest -Oselftest.timeout=120 \
+	  --subunit $(tests) | tee selftest.log
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON)
 	# command above (the '|' swallow any errors since 'make'

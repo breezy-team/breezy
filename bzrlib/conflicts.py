@@ -80,13 +80,13 @@ resolve_action_registry = registry.Registry()
 
 
 resolve_action_registry.register(
-    'done', 'done', 'Marks the conflict as resolved' )
+    'done', 'done', 'Marks the conflict as resolved.')
 resolve_action_registry.register(
     'take-this', 'take_this',
-    'Resolve the conflict preserving the version in the working tree' )
+    'Resolve the conflict preserving the version in the working tree.')
 resolve_action_registry.register(
     'take-other', 'take_other',
-    'Resolve the conflict taking the merged version into account' )
+    'Resolve the conflict taking the merged version into account.')
 resolve_action_registry.default_key = 'done'
 
 class ResolveActionOption(option.RegistryOption):

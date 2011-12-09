@@ -1807,13 +1807,13 @@ log_formatter_registry = LogFormatterRegistry()
 
 
 log_formatter_registry.register('short', ShortLogFormatter,
-                                'Moderately short log format')
+                                'Moderately short log format.')
 log_formatter_registry.register('long', LongLogFormatter,
-                                'Detailed log format')
+                                'Detailed log format.')
 log_formatter_registry.register('line', LineLogFormatter,
-                                'Log format with one line per revision')
+                                'Log format with one line per revision.')
 log_formatter_registry.register('gnu-changelog', GnuChangelogLogFormatter,
-                                'Format used by GNU ChangeLog files')
+                                'Format used by GNU ChangeLog files.')
 
 
 def register_formatter(name, formatter):

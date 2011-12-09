@@ -41,6 +41,7 @@ from bzrlib import (
     transport,
     ui,
     urlutils,
+    vf_search,
     )
 from bzrlib.i18n import gettext, ngettext
 """)
@@ -86,7 +87,7 @@ class Branch(controldir.ControlComponent):
     def user_transport(self):
         return self.bzrdir.user_transport
 
-    def __init__(self, *ignored, **ignored_too):
+    def __init__(self, possible_transports=None):
         self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
@@ -96,15 +97,15 @@ class Branch(controldir.ControlComponent):
         self._last_revision_info_cache = None
         self._master_branch_cache = None
         self._merge_sorted_revisions_cache = None
-        self._open_hook()
+        self._open_hook(possible_transports)
         hooks = Branch.hooks['open']
         for hook in hooks:
             hook(self)
 
-    def _open_hook(self):
+    def _open_hook(self, possible_transports):
         """Called by init to allow simpler extension of the base class."""
 
-    def _activate_fallback_location(self, url):
+    def _activate_fallback_location(self, url, possible_transports):
         """Activate the branch/repository from url as a fallback repository."""
         for existing_fallback_repo in self.repository._fallback_repositories:
             if existing_fallback_repo.user_url == url:
@@ -113,7 +114,7 @@ class Branch(controldir.ControlComponent):
                 # confusing _unstack we don't add this a second time.
                 mutter('duplicate activation of fallback %r on %r', url, self)
                 return
-        repo = self._get_fallback_repository(url)
+        repo = self._get_fallback_repository(url, possible_transports)
         if repo.has_same_location(self.repository):
             raise errors.UnstackableLocationError(self.user_url, url)
         self.repository.add_fallback_repository(repo)
@@ -175,13 +176,16 @@ class Branch(controldir.ControlComponent):
         """
         control = controldir.ControlDir.open(base, _unsupported,
                                      possible_transports=possible_transports)
-        return control.open_branch(unsupported=_unsupported)
+        return control.open_branch(unsupported=_unsupported,
+            possible_transports=possible_transports)
 
     @staticmethod
-    def open_from_transport(transport, name=None, _unsupported=False):
+    def open_from_transport(transport, name=None, _unsupported=False,
+            possible_transports=None):
         """Open the branch rooted at transport"""
         control = controldir.ControlDir.open_from_transport(transport, _unsupported)
-        return control.open_branch(name=name, unsupported=_unsupported)
+        return control.open_branch(name=name, unsupported=_unsupported,
+            possible_transports=possible_transports)
 
     @staticmethod
     def open_containing(url, possible_transports=None):
@@ -197,7 +201,8 @@ class Branch(controldir.ControlComponent):
         """
         control, relpath = controldir.ControlDir.open_containing(url,
                                                          possible_transports)
-        return control.open_branch(), relpath
+        branch = control.open_branch(possible_transports=possible_transports)
+        return (branch, relpath)
 
     def _push_should_merge_tags(self):
         """Should _basic_push merge this branch's tags into the target?
@@ -239,11 +244,10 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._get_config)
 
-    def _get_fallback_repository(self, url):
+    def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)
-        a_branch = Branch.open(url,
-            possible_transports=[self.bzrdir.root_transport])
+        a_branch = Branch.open(url, possible_transports=possible_transports)
         return a_branch.repository
 
     @needs_read_lock
@@ -851,7 +855,8 @@ class Branch(controldir.ControlComponent):
                 return
             self._unstack()
         else:
-            self._activate_fallback_location(url)
+            self._activate_fallback_location(url,
+                possible_transports=[self.bzrdir.root_transport])
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -933,7 +938,7 @@ class Branch(controldir.ControlComponent):
                     tags_to_fetch = set(self.tags.get_reverse_tag_dict())
                 except errors.TagsNotSupported:
                     tags_to_fetch = set()
-                fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
+                fetch_spec = vf_search.NotInOtherForRevs(self.repository,
                     old_repository, required_ids=[self.last_revision()],
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
@@ -1717,7 +1722,7 @@ class BranchFormat(controldir.ControlComponentFormat):
         raise NotImplementedError(self.network_name)
 
     def open(self, controldir, name=None, _found=False, ignore_fallbacks=False,
-            found_repository=None):
+            found_repository=None, possible_transports=None):
         """Return the branch object for controldir.
 
         :param controldir: A ControlDir that contains a branch.
@@ -2065,7 +2070,7 @@ class BranchFormatMetadir(BranchFormat):
         return self.get_format_string()
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
-            found_repository=None):
+            found_repository=None, possible_transports=None):
         """See BranchFormat.open()."""
         if not _found:
             format = BranchFormat.find_format(a_bzrdir, name=name)
@@ -2083,7 +2088,8 @@ class BranchFormatMetadir(BranchFormat):
                               name=name,
                               a_bzrdir=a_bzrdir,
                               _repository=found_repository,
-                              ignore_fallbacks=ignore_fallbacks)
+                              ignore_fallbacks=ignore_fallbacks,
+                              possible_transports=possible_transports)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
 
@@ -2345,7 +2351,8 @@ class BranchReferenceFormat(BranchFormatMetadir):
         real_bzrdir = controldir.ControlDir.open(
             location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch(name=name, 
-            ignore_fallbacks=ignore_fallbacks)
+            ignore_fallbacks=ignore_fallbacks,
+            possible_transports=possible_transports)
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
         # I did not use a proxy object because that needs much more extensive
@@ -2432,7 +2439,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def __init__(self, _format=None,
                  _control_files=None, a_bzrdir=None, name=None,
-                 _repository=None, ignore_fallbacks=False):
+                 _repository=None, ignore_fallbacks=False,
+                 possible_transports=None):
         """Create new branch object at a particular location."""
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
@@ -2450,7 +2458,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self.control_files = _control_files
         self._transport = _control_files._transport
         self.repository = _repository
-        Branch.__init__(self)
+        Branch.__init__(self, possible_transports)
 
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, self.user_url)
@@ -2819,9 +2827,11 @@ class BzrBranch5(FullHistoryBzrBranch):
 class BzrBranch8(BzrBranch):
     """A branch that stores tree-reference locations."""
 
-    def _open_hook(self):
+    def _open_hook(self, possible_transports=None):
         if self._ignore_fallbacks:
             return
+        if possible_transports is None:
+            possible_transports = [self.bzrdir.root_transport]
         try:
             url = self.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
@@ -2835,7 +2845,8 @@ class BzrBranch8(BzrBranch):
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
-            self._activate_fallback_location(url)
+            self._activate_fallback_location(url,
+                possible_transports=possible_transports)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)

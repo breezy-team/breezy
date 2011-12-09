@@ -25,7 +25,14 @@ import sys
 import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import config
+from bzrlib import (
+    cleanup,
+    config,
+    osutils,
+    symbol_versioning,
+    trace,
+    ui,
+    )
 """)
 
 
@@ -81,17 +88,12 @@ class BzrLibraryState(object):
         # isolation within the same interpreter.  It's not reached on normal
         # in-process run_bzr calls.  If it's broken, we expect that
         # TestRunBzrSubprocess may fail.
-        import bzrlib
-        if bzrlib.version_info[3] == 'final':
-            from bzrlib.symbol_versioning import suppress_deprecation_warnings
-            warning_cleanup = suppress_deprecation_warnings(override=True)
-        else:
-            warning_cleanup = None
+        self.cleanups = cleanup.ObjectWithCleanups()
 
-        import bzrlib.cleanup
-        self.cleanups = bzrlib.cleanup.ObjectWithCleanups()
-        if warning_cleanup:
-            self.cleanups.add_cleanup(warning_cleanup)
+        if bzrlib.version_info[3] == 'final':
+            self.cleanups.add_cleanup(
+                symbol_versioning.suppress_deprecation_warnings(override=True))
+
         self._trace.__enter__()
 
         self._orig_ui = bzrlib.ui.ui_factory
@@ -104,14 +106,11 @@ class BzrLibraryState(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanups.cleanup_now()
-        import bzrlib.ui
-        bzrlib.trace._flush_stdout_stderr()
-        bzrlib.trace._flush_trace()
-        import bzrlib.osutils
-        bzrlib.osutils.report_extension_load_failures()
+        trace._flush_stdout_stderr()
+        trace._flush_trace()
+        osutils.report_extension_load_failures()
         self._ui.__exit__(None, None, None)
         self._trace.__exit__(None, None, None)
-        bzrlib.ui.ui_factory = self._orig_ui
-        global global_state
-        global_state = self.saved_state
+        ui.ui_factory = self._orig_ui
+        bzrlib.global_state = self.saved_state
         return False # propogate exceptions.

@@ -28,6 +28,7 @@ from datetime import datetime
 import getpass
 import ntpath
 import posixpath
+import select
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
 import shutil
@@ -99,14 +100,33 @@ def make_readonly(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod & 0777555
-        os.chmod(filename, mod)
+        chmod_if_possible(filename, mod)
 
 
 def make_writable(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod | 0200
-        os.chmod(filename, mod)
+        chmod_if_possible(filename, mod)
+
+
+def chmod_if_possible(filename, mode):
+    # Set file mode if that can be safely done.
+    # Sometimes even on unix the filesystem won't allow it - see
+    # https://bugs.launchpad.net/bzr/+bug/606537
+    try:
+        # It is probably faster to just do the chmod, rather than
+        # doing a stat, and then trying to compare
+        os.chmod(filename, mode)
+    except (IOError, OSError),e:
+        # Permission/access denied seems to commonly happen on smbfs; there's
+        # probably no point warning about it.
+        # <https://bugs.launchpad.net/bzr/+bug/606537>
+        if getattr(e, 'errno') in (errno.EPERM, errno.EACCES):
+            trace.mutter("ignore error on chmod of %r: %r" % (
+                filename, e))
+            return
+        raise
 
 
 def minimum_path_selection(paths):
@@ -2006,6 +2026,28 @@ def get_diff_header_encoding():
     return get_terminal_encoding()
 
 
+_message_encoding = None
+
+
+def get_message_encoding():
+    """Return the encoding used for messages
+
+    While the message encoding is a general setting it should usually only be
+    needed for decoding system error strings such as from OSError instances.
+    """
+    global _message_encoding
+    if _message_encoding is None:
+        if os.name == "posix":
+            import locale
+            # This is a process-global setting that can change, but should in
+            # general just get set once at process startup then be constant.
+            _message_encoding = locale.getlocale(locale.LC_MESSAGES)[1]
+        else:
+            # On windows want the result of GetACP() which this boils down to.
+            _message_encoding = get_user_encoding()
+    return _message_encoding or "ascii"
+        
+
 def get_host_name():
     """Return the current unicode host name.
 
@@ -2518,3 +2560,31 @@ def fdatasync(fileno):
     fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
     if fn is not None:
         fn(fileno)
+
+
+def ensure_empty_directory_exists(path, exception_class):
+    """Make sure a local directory exists and is empty.
+    
+    If it does not exist, it is created.  If it exists and is not empty, an
+    instance of exception_class is raised.
+    """
+    try:
+        os.mkdir(path)
+    except OSError, e:
+        if e.errno != errno.EEXIST:
+            raise
+        if os.listdir(path) != []:
+            raise exception_class(path)
+
+
+def is_environment_error(evalue):
+    """True if exception instance is due to a process environment issue
+
+    This includes OSError and IOError, but also other errors that come from
+    the operating system or core libraries but are not subclasses of those.
+    """
+    if isinstance(evalue, (EnvironmentError, select.error)):
+        return True
+    if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
+        return True
+    return False

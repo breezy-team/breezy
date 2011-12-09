@@ -461,7 +461,8 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
 
         # make rev1b: A well-formed revision, containing 'a-file'
         # rev1b of a-file has the exact same contents as rev1a.
-        file_contents = repo.revision_tree('rev1a').get_file_text('a-file-id')
+        file_contents = repo.texts.get_record_stream([('a-file-id', 'rev1a')],
+            "unordered", False).next().get_bytes_as('fulltext')
         inv = self.make_one_file_inventory(
             repo, 'rev1b', [], root_revision='rev1b',
             file_contents=file_contents)
