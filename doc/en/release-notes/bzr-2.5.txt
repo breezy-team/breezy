@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Properly ignore '\n' in an option reference since this cannot be part of a
+  config option identifier. (Vincent Ladeuil, #902125)
+
 Documentation
 *************
 
