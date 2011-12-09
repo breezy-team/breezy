@@ -2596,7 +2596,7 @@ option_registry.register(
 def default_email():
     name, email = _auto_user_id()
     if name and email:
-        return '%s <%s>' % (name, email)
+        return u'%s <%s>' % (name, email)
     elif email:
         return email
     raise errors.NoWhoami()
@@ -2657,6 +2657,16 @@ option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
+option_registry.register(
+    Option('post_commit', default=None,
+           from_unicode=list_from_store,
+           help='''\
+Post commit functions.
+
+An ordered list of python functions to call.
+
+Each function takes branch, rev_id as parameters.
+'''))
 option_registry.register(
     Option('push_strict', default=None,
            from_unicode=bool_from_store,
