@@ -2331,8 +2331,10 @@ class Option(object):
 
         :param default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
-            into the proper type or a python object that can be stringified (so
-            only the empty list is supported for example).
+            into the proper type, a callable returning a unicode string so that
+            ``from_unicode`` can be used on the return value, or a python
+            object that can be stringified (so only the empty list is supported
+            for example).
 
         :param default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
@@ -2367,6 +2369,8 @@ class Option(object):
         elif isinstance(default, (str, unicode, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
+        elif callable(default):
+            self.default = default
         else:
             # other python objects are not expected
             raise AssertionError('%r is not supported as a default value'
@@ -2407,7 +2411,13 @@ class Option(object):
                 continue
         if value is None:
             # Otherwise, fallback to the value defined at registration
-            value = self.default
+            if callable(self.default):
+                value = self.default()
+                if not isinstance(value, unicode):
+                    raise AssertionError(
+                    'Callable default values should be unicode')
+            else:
+                value = self.default
         return value
 
     def get_help_text(self, additional_see_also=None, plain=True):

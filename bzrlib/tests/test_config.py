@@ -2275,6 +2275,12 @@ class TestOption(tests.TestCase):
         opt = config.Option('foo', default='bar')
         self.assertEquals('bar', opt.get_default())
 
+    def test_callable_default_value(self):
+        def bar_as_unicode():
+            return u'bar'
+        opt = config.Option('foo', default=bar_as_unicode)
+        self.assertEquals('bar', opt.get_default())
+
     def test_default_value_from_env(self):
         opt = config.Option('foo', default='bar', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'quux')
@@ -2295,6 +2301,12 @@ class TestOption(tests.TestCase):
     def test_not_supported_object_default_value(self):
         self.assertRaises(AssertionError, config.Option, 'foo',
                           default=object())
+
+    def test_not_supported_callable_default_value_not_unicode(self):
+        def bar_not_unicode():
+            return 'bar'
+        opt = config.Option('foo', default=bar_not_unicode)
+        self.assertRaises(AssertionError, opt.get_default)
 
 
 class TestOptionConverterMixin(object):
@@ -2362,6 +2374,7 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
+
 
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
 
