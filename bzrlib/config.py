@@ -457,6 +457,7 @@ class Config(object):
         return val
         
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
         result = self._gpg_signing_command()
@@ -2548,6 +2549,10 @@ custom bzr metadata.
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
+option_registry.register(
+    Option('gpg_signing_command',
+           default='gpg',
+           help="Program to use use for creating signatures."""))
 option_registry.register(
     Option('ignore_missing_extensions', default=False,
            from_unicode=bool_from_store,
