@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Allow configuration option default value to be a python callable at
+  registration. (Vincent Ladeuil, #832064)
+
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
 
