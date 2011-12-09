@@ -1183,6 +1183,7 @@ class TestControlDir(TestCaseWithControlDir):
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
         branches = made_control.list_branches()
+        self.assertEquals(1, len(branches))
         self.assertEquals(made_branch.base, branches[0].base)
         try:
             made_control.destroy_branch()
