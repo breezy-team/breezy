@@ -33,14 +33,15 @@ from bzrlib.tests import (
 
 class FakeConfig(object):
 
-    def gpg_signing_key(self):
-        return "amy@example.com"
-
-    def gpg_signing_command(self):
-        return "false"
-
-    def acceptable_keys(self):
-        return None
+    def get(self, name):
+        if name == "gpg_signing_key":
+            return "amy@example.com"
+        elif name == "gpg_signing_command":
+            return "false"
+        elif name == "acceptable_keys":
+            return None
+        else:
+            return None
 
 
 class TestCommandLine(TestCase):

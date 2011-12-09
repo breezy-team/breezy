@@ -43,6 +43,13 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Config.signature_needed``, ``Config.signing_policy``,
+  ``Config.gpg_signing_key``, ``Config.gpg_signing_command`` and
+  ``Config.checking_policy`` are now deprecated. (Jelmer Vernooij)
+
+* ``Repository.get_commit_builder`` now takes a ``config_stack``
+  rather than a ``config`` argument. (Jelmer Vernooij)
+
 Internals
 *********
 

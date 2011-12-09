@@ -55,7 +55,7 @@ check_signatures - this option will control whether bzr will require good gpg
                    turns on create_signatures.
 create_signatures - this option controls whether bzr will always create
                     gpg signatures or not on commits.  There is an unused
-                    option which in future is expected to work if               
+                    option which in future is expected to work if
                     branch settings require signatures.
 log_format - this option sets the default log format.  Possible values are
              long, short, line, or a plugin can register new formats.
@@ -73,7 +73,6 @@ up=pull
 """
 
 import os
-import string
 import sys
 
 
@@ -150,6 +149,30 @@ STORE_LOCATION_NORECURSE = POLICY_NORECURSE
 STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
+
+
+def signature_policy_from_unicode(signature_string):
+    """Convert a string to a signing policy."""
+    if signature_string.lower() == 'check-available':
+        return CHECK_IF_POSSIBLE
+    if signature_string.lower() == 'ignore':
+        return CHECK_NEVER
+    if signature_string.lower() == 'require':
+        return CHECK_ALWAYS
+    raise ValueError("Invalid signatures policy '%s'"
+                     % signature_string)
+
+
+def signing_policy_from_unicode(signature_string):
+    """Convert a string to a signing policy."""
+    if signature_string.lower() == 'when-required':
+        return SIGN_WHEN_REQUIRED
+    if signature_string.lower() == 'never':
+        return SIGN_NEVER
+    if signature_string.lower() == 'always':
+        return SIGN_ALWAYS
+    raise ValueError("Invalid signing policy '%s'"
+                     % signature_string)
 
 
 class ConfigObj(configobj.ConfigObj):
@@ -493,6 +516,7 @@ class Config(object):
         """See validate_signatures_in_log()."""
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def acceptable_keys(self):
         """Comma separated list of key patterns acceptable to 
         verify-signatures command"""
@@ -551,6 +575,7 @@ class Config(object):
         """
         self.username()
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def signature_checking(self):
         """What is the current policy for signature checking?."""
         policy = self._get_signature_checking()
@@ -558,6 +583,7 @@ class Config(object):
             return policy
         return CHECK_IF_POSSIBLE
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def signing_policy(self):
         """What is the current policy for signature checking?."""
         policy = self._get_signing_policy()
@@ -565,6 +591,7 @@ class Config(object):
             return policy
         return SIGN_WHEN_REQUIRED
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def signature_needed(self):
         """Is a signature needed when committing ?."""
         policy = self._get_signing_policy()
@@ -579,6 +606,7 @@ class Config(object):
             return True
         return False
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def gpg_signing_key(self):
         """GPG user-id to sign commits"""
         key = self.get_user_option('gpg_signing_key')
@@ -869,13 +897,13 @@ class IniBasedConfig(Config):
         """See Config._get_signature_checking."""
         policy = self._get_user_option('check_signatures')
         if policy:
-            return self._string_to_signature_policy(policy)
+            return signature_policy_from_unicode(policy)
 
     def _get_signing_policy(self):
         """See Config._get_signing_policy"""
         policy = self._get_user_option('create_signatures')
         if policy:
-            return self._string_to_signing_policy(policy)
+            return signing_policy_from_unicode(policy)
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""
@@ -925,28 +953,6 @@ class IniBasedConfig(Config):
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_user_option('post_commit')
-
-    def _string_to_signature_policy(self, signature_string):
-        """Convert a string to a signing policy."""
-        if signature_string.lower() == 'check-available':
-            return CHECK_IF_POSSIBLE
-        if signature_string.lower() == 'ignore':
-            return CHECK_NEVER
-        if signature_string.lower() == 'require':
-            return CHECK_ALWAYS
-        raise errors.BzrError("Invalid signatures policy '%s'"
-                              % signature_string)
-
-    def _string_to_signing_policy(self, signature_string):
-        """Convert a string to a signing policy."""
-        if signature_string.lower() == 'when-required':
-            return SIGN_WHEN_REQUIRED
-        if signature_string.lower() == 'never':
-            return SIGN_NEVER
-        if signature_string.lower() == 'always':
-            return SIGN_ALWAYS
-        raise errors.BzrError("Invalid signing policy '%s'"
-                              % signature_string)
 
     def _get_alias(self, value):
         try:
@@ -2509,6 +2515,12 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
+    Option('acceptable_keys',
+           default=None, from_unicode=list_from_store,
+           help="""\
+List of GPG key patterns which are acceptable for verification.
+"""))
+option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
            help='''\
@@ -2519,6 +2531,29 @@ stat-cache changes. Regardless of this setting, we will always rewrite
 the dirstate file if a file is added/removed/renamed/etc. This flag only
 affects the behavior of updating the dirstate file after we notice that
 a file has been touched.
+'''))
+option_registry.register(
+    Option('check_signatures', default=CHECK_IF_POSSIBLE,
+           from_unicode=signature_policy_from_unicode,
+           help='''\
+GPG checking policy.
+
+Possible values: require, ignore, check-available (default)
+
+this option will control whether bzr will require good gpg
+signatures, ignore them, or check them if they are
+present.
+'''))
+option_registry.register(
+    Option('create_signatures', default=SIGN_WHEN_REQUIRED,
+           from_unicode=signing_policy_from_unicode,
+           help='''\
+GPG Signing policy.
+
+Possible values: always, never, when-required (default)
+
+This option controls whether bzr will always create
+gpg signatures or not on commits.
 '''))
 option_registry.register(
     Option('dirstate.fdatasync', default=True,
@@ -2552,7 +2587,19 @@ option_registry.register(
 option_registry.register(
     Option('gpg_signing_command',
            default='gpg',
-           help="Program to use use for creating signatures."""))
+           help="""\
+Program to use use for creating signatures.
+
+This should support at least the -u and --clearsign options.
+"""))
+option_registry.register(
+    Option('gpg_signing_key',
+           default=None,
+           help="""\
+GPG key to use for signing.
+
+This defaults to the first key associated with the users email.
+"""))
 option_registry.register(
     Option('ignore_missing_extensions', default=False,
            from_unicode=bool_from_store,

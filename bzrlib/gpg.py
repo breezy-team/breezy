@@ -173,12 +173,11 @@ class GPGStrategy(object):
             return False
 
     def _command_line(self):
-        
-        return [self._config.gpg_signing_command(), '--clearsign', '-u',
-                                                self._config.gpg_signing_key()]
+        return [self._config_stack.get('gpg_signing_command'), '--clearsign',
+                '-u', self._config_stack.get('gpg_signing_key')]
 
-    def __init__(self, config):
-        self._config = config
+    def __init__(self, config_stack):
+        self._config_stack = config_stack
         try:
             import gpgme
             self.context = gpgme.Context()
@@ -301,14 +300,14 @@ class GPGStrategy(object):
                                                  "verification result")
 
     def set_acceptable_keys(self, command_line_input):
-        """sets the acceptable keys for verifying with this GPGStrategy
+        """Set the acceptable keys for verifying with this GPGStrategy.
         
         :param command_line_input: comma separated list of patterns from
                                 command line
         :return: nothing
         """
         key_patterns = None
-        acceptable_keys_config = self._config.acceptable_keys()
+        acceptable_keys_config = self._config_stack.get('acceptable_keys')
         try:
             if isinstance(acceptable_keys_config, unicode):
                 acceptable_keys_config = str(acceptable_keys_config)

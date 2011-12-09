@@ -244,7 +244,7 @@ class BaseMergeDirective(object):
         :param branch: The source branch, to get the signing strategy
         :return: a string
         """
-        my_gpg = gpg.GPGStrategy(branch.get_config())
+        my_gpg = gpg.GPGStrategy(branch.get_config_stack())
         return my_gpg.sign(''.join(self.to_lines()))
 
     def to_email(self, mail_to, branch, sign=False):

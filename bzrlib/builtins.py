@@ -5030,7 +5030,7 @@ class cmd_re_sign(Command):
 
     def _run(self, b, revision_id_list, revision):
         import bzrlib.gpg as gpg
-        gpg_strategy = gpg.GPGStrategy(b.get_config())
+        gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
             b.repository.start_write_group()
             try:

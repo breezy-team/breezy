@@ -500,27 +500,36 @@ class TestConfig(tests.TestCase):
 
     def test_signatures_default(self):
         my_config = config.Config()
-        self.assertFalse(my_config.signature_needed())
+        self.assertFalse(
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_needed))
         self.assertEqual(config.CHECK_IF_POSSIBLE,
-                         my_config.signature_checking())
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
-                         my_config.signing_policy())
+                self.applyDeprecated(deprecated_in((2, 5, 0)),
+                    my_config.signing_policy))
 
     def test_signatures_template_method(self):
         my_config = InstrumentedConfig()
-        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
+        self.assertEqual(config.CHECK_NEVER,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
         self.assertEqual(['_get_signature_checking'], my_config._calls)
 
     def test_signatures_template_method_none(self):
         my_config = InstrumentedConfig()
         my_config._signatures = None
         self.assertEqual(config.CHECK_IF_POSSIBLE,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(['_get_signature_checking'], my_config._calls)
 
     def test_gpg_signing_command_default(self):
         my_config = config.Config()
-        self.assertEqual('gpg', my_config.gpg_signing_command())
+        self.assertEqual('gpg',
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.gpg_signing_command))
 
     def test_get_user_option_default(self):
         my_config = config.Config()
@@ -536,7 +545,8 @@ class TestConfig(tests.TestCase):
 
     def test_acceptable_keys_default(self):
         my_config = config.Config()
-        self.assertEqual(None, my_config.acceptable_keys())
+        self.assertEqual(None, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.acceptable_keys))
 
     def test_validate_signatures_in_log_default(self):
         my_config = config.Config()
@@ -1235,26 +1245,36 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_signatures_always(self):
         my_config = config.GlobalConfig.from_string(sample_always_signatures)
         self.assertEqual(config.CHECK_NEVER,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(config.SIGN_ALWAYS,
-                         my_config.signing_policy())
-        self.assertEqual(True, my_config.signature_needed())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signing_policy))
+        self.assertEqual(True,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_needed))
 
     def test_signatures_if_possible(self):
         my_config = config.GlobalConfig.from_string(sample_maybe_signatures)
         self.assertEqual(config.CHECK_NEVER,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
-                         my_config.signing_policy())
-        self.assertEqual(False, my_config.signature_needed())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signing_policy))
+        self.assertEqual(False, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_signatures_ignore(self):
         my_config = config.GlobalConfig.from_string(sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(config.SIGN_NEVER,
-                         my_config.signing_policy())
-        self.assertEqual(False, my_config.signature_needed())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signing_policy))
+        self.assertEqual(False, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def _get_sample_config(self):
         my_config = config.GlobalConfig.from_string(sample_config_text)
@@ -1262,12 +1282,17 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_gpg_signing_command(self):
         my_config = self._get_sample_config()
-        self.assertEqual("gnome-gpg", my_config.gpg_signing_command())
-        self.assertEqual(False, my_config.signature_needed())
+        self.assertEqual("gnome-gpg",
+            self.applyDeprecated(
+                deprecated_in((2, 5, 0)), my_config.gpg_signing_command))
+        self.assertEqual(False, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_gpg_signing_key(self):
         my_config = self._get_sample_config()
-        self.assertEqual("DD4D5088", my_config.gpg_signing_key())
+        self.assertEqual("DD4D5088",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.gpg_signing_key))
 
     def _get_empty_config(self):
         my_config = config.GlobalConfig()
@@ -1275,7 +1300,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_gpg_signing_command_unset(self):
         my_config = self._get_empty_config()
-        self.assertEqual("gpg", my_config.gpg_signing_command())
+        self.assertEqual("gpg",
+            self.applyDeprecated(
+                deprecated_in((2, 5, 0)), my_config.gpg_signing_command))
 
     def test_get_user_option_default(self):
         my_config = self._get_empty_config()
@@ -1296,7 +1323,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_configured_acceptable_keys(self):
         my_config = self._get_sample_config()
-        self.assertEqual("amy", my_config.acceptable_keys())
+        self.assertEqual("amy",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.acceptable_keys))
 
     def test_configured_validate_signatures_in_log(self):
         my_config = self._get_sample_config()
@@ -1538,40 +1567,52 @@ other_url = /other-subdir
         self.get_branch_config('http://www.example.com',
                                  global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
-                         self.my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signature_checking))
         self.assertEqual(config.SIGN_NEVER,
-                         self.my_config.signing_policy())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signing_policy))
 
     def test_signatures_never(self):
         self.get_branch_config('/a/c')
         self.assertEqual(config.CHECK_NEVER,
-                         self.my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signature_checking))
 
     def test_signatures_when_available(self):
         self.get_branch_config('/a/', global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
-                         self.my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signature_checking))
 
     def test_signatures_always(self):
         self.get_branch_config('/b')
         self.assertEqual(config.CHECK_ALWAYS,
-                         self.my_config.signature_checking())
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                         self.my_config.signature_checking))
 
     def test_gpg_signing_command(self):
         self.get_branch_config('/b')
-        self.assertEqual("gnome-gpg", self.my_config.gpg_signing_command())
+        self.assertEqual("gnome-gpg",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                self.my_config.gpg_signing_command))
 
     def test_gpg_signing_command_missing(self):
         self.get_branch_config('/a')
-        self.assertEqual("false", self.my_config.gpg_signing_command())
+        self.assertEqual("false",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                self.my_config.gpg_signing_command))
 
     def test_gpg_signing_key(self):
         self.get_branch_config('/b')
-        self.assertEqual("DD4D5088", self.my_config.gpg_signing_key())
+        self.assertEqual("DD4D5088", self.applyDeprecated(deprecated_in((2, 5, 0)),
+            self.my_config.gpg_signing_key))
 
     def test_gpg_signing_key_default(self):
         self.get_branch_config('/a')
-        self.assertEqual("erik@bagfors.nu", self.my_config.gpg_signing_key())
+        self.assertEqual("erik@bagfors.nu",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                self.my_config.gpg_signing_key))
 
     def test_get_user_option_global(self):
         self.get_branch_config('/a')
@@ -1790,24 +1831,36 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
     def test_signatures_forced(self):
         my_config = self.get_branch_config(
             global_config=sample_always_signatures)
-        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
-        self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
-        self.assertTrue(my_config.signature_needed())
+        self.assertEqual(config.CHECK_NEVER,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
+        self.assertEqual(config.SIGN_ALWAYS,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signing_policy))
+        self.assertTrue(self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_signatures_forced_branch(self):
         my_config = self.get_branch_config(
             global_config=sample_ignore_signatures,
             branch_data_config=sample_always_signatures)
-        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
-        self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
-        self.assertTrue(my_config.signature_needed())
+        self.assertEqual(config.CHECK_NEVER,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
+        self.assertEqual(config.SIGN_ALWAYS,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signing_policy))
+        self.assertTrue(self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_gpg_signing_command(self):
         my_config = self.get_branch_config(
             global_config=sample_config_text,
             # branch data cannot set gpg_signing_command
             branch_data_config="gpg_signing_command=pgp")
-        self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
+        self.assertEqual('gnome-gpg',
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.gpg_signing_command))
 
     def test_get_user_option_global(self):
         my_config = self.get_branch_config(global_config=sample_config_text)
