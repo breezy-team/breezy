@@ -179,11 +179,12 @@ class cmd_git_object(Command):
         from bzrlib.bzrdir import (
             BzrDir,
             )
-        bzrdir, _ = BzrDir.open_containing(directory)
-        repo = bzrdir.find_repository()
         from bzrlib.plugins.git.object_store import (
             get_object_store,
             )
+        from bzrlib.plugins.git import gettext
+        bzrdir, _ = BzrDir.open_containing(directory)
+        repo = bzrdir.find_repository()
         object_store = get_object_store(repo)
         object_store.lock_read()
         try:
