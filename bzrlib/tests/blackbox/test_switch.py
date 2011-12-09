@@ -212,7 +212,6 @@ class TestSwitch(TestCaseWithTransport):
         self.assertEquals(
             set([b.name for b in bzrdir.list_branches()]),
             set(["foo", "anotherbranch"]))
-        self.assertEquals(len(bzrdir.list_branches()), 2)
         self.assertEquals(bzrdir.open_branch().name, "anotherbranch")
         self.assertEquals(bzrdir.open_branch().last_revision(), revid1)
 
