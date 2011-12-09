@@ -3156,7 +3156,7 @@ class LocationMatcher(SectionMatcher):
             yield self.store, section
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+_option_ref_re = lazy_regex.lazy_compile('({[^{}\n]+})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.

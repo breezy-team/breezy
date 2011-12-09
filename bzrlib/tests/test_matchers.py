@@ -18,7 +18,10 @@
 
 from testtools.matchers import *
 
+from bzrlib.smart.client import CallHookParams
+
 from bzrlib.tests import (
+    CapturedCall,
     TestCase,
     TestCaseWithTransport,
     )
@@ -146,3 +149,32 @@ class TestHasLayout(TestCaseWithTransport):
         self.assertEquals(
             "[u'', u'a'] != [u'', u'a', u'b/', u'b/c']",
             mismatch.describe())
+
+
+class TestNoVfsCalls(TestCase):
+
+    def _make_call(self, method, args):
+        return CapturedCall(CallHookParams(method, args, None, None, None), 0)
+
+    def test__str__(self):
+        self.assertEqual("NoVfsCalls()", str(NoVfsCalls()))
+
+    def test_empty(self):
+        self.assertIs(None, NoVfsCalls().match([]))
+
+    def test_no_vfs_calls(self):
+        calls = [self._make_call("Branch.get_config_file", [])]
+        self.assertIs(None, NoVfsCalls().match(calls))
+
+    def test_ignores_unknown(self):
+        calls = [self._make_call("unknown", [])]
+        self.assertIs(None, NoVfsCalls().match(calls))
+
+    def test_match(self):
+        calls = [self._make_call("append", ["file"]),
+                 self._make_call("Branch.get_config_file", [])]
+        mismatch = NoVfsCalls().match(calls)
+        self.assertIsNot(None, mismatch)
+        self.assertEquals([calls[0].call], mismatch.vfs_calls)
+        self.assertEquals("no VFS calls expected, got: append('file')""",
+                mismatch.describe())
