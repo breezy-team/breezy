@@ -29,6 +29,7 @@ from bzrlib import (
     tests,
     )
 
+from bzrlib.tests.matchers import NoVfsCalls
 from bzrlib.urlutils import joinpath
 
 
@@ -326,3 +327,5 @@ class TestSmartServerAnnotate(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(19, self.hpss_calls)
+        self.expectFailure("annotate accesses inventories, which require VFS access",
+            self.assertThat, self.hpss_calls, NoVfsCalls)
