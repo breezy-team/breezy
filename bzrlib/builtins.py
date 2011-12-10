@@ -763,24 +763,24 @@ class cmd_mkdir(Command):
     encoding_type = 'replace'
 
     def run(self, dir_list, parents=False):
-        wt, relpaths = WorkingTree.open_containing_paths(dir_list)
         if parents:
-            def add_files(relpath):
+            def add_files(wt, relpath):
                 if wt.path2id(relpath) is not None:
                     return
-                add_files(osutils.dirname(relpath))
+                add_files(wt, osutils.dirname(relpath))
                 wt.add([relpath])
         else:
-            def add_files(relpath):
+            def add_files(wt, relpath):
                 wt.add([relpath])
-        for relpath in relpaths:
+        for dir in dir_list:
+            wt, relpath = WorkingTree.open_containing(dir)
             if parents:
-                os.makedirs(relpath)
+                os.makedirs(dir)
             else:
-                os.mkdir(relpath)
-            add_files(relpath)
+                os.mkdir(dir)
+            add_files(wt, relpath)
             if not is_quiet():
-                self.outf.write(gettext('added %s\n') % relpath)
+                self.outf.write(gettext('added %s\n') % dir)
 
 
 class cmd_relpath(Command):
