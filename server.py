@@ -71,7 +71,10 @@ class BzrBackendRepo(BackendRepo):
             self.object_store.unlock()
 
     def get_peeled(self, name):
-        return self.refs.get_peeled(name)
+        cached = self.refs.get_peeled(name)
+        if cached is not None:
+            return cached
+        return self.object_store.peel_sha(self.refs[name]).id
 
     def fetch_objects(self, determine_wants, graph_walker, progress,
         get_tagged=None):

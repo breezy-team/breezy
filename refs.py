@@ -45,24 +45,6 @@ def gather_peeled(refs):
     return ret
 
 
-def extract_tags(refs):
-    """Extract the tags from a refs dictionary.
-
-    :param refs: Refs to extract the tags from.
-    :return: Dictionary mapping tag names to SHA1s of the actual object
-        and unpeeled object SHA1s.
-    """
-    ret = {}
-    for k, v in gather_peeled(refs).iteritems():
-        try:
-            tagname = ref_to_tag_name(k)
-        except (ValueError, UnicodeDecodeError):
-            pass
-        else:
-            ret[tagname] = v
-    return ret
-
-
 def branch_name_to_ref(name, default=None):
     """Map a branch name to a ref.
 
@@ -148,7 +130,11 @@ class BazaarRefsContainer(RefsContainer):
             revid = self._get_revid_by_tag_name(tag_name)
         else:
             revid = self._get_revid_by_branch_name(branch_name)
+        # FIXME: Unpeel if necessary
         return self.object_store._lookup_revision_sha1(revid)
+
+    def get_peeled(self, ref):
+        return self.read_loose_ref(ref)
 
     def allkeys(self):
         keys = set()
@@ -196,14 +182,7 @@ class BazaarRefsContainer(RefsContainer):
 
 def get_refs_container(controldir, object_store):
     repo = controldir.find_repository()
-    git_repo = getattr(repo, "_git", None)
-    if git_repo is not None:
-        return git_repo.refs
+    fn = getattr(repo, "get_refs_container", None)
+    if fn is not None:
+        return fn()
     return BazaarRefsContainer(controldir, object_store)
-
-
-def get_refs(controldir, object_store=None):
-    cb = getattr(controldir, "get_refs", None)
-    if cb is not None:
-        return cb()
-    return BazaarRefsContainer(controldir, object_store).as_dict()

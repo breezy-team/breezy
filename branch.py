@@ -20,8 +20,6 @@
 from collections import defaultdict
 
 from dulwich.objects import (
-    Commit,
-    Tag,
     ZERO_SHA,
     )
 from dulwich.repo import check_ref_format
@@ -58,7 +56,6 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 from bzrlib.plugins.git.refs import (
-    extract_tags,
     gather_peeled,
     is_tag,
     ref_to_branch_name,
@@ -100,11 +97,25 @@ class GitTags(tag.BasicTags):
         self.branch = branch
         self.repository = branch.repository
 
-    def get_refs(self):
-        raise NotImplementedError(self.get_refs)
+    def get_refs_container(self):
+        raise NotImplementedError(self.get_refs_container)
 
     def _iter_tag_refs(self, refs):
-        raise NotImplementedError(self._iter_tag_refs)
+        """Iterate over the tag refs.
+
+        :param refs: Refs dictionary (name -> git sha1)
+        :return: iterator over (name, peeled_sha1, unpeeled_sha1, bzr_revid)
+        """
+        for k, unpeeled in refs.as_dict().iteritems():
+            try:
+                tag_name = ref_to_tag_name(k)
+            except (ValueError, UnicodeDecodeError):
+                continue
+            peeled = refs.get_peeled(k)
+            if peeled is None:
+                peeled = self.repository.bzrdir._git.object_store.peel_sha(unpeeled).id
+            yield (tag_name, peeled, unpeeled,
+                   self.branch.lookup_foreign_revision_id(peeled))
 
     def _merge_to_remote_git(self, target_repo, new_refs, overwrite=False):
         updates = {}
@@ -177,7 +188,7 @@ class GitTags(tag.BasicTags):
                  source_refs=None):
         """See Tags.merge_to."""
         if source_refs is None:
-            source_refs = self.get_refs()
+            source_refs = self.get_refs_container()
         if self == to_tags:
             return {}, []
         if isinstance(to_tags, GitTags):
@@ -201,7 +212,7 @@ class GitTags(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        refs = self.get_refs()
+        refs = self.get_refs_container()
         for (name, peeled, unpeeled, bzr_revid) in self._iter_tag_refs(refs):
             ret[name] = bzr_revid
         return ret
@@ -214,36 +225,11 @@ class LocalGitTagDict(GitTags):
         super(LocalGitTagDict, self).__init__(branch)
         self.refs = self.repository.bzrdir._git.refs
 
-    def get_refs(self):
-        return self.refs.as_dict()
-
-    def _iter_tag_refs(self, refs):
-        """Iterate over the tag refs.
-
-        :param refs: Refs dictionary (name -> git sha1)
-        :return: iterator over (name, peeled_sha1, unpeeled_sha1, bzr_revid)
-        """
-        for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
-            try:
-                obj = self.repository._git[peeled]
-            except KeyError:
-                mutter("Tag %s points at unknown object %s, ignoring", peeled,
-                       peeled)
-                continue
-            # FIXME: this shouldn't really be necessary, the repository
-            # already should have these unpeeled.
-            while isinstance(obj, Tag):
-                peeled = obj.object[1]
-                obj = self.repository._git[peeled]
-            if not isinstance(obj, Commit):
-                mutter("Tag %s points at object %r that is not a commit, "
-                       "ignoring", k, obj)
-                continue
-            yield (k, peeled, unpeeled,
-                   self.branch.lookup_foreign_revision_id(peeled))
+    def get_refs_container(self):
+        return self.refs
 
     def _set_tag_dict(self, to_dict):
-        extra = set(self.get_refs().keys())
+        extra = set(self.refs.allkeys())
         for k, revid in to_dict.iteritems():
             name = tag_name_to_ref(k)
             if name in extra:
@@ -316,6 +302,10 @@ class GitBranchFormat(branch.BranchFormat):
         return ForeignTestsBranchFactory()
 
     def make_tags(self, branch):
+        try:
+            return branch.tags
+        except AttributeError:
+            pass
         if getattr(branch.repository, "_git", None) is None:
             from bzrlib.plugins.git.remote import RemoteGitTagDict
             return RemoteGitTagDict(branch)
@@ -351,7 +341,7 @@ class GitBranch(ForeignBranch):
     def control_transport(self):
         return self.bzrdir.control_transport
 
-    def __init__(self, bzrdir, repository, ref, tagsdict=None):
+    def __init__(self, bzrdir, repository, ref):
         self.base = bzrdir.root_transport.base
         self.repository = repository
         self._format = GitBranchFormat()
@@ -359,8 +349,6 @@ class GitBranch(ForeignBranch):
         self._lock_mode = None
         self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
-        if tagsdict is not None:
-            self.tags = DictTagDict(self, tagsdict)
         self.ref = ref
         try:
             self.name = ref_to_branch_name(ref)
@@ -498,11 +486,10 @@ class GitBranch(ForeignBranch):
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
-    def __init__(self, bzrdir, repository, ref, tagsdict=None):
-        super(LocalGitBranch, self).__init__(bzrdir, repository, ref,
-              tagsdict)
-        refs = bzrdir.get_refs()
-        if not (ref in refs.keys() or "HEAD" in refs.keys()):
+    def __init__(self, bzrdir, repository, ref):
+        super(LocalGitBranch, self).__init__(bzrdir, repository, ref)
+        refs = bzrdir.get_refs_container()
+        if not (ref in refs or "HEAD" in refs):
             raise errors.NotBranchError(self.base)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,

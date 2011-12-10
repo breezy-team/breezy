@@ -18,6 +18,8 @@
 
 """Tests for ref handling."""
 
+from dulwich.repo import DictRefsContainer
+
 from bzrlib import tests
 
 from bzrlib.plugins.git import refs
@@ -42,34 +44,3 @@ class BranchNameRefConversionTests(tests.TestCase):
             refs.branch_name_to_ref(None, "mydefault"))
         self.assertEquals(None,
             refs.branch_name_to_ref(None))
-
-
-class ExtractTagTests(tests.TestCase):
-
-    def test_ignore_branch(self):
-        self.assertEquals({},
-            refs.extract_tags({
-                "HEAD": "ref: foo", "refs/branches/blala": "la"}))
-
-    def test_tags(self):
-        self.assertEquals({"mytag": ("mysha", None)},
-            refs.extract_tags({
-                "HEAD": "ref: foo", "refs/tags/mytag": "mysha"}))
-
-    def test_ignores_peels(self):
-        self.assertEquals({"mytag": ("actualsha", "mysha")},
-            refs.extract_tags({
-                "HEAD": "ref: foo",
-                "refs/tags/mytag": "mysha",
-                "refs/tags/mytag^{}": "actualsha"}))
-
-    def test_non_ascii_name(self):
-        self.assertEquals({u'myt\xe2g': ("actualsha", None)},
-            refs.extract_tags({
-                "HEAD": "ref: foo",
-                "refs/tags/myt\xc3\xa2g": "actualsha"}))
-
-    def test_non_utf8_name(self):
-        self.assertEquals({},
-            refs.extract_tags({
-                'refs/tags/LIBGEE_0_2_\xc20': "actualsha"}))

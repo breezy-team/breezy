@@ -60,8 +60,8 @@ from bzrlib.plugins.git.repository import (
     GitRepository,
     )
 from bzrlib.plugins.git.refs import (
-    extract_tags,
     branch_name_to_ref,
+    is_peeled,
     )
 
 import dulwich
@@ -73,6 +73,7 @@ from dulwich.pack import (
     Pack,
     PackData,
     )
+from dulwich.repo import DictRefsContainer
 import os
 import tempfile
 import urllib
@@ -219,8 +220,10 @@ class RemoteGitDir(GitDir):
                 trace.info("git: %s" % text)
         client = self._get_client(thin_packs=False)
         try:
-            return client.fetch_pack(self._client_path, determine_wants,
+            refs_dict = client.fetch_pack(self._client_path, determine_wants,
                 graph_walker, pack_data, progress)
+            self._refs_dict(refs_dict)
+            return refs_dict
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
 
@@ -272,11 +275,24 @@ class RemoteGitDir(GitDir):
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
 
-    def get_refs(self):
+    def _set_refs(self, refs_dict):
+        base = {}
+        peeled = {}
+        for k, v in refs_dict.iteritems():
+            if is_peeled(k):
+                peeled[k[:-3]] = v
+            else:
+                base[k] = v
+                peeled[k] = v
+        self._refs = DictRefsContainer(base)
+        self._refs._peeled = peeled
+
+    def get_refs_container(self):
         if self._refs is not None:
             return self._refs
-        self._refs = self.fetch_pack(lambda x: [], None,
+        refs_dict = self.fetch_pack(lambda x: [], None,
             lambda x: None, lambda x: trace.mutter("git: %s" % x))
+        self._set_refs(refs_dict)
         return self._refs
 
 
@@ -443,12 +459,7 @@ class RemoteGitRepository(GitRepository):
 class RemoteGitTagDict(GitTags):
 
     def get_refs(self):
-        return self.repository.bzrdir.get_refs()
-
-    def _iter_tag_refs(self, refs):
-        for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
-            yield (k, peeled, unpeeled,
-                  self.branch.mapping.revision_id_foreign_to_bzr(peeled))
+        return self.repository.bzrdir.get_refs_container()
 
     def set_tag(self, name, revid):
         # FIXME: Not supported yet, should do a push of a new ref

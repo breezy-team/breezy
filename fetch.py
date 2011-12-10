@@ -86,8 +86,7 @@ from bzrlib.plugins.git.object_store import (
     _tree_to_objects,
     )
 from bzrlib.plugins.git.refs import (
-    extract_tags,
-    is_peeled,
+    is_tag,
     )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
@@ -540,12 +539,12 @@ class InterFromGitRepository(InterRepository):
             potential = set(wants)
             if include_tags:
                 potential.update(
-                    [v[1] or v[0] for v in extract_tags(refs).itervalues()])
+                    [v for (k, v) in refs.as_dict().iteritems() if is_tag(k)])
             return list(potential - self._target_has_shas(potential))
         return determine_wants
 
     def determine_wants_all(self, refs):
-        potential = set([v for (k, v) in refs.iteritems() if not is_peeled(k)])
+        potential = set(refs.as_dict().values())
         return list(potential - self._target_has_shas(potential))
 
     @staticmethod
@@ -571,7 +570,7 @@ class InterFromGitRepository(InterRepository):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             git_shas.append(git_sha)
         walker = Walker(self.source._git.object_store,
-            include=git_shas, exclude=[sha for sha in self.target.bzrdir.get_refs().values() if sha != ZERO_SHA])
+            include=git_shas, exclude=[sha for sha in self.target.bzrdir.refs.as_dict().values() if sha != ZERO_SHA])
         missing_revids = set()
         for entry in walker:
             missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
@@ -642,7 +641,6 @@ class InterGitNonGitRepository(InterFromGitRepository):
             mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
-        assert isinstance(remote_refs, dict)
         return remote_refs
 
 
@@ -733,7 +731,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         """See `InterGitNonGitRepository`."""
-        remote_refs = self.source.bzrdir.get_refs()
+        remote_refs = self.source.bzrdir.get_refs_container()
         wants = determine_wants(remote_refs)
         create_pb = None
         if pb is None:
@@ -772,7 +770,7 @@ class InterGitGitRepository(InterFromGitRepository):
     def fetch_refs(self, update_refs, lossy=False):
         if lossy:
             raise errors.LossyPushToSameVCS(self.source, self.target)
-        old_refs = self.target.bzrdir.get_refs()
+        old_refs = self.target.bzrdir.get_refs_container()
         ref_changes = {}
         def determine_wants(heads):
             old_refs = dict([(k, (v, None)) for (k, v) in heads.iteritems()])
@@ -782,7 +780,7 @@ class InterGitGitRepository(InterFromGitRepository):
         self.fetch_objects(determine_wants)
         for k, (git_sha, bzr_revid) in ref_changes.iteritems():
             self.target._git.refs[k] = git_sha
-        new_refs = self.target.bzrdir.get_refs()
+        new_refs = self.target.bzrdir.get_refs_container()
         return None, old_refs, new_refs
 
     def fetch_objects(self, determine_wants, mapping=None, pb=None):

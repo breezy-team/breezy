@@ -58,7 +58,6 @@ class cmd_git_import(Command):
             return head_bzrdir.create_branch()
 
     def run(self, src_location, dest_location=None):
-        from collections import defaultdict
         import os
         import urllib
         from bzrlib import (
@@ -83,9 +82,11 @@ class cmd_git_import(Command):
         from bzrlib.transport import get_transport
         from bzrlib.plugins.git.branch import (
             GitBranch,
-            extract_tags,
             )
-        from bzrlib.plugins.git.refs import ref_to_branch_name
+        from bzrlib.plugins.git.refs import (
+            ref_to_branch_name,
+            ref_to_tag_name,
+            )
         from bzrlib.plugins.git.repository import GitRepository
 
         dest_format = controldir.ControlDirFormat.get_default_format()
@@ -114,32 +115,26 @@ class cmd_git_import(Command):
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch()
-        unpeeled_tags = defaultdict(set)
-        tags = {}
-        for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
-            tags[k] = mapping.revision_id_foreign_to_bzr(peeled)
-            if unpeeled is not None:
-                unpeeled_tags[peeled].add(unpeeled)
-        # FIXME: Store unpeeled tag map
+        refs_dict = refs.as_dict()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, (name, ref) in enumerate(refs.iteritems()):
+            for i, (name, sha) in enumerate(refs_dict.iteritems()):
                 try:
                     branch_name = ref_to_branch_name(name)
                 except ValueError:
                     # Not a branch, ignore
                     continue
-                pb.update(gettext("creating branches"), i, len(refs))
+                pb.update(gettext("creating branches"), i, len(refs_dict))
                 if getattr(target_bzrdir._format, "colocated_branches", False):
                     if name == "HEAD":
                         branch_name = None
                     head_branch = self._get_colocated_branch(target_bzrdir, branch_name)
                 else:
                     head_branch = self._get_nested_branch(dest_transport, dest_format, branch_name)
-                revid = mapping.revision_id_foreign_to_bzr(ref)
+                revid = mapping.revision_id_foreign_to_bzr(sha)
                 source_branch = GitBranch(source_repo.bzrdir, source_repo,
-                    ref, tags)
-                source_branch.head = ref
+                    sha)
+                source_branch.head = sha
                 if head_branch.last_revision() != revid:
                     head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
@@ -222,7 +217,7 @@ class cmd_git_refs(Command):
             BzrDir,
             )
         from bzrlib.plugins.git.refs import (
-            get_refs,
+            get_refs_container,
             )
         from bzrlib.plugins.git.object_store import (
             get_object_store,
@@ -232,8 +227,8 @@ class cmd_git_refs(Command):
         object_store = get_object_store(repo)
         object_store.lock_read()
         try:
-            refs = get_refs(bzrdir)
-            for k, v in refs.iteritems():
+            refs = get_refs_container(bzrdir)
+            for k, v in refs.as_dict().iteritems():
                 self.outf.write("%s -> %s\n" % (k, v))
         finally:
             object_store.unlock()
