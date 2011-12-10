@@ -543,9 +543,9 @@ class InterFromGitRepository(InterRepository):
     def _get_repo_format_to_test():
         return None
 
-    def copy_content(self, revision_id=None, pb=None):
+    def copy_content(self, revision_id=None):
         """See InterRepository.copy_content."""
-        self.fetch(revision_id, pb, find_ghosts=False)
+        self.fetch(revision_id, find_ghosts=False)
 
     def search_missing_revision_ids(self,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
