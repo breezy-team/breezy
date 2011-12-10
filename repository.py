@@ -544,6 +544,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_revision_signatures = False
     supports_nesting_repositories = False
     revision_graph_can_have_wrong_parents = False
+    supports_unreferenced_revisions = True
 
     @property
     def _matchingbzrdir(self):

@@ -56,7 +56,6 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 from bzrlib.plugins.git.refs import (
-    gather_peeled,
     is_tag,
     ref_to_branch_name,
     ref_to_tag_name,
@@ -151,7 +150,7 @@ class GitTags(tag.BasicTags):
                 target_repo._git.refs[k] = unpeeled or peeled
                 updates[name] = target_repo.lookup_foreign_revision_id(peeled)
             else:
-                conflicts.append((name, peeled, target_repo.refs[k]))
+                conflicts.append((name, peeled, target_repo._git.refs[k]))
         return updates, conflicts
 
     def _merge_to_git(self, to_tags, refs, overwrite=False):
@@ -528,6 +527,10 @@ class LocalGitBranch(GitBranch):
         checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id, hardlink=hardlink)
 
+    def fetch(self, from_branch, last_revision=None, limit=None):
+        return branch.InterBranch.get(from_branch, self).fetch(
+            stop_revision=last_revision, limit=limit)
+
     def _gen_revision_history(self):
         if self.head is None:
             return []
@@ -851,6 +854,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
 class InterGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls between Git branches."""
 
+    def fetch(self, stop_revision=None, fetch_tags=None, limit=None):
+        raise NotImplementedError(self.fetch)
+
 
 class InterLocalGitRemoteGitBranch(InterGitBranch):
     """InterBranch that copies from a local to a remote git branch."""
@@ -1057,6 +1063,17 @@ class InterToGitBranch(branch.GenericInterBranch):
                 else:
                     ret[ref] = (git_sha, revid)
         return ret
+
+    def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
+        assert limit is None
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        ret = []
+        if fetch_tags:
+            for k, v in self.source.tags.get_tag_dict().iteritems():
+                ret.append((None, v))
+        ret.append((None, stop_revision))
+        self.interrepo.fetch_objects(ret, roundtrip=(not lossy))
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True):

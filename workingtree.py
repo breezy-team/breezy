@@ -349,7 +349,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     user_dirs.append(subp)
                 else:
                     if action is not None:
-                        file_id = action()
+                        file_id = action(self, None, filepath, kind)
                     else:
                         file_id = None
                     if save:

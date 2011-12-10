@@ -148,7 +148,7 @@ class InterToGitRepository(InterRepository):
                 git_sha = self.source_store._lookup_revision_sha1(revid)
                 git_shas.append(git_sha)
             walker = Walker(self.source_store,
-                include=git_shas, exclude=[sha for sha in self.target.bzrdir.get_refs_container().values() if sha != ZERO_SHA])
+                include=git_shas, exclude=[sha for sha in self.target.bzrdir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
             missing_revids = set()
             for entry in walker:
                 for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
@@ -270,49 +270,49 @@ class InterToLocalGitRepository(InterToGitRepository):
         return revidmap, old_refs, new_refs
 
     def fetch_objects(self, revs, roundtrip):
-        todo = list(self.missing_revisions(revs))
-        revidmap = {}
-        pb = ui.ui_factory.nested_progress_bar()
+        self.source_store.lock_read()
         try:
-            object_generator = MissingObjectsIterator(
-                self.source_store, self.source, pb)
-            for (old_revid, git_sha) in object_generator.import_revisions(
-                todo, roundtrip=roundtrip):
-                try:
-                    self.mapping.revision_id_bzr_to_foreign(old_revid)
-                except errors.InvalidRevisionId:
-                    self.target_refs[self.mapping.revid_as_refname(old_revid)] = git_sha
-                if not roundtrip:
-                    new_revid = self.mapping.revision_id_foreign_to_bzr(git_sha)
-                else:
-                    new_revid = old_revid
-                revidmap[old_revid] = (git_sha, new_revid)
-            self.target_store.add_objects(object_generator)
-            return revidmap
+            todo = list(self.missing_revisions(revs))
+            revidmap = {}
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                object_generator = MissingObjectsIterator(
+                    self.source_store, self.source, pb)
+                for (old_revid, git_sha) in object_generator.import_revisions(
+                    todo, roundtrip=roundtrip):
+                    try:
+                        self.mapping.revision_id_bzr_to_foreign(old_revid)
+                    except errors.InvalidRevisionId:
+                        self.target_refs[self.mapping.revid_as_refname(old_revid)] = git_sha
+                    if not roundtrip:
+                        new_revid = self.mapping.revision_id_foreign_to_bzr(git_sha)
+                    else:
+                        new_revid = old_revid
+                    revidmap[old_revid] = (git_sha, new_revid)
+                self.target_store.add_objects(object_generator)
+                return revidmap
+            finally:
+                pb.finished()
         finally:
-            pb.finished()
+            self.source_store.unlock()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
         if not self.mapping.roundtripping:
             raise NoPushSupport()
-        self.source_store.lock_read()
-        try:
-            if mapped_refs is not None:
-                stop_revisions = mapped_refs
-            elif revision_id is not None:
-                stop_revisions = [(None, revision_id)]
-            elif fetch_spec is not None:
-                recipe = fetch_spec.get_recipe()
-                if recipe[0] in ("search", "proxy-search"):
-                    stop_revisions = [(None, revid) for revid in recipe[1]]
-                else:
-                    raise AssertionError("Unsupported search result type %s" % recipe[0])
+        if mapped_refs is not None:
+            stop_revisions = mapped_refs
+        elif revision_id is not None:
+            stop_revisions = [(None, revision_id)]
+        elif fetch_spec is not None:
+            recipe = fetch_spec.get_recipe()
+            if recipe[0] in ("search", "proxy-search"):
+                stop_revisions = [(None, revid) for revid in recipe[1]]
             else:
-                stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
-            self.fetch_objects(stop_revisions, roundtrip=True)
-        finally:
-            self.source_store.unlock()
+                raise AssertionError("Unsupported search result type %s" % recipe[0])
+        else:
+            stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
+        self.fetch_objects(stop_revisions, roundtrip=True)
 
     @staticmethod
     def is_compatible(source, target):

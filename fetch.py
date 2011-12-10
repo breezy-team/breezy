@@ -562,7 +562,7 @@ class InterFromGitRepository(InterRepository):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             git_shas.append(git_sha)
         walker = Walker(self.source._git.object_store,
-            include=git_shas, exclude=[sha for sha in self.target.bzrdir.refs.as_dict().values() if sha != ZERO_SHA])
+            include=git_shas, exclude=[sha for sha in self.target.bzrdir.get_refs_container().as_dict().values() if sha != ZERO_SHA])
         missing_revids = set()
         for entry in walker:
             missing_revids.add(self.source.lookup_foreign_revision_id(entry.commit.id))
@@ -788,9 +788,11 @@ class InterGitGitRepository(InterFromGitRepository):
         graphwalker = self.target._git.get_graph_walker()
         if (isinstance(self.source, LocalGitRepository) and
             isinstance(self.target, LocalGitRepository)):
+            def wrap_determine_wants(refs):
+                return determine_wants(self.source._git.refs)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                refs = self.source._git.fetch(self.target._git, determine_wants,
+                refs = self.source._git.fetch(self.target._git, wrap_determine_wants,
                     lambda text: report_git_progress(pb, text))
             finally:
                 pb.finished()
