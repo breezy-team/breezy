@@ -754,24 +754,33 @@ class cmd_mkdir(Command):
 
     takes_args = ['dir+']
     takes_options = [
-        Option('recursive', short_name='p',
-               help='Recursively create parent directories that do not exist.'),
+        Option(
+            'parents',
+            help='No error if existing, make parent directories as needed.',
+            short_name='p'
+            )
         ]
-
     encoding_type = 'replace'
 
-    def run(self, dir_list, recursive=False):
-        for d in dir_list:
-            wt, dd = WorkingTree.open_containing(d)
-            base = os.path.dirname(dd)
-            id = wt.path2id(base)
-            if id != None:
-                os.mkdir(d)
-                wt.add([dd])
-                if not is_quiet():
-                    self.outf.write(gettext('added %s\n') % d)
+    def run(self, dir_list, parents=False):
+        wt, relpaths = WorkingTree.open_containing_paths(dir_list)
+        if parents:
+            def add_files(relpath):
+                if wt.path2id(relpath) is not None:
+                    return
+                add_files(osutils.dirname(relpath))
+                wt.add([relpath])
+        else:
+            def add_files(relpath):
+                wt.add([relpath])
+        for relpath in relpaths:
+            if parents:
+                os.makedirs(relpath)
             else:
-                raise errors.NotVersionedError(path=base)
+                os.mkdir(relpath)
+            add_files(relpath)
+            if not is_quiet():
+                self.outf.write(gettext('added %s\n') % relpath)
 
 
 class cmd_relpath(Command):

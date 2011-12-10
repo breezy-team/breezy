@@ -18,6 +18,7 @@
 """Black-box tests for bzr mkdir.
 """
 
+import os
 from bzrlib import tests
 
 
@@ -29,8 +30,19 @@ class TestMkdir(tests.TestCaseWithTransport):
 
         self.assertEquals(tree.kind(tree.path2id('somedir')), "directory")
 
-    def test_mkdir_recursive(self):
+    def test_mkdir_multi(self):
+        tree = self.make_branch_and_tree('.')
+        self.run_bzr(['mkdir', 'somedir', 'anotherdir'])
+        self.assertEquals(tree.kind(tree.path2id('somedir')), "directory")
+        self.assertEquals(tree.kind(tree.path2id('anotherdir')), "directory")
+
+    def test_mkdir_parents(self):
         tree = self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', '-p', 'somedir/foo'])
+        self.assertEquals(tree.kind(tree.path2id('somedir/foo')), "directory")
 
+    def test_mkdir_parents_with_unversioned_parent(self):
+        tree = self.make_branch_and_tree('.')
+        os.mkdir('somedir')
+        self.run_bzr(['mkdir', '-p', 'somedir/foo'])
         self.assertEquals(tree.kind(tree.path2id('somedir/foo')), "directory")

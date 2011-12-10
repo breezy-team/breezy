@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* "bzr mkdir" now includes -p (--parents) option for recursively adding
+  parent directories.
+  (Jared Hance, Jelmer Vernooij, #253529)
+
 Improvements
 ************
 
