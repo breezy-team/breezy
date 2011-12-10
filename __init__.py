@@ -180,6 +180,7 @@ class RemoteGitProber(Prober):
             if resp.code in (404, 405):
                 raise bzr_errors.NotBranchError(transport.base)
             headers = resp.headers
+            refs_text = resp.read()
         else:
             try:
                 from bzrlib.transport.http._pycurl import PyCurlTransport
@@ -209,6 +210,7 @@ class RemoteGitProber(Prober):
                     headers = transport._parse_headers(header)
                 else:
                     raise bzr_errors.NotBranchError(transport.base)
+                refs_text = data.getvalue()
         ct = headers.getheader("Content-Type")
         if ct is None:
             raise bzr_errors.NotBranchError(transport.base)
@@ -219,7 +221,9 @@ class RemoteGitProber(Prober):
             from bzrlib.plugins.git.dir import (
                 BareLocalGitControlDirFormat,
                 )
-            return BareLocalGitControlDirFormat()
+            ret = BareLocalGitControlDirFormat()
+            ret._refs_text = refs_text
+            return ret
 
     def probe_transport(self, transport):
         try:

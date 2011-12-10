@@ -294,7 +294,7 @@ class TransportRefsContainer(RefsContainer):
 
 class TransportRepo(BaseRepo):
 
-    def __init__(self, transport, bare):
+    def __init__(self, transport, bare, refs_text=None):
         self.transport = transport
         self.bare = bare
         if self.bare:
@@ -303,8 +303,13 @@ class TransportRepo(BaseRepo):
             self._controltransport = self.transport.clone('.git')
         object_store = TransportObjectStore(
             self._controltransport.clone(OBJECTDIR))
+        if refs_text is not None:
+            from dulwich.repo import InfoRefsContainer # dulwich >= 0.8.2
+            refs_container = InfoRefsContainer(StringIO(refs_text))
+        else:
+            refs_container = TransportRefsContainer(self._controltransport)
         super(TransportRepo, self).__init__(object_store, 
-                TransportRefsContainer(self._controltransport))
+                refs_container)
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.

@@ -213,7 +213,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
         """
         from bzrlib.plugins.git.transportgit import TransportRepo
-        gitrepo = TransportRepo(transport, self.bare)
+        gitrepo = TransportRepo(transport, self.bare,
+                refs_text=getattr(self, "_refs_text", None))
         return LocalGitDir(transport, gitrepo, self)
 
     def get_format_description(self):
