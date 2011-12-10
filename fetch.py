@@ -613,18 +613,17 @@ class InterGitNonGitRepository(InterFromGitRepository):
             wants.add(git_sha)
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
-    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
+    def fetch_objects(self, determine_wants, mapping, limit=None):
         """Fetch objects from a remote server.
 
         :param determine_wants: determine_wants callback
         :param mapping: BzrGitMapping to use
-        :param pb: Optional progress bar
         :param limit: Maximum number of commits to import.
         :return: Tuple with pack hint, last imported revision id and remote refs
         """
         raise NotImplementedError(self.fetch_objects)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, revision_id=None, find_ghosts=False,
               mapping=None, fetch_spec=None):
         if mapping is None:
             mapping = self.source.get_mapping()
@@ -647,7 +646,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             determine_wants = self.determine_wants_all
 
         (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants,
-            mapping, pb)
+            mapping)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
         return remote_refs
@@ -689,10 +688,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         map(all_parents.update, parent_map.itervalues())
         return set(all_revs) - all_parents
 
-    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
+    def fetch_objects(self, determine_wants, mapping, limit=None):
         """See `InterGitNonGitRepository`."""
-        def progress(text):
-            report_git_progress(pb, text)
         store = BazaarObjectStore(self.target, mapping)
         store.lock_write()
         try:
@@ -701,13 +698,11 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     [store._lookup_revision_sha1(head) for head in heads])
             wants_recorder = DetermineWantsRecorder(determine_wants)
 
-            create_pb = None
-            if pb is None:
-                create_pb = pb = ui.ui_factory.nested_progress_bar()
+            pb = ui.ui_factory.nested_progress_bar()
             try:
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw,
-                    progress)
+                    progress=lambda text: report_git_progress(pb, text))
                 trace.mutter("Importing %d new revisions",
                              len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target,
@@ -715,8 +710,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     limit)
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
             finally:
-                if create_pb:
-                    create_pb.finished()
+                pb.finished()
         finally:
             store.unlock()
 
@@ -738,13 +732,12 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
     repository."""
 
-    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
+    def fetch_objects(self, determine_wants, mapping, limit=None):
         """See `InterGitNonGitRepository`."""
         remote_refs = self.source.bzrdir.get_refs_container()
         wants = determine_wants(remote_refs)
         create_pb = None
-        if pb is None:
-            create_pb = pb = ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         target_git_object_retriever = BazaarObjectStore(self.target, mapping)
         try:
             target_git_object_retriever.lock_write()
@@ -756,8 +749,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             finally:
                 target_git_object_retriever.unlock()
         finally:
-            if create_pb:
-                create_pb.finished()
+            pb.finished()
 
     @staticmethod
     def is_compatible(source, target):
@@ -792,29 +784,36 @@ class InterGitGitRepository(InterFromGitRepository):
         new_refs = self.target.bzrdir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, mapping=None, pb=None):
-        def progress(text):
-            trace.note("git: %s", text)
+    def fetch_objects(self, determine_wants, mapping=None):
         graphwalker = self.target._git.get_graph_walker()
         if (isinstance(self.source, LocalGitRepository) and
             isinstance(self.target, LocalGitRepository)):
-            refs = self.source._git.fetch(self.target._git, determine_wants,
-                progress)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                refs = self.source._git.fetch(self.target._git, determine_wants,
+                    lambda text: report_git_progress(pb, text))
+            finally:
+                pb.finished()
             return (None, None, refs)
         elif (isinstance(self.source, LocalGitRepository) and
               isinstance(self.target, RemoteGitRepository)):
             raise NotImplementedError
         elif (isinstance(self.source, RemoteGitRepository) and
               isinstance(self.target, LocalGitRepository)):
-            f, commit = self.target._git.object_store.add_pack()
+            pb = ui.ui_factory.nested_progress_bar()
             try:
-                refs = self.source.bzrdir.fetch_pack(
-                    determine_wants, graphwalker, f.write, progress)
-                commit()
-                return (None, None, refs)
-            except:
-                f.close()
-                raise
+                f, commit = self.target._git.object_store.add_pack()
+                try:
+                    refs = self.source.bzrdir.fetch_pack(
+                        determine_wants, graphwalker, f.write,
+                        lambda text: report_git_progress(pb, text))
+                    commit()
+                    return (None, None, refs)
+                except:
+                    f.close()
+                    raise
+            finally:
+                pb.finished()
         else:
             raise AssertionError("fetching between %r and %r not supported" %
                     (self.source, self.target))
@@ -822,7 +821,7 @@ class InterGitGitRepository(InterFromGitRepository):
     def _target_has_shas(self, shas):
         return set([sha for sha in shas if sha in self.target._git.object_store])
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, revision_id=None, find_ghosts=False,
               mapping=None, fetch_spec=None, branches=None):
         if mapping is None:
             mapping = self.source.get_mapping()
