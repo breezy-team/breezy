@@ -1112,10 +1112,9 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
 
     @classmethod
     def from_string(cls, format_string):
-        ret = cls()
         if format_string != cls.get_format_string():
             raise ValueError("Invalid format header %r" % format_string)
-        return ret
+        return cls()
 
     @classmethod
     def _find_format(klass, registry, kind, format_string):
