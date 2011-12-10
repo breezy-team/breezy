@@ -534,17 +534,10 @@ class InterFromGitRepository(InterRepository):
         raise NotImplementedError(self._target_has_shas)
 
     def get_determine_wants_heads(self, wants, include_tags=False):
-        wants = set(wants)
-        def determine_wants(refs):
-            potential = set(wants)
-            if include_tags:
-                potential.update(
-                    [v for (k, v) in refs.as_dict().iteritems() if is_tag(k)])
-            return list(potential - self._target_has_shas(potential))
-        return determine_wants
+        raise NotImplementedError(self.get_determine_wants_heads)
 
     def determine_wants_all(self, refs):
-        raise NotImplemented(self.determine_wants_all)
+        raise NotImplementedError(self.determine_wants_all)
 
     @staticmethod
     def _get_repo_format_to_test():
@@ -598,6 +591,18 @@ class InterGitNonGitRepository(InterFromGitRepository):
             # For non-git target repositories, only worry about peeled
             potential.add(self.source.bzrdir.get_peeled(k))
         return list(potential - self._target_has_shas(potential))
+
+    def get_determine_wants_heads(self, wants, include_tags=False):
+        wants = set(wants)
+        def determine_wants(refs):
+            potential = set(wants)
+            if include_tags:
+                for k, unpeeled in refs.as_dict().iteritems():
+                    if not is_tag(k):
+                        continue
+                    potential.add(self.source.bzrdir.get_peeled(k))
+            return list(potential - self._target_has_shas(potential))
+        return determine_wants
 
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
@@ -815,7 +820,7 @@ class InterGitGitRepository(InterFromGitRepository):
                     (self.source, self.target))
 
     def _target_has_shas(self, shas):
-        return set([sha for sha in shas if self.target._git.object_store])
+        return set([sha for sha in shas if sha in self.target._git.object_store])
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
               mapping=None, fetch_spec=None, branches=None):
@@ -861,3 +866,17 @@ class InterGitGitRepository(InterFromGitRepository):
     def determine_wants_all(self, refs):
         potential = set(refs.as_dict().values())
         return list(potential - self._target_has_shas(potential))
+
+    def get_determine_wants_heads(self, wants, include_tags=False):
+        wants = set(wants)
+        def determine_wants(refs):
+            potential = set(wants)
+            if include_tags:
+                for k, unpeeled in refs.as_dict().iteritems():
+                    if not is_tag(k):
+                        continue
+                    potential.add(unpeeled)
+            return list(potential - self._target_has_shas(potential))
+        return determine_wants
+
+
