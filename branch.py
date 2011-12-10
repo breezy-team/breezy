@@ -140,11 +140,12 @@ class GitTags(tag.BasicTags):
     def _merge_to_local_git(self, target_repo, refs, overwrite=False):
         conflicts = []
         updates = {}
-        for k, (peeled, unpeeled) in gather_peeled(refs).iteritems():
+        for k, unpeeled in refs.as_dict().iteritems():
             if not is_tag(k):
                 continue
             name = ref_to_tag_name(k)
-            if target_repo._git.refs.get(k) in (peeled, unpeeled):
+            peeled = self.repository.bzrdir.get_peeled(k)
+            if target_repo._git.refs.get(k) == unpeeled:
                 pass
             elif overwrite or not k in target_repo._git.refs:
                 target_repo._git.refs[k] = unpeeled or peeled

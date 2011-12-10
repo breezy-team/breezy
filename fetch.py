@@ -544,8 +544,7 @@ class InterFromGitRepository(InterRepository):
         return determine_wants
 
     def determine_wants_all(self, refs):
-        potential = set(refs.as_dict().values())
-        return list(potential - self._target_has_shas(potential))
+        raise NotImplemented(self.determine_wants_all)
 
     @staticmethod
     def _get_repo_format_to_test():
@@ -583,7 +582,6 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
     def _target_has_shas(self, shas):
         revids = {}
-        # FIXME: Check unpeel map
         for sha in shas:
             try:
                 revid = self.source.lookup_foreign_revision_id(sha)
@@ -594,6 +592,13 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 revids[revid] = sha
         return set([revids[r] for r in self.target.has_revisions(revids)])
 
+    def determine_wants_all(self, refs):
+        potential = set()
+        for k, v in refs.as_dict().iteritems():
+            # For non-git target repositories, only worry about peeled
+            potential.add(self.source.bzrdir.get_peeled(k))
+        return list(potential - self._target_has_shas(potential))
+
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
         for revid in set(revids):
@@ -601,8 +606,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 continue
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
-        return self.get_determine_wants_heads(wants,
-            include_tags=include_tags)
+        return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         """Fetch objects from a remote server.
@@ -853,3 +857,7 @@ class InterGitGitRepository(InterFromGitRepository):
             wants.add(git_sha)
         return self.get_determine_wants_heads(wants,
             include_tags=include_tags)
+
+    def determine_wants_all(self, refs):
+        potential = set(refs.as_dict().values())
+        return list(potential - self._target_has_shas(potential))

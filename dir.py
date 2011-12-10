@@ -530,3 +530,6 @@ class LocalGitDir(GitDir):
 
     def get_refs_container(self):
         return self._git.refs
+
+    def get_peeled(self, ref):
+        return self._git.get_peeled(ref)

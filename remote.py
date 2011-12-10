@@ -218,9 +218,11 @@ class RemoteGitDir(GitDir):
         if progress is None:
             def progress(text):
                 trace.info("git: %s" % text)
+        def wrap_determine_wants(refs_dict):
+            return determine_wants(remote_refs_dict_to_container(refs_dict))
         client = self._get_client(thin_packs=False)
         try:
-            refs_dict = client.fetch_pack(self._client_path, determine_wants,
+            refs_dict = client.fetch_pack(self._client_path, wrap_determine_wants,
                 graph_walker, pack_data, progress)
             self._refs = remote_refs_dict_to_container(refs_dict)
             return refs_dict
@@ -274,6 +276,9 @@ class RemoteGitDir(GitDir):
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
+
+    def get_peeled(self, name):
+        return self.get_refs_container().get_peeled(name)
 
     def get_refs_container(self):
         if self._refs is not None:
@@ -446,7 +451,7 @@ class RemoteGitRepository(GitRepository):
 
 class RemoteGitTagDict(GitTags):
 
-    def get_refs(self):
+    def get_refs_container(self):
         return self.repository.bzrdir.get_refs_container()
 
     def set_tag(self, name, revid):
