@@ -753,9 +753,14 @@ class cmd_mkdir(Command):
     """
 
     takes_args = ['dir+']
+    takes_options = [
+        Option('recursive', short_name='p',
+               help='Recursively create parent directories that do not exist.'),
+        ]
+
     encoding_type = 'replace'
 
-    def run(self, dir_list):
+    def run(self, dir_list, recursive=False):
         for d in dir_list:
             wt, dd = WorkingTree.open_containing(d)
             base = os.path.dirname(dd)
