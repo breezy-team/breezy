@@ -222,7 +222,7 @@ class RemoteGitDir(GitDir):
         try:
             refs_dict = client.fetch_pack(self._client_path, determine_wants,
                 graph_walker, pack_data, progress)
-            self._refs_dict(refs_dict)
+            self._refs = remote_refs_dict_to_container(refs_dict)
             return refs_dict
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
@@ -275,24 +275,12 @@ class RemoteGitDir(GitDir):
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
 
-    def _set_refs(self, refs_dict):
-        base = {}
-        peeled = {}
-        for k, v in refs_dict.iteritems():
-            if is_peeled(k):
-                peeled[k[:-3]] = v
-            else:
-                base[k] = v
-                peeled[k] = v
-        self._refs = DictRefsContainer(base)
-        self._refs._peeled = peeled
-
     def get_refs_container(self):
         if self._refs is not None:
             return self._refs
         refs_dict = self.fetch_pack(lambda x: [], None,
             lambda x: None, lambda x: trace.mutter("git: %s" % x))
-        self._set_refs(refs_dict)
+        self._refs = remote_refs_dict_to_container(refs_dict)
         return self._refs
 
 
@@ -513,3 +501,17 @@ class RemoteGitBranch(GitBranch):
 
     def set_push_location(self, url):
         pass
+
+
+def remote_refs_dict_to_container(refs_dict):
+    base = {}
+    peeled = {}
+    for k, v in refs_dict.iteritems():
+        if is_peeled(k):
+            peeled[k[:-3]] = v
+        else:
+            base[k] = v
+            peeled[k] = v
+    ret = DictRefsContainer(base)
+    ret._peeled = peeled
+    return ret
