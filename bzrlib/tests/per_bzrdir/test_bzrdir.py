@@ -21,6 +21,7 @@ from stat import S_ISDIR
 
 import bzrlib.branch
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     repository,
@@ -679,3 +680,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEquals(
             branch.bzrdir.user_transport.list_dir("."),
             [".bzr"])
+
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        try:
+            target_branch = repo.bzrdir.create_branch(name='foo')
+        except errors.NoColocatedBranchSupport:
+            return
+        reference = branch.BranchReferenceFormat().initialize(
+            repo.bzrdir, target_branch=target_branch)
+        self.assertEqual(set(repo.bzrdir.get_branches().keys()),
+                         set([None, 'foo']))
