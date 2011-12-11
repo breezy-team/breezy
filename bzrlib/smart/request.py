@@ -548,7 +548,7 @@ request_handlers.register_lazy(
     'SmartServerBranchRequestGetStackedOnURL', info='read')
 request_handlers.register_lazy(
     'Branch.get_checkout_format', 'bzrlib.smart.branch',
-    'SmartServerBranchRequestGetCheckoutFormat')
+    'SmartServerBranchRequestGetCheckoutFormat', info='read')
 request_handlers.register_lazy(
     'Branch.get_physical_lock_status', 'bzrlib.smart.branch',
     'SmartServerBranchRequestGetPhysicalLockStatus', info='read')
