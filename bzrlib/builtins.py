@@ -762,23 +762,29 @@ class cmd_mkdir(Command):
         ]
     encoding_type = 'replace'
 
+    @classmethod
+    def add_file_with_parents(cls, wt, relpath):
+        if wt.path2id(relpath) is not None:
+            return
+        cls.add_file_with_parents(wt, osutils.dirname(relpath))
+        wt.add([relpath])
+
+    @classmethod
+    def add_file_single(cls, wt, relpath):
+        wt.add([relpath])
+
     def run(self, dir_list, parents=False):
         if parents:
-            def add_files(wt, relpath):
-                if wt.path2id(relpath) is not None:
-                    return
-                add_files(wt, osutils.dirname(relpath))
-                wt.add([relpath])
+            add_file = self.add_file_with_parents
         else:
-            def add_files(wt, relpath):
-                wt.add([relpath])
+            add_file = self.add_file_single
         for dir in dir_list:
             wt, relpath = WorkingTree.open_containing(dir)
             if parents:
                 os.makedirs(dir)
             else:
                 os.mkdir(dir)
-            add_files(wt, relpath)
+            add_file(wt, relpath)
             if not is_quiet():
                 self.outf.write(gettext('added %s\n') % dir)
 
