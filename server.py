@@ -18,6 +18,8 @@
 
 from dulwich.server import TCPGitServer
 
+import sys
+
 from bzrlib import trace
 
 from bzrlib.bzrdir import (
@@ -34,9 +36,12 @@ from bzrlib.plugins.git.refs import (
     get_refs_container,
     )
 
+from dulwich.protocol import Protocol
 from dulwich.server import (
     Backend,
     BackendRepo,
+    ReceivePackHandler,
+    UploadPackHandler,
     )
 
 class BzrBackend(Backend):
@@ -129,3 +134,37 @@ def git_http_hook(branch, method, path):
                              handlers=DEFAULT_HANDLERS)
         return handler(req, backend, mat)
     return git_call
+
+
+def serve_command(handler_cls, backend, inf=sys.stdin, outf=sys.stdout):
+    """Serve a single command.
+
+    This is mostly useful for the implementation of commands used by e.g. git+ssh.
+
+    :param handler_cls: `Handler` class to use for the request
+    :param argv: execv-style command-line arguments. Defaults to sys.argv.
+    :param backend: `Backend` to use
+    :param inf: File-like object to read from, defaults to standard input.
+    :param outf: File-like object to write to, defaults to standard output.
+    :return: Exit code for use with sys.exit. 0 on success, 1 on failure.
+    """
+    def send_fn(data):
+        outf.write(data)
+        outf.flush()
+    proto = Protocol(inf.read, send_fn)
+    handler = handler_cls(backend, ["/"], proto)
+    # FIXME: Catch exceptions and write a single-line summary to outf.
+    handler.handle()
+    return 0
+
+
+def serve_git_receive_pack(transport, host=None, port=None, inet=False):
+    assert inet
+    backend = BzrBackend(transport)
+    sys.exit(serve_command(ReceivePackHandler, backend=backend))
+
+
+def serve_git_upload_pack(transport, host=None, port=None, inet=False):
+    assert inet
+    backend = BzrBackend(transport)
+    sys.exit(serve_command(UploadPackHandler, backend=backend))

@@ -11,6 +11,12 @@
   * Specify proper number of arguments to action() handler.
     (Jelmer Vernooij, #894195)
 
+ FEATURES
+
+  * New options '--git-receive-pack' and '--git-upload-pack'
+    for 'bzr serve', providing support for inetd.
+    (Jelmer Vernooij)
+
 0.6.5	2011-11-08
 
  CHANGES
