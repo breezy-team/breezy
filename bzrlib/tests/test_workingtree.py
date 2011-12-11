@@ -79,6 +79,13 @@ class TestDefaultFormat(TestCaseWithTransport):
             workingtree.format_registry.set_default(old_format)
         self.assertEqual(old_format, workingtree.format_registry.get_default())
 
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleTreeFormat.from_string("Sample tree format."),
+            SampleTreeFormat)
+        self.assertRaises(ValueError,
+            SampleTreeFormat.from_string, "Different format string.")
+
     def test_get_set_default_format_by_key(self):
         old_format = workingtree.format_registry.get_default()
         # default is 6
@@ -120,14 +127,15 @@ class TestDefaultFormat(TestCaseWithTransport):
         self.assertEqual('subdir', relpath)
 
 
-class SampleTreeFormat(workingtree.WorkingTreeFormat):
+class SampleTreeFormat(workingtree.WorkingTreeFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Sample tree format."
 

@@ -1103,7 +1103,11 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
 
 class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
-    """Base class for all formats of things living in metadirs."""
+    """Base class for all formats of things living in metadirs.
+
+    This class manages the format string that is stored in the 'format'
+    or 'branch-format' file.
+    """
 
     @classmethod
     def get_format_string(cls):
