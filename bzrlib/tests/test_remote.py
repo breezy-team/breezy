@@ -4229,7 +4229,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'VersionedFileRepository.iter_inventories', ('quack/', ''),
+            'VersionedFileRepository.get_inventories', ('quack/', 'unordered'),
             'success', ('ok', ),
             iter([zlib.compress(self._serialize_inv_delta("null:", "somerevid",
                 []))]))
@@ -4248,7 +4248,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'VersionedFileRepository.iter_inventories', ('quack/', ''),
+            'VersionedFileRepository.get_inventories', ('quack/', 'unordered'),
             'success', ('ok', ), iter([]))
         self.assertRaises(errors.NoSuchRevision, list, repo.iter_inventories(
             ["somerevid"]))

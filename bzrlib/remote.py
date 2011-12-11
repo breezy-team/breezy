@@ -1802,33 +1802,25 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         byte_stream = response_handler.read_streamed_body()
-        decompressor = zlib.decompressobj()
+        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream)
+        if src_format.network_name() != self._format.network_name():
+            raise AssertionError(
+                "Mismatched RemoteRepository and stream src %r, %r" % (
+                src_format.network_name(), self._format.network_name()))
+        # ignore the src format, it's not really relevant
         prev_inv = Inventory(root_id=None,
             revision_id=_mod_revision.NULL_REVISION)
-        def unpack_inv(prev_inv, bytes):
+        # there should be just one substream, with inventory deltas
+        substream_kind, substream = stream.next()
+        for record in substream:
             (parent_id, new_id, versioned_root, tree_references, invdelta) = (
-                deserializer.parse_text_bytes(bytes))
+                deserializer.parse_text_bytes(record.get_bytes_as("fulltext")))
             if parent_id != prev_inv.revision_id:
                 raise AssertionError("invalid base %r != %r" % (parent_id,
                     prev_inv.revision_id))
-            return prev_inv.create_by_apply_delta(invdelta, new_id)
-
-        chunks = []
-        for bytes in byte_stream:
-            chunks.append(decompressor.decompress(bytes))
-            if decompressor.unused_data != "":
-                chunks.append(decompressor.flush())
-                inv = unpack_inv(prev_inv, "".join(chunks))
-                yield inv, inv.revision_id
-                prev_inv = inv
-                unused = decompressor.unused_data
-                decompressor = zlib.decompressobj()
-                chunks = [decompressor.decompress(unused)]
-        chunks.append(decompressor.flush())
-        bytes = "".join(chunks)
-        if bytes:
-            inv = unpack_inv(prev_inv, bytes)
+            inv = prev_inv.create_by_apply_delta(invdelta, new_id)
             yield inv, inv.revision_id
+            prev_inv = inv
 
     def _iter_inventories_vfs(self, revision_ids, ordering=None):
         self._ensure_real()

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Server-side repository related request implmentations."""
+"""Server-side repository related request implementations."""
 
 import bz2
 import os
@@ -45,6 +45,7 @@ from bzrlib.smart.request import (
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import (
+    ChunkedContentFactory,
     NetworkRecordStream,
     record_to_fulltext_bytes,
     )
@@ -1238,14 +1239,13 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def body_stream(self, repository, ordering, revids):
+    def _inventory_delta_stream(self, repository, ordering, revids):
+        prev_inv = _mod_inventory.Inventory(root_id=None,
+            revision_id=_mod_revision.NULL_REVISION)
         serializer = inventory_delta.InventoryDeltaSerializer(
             repository.supports_rich_root(),
             repository._format.supports_tree_reference)
-
-        prev_inv = _mod_inventory.Inventory(root_id=None,
-            revision_id=_mod_revision.NULL_REVISION)
-        self._repository.lock_read()
+        repository.lock_read()
         try:
             for inv, revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
@@ -1253,10 +1253,18 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                 inv_delta = inv._make_delta(prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta)
-                yield zlib.compress("".join(lines))
+                yield ChunkedContentFactory(inv.revision_id,
+                    [prev_inv.revision_id], osutils.sha_strings(lines),
+                    lines)
                 prev_inv = inv
         finally:
-            self._repository.unlock()
+            repository.unlock()
+
+    def body_stream(self, repository, ordering, revids):
+        substream = self._inventory_delta_stream(repository,
+            ordering, revids)
+        return _stream_to_byte_stream([('inventory-delta', substream)],
+            repository._format)
 
     def do_body(self, body_bytes):
         return SuccessfulSmartServerResponse(('ok', ),
