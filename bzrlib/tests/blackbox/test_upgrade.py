@@ -59,7 +59,8 @@ class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
     def get_converter(self, format=None):
         return ConvertOldTestToMeta()
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Ancient Test Format"
 
     def _open(self, transport):
