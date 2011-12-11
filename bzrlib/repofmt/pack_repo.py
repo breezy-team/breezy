@@ -1222,10 +1222,6 @@ class RepositoryPackCollection(object):
         """
         for pack in packs:
             try:
-                os.mkdir("../obsolete_packs/")
-            except OSError:
-                pass
-            try:
                 pack.pack_transport.move(pack.file_name(),
                     '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError), e:
@@ -1496,14 +1492,14 @@ class RepositoryPackCollection(object):
             were found in obsolete_packs.
         """
         found = []
-        try:
-            self.transport.mkdir('obsolete_packs')
-        except errors.FileExists:
-            pass
         obsolete_pack_transport = self.transport.clone('obsolete_packs')
         if preserve is None:
             preserve = set()
-        for filename in obsolete_pack_transport.list_dir('.'):
+        try:
+            obsolete_pack_files = obsolete_pack_transport.list_dir('.')
+        except errors.NoSuchFile:
+            return found
+        for filename in obsolete_pack_files:
             name, ext = osutils.splitext(filename)
             if ext == '.pack':
                 found.append(name)
