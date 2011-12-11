@@ -1467,8 +1467,11 @@ class TestSmartServerBranchRequestGetCheckoutFormat(TestLockedBranch):
         branch = self.make_branch('.', format='2a')
         response = request.execute('', 'True')
         self.assertEqual(
-            smart_req.SmartServerResponse(('ok', )), response)
-        branch.unlock()
+            smart_req.SmartServerResponse(
+                ('Bazaar-NG meta directory, format 1\n',
+                 'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+                 'Bazaar Branch Format 7 (needs bzr 1.6)\n')),
+            response)
 
     def test_heavyweight(self):
         backing = self.get_transport()
@@ -1477,8 +1480,11 @@ class TestSmartServerBranchRequestGetCheckoutFormat(TestLockedBranch):
         branch = self.make_branch('.', format='2a')
         response = request.execute('', 'False')
         self.assertEqual(
-            smart_req.SmartServerResponse(('ok', )), response)
-        branch.unlock()
+            smart_req.SmartServerResponse((
+                'Bazaar-NG meta directory, format 1\n',
+                'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+                'Bazaar Branch Format 7 (needs bzr 1.6)\n')),
+            response)
 
 
 class TestSmartServerBranchRequestUnlock(TestLockedBranch):
