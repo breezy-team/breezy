@@ -1409,24 +1409,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         return not self == other
 
     @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir.
-
-        This is used by bzr native formats that have a "format" file in
-        the repository.  Other methods may be used by different types of
-        control directory.
-        """
-        try:
-            transport = a_bzrdir.get_repository_transport(None)
-            format_string = transport.get_bytes("format")
-            return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string,
-                                            kind='repository')
-
-    @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def register_format(klass, format):
         format_registry.register(format)
@@ -1441,14 +1423,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     def get_default_format(klass):
         """Return the current default format."""
         return format_registry.get_default()
-
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format.
-
-        Note that in pre format ?? repositories the format string is
-        not permitted nor written to disk.
-        """
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""
@@ -1521,7 +1495,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             hook(params)
 
 
-class MetaDirRepositoryFormat(RepositoryFormat):
+class RepositoryFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
@@ -1537,7 +1511,8 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         return matching
 
     def __init__(self):
-        super(MetaDirRepositoryFormat, self).__init__()
+        RepositoryFormat.__init__(self)
+        bzrdir.BzrDirMetaComponentFormat.__init__(self)
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
@@ -1567,9 +1542,20 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         finally:
             control_files.unlock()
 
-    def network_name(self):
-        """Metadir formats have matching disk and network format strings."""
-        return self.get_format_string()
+    @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the repository object in a_bzrdir.
+
+        This is used by bzr native formats that have a "format" file in
+        the repository.  Other methods may be used by different types of
+        control directory.
+        """
+        try:
+            transport = a_bzrdir.get_repository_transport(None)
+            format_string = transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(a_bzrdir)
+        return klass._find_format(format_registry, 'repository', format_string)
 
 
 # formats which have no format string are not discoverable or independently

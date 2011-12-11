@@ -145,7 +145,8 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
     repository_class = DummyForeignVcsRepository
     _commit_builder_class = DummyForeignCommitBuilder
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Dummy Foreign Vcs Repository"
 
     def get_format_description(self):
@@ -229,7 +230,8 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
 
 class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Branch for Testing"
 
     @property

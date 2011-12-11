@@ -830,10 +830,6 @@ class ControlComponentFormat(object):
 
     upgrade_recommended = False
 
-    def get_format_string(self):
-        """Return the format of this format, if usable in meta directories."""
-        raise NotImplementedError(self.get_format_string)
-
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -865,6 +861,10 @@ class ControlComponentFormat(object):
         if recommend_upgrade and self.upgrade_recommended:
             ui.ui_factory.recommend_upgrade(
                 self.get_format_description(), basedir)
+
+    @classmethod
+    def get_format_string(cls):
+        raise NotImplementedError(cls.get_format_string)
 
 
 class ControlComponentFormatRegistry(registry.FormatRegistry):
