@@ -1999,7 +1999,8 @@ class SwitchHookParams(object):
 
 
 class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
-    """Common logic for meta-dir based branch formats."""
+    """Base class for branch formats that live in meta directories.
+    """
 
     def __init__(self):
         BranchFormat.__init__(self)

@@ -1103,11 +1103,20 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
 
 class BzrFormat(object):
-    """Base class for all bzr formats.
+    """Base class for all formats of things living in metadirs.
 
-    This provides the base for all formats which have a "format" or
-    "branch-format" file with a single line containing the base format name and
-    then an optional list of feature flags.
+    This class manages the format string that is stored in the 'format'
+    or 'branch-format' file.
+
+    All classes for (branch-, repository-, workingtree-) formats that
+    live in meta directories and have their own 'format' file
+    (i.e. different from .bzr/branch-format) derive from this class,
+    as well as the relevant base class for their kind
+    (BranchFormat, WorkingTreeFormat, RepositoryFormat).
+
+    Each format is identified by a "format" or "branch-format" file with a
+    single line containing the base format name and then an optional list of
+    feature flags.
 
     Feature flags are supported as of bzr 2.5. Setting feature flags on formats
     will render them inaccessible to older versions of bzr.
@@ -1155,11 +1164,11 @@ class BzrFormat(object):
 
     @classmethod
     def from_string(cls, text):
-        ret = cls()
         format_string = cls.get_format_string()
         if not text.startswith(format_string):
             raise ValueError("Invalid format header %r" % text)
         lines = text[len(format_string):].splitlines()
+        ret = cls()
         for lineno, line in enumerate(lines):
             (necessity, command, feature) = line.split(" ")
             if command != "feature":

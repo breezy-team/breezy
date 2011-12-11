@@ -92,14 +92,15 @@ class TestDefaultFormat(TestCase):
                               old_format.__class__)
 
 
-class SampleRepositoryFormat(repository.RepositoryFormat):
+class SampleRepositoryFormat(repository.RepositoryFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Sample .bzr repository format."
 
@@ -114,10 +115,6 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
 
     def open(self, a_bzrdir, _found=False):
         return "opened repository."
-
-    @classmethod
-    def from_string(cls, format_string):
-        return cls()
 
 
 class SampleExtraRepositoryFormat(repository.RepositoryFormat):
@@ -150,6 +147,15 @@ class TestRepositoryFormat(TestCaseWithTransport):
         self.assertRaises(errors.NoRepositoryPresent,
                           repository.RepositoryFormatMetaDir.find_format,
                           dir)
+
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleRepositoryFormat.from_string(
+                "Sample .bzr repository format."),
+            SampleRepositoryFormat)
+        self.assertRaises(ValueError,
+            SampleRepositoryFormat.from_string,
+                "Different .bzr repository format.")
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
