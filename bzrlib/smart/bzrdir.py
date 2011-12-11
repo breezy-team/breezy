@@ -208,6 +208,25 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             branch_name))
 
 
+class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
+    """Get the format to use for checkouts.
+
+    New in 2.5.
+    """
+
+    def do_bzrdir_request(self):
+        control_format = self._bzrdir.checkout_metadir()
+        control_name = control_format.network_name()
+        if not control_format.fixed_components:
+            branch_name = control_format.get_branch_format().network_name()
+            repo_name = control_format.repository_format.network_name()
+        else:
+            branch_name = ''
+            repo_name = ''
+        return SuccessfulSmartServerResponse(
+            (control_name, repo_name, branch_name))
+
+
 class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
 
     def do(self, path, network_name):

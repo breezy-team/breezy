@@ -547,9 +547,6 @@ request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch',
     'SmartServerBranchRequestGetStackedOnURL', info='read')
 request_handlers.register_lazy(
-    'Branch.get_checkout_format', 'bzrlib.smart.branch',
-    'SmartServerBranchRequestGetCheckoutFormat', info='read')
-request_handlers.register_lazy(
     'Branch.get_physical_lock_status', 'bzrlib.smart.branch',
     'SmartServerBranchRequestGetPhysicalLockStatus', info='read')
 request_handlers.register_lazy(
@@ -585,6 +582,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.revision_id_to_revno', 'bzrlib.smart.branch',
     'SmartServerBranchRequestRevisionIdToRevno', info='read')
+request_handlers.register_lazy(
+    'BzrDir.checkout_metadir', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestCheckoutMetaDir', info='read')
 request_handlers.register_lazy(
     'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestCloningMetaDir', info='read')

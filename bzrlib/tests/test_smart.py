@@ -2456,8 +2456,6 @@ class TestHandlers(tests.TestCase):
             smart_branch.SmartServerBranchPutConfigFile)
         self.assertHandlerEqual('Branch.get_parent',
             smart_branch.SmartServerBranchGetParent)
-        self.assertHandlerEqual('Branch.get_checkout_format',
-            smart_branch.SmartServerBranchRequestGetCheckoutFormat)
         self.assertHandlerEqual('Branch.get_physical_lock_status',
             smart_branch.SmartServerBranchRequestGetPhysicalLockStatus)
         self.assertHandlerEqual('Branch.get_tags_bytes',
@@ -2492,6 +2490,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerRequestInitializeBzrDir)
         self.assertHandlerEqual('BzrDirFormat.initialize_ex_1.16',
             smart_dir.SmartServerRequestBzrDirInitializeEx)
+        self.assertHandlerEqual('BzrDir.checkout_metadir',
+            smart_dir.SmartServerBzrDirRequestCheckoutMetaDir)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart_dir.SmartServerBzrDirRequestCloningMetaDir)
         self.assertHandlerEqual('BzrDir.get_config_file',
