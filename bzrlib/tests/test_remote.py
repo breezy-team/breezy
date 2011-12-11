@@ -2380,11 +2380,15 @@ class TestRepositoryReconcile(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         body = ("garbage_inventories: 2\n"
                 "inconsistent_parents: 3\n")
+        client.add_expected_call(
+            'Repository.lock_write', ('hill/', ''),
+            'success', ('ok', 'a token'))
         client.add_success_response_with_body(body, 'ok')
         reconciler = repo.reconcile()
         self.assertEqual(
-            [('call_expecting_body', 'Repository.reconcile',
-                ('hill/', ))],
+            [('call', 'Repository.lock_write', ('hill/', '')),
+             ('call_expecting_body', 'Repository.reconcile',
+                ('hill/', 'a token'))],
             client._calls)
         self.assertEquals(2, reconciler.garbage_inventories)
         self.assertEquals(3, reconciler.inconsistent_parents)

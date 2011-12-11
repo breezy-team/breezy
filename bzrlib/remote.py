@@ -2152,13 +2152,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository._get_inventory_xml(revision_id)
 
+    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         from bzrlib.reconcile import RepoReconciler
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
             response, handler = self._call_expecting_body(
-                'Repository.reconcile', path)
-        except errors.UnknownSmartMethod:
+                'Repository.reconcile', path, self._lock_token)
+        except (errors.UnknownSmartMethod, errors.TokenLockingNotSupported):
             self._ensure_real()
             return self._real_repository.reconcile(other=other, thorough=thorough)
         if response != ('ok', ):
@@ -3949,6 +3950,9 @@ error_translators.register('ReadError',
     lambda err, find, get_path: errors.ReadError(get_path()))
 error_translators.register('NoSuchFile',
     lambda err, find, get_path: errors.NoSuchFile(get_path()))
+error_translators.register('TokenLockingNotSupported',
+    lambda err, find, get_path: errors.TokenLockingNotSupported(
+        find('repository')))
 error_translators.register('UnsuspendableWriteGroup',
     lambda err, find, get_path: errors.UnsuspendableWriteGroup(
         repository=find('repository')))
