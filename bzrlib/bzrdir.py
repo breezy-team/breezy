@@ -1046,20 +1046,6 @@ class BzrDirMeta1Colo(BzrDirMeta1):
                 self.control_files.unlock()
         self.transport.delete_tree(path)
 
-    def list_branches(self):
-        """See ControlDir.list_branches."""
-        ret = []
-        # Default branch
-        try:
-            ret.append(self.open_branch())
-        except (errors.NotBranchError, errors.NoRepositoryPresent):
-            pass
-
-        # colocated branches
-        ret.extend([self.open_branch(name.decode("utf-8")) for name in
-                    self._read_branch_list()])
-        return ret
-
     def get_branches(self):
         """See ControlDir.get_branches."""
         ret = {}

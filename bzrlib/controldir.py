@@ -106,17 +106,13 @@ class ControlDir(ControlComponent):
         """Return a sequence of all branches local to this control directory.
 
         """
-        try:
-            return [self.open_branch()]
-        except (errors.NotBranchError, errors.NoRepositoryPresent):
-            return []
+        return self.get_branches().values()
 
     def get_branches(self):
         """Return a dictionary with branch_names and branch objects."""
-        branches = self.list_branches()
-        if branches:
-           return {None:branches[0]}
-        else:
+        try:
+           return {None:self.open_branch()}
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
            return {}
 
     def is_control_filename(self, filename):
