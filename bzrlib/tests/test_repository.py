@@ -1345,6 +1345,12 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
         self.assertEqual([pack.name], sorted(obsolete_names))
 
+    def test_pack_no_obsolete_packs_directory(self):
+        """Bug #314314, don't fail if obsolete_packs directory does
+        not exist."""
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        packs._clear_obsolete_packs()
 
 
 class TestPack(TestCaseWithTransport):
