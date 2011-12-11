@@ -2628,7 +2628,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
     def test_single(self):
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryGetInventories(backing)
-        t = self.make_branch_and_tree('.')
+        t = self.make_branch_and_tree('.', format='2a')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", "somecontents")])
         t.add(["file"], ["thefileid"])
@@ -2637,10 +2637,12 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         response = request.do_body("somerev\n")
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
+        stream = [('inventory-delta', [versionedfile.FulltextContentFactory('somerev', None,
+            None, self._get_serialized_inventory_delta(t.branch.repository, 'null:', 'somerev'))])]
+        fmt = bzrdir.format_registry.get('2a')().repository_format
         self.assertEquals(
             "".join(response.body_stream),
-            zlib.compress(self._get_serialized_inventory_delta(t.branch.repository,
-                'null:', 'somerev')))
+            "".join(smart_repo._stream_to_byte_stream(stream, fmt)))
 
     def test_empty(self):
         backing = self.get_transport()

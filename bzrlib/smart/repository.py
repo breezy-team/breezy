@@ -1253,9 +1253,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                 inv_delta = inv._make_delta(prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta)
-                yield ChunkedContentFactory(inv.revision_id,
-                    [prev_inv.revision_id], osutils.sha_strings(lines),
-                    lines)
+                yield ChunkedContentFactory(inv.revision_id, None, None, lines)
                 prev_inv = inv
         finally:
             repository.unlock()
