@@ -8,6 +8,9 @@
   * Don't request unpeeled objects, newer versions of github refuse it.
     (Jelmer Vernooij, #897951)
 
+  * Specify proper number of arguments to action() handler.
+    (Jelmer Vernooij, #894195)
+
 0.6.5	2011-11-08
 
  CHANGES
