@@ -122,7 +122,8 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened branch."
 
 
@@ -143,7 +144,8 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened supported branch."
 
 
@@ -161,7 +163,8 @@ class SampleExtraBranchFormat(_mod_branch.BranchFormat):
     def initialize(self, a_bzrdir, name=None):
         raise NotImplementedError(self.initialize)
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         raise NotImplementedError(self.open)
 
 

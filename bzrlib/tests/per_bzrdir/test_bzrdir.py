@@ -162,8 +162,12 @@ class TestBzrDir(TestCaseWithBzrDir):
                 for file_id, revision_id in text_index.iterkeys():
                     desired_files.append(
                         (file_id, revision_id, (file_id, revision_id)))
-                left_texts = list(left_repo.iter_files_bytes(desired_files))
-                right_texts = list(right_repo.iter_files_bytes(desired_files))
+                left_texts = [(identifier, "".join(bytes_iterator)) for
+                        (identifier, bytes_iterator) in
+                        left_repo.iter_files_bytes(desired_files)]
+                right_texts = [(identifier, "".join(bytes_iterator)) for
+                        (identifier, bytes_iterator) in
+                        right_repo.iter_files_bytes(desired_files)]
                 left_texts.sort()
                 right_texts.sort()
                 self.assertEqual(left_texts, right_texts)
@@ -668,4 +672,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         new_branch = control.create_branch()
         self.assertTrue(new_branch._format.supports_stacking())
 
-
+    def test_no_leftover_dirs(self):
+        # bug 886196: development-colo uses a branch-lock directory
+        # in the user directory rather than the control directory.
+        if not self.bzrdir_format.colocated_branches:
+            raise TestNotApplicable(
+                "format does not support colocated branches")
+        branch = self.make_branch('.', format='development-colo')
+        branch.bzrdir.create_branch(name="another-colocated-branch")
+        self.assertEquals(
+            branch.bzrdir.user_transport.list_dir("."),
+            [".bzr"])

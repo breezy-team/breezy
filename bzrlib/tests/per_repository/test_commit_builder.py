@@ -148,6 +148,21 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
+    def test_updates_branch(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            will_update_branch = builder.updates_branch
+            rev_id = builder.commit('might update the branch')
+        finally:
+            tree.unlock()
+        actually_updated_branch = (tree.branch.last_revision() == rev_id)
+        self.assertEquals(actually_updated_branch, will_update_branch)
+
     def test_commit_with_revision_id_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()

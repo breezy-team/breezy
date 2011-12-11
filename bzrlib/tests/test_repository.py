@@ -31,10 +31,10 @@ from bzrlib.errors import (
     )
 from bzrlib import (
     btree_index,
-    graph,
     symbol_versioning,
     tests,
     transport,
+    vf_search,
     )
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex
@@ -706,7 +706,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
 
         # On a regular pass, getting the inventories and chk pages for rev-2
         # would only get the newly created chk pages
-        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
+        search = vf_search.SearchResult(set(['rev-2']), set(['rev-1']), 1,
                                     set(['rev-2']))
         simple_chk_records = []
         for vf_name, substream in source.get_stream(search):

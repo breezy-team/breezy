@@ -36,6 +36,7 @@ import pprint
 import random
 import re
 import shlex
+import site
 import stat
 import subprocess
 import sys
@@ -94,12 +95,14 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 from bzrlib.tests import (
+    fixtures,
     test_server,
     TestUtil,
     treeshape,
     )
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
+from bzrlib.tests.features import _CompatabilityThunkFeature
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -994,12 +997,21 @@ class TestCase(testtools.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
+
+        timeout = config.GlobalStack().get('selftest.timeout')
+        if timeout:
+            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture.setUp()
+            self.addCleanup(timeout_fixture.cleanUp)
+
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
+
         if bzrlib.global_state is not None:
             self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
-                              config.CommandLineSection())
+                              config.CommandLineStore())
+
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -1978,8 +1990,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
-        handler = logging.StreamHandler(stderr)
-        handler.setLevel(logging.INFO)
+        handler = trace.EncodedStreamHandler(stderr, errors="replace",
+            level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
         old_ui_factory = ui.ui_factory
@@ -2173,6 +2185,11 @@ class TestCase(testtools.TestCase):
 
         if env_changes is None:
             env_changes = {}
+        # Because $HOME is set to a tempdir for the context of a test, modules
+        # installed in the user dir will not be found unless $PYTHONUSERBASE
+        # gets set to the computed directory of this parent process.
+        if site.USER_BASE is not None:
+            env_changes["PYTHONUSERBASE"] = site.USER_BASE
         old_env = {}
 
         def cleanup_environment():
@@ -2369,8 +2386,10 @@ class TestCase(testtools.TestCase):
         from bzrlib.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
+        orig_info = request_handlers.get_info(verb)
         request_handlers.remove(verb)
-        self.addCleanup(request_handlers.register, verb, orig_method)
+        self.addCleanup(request_handlers.register, verb, orig_method,
+            info=orig_info)
 
 
 class CapturedCall(object):
@@ -3488,7 +3507,9 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, 0)
+                pid, status = os.waitpid(self.pid, 0)
+            # GZ 2011-10-18: If status is nonzero, should report to the result
+            #                that something went wrong.
 
     test_blocks = partition_tests(suite, concurrency)
     # Clear the tests from the original suite so it doesn't keep them alive
@@ -3500,24 +3521,28 @@ def fork_for_tests(suite):
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
-            workaround_zealous_crypto_random()
             try:
+                stream = os.fdopen(c2pwrite, 'wb', 1)
+                workaround_zealous_crypto_random()
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
                 # read from stdin (otherwise its a roulette to see what
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
-                # GZ 2011-06-16: Why set stdin to None? Breaks multi fork.
-                #sys.stdin = None
-                stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = AutoTimingTestResultDecorator(
                     SubUnitBzrProtocolClient(stream))
                 process_suite.run(subunit_result)
-            finally:
-                # GZ 2011-06-16: Is always exiting with silent success
-                #                really the right thing? Hurts debugging.
-                os._exit(0)
+            except:
+                # Try and report traceback on stream, but exit with error even
+                # if stream couldn't be created or something else goes wrong.
+                # The traceback is formatted to a string and written in one go
+                # to avoid interleaving lines from multiple failing children.
+                try:
+                    stream.write(traceback.format_exc())
+                finally:
+                    os._exit(1)
+            os._exit(0)
         else:
             os.close(c2pwrite)
             stream = os.fdopen(c2pread, 'rb', 1)
@@ -4068,6 +4093,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
+        'bzrlib.tests.test_vf_search',
         'bzrlib.tests.test_weave',
         'bzrlib.tests.test_whitebox',
         'bzrlib.tests.test_win32utils',
@@ -4456,8 +4482,28 @@ except ImportError:
     pass
 
 
-@deprecated_function(deprecated_in((2, 5, 0)))
-def ModuleAvailableFeature(name):
-    from bzrlib.tests import features
-    return features.ModuleAvailableFeature(name)
-    
+# API compatibility for old plugins; see bug 892622.
+for name in [
+    'Feature',
+    'HTTPServerFeature', 
+    'ModuleAvailableFeature',
+    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
+    'OsFifoFeature', 'UnicodeFilenameFeature',
+    'ByteStringNamedFilesystem', 'UTF8Filesystem',
+    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
+    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
+    'posix_permissions_feature',
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', name,
+        name, 'bzrlib.tests.features')
+
+
+for (old_name, new_name) in [
+    ('UnicodeFilename', 'UnicodeFilenameFeature'),
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', old_name,
+        new_name, 'bzrlib.tests.features')

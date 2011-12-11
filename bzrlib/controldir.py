@@ -222,13 +222,14 @@ class ControlDir(ControlComponent):
         return None
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False):
+                    ignore_fallbacks=False, possible_transports=None):
         """Open the branch object at this ControlDir if one is present.
 
-        If unsupported is True, then no longer supported branch formats can
-        still be opened.
-
-        TODO: static convenience version of this?
+        :param unsupported: if True, then no longer supported branch formats can
+            still be opened.
+        :param ignore_fallbacks: Whether to open fallback repositories
+        :param possible_transports: Transports to use for opening e.g.
+            fallback repositories.
         """
         raise NotImplementedError(self.open_branch)
 
@@ -240,8 +241,6 @@ class ControlDir(ControlComponent):
         get at a repository.
 
         :param _unsupported: a private parameter, not part of the api.
-
-        TODO: static convenience version of this?
         """
         raise NotImplementedError(self.open_repository)
 
@@ -275,7 +274,7 @@ class ControlDir(ControlComponent):
         branch and discards it, and that's somewhat expensive.)
         """
         try:
-            self.open_branch(name)
+            self.open_branch(name, ignore_fallbacks=True)
             return True
         except errors.NotBranchError:
             return False
