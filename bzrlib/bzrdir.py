@@ -1502,7 +1502,6 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
-
 class BzrDirMetaFormat1(BzrDirFormat):
     """Bzr meta control format 1
 
