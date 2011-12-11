@@ -1107,6 +1107,12 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
 
     This class manages the format string that is stored in the 'format'
     or 'branch-format' file.
+
+    All classes for (branch-, repository-, workingtree-) formats that
+    live in meta directories and have their own 'format' file
+    (i.e. different from .bzr/branch-format) derive from this class,
+    as well as the relevant base class for their kind
+    (BranchFormat, WorkingTreeFormat, RepositoryFormat).
     """
 
     @classmethod
