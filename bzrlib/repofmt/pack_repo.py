@@ -1221,8 +1221,15 @@ class RepositoryPackCollection(object):
         """
         for pack in packs:
             try:
-                pack.pack_transport.move(pack.file_name(),
-                    '../obsolete_packs/' + pack.file_name())
+                try:
+                    pack.pack_transport.move(pack.file_name(),
+                        '../obsolete_packs/' + pack.file_name())
+                except errors.NoSuchFile:
+                    # perhaps obsolete_packs was removed? Let's create it and
+                    # try again
+                    pack.pack_transport.mkdir('../obsolete_packs/')
+                    pack.pack_transport.move(pack.file_name(),
+                        '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError), e:
                 # TODO: Should these be warnings or mutters?
                 mutter("couldn't rename obsolete pack, skipping it:\n%s"

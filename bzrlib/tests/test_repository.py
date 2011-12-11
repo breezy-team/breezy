@@ -1070,6 +1070,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
             sorted(set([osutils.splitext(n)[0] for n in
                         packs._index_transport.list_dir('.')])))
 
+    def test__obsolete_packs_missing_directory(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        names = packs.names()
+        pack = packs.get_pack_by_name(names[0])
+        # Schedule this one for removal
+        packs._remove_pack_from_memory(pack)
+        # Now trigger the obsoletion, and ensure that all the remaining files
+        # are still renamed
+        packs._obsolete_packs([pack])
+        self.assertEqual([n + '.pack' for n in names[1:]],
+                         sorted(packs._pack_transport.list_dir('.')))
+        # names[0] should not be present in the index anymore
+        self.assertEqual(names[1:],
+            sorted(set([osutils.splitext(n)[0] for n in
+                        packs._index_transport.list_dir('.')])))
+
     def test_pack_distribution_zero(self):
         packs = self.get_packs()
         self.assertEqual([0], packs.pack_distribution(0))
