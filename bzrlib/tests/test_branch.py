@@ -101,14 +101,15 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
     # recursive section - that is, it appends the branch name.
 
 
-class SampleBranchFormat(_mod_branch.BranchFormat):
+class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
@@ -126,20 +127,17 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
              possible_transports=None):
         return "opened branch."
 
-    @classmethod
-    def from_string(cls, text):
-        return cls()
-
 
 # Demonstrating how lazy loading is often implemented:
 # A constant string is created.
 SampleSupportedBranchFormatString = "Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
-class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
+class SampleSupportedBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample supported format."""
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return SampleSupportedBranchFormatString
 
@@ -151,10 +149,6 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
     def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
              possible_transports=None):
         return "opened supported branch."
-
-    @classmethod
-    def from_string(cls, format_string):
-        return cls()
 
 
 class SampleExtraBranchFormat(_mod_branch.BranchFormat):
@@ -202,6 +196,13 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         self.addCleanup(_mod_branch.format_registry.remove, factory)
         b = _mod_branch.Branch.open(self.get_url())
         self.assertEqual(b, "opened supported branch.")
+
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleBranchFormat.from_string("Sample branch format."),
+            SampleBranchFormat)
+        self.assertRaises(ValueError,
+            SampleBranchFormat.from_string, "Different branch format.")
 
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -723,6 +724,7 @@ class TestPullResult(tests.TestCase):
         r.new_revno = 20
         f = StringIO()
         r.report(f)
+        self.assertEqual("Now on revision 20.\n", f.getvalue())
         self.assertEqual("Now on revision 20.\n", f.getvalue())
 
     def test_report_unchanged(self):
