@@ -20,7 +20,10 @@ from dulwich.server import TCPGitServer
 
 import sys
 
-from bzrlib import trace
+from bzrlib import (
+    errors,
+    trace,
+    )
 
 from bzrlib.bzrdir import (
     BzrDir,
@@ -61,9 +64,8 @@ class BzrBackend(Backend):
 class BzrBackendRepo(BackendRepo):
 
     def __init__(self, transport, mapping):
-        self.transport = transport
         self.mapping = mapping
-        self.repo_dir = BzrDir.open_from_transport(self.transport)
+        self.repo_dir = BzrDir.open_from_transport(transport)
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
         self.refs = get_refs_container(self.repo_dir, self.object_store)
@@ -159,12 +161,16 @@ def serve_command(handler_cls, backend, inf=sys.stdin, outf=sys.stdout):
 
 
 def serve_git_receive_pack(transport, host=None, port=None, inet=False):
-    assert inet
+    if not inet:
+        raise errors.BzrCommandError(
+            "git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)
     sys.exit(serve_command(ReceivePackHandler, backend=backend))
 
 
 def serve_git_upload_pack(transport, host=None, port=None, inet=False):
-    assert inet
+    if not inet:
+        raise errors.BzrCommandError(
+            "git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)
     sys.exit(serve_command(UploadPackHandler, backend=backend))
