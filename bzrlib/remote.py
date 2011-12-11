@@ -1841,7 +1841,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         byte_stream = response_handler.read_streamed_body()
-        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream)
+        decoded = smart_repo._byte_stream_to_stream(byte_stream)
+        if decoded is None:
+            # no results whatsoever
+            return
+        src_format, stream = decoded
         if src_format.network_name() != self._format.network_name():
             raise AssertionError(
                 "Mismatched RemoteRepository and stream src %r, %r" % (

@@ -2637,8 +2637,10 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         response = request.do_body("somerev\n")
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
-        stream = [('inventory-delta', [versionedfile.FulltextContentFactory('somerev', None,
-            None, self._get_serialized_inventory_delta(t.branch.repository, 'null:', 'somerev'))])]
+        stream = [('inventory-delta', [
+            versionedfile.FulltextContentFactory('somerev', None, None,
+                self._get_serialized_inventory_delta(
+                    t.branch.repository, 'null:', 'somerev'))])]
         fmt = bzrdir.format_registry.get('2a')().repository_format
         self.assertEquals(
             "".join(response.body_stream),

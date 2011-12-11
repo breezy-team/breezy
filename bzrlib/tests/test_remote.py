@@ -69,6 +69,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
+    _stream_to_byte_stream,
     )
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
@@ -4224,11 +4225,15 @@ class TestRepositoryIterInventories(TestRemoteRepository):
     def test_single_empty(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = bzrdir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-delta', [
+            versionedfile.FulltextContentFactory('somerevid', None, None,
+                self._serialize_inv_delta('null:', 'somerevid', []))])]
         client.add_expected_call(
             'VersionedFileRepository.get_inventories', ('quack/', 'unordered'),
             'success', ('ok', ),
-            iter([zlib.compress(self._serialize_inv_delta("null:", "somerevid",
-                []))]))
+            _stream_to_byte_stream(stream, fmt))
         ret = list(repo.iter_inventories(["somerevid"]))
         self.assertLength(1, ret)
         inv = ret[0]
