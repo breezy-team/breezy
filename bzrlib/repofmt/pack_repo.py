@@ -1227,7 +1227,10 @@ class RepositoryPackCollection(object):
                 except errors.NoSuchFile:
                     # perhaps obsolete_packs was removed? Let's create it and
                     # try again
-                    pack.pack_transport.mkdir('../obsolete_packs/')
+                    try:
+                        pack.pack_transport.mkdir('../obsolete_packs/')
+                    except errors.FileExists:
+                        pass
                     pack.pack_transport.move(pack.file_name(),
                         '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError), e:
