@@ -237,7 +237,7 @@ def _clear_cache():
     _to_escaped_map.clear()
 
 
-def unpack_xml_inventory_entry(elt, entry_cache=None, return_from_cache=False):
+def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
     elt_get = elt.get
     file_id = elt_get('file_id')
     revision = elt_get('revision')
@@ -327,3 +327,115 @@ def unpack_xml_inventory_entry(elt, entry_cache=None, return_from_cache=False):
         entry_cache[key] = ie.copy()
 
     return ie
+
+
+def unpack_inventory_flat(elt, format_num, unpack_entry):
+    """Unpack a flat XML inventory.
+
+    :param elt: XML element for the inventory
+    :param format_num: Expected format number
+    :param unpack_entry: Function for unpacking inventory entries
+    :return: An inventory
+    :raise UnexpectedInventoryFormat: When unexpected elements or data is
+        encountered
+    """
+    if elt.tag != 'inventory':
+        raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
+    format = elt.get('format')
+    if format != format_num:
+        raise errors.UnexpectedInventoryFormat('Invalid format version %r'
+                                               % format)
+    revision_id = elt.get('revision_id')
+    if revision_id is not None:
+        revision_id = cache_utf8.encode(revision_id)
+    inv = inventory.Inventory(root_id=None, revision_id=revision_id)
+    for e in elt:
+        ie = unpack_entry(e)
+        inv.add(ie)
+    return inv
+
+
+def serialize_inventory_flat(inv, append_inventory_root, root_id,
+        supported_kinds, working):
+    """Serialize an inventory to a flat XML file.
+
+    :param inv: Inventory to serialize
+    :param working: If True skip history data - text_sha1, text_size,
+        reference_revision, symlink_target.    self._check_revisions(inv)
+    """
+    output = []
+    append = output.append
+    append_inventory_root(append, inv)
+    entries = inv.iter_entries()
+    # Skip the root
+    root_path, root_ie = entries.next()
+    for path, ie in entries:
+        if ie.parent_id != root_id:
+            parent_str = ' parent_id="'
+            parent_id  = encode_and_escape(ie.parent_id)
+        else:
+            parent_str = ''
+            parent_id  = ''
+        if ie.kind == 'file':
+            if ie.executable:
+                executable = ' executable="yes"'
+            else:
+                executable = ''
+            if not working:
+                append('<file%s file_id="%s name="%s%s%s revision="%s '
+                    'text_sha1="%s" text_size="%d" />\n' % (
+                    executable, encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name), parent_str, parent_id,
+                    encode_and_escape(ie.revision), ie.text_sha1,
+                    ie.text_size))
+            else:
+                append('<file%s file_id="%s name="%s%s%s />\n' % (
+                    executable, encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name), parent_str, parent_id))
+        elif ie.kind == 'directory':
+            if not working:
+                append('<directory file_id="%s name="%s%s%s revision="%s '
+                    '/>\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id,
+                    encode_and_escape(ie.revision)))
+            else:
+                append('<directory file_id="%s name="%s%s%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id))
+        elif ie.kind == 'symlink':
+            if not working:
+                append('<symlink file_id="%s name="%s%s%s revision="%s '
+                    'symlink_target="%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id,
+                    encode_and_escape(ie.revision),
+                    encode_and_escape(ie.symlink_target)))
+            else:
+                append('<symlink file_id="%s name="%s%s%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id))
+        elif ie.kind == 'tree-reference':
+            if ie.kind not in supported_kinds:
+                raise errors.UnsupportedInventoryKind(ie.kind)
+            if not working:
+                append('<tree-reference file_id="%s name="%s%s%s '
+                    'revision="%s reference_revision="%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id,
+                    encode_and_escape(ie.revision),
+                    encode_and_escape(ie.reference_revision)))
+            else:
+                append('<tree-reference file_id="%s name="%s%s%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id))
+        else:
+            raise errors.UnsupportedInventoryKind(ie.kind)
+    append('</inventory>\n')
+    return output

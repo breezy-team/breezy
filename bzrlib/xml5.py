@@ -30,6 +30,11 @@ class Serializer_v5(xml6.Serializer_v6):
     format_num = '5'
     root_id = inventory.ROOT_ID
 
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
+        # This is here because it's overridden by xml7
+        return xml_serializer.unpack_inventory_entry(elt, entry_cache,
+                return_from_cache)
+
     def _unpack_inventory(self, elt, revision_id, entry_cache=None,
                           return_from_cache=False):
         """Construct from XML Element
@@ -52,7 +57,7 @@ class Serializer_v5(xml6.Serializer_v6):
         #   avoiding attributes     2.46s
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
-        unpack_entry = xml_serializer.unpack_xml_inventory_entry
+        unpack_entry = self._unpack_entry
         byid = inv._byid
         for e in elt:
             ie = unpack_entry(e, entry_cache=entry_cache,

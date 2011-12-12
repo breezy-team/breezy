@@ -23,7 +23,6 @@ lazy_import.lazy_import(globals(),
 """
 from bzrlib import (
     xml_serializer,
-    xml8,
     )
 """)
 from bzrlib import (
@@ -146,12 +145,21 @@ class CHKSerializer(serializer.Serializer):
     format_num = '9'
     revision_format_num = None
     support_altered_by_hack = False
-    root_id = None
     supported_kinds = set(['file', 'directory', 'symlink'])
 
     def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
         self.search_key_name = search_key_name
+
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
+                          return_from_cache=False):
+        """Construct from XML Element"""
+        def unpack_entry(entry_elt):
+            return xml_serializer.unpack_inventory_entry(entry_elt,
+                entry_cache=entry_cache, return_from_cache=return_from_cache)
+        inv = xml_serializer.unpack_inventory_flat(elt, self.format_num,
+            unpack_entry)
+        return inv
 
     def read_inventory_from_string(self, xml_string, revision_id=None,
                                    entry_cache=None, return_from_cache=False):
@@ -169,13 +177,15 @@ class CHKSerializer(serializer.Serializer):
             make some operations significantly faster.
         """
         try:
-            return self._unpack_inventory(xml_serializer.fromstring(xml_string), revision_id,
-                                          entry_cache=entry_cache,
-                                          return_from_cache=return_from_cache)
+            return self._unpack_inventory(
+                xml_serializer.fromstring(xml_string), revision_id,
+                entry_cache=entry_cache,
+                return_from_cache=return_from_cache)
         except xml_serializer.ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f, revision_id=None):
+        """Read an inventory from a file-like object."""
         try:
             try:
                 return self._unpack_inventory(self._read_element(f),
@@ -209,15 +219,28 @@ class CHKSerializer(serializer.Serializer):
             reference_revision, symlink_target.
         :return: The inventory as a list of lines.
         """
-        output = xml8.serialize_inventory_flat(inv,
+        output = xml_serializer.serialize_inventory_flat(inv,
             self._append_inventory_root,
-            self.root_id, self.supported_kinds, working)
+            root_id=None, supported_kinds=self.supported_kinds, 
+            working=working)
         if f is not None:
             f.writelines(output)
-        # Just to keep the cache from growing without bounds
-        # but we may actually not want to do clear the cache
-        #_clear_cache()
         return output
+
+    def _append_inventory_root(self, append, inv):
+        """Append the inventory root to output."""
+        if inv.revision_id is not None:
+            revid1 = ' revision_id="'
+            revid2 = xml_serializer.encode_and_escape(inv.revision_id)
+        else:
+            revid1 = ""
+            revid2 = ""
+        append('<inventory format="%s"%s%s>\n' % (
+            self.format_num, revid1, revid2))
+        append('<directory file_id="%s name="%s revision="%s />\n' % (
+            xml_serializer.encode_and_escape(inv.root.file_id),
+            xml_serializer.encode_and_escape(inv.root.name),
+            xml_serializer.encode_and_escape(inv.root.revision)))
 
 
 chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')
