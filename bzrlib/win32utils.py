@@ -20,6 +20,7 @@ Only one dependency: ctypes should be installed.
 """
 
 import glob
+import operator
 import os
 import struct
 import sys
@@ -66,9 +67,12 @@ except ImportError:
 else:
     if winver == 'Windows 98':
         create_buffer = ctypes.create_string_buffer
+        def extract_buffer(buf):
+            return buf.val.decode("mbcs")
         suffix = 'A'
     else:
         create_buffer = ctypes.create_unicode_buffer
+        extract_buffer = operator.attrgetter("value")
         suffix = 'W'
 try:
     import pywintypes
@@ -305,10 +309,6 @@ def get_home_location():
 def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -320,7 +320,7 @@ def get_user_name():
             buf = create_buffer(UNLEN+1)
             n = ctypes.c_int(UNLEN+1)
             if GetUserName(buf, ctypes.byref(n)):
-                return buf.value
+                return extract_buffer(buf)
     # otherwise try env variables
     return get_environ_unicode('USERNAME')
 
@@ -333,8 +333,7 @@ def get_host_name():
     """Return host machine name.
     If name cannot be obtained return None.
 
-    :return: A unicode string representing the host name. On win98, this may be
-        a plain string as win32 api doesn't support unicode.
+    :return: A unicode string representing the host name.
     """
     if has_win32api:
         try:
@@ -357,7 +356,7 @@ def get_host_name():
             if (GetComputerNameEx is not None
                 and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
                                       buf, ctypes.byref(n))):
-                return buf.value
+                return extract_buffer(buf)
 
             # Try GetComputerName in case GetComputerNameEx wasn't found
             # It returns the NETBIOS name, which isn't as good, but still ok.
@@ -367,10 +366,12 @@ def get_host_name():
                                       None)
             if (GetComputerName is not None
                 and GetComputerName(buf, ctypes.byref(n))):
-                return buf.value
+                return extract_buffer(buf)
     return get_environ_unicode('COMPUTERNAME')
 
 
+@symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))
 def _ensure_unicode(s):
     if s and type(s) != unicode:
         from bzrlib import osutils
@@ -384,11 +385,11 @@ get_appdata_location_unicode = symbol_versioning.deprecated_method(
 get_home_location_unicode = symbol_versioning.deprecated_method(
     symbol_versioning.deprecated_in((2, 5, 0)))(get_home_location)
 
-def get_user_name_unicode():
-    return _ensure_unicode(get_user_name())
+get_user_name_unicode = symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_user_name)
 
-def get_host_name_unicode():
-    return _ensure_unicode(get_host_name())
+get_host_name_unicode = symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_host_name)
 
 
 def _ensure_with_dir(path):
