@@ -225,11 +225,16 @@ class Serializer_v8(XMLSerializer):
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
 
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
+        # This is here because it's overridden by xml7
+        return unpack_inventory_entry(elt, entry_cache,
+                return_from_cache)
+
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
         """Construct from XML Element"""
         def unpack_entry(entry_elt):
-            return unpack_inventory_entry(entry_elt,
+            return self._unpack_entry(entry_elt,
                 entry_cache=entry_cache, return_from_cache=return_from_cache)
         inv = unpack_inventory_flat(elt, self.format_num, unpack_entry)
         self._check_cache_size(len(inv), entry_cache)
