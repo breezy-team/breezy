@@ -337,6 +337,17 @@ def _posix_path_from_environ(key):
         raise errors.BadFilenameEncoding(val, _fs_enc)
 
 
+def _posix_getuser_unicode():
+    """Get username from environment or password database as unicode"""
+    name = getpass.getuser()
+    user_encoding = get_user_encoding()
+    try:
+        return name.decode(user_encoding)
+    except UnicodeDecodeError:
+        raise errors.BzrError("Encoding of username %r is unsupported by %s "
+            "application locale." % (name, user_encoding))
+
+
 def _win32_fixdrive(path):
     """Force drive letters to be consistent.
 
@@ -432,6 +443,7 @@ realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
 path_from_environ = _posix_path_from_environ
+getuser_unicode = _posix_getuser_unicode
 getcwd = os.getcwdu
 rename = os.rename
 dirname = os.path.dirname
@@ -494,6 +506,7 @@ if sys.platform == 'win32':
     if f is not None:
         get_unicode_argv = f
     path_from_environ = win32utils.get_environ_unicode
+    getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
@@ -2450,30 +2463,6 @@ if sys.platform == 'win32':
         return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
     open_file = open
-
-
-def getuser_unicode():
-    """Return the username as unicode.
-    """
-    try:
-        user_encoding = get_user_encoding()
-        username = getpass.getuser().decode(user_encoding)
-    except UnicodeDecodeError:
-        raise errors.BzrError("Can't decode username as %s." % \
-                user_encoding)
-    except ImportError, e:
-        if sys.platform != 'win32':
-            raise
-        if str(e) != 'No module named pwd':
-            raise
-        # https://bugs.launchpad.net/bzr/+bug/660174
-        # getpass.getuser() is unable to return username on Windows
-        # if there is no USERNAME environment variable set.
-        # That could be true if bzr is running as a service,
-        # e.g. running `bzr serve` as a service on Windows.
-        # We should not fail with traceback in this case.
-        username = u'UNKNOWN'
-    return username
 
 
 def available_backup_name(base, exists):
