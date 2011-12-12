@@ -321,6 +321,22 @@ def _posix_normpath(path):
     return path
 
 
+def _posix_path_from_environ(key):
+    """Get unicode path from `key` in environment or None if not present
+
+    Note that posix systems use arbitrary byte strings for filesystem objects,
+    so a path that raises BadFilenameEncoding here may still be accessible.
+    """
+    val = os.environ.get(key, None)
+    if val is None:
+        return val
+    try:
+        return val.decode(_fs_enc)
+    except UnicodeDecodeError:
+        # GZ 2011-12-12:Ideally want to include `key` in the exception message
+        raise errors.BadFilenameEncoding(val, _fs_enc)
+
+
 def _win32_fixdrive(path):
     """Force drive letters to be consistent.
 
@@ -415,6 +431,7 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
+path_from_environ = _posix_path_from_environ
 getcwd = os.getcwdu
 rename = os.rename
 dirname = os.path.dirname
@@ -476,6 +493,7 @@ if sys.platform == 'win32':
     f = win32utils.get_unicode_argv     # special function or None
     if f is not None:
         get_unicode_argv = f
+    path_from_environ = win32utils.get_environ_unicode
 
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd

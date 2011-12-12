@@ -609,7 +609,16 @@ if has_ctypes and winver == 'Windows NT':
                 return buffer[:length]
             buffer_size = length
 else:
-    get_unicode_argv = get_environ_unicode = None
+    get_unicode_argv = None
+    def get_environ_unicode(key, default=None):
+        """Get `key` from environment as unicode or `default` if unset
+
+        Fallback version that should basically never be needed.
+        """
+        try:
+            return os.environ[key].decode("mbcs")
+        except KeyError:
+            return default
 
 
 if has_win32api:
