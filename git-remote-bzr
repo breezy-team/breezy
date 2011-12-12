@@ -55,7 +55,7 @@ from bzrlib.plugins.git.object_store import (
     get_object_store,
     )
 from bzrlib.plugins.git.refs import (
-    get_refs,
+    get_refs_container,
     ref_to_branch_name,
     )
 from bzrlib.plugins.git.repository import (
@@ -85,8 +85,8 @@ def cmd_list(argv, name, remote_dir):
     object_store = get_object_store(repo)
     object_store.lock_read()
     try:
-        refs = get_refs(remote_dir, object_store)
-        for ref, git_sha1 in refs.iteritems():
+        refs = get_refs_container(remote_dir, object_store)
+        for ref, git_sha1 in refs.as_dict().iteritems():
             sys.stdout.write("%s %s\n" % (git_sha1, ref))
         sys.stdout.write("\n")
     finally:
