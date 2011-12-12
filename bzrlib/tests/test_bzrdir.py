@@ -253,6 +253,10 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
     def open(self, transport, _found=None):
         return "opened branch."
 
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
+
 
 class BzrDirFormatTest1(bzrdir.BzrDirMetaFormat1):
 
@@ -1244,7 +1248,7 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
         self.test_branch = _TestBranch(self.transport)
         self.test_branch.repository = self.create_repository()
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, possible_transports=None):
         return self.test_branch
 
     def cloning_metadir(self, require_stacking=False):

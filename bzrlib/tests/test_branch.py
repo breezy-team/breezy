@@ -101,14 +101,15 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
     # recursive section - that is, it appends the branch name.
 
 
-class SampleBranchFormat(_mod_branch.BranchFormat):
+class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
@@ -122,7 +123,8 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened branch."
 
 
@@ -131,10 +133,11 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
 SampleSupportedBranchFormatString = "Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
-class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
+class SampleSupportedBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample supported format."""
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return SampleSupportedBranchFormatString
 
@@ -143,7 +146,8 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened supported branch."
 
 
@@ -161,7 +165,8 @@ class SampleExtraBranchFormat(_mod_branch.BranchFormat):
     def initialize(self, a_bzrdir, name=None):
         raise NotImplementedError(self.initialize)
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         raise NotImplementedError(self.open)
 
 
@@ -177,7 +182,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = _mod_branch.BranchFormat.find_format(dir)
+            found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
@@ -192,17 +197,24 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         b = _mod_branch.Branch.open(self.get_url())
         self.assertEqual(b, "opened supported branch.")
 
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleBranchFormat.from_string("Sample branch format."),
+            SampleBranchFormat)
+        self.assertRaises(ValueError,
+            SampleBranchFormat.from_string, "Different branch format.")
+
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NotBranchError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_register_unregister_format(self):
@@ -712,6 +724,7 @@ class TestPullResult(tests.TestCase):
         r.new_revno = 20
         f = StringIO()
         r.report(f)
+        self.assertEqual("Now on revision 20.\n", f.getvalue())
         self.assertEqual("Now on revision 20.\n", f.getvalue())
 
     def test_report_unchanged(self):

@@ -36,6 +36,7 @@ import pprint
 import random
 import re
 import shlex
+import site
 import stat
 import subprocess
 import sys
@@ -94,6 +95,7 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 from bzrlib.tests import (
+    fixtures,
     test_server,
     TestUtil,
     treeshape,
@@ -995,12 +997,21 @@ class TestCase(testtools.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
+
+        timeout = config.GlobalStack().get('selftest.timeout')
+        if timeout:
+            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture.setUp()
+            self.addCleanup(timeout_fixture.cleanUp)
+
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
+
         if bzrlib.global_state is not None:
             self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
                               config.CommandLineStore())
+
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -1979,8 +1990,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
-        handler = logging.StreamHandler(stderr)
-        handler.setLevel(logging.INFO)
+        handler = trace.EncodedStreamHandler(stderr, errors="replace",
+            level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
         old_ui_factory = ui.ui_factory
@@ -2174,6 +2185,11 @@ class TestCase(testtools.TestCase):
 
         if env_changes is None:
             env_changes = {}
+        # Because $HOME is set to a tempdir for the context of a test, modules
+        # installed in the user dir will not be found unless $PYTHONUSERBASE
+        # gets set to the computed directory of this parent process.
+        if site.USER_BASE is not None:
+            env_changes["PYTHONUSERBASE"] = site.USER_BASE
         old_env = {}
 
         def cleanup_environment():
@@ -2370,8 +2386,10 @@ class TestCase(testtools.TestCase):
         from bzrlib.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
+        orig_info = request_handlers.get_info(verb)
         request_handlers.remove(verb)
-        self.addCleanup(request_handlers.register, verb, orig_method)
+        self.addCleanup(request_handlers.register, verb, orig_method,
+            info=orig_info)
 
 
 class CapturedCall(object):
@@ -4075,6 +4093,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
+        'bzrlib.tests.test_vf_search',
         'bzrlib.tests.test_weave',
         'bzrlib.tests.test_whitebox',
         'bzrlib.tests.test_win32utils',

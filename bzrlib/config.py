@@ -2331,8 +2331,10 @@ class Option(object):
 
         :param default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
-            into the proper type or a python object that can be stringified (so
-            only the empty list is supported for example).
+            into the proper type, a callable returning a unicode string so that
+            ``from_unicode`` can be used on the return value, or a python
+            object that can be stringified (so only the empty list is supported
+            for example).
 
         :param default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
@@ -2367,6 +2369,8 @@ class Option(object):
         elif isinstance(default, (str, unicode, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
+        elif callable(default):
+            self.default = default
         else:
             # other python objects are not expected
             raise AssertionError('%r is not supported as a default value'
@@ -2407,7 +2411,13 @@ class Option(object):
                 continue
         if value is None:
             # Otherwise, fallback to the value defined at registration
-            value = self.default
+            if callable(self.default):
+                value = self.default()
+                if not isinstance(value, unicode):
+                    raise AssertionError(
+                    'Callable default values should be unicode')
+            else:
+                value = self.default
         return value
 
     def get_help_text(self, additional_see_also=None, plain=True):
@@ -2602,6 +2612,14 @@ If true (default), repository changes are flushed through the OS buffers
 to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
 '''))
+
+option_registry.register(
+    Option('selftest.timeout',
+        default='600',
+        from_unicode=int_from_store,
+        help='Abort selftest if one test takes longer than this many seconds',
+        ))
+
 option_registry.register(
     Option('send_strict', default=None,
            from_unicode=bool_from_store,
@@ -2756,7 +2774,7 @@ class CommandLineStore(Store):
             self.options[name] = value
 
     def external_url(self):
-        # Not an url but it makes debugging easier and it never needed
+        # Not an url but it makes debugging easier and is never needed
         # otherwise
         return 'cmdline'
 
@@ -2776,16 +2794,10 @@ class IniFileStore(Store):
         serialize/deserialize the config file.
     """
 
-    def __init__(self, transport, file_name):
+    def __init__(self):
         """A config Store using ConfigObj for storage.
-
-        :param transport: The transport object where the config file is located.
-
-        :param file_name: The config file basename in the transport directory.
         """
         super(IniFileStore, self).__init__()
-        self.transport = transport
-        self.file_name = file_name
         self._config_obj = None
 
     def is_loaded(self):
@@ -2794,16 +2806,29 @@ class IniFileStore(Store):
     def unload(self):
         self._config_obj = None
 
+    def _load_content(self):
+        """Load the config file bytes.
+
+        This should be provided by subclasses
+
+        :return: Byte string
+        """
+        raise NotImplementedError(self._load_content)
+
+    def _save_content(self, content):
+        """Save the config file bytes.
+
+        This should be provided by subclasses
+
+        :param content: Config file bytes to write
+        """
+        raise NotImplementedError(self._save_content)
+
     def load(self):
         """Load the store from the associated file."""
         if self.is_loaded():
             return
-        try:
-            content = self.transport.get_bytes(self.file_name)
-        except errors.PermissionDenied:
-            trace.warning("Permission denied while trying to load "
-                          "configuration store %s.", self.external_url())
-            raise
+        content = self._load_content()
         self._load_from_string(content)
         for hook in ConfigHooks['load']:
             hook(self)
@@ -2832,17 +2857,9 @@ class IniFileStore(Store):
             return
         out = StringIO()
         self._config_obj.write(out)
-        self.transport.put_bytes(self.file_name, out.getvalue())
+        self._save_content(out.getvalue())
         for hook in ConfigHooks['save']:
             hook(self)
-
-    def external_url(self):
-        # FIXME: external_url should really accepts an optional relpath
-        # parameter (bug #750169) :-/ -- vila 2011-04-04
-        # The following will do in the interim but maybe we don't want to
-        # expose a path here but rather a config ID and its associated
-        # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name)
 
     def get_sections(self):
         """Get the configobj section in the file order.
@@ -2877,13 +2894,47 @@ class IniFileStore(Store):
         return self.mutable_section_class(section_id, section)
 
 
+class TransportIniFileStore(IniFileStore):
+    """IniFileStore that loads files from a transport.
+    """
+
+    def __init__(self, transport, file_name):
+        """A Store using a ini file on a Transport
+
+        :param transport: The transport object where the config file is located.
+        :param file_name: The config file basename in the transport directory.
+        """
+        super(TransportIniFileStore, self).__init__()
+        self.transport = transport
+        self.file_name = file_name
+
+    def _load_content(self):
+        try:
+            return self.transport.get_bytes(self.file_name)
+        except errors.PermissionDenied:
+            trace.warning("Permission denied while trying to load "
+                          "configuration store %s.", self.external_url())
+            raise
+
+    def _save_content(self, content):
+        self.transport.put_bytes(self.file_name, content)
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return urlutils.join(self.transport.external_url(), self.file_name)
+
+
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
 # unlockable stores for use with objects that can already ensure the locking
 # (think branches). If different stores (not based on ConfigObj) are created,
 # they may face the same issue.
 
 
-class LockableIniFileStore(IniFileStore):
+class LockableIniFileStore(TransportIniFileStore):
     """A ConfigObjStore using locks on save to ensure store integrity."""
 
     def __init__(self, transport, file_name, lock_dir_name=None):
@@ -2951,7 +3002,7 @@ class LocationStore(LockableIniFileStore):
         self.id = 'locations'
 
 
-class BranchStore(IniFileStore):
+class BranchStore(TransportIniFileStore):
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
@@ -3115,7 +3166,7 @@ class LocationMatcher(SectionMatcher):
             yield self.store, section
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+_option_ref_re = lazy_regex.lazy_compile('({[^{}\n]+})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.
@@ -3364,10 +3415,8 @@ class LocationStack(_CompatibleStack):
         
         :param location: A URL prefix to """
         lstore = LocationStore()
-        if location is not None:
-            location = urlutils.normalize_url(location)
-            if location.startswith('file://'):
-                location = urlutils.local_path_from_url(location)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
@@ -3380,7 +3429,7 @@ class BranchStack(_CompatibleStack):
     """Per-location options falling back to branch then global options stack."""
 
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         lstore = LocationStore()
         matcher = LocationMatcher(lstore, branch.base)
         gstore = GlobalStore()
@@ -3395,8 +3444,12 @@ class BranchStack(_CompatibleStack):
 class RemoteControlStack(_CompatibleStack):
     """Remote control-only options stack."""
 
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote bzr dirs. RemoteControlStack only uses
+    # control.conf and is used only for stack options.
+
     def __init__(self, bzrdir):
-        cstore = ControlStore(bzrdir)
+        cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
             [cstore.get_sections],
             cstore)
@@ -3406,8 +3459,12 @@ class RemoteControlStack(_CompatibleStack):
 class RemoteBranchStack(_CompatibleStack):
     """Remote branch-only options stack."""
 
+    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
+    # with the stack used for remote branches. RemoteBranchStack only uses
+    # branch.conf and is used only for the stack options.
+
     def __init__(self, branch):
-        bstore = BranchStore(branch)
+        bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
             [bstore.get_sections],
             bstore)
@@ -3442,13 +3499,13 @@ class cmd_config(commands.Command):
         # their own config files (or not) and will also address
         # http://pad.lv/788991 -- vila 20101115
         commands.Option('scope', help='Reduce the scope to the specified'
-                        ' configuration file',
+                        ' configuration file.',
                         type=unicode),
         commands.Option('all',
             help='Display all the defined values for the matching options.',
             ),
         commands.Option('remove', help='Remove the option from'
-                        ' the configuration file'),
+                        ' the configuration file.'),
         ]
 
     _see_also = ['configuration']
@@ -3575,7 +3632,7 @@ class cmd_config(commands.Command):
 # ready-to-use store or stack.  Plugins that define new store/stacks can also
 # register themselves here to be tested against the tests defined in
 # bzrlib.tests.test_config. Note that the builder can be called multiple times
-# for the same tests.
+# for the same test.
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store

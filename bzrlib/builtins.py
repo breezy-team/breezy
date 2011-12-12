@@ -558,7 +558,7 @@ class cmd_revno(Command):
     _see_also = ['info']
     takes_args = ['location?']
     takes_options = [
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         'revision',
         ]
 
@@ -606,7 +606,7 @@ class cmd_revision_info(Command):
         custom_help('directory',
             help='Branch to examine, '
                  'rather than the one containing the working directory.'),
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         ]
 
     @display_command
@@ -1350,7 +1350,9 @@ class cmd_branch(Command):
                                             force_new_repo=standalone,
                                             create_tree_if_local=not no_tree,
                                             source_branch=br_from)
-                branch = to_dir.open_branch()
+                branch = to_dir.open_branch(
+                    possible_transports=[
+                        br_from.bzrdir.root_transport, to_transport])
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(
@@ -2514,10 +2516,10 @@ class cmd_log(Command):
                    help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
-                   ' of both ancestries (require -rX..Y)'
+                   ' of both ancestries (require -rX..Y).'
                    ),
             Option('signatures',
-                   help='Show digital signature validity'),
+                   help='Show digital signature validity.'),
             ListOption('match',
                 short_name='m',
                 help='Show revisions whose properties match this '
@@ -3146,25 +3148,36 @@ class cmd_export(Command):
         Option('per-file-timestamps',
                help='Set modification time of files to that of the last '
                     'revision in which it was changed.'),
+        Option('uncommitted',
+               help='Export the working tree contents rather than that of the '
+                    'last revision.'),
         ]
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
-        root=None, filters=False, per_file_timestamps=False, directory=u'.'):
+        root=None, filters=False, per_file_timestamps=False, uncommitted=False,
+        directory=u'.'):
         from bzrlib.export import export
 
         if branch_or_subdir is None:
-            tree = WorkingTree.open_containing(directory)[0]
-            b = tree.branch
-            subdir = None
-        else:
-            b, subdir = Branch.open_containing(branch_or_subdir)
-            tree = None
+            branch_or_subdir = directory
 
-        rev_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
+        (tree, b, subdir) = controldir.ControlDir.open_containing_tree_or_branch(
+            branch_or_subdir)
+        if tree is not None:
+            self.add_cleanup(tree.lock_read().unlock)
+
+        if uncommitted:
+            if tree is None:
+                raise errors.BzrCommandError(
+                    gettext("--uncommitted requires a working tree"))
+            export_tree = tree
+        else:
+            export_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
         try:
-            export(rev_tree, dest, format, root, subdir, filtered=filters,
+            export(export_tree, dest, format, root, subdir, filtered=filters,
                    per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat, e:
-            raise errors.BzrCommandError(gettext('Unsupported export format: %s') % e.format)
+            raise errors.BzrCommandError(
+                gettext('Unsupported export format: %s') % e.format)
 
 
 class cmd_cat(Command):

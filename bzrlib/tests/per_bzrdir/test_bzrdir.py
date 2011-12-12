@@ -163,8 +163,12 @@ class TestBzrDir(TestCaseWithBzrDir):
                 for file_id, revision_id in text_index.iterkeys():
                     desired_files.append(
                         (file_id, revision_id, (file_id, revision_id)))
-                left_texts = list(left_repo.iter_files_bytes(desired_files))
-                right_texts = list(right_repo.iter_files_bytes(desired_files))
+                left_texts = [(identifier, "".join(bytes_iterator)) for
+                        (identifier, bytes_iterator) in
+                        left_repo.iter_files_bytes(desired_files)]
+                right_texts = [(identifier, "".join(bytes_iterator)) for
+                        (identifier, bytes_iterator) in
+                        right_repo.iter_files_bytes(desired_files)]
                 left_texts.sort()
                 right_texts.sort()
                 self.assertEqual(left_texts, right_texts)

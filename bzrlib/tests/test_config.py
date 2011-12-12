@@ -67,8 +67,8 @@ load_tests = scenarios.load_tests_apply_scenarios
 
 # Register helpers to build stores
 config.test_store_builder_registry.register(
-    'configobj', lambda test: config.IniFileStore(test.get_transport(),
-                                                  'configobj.conf'))
+    'configobj', lambda test: config.TransportIniFileStore(
+        test.get_transport(), 'configobj.conf'))
 config.test_store_builder_registry.register(
     'bazaar', lambda test: config.GlobalStore())
 config.test_store_builder_registry.register(
@@ -2275,6 +2275,12 @@ class TestOption(tests.TestCase):
         opt = config.Option('foo', default='bar')
         self.assertEquals('bar', opt.get_default())
 
+    def test_callable_default_value(self):
+        def bar_as_unicode():
+            return u'bar'
+        opt = config.Option('foo', default=bar_as_unicode)
+        self.assertEquals('bar', opt.get_default())
+
     def test_default_value_from_env(self):
         opt = config.Option('foo', default='bar', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'quux')
@@ -2295,6 +2301,12 @@ class TestOption(tests.TestCase):
     def test_not_supported_object_default_value(self):
         self.assertRaises(AssertionError, config.Option, 'foo',
                           default=object())
+
+    def test_not_supported_callable_default_value_not_unicode(self):
+        def bar_not_unicode():
+            return 'bar'
+        opt = config.Option('foo', default=bar_not_unicode)
+        self.assertRaises(AssertionError, opt.get_default)
 
 
 class TestOptionConverterMixin(object):
@@ -2362,6 +2374,7 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
+
 
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
 
@@ -2722,7 +2735,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         t.put_bytes('foo.conf', utf8_content)
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         store.load()
         stack = config.Stack([store.get_sections], store)
         self.assertEquals(unicode_user, stack.get('user'))
@@ -2731,14 +2744,14 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         t = self.get_transport()
         t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.ConfigContentError, store.load)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
         t.put_bytes('foo.conf', '[open_section\n')
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.ParseConfigError, store.load)
 
     def test_load_permission_denied(self):
@@ -2753,7 +2766,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         def get_bytes(relpath):
             raise errors.PermissionDenied(relpath, "")
         t.get_bytes = get_bytes
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.PermissionDenied, store.load)
         self.assertEquals(
             warnings,
@@ -2913,14 +2926,15 @@ class TestMutableStore(TestStore):
         self.assertEquals((store,), calls[0])
 
 
-class TestIniFileStore(TestStore):
+class TestTransportIniFileStore(TestStore):
 
     def test_loading_unknown_file_fails(self):
-        store = config.IniFileStore(self.get_transport(), 'I-do-not-exist')
+        store = config.TransportIniFileStore(self.get_transport(),
+            'I-do-not-exist')
         self.assertRaises(errors.NoSuchFile, store.load)
 
     def test_invalid_content(self):
-        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
         self.assertEquals(False, store.is_loaded())
         exc = self.assertRaises(
             errors.ParseConfigError, store._load_from_string,
@@ -2934,7 +2948,7 @@ class TestIniFileStore(TestStore):
         # option names share the same name space...)
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
-        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
         store._load_from_string('''
 foo=bar
 l=1,2
@@ -3360,7 +3374,7 @@ class TestStackGetWithConverter(tests.TestCaseWithTransport):
         # We just want a simple stack with a simple store so we can inject
         # whatever content the tests need without caring about what section
         # names are valid for a given store/stack.
-        store = config.IniFileStore(self.get_transport(), 'foo.conf')
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
         self.conf = config.Stack([store.get_sections], store)
 
     def register_bool_option(self, name, default=None, default_from_env=None):
@@ -3491,6 +3505,9 @@ class TestIterOptionRefs(tests.TestCase):
                          (False, ''), (True, '{bar}'),
                          (False, ''),],
                         '{foo}{bar}')
+
+    def test_newline_in_refs_are_not_matched(self):
+        self.assertRefs([(False, '{\nxx}{xx\n}{{\n}}')], '{\nxx}{xx\n}{{\n}}')
 
 
 class TestStackExpandOptions(tests.TestCaseWithTransport):

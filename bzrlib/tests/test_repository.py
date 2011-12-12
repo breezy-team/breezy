@@ -31,10 +31,10 @@ from bzrlib.errors import (
     )
 from bzrlib import (
     btree_index,
-    graph,
     symbol_versioning,
     tests,
     transport,
+    vf_search,
     )
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex
@@ -92,14 +92,15 @@ class TestDefaultFormat(TestCase):
                               old_format.__class__)
 
 
-class SampleRepositoryFormat(repository.RepositoryFormat):
+class SampleRepositoryFormat(repository.RepositoryFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Sample .bzr repository format."
 
@@ -137,21 +138,30 @@ class TestRepositoryFormat(TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
             t = transport.get_transport_from_path(url)
-            found_format = repository.RepositoryFormat.find_format(dir)
+            found_format = repository.RepositoryFormatMetaDir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
+
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleRepositoryFormat.from_string(
+                "Sample .bzr repository format."),
+            SampleRepositoryFormat)
+        self.assertRaises(ValueError,
+            SampleRepositoryFormat.from_string,
+                "Different .bzr repository format.")
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleRepositoryFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_register_unregister_format(self):
@@ -438,13 +448,15 @@ class TestInterRepository(TestCaseWithTransport):
 
 class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 1"
 
 
 class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 2"
 
 
@@ -706,7 +718,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
 
         # On a regular pass, getting the inventories and chk pages for rev-2
         # would only get the newly created chk pages
-        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
+        search = vf_search.SearchResult(set(['rev-2']), set(['rev-1']), 1,
                                     set(['rev-2']))
         simple_chk_records = []
         for vf_name, substream in source.get_stream(search):

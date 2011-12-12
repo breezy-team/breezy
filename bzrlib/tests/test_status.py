@@ -169,7 +169,7 @@ class TestHooks(TestCaseWithTransport):
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
         attrs = ['old_tree', 'new_tree', 'to_file', 'versioned',
-            'show_ids', 'short', 'verbose']
+            'show_ids', 'short', 'verbose', 'specific_files']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
                 'Attribute "%s" not found in StatusHookParam' % a)
@@ -192,7 +192,7 @@ class TestHooks(TestCaseWithTransport):
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
         attrs = ['old_tree', 'new_tree', 'to_file', 'versioned',
-            'show_ids', 'short', 'verbose']
+            'show_ids', 'short', 'verbose', 'specific_files']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
                 'Attribute "%s" not found in StatusHookParam' % a)

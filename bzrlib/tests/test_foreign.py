@@ -145,7 +145,8 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
     repository_class = DummyForeignVcsRepository
     _commit_builder_class = DummyForeignCommitBuilder
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Dummy Foreign Vcs Repository"
 
     def get_format_description(self):
@@ -229,7 +230,8 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
 
 class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Branch for Testing"
 
     @property
@@ -313,7 +315,8 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         self.root_transport.put_bytes(".bzr", "foo")
         return super(DummyForeignVcsDir, self).create_workingtree()
 
-    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
+            possible_transports=None):
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)

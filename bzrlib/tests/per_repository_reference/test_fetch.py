@@ -17,11 +17,7 @@
 
 from bzrlib import (
     branch,
-    errors,
-    graph,
-    )
-from bzrlib.smart import (
-    server,
+    vf_search,
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
@@ -176,7 +172,7 @@ class TestFetchFromRepoWithUnconfiguredFallbacks(TestFetchBase):
         self.addCleanup(target.lock_write().unlock)
         target.fetch(
             repo_missing_fallbacks,
-            fetch_spec=graph.EverythingResult(repo_missing_fallbacks))
+            fetch_spec=vf_search.EverythingResult(repo_missing_fallbacks))
         self.assertEqual(repo_missing_fallbacks.revisions.keys(),
             target.revisions.keys())
         self.assertEqual(repo_missing_fallbacks.inventories.keys(),
