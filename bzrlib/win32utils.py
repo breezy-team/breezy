@@ -564,7 +564,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     return args
 
 
-if has_ctypes and winver != 'Windows 98':
+if has_ctypes and winver == 'Windows NT':
     def get_unicode_argv():
         prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
         GetCommandLineW = prototype(("GetCommandLineW",
@@ -604,7 +604,7 @@ if has_ctypes and winver != 'Windows 98':
                 return buffer[:length]
             buffer_size = length
 else:
-    get_unicode_argv = None
+    get_unicode_argv = get_environ_unicode = None
 
 
 if has_win32api:
