@@ -55,7 +55,7 @@ from bzrlib.lock import LogicalLockResult
 from bzrlib.repository import (
     _LazyListJoin,
     MetaDirRepository,
-    RepositoryFormat,
+    RepositoryFormatMetaDir,
     RepositoryWriteLockResult,
     )
 from bzrlib.vf_repository import (
@@ -1920,7 +1920,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

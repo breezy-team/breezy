@@ -328,3 +328,56 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.assertCommandLine([u"rm", u"x*"], "-m pdb rm x*", ["rm", u"x*"])
         self.assertCommandLine([u"add", u"d/f1", u"d/f2"], "-m pdb add d/*",
             ["add", u"d/*"])
+
+
+class TestGetEnvironUnicode(tests.TestCase):
+    """Tests for accessing the environment via the windows wide api"""
+
+    _test_needs_features = [CtypesFeature, features.win32_feature]
+
+    def setUp(self):
+        super(TestGetEnvironUnicode, self).setUp()
+        self.overrideEnv("TEST", "1")
+
+    def test_get(self):
+        """In the normal case behaves the same as os.environ access"""
+        self.assertEqual("1", win32utils.get_environ_unicode("TEST"))
+
+    def test_unset(self):
+        """A variable not present in the environment gives None by default"""
+        del os.environ["TEST"]
+        self.assertIs(None, win32utils.get_environ_unicode("TEST"))
+
+    def test_unset_default(self):
+        """A variable not present in the environment gives passed default"""
+        del os.environ["TEST"]
+        self.assertIs("a", win32utils.get_environ_unicode("TEST", "a"))
+
+    def test_unicode(self):
+        """A non-ascii variable is returned as unicode"""
+        unicode_val = u"\xa7" # non-ascii character present in many encodings
+        try:
+            bytes_val = unicode_val.encode(osutils.get_user_encoding())
+        except UnicodeEncodeError:
+            self.skip("Couldn't encode non-ascii string to place in environ")
+        os.environ["TEST"] = bytes_val
+        self.assertEqual(unicode_val, win32utils.get_environ_unicode("TEST"))
+
+    def test_long(self):
+        """A variable bigger than heuristic buffer size is still accessible"""
+        big_val = "x" * (2<<10)
+        os.environ["TEST"] = big_val
+        self.assertEqual(big_val, win32utils.get_environ_unicode("TEST"))
+
+    def test_unexpected_error(self):
+        """An error from the underlying platform function is propogated"""
+        ERROR_INVALID_PARAMETER = 87
+        SetLastError = win32utils.ctypes.windll.kernel32.SetLastError
+        def failer(*args, **kwargs):
+            SetLastError(ERROR_INVALID_PARAMETER)
+            return 0
+        self.overrideAttr(win32utils.get_environ_unicode, "_c_function",
+            failer)
+        e = self.assertRaises(WindowsError,
+            win32utils.get_environ_unicode, "TEST")
+        self.assertEqual(e.winerror, ERROR_INVALID_PARAMETER)
