@@ -329,7 +329,8 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
     return ie
 
 
-def unpack_inventory_flat(elt, format_num, unpack_entry):
+def unpack_inventory_flat(elt, format_num, unpack_entry,
+            entry_cache=None, return_from_cache=False):
     """Unpack a flat XML inventory.
 
     :param elt: XML element for the inventory
@@ -350,7 +351,7 @@ def unpack_inventory_flat(elt, format_num, unpack_entry):
         revision_id = cache_utf8.encode(revision_id)
     inv = inventory.Inventory(root_id=None, revision_id=revision_id)
     for e in elt:
-        ie = unpack_entry(e)
+        ie = unpack_entry(e, entry_cache, return_from_cache)
         inv.add(ie)
     return inv
 
