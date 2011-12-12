@@ -181,8 +181,7 @@ class BazaarRefsContainer(RefsContainer):
 
 
 def get_refs_container(controldir, object_store):
-    repo = controldir.find_repository()
-    fn = getattr(repo, "get_refs_container", None)
+    fn = getattr(controldir, "get_refs_container", None)
     if fn is not None:
         return fn()
     return BazaarRefsContainer(controldir, object_store)
