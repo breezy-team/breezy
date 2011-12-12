@@ -52,7 +52,7 @@ class Serializer_v5(xml6.Serializer_v6):
         #   avoiding attributes     2.46s
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
-        unpack_entry = self._unpack_entry
+        unpack_entry = xml_serializer.unpack_xml_inventory_entry
         byid = inv._byid
         for e in elt:
             ie = unpack_entry(e, entry_cache=entry_cache,

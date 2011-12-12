@@ -31,14 +31,12 @@ from bzrlib.xml_serializer import (
     encode_and_escape,
     escape_invalid_chars,
     get_utf8_or_ascii,
+    unpack_xml_inventory_entry,
     )
-from bzrlib.inventory import InventoryEntry
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
-_utf8_re = None
-_unicode_re = None
 _xml_unescape_map = {
     'apos':"'",
     'quot':'"',
@@ -227,115 +225,12 @@ class Serializer_v8(XMLSerializer):
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
         """Construct from XML Element"""
-        if elt.tag != 'inventory':
-            raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
-        format = elt.get('format')
-        if format != self.format_num:
-            raise errors.UnexpectedInventoryFormat('Invalid format version %r'
-                                                   % format)
-        revision_id = elt.get('revision_id')
-        if revision_id is not None:
-            revision_id = cache_utf8.encode(revision_id)
-        inv = inventory.Inventory(root_id=None, revision_id=revision_id)
-        for e in elt:
-            ie = self._unpack_entry(e, entry_cache=entry_cache,
-                                    return_from_cache=return_from_cache)
-            inv.add(ie)
+        def unpack_entry(entry_elt):
+            return unpack_xml_inventory_entry(entry_elt, entry_cache=entry_cache,
+                return_from_cache=return_from_cache)
+        inv = unpack_xml_inventory_flat(elt, self.format_num, unpack_entry)
         self._check_cache_size(len(inv), entry_cache)
         return inv
-
-    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
-        elt_get = elt.get
-        file_id = elt_get('file_id')
-        revision = elt_get('revision')
-        # Check and see if we have already unpacked this exact entry
-        # Some timings for "repo.revision_trees(last_100_revs)"
-        #               bzr     mysql
-        #   unmodified  4.1s    40.8s
-        #   using lru   3.5s
-        #   using fifo  2.83s   29.1s
-        #   lru._cache  2.8s
-        #   dict        2.75s   26.8s
-        #   inv.add     2.5s    26.0s
-        #   no_copy     2.00s   20.5s
-        #   no_c,dict   1.95s   18.0s
-        # Note that a cache of 10k nodes is more than sufficient to hold all of
-        # the inventory for the last 100 revs for bzr, but not for mysql (20k
-        # is enough for mysql, which saves the same 2s as using a dict)
-
-        # Breakdown of mysql using time.clock()
-        #   4.1s    2 calls to element.get for file_id, revision_id
-        #   4.5s    cache_hit lookup
-        #   7.1s    InventoryFile.copy()
-        #   2.4s    InventoryDirectory.copy()
-        #   0.4s    decoding unique entries
-        #   1.6s    decoding entries after FIFO fills up
-        #   0.8s    Adding nodes to FIFO (including flushes)
-        #   0.1s    cache miss lookups
-        # Using an LRU cache
-        #   4.1s    2 calls to element.get for file_id, revision_id
-        #   9.9s    cache_hit lookup
-        #   10.8s   InventoryEntry.copy()
-        #   0.3s    cache miss lookus
-        #   1.2s    decoding entries
-        #   1.0s    adding nodes to LRU
-        if entry_cache is not None and revision is not None:
-            key = (file_id, revision)
-            try:
-                # We copy it, because some operations may mutate it
-                cached_ie = entry_cache[key]
-            except KeyError:
-                pass
-            else:
-                # Only copying directory entries drops us 2.85s => 2.35s
-                if return_from_cache:
-                    if cached_ie.kind == 'directory':
-                        return cached_ie.copy()
-                    return cached_ie
-                return cached_ie.copy()
-
-        kind = elt.tag
-        if not InventoryEntry.versionable_kind(kind):
-            raise AssertionError('unsupported entry kind %s' % kind)
-
-        get_cached = get_utf8_or_ascii
-
-        file_id = get_cached(file_id)
-        if revision is not None:
-            revision = get_cached(revision)
-        parent_id = elt_get('parent_id')
-        if parent_id is not None:
-            parent_id = get_cached(parent_id)
-
-        if kind == 'directory':
-            ie = inventory.InventoryDirectory(file_id,
-                                              elt_get('name'),
-                                              parent_id)
-        elif kind == 'file':
-            ie = inventory.InventoryFile(file_id,
-                                         elt_get('name'),
-                                         parent_id)
-            ie.text_sha1 = elt_get('text_sha1')
-            if elt_get('executable') == 'yes':
-                ie.executable = True
-            v = elt_get('text_size')
-            ie.text_size = v and int(v)
-        elif kind == 'symlink':
-            ie = inventory.InventoryLink(file_id,
-                                         elt_get('name'),
-                                         parent_id)
-            ie.symlink_target = elt_get('symlink_target')
-        else:
-            raise errors.UnsupportedInventoryKind(kind)
-        ie.revision = revision
-        if revision is not None and entry_cache is not None:
-            # We cache a copy() because callers like to mutate objects, and
-            # that would cause the item in cache to mutate as well.
-            # This has a small effect on many-inventory performance, because
-            # the majority fraction is spent in cache hits, not misses.
-            entry_cache[key] = ie.copy()
-
-        return ie
 
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
@@ -551,3 +446,29 @@ def serialize_inventory_flat(inv, append_inventory_root, root_id, supported_kind
             raise errors.UnsupportedInventoryKind(ie.kind)
     append('</inventory>\n')
     return output
+
+
+def unpack_xml_inventory_flat(elt, format_num, unpack_entry):
+    """Unpack a flat XML inventory.
+
+    :param elt: XML element for the inventory
+    :param format_num: Expected format number
+    :param unpack_entry: Function for unpacking inventory entries
+    :return: An inventory
+    :raise UnexpectedInventoryFormat: When unexpected elements or data is
+        encountered
+    """
+    if elt.tag != 'inventory':
+        raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
+    format = elt.get('format')
+    if format != format_num:
+        raise errors.UnexpectedInventoryFormat('Invalid format version %r'
+                                               % format)
+    revision_id = elt.get('revision_id')
+    if revision_id is not None:
+        revision_id = cache_utf8.encode(revision_id)
+    inv = inventory.Inventory(root_id=None, revision_id=revision_id)
+    for e in elt:
+        ie = unpack_entry(e)
+        inv.add(ie)
+    return inv

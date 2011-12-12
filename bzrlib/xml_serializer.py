@@ -52,6 +52,7 @@ except ImportError:
 
 from bzrlib import (
     cache_utf8,
+    inventory,
     lazy_regex,
     errors,
     )
@@ -136,9 +137,7 @@ def escape_invalid_chars(message):
             message)
 
 
-def get_utf8_or_ascii(a_str,
-                       _encode_utf8=cache_utf8.encode,
-                       _get_cached_ascii=cache_utf8.get_cached_ascii):
+def get_utf8_or_ascii(a_str, _encode_utf8=cache_utf8.encode):
     """Return a cached version of the string.
 
     cElementTree will return a plain string if the XML is plain ascii. It only
@@ -236,3 +235,95 @@ def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
 def _clear_cache():
     """Clean out the unicode => escaped map"""
     _to_escaped_map.clear()
+
+
+def unpack_xml_inventory_entry(elt, entry_cache=None, return_from_cache=False):
+    elt_get = elt.get
+    file_id = elt_get('file_id')
+    revision = elt_get('revision')
+    # Check and see if we have already unpacked this exact entry
+    # Some timings for "repo.revision_trees(last_100_revs)"
+    #               bzr     mysql
+    #   unmodified  4.1s    40.8s
+    #   using lru   3.5s
+    #   using fifo  2.83s   29.1s
+    #   lru._cache  2.8s
+    #   dict        2.75s   26.8s
+    #   inv.add     2.5s    26.0s
+    #   no_copy     2.00s   20.5s
+    #   no_c,dict   1.95s   18.0s
+    # Note that a cache of 10k nodes is more than sufficient to hold all of
+    # the inventory for the last 100 revs for bzr, but not for mysql (20k
+    # is enough for mysql, which saves the same 2s as using a dict)
+
+    # Breakdown of mysql using time.clock()
+    #   4.1s    2 calls to element.get for file_id, revision_id
+    #   4.5s    cache_hit lookup
+    #   7.1s    InventoryFile.copy()
+    #   2.4s    InventoryDirectory.copy()
+    #   0.4s    decoding unique entries
+    #   1.6s    decoding entries after FIFO fills up
+    #   0.8s    Adding nodes to FIFO (including flushes)
+    #   0.1s    cache miss lookups
+    # Using an LRU cache
+    #   4.1s    2 calls to element.get for file_id, revision_id
+    #   9.9s    cache_hit lookup
+    #   10.8s   InventoryEntry.copy()
+    #   0.3s    cache miss lookus
+    #   1.2s    decoding entries
+    #   1.0s    adding nodes to LRU
+    if entry_cache is not None and revision is not None:
+        key = (file_id, revision)
+        try:
+            # We copy it, because some operations may mutate it
+            cached_ie = entry_cache[key]
+        except KeyError:
+            pass
+        else:
+            # Only copying directory entries drops us 2.85s => 2.35s
+            if return_from_cache:
+                if cached_ie.kind == 'directory':
+                    return cached_ie.copy()
+                return cached_ie
+            return cached_ie.copy()
+
+    kind = elt.tag
+    if not inventory.InventoryEntry.versionable_kind(kind):
+        raise AssertionError('unsupported entry kind %s' % kind)
+
+    file_id = get_utf8_or_ascii(file_id)
+    if revision is not None:
+        revision = get_utf8_or_ascii(revision)
+    parent_id = elt_get('parent_id')
+    if parent_id is not None:
+        parent_id = get_utf8_or_ascii(parent_id)
+
+    if kind == 'directory':
+        ie = inventory.InventoryDirectory(file_id,
+                                          elt_get('name'),
+                                          parent_id)
+    elif kind == 'file':
+        ie = inventory.InventoryFile(file_id,
+                                     elt_get('name'),
+                                     parent_id)
+        ie.text_sha1 = elt_get('text_sha1')
+        if elt_get('executable') == 'yes':
+            ie.executable = True
+        v = elt_get('text_size')
+        ie.text_size = v and int(v)
+    elif kind == 'symlink':
+        ie = inventory.InventoryLink(file_id,
+                                     elt_get('name'),
+                                     parent_id)
+        ie.symlink_target = elt_get('symlink_target')
+    else:
+        raise errors.UnsupportedInventoryKind(kind)
+    ie.revision = revision
+    if revision is not None and entry_cache is not None:
+        # We cache a copy() because callers like to mutate objects, and
+        # that would cause the item in cache to mutate as well.
+        # This has a small effect on many-inventory performance, because
+        # the majority fraction is spent in cache hits, not misses.
+        entry_cache[key] = ie.copy()
+
+    return ie
