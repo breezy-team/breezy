@@ -109,9 +109,12 @@ class ControlDir(ControlComponent):
         return self.get_branches().values()
 
     def get_branches(self):
-        """Return a dictionary with branch_names and branch objects."""
+        """Get all branches in this control directory, as a dictionary.
+        
+        :return: Dictionary mapping branch names to instances.
+        """
         try:
-           return {None:self.open_branch()}
+           return { None: self.open_branch() }
         except (errors.NotBranchError, errors.NoRepositoryPresent):
            return {}
 

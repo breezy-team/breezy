@@ -686,8 +686,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         try:
             target_branch = repo.bzrdir.create_branch(name='foo')
         except errors.NoColocatedBranchSupport:
-            return
+            raise TestNotApplicable('Format does not support colocation')
         reference = branch.BranchReferenceFormat().initialize(
             repo.bzrdir, target_branch=target_branch)
-        self.assertEqual(set(repo.bzrdir.get_branches().keys()),
-                         set([None, 'foo']))
+        self.assertEqual(set([None, 'foo']),
+                         set(repo.bzrdir.get_branches().keys()))

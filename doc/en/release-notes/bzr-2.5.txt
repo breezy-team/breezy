@@ -87,7 +87,7 @@ Internals
 
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
-  branches themselves.  Branches without names use the key None.
+  branches themselves. The active branch uses the key None.
   (Neil Martinsen-Burrell)
 
 Testing
