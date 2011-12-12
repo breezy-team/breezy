@@ -16,6 +16,16 @@
 
 """Serializer object for CHK based inventory storage."""
 
+from cStringIO import StringIO
+
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(),
+"""
+from bzrlib import (
+    xml_serializer,
+    xml8,
+    )
+""")
 from bzrlib import (
     bencode,
     cache_utf8,
@@ -158,23 +168,21 @@ class CHKSerializer(serializer.Serializer):
             promises not to mutate the returned inventory entries, but it can
             make some operations significantly faster.
         """
-        from bzrlib.xml_serializer import fromstring, ParseError
         try:
-            return self._unpack_inventory(fromstring(xml_string), revision_id,
+            return self._unpack_inventory(xml_serializer.fromstring(xml_string), revision_id,
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
-        except ParseError, e:
+        except xml_serializer.ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f, revision_id=None):
-        from bzrlib.xml_serializer import ParseError
         try:
             try:
                 return self._unpack_inventory(self._read_element(f),
                     revision_id=None)
             finally:
                 f.close()
-        except ParseError, e:
+        except xml_serializer.ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def write_inventory_to_lines(self, inv):
@@ -187,7 +195,6 @@ class CHKSerializer(serializer.Serializer):
         :param working: If True skip history data - text_sha1, text_size,
             reference_revision, symlink_target.
         """
-        from cStringIO import StringIO
         sio = StringIO()
         self.write_inventory(inv, sio, working)
         return sio.getvalue()
@@ -202,8 +209,8 @@ class CHKSerializer(serializer.Serializer):
             reference_revision, symlink_target.
         :return: The inventory as a list of lines.
         """
-        from bzrlib.xml8 import serialize_inventory_flat
-        output = serialize_inventory_flat(inv, self._append_inventory_root,
+        output = xml8.serialize_inventory_flat(inv,
+            self._append_inventory_root,
             self.root_id, self.supported_kinds, working)
         if f is not None:
             f.writelines(output)
