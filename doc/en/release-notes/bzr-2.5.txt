@@ -57,6 +57,11 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ControlDir now has a get_branches method that returns a dictionary
+  whose keys are the names of the branches and whose values are the
+  branches themselves. The active branch uses the key None.
+  (Neil Martinsen-Burrell)
+
 Testing
 *******
 

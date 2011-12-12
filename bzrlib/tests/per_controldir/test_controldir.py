@@ -1192,6 +1192,11 @@ class TestControlDir(TestCaseWithControlDir):
         else:
             self.assertEquals([], made_control.list_branches())
 
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        target_branch = repo.bzrdir.create_branch()
+        self.assertEqual([None], repo.bzrdir.get_branches().keys())
+
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_initializable():
