@@ -19,7 +19,7 @@ from bzrlib import (
     errors,
     inventory,
     xml6,
-    xml8,
+    xml_serializer,
     )
 
 class Serializer_v5(xml6.Serializer_v6):
@@ -35,7 +35,7 @@ class Serializer_v5(xml6.Serializer_v6):
         """Construct from XML Element
         """
         root_id = elt.get('file_id') or inventory.ROOT_ID
-        root_id = xml8._get_utf8_or_ascii(root_id)
+        root_id = xml_serializer.get_utf8_or_ascii(root_id)
 
         format = elt.get('format')
         if format is not None:
@@ -92,13 +92,13 @@ class Serializer_v5(xml6.Serializer_v6):
         """Append the inventory root to output."""
         if inv.root.file_id not in (None, inventory.ROOT_ID):
             fileid1 = ' file_id="'
-            fileid2 = xml8._encode_and_escape(inv.root.file_id)
+            fileid2 = xml_serializer.encode_and_escape(inv.root.file_id)
         else:
             fileid1 = ""
             fileid2 = ""
         if inv.revision_id is not None:
             revid1 = ' revision_id="'
-            revid2 = xml8._encode_and_escape(inv.revision_id)
+            revid2 = xml_serializer.encode_and_escape(inv.revision_id)
         else:
             revid1 = ""
             revid2 = ""

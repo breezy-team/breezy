@@ -50,7 +50,11 @@ except ImportError:
     import util.elementtree as elementtree
     from xml.parsers.expat import ExpatError as ParseError
 
-from bzrlib import errors
+from bzrlib import (
+    cache_utf8,
+    lazy_regex,
+    errors,
+    )
 
 
 class XMLSerializer(Serializer):
@@ -130,3 +134,105 @@ def escape_invalid_chars(message):
     return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
             lambda match: match.group(0).encode('unicode_escape'),
             message)
+
+
+def get_utf8_or_ascii(a_str,
+                       _encode_utf8=cache_utf8.encode,
+                       _get_cached_ascii=cache_utf8.get_cached_ascii):
+    """Return a cached version of the string.
+
+    cElementTree will return a plain string if the XML is plain ascii. It only
+    returns Unicode when it needs to. We want to work in utf-8 strings. So if
+    cElementTree returns a plain string, we can just return the cached version.
+    If it is Unicode, then we need to encode it.
+
+    :param a_str: An 8-bit string or Unicode as returned by
+                  cElementTree.Element.get()
+    :return: A utf-8 encoded 8-bit string.
+    """
+    # This is fairly optimized because we know what cElementTree does, this is
+    # not meant as a generic function for all cases. Because it is possible for
+    # an 8-bit string to not be ascii or valid utf8.
+    if a_str.__class__ is unicode:
+        return _encode_utf8(a_str)
+    else:
+        return intern(a_str)
+
+
+_utf8_re = lazy_regex.lazy_compile('[&<>\'\"]|[\x80-\xff]+')
+_unicode_re = lazy_regex.lazy_compile(u'[&<>\'\"\u0080-\uffff]')
+
+
+_xml_escape_map = {
+    "&":'&amp;',
+    "'":"&apos;", # FIXME: overkill
+    "\"":"&quot;",
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+
+
+def _unicode_escape_replace(match, _map=_xml_escape_map):
+    """Replace a string of non-ascii, non XML safe characters with their escape
+
+    This will escape both Standard XML escapes, like <>"', etc.
+    As well as escaping non ascii characters, because ElementTree did.
+    This helps us remain compatible to older versions of bzr. We may change
+    our policy in the future, though.
+    """
+    # jam 20060816 Benchmarks show that try/KeyError is faster if you
+    # expect the entity to rarely miss. There is about a 10% difference
+    # in overall time. But if you miss frequently, then if None is much
+    # faster. For our use case, we *rarely* have a revision id, file id
+    # or path name that is unicode. So use try/KeyError.
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return "&#%d;" % ord(match.group())
+
+
+def _utf8_escape_replace(match, _map=_xml_escape_map):
+    """Escape utf8 characters into XML safe ones.
+
+    This uses 2 tricks. It is either escaping "standard" characters, like "&<>,
+    or it is handling characters with the high-bit set. For ascii characters,
+    we just lookup the replacement in the dictionary. For everything else, we
+    decode back into Unicode, and then use the XML escape code.
+    """
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return ''.join('&#%d;' % ord(uni_chr)
+                       for uni_chr in match.group().decode('utf8'))
+
+
+_to_escaped_map = {}
+
+def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
+    """Encode the string into utf8, and escape invalid XML characters"""
+    # We frequently get entities we have not seen before, so it is better
+    # to check if None, rather than try/KeyError
+    text = _map.get(unicode_or_utf8_str)
+    if text is None:
+        if unicode_or_utf8_str.__class__ is unicode:
+            # The alternative policy is to do a regular UTF8 encoding
+            # and then escape only XML meta characters.
+            # Performance is equivalent once you use cache_utf8. *However*
+            # this makes the serialized texts incompatible with old versions
+            # of bzr. So no net gain. (Perhaps the read code would handle utf8
+            # better than entity escapes, but cElementTree seems to do just fine
+            # either way)
+            text = str(_unicode_re.sub(_unicode_escape_replace,
+                                       unicode_or_utf8_str)) + '"'
+        else:
+            # Plain strings are considered to already be in utf-8 so we do a
+            # slightly different method for escaping.
+            text = _utf8_re.sub(_utf8_escape_replace,
+                                unicode_or_utf8_str) + '"'
+        _map[unicode_or_utf8_str] = text
+    return text
+
+
+def _clear_cache():
+    """Clean out the unicode => escaped map"""
+    _to_escaped_map.clear()
