@@ -150,7 +150,10 @@ class Serializer_v8(XMLSerializer):
             reference_revision, symlink_target.
         :return: The inventory as a list of lines.
         """
-        output = serialize_inventory_flat(inv, self._append_inventory_root,
+        output = []
+        append = output.append
+        self._append_inventory_root(append, inv)
+        serialize_inventory_flat(inv, append,
             self.root_id, self.supported_kinds, working)
         if f is not None:
             f.writelines(output)

@@ -219,16 +219,8 @@ class CHKSerializer(serializer.Serializer):
             reference_revision, symlink_target.
         :return: The inventory as a list of lines.
         """
-        output = xml_serializer.serialize_inventory_flat(inv,
-            self._append_inventory_root,
-            root_id=None, supported_kinds=self.supported_kinds, 
-            working=working)
-        if f is not None:
-            f.writelines(output)
-        return output
-
-    def _append_inventory_root(self, append, inv):
-        """Append the inventory root to output."""
+        output = []
+        append = output.append
         if inv.revision_id is not None:
             revid1 = ' revision_id="'
             revid2 = xml_serializer.encode_and_escape(inv.revision_id)
@@ -241,6 +233,13 @@ class CHKSerializer(serializer.Serializer):
             xml_serializer.encode_and_escape(inv.root.file_id),
             xml_serializer.encode_and_escape(inv.root.name),
             xml_serializer.encode_and_escape(inv.root.revision)))
+        xml_serializer.serialize_inventory_flat(inv,
+            append,
+            root_id=None, supported_kinds=self.supported_kinds, 
+            working=working)
+        if f is not None:
+            f.writelines(output)
+        return output
 
 
 chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')

@@ -355,17 +355,14 @@ def unpack_inventory_flat(elt, format_num, unpack_entry):
     return inv
 
 
-def serialize_inventory_flat(inv, append_inventory_root, root_id,
-        supported_kinds, working):
+def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     """Serialize an inventory to a flat XML file.
 
     :param inv: Inventory to serialize
+    :param append: Function for writing a line of output
     :param working: If True skip history data - text_sha1, text_size,
         reference_revision, symlink_target.    self._check_revisions(inv)
     """
-    output = []
-    append = output.append
-    append_inventory_root(append, inv)
     entries = inv.iter_entries()
     # Skip the root
     root_path, root_ie = entries.next()
@@ -438,4 +435,3 @@ def serialize_inventory_flat(inv, append_inventory_root, root_id,
         else:
             raise errors.UnsupportedInventoryKind(ie.kind)
     append('</inventory>\n')
-    return output
