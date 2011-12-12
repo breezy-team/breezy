@@ -57,6 +57,8 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Lazy imports can now only be absolute. (Jelmer Vernooij)
+
 Testing
 *******
 
