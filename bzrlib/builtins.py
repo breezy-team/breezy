@@ -23,6 +23,7 @@ import bzrlib.bzrdir
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import errno
 import sys
 import time
 
@@ -781,7 +782,11 @@ class cmd_mkdir(Command):
         for dir in dir_list:
             wt, relpath = WorkingTree.open_containing(dir)
             if parents:
-                os.makedirs(dir)
+                try:
+                    os.makedirs(dir)
+                except OSError, e:
+                    if e.errno != errno.EEXIST:
+                        raise
             else:
                 os.mkdir(dir)
             add_file(wt, relpath)
