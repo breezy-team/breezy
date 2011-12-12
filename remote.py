@@ -489,7 +489,7 @@ class RemoteGitBranch(GitBranch):
     def head(self):
         if self._sha is not None:
             return self._sha
-        refs = self.bzrdir.get_refs()
+        refs = self.bzrdir.get_refs_container()
         name = branch_name_to_ref(self.name, "HEAD")
         try:
             self._sha = refs[name]
