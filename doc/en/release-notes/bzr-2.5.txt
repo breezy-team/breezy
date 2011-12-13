@@ -20,17 +20,29 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* "bzr mkdir" now includes -p (--parents) option for recursively adding
+  parent directories.
+  (Jared Hance, Jelmer Vernooij, #253529)
+
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Allow configuration option default value to be a python callable at
+  registration. (Vincent Ladeuil, #832064)
+
+* Create obsolete_packs directory when repacking if it does not
+  exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
 
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
@@ -52,7 +64,16 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ControlDir now has a get_branches method that returns a dictionary
+  whose keys are the names of the branches and whose values are the
+  branches themselves. The active branch uses the key None.
+  (Neil Martinsen-Burrell)
+
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
+
+* New HPSS call ``VersionedFileRepository.get_inventories``,
+  speeding up various commands including ``bzr export``,
+  ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
 
 Testing
 *******
@@ -239,8 +260,7 @@ Internals
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
 
-* Add HPSS calls for ``Repository.iter_files_bytes`` and
-  ``VersionedFileRepository.get_inventories``, speeding up
+* Add HPSS calls for ``Repository.iter_files_bytes``, speeding up
   several commands including ``bzr export`` and ``bzr co --lightweight``.
   (Jelmer Vernooij, #608640)
 
@@ -254,6 +274,10 @@ Internals
 
 * ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
   will now use HPSS calls where possible. (Jelmer Vernooij)
+
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
 
 * The registry of merge types has been moved to ``merge`` from ``option`` but
   ``merge.get_merge_type_registry`` remains as an accessor. (Martin Packman)

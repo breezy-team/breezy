@@ -2227,6 +2227,22 @@ class TestSmartServerRepositoryGetPhysicalLockStatus(
             request.execute('', ))
 
 
+class TestSmartServerRepositoryReconcile(tests.TestCaseWithTransport):
+
+    def test_reconcile(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.')
+        token = repo.lock_write().repository_token
+        self.addCleanup(repo.unlock)
+        request_class = smart_repo.SmartServerRepositoryReconcile
+        request = request_class(backing)
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(
+            ('ok', ),
+             'garbage_inventories: 0\n'
+             'inconsistent_parents: 0\n'),
+            request.execute('', token))
+
+
 class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
 
     def test_is_readonly_no(self):
@@ -2534,6 +2550,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryMakeWorkingTrees)
         self.assertHandlerEqual('Repository.pack',
             smart_repo.SmartServerRepositoryPack)
+        self.assertHandlerEqual('Repository.reconcile',
+            smart_repo.SmartServerRepositoryReconcile)
         self.assertHandlerEqual('Repository.tarball',
             smart_repo.SmartServerRepositoryTarball)
         self.assertHandlerEqual('Repository.unlock',

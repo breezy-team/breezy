@@ -106,10 +106,17 @@ class ControlDir(ControlComponent):
         """Return a sequence of all branches local to this control directory.
 
         """
+        return self.get_branches().values()
+
+    def get_branches(self):
+        """Get all branches in this control directory, as a dictionary.
+        
+        :return: Dictionary mapping branch names to instances.
+        """
         try:
-            return [self.open_branch()]
+           return { None: self.open_branch() }
         except (errors.NotBranchError, errors.NoRepositoryPresent):
-            return []
+           return {}
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for

@@ -1104,6 +1104,29 @@ class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(("ok", ), "\n".join(revids))
 
 
+class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
+    """Reconcile a repository.
+
+    New in 2.5.
+    """
+
+    def do_repository_request(self, repository, lock_token):
+        try:
+            repository.lock_write(token=lock_token)
+        except errors.TokenLockingNotSupported, e:
+            return FailedSmartServerResponse(
+                ('TokenLockingNotSupported', ))
+        try:
+            reconciler = repository.reconcile()
+        finally:
+            repository.unlock()
+        body = [
+            "garbage_inventories: %d\n" % reconciler.garbage_inventories,
+            "inconsistent_parents: %d\n" % reconciler.inconsistent_parents,
+            ]
+        return SuccessfulSmartServerResponse(('ok', ), "".join(body))
+
+
 class SmartServerRepositoryPack(SmartServerRepositoryRequest):
     """Pack a repository.
 
