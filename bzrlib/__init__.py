@@ -154,7 +154,7 @@ def _patch_filesystem_default_encoding(new_enc):
     old_ptr = ctypes.c_void_p.in_dll(pythonapi, "Py_FileSystemDefaultEncoding")
     new_ptr = ctypes.cast(ctypes.c_char_p(intern(new_enc)), ctypes.c_void_p)
     old_ptr.value = new_ptr.value
-    if not sys.getfilesystemencoding() == new_enc:
+    if sys.getfilesystemencoding() != new_enc:
         raise RuntimeError("Failed to change the filesystem default encoding")
     return new_enc
 
@@ -168,6 +168,8 @@ if getattr(sys, "_bzr_default_fs_enc") is not None:
         _fs_enc = _patch_filesystem_default_encoding(sys._bzr_default_fs_enc)
 if _fs_enc is None:
     _fs_enc = "ascii"
+else:
+    _fs_enc = codecs.lookup(_fs_enc).name
 
 
 # bzr has various bits of global state that are slowly being eliminated.

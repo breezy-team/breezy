@@ -1770,7 +1770,6 @@ def _walkdirs_utf8(top, prefix=""):
     """
     global _selected_dir_reader
     if _selected_dir_reader is None:
-        fs_encoding = _fs_enc.upper()
         if sys.platform == "win32" and win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
             # TODO: We possibly could support Win98 by falling back to the
@@ -1782,8 +1781,7 @@ def _walkdirs_utf8(top, prefix=""):
                 _selected_dir_reader = Win32ReadDir()
             except ImportError:
                 pass
-        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
-            # ANSI_X3.4-1968 is a form of ASCII
+        elif _fs_enc in ('utf-8', 'ascii'):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
