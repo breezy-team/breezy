@@ -134,12 +134,6 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
 # Backports from current testtools so that we remain compatible with testtools
 # 0.9.2 (the version in lucid).
 UTF8_TEXT = ContentType('text', 'plain', {'charset': 'utf8'})
-def text_content(text):
-    """Create a `Content` object from some text.
-
-    This is useful for adding details which are short strings.
-    """
-    return Content(UTF8_TEXT, lambda: [text.encode('utf8')])
 
 
 class TestMergeChangelog(tests.TestCase):
@@ -162,7 +156,8 @@ class TestMergeChangelog(tests.TestCase):
         warnings_log = self.logged_warnings.getvalue()
         if warnings_log:
             self.addDetail(
-                'merge_changelog warnings', text_content(warnings_log))
+                'merge_changelog warnings',
+                Content(UTF8_TEXT, lambda: [warnings_log]))
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
                              base_lines=[], conflicted=False):
