@@ -1166,6 +1166,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
         self._write_group_tokens = None
+        self.refresh_data()
 
     def resume_write_group(self, tokens):
         if self._real_repository:
@@ -1849,6 +1850,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """
         if self._real_repository is not None:
             self._real_repository.refresh_data()
+        self._unstacked_provider.disable_cache()
+        self._unstacked_provider.enable_cache()
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
