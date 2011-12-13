@@ -1261,7 +1261,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
     def body_stream(self, repository, ordering, revids):
         substream = self._inventory_delta_stream(repository,
             ordering, revids)
-        return _stream_to_byte_stream([('inventory-delta', substream)],
+        return _stream_to_byte_stream([('inventory-deltas', substream)],
             repository._format)
 
     def do_body(self, body_bytes):
