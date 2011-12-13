@@ -1396,13 +1396,6 @@ class BranchConfig(Config):
         e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
-        try:
-            return (self.branch._transport.get_bytes("email")
-                    .decode(osutils.get_user_encoding())
-                    .rstrip("\r\n"))
-        except (errors.NoSuchFile, errors.PermissionDenied), e:
-            pass
-
         return self._get_best_value('_get_user_id')
 
     def _get_change_editor(self):
