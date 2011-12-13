@@ -47,7 +47,6 @@ from bzrlib.errors import (
     NoWorkingTree,
     )
 from bzrlib.option import Option
-from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
 
@@ -55,12 +54,8 @@ from bzrlib.plugins.builddeb import (
     default_build_dir,
     default_orig_dir,
     default_result_dir,
-    dh_make,
     gettext,
     )
-from bzrlib.plugins.builddeb.builder import (
-                     DebBuild,
-                     )
 from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
@@ -75,51 +70,24 @@ from bzrlib.plugins.builddeb.errors import (
     StrictBuildFailed,
     )
 from bzrlib.plugins.builddeb.hooks import run_hook
-from bzrlib.plugins.builddeb.import_dsc import (
-        DistributionBranch,
-        DistributionBranchSet,
-        DscCache,
-        DscComp,
-        )
-from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
-from bzrlib.plugins.builddeb.source_distiller import (
-        FullSourceDistiller,
-        MergeModeDistiller,
-        NativeSourceDistiller,
-        )
-from bzrlib.plugins.builddeb.upstream import (
-        AptSource,
-        DebianRulesSource,
-        SelfSplitSource,
-        TarfileSource,
-        UScanSource,
-        UpstreamProvider,
-        )
-from bzrlib.plugins.builddeb.upstream.branch import (
-        LazyUpstreamBranchSource,
-        UpstreamBranchSource,
-        )
-from bzrlib.plugins.builddeb.upstream.pristinetar import (
-        PristineTarSource,
-        )
 from bzrlib.plugins.builddeb.util import (
-        FORMAT_3_0_QUILT,
-        FORMAT_3_0_NATIVE,
-        component_from_orig_tarball,
-        debuild_config,
-        dget_changes,
-        find_changelog,
-        find_last_distribution,
-        find_previous_upload,
-        get_source_format,
-        guess_build_type,
-        lookup_distribution,
-        md5sum_filename,
-        open_file,
-        open_file_via_transport,
-        tarball_name,
-        tree_contains_upstream_source,
-        )
+    FORMAT_3_0_QUILT,
+    FORMAT_3_0_NATIVE,
+    component_from_orig_tarball,
+    debuild_config,
+    dget_changes,
+    find_changelog,
+    find_last_distribution,
+    find_previous_upload,
+    get_source_format,
+    guess_build_type,
+    lookup_distribution,
+    md5sum_filename,
+    open_file,
+    open_file_via_transport,
+    tarball_name,
+    tree_contains_upstream_source,
+    )
 
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building.")
@@ -312,6 +280,9 @@ class cmd_builddeb(Command):
 
     def _get_upstream_branch(self, export_upstream, export_upstream_revision,
             config, version):
+        from bzrlib.plugins.builddeb.upstream.branch import (
+            LazyUpstreamBranchSource,
+            )
         upstream_source = LazyUpstreamBranchSource(export_upstream,
             config=config)
         if export_upstream_revision:
@@ -327,6 +298,26 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, result=None, package_merge=None,
             strict=False):
+        from bzrlib.plugins.builddeb.source_distiller import (
+                FullSourceDistiller,
+                MergeModeDistiller,
+                NativeSourceDistiller,
+                )
+        from bzrlib.plugins.builddeb.builder import DebBuild
+        from bzrlib.plugins.builddeb.upstream.branch import (
+            LazyUpstreamBranchSource,
+            )
+        from bzrlib.plugins.builddeb.upstream import (
+            AptSource,
+            DebianRulesSource,
+            SelfSplitSource,
+            UScanSource,
+            UpstreamProvider,
+            )
+        from bzrlib.plugins.builddeb.upstream.pristinetar import (
+            PristineTarSource,
+            )
+
         if result is not None:
             warning(gettext("--result is deprecated, use --result-dir instead"))
         location, build_options, source = self._branch_and_build_options(
@@ -476,6 +467,15 @@ class cmd_get_orig_source(Command):
     takes_args = ["version?"]
 
     def run(self, directory='.', version=None):
+        from bzrlib.plugins.builddeb.upstream import (
+            AptSource,
+            DebianRulesSource,
+            UScanSource,
+            UpstreamProvider,
+            )
+        from bzrlib.plugins.builddeb.upstream.pristinetar import (
+            PristineTarSource,
+            )
         tree = WorkingTree.open_containing(directory)[0]
         config = debuild_config(tree, tree)
 
@@ -594,6 +594,10 @@ class cmd_merge_upstream(Command):
     def _do_merge(self, tree, tarball_filenames, package, version,
             current_version, upstream_branch, upstream_revisions, merge_type,
             force):
+        from bzrlib.plugins.builddeb.import_dsc import (
+            DistributionBranch,
+            DistributionBranchSet,
+            )
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
@@ -673,6 +677,10 @@ class cmd_merge_upstream(Command):
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, snapshot=False, launchpad=False):
+        from bzrlib.plugins.builddeb.upstream.branch import (
+                UpstreamBranchSource,
+                )
+
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -783,7 +791,8 @@ class cmd_merge_upstream(Command):
                         "'export-upstream-revision' in the configuration." %
                         (version, upstream_branch_source))
             if need_upstream_tarball:
-                target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
+                target_dir = tempfile.mkdtemp()
+                self.add_cleanup(shutil.rmtree, target_dir)
                 try:
                     locations = primary_upstream_source.fetch_tarballs(
                         package, version, target_dir, components=[None])
@@ -859,6 +868,10 @@ class cmd_import_dsc(Command):
     takes_options = [filename_opt]
 
     def import_many(self, db, files_list, orig_target):
+        from bzrlib.plugins.builddeb.import_dsc import (
+                DscCache,
+                DscComp,
+                )
         cache = DscCache()
         files_list.sort(cmp=DscComp(cache).cmp)
         if not os.path.exists(orig_target):
@@ -882,6 +895,10 @@ class cmd_import_dsc(Command):
             db.import_package(os.path.join(orig_target, filename))
 
     def run(self, files_list, file=None):
+        from bzrlib.plugins.builddeb.import_dsc import (
+            DistributionBranch,
+            DistributionBranchSet,
+            )
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:
@@ -988,6 +1005,10 @@ class cmd_import_upstream(Command):
     takes_args = ['version', 'location', 'upstream_branch?']
 
     def run(self, version, location, upstream_branch=None, revision=None):
+        from bzrlib.plugins.builddeb.import_dsc import (
+            DistributionBranch,
+            DistributionBranchSet,
+            )
         # TODO: search for similarity etc.
         version = version.encode('utf8')
         branch, _ = Branch.open_containing('.')
@@ -1080,6 +1101,21 @@ class cmd_builddeb_do(Command):
     aliases = ['bd-do']
 
     def run(self, command_list=None):
+        from bzrlib.plugins.builddeb.source_distiller import (
+            MergeModeDistiller,
+            )
+        from bzrlib.plugins.builddeb.builder import (
+            DebBuild,
+            )
+        from bzrlib.plugins.builddeb.upstream import (
+            AptSource,
+            DebianRulesSource,
+            UScanSource,
+            UpstreamProvider,
+            )
+        from bzrlib.plugins.builddeb.upstream.pristinetar import (
+            PristineTarSource,
+            )
         t = WorkingTree.open_containing('.')[0]
         config = debuild_config(t, t)
         if config.build_type != BUILD_TYPE_MERGE:
@@ -1163,6 +1199,10 @@ class cmd_mark_uploaded(Command):
     takes_options = [merge_opt, force]
 
     def run(self, merge=None, force=None):
+        from bzrlib.plugins.builddeb.import_dsc import (
+            DistributionBranch,
+            DistributionBranchSet,
+            )
         t = WorkingTree.open_containing('.')[0]
         t.lock_write()
         try:
@@ -1208,6 +1248,8 @@ class cmd_merge_package(Command):
     takes_args = ['source']
 
     def run(self, source, revision=None):
+        from bzrlib.tag import _merge_tags_if_possible
+        from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
         source_branch = None
         # Get the target branch.
         try:
@@ -1287,6 +1329,7 @@ class cmd_dh_make(Command):
     takes_options = [bzr_only_opt, v3_opt]
 
     def run(self, package_name, version, tarball, bzr_only=None, v3=None):
+        from bzrlib.plugins.builddeb import dh_make
         tree = dh_make.import_upstream(tarball, package_name,
             version.encode("utf-8"), use_v3=v3)
         if not bzr_only:
