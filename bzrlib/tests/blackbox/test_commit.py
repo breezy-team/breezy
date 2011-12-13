@@ -873,4 +873,4 @@ class TestSmartServerCommit(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(220, self.hpss_calls)
+        self.assertLength(213, self.hpss_calls)
