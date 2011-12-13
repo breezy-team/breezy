@@ -75,10 +75,7 @@ from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
-        DscCache,
-        DscComp,
         )
-from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
 from bzrlib.plugins.builddeb.upstream import (
         AptSource,
         DebianRulesSource,
@@ -784,7 +781,8 @@ class cmd_merge_upstream(Command):
                         "'export-upstream-revision' in the configuration." %
                         (version, upstream_branch_source))
             if need_upstream_tarball:
-                target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
+                target_dir = tempfile.mkdtemp()
+                self.add_cleanup(shutil.rmtree, target_dir)
                 try:
                     locations = primary_upstream_source.fetch_tarballs(
                         package, version, target_dir, components=[None])
@@ -860,6 +858,10 @@ class cmd_import_dsc(Command):
     takes_options = [filename_opt]
 
     def import_many(self, db, files_list, orig_target):
+        from bzrlib.plugins.builddeb.import_dsc import (
+                DscCache,
+                DscComp,
+                )
         cache = DscCache()
         files_list.sort(cmp=DscComp(cache).cmp)
         if not os.path.exists(orig_target):
@@ -1215,6 +1217,7 @@ class cmd_merge_package(Command):
     takes_args = ['source']
 
     def run(self, source, revision=None):
+        from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
         source_branch = None
         # Get the target branch.
         try:
