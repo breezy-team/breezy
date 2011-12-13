@@ -1855,6 +1855,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             revision_id=_mod_revision.NULL_REVISION)
         # there should be just one substream, with inventory deltas
         substream_kind, substream = stream.next()
+        if substream_kind != "inventory-deltas":
+            raise AssertionError(
+                 "Unexpected stream %r received" % substream_kind)
         for record in substream:
             (parent_id, new_id, versioned_root, tree_references, invdelta) = (
                 deserializer.parse_text_bytes(record.get_bytes_as("fulltext")))
