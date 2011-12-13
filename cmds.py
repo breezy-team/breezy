@@ -58,9 +58,6 @@ from bzrlib.plugins.builddeb import (
     dh_make,
     gettext,
     )
-from bzrlib.plugins.builddeb.builder import (
-                     DebBuild,
-                     )
 from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
@@ -82,11 +79,6 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscComp,
         )
 from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
-from bzrlib.plugins.builddeb.source_distiller import (
-        FullSourceDistiller,
-        MergeModeDistiller,
-        NativeSourceDistiller,
-        )
 from bzrlib.plugins.builddeb.upstream import (
         AptSource,
         DebianRulesSource,
@@ -327,6 +319,15 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, result=None, package_merge=None,
             strict=False):
+        from bzrlib.plugins.builddeb.source_distiller import (
+                FullSourceDistiller,
+                MergeModeDistiller,
+                NativeSourceDistiller,
+                )
+        from bzrlib.plugins.builddeb.builder import (
+            DebBuild,
+            )
+
         if result is not None:
             warning(gettext("--result is deprecated, use --result-dir instead"))
         location, build_options, source = self._branch_and_build_options(
@@ -1080,6 +1081,12 @@ class cmd_builddeb_do(Command):
     aliases = ['bd-do']
 
     def run(self, command_list=None):
+        from bzrlib.plugins.builddeb.source_distiller import (
+            MergeModeDistiller,
+            )
+        from bzrlib.plugins.builddeb.builder import (
+            DebBuild,
+            )
         t = WorkingTree.open_containing('.')[0]
         config = debuild_config(t, t)
         if config.build_type != BUILD_TYPE_MERGE:
