@@ -1720,15 +1720,32 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
-        # FIXME: It ought to be possible to call this without immediately
-        # triggering _ensure_real.  For now it's the easiest thing to do.
-        self._ensure_real()
-        real_repo = self._real_repository
-        builder = real_repo.get_commit_builder(branch, parents,
-                config, timestamp=timestamp, timezone=timezone,
-                committer=committer, revprops=revprops,
-                revision_id=revision_id, lossy=lossy)
-        return builder
+        """Obtain a CommitBuilder for this repository.
+
+        :param branch: Branch to commit to.
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        :param lossy: Whether to discard data that can not be natively
+            represented, when pushing to a foreign VCS
+        """
+        if self._fallback_repositories and not self._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
+                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
+        if self._format.rich_root_data:
+            commit_builder_kls = vf_repository.VersionedFileRootCommitBuilder
+        else:
+            commit_builder_kls = vf_repository.VersionedFileCommitBuilder
+        result = commit_builder_kls(self, parents, config,
+            timestamp, timezone, committer, revprops, revision_id,
+            lossy)
+        self.start_write_group()
+        return result
 
     def add_fallback_repository(self, repository):
         """Add a repository to use for looking up data not held locally.
