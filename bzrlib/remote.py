@@ -56,6 +56,7 @@ from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.serializer import format_registry as serializer_format_registry
 from bzrlib.trace import mutter, note, warning, log_exception_quietly
+from bzrlib.versionedfile import ChunkedContentFactory, FulltextContentFactory
 
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -1796,10 +1797,36 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             delta, new_revision_id, parents, basis_inv=basis_inv,
             propagate_caches=propagate_caches)
 
-    def add_revision(self, rev_id, rev, inv=None, config=None):
-        self._ensure_real()
-        return self._real_repository.add_revision(
-            rev_id, rev, inv=inv, config=config)
+    def add_revision(self, revision_id, rev, inv=None, config=None):
+        _mod_revision.check_not_reserved_id(revision_id)
+        if config is not None and config.signature_needed():
+            if inv is None:
+                inv = self.get_inventory(revision_id)
+            tree = InventoryRevisionTree(self, inv, revision_id)
+            testament = _mod_testament.Testament(rev, tree)
+            plaintext = testament.as_short_text()
+            self.store_revision_signature(
+                gpg.GPGStrategy(config), plaintext, revision_id)
+        key = (revision_id,)
+        # check inventory present
+        if not self.inventories.get_parent_map([key]):
+            if inv is None:
+                raise errors.WeaveRevisionNotPresent(revision_id,
+                                                     self.inventories)
+            else:
+                # yes, this is not suitable for adding with ghosts.
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv,
+                                                        rev.parent_ids)
+        else:
+            rev.inventory_sha1 = self.inventories.get_sha1s([key])[key]
+        if self._real_repository is not None:
+            return self._real_repository.add_revision(
+                revision_id, rev, inv, config)
+        text = self._serializer.write_revision_to_string(rev)
+        parents = tuple((parent,) for parent in rev.parent_ids)
+        self._write_group_tokens, missing_keys = self._get_sink().insert_stream(
+            [('revisions', [FulltextContentFactory(key, parents, None, text)])],
+            self._format, self._write_group_tokens)
 
     @needs_read_lock
     def get_inventory(self, revision_id):
