@@ -54,7 +54,6 @@ from bzrlib.plugins.builddeb import (
     default_build_dir,
     default_orig_dir,
     default_result_dir,
-    dh_make,
     gettext,
     )
 from bzrlib.plugins.builddeb.config import (
@@ -71,32 +70,24 @@ from bzrlib.plugins.builddeb.errors import (
     StrictBuildFailed,
     )
 from bzrlib.plugins.builddeb.hooks import run_hook
-from bzrlib.plugins.builddeb.upstream import (
-        AptSource,
-        DebianRulesSource,
-        SelfSplitSource,
-        TarfileSource,
-        UScanSource,
-        UpstreamProvider,
-        )
 from bzrlib.plugins.builddeb.util import (
-        FORMAT_3_0_QUILT,
-        FORMAT_3_0_NATIVE,
-        component_from_orig_tarball,
-        debuild_config,
-        dget_changes,
-        find_changelog,
-        find_last_distribution,
-        find_previous_upload,
-        get_source_format,
-        guess_build_type,
-        lookup_distribution,
-        md5sum_filename,
-        open_file,
-        open_file_via_transport,
-        tarball_name,
-        tree_contains_upstream_source,
-        )
+    FORMAT_3_0_QUILT,
+    FORMAT_3_0_NATIVE,
+    component_from_orig_tarball,
+    debuild_config,
+    dget_changes,
+    find_changelog,
+    find_last_distribution,
+    find_previous_upload,
+    get_source_format,
+    guess_build_type,
+    lookup_distribution,
+    md5sum_filename,
+    open_file,
+    open_file_via_transport,
+    tarball_name,
+    tree_contains_upstream_source,
+    )
 
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building.")
@@ -316,6 +307,13 @@ class cmd_builddeb(Command):
         from bzrlib.plugins.builddeb.upstream.branch import (
             LazyUpstreamBranchSource,
             )
+        from bzrlib.plugins.builddeb.upstream import (
+            AptSource,
+            DebianRulesSource,
+            SelfSplitSource,
+            UScanSource,
+            UpstreamProvider,
+            )
         from bzrlib.plugins.builddeb.upstream.pristinetar import (
             PristineTarSource,
             )
@@ -469,6 +467,12 @@ class cmd_get_orig_source(Command):
     takes_args = ["version?"]
 
     def run(self, directory='.', version=None):
+        from bzrlib.plugins.builddeb.upstream import (
+            AptSource,
+            DebianRulesSource,
+            UScanSource,
+            UpstreamProvider,
+            )
         from bzrlib.plugins.builddeb.upstream.pristinetar import (
             PristineTarSource,
             )
@@ -1103,6 +1107,12 @@ class cmd_builddeb_do(Command):
         from bzrlib.plugins.builddeb.builder import (
             DebBuild,
             )
+        from bzrlib.plugins.builddeb.upstream import (
+            AptSource,
+            DebianRulesSource,
+            UScanSource,
+            UpstreamProvider,
+            )
         from bzrlib.plugins.builddeb.upstream.pristinetar import (
             PristineTarSource,
             )
@@ -1319,6 +1329,7 @@ class cmd_dh_make(Command):
     takes_options = [bzr_only_opt, v3_opt]
 
     def run(self, package_name, version, tarball, bzr_only=None, v3=None):
+        from bzrlib.plugins.builddeb import dh_make
         tree = dh_make.import_upstream(tarball, package_name,
             version.encode("utf-8"), use_v3=v3)
         if not bzr_only:
