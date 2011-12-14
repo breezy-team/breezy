@@ -159,6 +159,14 @@ class GPGStrategy(object):
 
     acceptable_keys = None
 
+    def __init__(self, config_stack):
+        self._config_stack = config_stack
+        try:
+            import gpgme
+            self.context = gpgme.Context()
+        except ImportError, error:
+            pass # can't use verify()
+
     @staticmethod
     def verify_signatures_available():
         """
@@ -175,14 +183,6 @@ class GPGStrategy(object):
     def _command_line(self):
         return [self._config_stack.get('gpg_signing_command'), '--clearsign',
                 '-u', self._config_stack.get('gpg_signing_key')]
-
-    def __init__(self, config_stack):
-        self._config_stack = config_stack
-        try:
-            import gpgme
-            self.context = gpgme.Context()
-        except ImportError, error:
-            pass # can't use verify()
 
     def sign(self, content):
         if isinstance(content, unicode):
