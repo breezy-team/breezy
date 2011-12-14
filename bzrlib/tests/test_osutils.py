@@ -2115,12 +2115,6 @@ class TestGetuserUnicode(tests.TestCase):
         self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
 
-    def test_no_username_bug_660174(self):
-        self.requireFeature(features.win32_feature)
-        for name in ('LOGNAME', 'USER', 'LNAME', 'USERNAME'):
-            self.overrideEnv(name, None)
-        self.assertEqual(u'UNKNOWN', osutils.getuser_unicode())
-
 
 class TestBackupNames(tests.TestCase):
 

@@ -279,10 +279,10 @@ class TestPush(TestCaseWithInterBranch):
         # remote graph any further.
         bzr_core_trace = Equals(
             ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'Branch.unlock'])
+             'Branch.set_last_revision_info', 'Branch.unlock'])
         bzr_loom_trace = Equals(
             ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'get', 'Branch.unlock'])
+             'Branch.set_last_revision_info', 'get', 'Branch.unlock'])
         self.assertThat(calls_after_insert_stream,
             MatchesAny(bzr_core_trace, bzr_loom_trace))
 

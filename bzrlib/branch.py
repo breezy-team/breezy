@@ -709,7 +709,7 @@ class Branch(controldir.ControlComponent):
         """
         raise errors.UpgradeRequired(self.user_url)
 
-    def get_commit_builder(self, parents, config=None, timestamp=None,
+    def get_commit_builder(self, parents, config_stack=None, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this branch.
@@ -725,10 +725,10 @@ class Branch(controldir.ControlComponent):
             represented, when pushing to a foreign VCS 
         """
 
-        if config is None:
-            config = self.get_config()
+        if config_stack is None:
+            config_stack = self.get_config_stack()
 
-        return self.repository.get_commit_builder(self, parents, config,
+        return self.repository.get_commit_builder(self, parents, config_stack,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
 

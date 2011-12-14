@@ -462,7 +462,7 @@ class TestMergeDirectiveBranch(object):
         time = 453
         timezone = 7200
         class FakeBranch(object):
-            def get_config(self):
+            def get_config_stack(self):
                 return self
             def gpg_signing_command(self):
                 return 'loopback'

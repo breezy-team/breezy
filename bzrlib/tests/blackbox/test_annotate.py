@@ -326,7 +326,7 @@ class TestSmartServerAnnotate(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(19, self.hpss_calls)
+        self.assertLength(15, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.expectFailure("annotate accesses inventories, which require VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
