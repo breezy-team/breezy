@@ -1217,7 +1217,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'UTF-8'
+        osutils._fs_enc = 'utf-8'
         self.assertDirReaderIs(
             UTF8DirReaderFeature.module.UTF8DirReader)
 
@@ -1225,22 +1225,14 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'US-ASCII'
-        self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader)
-
-    def test_force_walkdirs_utf8_fs_ANSI(self):
-        self.requireFeature(UTF8DirReaderFeature)
-        self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'ANSI_X3.4-1968'
+        osutils._fs_enc = 'ascii'
         self.assertDirReaderIs(
             UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'latin1'
+        osutils._fs_enc = 'iso-8859-1'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
 
     def test_force_walkdirs_utf8_nt(self):
