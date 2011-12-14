@@ -328,7 +328,12 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.cloning_metadir)
 
     def checkout_metadir(self):
-        """Produce a metadir suitable for checkouts of this controldir."""
+        """Produce a metadir suitable for checkouts of this controldir.
+
+        :returns: A ControlDirFormat with all component formats
+            either set appropriately or set to None if that component
+            should not be created.
+        """
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
