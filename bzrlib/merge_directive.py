@@ -82,8 +82,8 @@ class BaseMergeDirective(object):
     multiple_output_files = False
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
-                 target_branch, patch=None, source_branch=None, message=None,
-                 bundle=None):
+                 target_branch, patch=None, source_branch=None,
+                 message=None, bundle=None, submit_branch=None):
         """Constructor.
 
         :param revision_id: The revision to merge
@@ -91,7 +91,7 @@ class BaseMergeDirective(object):
             merge.
         :param time: The current POSIX timestamp time
         :param timezone: The timezone offset
-        :param target_branch: The branch to apply the merge to
+        :param target_branch: Location of branch to apply the merge to
         :param patch: The text of a diff or bundle
         :param source_branch: A public location to merge the revision from
         :param message: The message to use when committing this merge
@@ -104,6 +104,7 @@ class BaseMergeDirective(object):
         self.patch = patch
         self.source_branch = source_branch
         self.message = message
+        self.submit_branch = None
 
     def to_lines(self):
         """Serialize as a list of lines
@@ -165,9 +166,9 @@ class BaseMergeDirective(object):
         :param target_branch: The url of the branch to merge into
         :param patch_type: 'bundle', 'diff' or None, depending on the type of
             patch desired.
-        :param local_target_branch: a local copy of the target branch
-        :param public_branch: location of a public branch containing the target
-            revision.
+        :param local_target_branch: the submit branch, either itself or a local copy
+        :param public_branch: location of a public branch containing
+            the target revision.
         :param message: Message to use when committing the merge
         :return: The merge directive
 
@@ -181,7 +182,10 @@ class BaseMergeDirective(object):
         if revision_id == _mod_revision.NULL_REVISION:
             t_revision_id = None
         t = testament.StrictTestament3.from_revision(repository, t_revision_id)
-        submit_branch = _mod_branch.Branch.open(target_branch)
+        if local_target_branch is None:
+            submit_branch = _mod_branch.Branch.open(target_branch)
+        else:
+            submit_branch = local_target_branch
         if submit_branch.get_public_branch() is not None:
             target_branch = submit_branch.get_public_branch()
         if patch_type is None:
@@ -200,13 +204,15 @@ class BaseMergeDirective(object):
                                              ancestor_id)
 
         if public_branch is not None and patch_type != 'bundle':
-            public_branch_obj = _mod_branch.Branch.open(public_branch)
-            if not public_branch_obj.repository.has_revision(revision_id):
+            public_branch = _mod_branch.Branch.open(
+                public_branch)
+            if not public_branch.repository.has_revision(revision_id):
                 raise errors.PublicBranchOutOfDate(public_branch,
                                                    revision_id)
 
-        return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
-            patch, patch_type, public_branch, message)
+        return klass(revision_id, t.as_sha1(), time, timezone,
+            target_branch, patch, patch_type, public_branch,
+            message, submit_branch)
 
     def get_disk_name(self, branch):
         """Generate a suitable basename for storing this directive on disk
@@ -364,8 +370,9 @@ class MergeDirective(BaseMergeDirective):
     _format_string = 'Bazaar merge directive format 1'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
-                 target_branch, patch=None, patch_type=None,
-                 source_branch=None, message=None, bundle=None):
+                 target_branch=None, patch=None, patch_type=None,
+                 source_branch=None, message=None, bundle=None,
+                 submit_branch=None):
         """Constructor.
 
         :param revision_id: The revision to merge
@@ -373,15 +380,17 @@ class MergeDirective(BaseMergeDirective):
             merge.
         :param time: The current POSIX timestamp time
         :param timezone: The timezone offset
-        :param target_branch: The branch to apply the merge to
+        :param target_branch: Location of the branch to apply the merge to
         :param patch: The text of a diff or bundle
         :param patch_type: None, "diff" or "bundle", depending on the contents
             of patch
         :param source_branch: A public location to merge the revision from
         :param message: The message to use when committing this merge
+        :param submit_branch: Branch to apply the merge to (optional)
         """
         BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
-            timezone, target_branch, patch, source_branch, message)
+            timezone, target_branch, patch, source_branch, message,
+            submit_branch)
         if patch_type not in (None, 'diff', 'bundle'):
             raise ValueError(patch_type)
         if patch_type != 'bundle' and source_branch is None:
@@ -475,12 +484,14 @@ class MergeDirective2(BaseMergeDirective):
     _format_string = 'Bazaar merge directive format 2 (Bazaar 0.90)'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
-                 target_branch, patch=None, source_branch=None, message=None,
-                 bundle=None, base_revision_id=None):
+                 target_branch, patch=None, source_branch=None,
+                 message=None, bundle=None, base_revision_id=None,
+                 local_target_branch=None):
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
         BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
-            timezone, target_branch, patch, source_branch, message)
+            timezone, target_branch, patch, source_branch, message,
+            local_target_branch)
         self.bundle = bundle
         self.base_revision_id = base_revision_id
 
@@ -567,9 +578,9 @@ class MergeDirective2(BaseMergeDirective):
         :param target_branch: The url of the branch to merge into
         :param include_patch: If true, include a preview patch
         :param include_bundle: If true, include a bundle
-        :param local_target_branch: a local copy of the target branch
-        :param public_branch: location of a public branch containing the target
-            revision.
+        :param local_target_branch: the target branch, either itself or a local copy
+        :param public_branch: location of a public branch containing
+            the target revision.
         :param message: Message to use when committing the merge
         :return: The merge directive
 
@@ -588,7 +599,10 @@ class MergeDirective2(BaseMergeDirective):
                 t_revision_id = None
             t = testament.StrictTestament3.from_revision(repository,
                 t_revision_id)
-            submit_branch = _mod_branch.Branch.open(target_branch)
+            if local_target_branch is None:
+                submit_branch = _mod_branch.Branch.open(target_branch)
+            else:
+                submit_branch = local_target_branch
             submit_branch.lock_read()
             locked.append(submit_branch)
             if submit_branch.get_public_branch() is not None:
@@ -628,7 +642,7 @@ class MergeDirective2(BaseMergeDirective):
                 entry.unlock()
         return klass(revision_id, testament_sha1, time, timezone,
             target_branch, patch, public_branch, message, bundle,
-            base_revision_id)
+            base_revision_id, submit_branch)
 
     def _verify_patch(self, repository):
         calculated_patch = self._generate_diff(repository, self.revision_id,
