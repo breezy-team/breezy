@@ -246,10 +246,6 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
         # <https://bugs.launchpad.net/ubuntu/+source/dpkg/+bug/815704>
         #  - Andrew Bennetts, 25 July 2011.
         #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
-        status, lines = merge_changelog.merge_changelog(
-            invalid_changelog, v_111_2, v_111_2)
-        self.assertEqual('success', status)
-        #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
         self.assertMergeChangelog(v_112_1 + 
                                   ['<<<<<<<\n'] +
                                   v_111_2 +
