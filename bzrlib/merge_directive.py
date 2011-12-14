@@ -208,9 +208,8 @@ class BaseMergeDirective(object):
                 raise errors.PublicBranchOutOfDate(public_branch,
                                                    revision_id)
 
-        return klass(revision_id, t.as_sha1(), time, timezone,
-            target_branch, patch, patch_type, public_branch,
-            message)
+        return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
+            patch, patch_type, public_branch, message)
 
     def get_disk_name(self, branch):
         """Generate a suitable basename for storing this directive on disk
@@ -368,7 +367,7 @@ class MergeDirective(BaseMergeDirective):
     _format_string = 'Bazaar merge directive format 1'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
-                 target_branch=None, patch=None, patch_type=None,
+                 target_branch, patch=None, patch_type=None,
                  source_branch=None, message=None, bundle=None):
         """Constructor.
 
@@ -479,14 +478,12 @@ class MergeDirective2(BaseMergeDirective):
     _format_string = 'Bazaar merge directive format 2 (Bazaar 0.90)'
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
-                 target_branch, patch=None, source_branch=None,
-                 message=None, bundle=None, base_revision_id=None,
-                 local_target_branch=None):
+                 target_branch, patch=None, source_branch=None, message=None,
+                 bundle=None, base_revision_id=None):
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
         BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
-            timezone, target_branch, patch, source_branch, message,
-            local_target_branch)
+            timezone, target_branch, patch, source_branch, message)
         self.bundle = bundle
         self.base_revision_id = base_revision_id
 
