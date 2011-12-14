@@ -41,6 +41,9 @@ Improvements
   will mean bzr works with non-ascii files when no locale or an incorrect
   locale is set. (Martin Packman, #794353)
 
+* ``bzr send`` now only opens a single connection, rather than two,
+  to the target branch.  (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
@@ -66,6 +69,10 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* Send formats now accept a new optional argument ``submit_branch``,
+  which can be None or a Branch object for the submit branch location.
+  (Jelmer Vernooij)
 
 Internals
 *********
