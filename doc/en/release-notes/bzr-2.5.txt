@@ -106,6 +106,9 @@ Bug Fixes
 * Raise BadIndexKey exception in btree_index when a key is too large, fixing 
   an infinite recursion issue. (Shannon Weyrick, #720853)
 
+* Report mistake trying to move a removed file with a non-ascii name without
+  UnicodeEncodeError being raised. (Martin Packman, #898541)
+
 * Resolve regression from colocated branch path handling, by ensuring that
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
