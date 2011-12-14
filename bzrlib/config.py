@@ -528,6 +528,7 @@ class Config(object):
         """See acceptable_keys()."""
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def post_commit(self):
         """An ordered list of python functions to call.
 
@@ -559,15 +560,7 @@ class Config(object):
         v = self._get_user_id()
         if v:
             return v
-        v = os.environ.get('EMAIL')
-        if v:
-            return v.decode(osutils.get_user_encoding())
-        name, email = _auto_user_id()
-        if name and email:
-            return '%s <%s>' % (name, email)
-        elif email:
-            return email
-        raise errors.NoWhoami()
+        return default_email()
 
     def ensure_username(self):
         """Raise errors.NoWhoami if username is not set.
@@ -2405,7 +2398,7 @@ class Option(object):
         for var in self.default_from_env:
             try:
                 # If the env variable is defined, its value is the default one
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                value = os.environ[var]
                 break
             except KeyError:
                 continue
@@ -2590,6 +2583,9 @@ option_registry.register(
 
 
 def default_email():
+    v = os.environ.get('EMAIL')
+    if v:
+        return v.decode(osutils.get_user_encoding())
     name, email = _auto_user_id()
     if name and email:
         return u'%s <%s>' % (name, email)
@@ -2598,9 +2594,10 @@ def default_email():
     raise errors.NoWhoami()
 
 
+# FIXME: 'email' should also look at the BZR_EMAIL environment variable,
+# which takes precedence over the settings in the configuration file.
 option_registry.register(
     Option('email', default=default_email,
-           default_from_env=['BZR_EMAIL', 'EMAIL'],
            help='The users identity'))
 option_registry.register(
     Option('gpg_signing_command',
