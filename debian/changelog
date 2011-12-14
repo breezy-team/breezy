@@ -32,7 +32,11 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
     'get-orig-source'. LP: #409862
   * Support translations.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 03 Dec 2011 02:24:32 +0100
+  [ Martin Packman ]
+  * Deal with invalid versions and bad encoding in the changelog merge
+    hook. LP: #893495
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 14 Dec 2011 01:03:44 +0100
 
 bzr-builddeb (2.7.9) unstable; urgency=low
 
