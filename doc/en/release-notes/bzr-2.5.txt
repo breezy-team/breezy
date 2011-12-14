@@ -15,6 +15,10 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* The '.bzr/branch/email' file is no longer read to determine the users'
+  identity. Instead, the 'email' setting in '.bzr/branch/branch.conf'
+  should be used. (Jelmer Vernooij, #903894)
+
 New Features
 ************
 
