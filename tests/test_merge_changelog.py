@@ -160,14 +160,19 @@ class TestMergeChangelog(tests.TestCase):
                 Content(UTF8_TEXT, lambda: [warnings_log]))
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
-                             base_lines=[], conflicted=False):
+            base_lines=[], conflicted=False, possible_error=False):
         status, merged_lines = merge_changelog.merge_changelog(
                                     this_lines, other_lines, base_lines)
+        if possible_error and status == "not_applicable":
+            self.assertContainsRe(self.logged_warnings.getvalue(),
+                "(?m)dpkg-mergechangelogs failed with status \\d+$")
+            return False
         if conflicted:
             self.assertEqual('conflicted', status)
         else:
             self.assertEqual('success', status)
         self.assertEqualDiff(''.join(expected_lines), ''.join(merged_lines))
+        return True
 
     def test_merge_by_version(self):
         this_lines = v_111_2 + v_001_1
@@ -272,23 +277,16 @@ pseudo-prog (\xc2\xa7) unstable; urgency=low
 
 """.splitlines(True)
         # invalid_changelog has a bad version, with non-ascii characters.
-        status, lines = merge_changelog.merge_changelog(
+        handled = self.assertMergeChangelog(
+            expected_lines=v_112_1 + v_111_2 + invalid_changelog,
             this_lines=v_112_1 + invalid_changelog,
             other_lines=v_111_2 + invalid_changelog,
-            base_lines=invalid_changelog)
-        log = self.logged_warnings.getvalue()
-        self.assertContainsRe(log, "(?m)\xc2\xa7 is not a valid version$")
-        if "dpkg-mergechangelogs: error:" in log:
-            # Script version aborts on invalid versions so merge must fail
-            self.assertEqual('not_applicable', status)
-            self.assertContainsRe(log,
-                "(?m)dpkg-mergechangelogs failed with status \\d+$")
-        else:
-            # Script version tolerates invalid versions and produces output
-            self.assertEqual('success', status)
-            self.assertEqualDiff(
-                "".join(v_112_1 + v_111_2 + invalid_changelog),
-                "".join(lines))
+            base_lines=invalid_changelog,
+            possible_error=True)
+        if not handled:
+            # Can't assert on the exact message as it depends on the locale
+            self.assertContainsRe(self.logged_warnings.getvalue(),
+                "\xc2\xa7( is not a valid version)?")
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
