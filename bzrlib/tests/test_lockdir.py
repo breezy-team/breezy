@@ -654,6 +654,8 @@ class TestLockDirHooks(TestCaseWithTransport):
         self.assertEqual([], self._calls)
 
 
+# GZ 2011-12-12: These tests escape isolation and look at the GlobalConfig
+#                of the user through lockdir.get_username_for_lock_info
 class TestLockHeldInfo(TestCase):
     """Can get information about the lock holder, and detect whether they're
     still alive."""
