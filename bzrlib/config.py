@@ -1636,6 +1636,31 @@ def _get_default_mail_domain():
         f.close()
 
 
+
+
+def default_email():
+    v = os.environ.get('EMAIL')
+    if v:
+        return v.decode(osutils.get_user_encoding())
+    name, email = _auto_user_id()
+    if name and email:
+        return u'%s <%s>' % (name, email)
+    elif email:
+        return email
+    raise errors.NoWhoami()
+
+
+def email_from_store(unicode_str):
+    """Unlike other env vars, BZR_EMAIL takes precedence over config settings.
+
+    Whatever comes from a config file is then overridden.
+    """
+    value = os.environ.get('BZR_EMAIL')
+    if value:
+        return value.decode(osutils.get_user_encoding())
+    return unicode_str
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -2580,24 +2605,9 @@ custom bzr metadata.
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
-
-
-def default_email():
-    v = os.environ.get('EMAIL')
-    if v:
-        return v.decode(osutils.get_user_encoding())
-    name, email = _auto_user_id()
-    if name and email:
-        return u'%s <%s>' % (name, email)
-    elif email:
-        return email
-    raise errors.NoWhoami()
-
-
-# FIXME: 'email' should also look at the BZR_EMAIL environment variable,
-# which takes precedence over the settings in the configuration file.
 option_registry.register(
     Option('email', default=default_email,
+           from_unicode=email_from_store,
            help='The users identity'))
 option_registry.register(
     Option('gpg_signing_command',
