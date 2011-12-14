@@ -21,7 +21,7 @@
 import os
 
 from bzrlib import tests
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.transport import memory
 
 
@@ -241,4 +241,4 @@ class TestSmartServerCat(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(16, self.hpss_calls)
         self.expectFailure("cat still uses VFS calls",
-            self.assertThat, self.hpss_calls, NoVfsCalls)
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

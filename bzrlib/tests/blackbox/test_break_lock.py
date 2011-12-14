@@ -24,7 +24,7 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.script import (
     run_script,
     )
@@ -139,5 +139,5 @@ class TestSmartServerBreakLock(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertThat(self.hpss_calls, NoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(5, self.hpss_calls)

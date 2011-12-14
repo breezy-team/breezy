@@ -31,7 +31,7 @@ from bzrlib.tests import (
     test_log,
     features,
     )
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
@@ -1070,7 +1070,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertThat(self.hpss_calls, NoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
 
     def test_verbose_log(self):
@@ -1088,7 +1088,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(19, self.hpss_calls)
         self.expectFailure("verbose log accesses inventories, which require VFS",
-            self.assertThat, self.hpss_calls, NoVfsCalls)
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
     def test_per_file(self):
         self.setup_smart_server_with_call_log()
@@ -1105,4 +1105,4 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(21, self.hpss_calls)
         self.expectFailure("per-file graph access requires VFS",
-            self.assertThat, self.hpss_calls, NoVfsCalls)
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
