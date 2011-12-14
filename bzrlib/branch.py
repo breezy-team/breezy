@@ -1607,21 +1607,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         return not (self == other)
 
     @classmethod
-    def find_format(klass, controldir, name=None):
-        """Return the format for the branch object in controldir."""
-        try:
-            transport = controldir.get_branch_transport(None, name=name)
-        except errors.NoSuchFile:
-            raise errors.NotBranchError(path=name, bzrdir=controldir)
-        try:
-            format_string = transport.get_bytes("format")
-            return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base, bzrdir=controldir)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string, kind='branch')
-
-    @classmethod
     @deprecated_method(deprecated_in((2, 4, 0)))
     def get_default_format(klass):
         """Return the current default format."""
@@ -1663,10 +1648,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         :param to_branch: branch that the checkout is to reference
         """
         raise NotImplementedError(self.set_reference)
-
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short format description for this format."""
@@ -1800,7 +1781,7 @@ class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
         """
         registry._LazyObjectGetter.__init__(self, module_name, member_name)
         self._format_string = format_string
-        
+
     def get_format_string(self):
         """See BranchFormat.get_format_string."""
         return self._format_string
@@ -2018,8 +1999,26 @@ class SwitchHookParams(object):
             self.revision_id)
 
 
-class BranchFormatMetadir(BranchFormat):
-    """Common logic for meta-dir based branch formats."""
+class BranchFormatMetadir(bzrdir.BzrDirMetaComponentFormat, BranchFormat):
+    """Base class for branch formats that live in meta directories.
+    """
+
+    def __init__(self):
+        BranchFormat.__init__(self)
+        bzrdir.BzrDirMetaComponentFormat.__init__(self)
+
+    @classmethod
+    def find_format(klass, controldir, name=None):
+        """Return the format for the branch object in controldir."""
+        try:
+            transport = controldir.get_branch_transport(None, name=name)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=controldir)
+        try:
+            format_string = transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base, bzrdir=controldir)
+        return klass._find_format(format_registry, 'branch', format_string)
 
     def _branch_class(self):
         """What class to instantiate on open calls."""
@@ -2062,18 +2061,11 @@ class BranchFormatMetadir(BranchFormat):
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
 
-    def network_name(self):
-        """A simple byte string uniquely identifying this format for RPC calls.
-
-        Metadir branch formats use their format string.
-        """
-        return self.get_format_string()
-
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None, possible_transports=None):
         """See BranchFormat.open()."""
         if not _found:
-            format = BranchFormat.find_format(a_bzrdir, name=name)
+            format = BranchFormatMetadir.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
@@ -2122,7 +2114,8 @@ class BzrBranchFormat5(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch5
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG branch format 5\n"
 
@@ -2158,7 +2151,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch6
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar Branch Format 6 (bzr 0.15)\n"
 
@@ -2190,7 +2184,8 @@ class BzrBranchFormat8(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch8
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar Branch Format 8 (needs bzr 1.15)\n"
 
@@ -2244,7 +2239,8 @@ class BzrBranchFormat7(BranchFormatMetadir):
     def _branch_class(self):
         return BzrBranch7
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar Branch Format 7 (needs bzr 1.6)\n"
 
@@ -2276,7 +2272,8 @@ class BranchReferenceFormat(BranchFormatMetadir):
      - a format string
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG Branch Reference Format 1\n"
 
@@ -2342,7 +2339,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         :param possible_transports: An optional reusable transports list.
         """
         if not _found:
-            format = BranchFormat.find_format(a_bzrdir, name=name)
+            format = BranchFormatMetadir.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
