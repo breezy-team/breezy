@@ -2536,6 +2536,15 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
+    Option('append_revisions_only',
+           default=None, from_unicode=bool_from_store,
+           help='''\
+Whether to only append revisions to the mainline.
+
+If this is set to true, then it is not possible to change the
+existing mainline of the branch.
+'''))
+option_registry.register(
     Option('acceptable_keys',
            default=None, from_unicode=list_from_store,
            help="""\

@@ -668,12 +668,12 @@ class TestBranchOptions(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestBranchOptions, self).setUp()
         self.branch = self.make_branch('.')
-        self.config = self.branch.get_config()
+        self.config_stack = self.branch.get_config_stack()
 
     def check_append_revisions_only(self, expected_value, value=None):
         """Set append_revisions_only in config and check its interpretation."""
         if value is not None:
-            self.config.set_user_option('append_revisions_only', value)
+            self.config.set('append_revisions_only', value)
         self.assertEqual(expected_value,
                          self.branch.get_append_revisions_only())
 
