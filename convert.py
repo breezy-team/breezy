@@ -67,7 +67,7 @@ def load_dumpfile(dumpfile, outputdir):
 
 def convert_repository(source_repos, output_url, scheme=None, 
                        create_shared_repo=True, working_trees=False, all=False,
-                       format=None, pb=None, filter_branch=None):
+                       format=None, filter_branch=None):
     """Convert a Subversion repository and its' branches to a 
     Bazaar repository.
 
@@ -79,7 +79,6 @@ def convert_repository(source_repos, output_url, scheme=None,
     :param all: Whether old revisions, even those not part of any existing 
         branches, should be imported
     :param format: Format to use
-    :param pb: Progress bar to use
     """
     assert not all or create_shared_repo
     if format is None:
