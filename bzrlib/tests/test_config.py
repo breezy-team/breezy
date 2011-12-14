@@ -328,13 +328,13 @@ class InstrumentedConfigObj(object):
 
 class FakeBranch(object):
 
-    def __init__(self, base=None, user_id=None):
+    def __init__(self, base=None):
         if base is None:
             self.base = "http://example.com/branches/demo"
         else:
             self.base = base
         self._transport = self.control_files = \
-            FakeControlFilesAndTransport(user_id=user_id)
+            FakeControlFilesAndTransport()
 
     def _get_config(self):
         return config.TransportConfig(self._transport, 'branch.conf')
@@ -348,15 +348,9 @@ class FakeBranch(object):
 
 class FakeControlFilesAndTransport(object):
 
-    def __init__(self, user_id=None):
+    def __init__(self):
         self.files = {}
-        if user_id:
-            self.files['email'] = user_id
         self._transport = self
-
-    def get_utf8(self, filename):
-        # from LockableFiles
-        raise AssertionError("get_utf8 should no longer be used")
 
     def get(self, filename):
         # from Transport
@@ -1761,24 +1755,14 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         return my_config
 
     def test_user_id(self):
-        branch = FakeBranch(user_id='Robert Collins <robertc@example.net>')
+        branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        self.assertEqual("Robert Collins <robertc@example.net>",
-                         my_config.username())
+        self.assertIsNot(None, my_config.username())
         my_config.branch.control_files.files['email'] = "John"
         my_config.set_user_option('email',
                                   "Robert Collins <robertc@example.org>")
-        self.assertEqual("John", my_config.username())
-        del my_config.branch.control_files.files['email']
         self.assertEqual("Robert Collins <robertc@example.org>",
-                         my_config.username())
-
-    def test_not_set_in_branch(self):
-        my_config = self.get_branch_config(global_config=sample_config_text)
-        self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
-                         my_config._get_user_id())
-        my_config.branch.control_files.files['email'] = "John"
-        self.assertEqual("John", my_config._get_user_id())
+                        my_config.username())
 
     def test_BZR_EMAIL_OVERRIDES(self):
         self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
@@ -2275,6 +2259,12 @@ class TestOption(tests.TestCase):
         opt = config.Option('foo', default='bar')
         self.assertEquals('bar', opt.get_default())
 
+    def test_callable_default_value(self):
+        def bar_as_unicode():
+            return u'bar'
+        opt = config.Option('foo', default=bar_as_unicode)
+        self.assertEquals('bar', opt.get_default())
+
     def test_default_value_from_env(self):
         opt = config.Option('foo', default='bar', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'quux')
@@ -2295,6 +2285,12 @@ class TestOption(tests.TestCase):
     def test_not_supported_object_default_value(self):
         self.assertRaises(AssertionError, config.Option, 'foo',
                           default=object())
+
+    def test_not_supported_callable_default_value_not_unicode(self):
+        def bar_not_unicode():
+            return 'bar'
+        opt = config.Option('foo', default=bar_not_unicode)
+        self.assertRaises(AssertionError, opt.get_default)
 
 
 class TestOptionConverterMixin(object):
@@ -2362,6 +2358,7 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
+
 
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
 

@@ -2191,9 +2191,31 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository._get_inventory_xml(revision_id)
 
+    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
-        self._ensure_real()
-        return self._real_repository.reconcile(other=other, thorough=thorough)
+        from bzrlib.reconcile import RepoReconciler
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response, handler = self._call_expecting_body(
+                'Repository.reconcile', path, self._lock_token)
+        except (errors.UnknownSmartMethod, errors.TokenLockingNotSupported):
+            self._ensure_real()
+            return self._real_repository.reconcile(other=other, thorough=thorough)
+        if response != ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
+        body = handler.read_body_bytes()
+        result = RepoReconciler(self)
+        for line in body.split('\n'):
+            if not line:
+                continue
+            key, val_text = line.split(':')
+            if key == "garbage_inventories":
+                result.garbage_inventories = int(val_text)
+            elif key == "inconsistent_parents":
+                result.inconsistent_parents = int(val_text)
+            else:
+                mutter("unknown reconcile key %r" % key)
+        return result
 
     def all_revision_ids(self):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -3956,6 +3978,9 @@ error_translators.register('ReadError',
     lambda err, find, get_path: errors.ReadError(get_path()))
 error_translators.register('NoSuchFile',
     lambda err, find, get_path: errors.NoSuchFile(get_path()))
+error_translators.register('TokenLockingNotSupported',
+    lambda err, find, get_path: errors.TokenLockingNotSupported(
+        find('repository')))
 error_translators.register('UnsuspendableWriteGroup',
     lambda err, find, get_path: errors.UnsuspendableWriteGroup(
         repository=find('repository')))

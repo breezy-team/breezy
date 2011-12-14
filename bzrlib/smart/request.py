@@ -754,6 +754,9 @@ request_handlers.register_lazy(
     'VersionedFileRepository.get_serializer_format', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetSerializerFormat', info='read')
 request_handlers.register_lazy(
+    'Repository.reconcile', 'bzrlib.smart.repository',
+    'SmartServerRepositoryReconcile', info='idem')
+request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball', info='read')
 request_handlers.register_lazy(

@@ -165,7 +165,7 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(54, self.hpss_calls)
+        self.assertLength(51, self.hpss_calls)
         self.expectFailure("signing commits requires VFS access",
             self.assertThat, self.hpss_calls, NoVfsCalls)
 
