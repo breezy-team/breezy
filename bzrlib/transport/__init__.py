@@ -51,7 +51,10 @@ from bzrlib.symbol_versioning import (
 from bzrlib.trace import (
     mutter,
     )
-from bzrlib import registry
+from bzrlib import (
+    hooks,
+    registry,
+    )
 
 
 # a dictionary of open file streams. Keys are absolute paths, values are
@@ -282,6 +285,16 @@ class AppendBasedFileStream(FileStream):
         self.transport.append_bytes(self.relpath, bytes)
 
 
+class TransportHooks(hooks.Hooks):
+    """Mapping of hook names to registered callbacks for transport hooks"""
+    def __init__(self):
+        super(TransportHooks, self).__init__()
+        self.add_hook("post_connect",
+            "Called after a new connection is established or a reconnect "
+            "occurs. The connected transport instance is the sole argument "
+            "passed.", (2, 5))
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -306,6 +319,8 @@ class Transport(object):
     #       where the biggest benefit between combining reads and
     #       and seeking is. Consider a runtime auto-tune.
     _bytes_to_read_before_seek = 0
+    
+    hooks = TransportHooks()
 
     def __init__(self, base):
         super(Transport, self).__init__()
@@ -1495,6 +1510,8 @@ class ConnectedTransport(Transport):
         """
         self._shared_connection.connection = connection
         self._shared_connection.credentials = credentials
+        for hook in self.hooks["post_connect"]:
+            hook(self)
 
     def _get_connection(self):
         """Returns the transport specific connection object."""

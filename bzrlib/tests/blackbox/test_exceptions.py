@@ -60,6 +60,14 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
             flags=re.MULTILINE)
         self.assertEquals(out, "")
 
+    def test_utf8_default_fs_enc(self):
+        """In the C locale bzr treats a posix filesystem as UTF-8 encoded"""
+        if os.name != "posix":
+            raise tests.TestNotApplicable("Needs system beholden to C locales")
+        out, err = self.run_bzr_subprocess(["init", "file:%C2%A7"],
+            env_changes={"LANG": "C", "LC_ALL": "C"})
+        self.assertContainsRe(out, "^Created a standalone tree .*$")
+
 
 class TestOptParseBugHandling(tests.TestCase):
     "Test that we handle http://bugs.python.org/issue2931"
