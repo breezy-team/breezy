@@ -4248,7 +4248,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         fmt = bzrdir.format_registry.get('2a')().repository_format
         repo._format = fmt
-        stream = [('inventory-delta', [
+        stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory('somerevid', None, None,
                 self._serialize_inv_delta('null:', 'somerevid', []))])]
         client.add_expected_call(

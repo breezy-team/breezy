@@ -2655,7 +2655,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         response = request.do_body("somerev\n")
         self.assertTrue(response.is_successful())
         self.assertEquals(response.args, ("ok", ))
-        stream = [('inventory-delta', [
+        stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory('somerev', None, None,
                 self._get_serialized_inventory_delta(
                     t.branch.repository, 'null:', 'somerev'))])]
