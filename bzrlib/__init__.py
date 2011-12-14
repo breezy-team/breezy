@@ -136,7 +136,8 @@ version_string = __version__
 def _patch_filesystem_default_encoding(new_enc):
     """Change the Python process global encoding for filesystem names
     
-    This function should only be used near startup on posix systems.
+    The effect is to change how open() and other builtin functions handle
+    unicode filenames on posix systems. This should only be done near startup.
 
     The new encoding string passed to this function must survive until process
     termination, otherwise the interpreter may access uninitialized memory.
