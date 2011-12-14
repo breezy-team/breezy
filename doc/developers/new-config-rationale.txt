@@ -60,13 +60,14 @@ Current issues
 
   * should the option be inherited by more specific sections, (this was more
     or less the default in the old design, it is addressed by section
-    matchers in the new one).
+    matchers in the new one by letting users define options in whatever
+    relevant section and let the matcher select the right ones).
 
-  * should the inherited value append the relative path between the
-    section one and the location it applies to (see http://pad.lv/832013),
+  * should the inherited value append the relative path between the section
+    one and the location it applies to (see http://pad.lv/832013, fixed),
 
   * the default value (including calling any python code that may be
-    required to calculate this value)(see http://pad.lv/832064),
+    required to calculate this value)(see http://pad.lv/832064, fixed),
 
   * priority between sections in various config files (this is defined by
     the section matcher associated with a given config store for stacks,
@@ -78,9 +79,12 @@ Current issues
   inconsistent. (Using only Stacks addresses that).
 
 * Access to the 'active' configuration option value from the command line
-  doesn't give access to the specific section. (This is only a concern if
-  the user has no other way to address a specific configuration option
-  including Store and Section when using ``bzr config``) (see http://pad.lv/725234).
+  doesn't give access to the specific section. This is a concern if the user
+  has no other way to address a specific configuration option including
+  Store and Section when using ``bzr config`` (see
+  http://pad.lv/725234). Plugins defining their own staks and/or stores also
+  have no way to properly plug into ``bzr config`` (see
+  http://pad.lv/788991).
 
 * Rules for configuration options are not clearly defined for remote
   branches (they may differ between dumb and smart servers the former will
@@ -91,7 +95,8 @@ Current issues
   accessible to plugin authors either by supporting plugin configuration
   options in the configuration files or allowing the plugins to define their
   own configuration files. (Separating Section, Store and Stack starts
-  addressing that, a stack registry should complete the needed means).
+  addressing that, a stack registry should complete the needed means
+  http://pad.lv/832036).
 
 * While the actual configuration files support sections, they are used in
   mutually exclusive ways that make it impossible to offer the same set of
@@ -111,6 +116,10 @@ Current issues
 
   * ``branch.conf`` doesn't use any section.
 
+  This is addressed by defining different stacks selecting the relevant
+  sections from the stores involved. ``ALIASES`` for example can define a
+  stack that select only the ``ALIASES`` section from ``bazaar.conf``.
+
 * There is no easy way to get configuration options for a given repository
   or an arbitrary path. Working trees and branches are generally organized
   in hierarchies and being able to share the option definitions is an often
@@ -120,21 +129,23 @@ Current issues
   support conflict resolution options for a given file, directory or
   subtree (see http://pad.lv/359320).
 
-* Since sections allow different definitions for the same option, a total
-  order should be defined between sections to select the right definition
-  for a given context (paths or globs for ``locations.conf`` but other
-  schemes can be used, window names for qbzr for example). Allowing globs
-  for section names is harmful in this respect since the order is currently
-  defined as being the lexicographical one. The caveat here is that if the
-  order is always defined for a given set of sections it can change when one
-  or several globs are modified and the user may get surprising and unwanted
-  results in these cases. The lexicographical order is otherwise fine to
-  define what section is more specific than another. (This may not be a
-  problem in real life since longer globs are generally more specific than
-  shorter ones and explicit paths should also be longer than matching
+* Since sections allow different definitions for the same option (in the
+  same store), a total order should be defined between sections to select
+  the right definition for a given context (paths or globs for
+  ``locations.conf`` but other schemes can be used, window names for qbzr,
+  repository UUIDs for bzr-svn for example). Allowing globs for section
+  names is harmful in this respect since the order is currently defined as
+  being based on the number of path components. The caveat here is that if
+  the order is always defined for a given set of sections it can change when
+  one or several globs are modified and the user may get surprising and
+  unwanted results in these cases. The lexicographical order is otherwise
+  fine to define what section is more specific than another. (This may not
+  be a problem in real life since longer globs are generally more specific
+  than shorter ones and explicit paths should also be longer than matching
   globs. That may leave a glob and a path of equal length in a gray area but
   in practice using ``bzr config`` should give enough feedback to address
-  them. See also http://pad.lv/832046 asking for a less magical section matcher).
+  them. See also http://pad.lv/832046 asking for a less magical section
+  matcher).
 
 * Internally, configuration files (and their fallbacks, ``bazaar.conf`` and
   ``locations.conf`` for ``branch.conf``) are read every time *one* option is
@@ -144,15 +155,14 @@ Current issues
 
 * The current implementation use a mix of transport-based and direct file
   systems operations (Addressed by Store implementation relying on
-  transports only).
+  transports only and the hpss implementing the corresponding verbs).
 
 * While the underlying ``ConfigObj`` implementation provides an
   interpolation feature, the ``bzrlib`` implementation doesn't provide an
   easy handling of templates where other configuration options can be
   interpolated. Instead, ``locations.conf`` (and only it) allows for
-  ``appendpath`` and ``norecurse``. (Partially implemented, cross-section
-  and cross-file interpolation still to be implemented, see
-  http://pad.lv/832013 for the remaining parts).
+  ``appendpath`` and ``norecurse``. (Cross-section, cross-file interpolation
+  and section local options are now implemented in the new design).
 
 * Inherited list values can't be modified, a more specific configuration can
   only redefine the whole list.
@@ -188,10 +198,12 @@ them can be accessed remotely (``branch.conf``, ``repo.conf``).
 Naming
 ------
 
-Option names are organized into a name space for a given configuration file
-(or a set of related configuration files). One such set includes
-``bazaar.conf``, ``locations.conf``, ``branch.conf``, etc. Plugins can
-define their own sets for their own needs.
+Option names are organized into a name space for a given stack. One such set
+includes ``bazaar.conf``, ``locations.conf``, ``branch.conf``, etc. Plugins
+can define their own sets for their own needs. While it is conceivable that
+the same option name can be used in unrelated configuration stacks, it seems
+better to define a single name space for all options if only to avoid
+ambiguities.
 
 Using a name space is meant to help:
 
@@ -242,7 +254,7 @@ returning a default value)(most of that is now handled at Option definition).
 
 This also ensures compatibility with values provided via environment
 variables or from the command line (where no validation can be expected
-either)(done in the new design, some cases missing, see http://pad.lv/832064).
+either)(done in the new design).
 
 
 Option expansion

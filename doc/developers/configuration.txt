@@ -4,43 +4,177 @@ Configuring Bazaar
 .. contents::
    :depth: 2
 
+As a Bazaar developer there are a few things you need to know about
+configuration:
 
-The short story
----------------
+* add a new option,
 
-As a Bazaar developer there are three things you need to know about
-configuration.
+* add a new stack,
 
-1. Get a value.
+* add a new store.
 
-You construct or get a reference to a ConfigStack subclass that's relevant
-to the context where you want to look up a value. For instance, given a
-branch::
+The first sections in this document summarize the steps needed when adding a
+new configuration item, the rest of the document gives more internal details
+on how this is implemented.
 
-  print branch.get_config_stack().get('log_format')
+Get an option value
+-------------------
 
-This will look up the stack through all relevant configuration sources.
-The value returned is of the type declared for that Option and if nothing
-is specifically declared you will get the default for that option.
+Options values are obtained with ``stack.get(option_name)`` where ``stack``
+is one of the daughter classes of ``config.Stack``, see their docstrings for
+a description of which sections are used from which stores.
 
-2. Add a new option.
+The value returned is of the type declared for that ``Option`` and if
+nothing is specifically declared you will get the default for that option.
+
+Add a new option
+----------------
 
 You add a new ``Option`` to the ``option_registry``, either inside
-``bzrlib/config.py`` or during initialization of your plugin. New plugins
-should have systematic hierarchical names so that related values are grouped
-together::
+``bzrlib/config.py`` or during initialization of your plugin (use
+``register_lazy`` in this case). New plugins should have systematic
+hierarchical names so that related values are grouped together::
 
   option_registry.register(
       Option('dirstate.fdatasync', default=True,
             from_unicode=bool_from_store,
             help="Flush dirstate changes onto physical disk? ...."))
 
+You then need to decide which stack is appropriate to implement the Option
+policy:
 
-3. Old and new configuration code.
+* which config files (aka ``Store``) needs to be queried, which sections are
+  relevant and in what order,
+
+* which section will receive the modifications (if relevant).
+
+The docstrings for the existing stacks cover most of the known use cases.
+
+Modify an option value or delete an option
+------------------------------------------
+
+Just reading an option is what is needed most of the time, modifying option
+values or removing options is usually something that is not automated but
+left to the user (with ``bzr config``).
+
+Nevertheless, if you need to save a modified option value, use
+``.set(option_name, value)`` and ``.remove(option_name)`` to delete the
+option. Both methods are provided by the ``Stack`` object.
+
+But before doing that, you must be sure that the stack you're using have a
+writable section (this is true for ``GlobalStack`` which uses the
+``DEFAULT`` section in ``bazaar.conf`` and for ``BranchStack``which uses the
+no-name section in ``branch.conf``).
+
+Old and new configuration code
+------------------------------
 
 There is (as of late 2011) some older and some newer configuration code. The
 old code has specific methods for various checks or uses classes like
 ``GlobalConfig``.  Don't add to to it; try to remove it.
+
+If you encounter an option using the old code you may want to migrate
+it. This generally involves:
+
+* registering the option,
+
+* replace the old config by a stack:
+
+  * ``GlobalConfig`` became ``GlobalStack``,
+
+  * ``LocationConfig`` became ``LocationStack``,
+
+  * ``BranchConfig`` became ``BranchStack`` (or in this case,
+    ``get_config()`` became ``get_config_stack()``.
+
+* replace the custom accessor calls by ``conf.get(option_name)``.
+
+The new config code provides some help for commonly encountered use cases
+that can allow further simplifications like:
+
+* providing a default value when the option is not defined in any way by the
+  user,
+
+* convert the unicode string provided by the user into a suitable
+  representation (integer, list, etc).
+
+Adding a new stack
+------------------
+
+Stacks capture the various places an option can be declared by the user with
+associated levels of generality and query them in the appropriate order
+returning the first definition found. For example, the
+``append_revisions_only`` option may be declared for all branches of a user
+in ``bazaar.conf``, or for a hierarchy of branches in ``locations.conf`` or
+in a single branch in ``branch.conf``.
+
+Defining a new stack means you need a new way to expose these levels to the
+user that is not covered by the existing stacks.
+
+This is achieved by declaring:
+
+* which stores can provide a value for the option,
+
+* which sections apply to the stack instance, some filtering for a given
+  context can be defined,
+
+* which (store, section) should receive the modifications.
+
+Mapping different sections to different stacks is a powerful way to organize
+the options and provide various levels of configuration to the user. This is
+achieved with ``Store`` and ``SectionMatcher`` objects.
+
+
+Adding a new store
+------------------
+
+
+
+The following stores are used by ``bzr`` in ways that illustrate various
+uses of sections.
+
+bazaar.conf
+===========
+
+``bzr`` itself defines two sections here:
+
+* ``DEFAULT`` where global options are defined,
+
+* ``ALIASES`` where command aliases are defined. This section is *not*
+  available via ``GlobalStack``, instead, the ``bzr alias`` command uses it
+  for its own purposes.
+
+Plugins can define either additional options in the ``DEFAULT`` section or
+new sections for their own needs (this is not especially encouraged
+though). The ``bzr-bookmarks`` plugin defines a ``BOOKMARKS`` section there
+for example.
+
+pkgimport.conf
+==============
+
+The Ubuntu package importer defines a store and two stacks involving
+``pkgimport.conf``. A no-name section contains the options common to all
+packages and sections named after their corresponding package can also be
+defined.
+
+The ``ImporterStack`` uses ``locations.conf`` and the no-name section in
+``pkgimport.conf`` for the importer options.
+
+The ``PackageStack`` uses only ``pkgimport.conf`` and uses the section name
+after the package followed by the no-name section.
+
+location.conf
+=============
+
+``bzr`` defines sections corresponding to URLs there and includes the
+relevant sections in ``LocationStack`` and ``BranchStack``. No no-name
+section is recognized in this file.
+
+branch.conf
+===========
+
+This file defines the option for a given branch and uses only the no-name
+section.
 
 Option
 ------
@@ -54,8 +188,9 @@ The Option object is used to define its properties:
   suitable value for the option. If the string cannot be coerced it should
   return None.
 
-* default: the default value that Stack.get() should return if no
-  value can be found for the option.
+* default: the default value that Stack.get() should return if no value can
+  be found for the option. This can also be a callable as long as it returns
+  a unicode string.
 
 * default_from_env: a list of environment variables. The first variable set
   will provide a default value overriding 'default' which remains the
@@ -104,11 +239,11 @@ should be done via the ``Section`` objects.
 A ``Store`` can contain one or more sections, each section is uniquely
 identified by a unicode string.
 
-``config.ConfigObjStore`` is an implementation that use ``ConfigObj``.
+``config.IniFileStore`` is an implementation that use ``ConfigObj``.
 
 Depending on the object it is associated with (or not) a ``Store`` also needs
-to implement a locking mechanism. ``LockableConfigObjStore`` implements such a
-mechanism for ``ConfigObj`` based stores.
+to implement a locking mechanism. ``LockableIniFileStore`` implements such a
+mechanism for ``IniFileStore`` based stores.
 
 Classes are provided for the usual Bazaar configuration files and could be
 used as examples to define new ones if needed. The associated tests provides a
@@ -119,8 +254,9 @@ ones.
 Filtering sections
 ------------------
 
-For some contexts, only some sections from a given store will apply. Defining
-which is what the ``SectionMatcher`` objects are about.
+For some contexts, only some sections from a given store will apply. The
+``SectionMatcher`` objects are used to define which sections in a store
+apply to a given context.
 
 The main constraint here is that a ``SectionMatcher`` should delay the loading
 of the associated store as long as possible. The constructor should collect
@@ -130,10 +266,10 @@ all data needed for the selection and uses it while processing the sections in
 Only ``ReadOnlySection`` objects are manipulated here but a
 ``SectionMatcher`` can return dedicated ``Section`` objects to provide
 additional context (the ``LocationSection`` add an ``extra_path`` attribute
-to implement the ``appendpath`` policy for example). If no sections match,
+to implement the section local options for example). If no sections match,
 an empty list is returned.
 
-Options local to a section can also be defined for special purposes and be
+Options local to a section can be defined for special purposes and be
 handled by ``Section.get()``. One such option is ``relpath`` which is
 defined in ``LocationSection`` as an alternative to the ``appendpath``
 policy.
