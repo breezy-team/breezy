@@ -263,9 +263,9 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
     def test_invalid_version(self):
         """An invalid version in the changelog should be handled sanely
         
-        Depending on the dpkg version, bad version may be tolerated or not.
-        If the script aborts the merge should result in a success with zero
-        bytes in the merged file. See lp:893495 for such an issue.
+        Depending on the dpkg version, bad versions may be tolerated or not.
+        If the script aborts, the result should not be a success with a zero
+        byte merge result file. See lp:893495 for such an issue.
         """
         invalid_changelog = """\
 psuedo-prog (\xc2\xa7) unstable; urgency=low
