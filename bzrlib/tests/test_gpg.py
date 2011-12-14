@@ -34,29 +34,21 @@ from bzrlib.tests import (
     )
 
 
-class FakeConfig(config.GlobalStack):
+class FakeConfig(config.Stack):
 
-    def get(self, name):
-        if name == "gpg_signing_key":
-            return "amy@example.com"
-        elif name == "gpg_signing_command":
-            return "false"
-        elif name == "acceptable_keys":
-            return None
-        else:
-            return None
+    def __init__(self):
+        store = config.IniFileStore()
+        store._load_from_string('''
+gpg_signing_key=amy@example.com
+gpg_signing_command=false''')
+        super(FakeConfig, self).__init__([store.get_sections])
 
 
-class TestCommandLine(tests.TestCaseWithTransport):
+class TestCommandLine(tests.TestCase):
 
     def setUp(self):
         super(TestCommandLine, self).setUp()
-        store = config.GlobalStore()
-        store._load_from_string('''[DEFAULT]
-gpg_signing_key=amy@example.com
-gpg_signing_command=false''')
-        store.save()
-        self.my_gpg = gpg.GPGStrategy(config.GlobalStack())
+        self.my_gpg = gpg.GPGStrategy(FakeConfig())
 
     def test_signing_command_line(self):
         self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
