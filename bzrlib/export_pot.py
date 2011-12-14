@@ -130,15 +130,19 @@ class _ModuleContext(object):
 class _PotExporter(object):
     """Write message details to output stream in .pot file format"""
 
-    def __init__(self, outf):
+    def __init__(self, outf, include_duplicates=False):
         self.outf = outf
-        self._msgids = set()
+        if include_duplicates:
+            self._msgids = None
+        else:
+            self._msgids = set()
         self._module_contexts = {}
 
     def poentry(self, path, lineno, s, comment=None):
-        if s in self._msgids:
-            return
-        self._msgids.add(s)
+        if self._msgids is not None:
+            if s in self._msgids:
+                return
+            self._msgids.add(s)
         if comment is None:
             comment = ''
         else:
@@ -305,8 +309,8 @@ def _help_topics(exporter):
                      1, summary)
 
 
-def export_pot(outf, plugin=None):
-    exporter = _PotExporter(outf)
+def export_pot(outf, plugin=None, include_duplicates=False):
+    exporter = _PotExporter(outf, include_duplicates)
     if plugin is None:
         _standard_options(exporter)
         _command_helps(exporter)
