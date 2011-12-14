@@ -28,7 +28,7 @@ from bzrlib.tests import (
     script,
     TestCaseWithTransport,
     )
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.workingtree import WorkingTree
 
 
@@ -425,7 +425,7 @@ class TestSmartServerCat(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(9, self.hpss_calls)
-        self.assertThat(self.hpss_calls, NoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_show_tags(self):
         self.setup_smart_server_with_call_log()
@@ -443,4 +443,4 @@ class TestSmartServerCat(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(6, self.hpss_calls)
-        self.assertThat(self.hpss_calls, NoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

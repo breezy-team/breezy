@@ -20,7 +20,7 @@ import os
 
 from bzrlib import ignores
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestLS(TestCaseWithTransport):
@@ -264,4 +264,4 @@ class TestSmartServerLs(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(15, self.hpss_calls)
         self.expectFailure("inventories can only be accessed over VFS",
-            self.assertThat, self.hpss_calls, NoVfsCalls)
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

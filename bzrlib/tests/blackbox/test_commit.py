@@ -36,7 +36,7 @@ from bzrlib.tests import (
     features,
     )
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestCommit(TestCaseWithTransport):
@@ -876,4 +876,4 @@ class TestSmartServerCommit(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(213, self.hpss_calls)
         self.expectFailure("commit still uses VFS calls",
-            self.assertThat, self.hpss_calls, NoVfsCalls)
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

@@ -33,7 +33,7 @@ from bzrlib.tests import (
     features,
     TestCaseWithTransport,
     )
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -450,4 +450,4 @@ class TestSmartServerExport(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(16, self.hpss_calls)
         self.expectFailure("export requires inventory access which requires VFS",
-            self.assertThat, self.hpss_calls, NoVfsCalls)
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

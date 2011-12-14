@@ -36,6 +36,11 @@ Improvements
 
 * New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
 
+* Override the value returned by ``sys.getfilesystemencoding()`` for the bzr
+  script to utf-8 when it would otherwise be ascii on a posix system. This
+  will mean bzr works with non-ascii files when no locale or an incorrect
+  locale is set. (Martin Packman, #794353)
+
 Bug Fixes
 *********
 
@@ -81,6 +86,9 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* New matcher ``ContainsNoVfsCalls`` which filters a list of HPSS
+  calls for VFS requests. (Jelmer Vernooij)
 
 
 bzr 2.5b4
