@@ -134,12 +134,6 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
 # Backports from current testtools so that we remain compatible with testtools
 # 0.9.2 (the version in lucid).
 UTF8_TEXT = ContentType('text', 'plain', {'charset': 'utf8'})
-def text_content(text):
-    """Create a `Content` object from some text.
-
-    This is useful for adding details which are short strings.
-    """
-    return Content(UTF8_TEXT, lambda: [text.encode('utf8')])
 
 
 class TestMergeChangelog(tests.TestCase):
@@ -162,7 +156,8 @@ class TestMergeChangelog(tests.TestCase):
         warnings_log = self.logged_warnings.getvalue()
         if warnings_log:
             self.addDetail(
-                'merge_changelog warnings', text_content(warnings_log))
+                'merge_changelog warnings',
+                Content(UTF8_TEXT, lambda: [warnings_log]))
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
                              base_lines=[], conflicted=False):
@@ -264,6 +259,40 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
                                   base_lines=invalid_changelog,
                                   conflicted=True
                                   )
+
+    def test_invalid_version(self):
+        """An invalid version in the changelog should be handled sanely
+        
+        Depending on the dpkg version, a bad version may be tolerated or not.
+        If the script aborts the merge should result in a success with zero
+        bytes in the merged file. See lp:893495 for such an issue.
+        """
+        invalid_changelog = """\
+psuedo-prog (\xc2\xa7) unstable; urgency=low
+
+  * New project released!!!!
+
+ -- Barry Foo <barry@example.com>  Thu, 28 Jan 2010 10:00:44 +0000
+
+""".splitlines(True)
+        # invalid_changelog has a bad version, with non-ascii characters.
+        status, lines = merge_changelog.merge_changelog(
+            this_lines=v_112_1 + invalid_changelog,
+            other_lines=v_111_2 + invalid_changelog,
+            base_lines=invalid_changelog)
+        log = self.logged_warnings.getvalue()
+        self.assertContainsRe(log, "(?m)\xc2\xa7 is not a valid version$")
+        if "dpkg-mergechangelogs: error:" in log:
+            # Script version aborts on invalid versions so merge must fail
+            self.assertEqual('not_applicable', status)
+            self.assertContainsRe(log,
+                "(?m)dpkg-mergechangelogs failed with status \\d+$")
+        else:
+            # Script version tolerates invalid versions and produces output
+            self.assertEqual('success', status)
+            self.assertEqualDiff(
+                "".join(v_112_1 + v_111_2 + invalid_changelog),
+                "".join(lines))
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):

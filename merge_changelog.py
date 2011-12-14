@@ -26,6 +26,7 @@ import tempfile
 
 from bzrlib import (
     merge,
+    osutils,
     )
 
 
@@ -77,7 +78,9 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             # don't decorate the messages at all, as dpkg-mergechangelogs
             # warnings are already prefixed with "dpkg-mergechangelogs:
             # warning:" which makes the origin of the messages quite clear.
-            _logger.warning('%s', stderr)
+            encoding = osutils.get_user_encoding()
+            # Errors are output using the locale, and log needs unicode.
+            _logger.warning('%s', stderr.decode(encoding, "replace"))
         if retcode == 1:
             # dpkg-mergechangelogs reports a conflict.  Unfortunately it uses
             # slightly non-standard conflict markers (<http://pad.lv/815700>:
@@ -96,6 +99,12 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
                 return match_text[0] * 7
             stdout = re.sub('(?m)^[<=>]{6}$', replace_func, stdout)
             return 'conflicted', stdout
+        elif retcode != 0:
+            # dpkg-mergechangelogs exited with an error. There is probably no
+            # output at all, but regardless the merge should fall back to
+            # another method.
+            _logger.warning("dpkg-mergechangelogs failed with status %d", retcode)
+            return 'not_applicable', stdout
         else:
             return 'success', stdout
     finally:
