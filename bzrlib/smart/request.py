@@ -583,6 +583,9 @@ request_handlers.register_lazy(
     'Branch.revision_id_to_revno', 'bzrlib.smart.branch',
     'SmartServerBranchRequestRevisionIdToRevno', info='read')
 request_handlers.register_lazy(
+    'BzrDir.checkout_metadir', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestCheckoutMetaDir', info='read')
+request_handlers.register_lazy(
     'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestCloningMetaDir', info='read')
 request_handlers.register_lazy(

@@ -224,6 +224,24 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
 
+class TestSmartServerBzrDirRequestCloningMetaDir(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.checkout_metadir."""
+
+    def test_checkout_metadir(self):
+        backing = self.get_transport()
+        request = smart_dir.SmartServerBzrDirRequestCheckoutMetaDir(
+            backing)
+        branch = self.make_branch('.', format='2a')
+        response = request.execute('')
+        self.assertEqual(
+            smart_req.SmartServerResponse(
+                ('Bazaar-NG meta directory, format 1\n',
+                 'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+                 'Bazaar Branch Format 7 (needs bzr 1.6)\n')),
+            response)
+
+
 class TestSmartServerBzrDirRequestDestroyBranch(
     tests.TestCaseWithMemoryTransport):
     """Tests for BzrDir.destroy_branch."""
@@ -2477,6 +2495,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerRequestInitializeBzrDir)
         self.assertHandlerEqual('BzrDirFormat.initialize_ex_1.16',
             smart_dir.SmartServerRequestBzrDirInitializeEx)
+        self.assertHandlerEqual('BzrDir.checkout_metadir',
+            smart_dir.SmartServerBzrDirRequestCheckoutMetaDir)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart_dir.SmartServerBzrDirRequestCloningMetaDir)
         self.assertHandlerEqual('BzrDir.get_config_file',

@@ -503,6 +503,43 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertRaises(errors.UnknownFormatError, a_bzrdir.cloning_metadir)
 
 
+class TestBzrDirCheckoutMetaDir(TestRemote):
+
+    def test__get_checkout_format(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        control_name = reference_bzrdir_format.network_name()
+        client.add_expected_call(
+            'BzrDir.checkout_metadir', ('quack/', ),
+            'success', (control_name, '', ''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        result = a_bzrdir.checkout_metadir()
+        # We should have got a reference control dir with default branch and
+        # repository formats.
+        self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
+        self.assertEqual(None, result._repository_format)
+        self.assertEqual(None, result._branch_format)
+        self.assertFinished(client)
+
+    def test_unknown_format(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.checkout_metadir', ('quack/',),
+            'success', ('dontknow', '', ''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertRaises(errors.UnknownFormatError,
+            a_bzrdir.checkout_metadir)
+        self.assertFinished(client)
+
+
 class TestBzrDirDestroyBranch(TestRemote):
 
     def test_destroy_default(self):

@@ -93,6 +93,8 @@ Internals
   branches themselves. The active branch uses the key None.
   (Neil Martinsen-Burrell)
 
+* New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
+
 Testing
 *******
 
@@ -278,6 +280,12 @@ Internals
   ``Repository.add_signature_revision_text`` and
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
+
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
 
 * ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
   will now use HPSS calls where possible. (Jelmer Vernooij)

@@ -490,6 +490,48 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         self._next_open_branch_result = None
         return _mod_bzrdir.BzrDir.break_lock(self)
 
+    def _vfs_checkout_metadir(self):
+        self._ensure_real()
+        return self._real_bzrdir.checkout_metadir()
+
+    def checkout_metadir(self):
+        """Retrieve the controldir format to use for checkouts of this one.
+        """
+        medium = self._client._medium
+        if medium._is_remote_before((2, 5)):
+            return self._vfs_checkout_metadir()
+        path = self._path_for_remote_call(self._client)
+        try:
+            response = self._client.call('BzrDir.checkout_metadir',
+                path)
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((2, 5))
+            return self._vfs_checkout_metadir()
+        if len(response) != 3:
+            raise errors.UnexpectedSmartServerResponse(response)
+        control_name, repo_name, branch_name = response
+        try:
+            format = controldir.network_format_registry.get(control_name)
+        except KeyError:
+            raise errors.UnknownFormatError(kind='control',
+                format=control_name)
+        if repo_name:
+            try:
+                repo_format = _mod_repository.network_format_registry.get(
+                    repo_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='repository',
+                    format=repo_name)
+            format.repository_format = repo_format
+        if branch_name:
+            try:
+                format.set_branch_format(
+                    branch.network_format_registry.get(branch_name))
+            except KeyError:
+                raise errors.UnknownFormatError(kind='branch',
+                    format=branch_name)
+        return format
+
     def _vfs_cloning_metadir(self, require_stacking=False):
         self._ensure_real()
         return self._real_bzrdir.cloning_metadir(
@@ -3178,17 +3220,6 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._control_files = RemoteBranchLockableFiles(
                 self.bzrdir, self._client)
         return self._control_files
-
-    def _get_checkout_format(self, lightweight=False):
-        self._ensure_real()
-        if lightweight:
-            format = RemoteBzrDirFormat()
-            self.bzrdir._format._supply_sub_formats_to(format)
-            format.workingtree_format = self._real_branch._get_checkout_format(
-                lightweight=lightweight).workingtree_format
-            return format
-        else:
-            return self._real_branch._get_checkout_format(lightweight=False)
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""
