@@ -36,6 +36,7 @@ from bzrlib.tests.features import (
     HardlinkFeature,
     )
 from bzrlib.tests.blackbox import test_switch
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.script import run_script
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
@@ -483,6 +484,8 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(40, self.hpss_calls)
+        self.expectFailure("branching to the same branch requires VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -497,6 +500,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
@@ -517,6 +521,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(15, self.hpss_calls)
 
     def test_branch_from_branch_with_tags(self):
@@ -534,6 +539,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
 
     def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
@@ -554,6 +560,8 @@ class TestSmartServerBranching(TestCaseWithTransport):
             c for c in self.hpss_calls
             if c.call.method == 'readv' and c.call.args[-1].endswith('.rix')]
         self.assertLength(0, readvs_of_rix_files)
+        self.expectFailure("branching to stacked requires VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
