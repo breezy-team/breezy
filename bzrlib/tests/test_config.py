@@ -531,7 +531,9 @@ class TestConfig(tests.TestCase):
 
     def test_post_commit_default(self):
         my_config = config.Config()
-        self.assertEqual(None, my_config.post_commit())
+        self.assertEqual(None, self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                                    my_config.post_commit))
+
 
     def test_log_format_default(self):
         my_config = config.Config()
@@ -1309,7 +1311,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_post_commit_default(self):
         my_config = self._get_sample_config()
-        self.assertEqual(None, my_config.post_commit())
+        self.assertEqual(None,
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
 
     def test_configured_logformat(self):
         my_config = self._get_sample_config()
@@ -1700,7 +1704,8 @@ other_url = /other-subdir
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
-                         self.my_config.post_commit())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              self.my_config.post_commit))
 
     def get_branch_config(self, location, global_config=None,
                           location_config=None):
@@ -1857,14 +1862,18 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                                       location_config=sample_branches_text)
         self.assertEqual(my_config.branch.base, '/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
-                         my_config.post_commit())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
         my_config.set_user_option('post_commit', 'rmtree_root')
         # post-commit is ignored when present in branch data
         self.assertEqual('bzrlib.tests.test_config.post_commit',
-                         my_config.post_commit())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
         my_config.set_user_option('post_commit', 'rmtree_root',
                                   store=config.STORE_LOCATION)
-        self.assertEqual('rmtree_root', my_config.post_commit())
+        self.assertEqual('rmtree_root',
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
 
     def test_config_precedence(self):
         # FIXME: eager test, luckily no persitent config file makes it fail
