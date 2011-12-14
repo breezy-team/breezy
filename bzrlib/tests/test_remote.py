@@ -69,6 +69,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
+    _stream_to_byte_stream,
     )
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
@@ -4233,3 +4234,43 @@ class TestRepositoryPack(TestRemoteRepository):
             'Repository.unlock', ('quack/', 'token', 'False'),
             'success', ('ok', ))
         repo.pack(['hinta', 'hintb'])
+
+
+class TestRepositoryIterInventories(TestRemoteRepository):
+    """Test Repository.iter_inventories."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return "".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_single_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = bzrdir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory('somerevid', None, None,
+                self._serialize_inv_delta('null:', 'somerevid', []))])]
+        client.add_expected_call(
+            'VersionedFileRepository.get_inventories', ('quack/', 'unordered'),
+            'success', ('ok', ),
+            _stream_to_byte_stream(stream, fmt))
+        ret = list(repo.iter_inventories(["somerevid"]))
+        self.assertLength(1, ret)
+        inv = ret[0]
+        self.assertEquals("somerevid", inv.revision_id)
+
+    def test_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        ret = list(repo.iter_inventories([]))
+        self.assertEquals(ret, [])
+
+    def test_missing(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'VersionedFileRepository.get_inventories', ('quack/', 'unordered'),
+            'success', ('ok', ), iter([]))
+        self.assertRaises(errors.NoSuchRevision, list, repo.iter_inventories(
+            ["somerevid"]))

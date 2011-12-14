@@ -179,8 +179,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         for count in range(9):
             t.commit(message='commit %d' % count)
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['checkout', self.get_url('from'),
-            'target'])
+        out, err = self.run_bzr(['checkout', self.get_url('from'), 'target'])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -202,9 +201,5 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        if len(self.hpss_calls) < 28 or len(self.hpss_calls) > 40:
-            self.fail(
-                "Incorrect length: wanted between 28 and 40, got %d for %r" % (
-                    len(self.hpss_calls), self.hpss_calls))
-        self.expectFailure("lightweight checkouts require VFS calls",
-            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(15, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

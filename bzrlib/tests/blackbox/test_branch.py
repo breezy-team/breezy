@@ -483,7 +483,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(40, self.hpss_calls)
+        self.assertLength(33, self.hpss_calls)
         self.expectFailure("branching to the same branch requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
@@ -521,8 +521,8 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(15, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
@@ -539,8 +539,8 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()

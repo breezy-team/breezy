@@ -95,6 +95,10 @@ Internals
 
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
+* New HPSS call ``VersionedFileRepository.get_inventories``,
+  speeding up various commands including ``bzr export``,
+  ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
+
 Testing
 *******
 
@@ -155,6 +159,9 @@ Improvements
 
 * Plugins can now register additional "location aliases".
   (Jelmer Vernooij)
+
+* ``bzr status`` no longer shows shelves if files are specified.
+  (Francis Devereux)
 
 * Revision specifiers will now only browse as much history as they
   need to, rather than grabbing the whole history unnecessarily in some
@@ -281,7 +288,13 @@ Internals
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
 
+* Add HPSS call for ``Branch.get_checkout_format``. (Jelmer Vernooij, #894459)
+
 * Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
+* Add HPSS calls for ``Repository.iter_files_bytes``, speeding up
+  several commands including ``bzr export`` and ``bzr co --lightweight``.
+  (Jelmer Vernooij, #608640)
 
 * Custom HPSS error handlers can now be installed in the smart server client
   using the ``error_translators`` and ``no_context_error_translators``
