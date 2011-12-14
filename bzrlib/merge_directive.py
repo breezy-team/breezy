@@ -204,9 +204,8 @@ class BaseMergeDirective(object):
                                              ancestor_id)
 
         if public_branch is not None and patch_type != 'bundle':
-            public_branch = _mod_branch.Branch.open(
-                public_branch)
-            if not public_branch.repository.has_revision(revision_id):
+            public_branch_obj = _mod_branch.Branch.open(public_branch)
+            if not public_branch_obj.repository.has_revision(revision_id):
                 raise errors.PublicBranchOutOfDate(public_branch,
                                                    revision_id)
 
