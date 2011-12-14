@@ -850,8 +850,8 @@ class BzrDirMeta1(BzrDir):
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
-        from bzrlib.branch import BranchFormat
-        return BranchFormat.find_format(self, name=name)
+        from bzrlib.branch import BranchFormatMetadir
+        return BranchFormatMetadir.find_format(self, name=name)
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
@@ -861,8 +861,8 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
-        from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self, name=name)
+        from bzrlib.branch import BranchFormatMetadir
+        format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
 
     def get_branch_transport(self, branch_format, name=None):
@@ -917,9 +917,9 @@ class BzrDirMeta1(BzrDir):
         Note: if you're going to open the working tree, you should just go
         ahead and try, and not ask permission first.
         """
-        from bzrlib.workingtree import WorkingTreeFormat
+        from bzrlib.workingtree import WorkingTreeFormatMetaDir
         try:
-            WorkingTreeFormat.find_format_string(self)
+            WorkingTreeFormatMetaDir.find_format_string(self)
         except errors.NoWorkingTree:
             return False
         return True
@@ -966,16 +966,16 @@ class BzrDirMeta1(BzrDir):
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat
-        format = RepositoryFormat.find_format(self)
+        from bzrlib.repository import RepositoryFormatMetaDir
+        format = RepositoryFormatMetaDir.find_format(self)
         format.check_support_status(unsupported)
         return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.open_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat
-        format = WorkingTreeFormat.find_format(self)
+        from bzrlib.workingtree import WorkingTreeFormatMetaDir
+        format = WorkingTreeFormatMetaDir.find_format(self)
         format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
@@ -1054,18 +1054,16 @@ class BzrDirMeta1Colo(BzrDirMeta1):
                 self.control_files.unlock()
         self.transport.delete_tree(path)
 
-    def list_branches(self):
-        """See ControlDir.list_branches."""
-        ret = []
-        # Default branch
+    def get_branches(self):
+        """See ControlDir.get_branches."""
+        ret = {}
         try:
-            ret.append(self.open_branch())
+            ret[None] = self.open_branch()
         except (errors.NotBranchError, errors.NoRepositoryPresent):
             pass
 
-        # colocated branches
-        ret.extend([self.open_branch(name.decode("utf-8")) for name in
-                    self._read_branch_list()])
+        for name in self._read_branch_list():
+            ret[name] = self.open_branch(name.decode('utf-8'))
 
         return ret
 
@@ -1102,6 +1100,49 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         return self.transport.clone(path)
 
 
+class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
+    """Base class for all formats of things living in metadirs.
+
+    This class manages the format string that is stored in the 'format'
+    or 'branch-format' file.
+
+    All classes for (branch-, repository-, workingtree-) formats that
+    live in meta directories and have their own 'format' file
+    (i.e. different from .bzr/branch-format) derive from this class,
+    as well as the relevant base class for their kind
+    (BranchFormat, WorkingTreeFormat, RepositoryFormat).
+    """
+
+    @classmethod
+    def get_format_string(cls):
+        """Return the ASCII format string that identifies this format."""
+        raise NotImplementedError(cls.get_format_string)
+
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise ValueError("Invalid format header %r" % format_string)
+        return cls()
+
+    @classmethod
+    def _find_format(klass, registry, kind, format_string):
+        try:
+            cls = registry.get(format_string)
+        except KeyError:
+            raise errors.UnknownFormatError(format=format_string, kind=kind)
+        return cls
+
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        Metadir branch formats use their format string.
+        """
+        return self.get_format_string()
+
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__)
+
+
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
@@ -1126,9 +1167,10 @@ class BzrProber(controldir.Prober):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            return klass.formats.get(format_string)
+            cls = klass.formats.get(format_string)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
+        return cls.from_string(format_string)
 
     @classmethod
     def known_formats(cls):
@@ -1557,6 +1599,12 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1"
 
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise ValueError("Invalid format string %r" % format_string)
+        return cls()
+
     def network_name(self):
         return self.get_format_string()
 
@@ -1611,6 +1659,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __set_workingtree_format(self, wt_format):
         self._workingtree_format = wt_format
+
+    def __repr__(self):
+        return "<%r>" % (self.__class__.__name__,)
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)
