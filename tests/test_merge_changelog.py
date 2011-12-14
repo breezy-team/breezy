@@ -286,7 +286,7 @@ pseudo-prog (ss-0) unstable; urgency=low
         if not handled:
             # Can't assert on the exact message as it depends on the locale
             self.assertContainsRe(self.logged_warnings.getvalue(),
-                "ss-0( is not a valid version)?")
+                "dpkg-mergechangelogs: .*ss-0( is not a valid version)?")
 
     def test_invalid_version_non_ascii(self):
         """Invalid version with non-ascii data is rejected or correctly merged
@@ -311,7 +311,7 @@ pseudo-prog (\xc2\xa7) unstable; urgency=low
         if not handled:
             # Can't assert on the exact message as it depends on the locale
             self.assertContainsRe(self.logged_warnings.getvalue(),
-                "\xc2\xa7( is not a valid version)?")
+                "dpkg-mergechangelogs: .*\xc2\xa7( is not a valid version)?")
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
