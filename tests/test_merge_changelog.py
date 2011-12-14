@@ -44,7 +44,7 @@ dpkg_mergechangelogs_feature = ExecutableFeature('dpkg-mergechangelogs')
 
 
 v_111_2 = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Awesome bug fixes.
@@ -55,7 +55,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 
 v_111_2b = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Awesome bug fixes.
@@ -67,7 +67,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 
 v_111_2c = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Yet another content for 1.1.1-2
@@ -80,7 +80,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 # Merge of 2b and 2c using 2 as the base (b adds a line, c adds a line and
 # deletes a line).
 v_111_2bc = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Yet another content for 1.1.1-2
@@ -94,7 +94,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 # Merge of 2b and 2c using an empty base. (As calculated by
 # dpkg-mergechangelogs.)
 v_111_2bc_empty_base = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
 <<<<<<<
@@ -110,7 +110,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 
 v_112_1 = """\
-psuedo-prog (1.1.2-1) unstable; urgency=low
+pseudo-prog (1.1.2-1) unstable; urgency=low
 
   * New upstream release.
   * No bug fixes :(
@@ -121,7 +121,7 @@ psuedo-prog (1.1.2-1) unstable; urgency=low
 
 
 v_001_1 = """\
-psuedo-prog (0.0.1-1) unstable; urgency=low
+pseudo-prog (0.0.1-1) unstable; urgency=low
 
   * New project released!!!!
   * No bugs evar
@@ -227,7 +227,7 @@ class TestMergeChangelog(tests.TestCase):
 
     def test_not_valid_changelog(self):
         invalid_changelog = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Awesome bug fixes.
@@ -268,7 +268,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
         byte merge result file. See lp:893495 for such an issue.
         """
         invalid_changelog = """\
-psuedo-prog (\xc2\xa7) unstable; urgency=low
+pseudo-prog (\xc2\xa7) unstable; urgency=low
 
   * New project released!!!!
 
