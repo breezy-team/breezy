@@ -222,5 +222,5 @@ class TestGitBlackBox(ExternalBase):
         self.make_bzrdir("b", format="development-colo")
         self.run_bzr(["git-import", "a", "b"])
         self.assertEquals(
-            [b.name for b in BzrDir.open("b").list_branches()],
-            ["abranch", "bbranch"])
+            set([b.name for b in BzrDir.open("b").list_branches()]),
+            set(["abranch", "bbranch"]))

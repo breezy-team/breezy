@@ -402,10 +402,20 @@ class LocalGitDir(GitDir):
         return not isinstance(self._format, format.__class__)
 
     def list_branches(self):
-        ret = []
-        for name in self._git.refs.keys():
-            if name.startswith("refs/heads/"):
-                ret.append(self.open_branch(name=name))
+        return self.get_branches().values()
+
+    def get_branches(self):
+        from bzrlib.plugins.git.refs import ref_to_branch_name
+        ret = {}
+        for ref in self._git.refs.keys():
+            try:
+                branch_name = ref_to_branch_name(ref)
+            except ValueError:
+                continue
+            except UnicodeDecodeError:
+                trace.warning("Ignoring branch %r with unicode error ref", ref)
+                continue
+            ret[branch_name] = self.open_branch(ref=ref)
         return ret
 
     def open_repository(self):
