@@ -83,7 +83,7 @@ class BaseMergeDirective(object):
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None,
-                 message=None, bundle=None, submit_branch=None):
+                 message=None, bundle=None):
         """Constructor.
 
         :param revision_id: The revision to merge
@@ -104,7 +104,6 @@ class BaseMergeDirective(object):
         self.patch = patch
         self.source_branch = source_branch
         self.message = message
-        self.submit_branch = None
 
     def to_lines(self):
         """Serialize as a list of lines
@@ -211,7 +210,7 @@ class BaseMergeDirective(object):
 
         return klass(revision_id, t.as_sha1(), time, timezone,
             target_branch, patch, patch_type, public_branch,
-            message, submit_branch)
+            message)
 
     def get_disk_name(self, branch):
         """Generate a suitable basename for storing this directive on disk
@@ -370,8 +369,7 @@ class MergeDirective(BaseMergeDirective):
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch=None, patch=None, patch_type=None,
-                 source_branch=None, message=None, bundle=None,
-                 submit_branch=None):
+                 source_branch=None, message=None, bundle=None):
         """Constructor.
 
         :param revision_id: The revision to merge
@@ -385,11 +383,9 @@ class MergeDirective(BaseMergeDirective):
             of patch
         :param source_branch: A public location to merge the revision from
         :param message: The message to use when committing this merge
-        :param submit_branch: Branch to apply the merge to (optional)
         """
         BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
-            timezone, target_branch, patch, source_branch, message,
-            submit_branch)
+            timezone, target_branch, patch, source_branch, message)
         if patch_type not in (None, 'diff', 'bundle'):
             raise ValueError(patch_type)
         if patch_type != 'bundle' and source_branch is None:
@@ -641,7 +637,7 @@ class MergeDirective2(BaseMergeDirective):
                 entry.unlock()
         return klass(revision_id, testament_sha1, time, timezone,
             target_branch, patch, public_branch, message, bundle,
-            base_revision_id, submit_branch)
+            base_revision_id)
 
     def _verify_patch(self, repository):
         calculated_patch = self._generate_diff(repository, self.revision_id,
