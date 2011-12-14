@@ -495,6 +495,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return self._real_bzrdir.checkout_metadir()
 
     def checkout_metadir(self):
+        """Retrieve the controldir format to use for checkouts of this one.
+        """
         medium = self._client._medium
         if medium._is_remote_before((2, 5)):
             return self._vfs_checkout_metadir()
@@ -511,7 +513,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         try:
             format = controldir.network_format_registry.get(control_name)
         except KeyError:
-            raise errors.UnknownFormatError(kind='control', format=control_name)
+            raise errors.UnknownFormatError(kind='control',
+                format=control_name)
         if repo_name:
             try:
                 repo_format = _mod_repository.network_format_registry.get(
