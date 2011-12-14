@@ -63,7 +63,7 @@ from hashlib import (
 
 
 import bzrlib
-from bzrlib import symbol_versioning
+from bzrlib import symbol_versioning, _fs_enc
 
 
 # Cross platform wall-clock time functionality with decent resolution.
@@ -293,7 +293,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # choke on a Unicode string containing a relative path if
 # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
 # string.
-_fs_enc = sys.getfilesystemencoding() or 'utf-8'
 def _posix_abspath(path):
     # jam 20060426 rather than encoding to fsencoding
     # copy posixpath.abspath, but use os.getcwdu instead
@@ -1802,7 +1801,6 @@ def _walkdirs_utf8(top, prefix=""):
     """
     global _selected_dir_reader
     if _selected_dir_reader is None:
-        fs_encoding = _fs_enc.upper()
         if sys.platform == "win32" and win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
             # TODO: We possibly could support Win98 by falling back to the
@@ -1814,8 +1812,7 @@ def _walkdirs_utf8(top, prefix=""):
                 _selected_dir_reader = Win32ReadDir()
             except ImportError:
                 pass
-        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
-            # ANSI_X3.4-1968 is a form of ASCII
+        elif _fs_enc in ('utf-8', 'ascii'):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
