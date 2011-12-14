@@ -3298,3 +3298,11 @@ class PatchConflict(BzrError):
         self.line_no = line_no
         self.orig_line = orig_line.rstrip('\n')
         self.patch_line = patch_line.rstrip('\n')
+
+
+class FeatureAlreadyRegistered(BzrError):
+
+    _fmt = 'The feature %(feature)s has already been registered.'
+
+    def __init__(self, feature):
+        self.feature = feature

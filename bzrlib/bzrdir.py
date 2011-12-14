@@ -1135,6 +1135,8 @@ class BzrFormat(object):
 
         :param name: Name of the feature
         """
+        if name in cls._present_features:
+            raise errors.FeatureAlreadyRegistered(name)
         cls._present_features.add(name)
 
     @classmethod

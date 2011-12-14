@@ -1468,13 +1468,13 @@ class TestBzrFormat(TestCase):
             "required feature foo\n"
             "optional feature another\n")
 
-    def test_network_string(self):
+    def test_network_name(self):
         # The network string should include the feature info
         format = SampleBzrFormat()
         format.features = {"foo": "required"}
         self.assertEquals(
             "First line\nrequired feature foo\n",
-            format.network_string())
+            format.network_name())
 
     def test_from_string(self):
         format = SampleBzrFormat.from_string(
@@ -1525,3 +1525,10 @@ class TestBzrFormat(TestCase):
         self.addCleanup(SampleBzrFormat.unregister_feature, "nested trees")
         SampleBzrFormat.register_feature("nested trees")
         format.check_support_status(True)
+
+    def test_feature_already_registered(self):
+        # treat unknown necessity as required
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested trees")
+        SampleBzrFormat.register_feature("nested trees")
+        self.assertRaises(errors.FeatureAlreadyRegistered,
+            SampleBzrFormat.register_feature, "nested trees")
