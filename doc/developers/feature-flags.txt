@@ -95,7 +95,7 @@ API Changes
 -----------
 
 Class methods will be added to ``BzrFormat`` to allow registering
-and deregistering the presence of particular features. This class is inherited
+and unregistering the presence of particular features. This class is inherited
 by ``BzrBranchFormat``, ``VersionedFileRepositoryFormat`` and
 ``InventoryWorkingTreeFormat``.
 
@@ -104,7 +104,7 @@ by ``BzrBranchFormat``, ``VersionedFileRepositoryFormat`` and
 
 Upon opening, BzrFormat will be responsible for checking that the
 required features are present.  lock_write will raise an exception
-when there is an un unsupported mandatory feature required for write access.
+when there is an unsupported mandatory feature required for write access.
 
 Methods will also be added to BzrFormat to allow plugins, etc,
 to check whether a feature is present and adding new features:
