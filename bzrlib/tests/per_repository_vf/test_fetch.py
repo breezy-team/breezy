@@ -17,7 +17,7 @@
 """Tests for fetch between repositories of the same type."""
 
 from bzrlib import (
-    graph,
+    vf_search,
     )
 from bzrlib.tests.per_repository_vf import (
     TestCaseWithRepository,
@@ -49,7 +49,7 @@ class TestSource(TestCaseWithRepository):
         self.addCleanup(b.unlock)
         repo = b.repository
         source = repo._get_source(repo._format)
-        search = graph.PendingAncestryResult(['tip'], repo)
+        search = vf_search.PendingAncestryResult(['tip'], repo)
         stream = source.get_stream(search)
         for substream_type, substream in stream:
             for record in substream:

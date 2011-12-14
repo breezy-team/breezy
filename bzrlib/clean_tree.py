@@ -63,12 +63,10 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
             return 0
         if not no_prompt:
             for path, subp in deletables:
-                # FIXME using print is very bad idea
-                # clean_tree should accept to_file argument to write the output
-                print subp
-            val = raw_input('Are you sure you wish to delete these [y/N]?')
-            if val.lower() not in ('y', 'yes'):
-                print 'Canceled'
+                ui.ui_factory.note(subp)
+            prompt = gettext('Are you sure you wish to delete these')
+            if not ui.ui_factory.get_boolean(prompt):
+                ui.ui_factory.note(gettext('Canceled'))
                 return 0
         delete_items(deletables, dry_run=dry_run)
     finally:

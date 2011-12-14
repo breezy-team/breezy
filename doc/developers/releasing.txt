@@ -268,7 +268,7 @@ Update the source code
 
 #. For beta releases update the translation template::
 
-     make -f po/bzr.pot
+     BZR_PLUGIN_PATH=-site make po/bzr.pot
 
    This is especially important for the final beta release which is
    when translations are frozen and translators are requested to make
@@ -361,6 +361,10 @@ Update the source code
 
      bzr push
      bzr pqm-submit -m "(vila) Release 2.3.1 (Vincent Ladeuil)"
+
+   Note that ``bzr push`` should mention updating one tag (which you just
+   created). If it doesn't, double-check that you created (and pushed) this
+   tag.
 
    Or with hydrazine::
 
@@ -494,9 +498,10 @@ translations for the new branch and inform translators.
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar@lists.canonical.com`` list, saying that the source
-   has been frozen (gone gold). Be extra clear that this is only a *source*
-   release targeted at packagers and installer builders (see
+#. Post to the ``bazaar@lists.canonical.com`` and
+   ``bzr-packagers@list.launchpad.net`` lists, saying that the source has
+   been frozen. Be extra clear that this is only a *source* release targeted
+   at packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
    platform maintainers and plugin authors to update their code.  This is
    done before the general public announcement of the release.
@@ -577,10 +582,10 @@ Now that the release is publicly available, tell people about it.
 
 #. Make an announcement through <https://launchpad.net/bzr/+announce>
 
-#. Announce on http://freshmeat.net/projects/bzr/
+#. Announce on http://freecode.com/projects/bazaar-vcs
 
    This should be done for beta releases and stable releases. If you do not
-   have a Freshmeat account yet, ask one of the existing admins.
+   have a Freecode account yet, ask one of the existing admins.
 
    The purpose here is to point users to the latest stable release
    (i.e. SRUs are excluded) while still publishing announcements for beta

@@ -68,16 +68,21 @@ else:
         create_buffer = ctypes.create_unicode_buffer
         suffix = 'W'
 try:
-    import win32file
     import pywintypes
-    has_win32file = True
+    has_pywintypes = True
 except ImportError:
-    has_win32file = False
-try:
-    import win32api
-    has_win32api = True
-except ImportError:
-    has_win32api = False
+    has_pywintypes = has_win32file = has_win32api = False
+else:
+    try:
+        import win32file
+        has_win32file = True
+    except ImportError:
+        has_win32file = False
+    try:
+        import win32api
+        has_win32api = True
+    except ImportError:
+        has_win32api = False
 
 # pulling in win32com.shell is a bit of overhead, and normally we don't need
 # it as ctypes is preferred and common.  lazy_imports and "optional"
@@ -564,7 +569,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     return args
 
 
-if has_ctypes and winver != 'Windows 98':
+if has_ctypes and winver == 'Windows NT':
     def get_unicode_argv():
         prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
         GetCommandLineW = prototype(("GetCommandLineW",
@@ -575,8 +580,36 @@ if has_ctypes and winver != 'Windows 98':
         # Skip the first argument, since we only care about parameters
         argv = _command_line_to_argv(command_line, sys.argv)[1:]
         return argv
+    
+
+    def get_environ_unicode(key, default=None):
+        """Get `key` from environment as unicode or `default` if unset
+
+        A large enough buffer will be allocated to retrieve the value, though
+        it may take two calls to the underlying library function.
+
+        This needs ctypes because pywin32 does not expose the wide version.
+        """
+        cfunc = getattr(get_environ_unicode, "_c_function", None)
+        if cfunc is None:
+            from ctypes.wintypes import DWORD, LPCWSTR, LPWSTR
+            cfunc = ctypes.WINFUNCTYPE(DWORD, LPCWSTR, LPWSTR, DWORD)(
+                ("GetEnvironmentVariableW", ctypes.windll.kernel32))
+            get_environ_unicode._c_function = cfunc
+        buffer_size = 256 # heuristic, 256 characters often enough
+        while True:
+            buffer = ctypes.create_unicode_buffer(buffer_size)
+            length = cfunc(key, buffer, buffer_size)
+            if not length:
+                code = ctypes.GetLastError()
+                if code == 203: # ERROR_ENVVAR_NOT_FOUND
+                    return default
+                raise ctypes.WinError(code)
+            if buffer_size > length:
+                return buffer[:length]
+            buffer_size = length
 else:
-    get_unicode_argv = None
+    get_unicode_argv = get_environ_unicode = None
 
 
 if has_win32api:
@@ -615,3 +648,10 @@ elif has_ctypes and sys.platform == 'win32':
         _CloseHandle(handle)
         return False
     is_local_pid_dead = _ctypes_is_local_pid_dead
+
+
+def _is_pywintypes_error(evalue):
+    """True if exception instance is an error from pywin32"""
+    if has_pywintypes and isinstance(evalue, pywintypes.error):
+        return True
+    return False

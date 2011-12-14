@@ -284,6 +284,10 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
         try:
             if not dry_run:
                 cv = Convert(control_dir=control_dir, format=format)
+        except errors.UpToDateFormat, ex:
+            ui.ui_factory.note(str(ex))
+            succeeded.append(control_dir)
+            continue
         except Exception, ex:
             trace.warning('conversion error: %s' % ex)
             exceptions.append(ex)

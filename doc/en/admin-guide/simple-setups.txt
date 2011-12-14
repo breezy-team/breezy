@@ -112,7 +112,7 @@ In these examples the user will be called ``bzruser``.
 
 The following example shows how a single line is configured::
 
-  command="bzr --serve --inet --allow-writes --directory=/srv/bzr",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= my bzr key
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= my bzr key
 
 This command allows the user to access only bzr and disables other SSH use.  Write
 access to each repository in the directory ``/srv/bzr`` has been granted with ``--allow-writes``
@@ -122,9 +122,9 @@ of the repositories available.  The example below assumes two seperate repositor
 for Alice and Bob.  This method will not allow you to restrict access to part
 of a repository, you may only restrict access to a single part of the directory structure::
 
-  command="bzr --serve --inet --allow-writes --directory=/srv/bzr/alice/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Alice's SSH Key
-  command="bzr --serve --inet --allow-writes --directory=/srv/bzr/bob/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Bob's SSH Key
-  command="bzr --serve --inet --allow-writes --directory=/srv/bzr/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Repo Manager SSH Key
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr/alice/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Alice's SSH Key
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr/bob/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Bob's SSH Key
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Repo Manager SSH Key
 
 Alice and Bob have access to their own repository and Repo Manager
 has access to the each of their repositories.  Users are not allowed access to any part of 

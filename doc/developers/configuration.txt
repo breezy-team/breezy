@@ -1,12 +1,46 @@
 Configuring Bazaar
 ==================
 
-A configuration option has:
+.. contents::
+   :depth: 2
 
-* a name: a valid python identifier (even if it's not used as an
-  identifier in python itself)
 
-* a value: a unicode string or a list of unicode strings.
+The short story
+---------------
+
+As a Bazaar developer there are three things you need to know about
+configuration.
+
+1. Get a value.
+
+You construct or get a reference to a ConfigStack subclass that's relevant
+to the context where you want to look up a value. For instance, given a
+branch::
+
+  print branch.get_config_stack().get('log_format')
+
+This will look up the stack through all relevant configuration sources.
+The value returned is of the type declared for that Option and if nothing
+is specifically declared you will get the default for that option.
+
+2. Add a new option.
+
+You add a new ``Option`` to the ``option_registry``, either inside
+``bzrlib/config.py`` or during initialization of your plugin. New plugins
+should have systematic hierarchical names so that related values are grouped
+together::
+
+  option_registry.register(
+      Option('dirstate.fdatasync', default=True,
+            from_unicode=bool_from_store,
+            help="Flush dirstate changes onto physical disk? ...."))
+
+
+3. Old and new configuration code.
+
+There is (as of late 2011) some older and some newer configuration code. The
+old code has specific methods for various checks or uses classes like
+``GlobalConfig``.  Don't add to to it; try to remove it.
 
 Option
 ------
@@ -15,6 +49,10 @@ The Option object is used to define its properties:
 
 * name: a name: a valid python identifier (even if it's not used as an
   identifier in python itself). This is also used to register the option.
+
+* from_unicode: a callable accepting a unicode string and returning a
+  suitable value for the option. If the string cannot be coerced it should
+  return None.
 
 * default: the default value that Stack.get() should return if no
   value can be found for the option.
@@ -25,14 +63,16 @@ The Option object is used to define its properties:
 
 * help: a doc string describing the option, the first line should be a
   summary and can be followed by a blank line and a more detailed
-  explanation.
+  explanation. This will be displayed to the user with::
 
-* from_unicode: a callable accepting a unicode string and returning a
-  suitable value for the option. If the string cannot be coerced it should
-  return None.
+    bzr help <option name>
 
 * invalid: the action to be taken when an invalid value is encountered in a
   store (during a Stack.get()).
+
+The value of an option is a unicode string or ``None`` if it's not
+defined. By using ``from_unicode`` you can turn this string into a more
+appropriate representation (a list of unicode strings for example).
 
 Sections
 --------
@@ -46,6 +86,7 @@ known dict objects:
 
 MutableSection is needed to set or remove an option, ReadOnlySection should
 be used otherwise.
+
 
 Stores
 ------
@@ -79,7 +120,7 @@ Filtering sections
 ------------------
 
 For some contexts, only some sections from a given store will apply. Defining
-which is what the ``SectionMatcher`` are about.
+which is what the ``SectionMatcher`` objects are about.
 
 The main constraint here is that a ``SectionMatcher`` should delay the loading
 of the associated store as long as possible. The constructor should collect
@@ -92,7 +133,17 @@ additional context (the ``LocationSection`` add an ``extra_path`` attribute
 to implement the ``appendpath`` policy for example). If no sections match,
 an empty list is returned.
 
-.. FIXME: Replace the appendpath example if/when it's deprecated ;)
+Options local to a section can also be defined for special purposes and be
+handled by ``Section.get()``. One such option is ``relpath`` which is
+defined in ``LocationSection`` as an alternative to the ``appendpath``
+policy.
+
+For ``appendpath``, the ``LocationSection`` will carry ``extra_path`` as the
+relative path between the section name and the location used. ``relpath``
+will be available as a ``Section`` local option with the same
+value. ``basename`` will carry the location base name and be available as a
+local option with the same name. Note that such options can only be expanded
+inside the section that defines them.
 
 Specific section matchers can be implemented by overriding ``get_sections``
 or just ``match``.
@@ -108,8 +159,8 @@ or just ``match``.
 Stacks
 ------
 
-An option can take different values depending on the context it is used. Such
-a context can involve configuration files, options from the command line,
+An option can take different values depending on the context it is
+used. This can involve configuration files, options from the command line,
 default values in bzrlib and then some.
 
 Such a context is implemented by creating a list of ``Section`` stacked upon

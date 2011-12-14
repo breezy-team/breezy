@@ -91,6 +91,10 @@ class DummyForeignVcs(foreign.ForeignVcs):
 class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
     """A Dummy VCS Branch."""
 
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
     def __init__(self, _format, _control_files, a_bzrdir, *args, **kwargs):
         self._format = _format
         self._base = a_bzrdir.transport.base
@@ -141,7 +145,8 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
     repository_class = DummyForeignVcsRepository
     _commit_builder_class = DummyForeignCommitBuilder
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Dummy Foreign Vcs Repository"
 
     def get_format_description(self):
@@ -225,7 +230,8 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
 
 class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Branch for Testing"
 
     @property
@@ -309,7 +315,8 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         self.root_transport.put_bytes(".bzr", "foo")
         return super(DummyForeignVcsDir, self).create_workingtree()
 
-    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
+            possible_transports=None):
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)

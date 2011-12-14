@@ -85,6 +85,7 @@ def load_tests(basic_tests, module, loader):
                      'test_merge',
                      'test_merge_directive',
                      'test_missing',
+                     'test_mkdir',
                      'test_modified',
                      'test_mv',
                      'test_nick',

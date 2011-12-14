@@ -81,6 +81,12 @@ class BzrDirFormatAllInOne(BzrDirFormat):
             stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
             make_working_trees=make_working_trees, shared_repo=shared_repo)
 
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise AssertionError("unexpected format string %r" % format_string)
+        return cls()
+
 
 class BzrDirFormat5(BzrDirFormatAllInOne):
     """Bzr control format 5.
@@ -98,7 +104,8 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
@@ -161,7 +168,8 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
 
@@ -669,7 +677,8 @@ class BzrDirFormat4(BzrDirFormat):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 
@@ -707,6 +716,12 @@ class BzrDirFormat4(BzrDirFormat):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat4
         return RepositoryFormat4()
     repository_format = property(__return_repository_format)
+
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise AssertionError("unexpected format string %r" % format_string)
+        return cls()
 
 
 class BzrDirPreSplitOut(BzrDir):
@@ -867,12 +882,13 @@ class BzrDirPreSplitOut(BzrDir):
         return not isinstance(self._format, format.__class__)
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False):
+                    ignore_fallbacks=False, possible_transports=None):
         """See BzrDir.open_branch."""
         from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         format.check_support_status(unsupported)
-        return format.open(self, name, _found=True)
+        return format.open(self, name, _found=True,
+            possible_transports=possible_transports)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,

@@ -27,7 +27,7 @@ from bzrlib import (
 from bzrlib.errors import (
     NoSuchRevision,
     )
-from bzrlib.graph import (
+from bzrlib.vf_search import (
     SearchResult,
     )
 from bzrlib.revision import (

@@ -106,10 +106,17 @@ class ControlDir(ControlComponent):
         """Return a sequence of all branches local to this control directory.
 
         """
+        return self.get_branches().values()
+
+    def get_branches(self):
+        """Get all branches in this control directory, as a dictionary.
+        
+        :return: Dictionary mapping branch names to instances.
+        """
         try:
-            return [self.open_branch()]
+           return { None: self.open_branch() }
         except (errors.NotBranchError, errors.NoRepositoryPresent):
-            return []
+           return {}
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for
@@ -222,13 +229,14 @@ class ControlDir(ControlComponent):
         return None
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False):
+                    ignore_fallbacks=False, possible_transports=None):
         """Open the branch object at this ControlDir if one is present.
 
-        If unsupported is True, then no longer supported branch formats can
-        still be opened.
-
-        TODO: static convenience version of this?
+        :param unsupported: if True, then no longer supported branch formats can
+            still be opened.
+        :param ignore_fallbacks: Whether to open fallback repositories
+        :param possible_transports: Transports to use for opening e.g.
+            fallback repositories.
         """
         raise NotImplementedError(self.open_branch)
 
@@ -240,8 +248,6 @@ class ControlDir(ControlComponent):
         get at a repository.
 
         :param _unsupported: a private parameter, not part of the api.
-
-        TODO: static convenience version of this?
         """
         raise NotImplementedError(self.open_repository)
 
@@ -275,7 +281,7 @@ class ControlDir(ControlComponent):
         branch and discards it, and that's somewhat expensive.)
         """
         try:
-            self.open_branch(name)
+            self.open_branch(name, ignore_fallbacks=True)
             return True
         except errors.NotBranchError:
             return False
@@ -831,10 +837,6 @@ class ControlComponentFormat(object):
 
     upgrade_recommended = False
 
-    def get_format_string(self):
-        """Return the format of this format, if usable in meta directories."""
-        raise NotImplementedError(self.get_format_string)
-
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -866,6 +868,10 @@ class ControlComponentFormat(object):
         if recommend_upgrade and self.upgrade_recommended:
             ui.ui_factory.recommend_upgrade(
                 self.get_format_description(), basedir)
+
+    @classmethod
+    def get_format_string(cls):
+        raise NotImplementedError(cls.get_format_string)
 
 
 class ControlComponentFormatRegistry(registry.FormatRegistry):
