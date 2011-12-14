@@ -1404,13 +1404,6 @@ class BranchConfig(Config):
         e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
-        try:
-            return (self.branch._transport.get_bytes("email")
-                    .decode(osutils.get_user_encoding())
-                    .rstrip("\r\n"))
-        except (errors.NoSuchFile, errors.PermissionDenied), e:
-            pass
-
         return self._get_best_value('_get_user_id')
 
     def _get_change_editor(self):
@@ -2338,8 +2331,10 @@ class Option(object):
 
         :param default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
-            into the proper type or a python object that can be stringified (so
-            only the empty list is supported for example).
+            into the proper type, a callable returning a unicode string so that
+            ``from_unicode`` can be used on the return value, or a python
+            object that can be stringified (so only the empty list is supported
+            for example).
 
         :param default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
@@ -2418,8 +2413,9 @@ class Option(object):
             # Otherwise, fallback to the value defined at registration
             if callable(self.default):
                 value = self.default()
-                if type(value) != unicode:
-                    raise ValueError("%r is not unicode" % value)
+                if not isinstance(value, unicode):
+                    raise AssertionError(
+                    'Callable default values should be unicode')
             else:
                 value = self.default
         return value
@@ -3239,7 +3235,7 @@ class LocationMatcher(SectionMatcher):
             yield self.store, section
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+_option_ref_re = lazy_regex.lazy_compile('({[^{}\n]+})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.

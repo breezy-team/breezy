@@ -25,6 +25,8 @@ from bzrlib.tests import (
     script,
     test_config as _t_config,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+
 
 class TestWithoutConfig(tests.TestCaseWithTransport):
 
@@ -337,3 +339,4 @@ class TestSmartServerConfig(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(5, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -67,7 +67,7 @@ from bzrlib.repository import (
     CommitBuilder,
     InterRepository,
     MetaDirRepository,
-    MetaDirRepositoryFormat,
+    RepositoryFormatMetaDir,
     Repository,
     RepositoryFormat,
     )
@@ -2008,7 +2008,7 @@ class MetaDirVersionedFileRepository(MetaDirRepository,
             control_files)
 
 
-class MetaDirVersionedFileRepositoryFormat(MetaDirRepositoryFormat,
+class MetaDirVersionedFileRepositoryFormat(RepositoryFormatMetaDir,
         VersionedFileRepositoryFormat):
     """Base class for repository formats using versioned files in metadirs."""
 

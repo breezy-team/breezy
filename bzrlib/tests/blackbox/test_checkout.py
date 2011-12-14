@@ -27,6 +27,7 @@ from bzrlib import (
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.features import (
     HardlinkFeature,
     )
@@ -186,6 +187,8 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(17, self.hpss_calls)
+        self.expectFailure("checkouts require VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
     def test_lightweight_checkout(self):
         self.setup_smart_server_with_call_log()
@@ -204,3 +207,5 @@ class TestSmartServerCheckout(TestCaseWithTransport):
             self.fail(
                 "Incorrect length: wanted between 34 and 48, got %d for %r" % (
                     len(self.hpss_calls), self.hpss_calls))
+        self.expectFailure("lightweight checkouts require VFS calls",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
