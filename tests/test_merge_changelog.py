@@ -44,7 +44,7 @@ dpkg_mergechangelogs_feature = ExecutableFeature('dpkg-mergechangelogs')
 
 
 v_111_2 = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Awesome bug fixes.
@@ -55,7 +55,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 
 v_111_2b = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Awesome bug fixes.
@@ -67,7 +67,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 
 v_111_2c = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Yet another content for 1.1.1-2
@@ -80,7 +80,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 # Merge of 2b and 2c using 2 as the base (b adds a line, c adds a line and
 # deletes a line).
 v_111_2bc = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Yet another content for 1.1.1-2
@@ -94,7 +94,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 # Merge of 2b and 2c using an empty base. (As calculated by
 # dpkg-mergechangelogs.)
 v_111_2bc_empty_base = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
 <<<<<<<
@@ -110,7 +110,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 
 
 v_112_1 = """\
-psuedo-prog (1.1.2-1) unstable; urgency=low
+pseudo-prog (1.1.2-1) unstable; urgency=low
 
   * New upstream release.
   * No bug fixes :(
@@ -121,7 +121,7 @@ psuedo-prog (1.1.2-1) unstable; urgency=low
 
 
 v_001_1 = """\
-psuedo-prog (0.0.1-1) unstable; urgency=low
+pseudo-prog (0.0.1-1) unstable; urgency=low
 
   * New project released!!!!
   * No bugs evar
@@ -160,14 +160,19 @@ class TestMergeChangelog(tests.TestCase):
                 Content(UTF8_TEXT, lambda: [warnings_log]))
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
-                             base_lines=[], conflicted=False):
+            base_lines=[], conflicted=False, possible_error=False):
         status, merged_lines = merge_changelog.merge_changelog(
                                     this_lines, other_lines, base_lines)
+        if possible_error and status == "not_applicable":
+            self.assertContainsRe(self.logged_warnings.getvalue(),
+                "(?m)dpkg-mergechangelogs failed with status \\d+$")
+            return False
         if conflicted:
             self.assertEqual('conflicted', status)
         else:
             self.assertEqual('success', status)
         self.assertEqualDiff(''.join(expected_lines), ''.join(merged_lines))
+        return True
 
     def test_merge_by_version(self):
         this_lines = v_111_2 + v_001_1
@@ -227,7 +232,7 @@ class TestMergeChangelog(tests.TestCase):
 
     def test_not_valid_changelog(self):
         invalid_changelog = """\
-psuedo-prog (1.1.1-2) unstable; urgency=low
+pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
   * Awesome bug fixes.
@@ -246,10 +251,6 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
         # <https://bugs.launchpad.net/ubuntu/+source/dpkg/+bug/815704>
         #  - Andrew Bennetts, 25 July 2011.
         #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
-        status, lines = merge_changelog.merge_changelog(
-            invalid_changelog, v_111_2, v_111_2)
-        self.assertEqual('success', status)
-        #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
         self.assertMergeChangelog(v_112_1 + 
                                   ['<<<<<<<\n'] +
                                   v_111_2 +
@@ -260,39 +261,57 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
                                   conflicted=True
                                   )
 
-    def test_invalid_version(self):
-        """An invalid version in the changelog should be handled sanely
+    def test_invalid_version_starting_non_digit(self):
+        """Invalid version without digit first is rejected or correctly merged
         
-        Depending on the dpkg version, a bad version may be tolerated or not.
-        If the script aborts the merge should result in a success with zero
-        bytes in the merged file. See lp:893495 for such an issue.
+        Versions of dpkg prior to 1.16.0.1 merge such changelogs correctly,
+        however then a stricter check was introduced that aborts the script.
+        In that case, the result should not be a success with a zero byte
+        merge result file. See lp:893495 for such an issue.
         """
         invalid_changelog = """\
-psuedo-prog (\xc2\xa7) unstable; urgency=low
+pseudo-prog (ss-0) unstable; urgency=low
 
   * New project released!!!!
 
  -- Barry Foo <barry@example.com>  Thu, 28 Jan 2010 10:00:44 +0000
 
 """.splitlines(True)
-        # invalid_changelog has a bad version, with non-ascii characters.
-        status, lines = merge_changelog.merge_changelog(
+        handled = self.assertMergeChangelog(
+            expected_lines=v_112_1 + v_111_2 + invalid_changelog,
             this_lines=v_112_1 + invalid_changelog,
             other_lines=v_111_2 + invalid_changelog,
-            base_lines=invalid_changelog)
-        log = self.logged_warnings.getvalue()
-        self.assertContainsRe(log, "(?m)\xc2\xa7 is not a valid version$")
-        if "dpkg-mergechangelogs: error:" in log:
-            # Script version aborts on invalid versions so merge must fail
-            self.assertEqual('not_applicable', status)
-            self.assertContainsRe(log,
-                "(?m)dpkg-mergechangelogs failed with status \\d+$")
-        else:
-            # Script version tolerates invalid versions and produces output
-            self.assertEqual('success', status)
-            self.assertEqualDiff(
-                "".join(v_112_1 + v_111_2 + invalid_changelog),
-                "".join(lines))
+            base_lines=invalid_changelog,
+            possible_error=True)
+        if not handled:
+            # Can't assert on the exact message as it depends on the locale
+            self.assertContainsRe(self.logged_warnings.getvalue(),
+                "dpkg-mergechangelogs: .*ss-0( is not a valid version)?")
+
+    def test_invalid_version_non_ascii(self):
+        """Invalid version with non-ascii data is rejected or correctly merged
+        
+        Such a version has always been treated as invalid so fails
+        consistently across dpkg versions currently.
+        """
+        invalid_changelog = """\
+pseudo-prog (\xc2\xa7) unstable; urgency=low
+
+  * New project released!!!!
+
+ -- Barry Foo <barry@example.com>  Thu, 28 Jan 2010 10:00:44 +0000
+
+""".splitlines(True)
+        handled = self.assertMergeChangelog(
+            expected_lines=v_112_1 + v_111_2 + invalid_changelog,
+            this_lines=v_112_1 + invalid_changelog,
+            other_lines=v_111_2 + invalid_changelog,
+            base_lines=invalid_changelog,
+            possible_error=True)
+        if not handled:
+            # Can't assert on the exact message as it depends on the locale
+            self.assertContainsRe(self.logged_warnings.getvalue(),
+                "dpkg-mergechangelogs: .*\xc2\xa7( is not a valid version)?")
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
