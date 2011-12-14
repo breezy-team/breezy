@@ -73,9 +73,7 @@ up=pull
 """
 
 import os
-import string
 import sys
-
 
 import bzrlib
 from bzrlib.decorators import needs_write_lock
@@ -441,14 +439,14 @@ class Config(object):
             # add) the final ','
             l = [l]
         return l
-        
+
     def get_user_option_as_int_from_SI(self, option_name, default=None):
         """Get a generic option from a human readable size in SI units, e.g 10MB
-        
+
         Accepted suffixes are K,M,G. It is case-insensitive and may be followed
         by a trailing b (i.e. Kb, MB). This is intended to be practical and not
         pedantic.
-        
+
         :return Integer, expanded to its base-10 value if a proper SI unit is 
             found. If the option doesn't exist, or isn't a value in 
             SI units, return default (which defaults to None)
@@ -479,7 +477,6 @@ class Config(object):
             except TypeError:
                 val = default
         return val
-        
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def gpg_signing_command(self):
@@ -1636,8 +1633,6 @@ def _get_default_mail_domain():
         f.close()
 
 
-
-
 def default_email():
     v = os.environ.get('EMAIL')
     if v:
@@ -1855,7 +1850,7 @@ class AuthenticationConfig(object):
         :param user: login (optional)
 
         :param path: the absolute path on the server (optional)
-        
+
         :param realm: the http authentication realm (optional)
 
         :return: A dict containing the matching credentials or None.
@@ -2459,7 +2454,6 @@ def int_from_store(unicode_str):
 
 def float_from_store(unicode_str):
     return float(unicode_str)
-
 
 
 # Use a an empty dict to initialize an empty configobj avoiding all
@@ -3488,7 +3482,7 @@ class LocationStack(_CompatibleStack):
 
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
-        
+
         :param location: A URL prefix to """
         lstore = LocationStore()
         if location.startswith('file://'):
