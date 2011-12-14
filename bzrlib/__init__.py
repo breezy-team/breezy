@@ -164,7 +164,7 @@ def _patch_filesystem_default_encoding(new_enc):
 # This is not safe to do for all users of bzrlib, other scripts should instead
 # just ensure a usable locale is set via the $LANG variable on posix systems.
 _fs_enc = sys.getfilesystemencoding()
-if getattr(sys, "_bzr_default_fs_enc") is not None:
+if getattr(sys, "_bzr_default_fs_enc", None) is not None:
     if (_fs_enc is None or codecs.lookup(_fs_enc).name == "ascii"):
         _fs_enc = _patch_filesystem_default_encoding(sys._bzr_default_fs_enc)
 if _fs_enc is None:
