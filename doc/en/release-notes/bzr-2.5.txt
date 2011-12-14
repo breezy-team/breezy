@@ -95,7 +95,8 @@ the colocated branches, optimizations for revision specifiers to avoid
 history sized operations, enhancements to the config framework, bug fixes
 related to unicode paths and more.
 
-This release includes all bug fixed in previous series known at the time of
+All bug fixed in previous series known at the time of this release are
+included.
 
 External Compatibility Breaks
 *****************************
