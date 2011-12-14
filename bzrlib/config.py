@@ -2659,11 +2659,10 @@ option_registry.register(
            ' (terminal encoding if not specified).'))
 option_registry.register(
     Option('post_commit', default=None,
-           from_unicode=list_from_store,
            help='''\
 Post commit functions.
 
-An ordered list of python functions to call.
+An ordered list of python functions to call separated by spaces.
 
 Each function takes branch, rev_id as parameters.
 '''))

@@ -604,9 +604,10 @@ class Commit(object):
         # Process the post commit hooks, if any
         self._set_progress_stage("Running post_commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
-        # 0.15)
-        if self.config_stack.get('post_commit') is not None:
-            hooks = self.config_stack.get('post_commit').split(' ')
+        # 0.15^H^H^H^H 2.5.0)
+        post_commit = self.config_stack.get('post_commit')
+        if post_commit is not None:
+            hooks = post_commit.split(' ')
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
                 result = eval(hook + '(branch, rev_id)',
