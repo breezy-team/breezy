@@ -7,11 +7,11 @@ Configuring Bazaar
 As a Bazaar developer there are a few things you need to know about
 configuration:
 
-* add a new option,
+* how to add a new option,
 
-* add a new stack,
+* how add a new stack,
 
-* add a new store.
+* how add a new store.
 
 The first sections in this document summarize the steps needed when adding a
 new configuration item, the rest of the document gives more internal details
@@ -87,7 +87,7 @@ it. This generally involves:
   * ``BranchConfig`` became ``BranchStack`` (or in this case,
     ``get_config()`` became ``get_config_stack()``.
 
-* replace the custom accessor calls by ``conf.get(option_name)``.
+* replace the custom accessor calls with ``conf.get(option_name)``.
 
 The new config code provides some help for commonly encountered use cases
 that can allow further simplifications like:

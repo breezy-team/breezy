@@ -3410,12 +3410,10 @@ class GlobalStack(_CompatibleStack):
     """
 
     def __init__(self):
-        # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
             [self._get_overrides,
              NameMatcher(gstore, 'DEFAULT').get_sections],
-            # For modifications
             gstore, mutable_section_id='DEFAULT')
 
 
@@ -3449,7 +3447,6 @@ class LocationStack(_CompatibleStack):
             [self._get_overrides,
              LocationMatcher(lstore, location).get_sections,
              NameMatcher(gstore, 'DEFAULT').get_sections],
-            # For modifications
             lstore, mutable_section_id=location)
 
 
@@ -3469,6 +3466,7 @@ class BranchStack(_CompatibleStack):
     * the ``DEFAULT`` section in ``bazaar.conf``.
 
     This stack will use the no-name section in ``branch.conf`` as its
+    MutableSection.
     """
 
     def __init__(self, branch):
@@ -3480,7 +3478,6 @@ class BranchStack(_CompatibleStack):
              LocationMatcher(lstore, branch.base).get_sections,
              NameMatcher(bstore, None).get_sections,
              NameMatcher(gstore, 'DEFAULT').get_sections],
-            # For modifications
             bstore)
         self.branch = branch
 
@@ -3496,7 +3493,6 @@ class RemoteControlStack(_CompatibleStack):
         cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
             [NameMatcher(cstore, None).get_sections],
-            # For modifications
             cstore)
         self.bzrdir = bzrdir
 
@@ -3512,7 +3508,6 @@ class RemoteBranchStack(_CompatibleStack):
         bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
             [NameMatcher(bstore, None).get_sections],
-            # For modifications
             bstore)
         self.branch = branch
 

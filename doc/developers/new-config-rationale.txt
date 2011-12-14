@@ -82,8 +82,8 @@ Current issues
   doesn't give access to the specific section. This is a concern if the user
   has no other way to address a specific configuration option including
   Store and Section when using ``bzr config`` (see
-  http://pad.lv/725234). Plugins defining their own staks and/or stores also
-  have no way to properly plug into ``bzr config`` (see
+  http://pad.lv/725234). Plugins defining their own stacks and/or stores
+  also have no way to properly plug into ``bzr config`` (see
   http://pad.lv/788991).
 
 * Rules for configuration options are not clearly defined for remote
