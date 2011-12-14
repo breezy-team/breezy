@@ -166,6 +166,7 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(51, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         self.expectFailure("signing commits requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
@@ -189,6 +190,7 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # The number of readv requests seems to vary depending on the generated
         # repository and how well it compresses, so allow for a bit of
         # variation:
+        self.assertLength(1, self.hpss_connections)
         if len(self.hpss_calls) not in (18, 19):
             self.fail("Incorrect length: wanted 18 or 19, got %d for %r" % (
                 len(self.hpss_calls), self.hpss_calls))

@@ -484,6 +484,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(40, self.hpss_calls)
+        self.assertLength(2, self.hpss_connections)
         self.expectFailure("branching to the same branch requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
@@ -502,6 +503,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -523,6 +525,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(15, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
 
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
@@ -541,6 +544,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
 
     def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -559,6 +563,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         readvs_of_rix_files = [
             c for c in self.hpss_calls
             if c.call.method == 'readv' and c.call.args[-1].endswith('.rix')]
+        self.assertLength(1, self.hpss_connections)
         self.assertLength(0, readvs_of_rix_files)
         self.expectFailure("branching to stacked requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

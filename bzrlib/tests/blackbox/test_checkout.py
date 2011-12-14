@@ -187,6 +187,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(17, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         self.expectFailure("checkouts require VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
@@ -203,6 +204,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(1, self.hpss_connections)
         if len(self.hpss_calls) < 34 or len(self.hpss_calls) > 48:
             self.fail(
                 "Incorrect length: wanted between 34 and 48, got %d for %r" % (

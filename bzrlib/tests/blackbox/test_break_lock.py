@@ -140,4 +140,5 @@ class TestSmartServerBreakLock(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(1, self.hpss_connections)
         self.assertLength(5, self.hpss_calls)
