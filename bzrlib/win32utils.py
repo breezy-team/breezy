@@ -68,7 +68,7 @@ else:
     if winver == 'Windows 98':
         create_buffer = ctypes.create_string_buffer
         def extract_buffer(buf):
-            return buf.val.decode("mbcs")
+            return buf.value.decode("mbcs")
         suffix = 'A'
     else:
         create_buffer = ctypes.create_unicode_buffer
@@ -556,6 +556,11 @@ if has_ctypes and winver == 'Windows NT':
 
     def get_environ_unicode(key, default=None):
         """Get `key` from environment as unicode or `default` if unset
+
+        The environment is natively unicode on modern windows versions but
+        Python 2 only accesses it through the legacy bytestring api.
+
+        Environmental variable names are case insenstive on Windows.
 
         A large enough buffer will be allocated to retrieve the value, though
         it may take two calls to the underlying library function.
