@@ -21,8 +21,10 @@
 import sys
 
 from bzrlib import (
+    config,
     errors,
     gpg,
+    tests,
     trace,
     ui,
     )
@@ -31,7 +33,8 @@ from bzrlib.tests import (
     features,
     )
 
-class FakeConfig(object):
+
+class FakeConfig(config.GlobalStack):
 
     def get(self, name):
         if name == "gpg_signing_key":
@@ -44,36 +47,42 @@ class FakeConfig(object):
             return None
 
 
-class TestCommandLine(TestCase):
+class TestCommandLine(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCommandLine, self).setUp()
+        store = config.GlobalStore()
+        store._load_from_string('''[DEFAULT]
+gpg_signing_key=amy@example.com
+gpg_signing_command=false''')
+        store.save()
+        self.my_gpg = gpg.GPGStrategy(config.GlobalStack())
 
     def test_signing_command_line(self):
-        my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
-                         my_gpg._command_line())
+                         self.my_gpg._command_line())
 
     def test_checks_return_code(self):
         # This test needs a unix like platform - one with 'false' to run.
         # if you have one, please make this work :)
-        my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertRaises(errors.SigningFailed, my_gpg.sign, 'content')
+        self.assertRaises(errors.SigningFailed, self.my_gpg.sign, 'content')
 
     def assertProduces(self, content):
         # This needs a 'cat' command or similar to work.
-        my_gpg = gpg.GPGStrategy(FakeConfig())
         if sys.platform == 'win32':
             # Windows doesn't come with cat, and we don't require it
             # so lets try using python instead.
             # But stupid windows and line-ending conversions.
             # It is too much work to make sys.stdout be in binary mode.
             # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
-            my_gpg._command_line = lambda:[sys.executable, '-c',
+            self.my_gpg._command_line = lambda:[sys.executable, '-c',
                     'import sys; sys.stdout.write(sys.stdin.read())']
             new_content = content.replace('\n', '\r\n')
 
-            self.assertEqual(new_content, my_gpg.sign(content))
+            self.assertEqual(new_content, self.my_gpg.sign(content))
         else:
-            my_gpg._command_line = lambda:['cat', '-']
-            self.assertEqual(content, my_gpg.sign(content))
+            self.my_gpg._command_line = lambda:['cat', '-']
+            self.assertEqual(content, self.my_gpg.sign(content))
 
     def test_returns_output(self):
         content = "some content\nwith newlines\n"
