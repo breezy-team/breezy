@@ -225,8 +225,8 @@ class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
         try:
             branch_ref = self._bzrdir.get_branch_reference()
         except errors.NotBranchError:
-            pass
-        else:
+            branch_ref = None
+        if branch_ref is not None:
             # The server shouldn't try to resolve references, and it quite
             # possibly can't reach them anyway.  The client needs to resolve
             # the branch reference to determine the cloning_metadir.
