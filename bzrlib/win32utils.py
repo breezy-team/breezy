@@ -20,11 +20,15 @@ Only one dependency: ctypes should be installed.
 """
 
 import glob
+import operator
 import os
 import struct
 import sys
 
-from bzrlib import cmdline
+from bzrlib import (
+    cmdline,
+    symbol_versioning,
+    )
 from bzrlib.i18n import gettext
 
 # Windows version
@@ -63,9 +67,12 @@ except ImportError:
 else:
     if winver == 'Windows 98':
         create_buffer = ctypes.create_string_buffer
+        def extract_buffer(buf):
+            return buf.value.decode("mbcs")
         suffix = 'A'
     else:
         create_buffer = ctypes.create_unicode_buffer
+        extract_buffer = operator.attrgetter("value")
         suffix = 'W'
 try:
     import pywintypes
@@ -248,28 +255,12 @@ def get_appdata_location():
     one that moves with the user as they logon to different machines, and
     a 'local' one that stays local to the machine.  This returns the 'roaming'
     directory, and thus is suitable for storing user-preferences, etc.
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
-    (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
     """
     appdata = _get_sh_special_folder_path(CSIDL_APPDATA)
     if appdata:
         return appdata
-    # from env variable
-    appdata = os.environ.get('APPDATA')
-    if appdata:
-        return appdata
-    # if we fall to this point we on win98
-    # at least try C:/WINDOWS/Application Data
-    windir = os.environ.get('windir')
-    if windir:
-        appdata = os.path.join(windir, 'Application Data')
-        if os.path.isdir(appdata):
-            return appdata
-    # did not find anything
-    return None
+    # Use APPDATA if defined, will return None if not
+    return get_environ_unicode('APPDATA')
 
 
 def get_local_appdata_location():
@@ -281,17 +272,12 @@ def get_local_appdata_location():
     a 'local' one that stays local to the machine.  This returns the 'local'
     directory, and thus is suitable for caches, temp files and other things
     which don't need to move with the user.
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
-    (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
     """
     local = _get_sh_special_folder_path(CSIDL_LOCAL_APPDATA)
     if local:
         return local
     # Vista supplies LOCALAPPDATA, but XP and earlier do not.
-    local = os.environ.get('LOCALAPPDATA')
+    local = get_environ_unicode('LOCALAPPDATA')
     if local:
         return local
     return get_appdata_location()
@@ -302,33 +288,27 @@ def get_home_location():
     Assume on win32 it's the <My Documents> folder.
     If location cannot be obtained return system drive root,
     i.e. C:\
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
     """
     home = _get_sh_special_folder_path(CSIDL_PERSONAL)
     if home:
         return home
-    # try for HOME env variable
-    home = os.path.expanduser('~')
-    if home != '~':
+    home = get_environ_unicode('HOME')
+    if home is not None:
         return home
+    homepath = get_environ_unicode('HOMEPATH')
+    if homepath is not None:
+        return os.path.join(get_environ_unicode('HOMEDIR', ''), home)
     # at least return windows root directory
-    windir = os.environ.get('windir')
+    windir = get_environ_unicode('WINDIR')
     if windir:
         return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
-    return 'C:/'
+    return unicode('C:/')
 
 
 def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -340,9 +320,9 @@ def get_user_name():
             buf = create_buffer(UNLEN+1)
             n = ctypes.c_int(UNLEN+1)
             if GetUserName(buf, ctypes.byref(n)):
-                return buf.value
+                return extract_buffer(buf)
     # otherwise try env variables
-    return os.environ.get('USERNAME', None)
+    return get_environ_unicode('USERNAME')
 
 
 # 1 == ComputerNameDnsHostname, which returns "The DNS host name of the local
@@ -353,8 +333,7 @@ def get_host_name():
     """Return host machine name.
     If name cannot be obtained return None.
 
-    :return: A unicode string representing the host name. On win98, this may be
-        a plain string as win32 api doesn't support unicode.
+    :return: A unicode string representing the host name.
     """
     if has_win32api:
         try:
@@ -377,7 +356,7 @@ def get_host_name():
             if (GetComputerNameEx is not None
                 and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
                                       buf, ctypes.byref(n))):
-                return buf.value
+                return extract_buffer(buf)
 
             # Try GetComputerName in case GetComputerNameEx wasn't found
             # It returns the NETBIOS name, which isn't as good, but still ok.
@@ -387,18 +366,12 @@ def get_host_name():
                                       None)
             if (GetComputerName is not None
                 and GetComputerName(buf, ctypes.byref(n))):
-                return buf.value
-    # otherwise try env variables, which will be 'mbcs' encoded
-    # on Windows (Python doesn't expose the native win32 unicode environment)
-    # According to this:
-    # http://msdn.microsoft.com/en-us/library/aa246807.aspx
-    # environment variables should always be encoded in 'mbcs'.
-    try:
-        return os.environ['COMPUTERNAME'].decode("mbcs")
-    except KeyError:
-        return None
+                return extract_buffer(buf)
+    return get_environ_unicode('COMPUTERNAME')
 
 
+@symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))
 def _ensure_unicode(s):
     if s and type(s) != unicode:
         from bzrlib import osutils
@@ -406,17 +379,17 @@ def _ensure_unicode(s):
     return s
 
 
-def get_appdata_location_unicode():
-    return _ensure_unicode(get_appdata_location())
+get_appdata_location_unicode = symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_appdata_location)
 
-def get_home_location_unicode():
-    return _ensure_unicode(get_home_location())
+get_home_location_unicode = symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_home_location)
 
-def get_user_name_unicode():
-    return _ensure_unicode(get_user_name())
+get_user_name_unicode = symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_user_name)
 
-def get_host_name_unicode():
-    return _ensure_unicode(get_host_name())
+get_host_name_unicode = symbol_versioning.deprecated_method(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_host_name)
 
 
 def _ensure_with_dir(path):
@@ -431,7 +404,6 @@ def _undo_ensure_with_dir(path, corrected):
         return path[2:]
     else:
         return path
-
 
 
 def glob_one(possible_glob):
@@ -585,6 +557,11 @@ if has_ctypes and winver == 'Windows NT':
     def get_environ_unicode(key, default=None):
         """Get `key` from environment as unicode or `default` if unset
 
+        The environment is natively unicode on modern windows versions but
+        Python 2 only accesses it through the legacy bytestring api.
+
+        Environmental variable names are case insenstive on Windows.
+
         A large enough buffer will be allocated to retrieve the value, though
         it may take two calls to the underlying library function.
 
@@ -609,7 +586,16 @@ if has_ctypes and winver == 'Windows NT':
                 return buffer[:length]
             buffer_size = length
 else:
-    get_unicode_argv = get_environ_unicode = None
+    get_unicode_argv = None
+    def get_environ_unicode(key, default=None):
+        """Get `key` from environment as unicode or `default` if unset
+
+        Fallback version that should basically never be needed.
+        """
+        try:
+            return os.environ[key].decode("mbcs")
+        except KeyError:
+            return default
 
 
 if has_win32api:
