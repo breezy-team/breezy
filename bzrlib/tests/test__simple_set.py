@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
 import sys
 
 from bzrlib import (
-    errors,
-    osutils,
     tests,
+    )
+from bzrlib.tests import (
+    features,
     )
 
 try:
@@ -77,7 +78,7 @@ class _NoImplementCompare(_Hashable):
 
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
-compiled_simpleset_feature = tests.ModuleAvailableFeature(
+compiled_simpleset_feature = features.ModuleAvailableFeature(
                                 'bzrlib._simple_set_pyx')
 
 

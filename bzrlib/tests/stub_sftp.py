@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009, 2010 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005, 2006, 2008-2011 Robey Pointer <robey@lag.net>, Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,11 +21,9 @@ Adapted from the one in paramiko's unit tests.
 
 import os
 import paramiko
-import select
 import socket
 import SocketServer
 import sys
-import threading
 import time
 
 from bzrlib import (
@@ -120,9 +118,9 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
     else:
         def canonicalize(self, path):
             if os.path.isabs(path):
-                return os.path.normpath(path)
+                return osutils.normpath(path)
             else:
-                return os.path.normpath('/' + os.path.join(self.home, path))
+                return osutils.normpath('/' + os.path.join(self.home, path))
 
     def chattr(self, path, attr):
         try:
@@ -555,7 +553,7 @@ class SFTPHomeDirServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url("~/")
+        return self._get_sftp_url("%7E/")
 
 
 class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):

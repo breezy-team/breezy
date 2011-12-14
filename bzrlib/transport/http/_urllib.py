@@ -14,14 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-import urllib
-import urlparse
-
 from bzrlib import (
     errors,
     trace,
-    urlutils,
     )
 from bzrlib.transport import http
 # TODO: handle_response should be integrated into the http/__init__.py
@@ -138,8 +133,10 @@ class HttpTransport_urllib(http.HttpTransportBase):
         abspath = self._remote_path('.bzr/smart')
         # We include 403 in accepted_errors so that send_http_smart_request can
         # handle a 403.  Otherwise a 403 causes an unhandled TransportError.
-        response = self._perform(Request('POST', abspath, body_bytes,
-                                         accepted_errors=[200, 403]))
+        response = self._perform(
+            Request('POST', abspath, body_bytes,
+                    {'Content-Type': 'application/octet-stream'},
+                    accepted_errors=[200, 403]))
         code = response.code
         data = handle_response(abspath, code, response.info(), response)
         return code, data
@@ -170,10 +167,12 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    from bzrlib.tests import http_server
+    from bzrlib.tests import (
+        features,
+        http_server,
+        )
     permutations = [(HttpTransport_urllib, http_server.HttpServer_urllib),]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         from bzrlib.tests import https_server
         permutations.append((HttpTransport_urllib,
                              https_server.HTTPSServer_urllib))

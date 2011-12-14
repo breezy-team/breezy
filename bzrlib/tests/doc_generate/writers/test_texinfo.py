@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 """sphinx texinfo writer tests."""
 
+from bzrlib import tests
 from bzrlib.tests import (
     doc_generate as test_dg, # Avoid clash with from bzrlib import doc_generate
     )
@@ -231,6 +232,29 @@ implicitly add the parent, and so on up to the root.
 @end itemize
 """,
                              'bzr-0.0.8.texi')
+
+    def test_toctree_empty(self):
+        self.build_tree_contents(
+            [('index.txt', """
+Table of Contents
+=================
+
+.. toctree::
+   :maxdepth: 1
+""")])
+        app, out, err = self.make_sphinx()
+        self.build(app)
+        self.assertFileEqual("""\
+This file has been converted using a beta rst->texinfo converter. 
+Most of the info links are currently bogus, don't report bugs about them,
+this is currently worked on.
+@node Top
+@top Placeholder
+@node table-of-contents
+@chapter Table of Contents
+""",
+                             'index.texi')
+
 
 class TestSections(test_dg.TestSphinx):
 

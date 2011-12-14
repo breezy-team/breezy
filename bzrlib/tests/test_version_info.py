@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ import sys
 from bzrlib import (
     errors,
     registry,
-    symbol_versioning,
     tests,
     version_info_formats,
     )
@@ -54,6 +53,25 @@ class TestVersionInfo(TestCaseWithTransport):
 
         return wt
 
+    def create_tree_with_dotted_revno(self):
+        wt = self.make_branch_and_tree('branch')
+        self.build_tree(['branch/a'])
+        wt.add('a')
+        wt.commit('a', rev_id='r1')
+
+        other = wt.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/b.a'])
+        other.add(['b.a'])
+        other.commit('b.a', rev_id='o2')
+
+        os.chdir('branch')
+        self.run_bzr('merge ../other')
+        wt.commit('merge', rev_id='merge')
+
+        wt.update(revision='o2')
+
+        return wt
+
     def test_rio_null(self):
         wt = self.make_branch_and_tree('branch')
 
@@ -63,6 +81,15 @@ class TestVersionInfo(TestCaseWithTransport):
         val = sio.getvalue()
         self.assertContainsRe(val, 'build-date:')
         self.assertContainsRe(val, 'revno: 0')
+
+    def test_rio_dotted_revno(self):
+        wt = self.create_tree_with_dotted_revno()
+
+        sio = StringIO()
+        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, 'revno: 1.1.1')
 
     def test_rio_version_text(self):
         wt = self.create_branch()
@@ -137,8 +164,8 @@ class TestVersionInfo(TestCaseWithTransport):
             return new_stanzas[0]
 
         stanza = regen()
-        self.failUnless('date' in stanza)
-        self.failUnless('build-date' in stanza)
+        self.assertTrue('date' in stanza)
+        self.assertTrue('build-date' in stanza)
         self.assertEqual(['3'], stanza.get_all('revno'))
         self.assertEqual(['r3'], stanza.get_all('revision-id'))
 
@@ -192,7 +219,17 @@ class TestVersionInfo(TestCaseWithTransport):
         builder.generate(sio)
         val = sio.getvalue()
         self.assertContainsRe(val, "'revision_id': None")
-        self.assertContainsRe(val, "'revno': 0")
+        self.assertContainsRe(val, "'revno': '0'")
+        self.assertNotContainsString(val, '\n\n\n\n')
+
+    def test_python_dotted_revno(self):
+        wt = self.create_tree_with_dotted_revno()
+
+        sio = StringIO()
+        builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, "'revno': '1.1.1'")
 
     def test_python_version(self):
         wt = self.create_branch()
@@ -223,9 +260,9 @@ class TestVersionInfo(TestCaseWithTransport):
             return tvi
 
         tvi = regen()
-        self.assertEqual(3, tvi.version_info['revno'])
+        self.assertEqual('3', tvi.version_info['revno'])
         self.assertEqual('r3', tvi.version_info['revision_id'])
-        self.failUnless(tvi.version_info.has_key('date'))
+        self.assertTrue(tvi.version_info.has_key('date'))
         self.assertEqual(None, tvi.version_info['clean'])
 
         tvi = regen(check_for_clean=True)
@@ -282,6 +319,14 @@ class TestVersionInfo(TestCaseWithTransport):
         # revision_id is not available yet
         self.assertRaises(errors.MissingTemplateVariable, 
             builder.generate, sio)
+
+    def test_custom_dotted_revno(self):
+        sio = StringIO()
+        wt = self.create_tree_with_dotted_revno()
+        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
+            template='{revno} revid: {revision_id}')
+        builder.generate(sio)
+        self.assertEquals("1.1.1 revid: o2", sio.getvalue())
 
     def test_custom_version_text(self):
         wt = self.create_branch()

@@ -20,18 +20,16 @@
 """Branch implementation tests for bzr.
 
 These test the conformance of all the branch variations to the expected API.
-Specific tests for individual formats are in the tests/test_branch file
-rather than in tests/per_branch/*.py.
+Specific tests for individual formats are in the `tests/test_branch` file
+rather than in `tests/per_branch/*.py`.
 """
 
 from bzrlib import (
     errors,
     tests,
     )
-from bzrlib.branch import (BranchFormat,
-                           _legacy_formats,
-                           )
-from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
+from bzrlib.branch import format_registry
+from bzrlib.remote import RemoteBranchFormat
 from bzrlib.tests import test_server
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.transport import memory
@@ -69,29 +67,19 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch('')
+            self.branch = self.make_branch('abranch')
         return self.branch
 
+    def get_default_format(self):
+        format = self.bzrdir_format
+        self.assertEquals(format.get_branch_format(), self.branch_format)
+        return format
+
     def make_branch(self, relpath, format=None):
-        if format is not None:
-            return TestCaseWithControlDir.make_branch(self, relpath, format)
-        repo = self.make_repository(relpath)
-        # fixme RBC 20060210 this isnt necessarily a fixable thing,
-        # Skipped is the wrong exception to raise.
         try:
-            return self.branch_format.initialize(repo.bzrdir)
+            return super(TestCaseWithBranch, self).make_branch(relpath, format)
         except errors.UninitializableFormat:
-            raise tests.TestSkipped('Uninitializable branch format')
-
-    def make_branch_builder(self, relpath, format=None):
-        if format is None:
-            format = self.branch_format._matchingbzrdir
-        return super(TestCaseWithBranch, self).make_branch_builder(
-            relpath, format=format)
-
-    def make_repository(self, relpath, shared=False, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
-        return made_control.create_repository(shared=shared)
+            raise tests.TestNotApplicable('Uninitializable branch format')
 
     def create_tree_with_merge(self):
         """Create a branch with a simple ancestry.
@@ -132,7 +120,7 @@ def branch_scenarios():
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [(format, format._matchingbzrdir) for format in
-         BranchFormat.get_formats() + _legacy_formats]
+         format_registry._get_all()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,

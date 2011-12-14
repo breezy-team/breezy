@@ -189,15 +189,21 @@ what can be done inside them.
    why in a comment.
 
 1. Never rely on a ``__del__`` method running.  If there is code that
-   must run, do it from a ``finally`` block instead.
+   must run, instead have a ``finally`` block or an ``addCleanup`` call an
+   explicit ``close`` method.
 
 2. Never ``import`` from inside a ``__del__`` method, or you may crash the
    interpreter!!
 
-3. In some places we raise a warning from the destructor if the object
-   has not been cleaned up or closed.  This is considered OK: the warning
-   may not catch every case but it's still useful sometimes.
-
+3. Prior to bzr 2.4, we sometimes used to raise warnings from del methods
+   that the object was not cleaned up or closed.  We no longer do this:
+   failure to close the object doesn't cause a test failure; the warning
+   appears an arbitrary long time after the problem occurred (the object
+   being leaked); merely having a del method inhibits Python gc; the
+   warnings appear to users and upset them; they can also break tests that
+   are checking what appears on stderr.
+   
+In short, just don't use ``__del__``.
 
 Cleanup methods
 ===============
@@ -364,6 +370,8 @@ implementation.)
 
 Because repr methods are often called when something has already gone
 wrong, they should be written somewhat more defensively than most code.
+They shouldn't have side effects like doing network or disk
+IO.
 The object may be half-initialized or in some other way in an illegal
 state.  The repr method shouldn't raise an exception, or it may hide the
 (probably more useful) underlying exception.
@@ -384,6 +392,13 @@ really should terminate the program such as ``MemoryError`` and
 later re-raised.  Even then, think about whether catching just
 ``Exception`` (which excludes system errors in Python2.5 and later) would
 be better.
+
+The ``__str__`` method on exceptions should be small and have no side
+effects, following the rules given for `Object string representations`_.
+In particular it should not do any network IO, or complicated
+introspection of other objects.  All the state needed to present the
+exception to the user should be gathered before the error is raised.
+In other words, exceptions should basically be value objects.
 
 
 Test coverage

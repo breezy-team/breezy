@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,10 +25,13 @@ from bzrlib import (
     bzrdir,
     errors,
     osutils,
-    symbol_versioning,
     urlutils,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 
 
 class TestErrors(TestCaseWithTransport):
@@ -297,11 +300,10 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_up_to_date(self):
-        error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
-        self.assertEqualDiff("The branch format All-in-one "
-                             "format 4 is already at the most "
-                             "recent format.",
-                             str(error))
+        error = errors.UpToDateFormat("someformat")
+        self.assertEqualDiff(
+            "The branch format someformat is already at the most "
+            "recent format.", str(error))
 
     def test_corrupt_repository(self):
         repo = self.make_repository('.')
@@ -346,13 +348,6 @@ class TestErrors(TestCaseWithTransport):
         error = errors.BadIndexValue("foo")
         self.assertEqual("The value 'foo' is not a valid value.",
             str(error))
-
-    def test_bzrnewerror_is_deprecated(self):
-        class DeprecatedError(errors.BzrNewError):
-            pass
-        self.callDeprecated(['BzrNewError was deprecated in bzr 0.13; '
-             'please convert DeprecatedError to use BzrError instead'],
-            DeprecatedError)
 
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
@@ -570,18 +565,6 @@ class TestErrors(TestCaseWithTransport):
         err = errors.UnknownRules(['foo', 'bar'])
         self.assertEquals("Unknown rules detected: foo, bar.", str(err))
 
-    def test_hook_failed(self):
-        # Create an exc_info tuple by raising and catching an exception.
-        try:
-            1/0
-        except ZeroDivisionError:
-            exc_info = sys.exc_info()
-        err = errors.HookFailed('hook stage', 'hook name', exc_info, warn=False)
-        self.assertStartsWith(
-            str(err), 'Hook \'hook name\' during hook stage failed:\n')
-        self.assertEndsWith(
-            str(err), 'integer division or modulo by zero')
-
     def test_tip_change_rejected(self):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
         self.assertEquals(
@@ -609,11 +592,14 @@ class TestErrors(TestCaseWithTransport):
         try:
             raise Exception("example error")
         except Exception:
-            exc_info = sys.exc_info()
-        err = errors.SmartMessageHandlerError(exc_info)
-        self.assertStartsWith(
-            str(err), "The message handler raised an exception:\n")
-        self.assertEndsWith(str(err), "Exception: example error\n")
+            err = errors.SmartMessageHandlerError(sys.exc_info())
+        # GZ 2010-11-08: Should not store exc_info in exception instances.
+        try:
+            self.assertStartsWith(
+                str(err), "The message handler raised an exception:\n")
+            self.assertEndsWith(str(err), "Exception: example error\n")
+        finally:
+            del err
 
     def test_must_have_working_tree(self):
         err = errors.MustHaveWorkingTree('foo', 'bar')
@@ -672,6 +658,15 @@ class TestErrors(TestCaseWithTransport):
         err = errors.NotBranchError('path', bzrdir=bzrdir)
         self.assertEqual('Not a branch: "path".', str(err))
 
+    def test_not_branch_bzrdir_with_recursive_not_branch_error(self):
+        class FakeBzrDir(object):
+            def open_repository(self):
+                # str() on the NotBranchError will trigger a call to this,
+                # which in turn will another, identical NotBranchError.
+                raise errors.NotBranchError('path', bzrdir=FakeBzrDir())
+        err = errors.NotBranchError('path', bzrdir=FakeBzrDir())
+        self.assertEqual('Not a branch: "path".', str(err))
+
     def test_not_branch_laziness(self):
         real_bzrdir = self.make_bzrdir('path')
         class FakeBzrDir(object):
@@ -699,6 +694,14 @@ class TestErrors(TestCaseWithTransport):
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
             'Please use `bzr unbind` to fix.')
         self.assertEqualDiff(msg, str(error))
+
+    def test_retry_with_new_packs(self):
+        fake_exc_info = ('{exc type}', '{exc value}', '{exc traceback}')
+        error = errors.RetryWithNewPacks(
+            '{context}', reload_occurred=False, exc_info=fake_exc_info)
+        self.assertEqual(
+            'Pack files have changed, reload and retry. context: '
+            '{context} {exc value}', str(error))
 
 
 class PassThroughError(errors.BzrError):
@@ -732,12 +735,8 @@ class TestErrorFormatting(TestCase):
 
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')
-        s = self.callDeprecated(
-                ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
-                lambda x: str(x), e)
-        ## s = str(e)
-        self.assertEqual(s,
-                "This class has a docstring but no format string.")
+        self.assertStartsWith(str(e),
+            "Unprintable exception ErrorWithNoFormat")
 
     def test_mismatched_format_args(self):
         # Even though ErrorWithBadFormat's format string does not match the

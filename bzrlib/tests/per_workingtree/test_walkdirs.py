@@ -19,7 +19,7 @@
 import os
 
 from bzrlib import transform
-from bzrlib.tests import SymlinkFeature
+from bzrlib.tests.features import SymlinkFeature
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 # tests to write:

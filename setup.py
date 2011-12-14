@@ -10,9 +10,10 @@ import os
 import os.path
 import sys
 import copy
+import glob
 
-if sys.version_info < (2, 4):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
+if sys.version_info < (2, 6):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
     sys.exit(1)
 
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
@@ -66,12 +67,17 @@ PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
                                         'help_topics/en/*.txt',
+                                        'tests/ssl_certs/ca.crt',
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
-                                        'tests/ssl_certs/server.crt'
+                                        'tests/ssl_certs/server.crt',
                                        ]},
            }
-
+I18N_FILES = []
+for filepath in glob.glob("bzrlib/locale/*/LC_MESSAGES/*.mo"):
+    langfile = filepath[len("bzrlib/locale/"):]
+    targetpath = os.path.dirname(os.path.join("share/locale", langfile))
+    I18N_FILES.append((targetpath, [filepath]))
 
 def get_bzrlib_packages():
     """Recurse through the bzrlib directory, and extract the package names"""
@@ -151,6 +157,10 @@ class bzr_build(build):
     Generate bzr.1.
     """
 
+    sub_commands = build.sub_commands + [
+            ('build_mo', lambda _: True),
+            ]
+
     def run(self):
         build.run(self)
 
@@ -162,20 +172,24 @@ class bzr_build(build):
 ## Setup
 ########################
 
+from bzrlib.bzr_distutils import build_mo
+
 command_classes = {'install_scripts': my_install_scripts,
-                   'build': bzr_build}
+                   'build': bzr_build,
+                   'build_mo': build_mo,
+                   }
 from distutils import log
 from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
     try:
-        from Pyrex.Distutils import build_ext
-        from Pyrex.Compiler.Version import version as pyrex_version
-    except ImportError:
-        print("No Pyrex, trying Cython...")
         from Cython.Distutils import build_ext
         from Cython.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print("No Cython, trying Pyrex...")
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
@@ -188,7 +202,7 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
+    pyrex_version_info = tuple(map(int, pyrex_version.rstrip("+").split('.')))
 
 
 class build_ext_if_possible(build_ext):
@@ -290,11 +304,11 @@ else:
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
-        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
-        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
+        # <https://bugs.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.launchpad.net/bzr/+bug/276868>
         print('Cannot build extension "bzrlib._dirstate_helpers_pyx" using')
-        print('your version of pyrex "%s". Please upgrade your pyrex' % (
-            pyrex_version,))
+        print('your version of pyrex "%s". Please upgrade your pyrex'
+              % (pyrex_version,))
         print('install. For now, the non-compiled (python) version will')
         print('be used instead.')
     else:
@@ -394,7 +408,8 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
         script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
-        icon_resources = [(0,'bzr.ico')],
+        icon_resources = icon_resources,
+        other_resources = other_resources,
     )
     console_targets.append(tbzrcommand)
     tbzrcommandw = tbzrcommand.copy()
@@ -467,6 +482,16 @@ def get_svn_py2exe_info(includes, excludes, packages):
     packages.append('sqlite3')
 
 
+def get_git_py2exe_info(includes, excludes, packages):
+    packages.append('dulwich')
+
+
+def get_fastimport_py2exe_info(includes, excludes, packages):
+    # This is the python-fastimport package, not to be confused with the
+    # bzr-fastimport plugin.
+    packages.append('fastimport')
+
+
 if 'bdist_wininst' in sys.argv:
     def find_docs():
         docs = []
@@ -491,17 +516,17 @@ if 'bdist_wininst' in sys.argv:
             # help pages
             'data_files': find_docs(),
             # for building pyrex extensions
-            'cmdclass': {'build_ext': build_ext_if_possible},
+            'cmdclass': command_classes,
            }
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
+    PKG_DATA['package_data']['bzrlib'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
-    
+
     setup(**ARGS)
 
 elif 'py2exe' in sys.argv:
-    import glob
     # py2exe setup
     import py2exe
 
@@ -651,13 +676,19 @@ elif 'py2exe' in sys.argv:
                        'tools/win32/bzr_postinstall.py',
                        ]
     gui_targets = [gui_target]
-    data_files = topics_files + plugins_files
+    data_files = topics_files + plugins_files + I18N_FILES
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages, data_files)
 
     if 'svn' in plugins:
         get_svn_py2exe_info(includes, excludes, packages)
+
+    if 'git' in plugins:
+        get_git_py2exe_info(includes, excludes, packages)
+
+    if 'fastimport' in plugins:
+        get_fastimport_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the
@@ -688,7 +719,11 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
+    dll_excludes.extend(["MSWSOCK.dll",
+                         "MSVCP60.dll",
+                         "MSVCP90.dll",
+                         "powrprof.dll",
+                         "SHFOLDER.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,
@@ -710,13 +745,14 @@ elif 'py2exe' in sys.argv:
             self.optimize = 2
 
     if __name__ == '__main__':
+        command_classes['install_data'] = install_data_with_bytecompile
+        command_classes['py2exe'] = py2exe_no_oo_exe
         setup(options=options_list,
               console=console_targets,
               windows=gui_targets,
               zipfile='lib/library.zip',
               data_files=data_files,
-              cmdclass={'install_data': install_data_with_bytecompile,
-                        'py2exe': py2exe_no_oo_exe},
+              cmdclass=command_classes,
               )
 
 else:
@@ -727,19 +763,7 @@ else:
         # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
 
-    if sys.platform != 'win32':
-        # see https://wiki.kubuntu.org/Apport/DeveloperHowTo
-        #
-        # checking the paths and hardcoding the check for root is a bit gross,
-        # but I don't see a cleaner way to find out the locations in a way
-        # that's going to align with the hardcoded paths in apport.
-        if os.geteuid() == 0:
-            DATA_FILES += [
-                ('/usr/share/apport/package-hooks',
-                    ['apport/source_bzr.py']),
-                ('/etc/apport/crashdb.conf.d/',
-                    ['apport/bzr-crashdb.conf']),]
-
+    DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
     ARGS = {'scripts': ['bzr'],
             'data_files': DATA_FILES,

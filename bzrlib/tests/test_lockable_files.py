@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from StringIO import StringIO
-
 import bzrlib
 from bzrlib import (
     errors,
@@ -23,11 +21,7 @@ from bzrlib import (
     osutils,
     transport,
     )
-from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    )
 from bzrlib.tests import (
     TestCaseInTempDir,
     TestNotApplicable,
@@ -279,7 +273,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        t = transport.get_transport('.')
+        t = transport.get_transport_from_path('.')
         t.mkdir('.bzr')
         self.sub_transport = t.clone('.bzr')
         self.lockable = self.get_lockable()
@@ -304,7 +298,7 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        self.transport = transport.get_transport('.')
+        self.transport = transport.get_transport_from_path('.')
         self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch
         # tests that implicitly, but it might be a good idea to factor
@@ -347,7 +341,7 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         # in test_remote and test_smart as usual.
         b = self.make_branch('foo')
         self.addCleanup(b.bzrdir.transport.disconnect)
-        self.transport = transport.get_transport('.')
+        self.transport = transport.get_transport_from_path('.')
         self.lockable = self.get_lockable()
 
     def get_lockable(self):

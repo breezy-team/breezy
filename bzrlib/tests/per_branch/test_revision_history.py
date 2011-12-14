@@ -21,7 +21,11 @@ from bzrlib import (
     errors,
     revision as _mod_revision,
     )
-from bzrlib.tests import per_branch
+from bzrlib.symbol_versioning import deprecated_in
+from bzrlib.tests import (
+    per_branch,
+    TestNotApplicable,
+    )
 
 
 class TestLastRevision(per_branch.TestCaseWithBranch):
@@ -38,9 +42,13 @@ class TestLastRevision(per_branch.TestCaseWithBranch):
         br = self.get_branch()
         br.fetch(wt.branch)
         br.set_last_revision_info(1, 'rev1')
-        self.assertEquals(br.revision_history(), ["rev1",])
+        self.assertEquals(
+            self.applyDeprecated(deprecated_in((2, 5, 0)), br.revision_history),
+            ["rev1",])
         br.set_last_revision_info(3, 'rev3')
-        self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
+        self.assertEquals(
+            self.applyDeprecated(deprecated_in((2, 5, 0)), br.revision_history),
+            ["rev1", "rev2", "rev3"])
         # append_revision specifically prohibits some ids;
         # set_last_revision_info currently does not
         ## self.assertRaises(errors.ReservedId,
@@ -84,8 +92,8 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         """
         branch, calls = self.get_instrumented_branch()
         # Repeatedly call revision_history.
-        branch.revision_history()
-        branch.revision_history()
+        self.applyDeprecated(deprecated_in((2, 5, 0)), branch.revision_history)
+        self.applyDeprecated(deprecated_in((2, 5, 0)), branch.revision_history)
         self.assertEqual(
             ['_gen_revision_history', '_gen_revision_history'], calls)
 
@@ -97,8 +105,10 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         # Lock the branch, then repeatedly call revision_history.
         branch.lock_read()
         try:
-            branch.revision_history()
-            branch.revision_history()
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                branch.revision_history)
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                branch.revision_history)
             self.assertEqual(['_gen_revision_history'], calls)
         finally:
             branch.unlock()
@@ -112,9 +122,11 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         # Lock the branch, set the revision history, then repeatedly call
         # revision_history.
         branch.lock_write()
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         try:
-            branch.revision_history()
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                branch.revision_history)
             self.assertEqual([], calls)
         finally:
             branch.unlock()
@@ -124,8 +136,10 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         cause the revision history to be cached.
         """
         branch, calls = self.get_instrumented_branch()
-        branch.set_revision_history([])
-        branch.revision_history()
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
+        self.applyDeprecated(deprecated_in((2, 5, 0)),
+            branch.revision_history)
         self.assertEqual(['_gen_revision_history'], calls)
 
     def test_set_last_revision_info_when_locked(self):
@@ -147,17 +161,14 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
             a_branch.unlock()
 
     def test_set_last_revision_info_none(self):
-        """Passing None to revision_info to None sets it to NULL_REVISION."""
+        """Passing None to set_last_revision_info raises an exception."""
         a_branch = self.get_branch()
         # Lock the branch, set the last revision info, then call
         # last_revision_info.
         a_branch.lock_write()
         self.addCleanup(a_branch.unlock)
-        self.callDeprecated(['NULL_REVISION should be used for the null'
-            ' revision instead of None, as of bzr 0.91.'],
+        self.assertRaises(errors.InvalidRevisionId,
             a_branch.set_last_revision_info, 0, None)
-        self.assertEqual((0, _mod_revision.NULL_REVISION),
-                         a_branch.last_revision_info())
 
     def test_set_last_revision_info_uncaches_revision_history_for_format6(self):
         """On format 6 branches, set_last_revision_info invalidates the revision
@@ -168,12 +179,14 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         a_branch, calls = self.get_instrumented_branch()
         # Lock the branch, cache the revision history.
         a_branch.lock_write()
-        a_branch.revision_history()
+        self.applyDeprecated(deprecated_in((2, 5, 0)),
+            a_branch.revision_history)
         # Set the last revision info, clearing the cache.
         a_branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         del calls[:]
         try:
-            a_branch.revision_history()
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                a_branch.revision_history)
             self.assertEqual(['_gen_revision_history'], calls)
         finally:
             a_branch.unlock()
@@ -189,14 +202,17 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         branch.lock_read()
         try:
             # The first time the data returned will not be in the cache.
-            history = branch.revision_history()
+            history = self.applyDeprecated(deprecated_in((2, 5, 0)),
+                branch.revision_history)
             history.append('one')
             # The second time the data comes from the cache.
-            history = branch.revision_history()
+            history = self.applyDeprecated(deprecated_in((2, 5, 0)),
+                branch.revision_history)
             history.append('two')
             # The revision_history() should still be unchanged, even though
             # we've mutated the return values from earlier calls.
-            self.assertEqual([], branch.revision_history())
+            self.assertEqual([], self.applyDeprecated(
+                deprecated_in((2, 5, 0)), branch.revision_history))
         finally:
             branch.unlock()
 
@@ -205,8 +221,11 @@ class TestRevisionHistory(per_branch.TestCaseWithBranch):
 
     def test_parent_ghost(self):
         tree = self.make_branch_and_tree('tree')
+        if not tree.branch.repository._format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support ghosts")
         tree.add_parent_tree_id('ghost-revision',
                                 allow_leftmost_as_ghost=True)
         tree.commit('first non-ghost commit', rev_id='non-ghost-revision')
         self.assertEqual(['non-ghost-revision'],
-                         tree.branch.revision_history())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                            tree.branch.revision_history))

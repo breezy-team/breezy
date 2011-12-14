@@ -18,10 +18,11 @@
 
 import os
 
-from bzrlib import uncommit, workingtree
+from bzrlib import uncommit
 from bzrlib.bzrdir import BzrDirMetaFormat1
-from bzrlib.errors import BzrError, BoundBranchOutOfDate
+from bzrlib.errors import BoundBranchOutOfDate
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.script import (
     run_script,
     ScriptRunner,
@@ -72,7 +73,7 @@ class TestUncommit(TestCaseWithTransport):
         $ bzr uncommit
         ...
         The above revision(s) will be removed.
-        2>Uncommit these revisions? [y/n]: 
+        2>Uncommit these revisions? ([y]es, [n]o): no
         <n
         Canceled
         """)
@@ -119,8 +120,8 @@ class TestUncommit(TestCaseWithTransport):
         t_a.commit('commit 3')
         b = t_a.branch.create_checkout('b').branch
         uncommit.uncommit(b)
-        self.assertEqual(len(b.revision_history()), 2)
-        self.assertEqual(len(t_a.branch.revision_history()), 2)
+        self.assertEqual(b.last_revision_info()[0], 2)
+        self.assertEqual(t_a.branch.last_revision_info()[0], 2)
         # update A's tree to not have the uncommitted revision referenced.
         t_a.update()
         t_a.commit('commit 3b')
@@ -280,3 +281,35 @@ You can restore the old tip by running:
         tree.commit(u'\u1234 message')
         out, err = self.run_bzr('uncommit --force tree', encoding='ascii')
         self.assertContainsRe(out, r'\? message')
+
+    def test_uncommit_removes_tags(self):
+        tree = self.make_branch_and_tree('tree')
+        revid = tree.commit('message')
+        tree.branch.tags.set_tag("atag", revid)
+        out, err = self.run_bzr('uncommit --force tree')
+        self.assertEquals({}, tree.branch.tags.get_tag_dict())
+
+    def test_uncommit_keep_tags(self):
+        tree = self.make_branch_and_tree('tree')
+        revid = tree.commit('message')
+        tree.branch.tags.set_tag("atag", revid)
+        out, err = self.run_bzr('uncommit --keep-tags --force tree')
+        self.assertEquals({"atag": revid}, tree.branch.tags.get_tag_dict())
+
+
+class TestSmartServerUncommit(TestCaseWithTransport):
+
+    def test_uncommit(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(2):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['uncommit', '--force', self.get_url('from')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(14, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@ from bzrlib import (
     tests,
     transform,
     workingtree,
+    )
+from bzrlib.tests import (
+    features,
     )
 
 
@@ -191,8 +194,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
         self.assertEqual('foo-id',
                          creator.shelf_transform.final_file_id(s_trans_id))
-        self.failIfExists('foo')
-        self.failIfExists('bar')
+        self.assertPathDoesNotExist('foo')
+        self.assertPathDoesNotExist('bar')
         self.assertShelvedFileEqual('a\n', creator, 'foo-id')
         s_bar_trans_id = creator.shelf_transform.trans_id_file_id('bar-id')
         self.assertEqual('directory',
@@ -214,7 +217,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -231,7 +234,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
             creator.shelve_creation('foo-id')
         creator.transform()
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
-        self.failIfExists(link_name)
+        self.assertPathDoesNotExist(link_name)
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual(link_target, osutils.readlink(limbo_name))
         ptree = creator.shelf_transform.get_preview_tree()
@@ -241,7 +244,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self._test_shelve_symlink_creation('foo', 'bar')
 
     def test_shelve_unicode_symlink_creation(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_shelve_symlink_creation(u'fo\N{Euro Sign}o',
                                            u'b\N{Euro Sign}ar')
 
@@ -251,7 +254,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def _test_shelve_symlink_target_change(self, link_name,
                                            old_target, new_target,
                                            shelve_change=False):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -282,7 +285,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
 
     def test_shelve_unicode_symlink_target_change(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_shelve_symlink_target_change(
             u'fo\N{Euro Sign}o', u'b\N{Euro Sign}ar', u'b\N{Euro Sign}az')
 
@@ -310,7 +313,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
         self.assertEqual('foo-id',
                          creator.shelf_transform.final_file_id(s_trans_id))
-        self.failIfExists('foo')
+        self.assertPathDoesNotExist('foo')
 
     def prepare_shelve_deletion(self):
         tree = self.make_branch_and_tree('tree')
@@ -330,8 +333,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         return creator, tree
 
     def check_shelve_deletion(self, tree):
-        self.assertTrue('foo-id' in tree)
-        self.assertTrue('bar-id' in tree)
+        self.assertTrue(tree.has_id('foo-id'))
+        self.assertTrue(tree.has_id('bar-id'))
         self.assertFileEqual('baz', 'tree/foo/bar')
 
     def test_shelve_deletion(self):
@@ -362,7 +365,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
                          sorted(list(creator.iter_shelvable())))
         creator.shelve_deletion('foo-id')
         creator.transform()
-        self.failUnlessExists('tree/foo')
+        self.assertPathExists('tree/foo')
 
     def prepare_shelve_change_kind(self):
         tree = self.make_branch_and_tree('tree')
@@ -421,7 +424,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
                          sorted(list(creator.iter_shelvable())))
         creator.shelve_deletion('foo-id')
         creator.transform()
-        self.failUnlessExists('tree/foo')
+        self.assertPathExists('tree/foo')
 
     def test_shelve_serialization(self):
         tree = self.make_branch_and_tree('.')
@@ -568,21 +571,20 @@ class TestUnshelver(tests.TestCaseWithTransport):
         list(creator.iter_shelvable())
         creator.shelve_deletion('foo-id')
         creator.shelve_deletion('bar-id')
-        shelf_file = open('shelf', 'w+b')
-        self.addCleanup(shelf_file.close)
-        creator.write_shelf(shelf_file)
-        creator.transform()
-        creator.finalize()
+        with open('shelf', 'w+b') as shelf_file:
+            creator.write_shelf(shelf_file)
+            creator.transform()
+            creator.finalize()
         # validate the test setup
-        self.assertTrue('foo-id' in tree)
-        self.assertTrue('bar-id' in tree)
+        self.assertTrue(tree.has_id('foo-id'))
+        self.assertTrue(tree.has_id('bar-id'))
         self.assertFileEqual('baz', 'tree/foo/bar')
-        shelf_file.seek(0)
-        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
-        self.addCleanup(unshelver.finalize)
-        unshelver.make_merger().do_merge()
-        self.assertFalse('foo-id' in tree)
-        self.assertFalse('bar-id' in tree)
+        with open('shelf', 'r+b') as shelf_file:
+            unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+            self.addCleanup(unshelver.finalize)
+            unshelver.make_merger().do_merge()
+        self.assertFalse(tree.has_id('foo-id'))
+        self.assertFalse(tree.has_id('bar-id'))
 
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')
@@ -622,6 +624,29 @@ class TestUnshelver(tests.TestCaseWithTransport):
                               shelf.Unshelver.from_tree_and_shelf, tree,
                               shelf_file)
         self.assertEqual('Shelf corrupt.', str(e))
+
+    def test_unshelve_subdir_in_now_removed_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.addCleanup(tree.lock_write().unlock)
+        self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
+        tree.add(['dir'], ['dir-id'])
+        tree.commit('versioned dir')
+        tree.add(['dir/subdir', 'dir/subdir/foo'], ['subdir-id', 'foo-id'])
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        for change in creator.iter_shelvable():
+            creator.shelve_change(change)
+        shelf_manager = tree.get_shelf_manager()
+        shelf_id = shelf_manager.shelve_changes(creator)
+        self.assertPathDoesNotExist('dir/subdir')
+        tree.remove(['dir'])
+        unshelver = shelf_manager.get_unshelver(shelf_id)
+        self.addCleanup(unshelver.finalize)
+        unshelver.make_merger().do_merge()
+        self.assertPathExists('dir/subdir/foo')
+        self.assertEqual('dir-id', tree.path2id('dir'))
+        self.assertEqual('subdir-id', tree.path2id('dir/subdir'))
+        self.assertEqual('foo-id', tree.path2id('dir/subdir/foo'))
 
 
 class TestShelfManager(tests.TestCaseWithTransport):
@@ -723,7 +748,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
         creator.shelve_creation('foo-id')
         shelf_manager = tree.get_shelf_manager()
         shelf_id = shelf_manager.shelve_changes(creator)
-        self.failIfExists('tree/foo')
+        self.assertPathDoesNotExist('tree/foo')
         unshelver = shelf_manager.get_unshelver(shelf_id)
         self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()

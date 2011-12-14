@@ -21,6 +21,7 @@ from bzrlib import (
     reconfigure,
     repository,
     tests,
+    vf_repository,
     workingtree,
     )
 
@@ -46,10 +47,9 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_tree_with_pending_merge_to_branch(self):
         tree = self.make_branch_and_tree('tree')
+        tree.commit('unchanged')
         other_tree = tree.bzrdir.sprout('other').open_workingtree()
-        self.build_tree(['other/file'])
-        other_tree.add('file')
-        other_tree.commit('file added')
+        other_tree.commit('mergeable commit')
         tree.merge_from_branch(other_tree.branch)
         reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
         self.assertRaises(errors.UncommittedChanges, reconfiguration.apply)
@@ -259,12 +259,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_branch_to_lightweight_checkout_failure(self):
         parent, child, reconfiguration = \
             self.prepare_branch_to_lightweight_checkout()
-        old_Repository_fetch = repository.Repository.fetch
-        repository.Repository.fetch = None
+        old_Repository_fetch = vf_repository.VersionedFileRepository.fetch
+        vf_repository.VersionedFileRepository.fetch = None
         try:
             self.assertRaises(TypeError, reconfiguration.apply)
         finally:
-            repository.Repository.fetch = old_Repository_fetch
+            vf_repository.VersionedFileRepository.fetch = old_Repository_fetch
         child = _mod_branch.Branch.open('child')
         self.assertContainsRe(child.base, 'child/$')
 

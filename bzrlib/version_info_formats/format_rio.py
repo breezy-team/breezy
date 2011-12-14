@@ -38,7 +38,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             info.add('revision-id', revision_id)
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
-            revno = str(self._branch.revision_id_to_revno(revision_id))
+            revno = self._get_revno_str(revision_id)
             for hook in RioVersionInfoBuilder.hooks['revision']:
                 hook(rev, info)
         else:
@@ -60,10 +60,9 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 info.add('clean', 'False')
 
         if self._include_history:
-            self._extract_revision_history()
             log = Stanza()
             for (revision_id, message,
-                 timestamp, timezone) in self._revision_history_info:
+                 timestamp, timezone) in self._iter_revision_history():
                 log.add('id', revision_id)
                 log.add('message', message)
                 log.add('date', create_date_str(timestamp, timezone))
@@ -84,10 +83,12 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for rio-formatted version-info output."""
 
     def __init__(self):
-        super(RioVersionInfoBuilderHooks, self).__init__()
-        self.create_hook(hooks.HookPoint('revision',
+        super(RioVersionInfoBuilderHooks, self).__init__(
+            "bzrlib.version_info_formats.format_rio", "RioVersionInfoBuilder.hooks")
+        self.add_hook('revision',
             "Invoked when adding information about a revision to the"
             " RIO stanza that is printed. revision is called with a"
-            " revision object and a RIO stanza.", (1, 15), None))
+            " revision object and a RIO stanza.", (1, 15))
+
 
 RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()

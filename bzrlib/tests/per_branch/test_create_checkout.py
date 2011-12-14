@@ -16,22 +16,29 @@
 
 """Tests for the Branch.create_checkout"""
 
-from bzrlib import (
-    branch,
-    )
 from bzrlib.tests import per_branch
 
 
 class TestCreateCheckout(per_branch.TestCaseWithBranch):
 
-    def test_checkout_format(self):
-        """Make sure the new checkout uses the desired branch format."""
+    def test_checkout_format_lightweight(self):
+        """Make sure the new light checkout uses the desired branch format."""
         a_branch = self.make_branch('branch')
-        tree = a_branch.create_checkout('checkout')
+        tree = a_branch.create_checkout('checkout', lightweight=True)
         # All branches can define the format they want checkouts made in.
         # This checks it is honoured.
-        expected_format = a_branch._get_checkout_format().get_branch_format()
-        self.assertEqual(expected_format.__class__,
+        expected_format = a_branch._get_checkout_format(lightweight=True)
+        self.assertEqual(expected_format.get_branch_format().__class__,
+                         tree.branch._format.__class__)
+
+    def test_checkout_format_heavyweight(self):
+        """Make sure the new heavy checkout uses the desired branch format."""
+        a_branch = self.make_branch('branch')
+        tree = a_branch.create_checkout('checkout', lightweight=False)
+        # All branches can define the format they want checkouts made in.
+        # This checks it is honoured.
+        expected_format = a_branch._get_checkout_format(lightweight=False)
+        self.assertEqual(expected_format.get_branch_format().__class__,
                          tree.branch._format.__class__)
 
     def test_create_revision_checkout(self):
@@ -46,8 +53,8 @@ class TestCreateCheckout(per_branch.TestCaseWithBranch):
 
         tree2 = tree1.branch.create_checkout('checkout', revision_id='rev-1')
         self.assertEqual('rev-1', tree2.last_revision())
-        self.failUnlessExists('checkout/a')
-        self.failIfExists('checkout/b')
+        self.assertPathExists('checkout/a')
+        self.assertPathDoesNotExist('checkout/b')
 
     def test_create_lightweight_checkout(self):
         """We should be able to make a lightweight checkout."""

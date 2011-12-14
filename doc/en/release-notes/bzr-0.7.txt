@@ -1,0 +1,308 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.7
+#######
+
+:Released: 2006-01-09
+
+Changes
+*******
+
+* .bzrignore is excluded from exports, on the grounds that it's a bzr
+  internal-use file and may not be wanted.  (Jamie Wilkinson)
+
+* The "bzr directories" command were removed in favor of the new
+  --kind option to the "bzr inventory" command.  To list all
+  versioned directories, now use "bzr inventory --kind directory".
+  (Johan Rydberg)
+
+* Under Windows configuration directory is now ``%APPDATA%\bazaar\2.0``
+  by default. (John Arbash Meinel)
+
+* The parent of Bzr configuration directory can be set by ``BZR_HOME``
+  environment variable. Now the path for it is searched in ``BZR_HOME``,
+  then in HOME. Under Windows the order is: ``BZR_HOME``, ``APPDATA``
+  (usually points to ``C:\Documents and Settings\User Name\Application Data``),
+  ``HOME``. (John Arbash Meinel)
+
+* Plugins with the same name in different directories in the bzr plugin
+  path are no longer loaded: only the first successfully loaded one is
+  used. (Robert Collins)
+
+* Use system's external SSH command to open connections if possible.
+  This gives better integration with user settings such as ProxyCommand.
+  (James Henstridge)
+
+* Permissions on files underneath .bzr/ are inherited from the .bzr
+  directory. So for a shared repository, simply doing 'chmod -R g+w .bzr/'
+  will mean that future file will be created with group write permissions.
+
+* configure.in and config.guess are no longer in the builtin default
+  ignore list.
+
+* '.sw[nop]' pattern ignored, to ignore vim swap files for nameless
+  files.  (John Arbash Meinel, Martin Pool)
+
+Improvements
+************
+
+* "bzr INIT dir" now initializes the specified directory, and creates
+  it if it does not exist.  (John Arbash Meinel)
+
+* New remerge command (Aaron Bentley)
+
+* Better zsh completion script.  (Steve Borho)
+
+* 'bzr diff' now returns 1 when there are changes in the working
+  tree. (Robert Collins)
+
+* 'bzr push' now exists and can push changes to a remote location.
+  This uses the transport infrastructure, and can store the remote
+  location in the ~/.bazaar/branches.conf configuration file.
+  (Robert Collins)
+
+* Test directories are only kept if the test fails and the user requests
+  that they be kept.
+
+* Tweaks to short log printing
+
+* Added branch nicks, new nick command, printing them in log output.
+  (Aaron Bentley)
+
+* If ``$BZR_PDB`` is set, pop into the debugger when an uncaught exception
+  occurs.  (Martin Pool)
+
+* Accept 'bzr resolved' (an alias for 'bzr resolve'), as this is
+  the same as Subversion.  (Martin Pool)
+
+* New FTP transport support (on ftplib), for ftp:// and aftp://
+  URLs.  (Daniel Silverstone)
+
+* Commit editor temporary files now start with ``bzr_log.``, to allow
+  text editors to match the file name and set up appropriate modes or
+  settings.  (Magnus Therning)
+
+* Improved performance when integrating changes from a remote weave.
+  (Goffredo Baroncelli)
+
+* Sftp will attempt to cache the connection, so it is more likely that
+  a connection will be reused, rather than requiring multiple password
+  requests.
+
+* bzr revno now takes an optional argument indicating the branch whose
+  revno should be printed.  (Michael Ellerman)
+
+* bzr cat defaults to printing the last version of the file.
+  (Matthieu Moy, #3632)
+
+* New global option 'bzr --lsprof COMMAND' runs bzr under the lsprof
+  profiler.  (Denys Duchier)
+
+* Faster commits by reading only the headers of affected weave files.
+  (Denys Duchier)
+
+* 'bzr add' now takes a --dry-run parameter which shows you what would be
+  added, but doesn't actually add anything. (Michael Ellerman)
+
+* 'bzr add' now lists how many files were ignored per glob.  add --verbose
+  lists the specific files.  (Aaron Bentley)
+
+* 'bzr missing' now supports displaying changes in diverged trees and can
+  be limited to show what either end of the comparison is missing.
+  (Aaron Bently, with a little prompting from Daniel Silverstone)
+
+Bug Fixes
+*********
+
+* SFTP can walk up to the root path without index errors. (Robert Collins)
+
+* Fix bugs in running bzr with 'python -O'.  (Martin Pool)
+
+* Error when run with -OO
+
+* Fix bug in reporting HTTP errors that don't have an HTTP error code.
+  (Martin Pool)
+
+* Handle more cases of pipe errors in display commands
+
+* Change status to 3 for all errors
+
+* Files that are added and unlinked before committing are completely
+  ignored by diff and status
+
+* Stores with some compressed texts and some uncompressed texts are now
+  able to be used. (John A Meinel)
+
+* Fix for bzr pull failing sometimes under windows
+
+* Fix for SFTP transport under windows when using interactive auth
+
+* Show files which are both renamed and modified as such in 'bzr
+  status' output.  (Daniel Silverstone, #4503)
+
+* Make annotate cope better with revisions committed without a valid
+  email address.  (Marien Zwart)
+
+* Fix representation of tab characters in commit messages.
+  (Harald Meland)
+
+* List of plugin directories in ``BZR_PLUGIN_PATH`` environment variable is
+  now parsed properly under Windows. (Alexander Belchenko)
+
+* Show number of revisions pushed/pulled/merged. (Robey Pointer)
+
+* Keep a cached copy of the basis inventory to speed up operations
+  that need to refer to it.  (Johan Rydberg, Martin Pool)
+
+* Fix bugs in bzr status display of non-ascii characters.
+  (Martin Pool)
+
+* Remove Makefile.in from default ignore list.
+  (Tollef Fog Heen, Martin Pool, #6413)
+
+* Fix failure in 'bzr added'.  (Nathan McCallum, Martin Pool)
+
+Testing
+*******
+
+* Fix selftest asking for passwords when there are no SFTP keys.
+  (Robey Pointer, Jelmer Vernooij)
+
+* Fix selftest run with 'python -O'.  (Martin Pool)
+
+* Fix HTTP tests under Windows. (John Arbash Meinel)
+
+* Make tests work even if HOME is not set (Aaron Bentley)
+
+* Updated ``build_tree`` to use fixed line-endings for tests which read
+  the file cotents and compare. Make some tests use this to pass under
+  Windows. (John Arbash Meinel)
+
+* Skip stat and symlink tests under Windows. (Alexander Belchenko)
+
+* Delay in selftest/testhashcash is now issued under win32 and Cygwin.
+  (John Arbash Meinel)
+
+* Use terminal width to align verbose test output.  (Martin Pool)
+
+* Blackbox tests are maintained within the bzrlib.tests.blackbox directory.
+  If adding a new test script please add that to
+  ``bzrlib.tests.blackbox.__init__``. (Robert Collins)
+
+* Much better error message if one of the test suites can't be
+  imported.  (Martin Pool)
+
+* Make check now runs the test suite twice - once with the default locale,
+  and once with all locales forced to C, to expose bugs. This is not
+  trivially done within python, so for now its only triggered by running
+  Make check. Integrators and packagers who wish to check for full
+  platform support should run 'make check' to test the source.
+  (Robert Collins)
+
+* Tests can now run TestSkipped if they can't execute for any reason.
+  (Martin Pool) (NB: TestSkipped should only be raised for correctable
+  reasons - see the wiki spec ImprovingBzrTestSuite).
+
+* Test SFTP with relative, absolute-in-homedir and absolute-not-in-homedir
+  paths for the transport tests. Introduce blackbox remote SFTP tests that
+  test the same permutations. (Robert Collins, Robey Pointer)
+
+* Transport implementation tests are now independent of the local file
+  system, which allows tests for esoteric transports, and for features
+  not available in the local file system. They also repeat for variations
+  on the URL scheme that can introduce issues in the transport code,
+  see bzrlib.transport.TransportTestProviderAdapter() for this.
+  (Robert Collins).
+
+* ``TestCase.build_tree`` uses the transport interface to build trees,
+  pass in a transport parameter to give it an existing connection.
+  (Robert Collins).
+
+Internals
+*********
+
+* WorkingTree.pull has been split across Branch and WorkingTree,
+  to allow Branch only pulls. (Robert Collins)
+
+* ``commands.display_command`` now returns the result of the decorated
+  function. (Robert Collins)
+
+* LocationConfig now has a ``set_user_option(key, value)`` call to save
+  a setting in its matching location section (a new one is created
+  if needed). (Robert Collins)
+
+* Branch has two new methods, ``get_push_location`` and
+  ``set_push_location`` to respectively, get and set the push location.
+  (Robert Collins)
+
+* ``commands.register_command`` now takes an optional flag to signal that
+  the registrant is planning to decorate an existing command. When
+  given multiple plugins registering a command is not an error, and
+  the original command class (whether built in or a plugin based one) is
+  returned to the caller. There is a new error 'MustUseDecorated' for
+  signalling when a wrapping command should switch to the original
+  version. (Robert Collins)
+
+* Some option parsing errors will raise 'BzrOptionError', allowing
+  granular detection for decorating commands. (Robert Collins).
+
+* ``Branch.read_working_inventory`` has moved to
+  ``WorkingTree.read_working_inventory``. This necessitated changes to
+  ``Branch.get_root_id``, and a move of ``Branch.set_inventory`` to
+  WorkingTree as well. To make it clear that a WorkingTree cannot always
+  be obtained ``Branch.working_tree()`` will raise
+  ``errors.NoWorkingTree`` if one cannot be obtained. (Robert Collins)
+
+* All pending merges operations from Branch are now on WorkingTree.
+  (Robert Collins)
+
+* The follow operations from Branch have moved to WorkingTree::
+
+      add()
+      commit()
+      move()
+      rename_one()
+      unknowns()
+
+  (Robert Collins)
+
+* ``bzrlib.add.smart_add_branch`` is now ``smart_add_tree``. (Robert Collins)
+
+* New "rio" serialization format, similar to rfc-822. (Martin Pool)
+
+* Rename selftests to ``bzrlib.tests.test_foo``.  (John A Meinel, Martin
+  Pool)
+
+* ``bzrlib.plugin.all_plugins`` has been changed from an attribute to a
+  query method. (Robert Collins)
+
+* New options to read only the table-of-contents of a weave.
+  (Denys Duchier)
+
+* Raise NoSuchFile when someone tries to add a non-existant file.
+  (Michael Ellerman)
+
+* Simplify handling of DivergedBranches in ``cmd_pull()``.
+  (Michael Ellerman)
+
+* Branch.controlfile* logic has moved to lockablefiles.LockableFiles, which
+  is exposed as ``Branch().control_files``. Also this has been altered with the
+  controlfile pre/suffix replaced by simple method names like 'get' and
+  'put'. (Aaron Bentley, Robert Collins).
+
+* Deprecated functions and methods can now be marked as such using the
+  ``bzrlib.symbol_versioning`` module. Marked method have their docstring
+  updated and will issue a DeprecationWarning using the warnings module
+  when they are used. (Robert Collins)
+
+* ``bzrlib.osutils.safe_unicode`` now exists to provide parameter coercion
+  for functions that need unicode strings. (Robert Collins)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

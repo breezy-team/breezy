@@ -29,7 +29,7 @@ class TestBreakLock(TestCaseWithExternalReferenceRepository):
 
     def test_break_lock(self):
         base = self.make_repository('base')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', base)
         unused_repo = repo.bzrdir.open_repository()
         base.lock_write()
         self.addCleanup(base.unlock)

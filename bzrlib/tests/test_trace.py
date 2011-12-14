@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,12 +20,14 @@
 
 from cStringIO import StringIO
 import errno
+import logging
 import os
 import re
 import sys
 import tempfile
 
 from bzrlib import (
+    debug,
     errors,
     trace,
     )
@@ -81,7 +83,18 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertEquals(msg,
-            "bzr: out of memory\n")
+            "bzr: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
+
+    def test_format_mem_dump(self):
+        self.requireFeature(features.meliae)
+        debug.debug_flags.add('mem_dump')
+        try:
+            raise MemoryError()
+        except MemoryError:
+            pass
+        msg = _format_exception()
+        self.assertStartsWith(msg,
+            "bzr: out of memory\nMemory dumped to ")
 
     def test_format_os_error(self):
         try:
@@ -101,8 +114,9 @@ class TestTrace(TestCase):
         msg = _format_exception()
         # Even though Windows and Linux differ for 'os.rmdir', they both give
         # 'No such file' for open()
+        # However it now gets translated so we can not test for a specific message
         self.assertContainsRe(msg,
-            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+            r'^bzr: ERROR: \[Errno .*\] .*nosuchfile')
 
     def test_format_pywintypes_error(self):
         self.requireFeature(features.pywintypes)
@@ -116,6 +130,18 @@ class TestTrace(TestCase):
         #                with errno, function name, and locale error message
         self.assertContainsRe(msg,
             r"^bzr: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
+            
+    def test_format_sockets_error(self):
+        try:
+            import socket
+            sock = socket.socket()
+            sock.send("This should fail.")
+        except socket.error:
+            pass
+        msg = _format_exception()
+        
+        self.assertNotContainsRe(msg,
+            r"Traceback (most recent call last):")
 
     def test_format_unicode_error(self):
         try:
@@ -229,7 +255,7 @@ class TestTrace(TestCase):
         # have to do a replaceent here as well.
         self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
             'replace'))
-        
+
     def test_show_error(self):
         show_error('error1')
         show_error(u'error2 \xb5 blah')
@@ -289,9 +315,7 @@ class TestTrace(TestCase):
         # set up.
         self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
-        # FIXME: A bit dangerous: we are not in an isolated dir here -- vilajam
-        # 20100125
-        os.environ['BZR_LOG'] = os.getcwd() + '/no-dir/bzr.log'
+        self.overrideEnv('BZR_LOG', os.getcwd() + '/no-dir/bzr.log')
         self.overrideAttr(trace, '_bzr_log_filename')
         logf = trace._open_bzr_log()
         self.assertIs(None, logf)
@@ -321,6 +345,72 @@ class TestVerbosityLevel(TestCase):
         self.assertEqual(-1, get_verbosity_level())
         be_quiet(False)
         self.assertEqual(0, get_verbosity_level())
+
+
+class TestLogging(TestCase):
+    """Check logging functionality robustly records information"""
+
+    def test_note(self):
+        trace.note("Noted")
+        self.assertEqual("    INFO  Noted\n", self.get_log())
+
+    def test_warning(self):
+        trace.warning("Warned")
+        self.assertEqual(" WARNING  Warned\n", self.get_log())
+
+    def test_log(self):
+        logging.getLogger("bzr").error("Errored")
+        self.assertEqual("   ERROR  Errored\n", self.get_log())
+
+    def test_log_sub(self):
+        logging.getLogger("bzr.test_log_sub").debug("Whispered")
+        self.assertEqual("   DEBUG  Whispered\n", self.get_log())
+
+    def test_log_unicode_msg(self):
+        logging.getLogger("bzr").debug(u"\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_unicode_arg(self):
+        logging.getLogger("bzr").debug("%s", u"\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_utf8_msg(self):
+        logging.getLogger("bzr").debug("\xc2\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_utf8_arg(self):
+        logging.getLogger("bzr").debug("%s", "\xc2\xa7")
+        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+
+    def test_log_bytes_msg(self):
+        logging.getLogger("bzr").debug("\xa7")
+        log = self.get_log()
+        self.assertContainsString(log, "UnicodeDecodeError: ")
+        self.assertContainsString(log,
+            "Logging record unformattable: '\\xa7' % ()\n")
+
+    def test_log_bytes_arg(self):
+        logging.getLogger("bzr").debug("%s", "\xa7")
+        log = self.get_log()
+        self.assertContainsString(log, "UnicodeDecodeError: ")
+        self.assertContainsString(log,
+            "Logging record unformattable: '%s' % ('\\xa7',)\n")
+
+    def test_log_mixed_strings(self):
+        logging.getLogger("bzr").debug(u"%s", "\xa7")
+        log = self.get_log()
+        self.assertContainsString(log, "UnicodeDecodeError: ")
+        self.assertContainsString(log,
+            "Logging record unformattable: u'%s' % ('\\xa7',)\n")
+
+    def test_log_repr_broken(self):
+        class BadRepr(object):
+            def __repr__(self):
+                raise ValueError("Broken object")
+        logging.getLogger("bzr").debug("%s", BadRepr())
+        log = self.get_log()
+        self.assertContainsRe(log, "ValueError: Broken object\n")
+        self.assertContainsRe(log, "Logging record unformattable: '%s' % .*\n")
 
 
 class TestBzrLog(TestCaseInTempDir):

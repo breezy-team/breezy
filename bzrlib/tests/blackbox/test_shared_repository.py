@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 import os
 
-from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
@@ -88,7 +87,7 @@ Location:
         cdir = BzrDir.open('a/c')
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
-        self.failUnlessExists('a/c/hello')
+        self.assertPathExists('a/c/hello')
         cdir.open_workingtree()
 
     def test_trees_default(self):
@@ -120,7 +119,7 @@ Location:
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(13, self.hpss_calls)
 
     def test_notification_on_branch_from_repository(self):
         out, err = self.run_bzr("init-repository -q a")
@@ -155,8 +154,8 @@ Location:
         # and uses whoami only in a lock file. Without whoami the login name
         # is used. This test is to ensure that init-repo passes even when whoami
         # is not available.
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['init-repo', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))

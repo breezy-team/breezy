@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Some convenience functions for general Python, such as a wrapper around
-``_import__``."""
+"""General Python convenience functions."""
 
 
 import sys
@@ -64,18 +63,18 @@ def calc_parent_name(module_name, member_name=None):
     """Determine the 'parent' of a given dotted module name and (optional)
     member name.
 
-    Typical use is::
-
-        >>> parent_mod, parent_member, final_attr = calc_parent_name(
-        ...     module_name, member_name) # doctest: +SKIP
-        >>> parent_obj = get_named_object(parent_mod, parent_member)
-        ... # doctest: +SKIP
-
     The idea is that ``getattr(parent_obj, final_attr)`` will equal
     get_named_object(module_name, member_name).
 
     :return: (module_name, member_name, final_attr) tuple.
     """
+# +SKIP is not recognized by python2.4
+# Typical use is::
+# 
+#     >>> parent_mod, parent_member, final_attr = calc_parent_name(
+#     ...     module_name, member_name) # doctest: +SKIP
+#     >>> parent_obj = get_named_object(parent_mod, parent_member)
+#     ... # doctest: +SKIP
     if member_name is not None:
         split_name = member_name.rsplit('.', 1)
         if len(split_name) == 1:

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 import calendar
 import time
+import re
 
 from bzrlib import osutils
 
@@ -72,34 +73,6 @@ def unpack_highres_date(date):
     :param date: A date formated by format_highres_date
     :type date: string
 
-    >>> import time, random
-    >>> unpack_highres_date('Thu 2005-06-30 12:38:52.350850105 -0500')
-    (1120153132.3508501, -18000)
-    >>> unpack_highres_date('Thu 2005-06-30 17:38:52.350850105 +0000')
-    (1120153132.3508501, 0)
-    >>> unpack_highres_date('Thu 2005-06-30 19:38:52.350850105 +0200')
-    (1120153132.3508501, 7200)
-    >>> unpack_highres_date('Sun 2006-07-09 12:35:38.867522001 +0530')
-    (1152428738.867522, 19800)
-    >>> from bzrlib.osutils import local_time_offset
-    >>> t = time.time()
-    >>> o = local_time_offset()
-    >>> t2, o2 = unpack_highres_date(format_highres_date(t, o))
-    >>> t == t2
-    True
-    >>> o == o2
-    True
-    >>> t -= 24*3600*365*2 # Start 2 years ago
-    >>> o = -12*3600
-    >>> for count in xrange(500):
-    ...   t += random.random()*24*3600*30
-    ...   o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
-    ...   date = format_highres_date(t, o)
-    ...   t2, o2 = unpack_highres_date(date)
-    ...   if t != t2 or o != o2:
-    ...      print 'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t)
-    ...      break
-
     """
     # Weekday parsing is locale sensitive, so drop the weekday
     space_loc = date.find(' ')
@@ -152,18 +125,30 @@ def format_patch_date(secs, offset=0):
             date_fmt='%Y-%m-%d %H:%M:%S')
 
 
+# Format for patch dates: %Y-%m-%d %H:%M:%S [+-]%H%M
+# Groups: 1 = %Y-%m-%d %H:%M:%S; 2 = [+-]%H; 3 = %M
+RE_PATCHDATE = re.compile("(\d+-\d+-\d+\s+\d+:\d+:\d+)\s*([+-]\d\d)(\d\d)$")
+RE_PATCHDATE_NOOFFSET = re.compile("\d+-\d+-\d+\s+\d+:\d+:\d+$")
+
 def parse_patch_date(date_str):
     """Parse a patch-style date into a POSIX timestamp and offset.
 
     Inverse of format_patch_date.
     """
-    secs_str = date_str[:-6]
-    offset_str = date_str[-5:]
-    if len(offset_str) != 5:
-        raise ValueError(
-            "invalid timezone %r" % offset_str)
-    offset_hours, offset_mins = offset_str[:3], offset_str[3:]
-    offset = int(offset_hours) * 3600 + int(offset_mins) * 60
+    match = RE_PATCHDATE.match(date_str)
+    if match is None:
+        if RE_PATCHDATE_NOOFFSET.match(date_str) is not None:
+            raise ValueError("time data %r is missing a timezone offset"
+                % date_str)
+        else:
+            raise ValueError("time data %r does not match format " % date_str
+                + "'%Y-%m-%d %H:%M:%S %z'")
+    secs_str = match.group(1)
+    offset_hours, offset_mins = int(match.group(2)), int(match.group(3))
+    if abs(offset_hours) >= 24 or offset_mins >= 60:
+        raise ValueError("invalid timezone %r" %
+            (match.group(2) + match.group(3)))
+    offset = offset_hours * 3600 + offset_mins * 60
     tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')
     # adjust seconds according to offset before converting to POSIX
     # timestamp, to avoid edge problems

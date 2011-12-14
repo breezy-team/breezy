@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,18 +22,20 @@ rio itself works in Unicode strings.  It is typically encoded to UTF-8,
 but this depends on the transport.
 """
 
-import cStringIO
-import os
 import re
-import sys
 from tempfile import TemporaryFile
 
 from bzrlib import (
     rio,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.rio import (RioWriter, Stanza, read_stanza, read_stanzas, rio_file,
-                        RioReader)
+from bzrlib.tests import TestCase
+from bzrlib.rio import (
+    RioReader,
+    Stanza,
+    read_stanza,
+    read_stanzas,
+    rio_file,
+    )
 
 
 class TestRio(TestCase):

@@ -17,9 +17,7 @@
 """Tests for Repository.add_fallback_repository."""
 
 from bzrlib import (
-    bzrdir,
     errors,
-    remote,
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestNotApplicable

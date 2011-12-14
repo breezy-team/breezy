@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,14 +18,12 @@
 """Tests for the update command of bzr."""
 
 import os
-import re
 
 from bzrlib import (
     branch,
     bzrdir,
     osutils,
     tests,
-    urlutils,
     workingtree,
     )
 from bzrlib.tests.script import ScriptRunner
@@ -90,7 +88,7 @@ All changes applied successfully.
 Updated to revision 1 of branch %s
 """ % osutils.pathjoin(self.test_dir, 'branch',),
                          err)
-        self.failUnlessExists('branch/file')
+        self.assertPathExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
@@ -140,10 +138,9 @@ Updated to revision 2 of branch %s
         # smoke test for doing an update of a checkout of a bound
         # branch with local commits.
         master = self.make_branch_and_tree('master')
+        master.commit('first commit')
         # make a bound branch
         self.run_bzr('checkout master child')
-        # get an object form of child
-        child = workingtree.WorkingTree.open('child')
         # check that out
         self.run_bzr('checkout --lightweight child checkout')
         # get an object form of the checkout to manipulate
@@ -158,6 +155,8 @@ Updated to revision 2 of branch %s
         a_file = file('child/file_b', 'wt')
         a_file.write('Foo')
         a_file.close()
+        # get an object form of child
+        child = workingtree.WorkingTree.open('child')
         child.add(['file_b'])
         child_tip = child.commit('add file_b', local=True)
         # check checkout
@@ -174,14 +173,14 @@ Updated to revision 2 of branch %s
 All changes applied successfully.
 +N  file
 All changes applied successfully.
-Updated to revision 1 of branch %s
+Updated to revision 2 of branch %s
 Your local commits will now show as pending merges with 'bzr status', and can be committed with 'bzr commit'.
 """ % osutils.pathjoin(self.test_dir, 'master',),
                          err)
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
-        self.failUnlessExists('checkout/file')
-        self.failUnlessExists('checkout/file_b')
-        self.failUnlessExists('checkout/file_c')
+        self.assertPathExists('checkout/file')
+        self.assertPathExists('checkout/file_b')
+        self.assertPathExists('checkout/file_c')
         self.assertTrue(wt.has_filename('file_c'))
 
     def test_update_with_merges(self):
@@ -299,8 +298,8 @@ $ bzr update -r 1
 2>All changes applied successfully.
 2>Updated to revision 1 of .../master
 ''')
-        self.failUnlessExists('./file1')
-        self.failIfExists('./file2')
+        self.assertPathExists('./file1')
+        self.assertPathDoesNotExist('./file2')
         self.assertEquals(['m1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):
@@ -358,6 +357,44 @@ $ bzr update -r revid:m2
 2>All changes applied successfully.
 2>Updated to revision 2 of branch .../master
 ''')
+
+    def test_update_show_base(self):
+        """bzr update support --show-base
+
+        see https://bugs.launchpad.net/bzr/+bug/202374"""
+
+        tree=self.make_branch_and_tree('.')
+
+        f = open('hello','wt')
+        f.write('foo')
+        f.close()
+        tree.add('hello')
+        tree.commit('fie')
+
+        f = open('hello','wt')
+        f.write('fee')
+        f.close()
+        tree.commit('fee')
+
+        #tree.update() gives no such revision, so ...
+        self.run_bzr(['update','-r1'])
+
+        #create conflict
+        f = open('hello','wt')
+        f.write('fie')
+        f.close()
+
+        out, err = self.run_bzr(['update','--show-base'],retcode=1)
+
+        # check for conflict notification
+        self.assertContainsString(err,
+                                  ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+        
+        self.assertEqualDiff('<<<<<<< TREE\n'
+                             'fie||||||| BASE-REVISION\n'
+                             'foo=======\n'
+                             'fee>>>>>>> MERGE-SOURCE\n',
+                             open('hello').read())
 
     def test_update_checkout_prevent_double_merge(self):
         """"Launchpad bug 113809 in bzr "update performs two merges"
@@ -417,3 +454,31 @@ master
 >>>>>>> MERGE-SOURCE
 ''',
                              'lightweight/file')
+
+
+    def test_no_upgrade_single_file(self):
+        """There's one basis revision per tree.
+
+        Since you can't actually change the basis for a single file at the
+        moment, we don't let you think you can.
+
+        See bug 557886.
+        """
+        self.make_branch_and_tree('.')
+        self.build_tree_contents([('a/',),
+            ('a/file', 'content')])
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+            $ bzr update ./a
+            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            $ bzr update ./a/file
+            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            $ bzr update .
+            2>Tree is up to date at revision 0 of branch ...
+            $ cd a
+            $ bzr update .
+            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            # however, you can update the whole tree from a subdirectory
+            $ bzr update
+            2>Tree is up to date at revision 0 of branch ...
+            ''')

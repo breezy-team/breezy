@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,32 +22,38 @@ import os
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
-    repository,
     revision as _mod_revision,
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
-    KnownFailure,
-    HardlinkFeature,
+    fixtures,
     test_server,
     )
+from bzrlib.tests.features import (
+    HardlinkFeature,
+    )
+from bzrlib.tests.blackbox import test_switch
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+from bzrlib.tests.script import run_script
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
 
 class TestBranch(TestCaseWithTransport):
 
-    def example_branch(self, path='.'):
-        tree = self.make_branch_and_tree(path)
+    def example_branch(self, path='.', format=None):
+        tree = self.make_branch_and_tree(path, format=format)
         self.build_tree_contents([(path + '/hello', 'foo')])
         tree.add('hello')
         tree.commit(message='setup')
         self.build_tree_contents([(path + '/goodbye', 'baz')])
         tree.add('goodbye')
         tree.commit(message='setup')
+        return tree
 
     def test_branch(self):
         """Branch from one branch to another."""
@@ -58,6 +64,57 @@ class TestBranch(TestCaseWithTransport):
         # previously was erroneously created by branching
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
+
+    def test_into_colocated(self):
+        """Branch from a branch into a colocated branch."""
+        self.example_branch('a')
+        out, err = self.run_bzr(
+            'init --format=development-colo file:b,branch=orig')
+        self.assertEqual(
+            """Created a lightweight checkout (format: development-colo)\n""",
+            out)
+        self.assertEqual('', err)
+        out, err = self.run_bzr(
+            'branch a file:b,branch=thiswasa')
+        self.assertEqual('', out)
+        self.assertEqual('Branched 2 revisions.\n', err)
+        out, err = self.run_bzr('branches b')
+        self.assertEqual(" thiswasa\n orig\n", out)
+        self.assertEqual('', err)
+        out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Already a branch: "file:b,branch=orig".\n', err)
+
+    def test_from_colocated(self):
+        """Branch from a colocated branch into a regular branch."""
+        tree = self.example_branch('a', format='development-colo')
+        tree.bzrdir.create_branch(name='somecolo')
+        out, err = self.run_bzr('branch %s,branch=somecolo' %
+            local_path_to_url('a'))
+        self.assertEqual('', out)
+        self.assertEqual('Branched 0 revisions.\n', err)
+        self.assertPathExists("somecolo")
+
+    def test_branch_broken_pack(self):
+        """branching with a corrupted pack file."""
+        self.example_branch('a')
+        # add some corruption
+        packs_dir = 'a/.bzr/repository/packs/'
+        fname = packs_dir + os.listdir(packs_dir)[0]
+        with open(fname, 'rb+') as f:
+            # Start from the end of the file to avoid choosing a place bigger
+            # than the file itself.
+            f.seek(-5, os.SEEK_END)
+            c = f.read(1)
+            f.seek(-5, os.SEEK_END)
+            # Make sure we inject a value different than the one we just read
+            if c == '\xFF':
+                corrupt = '\x00'
+            else:
+                corrupt = '\xFF'
+            f.write(corrupt) # make sure we corrupt something
+        self.run_bzr_error(['Corruption while decompressing repository file'], 
+                            'branch a b', retcode=3)
 
     def test_branch_switch_no_branch(self):
         # No branch in the current directory:
@@ -134,7 +191,7 @@ class TestBranch(TestCaseWithTransport):
 
         def make_shared_tree(path):
             shared_repo.bzrdir.root_transport.mkdir(path)
-            shared_repo.bzrdir.create_branch_convenience('repo/' + path)
+            controldir.ControlDir.create_branch_convenience('repo/' + path)
             return WorkingTree.open('repo/' + path)
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
@@ -180,7 +237,7 @@ class TestBranch(TestCaseWithTransport):
         source.add('file1')
         source.commit('added file')
         out, err = self.run_bzr('branch source target --files-from source')
-        self.failUnlessExists('target/file1')
+        self.assertPathExists('target/file1')
 
     def test_branch_files_from_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -209,8 +266,8 @@ class TestBranch(TestCaseWithTransport):
     def test_branch_no_tree(self):
         self.example_branch('source')
         self.run_bzr('branch --no-tree source target')
-        self.failIfExists('target/hello')
-        self.failIfExists('target/goodbye')
+        self.assertPathDoesNotExist('target/hello')
+        self.assertPathDoesNotExist('target/goodbye')
 
     def test_branch_into_existing_dir(self):
         self.example_branch('a')
@@ -226,8 +283,8 @@ class TestBranch(TestCaseWithTransport):
         # force operation
         self.run_bzr('branch a b --use-existing-dir')
         # check conflicts
-        self.failUnlessExists('b/hello.moved')
-        self.failIfExists('b/godbye.moved')
+        self.assertPathExists('b/hello.moved')
+        self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
@@ -270,6 +327,18 @@ class TestBranch(TestCaseWithTransport):
         self.run_bzr('checkout --lightweight a b')
         self.assertLength(2, calls)
 
+    def test_branch_fetches_all_tags(self):
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', 'rev-2')
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        # Now source has a tag not in its ancestry.  Make a branch from it.
+        self.run_bzr('branch source new-branch')
+        new_branch = branch.Branch.open('new-branch')
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision('rev-2')
+
 
 class TestBranchStacked(TestCaseWithTransport):
     """Tests for branch --stacked"""
@@ -307,7 +376,7 @@ class TestBranchStacked(TestCaseWithTransport):
         # mainline.
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
         self.assertEqual('', out)
-        self.assertEqual('Branched 2 revision(s).\n',
+        self.assertEqual('Branched 2 revisions.\n',
             err)
         # it should have preserved the branch format, and so it should be
         # capable of supporting stacking, but not actually have a stacked_on
@@ -414,7 +483,9 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(38, self.hpss_calls)
+        self.assertLength(40, self.hpss_calls)
+        self.expectFailure("branching to the same branch requires VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -429,6 +500,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
@@ -449,7 +521,47 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(15, self.hpss_calls)
+
+    def test_branch_from_branch_with_tags(self):
+        self.setup_smart_server_with_call_log()
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.tags.set_tag('tag-a', 'rev-2')
+        source.tags.set_tag('tag-missing', 'missing-rev')
+        # Now source has a tag not in its ancestry.  Make a branch from it.
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(10, self.hpss_calls)
+
+    def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', '--stacked', self.get_url('from'),
+            'local-target'])
+        # XXX: the number of hpss calls for this case isn't deterministic yet,
+        # so we can't easily assert about the number of calls.
+        #self.assertLength(XXX, self.hpss_calls)
+        # We can assert that none of the calls were readv requests for rix
+        # files, though (demonstrating that at least get_parent_map calls are
+        # not using VFS RPCs).
+        readvs_of_rix_files = [
+            c for c in self.hpss_calls
+            if c.call.method == 'readv' and c.call.args[-1].endswith('.rix')]
+        self.assertLength(0, readvs_of_rix_files)
+        self.expectFailure("branching to stacked requires VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
@@ -475,3 +587,46 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
         # Ensure that no working tree what created remotely
         self.assertFalse(t.has('remote/file'))
 
+
+class TestDeprecatedAliases(TestCaseWithTransport):
+
+    def test_deprecated_aliases(self):
+        """bzr branch can be called clone or get, but those names are deprecated.
+
+        See bug 506265.
+        """
+        for command in ['clone', 'get']:
+            run_script(self, """
+            $ bzr %(command)s A B
+            2>The command 'bzr %(command)s' has been deprecated in bzr 2.4. Please use 'bzr branch' instead.
+            2>bzr: ERROR: Not a branch...
+            """ % locals())
+
+
+class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
+
+    def _checkout_and_branch(self, option=''):
+        self.script_runner.run_script(self, '''
+                $ bzr checkout %(option)s repo/trunk checkout
+                $ cd checkout
+                $ bzr branch --switch ../repo/trunk ../repo/branched
+                2>Branched 0 revisions.
+                2>Tree is up to date at revision 0.
+                2>Switched to branch:...branched...
+                $ cd ..
+                ''' % locals())
+        bound_branch = branch.Branch.open_containing('checkout')[0]
+        master_branch = branch.Branch.open_containing('repo/branched')[0]
+        return (bound_branch, master_branch)
+
+    def test_branch_switch_parent_lightweight(self):
+        """Lightweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch(option='--lightweight')
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
+
+    def test_branch_switch_parent_heavyweight(self):
+        """Heavyweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch()
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)

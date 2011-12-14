@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests for bisect_multi."""
 
-from bzrlib import errors
 from bzrlib.bisect_multi import bisect_multi_bytes
 from bzrlib.tests import TestCase
 

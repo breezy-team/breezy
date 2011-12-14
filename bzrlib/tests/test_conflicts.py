@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,34 +18,20 @@
 import os
 
 from bzrlib import (
-    branchbuilder,
     bzrdir,
     conflicts,
     errors,
     option,
+    osutils,
     tests,
-    workingtree,
     )
-from bzrlib.tests import script
+from bzrlib.tests import (
+    script,
+    scenarios,
+    )
 
 
-def load_tests(standard_tests, module, loader):
-    result = loader.suiteClass()
-
-    sp_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestParametrizedResolveConflicts,
-                )))
-    # Each test class defines its own scenarios. This is needed for
-    # TestResolvePathConflictBefore531967 that verifies that the same tests as
-    # TestResolvePathConflict still pass.
-    for test in tests.iter_suite_tests(sp_tests):
-        tests.apply_scenarios(test, test.scenarios(), result)
-
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -76,34 +62,12 @@ example_conflicts = conflicts.ConflictList(
 ])
 
 
-class TestConflicts(tests.TestCaseWithTransport):
+def vary_by_conflicts():
+    for conflict in example_conflicts:
+        yield (conflict.__class__.__name__, {"conflict": conflict})
 
-    def test_conflicts(self):
-        """Conflicts are detected properly"""
-        # Use BzrDirFormat6 so we can fake conflicts
-        tree = self.make_branch_and_tree('.', format=bzrdir.BzrDirFormat6())
-        self.build_tree_contents([('hello', 'hello world4'),
-                                  ('hello.THIS', 'hello world2'),
-                                  ('hello.BASE', 'hello world1'),
-                                  ('hello.OTHER', 'hello world3'),
-                                  ('hello.sploo.BASE', 'yellowworld'),
-                                  ('hello.sploo.OTHER', 'yellowworld2'),
-                                  ])
-        tree.lock_read()
-        self.assertLength(6, list(tree.list_files()))
-        tree.unlock()
-        tree_conflicts = tree.conflicts()
-        self.assertLength(2, tree_conflicts)
-        self.assertTrue('hello' in tree_conflicts[0].path)
-        self.assertTrue('hello.sploo' in tree_conflicts[1].path)
-        conflicts.restore('hello')
-        conflicts.restore('hello.sploo')
-        self.assertLength(0, tree.conflicts())
-        self.assertFileEqual('hello world2', 'hello')
-        self.assertFalse(os.path.lexists('hello.sploo'))
-        self.assertRaises(errors.NotConflicted, conflicts.restore, 'hello')
-        self.assertRaises(errors.NotConflicted,
-                          conflicts.restore, 'hello.sploo')
+
+class TestConflicts(tests.TestCaseWithTransport):
 
     def test_resolve_conflict_dir(self):
         tree = self.make_branch_and_tree('.')
@@ -161,38 +125,57 @@ class TestConflicts(tests.TestCaseWithTransport):
         self.assertEqual(conflicts.ConflictList([]), tree.conflicts())
 
 
-class TestConflictStanzas(tests.TestCase):
+class TestPerConflict(tests.TestCase):
+
+    scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
+
+    def test_stringification(self):
+        text = unicode(self.conflict)
+        self.assertContainsString(text, self.conflict.path)
+        self.assertContainsString(text.lower(), "conflict")
+        self.assertContainsString(repr(self.conflict),
+            self.conflict.__class__.__name__)
 
     def test_stanza_roundtrip(self):
-        # write and read our example stanza.
-        stanza_iter = example_conflicts.to_stanzas()
-        processed = conflicts.ConflictList.from_stanzas(stanza_iter)
-        for o, p in zip(processed, example_conflicts):
-            self.assertEqual(o, p)
+        p = self.conflict
+        o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
+        self.assertEqual(o, p)
 
-            self.assertIsInstance(o.path, unicode)
+        self.assertIsInstance(o.path, unicode)
 
-            if o.file_id is not None:
-                self.assertIsInstance(o.file_id, str)
+        if o.file_id is not None:
+            self.assertIsInstance(o.file_id, str)
 
-            conflict_path = getattr(o, 'conflict_path', None)
-            if conflict_path is not None:
-                self.assertIsInstance(conflict_path, unicode)
+        conflict_path = getattr(o, 'conflict_path', None)
+        if conflict_path is not None:
+            self.assertIsInstance(conflict_path, unicode)
 
-            conflict_file_id = getattr(o, 'conflict_file_id', None)
-            if conflict_file_id is not None:
-                self.assertIsInstance(conflict_file_id, str)
+        conflict_file_id = getattr(o, 'conflict_file_id', None)
+        if conflict_file_id is not None:
+            self.assertIsInstance(conflict_file_id, str)
 
     def test_stanzification(self):
-        for stanza in example_conflicts.to_stanzas():
-            if 'file_id' in stanza:
-                # In Stanza form, the file_id has to be unicode.
-                self.assertStartsWith(stanza['file_id'], u'\xeed')
-            self.assertStartsWith(stanza['path'], u'p\xe5th')
-            if 'conflict_path' in stanza:
-                self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
-            if 'conflict_file_id' in stanza:
-                self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+        stanza = self.conflict.as_stanza()
+        if 'file_id' in stanza:
+            # In Stanza form, the file_id has to be unicode.
+            self.assertStartsWith(stanza['file_id'], u'\xeed')
+        self.assertStartsWith(stanza['path'], u'p\xe5th')
+        if 'conflict_path' in stanza:
+            self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
+        if 'conflict_file_id' in stanza:
+            self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+
+
+class TestConflictList(tests.TestCase):
+
+    def test_stanzas_roundtrip(self):
+        stanzas_iter = example_conflicts.to_stanzas()
+        processed = conflicts.ConflictList.from_stanzas(stanzas_iter)
+        self.assertEqual(example_conflicts, processed)
+
+    def test_stringification(self):
+        for text, o in zip(example_conflicts.to_strings(), example_conflicts):
+            self.assertEqual(text, unicode(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
@@ -208,11 +191,6 @@ class TestResolveConflicts(script.TestCaseWithTransportAndScript):
     def setUp(self):
         super(TestResolveConflicts, self).setUp()
         self.run_script(self.preamble)
-
-
-class TestResolveTextConflicts(TestResolveConflicts):
-    # TBC
-    pass
 
 
 def mirror_scenarios(base_scenarios):
@@ -293,34 +271,31 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this = None
     _other = None
 
-    @staticmethod
-    def scenarios():
-        """Return the scenario list for the conflict type defined by the class.
+    scenarios = []
+    """The scenario list for the conflict type defined by the class.
 
-        Each scenario is of the form:
-        (common, (left_name, left_dict), (right_name, right_dict))
+    Each scenario is of the form:
+    (common, (left_name, left_dict), (right_name, right_dict))
 
-        * common is a dict
+    * common is a dict
 
-        * left_name and right_name are the scenario names that will be combined
+    * left_name and right_name are the scenario names that will be combined
 
-        * left_dict and right_dict are the attributes specific to each half of
-          the scenario. They should include at least 'actions' and 'check' and
-          will be available as '_this' and '_other' test instance attributes.
+    * left_dict and right_dict are the attributes specific to each half of
+      the scenario. They should include at least 'actions' and 'check' and
+      will be available as '_this' and '_other' test instance attributes.
 
-        Daughters classes are free to add their specific attributes as they see
-        fit in any of the three dicts.
+    Daughters classes are free to add their specific attributes as they see
+    fit in any of the three dicts.
 
-        This is a class method so that load_tests can find it.
+    This is a class method so that load_tests can find it.
 
-        '_base_actions' in the common dict, 'actions' and 'check' in the left
-        and right dicts use names that map to methods in the test classes. Some
-        prefixes are added to these names to get the correspong methods (see
-        _get_actions() and _get_check()). The motivation here is to avoid
-        collisions in the class namespace.
-        """
-        # Only concrete classes return actual scenarios
-        return []
+    '_base_actions' in the common dict, 'actions' and 'check' in the left
+    and right dicts use names that map to methods in the test classes. Some
+    prefixes are added to these names to get the correspong methods (see
+    _get_actions() and _get_check()). The motivation here is to avoid
+    collisions in the class namespace.
+    """
 
     def setUp(self):
         super(TestParametrizedResolveConflicts, self).setUp()
@@ -388,18 +363,82 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         check_other()
 
 
-class TestResolveContentsConflict(TestParametrizedResolveConflicts):
+class TestResolveTextConflicts(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.ContentsConflict,
+    _conflict_type = conflicts.TextConflict
 
-    # Set by load_tests from scenarios()
+    # Set by the scenarios
     # path and file-id for the file involved in the conflict
     _path = None
     _file_id = None
 
-    @staticmethod
-    def scenarios():
-        base_scenarios = [
+    scenarios = mirror_scenarios(
+        [
+            # File modified on both sides
+            (dict(_base_actions='create_file',
+                  _path='file', _file_id='file-id'),
+             ('filed_modified_A',
+              dict(actions='modify_file_A', check='file_has_content_A')),
+             ('file_modified_B',
+              dict(actions='modify_file_B', check='file_has_content_B')),),
+            # File modified on both sides in dir
+            (dict(_base_actions='create_file_in_dir',
+                  _path='dir/file', _file_id='file-id'),
+             ('filed_modified_A_in_dir',
+              dict(actions='modify_file_A',
+                   check='file_in_dir_has_content_A')),
+             ('file_modified_B',
+              dict(actions='modify_file_B',
+                   check='file_in_dir_has_content_B')),),
+            ])
+
+    def do_create_file(self, path='file'):
+        return [('add', (path, 'file-id', 'file', 'trunk content\n'))]
+
+    def do_modify_file_A(self):
+        return [('modify', ('file-id', 'trunk content\nfeature A\n'))]
+
+    def do_modify_file_B(self):
+        return [('modify', ('file-id', 'trunk content\nfeature B\n'))]
+
+    def check_file_has_content_A(self, path='file'):
+        self.assertFileEqual('trunk content\nfeature A\n',
+                             osutils.pathjoin('branch', path))
+
+    def check_file_has_content_B(self, path='file'):
+        self.assertFileEqual('trunk content\nfeature B\n',
+                             osutils.pathjoin('branch', path))
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+            ] + self.do_create_file('dir/file')
+
+    def check_file_in_dir_has_content_A(self):
+        self.check_file_has_content_A('dir/file')
+
+    def check_file_in_dir_has_content_B(self):
+        self.check_file_has_content_B('dir/file')
+
+    def _get_resolve_path_arg(self, wt, action):
+        return self._path
+
+    def assertTextConflict(self, wt, c):
+        self.assertEqual(self._file_id, c.file_id)
+        self.assertEqual(self._path, c.path)
+    _assert_conflict = assertTextConflict
+
+
+class TestResolveContentsConflict(TestParametrizedResolveConflicts):
+
+    _conflict_type = conflicts.ContentsConflict
+
+    # Set by the scenarios
+    # path and file-id for the file involved in the conflict
+    _path = None
+    _file_id = None
+
+    scenarios = mirror_scenarios(
+        [
             # File modified/deleted
             (dict(_base_actions='create_file',
                   _path='file', _file_id='file-id'),
@@ -407,8 +446,24 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
-            ]
-        return mirror_scenarios(base_scenarios)
+            # File renamed-modified/deleted
+            (dict(_base_actions='create_file',
+                  _path='new-file', _file_id='file-id'),
+             ('file_renamed_and_modified',
+              dict(actions='modify_and_rename_file',
+                   check='file_renamed_and_more_content')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_doesnt_exist')),),
+            # File modified/deleted in dir
+            (dict(_base_actions='create_file_in_dir',
+                  _path='dir/file', _file_id='file-id'),
+             ('file_modified_in_dir',
+              dict(actions='modify_file_in_dir',
+                   check='file_in_dir_has_more_content')),
+             ('file_deleted_in_dir',
+              dict(actions='delete_file',
+                   check='file_in_dir_doesnt_exist')),),
+            ])
 
     def do_create_file(self):
         return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
@@ -416,14 +471,34 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     def do_modify_file(self):
         return [('modify', ('file-id', 'trunk content\nmore content\n'))]
 
+    def do_modify_and_rename_file(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n')),
+                ('rename', ('file', 'new-file'))]
+
     def check_file_has_more_content(self):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+
+    def check_file_renamed_and_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/new-file')
 
     def do_delete_file(self):
         return [('unversion', 'file-id')]
 
     def check_file_doesnt_exist(self):
-        self.failIfExists('branch/file')
+        self.assertPathDoesNotExist('branch/file')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_modify_file_in_dir(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+
+    def check_file_in_dir_has_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/dir/file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.assertPathDoesNotExist('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
@@ -436,17 +511,16 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
 class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.PathConflict,
+    _conflict_type = conflicts.PathConflict
 
     def do_nothing(self):
         return []
 
-    @staticmethod
-    def scenarios():
-        # Each side dict additionally defines:
-        # - path path involved (can be '<deleted>')
-        # - file-id involved
-        base_scenarios = [
+    # Each side dict additionally defines:
+    # - path path involved (can be '<deleted>')
+    # - file-id involved
+    scenarios = mirror_scenarios(
+        [
             # File renamed/deleted
             (dict(_base_actions='create_file'),
              ('file_renamed',
@@ -454,6 +528,16 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
                    path='new-file', file_id='file-id')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist',
+                   # PathConflicts deletion handling requires a special
+                   # hard-coded value
+                   path='<deleted>', file_id='file-id')),),
+            # File renamed/deleted in dir
+            (dict(_base_actions='create_file_in_dir'),
+             ('file_renamed_in_dir',
+              dict(actions='rename_file_in_dir', check='file_in_dir_renamed',
+                   path='dir/new-file', file_id='file-id')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_in_dir_doesnt_exist',
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
                    path='<deleted>', file_id='file-id')),),
@@ -483,8 +567,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
              ('dir_renamed2',
               dict(actions='rename_dir2', check='dir_renamed2',
                    path='new-dir2', file_id='dir-id')),),
-        ]
-        return mirror_scenarios(base_scenarios)
+            ])
 
     def do_create_file(self):
         return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
@@ -496,41 +579,55 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         return [('rename', ('file', 'new-file'))]
 
     def check_file_renamed(self):
-        self.failIfExists('branch/file')
-        self.failUnlessExists('branch/new-file')
+        self.assertPathDoesNotExist('branch/file')
+        self.assertPathExists('branch/new-file')
 
     def do_rename_file2(self):
         return [('rename', ('file', 'new-file2'))]
 
     def check_file_renamed2(self):
-        self.failIfExists('branch/file')
-        self.failUnlessExists('branch/new-file2')
+        self.assertPathDoesNotExist('branch/file')
+        self.assertPathExists('branch/new-file2')
 
     def do_rename_dir(self):
         return [('rename', ('dir', 'new-dir'))]
 
     def check_dir_renamed(self):
-        self.failIfExists('branch/dir')
-        self.failUnlessExists('branch/new-dir')
+        self.assertPathDoesNotExist('branch/dir')
+        self.assertPathExists('branch/new-dir')
 
     def do_rename_dir2(self):
         return [('rename', ('dir', 'new-dir2'))]
 
     def check_dir_renamed2(self):
-        self.failIfExists('branch/dir')
-        self.failUnlessExists('branch/new-dir2')
+        self.assertPathDoesNotExist('branch/dir')
+        self.assertPathExists('branch/new-dir2')
 
     def do_delete_file(self):
         return [('unversion', 'file-id')]
 
     def check_file_doesnt_exist(self):
-        self.failIfExists('branch/file')
+        self.assertPathDoesNotExist('branch/file')
 
     def do_delete_dir(self):
         return [('unversion', 'dir-id')]
 
     def check_dir_doesnt_exist(self):
-        self.failIfExists('branch/dir')
+        self.assertPathDoesNotExist('branch/dir')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_rename_file_in_dir(self):
+        return [('rename', ('dir/file', 'dir/new-file'))]
+
+    def check_file_in_dir_renamed(self):
+        self.assertPathDoesNotExist('branch/dir/file')
+        self.assertPathExists('branch/dir/new-file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.assertPathDoesNotExist('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         tpath = self._this['path']
@@ -568,14 +665,10 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
 
 class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.DuplicateEntry,
+    _conflict_type = conflicts.DuplicateEntry
 
-    @staticmethod
-    def scenarios():
-        # Each side dict additionally defines:
-        # - path involved
-        # - file-id involved
-        base_scenarios = [
+    scenarios = mirror_scenarios(
+        [
             # File created with different file-ids
             (dict(_base_actions='nothing'),
              ('filea_created',
@@ -584,8 +677,15 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
              ('fileb_created',
               dict(actions='create_file_b', check='file_content_b',
                    path='file', file_id='file-b-id')),),
-            ]
-        return mirror_scenarios(base_scenarios)
+            # File created with different file-ids but deleted on one side
+            (dict(_base_actions='create_file_a'),
+             ('filea_replaced',
+              dict(actions='replace_file_a_by_b', check='file_content_b',
+                   path='file', file_id='file-b-id')),
+             ('filea_modified',
+              dict(actions='modify_file_a', check='file_new_content',
+                   path='file', file_id='file-a-id')),),
+            ])
 
     def do_nothing(self):
         return []
@@ -601,6 +701,16 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
     def check_file_content_b(self):
         self.assertFileEqual('file b content\n', 'branch/file')
+
+    def do_replace_file_a_by_b(self):
+        return [('unversion', 'file-a-id'),
+                ('add', ('file', 'file-b-id', 'file', 'file b content\n'))]
+
+    def do_modify_file_a(self):
+        return [('modify', ('file-a-id', 'new content\n'))]
+
+    def check_file_new_content(self):
+        self.assertFileEqual('new content\n', 'branch/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._this['path']
@@ -625,20 +735,18 @@ class TestResolveUnversionedParent(TestResolveConflicts):
     # tests MissingParent resolution :-/
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ mkdir dir
-$ bzr add dir
-$ bzr commit -m 'Create trunk'
-
+$ bzr add -q dir
+$ bzr commit -m 'Create trunk' -q
 $ echo 'trunk content' >dir/file
-$ bzr add dir/file
-$ bzr commit -m 'Add dir/file in trunk'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q dir/file
+$ bzr commit -q -m 'Add dir/file in trunk'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
-$ bzr rm dir
-$ bzr commit -m 'Remove dir in branch'
-
+$ bzr rm dir -q
+$ bzr commit -q -m 'Remove dir in branch'
 $ bzr merge ../trunk
 2>+N  dir/
 2>+N  dir/file
@@ -649,15 +757,17 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm dir  --force
+$ bzr rm -q dir  --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -665,22 +775,20 @@ class TestResolveMissingParent(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ mkdir dir
 $ echo 'trunk content' >dir/file
-$ bzr add
-$ bzr commit -m 'Create trunk'
-
+$ bzr add -q
+$ bzr commit -m 'Create trunk' -q
 $ echo 'trunk content' >dir/file2
-$ bzr add dir/file2
-$ bzr commit -m 'Add dir/file2 in branch'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q dir/file2
+$ bzr commit -q -m 'Add dir/file2 in branch'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
-$ bzr rm dir/file --force
-$ bzr rm dir
-$ bzr commit -m 'Remove dir/file'
-
+$ bzr rm -q dir/file --force
+$ bzr rm -q dir
+$ bzr commit -q -m 'Remove dir/file'
 $ bzr merge ../trunk
 2>+N  dir/
 2>+N  dir/file2
@@ -692,34 +800,39 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_adopt_child(self):
         self.run_script("""
-$ bzr mv dir/file2 file2
-$ bzr rm dir --force
+$ bzr mv -q dir/file2 file2
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm dir --force
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
 $ bzr resolve --take-other dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -727,22 +840,20 @@ class TestResolveDeletingParent(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ mkdir dir
 $ echo 'trunk content' >dir/file
-$ bzr add
-$ bzr commit -m 'Create trunk'
-
-$ bzr rm dir/file --force
-$ bzr rm dir --force
-$ bzr commit -m 'Remove dir/file'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q
+$ bzr commit -m 'Create trunk' -q
+$ bzr rm -q dir/file --force
+$ bzr rm -q dir --force
+$ bzr commit -q -m 'Remove dir/file'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
 $ echo 'branch content' >dir/file2
-$ bzr add dir/file2
-$ bzr commit -m 'Add dir/file2 in branch'
-
+$ bzr add -q dir/file2
+$ bzr commit -q -m 'Add dir/file2 in branch'
 $ bzr merge ../trunk
 2>-D  dir/file
 2>Conflict: can't delete dir because it is not empty.  Not deleting.
@@ -753,52 +864,58 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_adopt_child(self):
         self.run_script("""
-$ bzr mv dir/file2 file2
-$ bzr rm dir --force
+$ bzr mv -q dir/file2 file2
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm dir --force
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
 $ bzr resolve --take-other dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>deleted dir/file2
+2>deleted dir
+2>2 conflicts resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
 class TestResolveParentLoop(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.ParentLoop,
+    _conflict_type = conflicts.ParentLoop
 
     _this_args = None
     _other_args = None
 
-    @staticmethod
-    def scenarios():
-        # Each side dict additionally defines:
-        # - dir_id: the directory being moved
-        # - target_id: The target directory
-        # - xfail: whether the test is expected to fail if the action is
-        #     involved as 'other'
-        base_scenarios = [
+    # Each side dict additionally defines:
+    # - dir_id: the directory being moved
+    # - target_id: The target directory
+    # - xfail: whether the test is expected to fail if the action is
+    #   involved as 'other'
+    scenarios = mirror_scenarios(
+        [
             # Dirs moved into each other
             (dict(_base_actions='create_dir1_dir2'),
              ('dir1_into_dir2',
@@ -815,8 +932,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
              ('dir3_into_dir2',
               dict(actions='move_dir3_into_dir2', check='dir3_4_moved',
                    dir_id='dir3-id', target_id='dir2-id', xfail=True))),
-            ]
-        return mirror_scenarios(base_scenarios)
+            ])
 
     def do_create_dir1_dir2(self):
         return [('add', ('dir1', 'dir1-id', 'directory', '')),
@@ -826,15 +942,15 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return [('rename', ('dir1', 'dir2/dir1'))]
 
     def check_dir1_moved(self):
-        self.failIfExists('branch/dir1')
-        self.failUnlessExists('branch/dir2/dir1')
+        self.assertPathDoesNotExist('branch/dir1')
+        self.assertPathExists('branch/dir2/dir1')
 
     def do_move_dir2_into_dir1(self):
         return [('rename', ('dir2', 'dir1/dir2'))]
 
     def check_dir2_moved(self):
-        self.failIfExists('branch/dir2')
-        self.failUnlessExists('branch/dir1/dir2')
+        self.assertPathDoesNotExist('branch/dir2')
+        self.assertPathExists('branch/dir1/dir2')
 
     def do_create_dir1_4(self):
         return [('add', ('dir1', 'dir1-id', 'directory', '')),
@@ -846,17 +962,17 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return [('rename', ('dir1', 'dir3/dir4/dir1'))]
 
     def check_dir1_2_moved(self):
-        self.failIfExists('branch/dir1')
-        self.failUnlessExists('branch/dir3/dir4/dir1')
-        self.failUnlessExists('branch/dir3/dir4/dir1/dir2')
+        self.assertPathDoesNotExist('branch/dir1')
+        self.assertPathExists('branch/dir3/dir4/dir1')
+        self.assertPathExists('branch/dir3/dir4/dir1/dir2')
 
     def do_move_dir3_into_dir2(self):
         return [('rename', ('dir3', 'dir1/dir2/dir3'))]
 
     def check_dir3_4_moved(self):
-        self.failIfExists('branch/dir3')
-        self.failUnlessExists('branch/dir1/dir2/dir3')
-        self.failUnlessExists('branch/dir1/dir2/dir3/dir4')
+        self.assertPathDoesNotExist('branch/dir3')
+        self.assertPathExists('branch/dir1/dir2/dir3')
+        self.assertPathExists('branch/dir1/dir2/dir3/dir4')
 
     def _get_resolve_path_arg(self, wt, action):
         # ParentLoop says: moving <conflict_path> into <path>. Cancelled move.
@@ -873,7 +989,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         if self._other['xfail']:
             # It's a bit hackish to raise from here relying on being called for
             # both tests but this avoid overriding test_resolve_taking_other
-            raise tests.KnownFailure(
+            self.knownFailure(
                 "ParentLoop doesn't carry enough info to resolve --take-other")
     _assert_conflict = assertParentLoop
 
@@ -882,19 +998,19 @@ class TestResolveNonDirectoryParent(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ bzr mkdir foo
-$ bzr commit -m 'Create trunk'
+...
+$ bzr commit -m 'Create trunk' -q
 $ echo "Boing" >foo/bar
-$ bzr add foo/bar
-$ bzr commit -m 'Add foo/bar'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q foo/bar
+$ bzr commit -q -m 'Add foo/bar'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
 $ rm -r foo
 $ echo "Boo!" >foo
-$ bzr commit -m 'foo is now a file'
-
+$ bzr commit -q -m 'foo is now a file'
 $ bzr merge ../trunk
 2>+N  foo.new/bar
 2>RK  foo => foo.new/
@@ -906,32 +1022,36 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm foo.new --force
+$ bzr rm -q foo.new --force
 # FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
 # aside ? -- vila 090916
-$ bzr add foo
+$ bzr add -q foo
 $ bzr resolve foo.new
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>1 conflict resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
-$ bzr rm foo --force
-$ bzr mv foo.new foo
+$ bzr rm -q foo --force
+$ bzr mv -q foo.new foo
 $ bzr resolve foo
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>1 conflict resolved, 0 remaining
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this foo.new
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
 $ bzr resolve --take-other foo.new
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -941,23 +1061,109 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # This is nearly like TestResolveNonDirectoryParent but with branch and
         # trunk switched. As such it should certainly produce the same
         # conflict.
-        self.run_script("""
+        self.assertRaises(errors.MalformedTransform,
+                          self.run_script,"""
 $ bzr init trunk
+...
 $ cd trunk
 $ bzr mkdir foo
-$ bzr commit -m 'Create trunk'
+...
+$ bzr commit -m 'Create trunk' -q
 $ rm -r foo
 $ echo "Boo!" >foo
-$ bzr commit -m 'foo is now a file'
-
-$ bzr branch . -r 1 ../branch
+$ bzr commit -m 'foo is now a file' -q
+$ bzr branch -q . -r 1 ../branch -q
 $ cd ../branch
 $ echo "Boing" >foo/bar
-$ bzr add foo/bar
-$ bzr commit -m 'Add foo/bar'
-
+$ bzr add -q foo/bar -q
+$ bzr commit -m 'Add foo/bar' -q
 $ bzr merge ../trunk
 2>bzr: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
+""")
+
+
+class TestNoFinalPath(script.TestCaseWithTransportAndScript):
+
+    def test_bug_805809(self):
+        self.run_script("""
+$ bzr init trunk
+Created a standalone tree (format: 2a)
+$ cd trunk
+$ echo trunk >file
+$ bzr add
+adding file
+$ bzr commit -m 'create file on trunk'
+2>Committing to: .../trunk/
+2>added file
+2>Committed revision 1.
+# Create a debian branch based on trunk
+$ cd ..
+$ bzr branch trunk -r 1 debian
+2>Branched 1 revision.
+$ cd debian
+$ mkdir dir
+$ bzr add
+adding dir
+$ bzr mv file dir
+file => dir/file
+$ bzr commit -m 'rename file to dir/file for debian'
+2>Committing to: .../debian/
+2>added dir
+2>renamed file => dir/file
+2>Committed revision 2.
+# Create an experimental branch with a new root-id
+$ cd ..
+$ bzr init experimental
+Created a standalone tree (format: 2a)
+$ cd experimental
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty
+$ bzr add
+adding not-empty
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../experimental/
+2>added not-empty
+2>Committed revision 1.
+# merge debian even without a common ancestor
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian into experimental'
+2>Committing to: .../experimental/
+2>added dir
+2>added dir/file
+2>Committed revision 2.
+# Create an ubuntu branch with yet another root-id
+$ cd ..
+$ bzr init ubuntu
+Created a standalone tree (format: 2a)
+$ cd ubuntu
+# Work around merging into empty branch not being supported
+# (http://pad.lv/308562)
+$ echo something >not-empty-ubuntu
+$ bzr add
+adding not-empty-ubuntu
+$ bzr commit -m 'Add some content in experimental'
+2>Committing to: .../ubuntu/
+2>added not-empty-ubuntu
+2>Committed revision 1.
+# Also merge debian
+$ bzr merge ../debian -r0..2
+2>+N  dir/
+2>+N  dir/file
+2>All changes applied successfully.
+$ bzr commit -m 'merging debian'
+2>Committing to: .../ubuntu/
+2>added dir
+2>added dir/file
+2>Committed revision 2.
+# Now try to merge experimental
+$ bzr merge ../experimental
+2>+N  not-empty
+2>Path conflict: dir / dir
+2>1 conflicts encountered.
 """)
 
 

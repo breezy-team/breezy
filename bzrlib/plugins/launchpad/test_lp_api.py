@@ -15,12 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib import commands, config, errors, osutils
-from bzrlib.plugins.launchpad import cmd_launchpad_mirror
+from bzrlib import config, errors, osutils
 from bzrlib.tests import (
-    ModuleAvailableFeature,
     TestCase,
     TestCaseWithTransport,
+    )
+from bzrlib.tests.features import (
+    ModuleAvailableFeature,
     )
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 import sys
 import logging
 import unittest
+import weakref
 
 from bzrlib import pyutils
 
@@ -29,9 +30,11 @@ __unittest = 1
 
 
 class LogCollector(logging.Handler):
+
     def __init__(self):
         logging.Handler.__init__(self)
         self.records=[]
+
     def emit(self, record):
         self.records.append(record.getMessage())
 
@@ -60,7 +63,26 @@ def visitTests(suite, visitor):
                 visitor.visitSuite(test)
                 visitTests(test, visitor)
             else:
-                print "unvisitable non-unittest.TestCase element %r (%r)" % (test, test.__class__)
+                print "unvisitable non-unittest.TestCase element %r (%r)" % (
+                    test, test.__class__)
+
+
+class FailedCollectionCase(unittest.TestCase):
+    """Pseudo-test to run and report failure if given case was uncollected"""
+
+    def __init__(self, case):
+        super(FailedCollectionCase, self).__init__("fail_uncollected")
+        # GZ 2011-09-16: Maybe catch errors from id() method as cases may be
+        #                in a bit of a funny state by now.
+        self._problem_case_id = case.id()
+
+    def id(self):
+        if self._problem_case_id[-1:] == ")":
+            return self._problem_case_id[:-1] + ",uncollected)"
+        return self._problem_case_id + "(uncollected)"
+
+    def fail_uncollected(self):
+        self.fail("Uncollected test case: " + self._problem_case_id)
 
 
 class TestSuite(unittest.TestSuite):
@@ -79,12 +101,32 @@ class TestSuite(unittest.TestSuite):
         tests = list(self)
         tests.reverse()
         self._tests = []
+        stored_count = 0
+        count_stored_tests = getattr(result, "_count_stored_tests", int)
+        from bzrlib.tests import selftest_debug_flags
+        notify = "uncollected_cases" in selftest_debug_flags
         while tests:
             if result.shouldStop:
                 self._tests = reversed(tests)
                 break
-            tests.pop().run(result)
+            case = _run_and_collect_case(tests.pop(), result)()
+            new_stored_count = count_stored_tests()
+            if case is not None and isinstance(case, unittest.TestCase):
+                if stored_count == new_stored_count and notify:
+                    # Testcase didn't fail, but somehow is still alive
+                    FailedCollectionCase(case).run(result)
+                    # Adding a new failure so need to reupdate the count
+                    new_stored_count = count_stored_tests()
+                # GZ 2011-09-16: Previously zombied the case at this point by
+                #                clearing the dict as fallback, skip for now.
+            stored_count = new_stored_count
         return result
+
+
+def _run_and_collect_case(case, res):
+    """Run test case against result and use weakref to drop the refcount"""
+    case.run(res)
+    return weakref.ref(case)
 
 
 class TestLoader(unittest.TestLoader):
@@ -183,7 +225,9 @@ class FilteredByModuleTestLoader(TestLoader):
 
 class TestVisitor(object):
     """A visitor for Tests"""
+
     def visitSuite(self, aTestSuite):
         pass
+
     def visitCase(self, aTestCase):
         pass

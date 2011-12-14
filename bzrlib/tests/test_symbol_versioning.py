@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
-    deprecated_list,
     deprecated_method,
     )
 from bzrlib.tests import TestCase

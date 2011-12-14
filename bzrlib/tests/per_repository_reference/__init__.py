@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,12 +24,10 @@ this.
 
 from bzrlib import (
     errors,
-    repository,
     remote,
+    urlutils,
     )
-from bzrlib.branch import BzrBranchFormat7
 from bzrlib.bzrdir import BzrDir
-from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack6
 from bzrlib.tests import multiply_tests
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
@@ -39,17 +37,18 @@ from bzrlib.tests.per_repository import (
 
 class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):
 
-    def make_referring(self, relpath, target_path):
+    def make_referring(self, relpath, a_repository):
         """Get a new repository that refers to a_repository.
 
         :param relpath: The path to create the repository at.
         :param a_repository: A repository to refer to.
         """
         repo = self.make_repository(relpath)
-        repo.add_fallback_repository(self.readonly_repository(target_path))
+        repo.add_fallback_repository(self.readonly_repository(a_repository))
         return repo
 
-    def readonly_repository(self, relpath):
+    def readonly_repository(self, repo):
+        relpath = urlutils.basename(repo.bzrdir.user_url.rstrip('/'))
         return BzrDir.open_from_transport(
             self.get_readonly_transport(relpath)).open_repository()
 
@@ -61,26 +60,45 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
         # because developers use this api to setup the tree, branch and
         # repository for their tests: having it not give the right repository
         # type would invalidate the tests.
-        self.make_branch_and_tree('repo')
-        repo = self.make_referring('referring', 'repo')
+        tree = self.make_branch_and_tree('repo')
+        repo = self.make_referring('referring', tree.branch.repository)
         self.assertIsInstance(repo._format,
             self.repository_format.__class__)
 
 
 class TestIncompatibleStacking(TestCaseWithRepository):
 
-    def test_add_fallback_repository_rejects_incompatible(self):
-        # Repository.add_fallback_repository raises IncompatibleRepositories if
-        # you take two repositories in different serializations and try to
-        # stack them.
-        if self.make_repository('test')._format.supports_chks:
+    def make_repo_and_incompatible_fallback(self):
+        referring = self.make_repository('referring')
+        if referring._format.supports_chks:
             different_fmt = '1.9'
         else:
             different_fmt = '2a'
-        repo = self.make_repository('repo', format=different_fmt)
-        referring = self.make_repository('referring')
+        fallback = self.make_repository('fallback', format=different_fmt)
+        return referring, fallback
+
+    def test_add_fallback_repository_rejects_incompatible(self):
+        # Repository.add_fallback_repository raises IncompatibleRepositories
+        # if you take two repositories in different serializations and try to
+        # stack them.
+        referring, fallback = self.make_repo_and_incompatible_fallback()
         self.assertRaises(errors.IncompatibleRepositories,
-                referring.add_fallback_repository, repo)
+                referring.add_fallback_repository, fallback)
+
+    def test_add_fallback_doesnt_leave_fallback_locked(self):
+        # Bug #835035. If the referring repository is locked, it wants to lock
+        # the fallback repository. But if they are incompatible, the referring
+        # repository won't take ownership of the fallback, and thus should not
+        # leave the repository in a locked state.
+        referring, fallback = self.make_repo_and_incompatible_fallback()
+        self.addCleanup(referring.lock_read().unlock)
+        # Assert precondition.
+        self.assertFalse(fallback.is_locked())
+        # Assert action.
+        self.assertRaises(errors.IncompatibleRepositories,
+                referring.add_fallback_repository, fallback)
+        # Assert postcondition.
+        self.assertFalse(fallback.is_locked())
 
 
 def external_reference_test_scenarios():
@@ -89,18 +107,8 @@ def external_reference_test_scenarios():
     result = []
     for test_name, scenario_info in all_repository_format_scenarios():
         format = scenario_info['repository_format']
-        if isinstance(format, remote.RemoteRepositoryFormat):
-            # This is a RemoteRepositoryFormat scenario.  Force the scenario to
-            # use real branch and repository formats that support references.
-            scenario_info = dict(scenario_info)
-            format = remote.RemoteRepositoryFormat()
-            format._custom_format = RepositoryFormatKnitPack6()
-            scenario_info['repository_format'] = format
-            bzrdir_format = remote.RemoteBzrDirFormat()
-            bzrdir_format.repository_format = format
-            bzrdir_format.set_branch_format(BzrBranchFormat7())
-            scenario_info['bzrdir_format'] = bzrdir_format
-        if format.supports_external_lookups:
+        if (isinstance(format, remote.RemoteRepositoryFormat)
+            or format.supports_external_lookups):
             result.append((test_name, scenario_info))
     return result
 
@@ -113,11 +121,14 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_all_revision_ids',
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
+        'bzrlib.tests.per_repository_reference.test_commit_with_stacking',
         'bzrlib.tests.per_repository_reference.test_default_stacking',
         'bzrlib.tests.per_repository_reference.test_fetch',
         'bzrlib.tests.per_repository_reference.test_get_record_stream',
         'bzrlib.tests.per_repository_reference.test_get_rev_id_for_revno',
+        'bzrlib.tests.per_repository_reference.test_graph',
         'bzrlib.tests.per_repository_reference.test_initialize',
+        'bzrlib.tests.per_repository_reference.test__make_parents_provider',
         'bzrlib.tests.per_repository_reference.test_unlock',
         ]
     # Parameterize per_repository_reference test modules by format.

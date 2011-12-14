@@ -16,17 +16,17 @@
 
 """Tests for lock-breaking user interface"""
 
-import os
-
-import bzrlib
 from bzrlib import (
     branch,
     bzrdir,
     config,
     errors,
-    lockdir,
     osutils,
     tests,
+    )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+from bzrlib.tests.script import (
+    run_script,
     )
 
 
@@ -70,6 +70,16 @@ class TestBreakLock(tests.TestCaseWithTransport):
         # shouldn't fail and should not produce error output
         self.assertEqual('', err)
 
+    def test_break_lock_no_interaction(self):
+        """With --force, the user isn't asked for confirmation"""
+        self.master_branch.lock_write()
+        run_script(self, """
+        $ bzr break-lock --force master-repo/master-branch
+        Broke lock ...master-branch/.bzr/...
+        """)
+        # lock should now be dead
+        self.assertRaises(errors.LockBroken, self.master_branch.unlock)
+
     def test_break_lock_everything_locked(self):
         ### if everything is locked, we should be able to unlock the lot.
         # however, we dont test breaking the working tree because we
@@ -95,15 +105,6 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
 
-class TestBreakLockOldBranch(tests.TestCaseWithTransport):
-
-    def test_break_lock_format_5_bzrdir(self):
-        # break lock on a format 5 bzrdir should just return
-        self.make_branch_and_tree('foo', format=bzrdir.BzrDirFormat5())
-        out, err = self.run_bzr('break-lock foo')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
-
 class TestConfigBreakLock(tests.TestCaseWithTransport):
 
     def setUp(self):
@@ -124,3 +125,19 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
                      stdin="y\n")
         self.assertRaises(errors.LockBroken, self.config.unlock)
 
+
+class TestSmartServerBreakLock(tests.TestCaseWithTransport):
+
+    def test_simple_branch_break_lock(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        t.branch.lock_write()
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['break-lock', '--force', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(5, self.hpss_calls)

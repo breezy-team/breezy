@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,26 +31,27 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
-    condition_isinstance,
-    multiply_tests,
-    split_suite_by_condition,
+    scenarios,
+    )
+from bzrlib.tests import (
+    features,
     )
 
 
-def load_tests(standard_tests, module, loader):
-    # parameterise the TestBTreeNodes tests
-    node_tests, others = split_suite_by_condition(standard_tests,
-        condition_isinstance(TestBTreeNodes))
+load_tests = scenarios.load_tests_apply_scenarios
+
+
+def btreeparser_scenarios():
     import bzrlib._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
     if compiled_btreeparser_feature.available():
-        scenarios.append(('C', {'parse_btree':
-                                compiled_btreeparser_feature.module}))
-    return multiply_tests(node_tests, scenarios, others)
+        scenarios.append(('C', 
+            {'parse_btree': compiled_btreeparser_feature.module}))
+    return scenarios
 
 
-compiled_btreeparser_feature = tests.ModuleAvailableFeature(
-                                'bzrlib._btree_serializer_pyx')
+compiled_btreeparser_feature = features.ModuleAvailableFeature(
+    'bzrlib._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):
@@ -280,7 +281,7 @@ class TestBTreeBuilder(BTreeTestCase):
 
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', self.time(builder.finish))
         del builder
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -607,7 +608,7 @@ class TestBTreeIndex(BTreeTestCase):
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         stream = builder.finish()
-        trans = transport.get_transport('trace+' + self.get_url())
+        trans = transport.get_transport_from_url('trace+' + self.get_url())
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
 
@@ -648,20 +649,20 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(0, len(index._leaf_node_cache))
 
     def test_trivial_constructor(self):
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(t, 'index', None)
         # Checks the page size at load, but that isn't logged yet.
         self.assertEqual([], t._activity)
 
     def test_with_size_constructor(self):
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(t, 'index', 1)
         # Checks the page size at load, but that isn't logged yet.
         self.assertEqual([], t._activity)
 
     def test_empty_key_count_no_size(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         t.put_file('index', builder.finish())
         index = btree_index.BTreeGraphIndex(t, 'index', None)
         del t._activity[:]
@@ -674,7 +675,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_empty_key_count(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         self.assertEqual(72, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -690,7 +691,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(35, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
@@ -722,7 +723,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test__read_nodes_no_size_one_page_reads_once(self):
         self.make_index(nodes=[(('key',), 'value', ())])
-        trans = transport.get_transport('trace+' + self.get_url())
+        trans = transport.get_transport_from_url('trace+' + self.get_url())
         index = btree_index.BTreeGraphIndex(trans, 'index', None)
         del trans._activity[:]
         nodes = dict(index._read_nodes([0]))
@@ -736,7 +737,7 @@ class TestBTreeIndex(BTreeTestCase):
         index.key_count()
         num_pages = index._row_offsets[-1]
         # Reopen with a traced transport and no size
-        trans = transport.get_transport('trace+' + self.get_url())
+        trans = transport.get_transport_from_url('trace+' + self.get_url())
         index = btree_index.BTreeGraphIndex(trans, 'index', None)
         del trans._activity[:]
         nodes = dict(index._read_nodes([0]))
@@ -747,7 +748,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(160, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         self.assertEqual(17692, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -763,7 +764,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(45, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
@@ -779,7 +780,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(80, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         # Root page, 2 leaf pages
         self.assertEqual(9339, size)
@@ -797,8 +798,8 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_eq_ne(self):
         # two indices are equal when constructed with the same parameters:
-        t1 = transport.get_transport('trace+' + self.get_url(''))
-        t2 = transport.get_transport(self.get_url(''))
+        t1 = transport.get_transport_from_url('trace+' + self.get_url(''))
+        t2 = self.get_transport()
         self.assertTrue(
             btree_index.BTreeGraphIndex(t1, 'index', None) ==
             btree_index.BTreeGraphIndex(t1, 'index', None))
@@ -830,9 +831,17 @@ class TestBTreeIndex(BTreeTestCase):
             btree_index.BTreeGraphIndex(t1, 'index', 10) !=
             btree_index.BTreeGraphIndex(t1, 'index', 20))
 
+    def test_key_too_big(self):
+        # the size that matters here is the _compressed_ size of the key, so we can't
+        # do a simple character repeat.
+        bigKey = ''.join(map(repr, xrange(btree_index._PAGE_SIZE)))
+        self.assertRaises(errors.BadIndexKey,
+                          self.make_index,
+                          nodes=[((bigKey,), 'value', ())])
+        
     def test_iter_all_only_root_no_size(self):
         self.make_index(nodes=[(('key',), 'value', ())])
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(t, 'index', None)
         del t._activity[:]
         self.assertEqual([(('key',), 'value')],
@@ -849,7 +858,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(10000, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         self.assertEqual(1303220, size, 'number of expected bytes in the'
                                         ' output changed')
@@ -904,7 +913,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = self.make_nodes(160, 2, 2)
         for node in nodes:
             builder.add_node(*node)
-        t = transport.get_transport('trace+' + self.get_url(''))
+        t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         del builder
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -1153,7 +1162,7 @@ class TestBTreeIndex(BTreeTestCase):
         for node in nodes:
             builder.add_node(*node)
         stream = builder.finish()
-        trans = transport.get_transport(self.get_url())
+        trans = self.get_transport()
         size = trans.put_file('index', stream)
         index = btree_index.BTreeGraphIndex(trans, 'index', size)
         self.assertEqual(500, index.key_count())
@@ -1184,6 +1193,8 @@ class TestBTreeIndex(BTreeTestCase):
 
 
 class TestBTreeNodes(BTreeTestCase):
+
+    scenarios = btreeparser_scenarios()
 
     def setUp(self):
         BTreeTestCase.setUp(self)
@@ -1351,7 +1362,8 @@ class TestExpandOffsets(tests.TestCase):
         BTreeGraphIndex with the recommended information.
         """
         index = btree_index.BTreeGraphIndex(
-            transport.get_transport('memory:///'), 'test-index', size=size)
+            transport.get_transport_from_url('memory:///'),
+            'test-index', size=size)
         if recommended_pages is not None:
             index._recommended_pages = recommended_pages
         return index

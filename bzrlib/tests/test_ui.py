@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 """Tests for the bzrlib ui
 """
 
-import os
 import time
 
 from StringIO import StringIO
@@ -26,14 +25,9 @@ from testtools.matchers import *
 
 from bzrlib import (
     config,
-    errors,
     remote,
-    repository,
     tests,
     ui as _mod_ui,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
     )
 from bzrlib.tests import (
     fixtures,
@@ -69,7 +63,7 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_factory_confirm(self):
         # turns into reading a regular boolean
         ui = self.make_test_ui_factory('n\n')
-        self.assertEquals(ui.confirm_action('Should %(thing)s pass?',
+        self.assertEquals(ui.confirm_action(u'Should %(thing)s pass?',
             'bzrlib.tests.test_ui.confirmation',
             {'thing': 'this'},),
             False)
@@ -117,6 +111,8 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_ui_get_boolean(self):
         stdin = tests.StringIOWrapper("y\n" # True
                                       "n\n" # False
+                                      " \n y \n" # True
+                                      " no \n" # False
                                       "yes with garbage\nY\n" # True
                                       "not an answer\nno\n" # False
                                       "I'm sure!\nyes\n" # True
@@ -125,15 +121,83 @@ class TestTextUIFactory(tests.TestCase):
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
-        self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
-        self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
-        self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
+        self.assertEqual(True, factory.get_boolean(u""))
+        self.assertEqual(False, factory.get_boolean(u""))
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
+        # return false on EOF
+        self.assertEqual(False, factory.get_boolean(u""))
+
+    def test_text_ui_choose_bad_parameters(self):
+        stdin = tests.StringIOWrapper()
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        # invalid default index
+        self.assertRaises(ValueError, factory.choose, u"", u"&Yes\n&No", 3)
+        # duplicated choice
+        self.assertRaises(ValueError, factory.choose, u"", u"&choice\n&ChOiCe")
+        # duplicated shortcut
+        self.assertRaises(ValueError, factory.choose, u"", u"&choice1\nchoi&ce2")
+
+    def test_text_ui_choose_prompt(self):
+        stdin = tests.StringIOWrapper()
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        # choices with explicit shortcuts
+        factory.choose(u"prompt", u"&yes\n&No\nmore &info")
+        self.assertEqual("prompt ([y]es, [N]o, more [i]nfo): \n", factory.stderr.getvalue())
+        # automatic shortcuts
+        factory.stderr.truncate(0)
+        factory.choose(u"prompt", u"yes\nNo\nmore info")
+        self.assertEqual("prompt ([y]es, [N]o, [m]ore info): \n", factory.stderr.getvalue())
+
+    def test_text_ui_choose_return_values(self):
+        choose = lambda: factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
+        stdin = tests.StringIOWrapper("y\n" # 0
+                                      "n\n" # 1
+                                      " \n" # default: 3
+                                      " no \n" # 1
+                                      "b\na\nd \n" # bad shortcuts, all ignored
+                                      "yes with garbage\nY\n" # 0
+                                      "not an answer\nno\n" # 1
+                                      "info\nmore info\n" # 3
+                                      "Maybe\n" # 2
+                                      "foo\n")
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        self.assertEqual(0, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(3, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(0, choose())
+        self.assertEqual(1, choose())
+        self.assertEqual(3, choose())
+        self.assertEqual(2, choose())
+        self.assertEqual("foo\n", factory.stdin.read())
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+        # return None on EOF
+        self.assertEqual(None, choose())
+
+    def test_text_ui_choose_no_default(self):
+        stdin = tests.StringIOWrapper(" \n" # no default, invalid!
+                                      " yes \n" # 0
+                                      "foo\n")
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        self.assertEqual(0, factory.choose(u"", u"&Yes\n&No"))
+        self.assertEqual("foo\n", factory.stdin.read())
 
     def test_text_ui_get_integer(self):
         stdin = tests.StringIOWrapper(
@@ -143,22 +207,22 @@ class TestTextUIFactory(tests.TestCase):
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
-        self.assertEqual(1, factory.get_integer(""))
-        self.assertEqual(-2, factory.get_integer(""))
-        self.assertEqual(42, factory.get_integer(""))
+        self.assertEqual(1, factory.get_integer(u""))
+        self.assertEqual(-2, factory.get_integer(u""))
+        self.assertEqual(42, factory.get_integer(u""))
 
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
         StringIO = tests.StringIOWrapper
         factory = _mod_ui_text.TextUIFactory(StringIO(), StringIO(), StringIO())
-        factory.prompt('foo %2e')
+        factory.prompt(u'foo %2e')
         self.assertEqual('', factory.stdout.getvalue())
         self.assertEqual('foo %2e', factory.stderr.getvalue())
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         out = test_progress._TTYStringIO()
-        os.environ['TERM'] = 'xterm'
+        self.overrideEnv('TERM', 'xterm')
         factory = _mod_ui_text.TextUIFactory(
             stdin=tests.StringIOWrapper("yada\ny\n"),
             stdout=out, stderr=out)
@@ -172,12 +236,12 @@ class TestTextUIFactory(tests.TestCase):
                          self.apply_redirected(None, factory.stdout,
                                                factory.stdout,
                                                factory.get_boolean,
-                                               "what do you want"))
+                                               u"what do you want"))
         output = out.getvalue()
         self.assertContainsRe(output,
             "| foo *\r\r  *\r*")
-        self.assertContainsRe(output,
-            r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
+        self.assertContainsString(output,
+            r"what do you want? ([y]es, [n]o): what do you want? ([y]es, [n]o): ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
 
@@ -201,10 +265,10 @@ class TestTextUIFactory(tests.TestCase):
         factory.stdout.encoding = "utf8"
         # there is no output from the base factory
         self.assertEqual("someuser",
-                         factory.get_username('Hello %(host)s', host='some'))
+                         factory.get_username(u'Hello %(host)s', host='some'))
         self.assertEquals("Hello some: ", factory.stderr.getvalue())
         self.assertEquals('', factory.stdout.getvalue())
-        self.assertEqual("", factory.get_username("Gebruiker"))
+        self.assertEqual("", factory.get_username(u"Gebruiker"))
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
@@ -226,7 +290,7 @@ class TestTextUIFactory(tests.TestCase):
             pb.finished()
 
     def test_quietness(self):
-        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        self.overrideEnv('BZR_PROGRESS_BAR', 'text')
         ui_factory = _mod_ui_text.TextUIFactory(None,
             test_progress._TTYStringIO(),
             test_progress._TTYStringIO())
@@ -238,7 +302,7 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_ui_show_user_warning(self):
         from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
-        from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5
+        from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack5
         err = StringIO()
         out = StringIO()
         ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
@@ -313,12 +377,8 @@ class UITests(tests.TestCase):
             # however, it can still be forced on
             (FileStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
             ):
-            os.environ['TERM'] = term
-            if pb is None:
-                if 'BZR_PROGRESS_BAR' in os.environ:
-                    del os.environ['BZR_PROGRESS_BAR']
-            else:
-                os.environ['BZR_PROGRESS_BAR'] = pb
+            self.overrideEnv('TERM', term)
+            self.overrideEnv('BZR_PROGRESS_BAR', pb)
             stdin = file_class('')
             stderr = file_class()
             stdout = file_class()
@@ -335,10 +395,7 @@ class UITests(tests.TestCase):
         stderr = test_progress._NonTTYStringIO()
         stdout = test_progress._NonTTYStringIO()
         for term_type in ['dumb', None, 'xterm']:
-            if term_type is None:
-                del os.environ['TERM']
-            else:
-                os.environ['TERM'] = term_type
+            self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
                 'TERM=%r' % (term_type,))
@@ -365,7 +422,7 @@ class SilentUITests(tests.TestCase):
         self.assertRaises(
             NotImplementedError,
             self.apply_redirected,
-            None, stdout, stdout, factory.get_boolean, "foo")
+            None, stdout, stdout, factory.get_boolean, u"foo")
 
 
 class TestUIFactoryTests(tests.TestCase):
@@ -384,12 +441,12 @@ class CannedInputUIFactoryTests(tests.TestCase):
 
     def test_canned_input_get_input(self):
         uif = _mod_ui.CannedInputUIFactory([True, 'mbp', 'password', 42])
-        self.assertEqual(True, uif.get_boolean('Extra cheese?'))
-        self.assertEqual('mbp', uif.get_username('Enter your user name'))
+        self.assertEqual(True, uif.get_boolean(u'Extra cheese?'))
+        self.assertEqual('mbp', uif.get_username(u'Enter your user name'))
         self.assertEqual('password',
-                         uif.get_password('Password for %(host)s',
+                         uif.get_password(u'Password for %(host)s',
                                           host='example.com'))
-        self.assertEqual(42, uif.get_integer('And all that jazz ?'))
+        self.assertEqual(42, uif.get_integer(u'And all that jazz ?'))
 
 
 class TestBoolFromString(tests.TestCase):

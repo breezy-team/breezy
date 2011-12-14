@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ from bzrlib import (
     merge as _mod_merge,
     switch,
     tests,
-)
+    )
 
 
 class TestSwitch(tests.TestCaseWithTransport):
@@ -53,12 +53,12 @@ class TestSwitch(tests.TestCaseWithTransport):
             lightweight=self.lightweight)
         self.build_tree(['checkout/file-3'])
         checkout.add('file-3')
-        self.failIfExists('checkout/file-1')
-        self.failUnlessExists('checkout/file-2')
+        self.assertPathDoesNotExist('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
         switch.switch(checkout.bzrdir, to_branch)
-        self.failUnlessExists('checkout/file-1')
-        self.failIfExists('checkout/file-2')
-        self.failUnlessExists('checkout/file-3')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
+        self.assertPathExists('checkout/file-3')
 
     def test_switch_after_branch_moved(self):
         """Test switch after the branch is moved."""
@@ -84,9 +84,9 @@ class TestSwitch(tests.TestCaseWithTransport):
                 'Unable to connect to current master branch .*'
                 'To switch anyway, use --force.')
         switch.switch(checkout.bzrdir, to_branch, force=True)
-        self.failIfExists('checkout/file-1')
-        self.failUnlessExists('checkout/file-2')
-        self.failUnlessExists('checkout/file-3')
+        self.assertPathDoesNotExist('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
+        self.assertPathExists('checkout/file-3')
 
     def test_switch_when_pending_merges(self):
         """Test graceful failure if pending merges are outstanding."""
@@ -120,8 +120,8 @@ class TestSwitch(tests.TestCaseWithTransport):
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
         switch.switch(checkout.bzrdir, tree.branch, revision_id="rev1")
-        self.failUnlessExists('checkout/file-1')
-        self.failIfExists('checkout/file-2')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
 
     def test_switch_changing_root_id(self):
         tree = self._setup_tree()
@@ -179,13 +179,13 @@ class TestSwitchHeavyweight(TestSwitch):
         self.assertContainsRe(str(err),
             'Cannot switch as local commits found in the checkout.')
         # Check all is ok when force is given
-        self.failIfExists('checkout/file-1')
-        self.failUnlessExists('checkout/file-2')
+        self.assertPathDoesNotExist('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
         switch.switch(checkout.bzrdir, to_branch, force=True)
-        self.failUnlessExists('checkout/file-1')
-        self.failIfExists('checkout/file-2')
-        self.failIfExists('checkout/file-3')
-        self.failUnlessExists('checkout/file-4')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
+        self.assertPathDoesNotExist('checkout/file-3')
+        self.assertPathExists('checkout/file-4')
         # Check that the checkout is a true mirror of the bound branch
         self.assertEqual(to_branch.last_revision_info(),
                          checkout.branch.last_revision_info())

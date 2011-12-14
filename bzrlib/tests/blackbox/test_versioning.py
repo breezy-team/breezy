@@ -39,15 +39,12 @@ class TestMkdir(TestCaseWithTransport):
         # here locally.
         shared_repo = self.make_repository('.')
         self.run_bzr(['mkdir', 'abc'], retcode=3)
-        self.failIfExists('abc')
-
-
-class TestVersioning(TestCaseInTempDir):
+        self.assertPathDoesNotExist('abc')
 
     def test_mkdir(self):
         """Basic 'bzr mkdir' operation"""
 
-        self.run_bzr('init')
+        self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'foo'])
         self.assert_(os.path.isdir('foo'))
 
@@ -61,12 +58,12 @@ class TestVersioning(TestCaseInTempDir):
 
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'foo')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
     def test_mkdir_in_subdir(self):
         """'bzr mkdir' operation in subdirectory"""
 
-        self.run_bzr('init')
+        self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'dir'])
         self.assert_(os.path.isdir('dir'))
 
@@ -85,24 +82,19 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(len(delta.added), 2)
         self.assertEquals(delta.added[0][0], 'dir')
         self.assertEquals(delta.added[1][0], pathjoin('dir','subdir'))
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
         """'bzr mkdir' with nested trees"""
 
-        self.run_bzr('init')
-        os.mkdir('a')
-        os.chdir('a')
-        self.run_bzr('init')
-        os.mkdir('b')
-        os.chdir('b')
-        self.run_bzr('init')
-        os.chdir('../..')
+        self.make_branch_and_tree('.')
+        self.make_branch_and_tree('a')
+        self.make_branch_and_tree('a/b')
 
         self.run_bzr(['mkdir', 'dir', 'a/dir', 'a/b/dir'])
-        self.failUnless(os.path.isdir('dir'))
-        self.failUnless(os.path.isdir('a/dir'))
-        self.failUnless(os.path.isdir('a/b/dir'))
+        self.assertTrue(os.path.isdir('dir'))
+        self.assertTrue(os.path.isdir('a/dir'))
+        self.assertTrue(os.path.isdir('a/b/dir'))
 
         wt = WorkingTree.open('.')
         wt_a = WorkingTree.open('a')
@@ -111,28 +103,25 @@ class TestVersioning(TestCaseInTempDir):
         delta = wt.changes_from(wt.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
         delta = wt_a.changes_from(wt_a.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
         delta = wt_b.changes_from(wt_b.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
-    def check_branch(self):
-        """After all the above changes, run the check and upgrade commands.
+    def test_mkdir_quiet(self):
+        """'bzr mkdir --quiet' should not print a status message"""
 
-        The upgrade should be a no-op."""
-        b = Branch.open(u'.')
-        mutter('branch has %d revisions', b.revno())
-
-        mutter('check branch...')
-        from bzrlib.check import check
-        check(b, False)
+        self.make_branch_and_tree('.')
+        out, err = self.run_bzr(['mkdir', '--quiet', 'foo'])
+        self.assertEquals('', err)
+        self.assertEquals('', out)
 
 
 class SubdirCommit(TestCaseWithTransport):
@@ -159,9 +148,12 @@ class SubdirCommit(TestCaseWithTransport):
         new = b.repository.revision_tree(b.get_rev_id(2))
         new.lock_read()
 
-        self.assertEqual(new.get_file_by_path('b/two').read(), 'old contents')
-        self.assertEqual(new.get_file_by_path('top').read(), 'old contents')
-        self.assertEqual(new.get_file_by_path('a/one').read(), 'new contents')
+        def get_text_by_path(tree, path):
+            return tree.get_file_text(tree.path2id(path), path)
+
+        self.assertEqual(get_text_by_path(new, 'b/two'), 'old contents')
+        self.assertEqual(get_text_by_path(new, 'top'), 'old contents')
+        self.assertEqual(get_text_by_path(new, 'a/one'), 'new contents')
         new.unlock()
 
         os.chdir('a')
@@ -169,17 +161,17 @@ class SubdirCommit(TestCaseWithTransport):
         self.run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'])
         v3 = b.repository.revision_tree(b.get_rev_id(3))
         v3.lock_read()
-        self.assertEqual(v3.get_file_by_path('b/two').read(), 'old contents')
-        self.assertEqual(v3.get_file_by_path('top').read(), 'old contents')
-        self.assertEqual(v3.get_file_by_path('a/one').read(), 'new contents')
+        self.assertEqual(get_text_by_path(v3, 'b/two'), 'old contents')
+        self.assertEqual(get_text_by_path(v3, 'top'), 'old contents')
+        self.assertEqual(get_text_by_path(v3, 'a/one'), 'new contents')
         v3.unlock()
 
         # commit in subdirectory commits whole tree
         self.run_bzr(['commit', '-m', 'commit whole tree from subdir'])
         v4 = b.repository.revision_tree(b.get_rev_id(4))
         v4.lock_read()
-        self.assertEqual(v4.get_file_by_path('b/two').read(), 'new contents')
-        self.assertEqual(v4.get_file_by_path('top').read(), 'new contents')
+        self.assertEqual(get_text_by_path(v4, 'b/two'), 'new contents')
+        self.assertEqual(get_text_by_path(v4, 'top'), 'new contents')
         v4.unlock()
 
         # TODO: factor out some kind of assert_tree_state() method

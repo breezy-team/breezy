@@ -97,6 +97,7 @@ cdef extern from "Python.h":
     object PyTuple_GetItem_void_object "PyTuple_GET_ITEM" (void* tpl, int index)
     object PyTuple_GET_ITEM(object tpl, Py_ssize_t index)
 
+    unsigned long PyInt_AsUnsignedLongMask(object number) except? -1
 
     char *PyString_AsString(object p)
     char *PyString_AsString_obj "PyString_AsString" (PyObject *string)
@@ -811,7 +812,6 @@ cdef int minikind_from_mode(int mode): # cannot_raise
 _encode = binascii.b2a_base64
 
 
-from struct import pack
 cdef _pack_stat(stat_value):
     """return a string representing the stat value's key fields.
 
@@ -821,14 +821,20 @@ cdef _pack_stat(stat_value):
     cdef char result[6*4] # 6 long ints
     cdef int *aliased
     aliased = <int *>result
-    aliased[0] = htonl(stat_value.st_size)
-    aliased[1] = htonl(int(stat_value.st_mtime))
-    aliased[2] = htonl(int(stat_value.st_ctime))
-    aliased[3] = htonl(stat_value.st_dev)
-    aliased[4] = htonl(stat_value.st_ino & 0xFFFFFFFF)
-    aliased[5] = htonl(stat_value.st_mode)
+    aliased[0] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_size))
+    # mtime and ctime will often be floats but get converted to PyInt within
+    aliased[1] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mtime))
+    aliased[2] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ctime))
+    aliased[3] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_dev))
+    aliased[4] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ino))
+    aliased[5] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mode))
     packed = PyString_FromStringAndSize(result, 6*4)
     return _encode(packed)[:-1]
+
+
+def pack_stat(stat_value):
+    """Convert stat value into a packed representation quickly with pyrex"""
+    return _pack_stat(stat_value)
 
 
 def update_entry(self, entry, abspath, stat_value):
@@ -866,6 +872,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
     # _st mode of the compiled stat objects.
     cdef int minikind, saved_minikind
     cdef void * details
+    cdef int worth_saving
     minikind = minikind_from_mode(stat_value.st_mode)
     if 0 == minikind:
         return None
@@ -900,6 +907,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
     # If we have gotten this far, that means that we need to actually
     # process this entry.
     link_or_sha1 = None
+    worth_saving = 1
     if minikind == c'f':
         executable = self._is_executable(stat_value.st_mode,
                                          saved_executable)
@@ -916,10 +924,15 @@ cdef _update_entry(self, entry, abspath, stat_value):
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
         else:
-            entry[1][0] = ('f', '', stat_value.st_size,
-                           executable, DirState.NULLSTAT)
+            # This file is not worth caching the sha1. Either it is too new, or
+            # it is newly added. Regardless, the only things we are changing
+            # are derived from the stat, and so are not worth caching. So we do
+            # *not* set the IN_MEMORY_MODIFIED flag. (But we'll save the
+            # updated values if there is *other* data worth saving.)
+            entry[1][0] = ('f', '', stat_value.st_size, executable,
+                           DirState.NULLSTAT)
+            worth_saving = 0
     elif minikind == c'd':
-        link_or_sha1 = None
         entry[1][0] = ('d', '', 0, False, packed_stat)
         if saved_minikind != c'd':
             # This changed from something into a directory. Make sure we
@@ -929,7 +942,17 @@ cdef _update_entry(self, entry, abspath, stat_value):
                 self._get_block_entry_index(entry[0][0], entry[0][1], 0)
             self._ensure_block(block_index, entry_index,
                                pathjoin(entry[0][0], entry[0][1]))
+        else:
+            # Any changes are derived trivially from the stat object, not worth
+            # re-writing a dirstate for just this
+            worth_saving = 0
     elif minikind == c'l':
+        if saved_minikind == c'l':
+            # If the object hasn't changed kind, it isn't worth saving the
+            # dirstate just for a symlink. The default is 'fast symlinks' which
+            # save the target in the inode entry, rather than separately. So to
+            # stat, we've already read everything off disk.
+            worth_saving = 0
         link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
         if self._cutoff_time is None:
             self._sha_cutoff_time()
@@ -940,7 +963,10 @@ cdef _update_entry(self, entry, abspath, stat_value):
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    if worth_saving:
+        # Note, even though _mark_modified will only set
+        # IN_MEMORY_HASH_MODIFIED, it still isn't worth 
+        self._mark_modified([entry])
     return link_or_sha1
 
 
@@ -1773,6 +1799,7 @@ cdef class ProcessEntryC:
                 advance_entry = -1
                 advance_path = -1
                 result = None
+                changed = None
                 path_handled = 0
                 if current_entry is None:
                     # unversioned -  the check for path_handled when the path

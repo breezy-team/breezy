@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 
 from bzrlib.branch import (
     Branch,
-    InterBranch,
     )
 from bzrlib.commands import Command, Option
 from bzrlib.repository import Repository
@@ -29,10 +28,10 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     errors,
-    osutils,
     registry,
     transform,
     )
+from bzrlib.i18n import gettext
 """)
 
 class VcsMapping(object):
@@ -265,7 +264,6 @@ class cmd_dpush(Command):
     branch unless the --no-rebase option is used, in which case 
     the two branches will be out of sync after the push. 
     """
-    hidden = True
     takes_args = ['location?']
     takes_options = [
         'remember',
@@ -284,7 +282,7 @@ class cmd_dpush(Command):
     def run(self, location=None, remember=False, directory=None,
             no_rebase=False, strict=None):
         from bzrlib import urlutils
-        from bzrlib.bzrdir import BzrDir
+        from bzrlib.controldir import ControlDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
         from bzrlib.workingtree import WorkingTree
 
@@ -304,23 +302,24 @@ class cmd_dpush(Command):
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:
-                raise BzrCommandError("No push location known or specified.")
+                raise BzrCommandError(gettext("No push location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                self.outf.write(
+                       gettext("Using saved location: %s\n") % display_url)
                 location = stored_loc
 
-        bzrdir = BzrDir.open(location)
-        target_branch = bzrdir.open_branch()
+        controldir = ControlDir.open(location)
+        target_branch = controldir.open_branch()
         target_branch.lock_write()
         try:
             try:
-                push_result = source_branch.lossy_push(target_branch)
+                push_result = source_branch.push(target_branch, lossy=True)
             except errors.LossyPushToSameVCS:
-                raise BzrCommandError("%r and %r are in the same VCS, lossy "
-                    "push not necessary. Please use regular push." %
-                    (source_branch, target_branch))
+                raise BzrCommandError(gettext("{0!r} and {1!r} are in the same VCS, lossy "
+                    "push not necessary. Please use regular push.").format(
+                    source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
@@ -339,23 +338,3 @@ class cmd_dpush(Command):
             push_result.report(self.outf)
         finally:
             target_branch.unlock()
-
-
-class InterToForeignBranch(InterBranch):
-
-    def lossy_push(self, stop_revision=None):
-        """Push deltas into another branch.
-
-        :note: This does not, like push, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param target: Target branch
-        :param stop_revision: Revision to push, defaults to last revision.
-        :return: BranchPushResult with an extra member revidmap: 
-            A dictionary mapping revision ids from the target branch 
-            to new revision ids in the target branch, for each 
-            revision that was pushed.
-        """
-        raise NotImplementedError(self.lossy_push)

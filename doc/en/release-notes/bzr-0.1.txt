@@ -1,0 +1,753 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.1.1
+#########
+
+:Released: 2005-10-12
+
+Bug Fixes
+*********
+
+* Fix problem in pulling over HTTP from machines that do not
+  allow directories to be listed.
+
+* Avoid harmless warning about invalid hash cache after
+  upgrading branch format.
+
+Performance
+***********
+
+* Avoid some unnecessary HTTP operations in branch and pull.
+
+
+bzr 0.1
+#######
+
+:Released: 2005-10-11
+
+Notes
+*****
+
+* 'bzr branch' over HTTP initially gives a very high estimate
+  of completion time but it should fall as the first few
+  revisions are pulled in.  branch is still slow on
+  high-latency connections.
+
+Bug Fixes
+*********
+
+* bzr-man.py has been updated to work again. Contributed by
+  Rob Weir.
+
+* Locking is now done with fcntl.lockf which works with NFS
+  file systems. Contributed by Harald Meland.
+
+* When a merge encounters a file that has been deleted on
+  one side and modified on the other, the old contents are
+  written out to foo.BASE and foo.SIDE, where SIDE is this
+  or OTHER. Contributed by Aaron Bentley.
+
+* Export was choosing incorrect file paths for the content of
+  the tarball, this has been fixed by Aaron Bentley.
+
+* Commit will no longer commit without a log message, an
+  error is returned instead. Contributed by Jelmer Vernooij.
+
+* If you commit a specific file in a sub directory, any of its
+  parent directories that are added but not listed will be
+  automatically included. Suggested by Michael Ellerman.
+
+* bzr commit and upgrade did not correctly record new revisions
+  for files with only a change to their executable status.
+  bzr will correct this when it encounters it. Fixed by
+  Robert Collins
+
+* HTTP tests now force off the use of ``http_proxy`` for the duration.
+  Contributed by Gustavo Niemeyer.
+
+* Fix problems in merging weave-based branches that have
+  different partial views of history.
+
+* Symlink support: working with symlinks when not in the root of a
+  bzr tree was broken, patch from Scott James Remnant.
+
+Improvements
+************
+
+* 'branch' now accepts a --basis parameter which will take advantage
+  of local history when making a new branch. This allows faster
+  branching of remote branches. Contributed by Aaron Bentley.
+
+* New tree format based on weave files, called version 5.
+  Existing branches can be upgraded to this format using
+  'bzr upgrade'.
+
+* Symlinks are now versionable. Initial patch by
+  Erik Toubro Nielsen, updated to head by Robert Collins.
+
+* Executable bits are tracked on files. Patch from Gustavo
+  Niemeyer.
+
+* 'bzr status' now shows unknown files inside a selected directory.
+  Patch from Heikki Paajanen.
+
+* Merge conflicts are recorded in .bzr. Two new commands 'conflicts'
+  and 'resolve' have needed added, which list and remove those
+  merge conflicts respectively. A conflicted tree cannot be committed
+  in. Contributed by Aaron Bentley.
+
+* 'rm' is now an alias for 'remove'.
+
+* Stores now split out their content in a single byte prefixed hash,
+  dropping the density of files per directory by 256. Contributed by
+  Gustavo Niemeyer.
+
+* 'bzr diff -r branch:URL' will now perform a diff between two branches.
+  Contributed by Robert Collins.
+
+* 'bzr log' with the default formatter will show merged revisions,
+  indented to the right. Initial implementation contributed by Gustavo
+  Niemeyer, made incremental by Robert Collins.
+
+
+Internals
+*********
+
+* Test case failures have the exception printed after the log
+  for your viewing pleasure.
+
+* InventoryEntry is now an abstract base class, use one of the
+  concrete InventoryDirectory etc classes instead.
+
+* Branch raises an UnsupportedFormatError when it detects a
+  bzr branch it cannot understand. This allows for precise
+  handling of such circumstances.
+
+* Remove RevisionReference class; ``Revision.parent_ids`` is now simply a
+  list of their ids and ``parent_sha1s`` is a list of their corresponding
+  sha1s (for old branches only at the moment.)
+
+* New method-object style interface for Commit() and Fetch().
+
+* Renamed ``Branch.last_patch()`` to ``Branch.last_revision()``, since
+  we call them revisions not patches.
+
+* Move ``copy_branch`` to ``bzrlib.clone.copy_branch``.  The destination
+  directory is created if it doesn't exist.
+
+* Inventories now identify the files which were present by
+  giving the revision *of that file*.
+
+* Inventory and Revision XML contains a version identifier.
+  This must be consistent with the overall branch version
+  but allows for more flexibility in future upgrades.
+
+Testing
+*******
+
+* Removed testsweet module so that tests can be run after
+  bzr installed by 'bzr selftest'.
+
+* 'bzr selftest' command-line arguments can now be partial ids
+  of tests to run, e.g. ``bzr selftest test_weave``
+
+bzr 0.0.9
+#########
+
+:Released: 2005-09-23
+
+Bug Fixes
+*********
+
+* Fixed "branch -r" option.
+
+* Fix remote access to branches containing non-compressed history.
+  (Robert Collins).
+
+* Better reliability of HTTP server tests.  (John Arbash-Meinel)
+
+* Merge graph maximum distance calculation fix.  (Aaron Bentley)
+
+* Various minor bug in windows support have been fixed, largely in the
+  test suite. Contributed by Alexander Belchenko.
+
+Improvements
+************
+
+* Status now accepts a -r argument to give status between chosen
+  revisions. Contributed by Heikki Paajanen.
+
+* Revision arguments no longer use +/-/= to control ranges, instead
+  there is a 'before' namespace, which limits the successive namespace.
+  For example '$ bzr log -r date:yesterday..before:date:today' will
+  select everything from yesterday and before today. Contributed by
+  Robey Pointer
+
+* There is now a bzr.bat file created by distutils when building on
+  Windows. Contributed by Alexander Belchenko.
+
+Internals
+*********
+
+* Removed uuid() as it was unused.
+
+* Improved 'fetch' code for pulling revisions from one branch into
+  another (used by pull, merged, etc.)
+
+
+bzr 0.0.8
+#########
+
+:Released: 2005-09-20
+
+
+Improvements
+************
+
+* Adding a file whose parent directory is not versioned will
+  implicitly add the parent, and so on up to the root. This means
+  you should never need to explictly add a directory, they'll just
+  get added when you add a file in the directory.  Contributed by
+  Michael Ellerman.
+
+* Ignore ``.DS_Store`` (contains Mac metadata) by default.
+  (Nir Soffer)
+
+* If you set ``BZR_EDITOR`` in the environment, it is checked in
+  preference to EDITOR and the config file for the interactive commit
+  editing program. Related to this is a bugfix where a missing program
+  set in EDITOR would cause editing to fail, now the fallback program
+  for the operating system is still tried.
+
+* Files that are not directories/symlinks/regular files will no longer
+  cause bzr to fail, it will just ignore them by default. You cannot add
+  them to the tree though - they are not versionable.
+
+
+Internals
+*********
+
+* Refactor XML packing/unpacking.
+
+Bug Fixes
+*********
+
+* Fixed 'bzr mv' by Ollie Rutherfurd.
+
+* Fixed strange error when trying to access a nonexistent HTTP
+  branch.
+
+* Make sure that the hashcache gets written out if it can't be
+  read.
+
+
+Portability
+***********
+
+* Various Windows fixes from Ollie Rutherfurd.
+
+* Quieten warnings about locking; patch from Matt Lavin.
+
+
+bzr-0.0.7
+#########
+
+:Released: 2005-09-02
+
+New Features
+************
+
+* ``bzr shell-complete`` command contributed by Clint Adams to
+  help with intelligent shell completion.
+
+* New expert command ``bzr find-merge-base`` for debugging merges.
+
+
+Enhancements
+************
+
+* Much better merge support.
+
+* merge3 conflicts are now reported with markers like '<<<<<<<'
+  (seven characters) which is the same as CVS and pleases things
+  like emacs smerge.
+
+
+Bug Fixes
+*********
+
+* ``bzr upgrade`` no longer fails when trying to fix trees that
+  mention revisions that are not present.
+
+* Fixed bugs in listing plugins from ``bzr plugins``.
+
+* Fix case of $EDITOR containing options for the editor.
+
+* Fix log -r refusing to show the last revision.
+  (Patch from Goffredo Baroncelli.)
+
+
+Changes
+*******
+
+* ``bzr log --show-ids`` shows the revision ids of all parents.
+
+* Externally provided commands on your $BZRPATH no longer need
+  to recognize --bzr-usage to work properly, and can just handle
+  --help themselves.
+
+
+Library
+*******
+
+* Changed trace messages to go through the standard logging
+  framework, so that they can more easily be redirected by
+  libraries.
+
+
+
+bzr-0.0.6
+#########
+
+:Released: 2005-08-18
+
+New Features
+************
+
+* Python plugins, automatically loaded from the directories on
+  ``BZR_PLUGIN_PATH`` or ``~/.bzr.conf/plugins`` by default.
+
+* New 'bzr mkdir' command.
+
+* Commit mesage is fetched from an editor if not given on the
+  command line; patch from Torsten Marek.
+
+* ``bzr log -m FOO`` displays commits whose message matches regexp
+  FOO.
+
+* ``bzr add`` with no arguments adds everything under the current directory.
+
+* ``bzr mv`` does move or rename depending on its arguments, like
+  the Unix command.
+
+* ``bzr missing`` command shows a summary of the differences
+  between two trees.  (Merged from John Arbash-Meinel.)
+
+* An email address for commits to a particular tree can be
+  specified by putting it into .bzr/email within a branch.  (Based
+  on a patch from Heikki Paajanen.)
+
+
+Enhancements
+************
+
+* Faster working tree operations.
+
+
+Changes
+*******
+
+* 3rd-party modules shipped with bzr are copied within the bzrlib
+  python package, so that they can be installed by the setup
+  script without clashing with anything already existing on the
+  system.  (Contributed by Gustavo Niemeyer.)
+
+* Moved plugins directory to bzrlib/, so that there's a standard
+  plugin directory which is not only installed with bzr itself but
+  is also available when using bzr from the development tree.
+  ``BZR_PLUGIN_PATH`` and ``DEFAULT_PLUGIN_PATH`` are then added to the
+  standard plugins directory.
+
+* When exporting to a tarball with ``bzr export --format tgz``, put
+  everything under a top directory rather than dumping it into the
+  current directory.   This can be overridden with the ``--root``
+  option.  Patch from William Dodé and John Meinel.
+
+* New ``bzr upgrade`` command to upgrade the format of a branch,
+  replacing ``bzr check --update``.
+
+* Files within store directories are no longer marked readonly on
+  disk.
+
+* Changed ``bzr log`` output to a more compact form suggested by
+  John A Meinel.  Old format is available with the ``--long`` or
+  ``-l`` option, patched by William Dodé.
+
+* By default the commit command refuses to record a revision with
+  no changes unless the ``--unchanged`` option is given.
+
+* The ``--no-plugins``, ``--profile`` and ``--builtin`` command
+  line options must come before the command name because they
+  affect what commands are available; all other options must come
+  after the command name because their interpretation depends on
+  it.
+
+* ``branch`` and ``clone`` added as aliases for ``branch``.
+
+* Default log format is back to the long format; the compact one
+  is available with ``--short``.
+
+
+Bug Fixes
+*********
+
+* Fix bugs in committing only selected files or within a subdirectory.
+
+
+bzr-0.0.5
+#########
+
+:Released:  2005-06-15
+
+Changes
+*******
+
+* ``bzr`` with no command now shows help rather than giving an
+  error.  Suggested by Michael Ellerman.
+
+* ``bzr status`` output format changed, because svn-style output
+  doesn't really match the model of bzr.  Now files are grouped by
+  status and can be shown with their IDs.  ``bzr status --all``
+  shows all versioned files and unknown files but not ignored files.
+
+* ``bzr log`` runs from most-recent to least-recent, the reverse
+  of the previous order.  The previous behaviour can be obtained
+  with the ``--forward`` option.
+
+* ``bzr inventory`` by default shows only filenames, and also ids
+  if ``--show-ids`` is given, in which case the id is the second
+  field.
+
+
+Enhancements
+************
+
+* New 'bzr whoami --email' option shows only the email component
+  of the user identification, from Jo Vermeulen.
+
+* New ``bzr ignore PATTERN`` command.
+
+* Nicer error message for broken pipe, interrupt and similar
+  conditions that don't indicate an internal error.
+
+* Add ``.*.sw[nop] .git .*.tmp *,v`` to default ignore patterns.
+
+* Per-branch locks keyed on ``.bzr/branch-lock``, available in
+  either read or write mode.
+
+* New option ``bzr log --show-ids`` shows revision and file ids.
+
+* New usage ``bzr log FILENAME`` shows only revisions that
+  affected that file.
+
+* Changed format for describing changes in ``bzr log -v``.
+
+* New option ``bzr commit --file`` to take a message from a file,
+  suggested by LarstiQ.
+
+* New syntax ``bzr status [FILE...]`` contributed by Bartosz
+  Oler.  File may be in a branch other than the working directory.
+
+* ``bzr log`` and ``bzr root`` can be given an HTTP URL instead of
+  a filename.
+
+* Commands can now be defined by external programs or scripts
+  in a directory on $BZRPATH.
+
+* New "stat cache" avoids reading the contents of files if they
+  haven't changed since the previous time.
+
+* If the Python interpreter is too old, try to find a better one
+  or give an error.  Based on a patch from Fredrik Lundh.
+
+* New optional parameter ``bzr info [BRANCH]``.
+
+* New form ``bzr commit SELECTED`` to commit only selected files.
+
+* New form ``bzr log -r FROM:TO`` shows changes in selected
+  range; contributed by John A Meinel.
+
+* New option ``bzr diff --diff-options 'OPTS'`` allows passing
+  options through to an external GNU diff.
+
+* New option ``bzr add --no-recurse`` to add a directory but not
+  their contents.
+
+* ``bzr --version`` now shows more information if bzr is being run
+  from a branch.
+
+
+Bug Fixes
+*********
+
+* Fixed diff format so that added and removed files will be
+  handled properly by patch.  Fix from Lalo Martins.
+
+* Various fixes for files whose names contain spaces or other
+  metacharacters.
+
+
+Testing
+*******
+
+* Converted black-box test suites from Bourne shell into Python;
+  now run using ``./testbzr``.  Various structural improvements to
+  the tests.
+
+* testbzr by default runs the version of bzr found in the same
+  directory as the tests, or the one given as the first parameter.
+
+* testbzr also runs the internal tests, so the only command
+  required to check is just ``./testbzr``.
+
+* testbzr requires python2.4, but can be used to test bzr running
+  under a different version.
+
+* Tests added for many other changes in this release.
+
+
+Internal
+********
+
+* Included ElementTree library upgraded to 1.2.6 by Fredrik Lundh.
+
+* Refactor command functions into Command objects based on HCT by
+  Scott James Remnant.
+
+* Better help messages for many commands.
+
+* Expose ``bzrlib.open_tracefile()`` to start the tracefile; until
+  this is called trace messages are just discarded.
+
+* New internal function ``find_touching_revisions()`` and hidden
+  command touching-revisions trace the changes to a given file.
+
+* Simpler and faster ``compare_inventories()`` function.
+
+* ``bzrlib.open_tracefile()`` takes a tracefilename parameter.
+
+* New AtomicFile class.
+
+* New developer commands ``added``, ``modified``.
+
+
+Portability
+***********
+
+* Cope on Windows on python2.3 by using the weaker random seed.
+  2.4 is now only recommended.
+
+
+bzr-0.0.4
+#########
+
+:Released:  2005-04-22
+
+Enhancements
+************
+
+* 'bzr diff' optionally takes a list of files to diff.  Still a bit
+  basic.  Patch from QuantumG.
+
+* More default ignore patterns.
+
+* New 'bzr log --verbose' shows a list of files changed in the
+  changeset.  Patch from Sebastian Cote.
+
+* Roll over ~/.bzr.log if it gets too large.
+
+* Command abbreviations 'ci', 'st', 'stat', '?' based on a patch
+  by Jason Diamon.
+
+* New 'bzr help commands' based on a patch from Denys Duchier.
+
+
+Changes
+*******
+
+* User email is determined by looking at $BZREMAIL or ~/.bzr.email
+  or $EMAIL.  All are decoded by the locale preferred encoding.
+  If none of these are present user@hostname is used.  The host's
+  fully-qualified name is not used because that tends to fail when
+  there are DNS problems.
+
+* New 'bzr whoami' command instead of username user-email.
+
+
+Bug Fixes
+*********
+
+* Make commit safe for hardlinked bzr trees.
+
+* Some Unicode/locale fixes.
+
+* Partial workaround for ``difflib.unified_diff`` not handling
+  trailing newlines properly.
+
+
+Internal
+********
+
+* Allow docstrings for help to be in PEP0257 format.  Patch from
+  Matt Brubeck.
+
+* More tests in test.sh.
+
+* Write profile data to a temporary file not into working
+  directory and delete it when done.
+
+* Smaller .bzr.log with process ids.
+
+
+Portability
+***********
+
+* Fix opening of ~/.bzr.log on Windows.  Patch from Andrew
+  Bennetts.
+
+* Some improvements in handling paths on Windows, based on a patch
+  from QuantumG.
+
+
+bzr-0.0.3
+#########
+
+:Released:  2005-04-06
+
+Enhancements
+************
+
+* New "directories" internal command lists versioned directories
+  in the tree.
+
+* Can now say "bzr commit --help".
+
+* New "rename" command to rename one file to a different name
+  and/or directory.
+
+* New "move" command to move one or more files into a different
+  directory.
+
+* New "renames" command lists files renamed since base revision.
+
+* New cat command contributed by janmar.
+
+Changes
+*******
+
+* .bzr.log is placed in $HOME (not pwd) and is always written in
+  UTF-8.  (Probably not a completely good long-term solution, but
+  will do for now.)
+
+Portability
+***********
+
+* Workaround for difflib bug in Python 2.3 that causes an
+  exception when comparing empty files.  Reported by Erik Toubro
+  Nielsen.
+
+Internal
+********
+
+* Refactored inventory storage to insert a root entry at the top.
+
+Testing
+*******
+
+* Start of shell-based black-box testing in test.sh.
+
+
+bzr-0.0.2.1
+###########
+
+Portability
+***********
+
+* Win32 fixes from Steve Brown.
+
+
+bzr-0.0.2
+#########
+
+:Codename: "black cube"
+:Released: 2005-03-31
+
+Enhancements
+************
+
+* Default ignore list extended (see bzrlib/__init__.py).
+
+* Patterns in .bzrignore are now added to the default ignore list,
+  rather than replacing it.
+
+* Ignore list isn't reread for every file.
+
+* More help topics.
+
+* Reinstate the 'bzr check' command to check invariants of the
+  branch.
+
+* New 'ignored' command lists which files are ignored and why;
+  'deleted' lists files deleted in the current working tree.
+
+* Performance improvements.
+
+* New global --profile option.
+
+* Ignore patterns like './config.h' now correctly match files in
+  the root directory only.
+
+
+bzr-0.0.1
+#########
+
+:Released:  2005-03-26
+
+Enhancements
+************
+
+* More information from info command.
+
+* Can now say "bzr help COMMAND" for more detailed help.
+
+* Less file flushing and faster performance when writing logs and
+  committing to stores.
+
+* More useful verbose output from some commands.
+
+Bug Fixes
+*********
+
+* Fix inverted display of 'R' and 'M' during 'commit -v'.
+
+Portability
+***********
+
+* Include a subset of ElementTree-1.2.20040618 to make
+  installation easier.
+
+* Fix time.localtime call to work with Python 2.3 (the minimum
+  supported).
+
+
+bzr-0.0.0.69
+############
+
+:Released:  2005-03-22
+
+Enhancements
+************
+
+* First public release.
+
+* Storage of local versions: init, add, remove, rm, info, log,
+  diff, status, etc.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

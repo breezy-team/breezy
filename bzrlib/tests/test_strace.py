@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,20 +16,21 @@
 
 """Tests for the strace-invoking support."""
 
-import errno
-import subprocess
 import threading
 
 from bzrlib import (
     strace,
     tests,
     )
-from bzrlib.strace import StraceFeature, strace_detailed, StraceResult
+from bzrlib.strace import strace_detailed, StraceResult
+from bzrlib.tests.features import (
+    strace_feature,
+    )
 
 
 class TestStrace(tests.TestCaseWithTransport):
 
-    _test_needs_features = [StraceFeature]
+    _test_needs_features = [strace_feature]
 
     def setUp(self):
         # NB: see http://pad.lv/626679 and
@@ -49,7 +50,7 @@ class TestStrace(tests.TestCaseWithTransport):
         # restriction.
         active = threading.activeCount()
         if active > 1: # There is always the main thread at least
-            raise tests.KnownFailure(
+            self.knownFailure(
                 '%d active threads, bug #103133 needs to be fixed.' % active)
 
     def strace_detailed_or_skip(self, *args, **kwargs):

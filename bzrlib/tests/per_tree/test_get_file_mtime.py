@@ -18,6 +18,8 @@
 
 import time
 
+from bzrlib import errors
+
 from bzrlib.tests.per_tree import TestCaseWithTree
 
 
@@ -38,7 +40,14 @@ class TestGetFileMTime(TestCaseWithTree):
         # file, working trees return the on-disk time.
         mtime_file_id = tree.get_file_mtime(file_id='one-id')
         self.assertIsInstance(mtime_file_id, (float, int))
-        self.failUnless(now - 5 < mtime_file_id < now + 5,
+        self.assertTrue(now - 5 < mtime_file_id < now + 5,
                         'now: %f, mtime_file_id: %f' % (now, mtime_file_id ))
         mtime_path = tree.get_file_mtime(file_id='one-id', path='one')
         self.assertEqual(mtime_file_id, mtime_path)
+
+    def test_nonexistant(self):
+        tree = self.get_basic_tree()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertRaises(errors.NoSuchId,
+            tree.get_file_mtime, file_id='unexistant')

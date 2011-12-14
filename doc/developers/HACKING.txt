@@ -117,12 +117,12 @@ do this, you will need a Launchpad account and user name, e.g.
 `your_lp_username`.  You can push your branch to Launchpad directly from
 Bazaar::
 
-  $ bzr push lp:~your_lp_username/bzr/meaningful_name_here
+  $ bzr push lp:~<your_lp_username>/bzr/meaningful_name_here
 
 After you have pushed your branch, you will need to propose it for merging to
 the Bazaar trunk.  Go to
-<https://launchpad.net/your_lp_username/bzr/meaningful_name_here> and choose
-"Propose for merging into another branch".  Select "~bzr/bzr/trunk" to hand
+<https://launchpad.net/~<your_lp_username>/bzr/meaningful_name_here> and choose
+"Propose for merging into another branch".  Select "lp:bzr" to hand
 your changes off to the Bazaar developers for review and merging.
 
 Alternatively, after pushing you can use the ``lp-propose`` command to 
@@ -254,10 +254,6 @@ README
     This file covers a brief introduction to Bazaar and lists some of its
     key features.
 
-NEWS
-    Summary of changes in each Bazaar release that can affect users or
-    plugin developers.
-
 setup.py
     Installs Bazaar system-wide or to your home directory.  To perform
     development work on Bazaar it is not required to run this file - you
@@ -285,6 +281,16 @@ doc/developers
     Documentation specifically targeted at Bazaar and plugin developers.
     (Including this document.)
 
+doc/en/release-notes/
+
+    Detailed changes in each Bazaar release (there is one file by series:
+    bzr-2.3.txt, bzr-2.4.txt, etc) that can affect users or plugin
+    developers.
+
+doc/en/whats-new/
+
+    High-level summaries of changes in each Bazaar release (there is one
+    file by series: whats-new-in-2.3.txt, whats-new-in-2.4.txt, etc).
 
 
 Automatically-generated API reference information is available at
@@ -359,70 +365,6 @@ using deprecated functions, but avoids confusing users about things they
 can't fix.
 
 
-Documenting Changes
-===================
-
-When you change bzrlib, please update the relevant documentation for the
-change you made: Changes to commands should update their help, and
-possibly end user tutorials; changes to the core library should be
-reflected in API documentation.
-
-NEWS File
----------
-
-If you make a user-visible change, please add a note to the NEWS file.
-The description should be written to make sense to someone who's just
-a user of bzr, not a developer: new functions or classes shouldn't be
-mentioned, but new commands, changes in behaviour or fixed nontrivial
-bugs should be listed.  See the existing entries for an idea of what
-should be done.
-
-Within each release, entries in the news file should have the most
-user-visible changes first.  So the order should be approximately:
-
- * changes to existing behaviour - the highest priority because the
-   user's existing knowledge is incorrect
- * new features - should be brought to their attention
- * bug fixes - may be of interest if the bug was affecting them, and
-   should include the bug number if any
- * major documentation changes, including fixed documentation bugs
- * changes to internal interfaces
-
-People who made significant contributions to each change are listed in
-parenthesis.  This can include reporting bugs (particularly with good
-details or reproduction recipes), submitting patches, etc.
-
-To help with merging, NEWS entries should be sorted lexicographically
-within each section.
-
-Commands
---------
-
-The docstring of a command is used by ``bzr help`` to generate help output
-for the command. The list 'takes_options' attribute on a command is used by
-``bzr help`` to document the options for the command - the command
-docstring does not need to document them. Finally, the '_see_also'
-attribute on a command can be used to reference other related help topics.
-
-API Documentation
------------------
-
-Functions, methods, classes and modules should have docstrings
-describing how they are used.
-
-The first line of the docstring should be a self-contained sentence.
-
-For the special case of Command classes, this acts as the user-visible
-documentation shown by the help command.
-
-The docstrings should be formatted as reStructuredText_ (like this
-document), suitable for processing using the epydoc_ tool into HTML
-documentation.
-
-.. _reStructuredText: http://docutils.sourceforge.net/rst.html
-.. _epydoc: http://epydoc.sourceforge.net/
-
-
 General Guidelines
 ==================
 
@@ -494,6 +436,12 @@ this as Fn-Pause).  You can continue execution by typing ``c``.  This can
 be disabled if necessary by setting the environment variable
 ``BZR_SIGQUIT_PDB=0``.
 
+All tests inheriting from bzrlib.tests.TestCase can use ``self.debug()``
+instead of the longer ``import pdb; pdb.set_trace()``. The former also works
+when ``stdin/stdout`` are redirected (by using the original ``stdin/stdout``
+file handles at the start of the ``bzr`` script) while the later doesn't.
+``bzrlib.debug.set_trace()`` also uses the original ``stdin/stdout`` file
+handles.
 
 Debug Flags
 ===========
@@ -575,7 +523,7 @@ handled.  This parameter can take one of 3 values:
 Because Transports work in URLs (as defined earlier), printing the raw URL
 to the user is usually less than optimal. Characters outside the standard
 set are printed as escapes, rather than the real character, and local
-paths would be printed as ``file://`` urls. The function
+paths would be printed as ``file://`` URLs. The function
 ``unescape_for_display`` attempts to unescape a URL, such that anything
 that cannot be printed in the current encoding stays an escaped URL, but
 valid characters are generated where possible.
@@ -640,7 +588,6 @@ changes together into a cohesive whole. In addition to the general developer
 stuff covered above, "core" developers have responsibility for:
 
 * reviewing changes
-* reviewing blueprints
 * planning releases
 * managing releases (see `Releasing Bazaar <http://doc.bazaar.canonical.com/developers/releasing.html>`_)
 

@@ -17,11 +17,13 @@
 
 """Tests for the info command of bzr."""
 
+import shutil
 import sys
 
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     info,
     osutils,
@@ -29,6 +31,7 @@ from bzrlib import (
     upgrade,
     urlutils,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.transport import memory
 
 
@@ -45,18 +48,39 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
 
+    def test_info_empty_controldir(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info ctrl')
+        self.assertEquals(out,
+            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n')
+        self.assertEquals(err, '')
+
+    def test_info_dangling_branch_reference(self):
+        br = self.make_branch('target')
+        br.create_checkout('from', lightweight=True)
+        shutil.rmtree('target')
+        out, err = self.run_bzr('info from')
+        self.assertEquals(out,
+            'Dangling branch reference (format: 2a or pack-0.92)\n'
+            'Location:\n'
+            '   control directory: from\n'
+            '  checkout of branch: target\n')
+        self.assertEquals(err, '')
+
     def test_info_standalone(self):
         transport = self.get_transport()
 
         # Create initial standalone branch
-        tree1 = self.make_branch_and_tree('standalone', 'weave')
+        tree1 = self.make_branch_and_tree('standalone', 'knit')
         self.build_tree(['standalone/a'])
         tree1.add('a')
         branch1 = tree1.branch
 
         out, err = self.run_bzr('info standalone')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: standalone
 """, out)
@@ -65,15 +89,15 @@ Location:
         # Standalone branch - verbose mode
         out, err = self.run_bzr('info standalone -v')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          0 unchanged
@@ -96,15 +120,15 @@ Repository:
         # Standalone branch - really verbose mode
         out, err = self.run_bzr('info standalone -vv')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          0 unchanged
@@ -125,7 +149,7 @@ Repository:
 """, out)
         self.assertEqual('', err)
         tree1.commit('commit one')
-        rev = branch1.repository.get_revision(branch1.revision_history()[0])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Branch standalone with push location
@@ -134,7 +158,7 @@ Repository:
 
         out, err = self.run_bzr('info branch')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -146,7 +170,7 @@ Related branches:
 
         out, err = self.run_bzr('info branch --verbose')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -155,10 +179,10 @@ Related branches:
   parent branch: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          1 unchanged
@@ -187,7 +211,7 @@ Repository:
         branch1.bzrdir.sprout('bound')
         knit1_format = bzrdir.format_registry.make_bzrdir('knit')
         upgrade.upgrade('bound', knit1_format)
-        branch3 = bzrdir.BzrDir.open('bound').open_branch()
+        branch3 = controldir.ControlDir.open('bound').open_branch()
         branch3.bind(branch1)
         bound_tree = branch3.bzrdir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
@@ -213,7 +237,7 @@ In the working tree:
          0 removed
          0 renamed
          0 unknown
-         1 ignored
+         0 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -232,7 +256,7 @@ Repository:
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
-        branch4 = bzrdir.BzrDir.create_branch_convenience('checkout',
+        branch4 = controldir.ControlDir.create_branch_convenience('checkout',
             format=knit1_format)
         branch4.bind(branch1)
         branch4.bzrdir.open_workingtree().update()
@@ -276,6 +300,10 @@ Repository:
         tree5 = branch1.create_checkout('lightcheckout', lightweight=True)
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
+        if "metaweave" in bzrdir.format_registry:
+            format_description = "knit or metaweave"
+        else:
+            format_description = "knit"
         self.assertEqualDiff(
 """Lightweight checkout (format: %s)
 Location:
@@ -284,9 +312,9 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 6
-        branch: Branch format 4
-    repository: Weave repository format 6
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          1 unchanged
@@ -306,20 +334,20 @@ Branch history:
 
 Repository:
          1 revision
-""" % (self._repo_strings, datestring_first, datestring_first,), out)
+""" % (format_description, datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
         self.build_tree(['standalone/b'])
         tree1.add('b')
         tree1.commit('commit two')
-        rev = branch1.repository.get_revision(branch1.revision_history()[-1])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Out of date branched standalone branch will not be detected
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-"""Standalone tree (format: weave)
+"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -328,10 +356,10 @@ Related branches:
   parent branch: standalone
 
 Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: Weave repository format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 In the working tree:
          1 unchanged
@@ -381,7 +409,7 @@ In the working tree:
          0 removed
          0 renamed
          0 unknown
-         1 ignored
+         0 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -446,9 +474,9 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 6
-        branch: Branch format 4
-    repository: Weave repository format 6
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Knit repository format 1
 
 Working tree is out of date: missing 1 revision.
 
@@ -470,7 +498,7 @@ Branch history:
 
 Repository:
          2 revisions
-""" % (self._repo_strings, datestring_first, datestring_last,), out)
+""" % (format_description, datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):
@@ -525,8 +553,8 @@ Repository:
 
         # Create branch inside shared repository
         repo.bzrdir.root_transport.mkdir('branch')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch',
-            format=format)
+        branch1 = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=format)
         out, err = self.run_bzr('info -v repo/branch')
         self.assertEqualDiff(
 """Repository branch (format: dirstate or knit)
@@ -567,7 +595,7 @@ Repository:
         self.build_tree(['tree/lightcheckout/a'])
         tree2.add('a')
         tree2.commit('commit one')
-        rev = repo.get_revision(branch2.revision_history()[0])
+        rev = repo.get_revision(branch2.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -686,7 +714,7 @@ Repository:
         tree3.commit('commit two')
 
         # Out of date lightweight checkout
-        rev = repo.get_revision(branch1.revision_history()[-1])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -799,7 +827,7 @@ Repository:
 
         # Create two branches
         repo.bzrdir.root_transport.mkdir('branch1')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch1',
+        branch1 = controldir.ControlDir.create_branch_convenience('repo/branch1',
             format=format)
         branch2 = branch1.bzrdir.sprout('repo/branch2').open_branch()
 
@@ -842,7 +870,7 @@ Repository:
         tree1 = branch1.bzrdir.open_workingtree()
         tree1.add('a')
         tree1.commit('commit one')
-        rev = repo.get_revision(branch1.revision_history()[0])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info -v repo/branch1')
         self.assertEqualDiff(
@@ -1217,13 +1245,13 @@ Repository:
                                     format=bzrdir.BzrDirMetaFormat1())
         repo.set_make_working_trees(False)
         repo.bzrdir.root_transport.mkdir('branch')
-        repo_branch = repo.bzrdir.create_branch_convenience('repo/branch',
-                                    format=bzrdir.BzrDirMetaFormat1())
+        repo_branch = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=bzrdir.BzrDirMetaFormat1())
         # Do a heavy checkout
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
-        co_branch = bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-            format=bzrdir.BzrDirMetaFormat1())
+        co_branch = controldir.ControlDir.create_branch_convenience(
+            'tree/checkout', format=bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
@@ -1323,89 +1351,6 @@ Repository:
             self.knownFailure('Win32 cannot run "bzr info"'
                               ' when the tree is locked.')
 
-    def test_info_locking_oslocks(self):
-        if sys.platform == "win32":
-            self.skip("don't use oslocks on win32 in unix manner")
-        # This test tests old (all-in-one, OS lock using) behaviour which
-        # simply cannot work on windows (and is indeed why we changed our
-        # design. As such, don't try to remove the thisFailsStrictLockCheck
-        # call here.
-        self.thisFailsStrictLockCheck()
-
-        tree = self.make_branch_and_tree('branch',
-                                         format=bzrdir.BzrDirFormat6())
-
-        # Test all permutations of locking the working tree, branch and repository
-        # XXX: Well not yet, as we can't query oslocks yet. Currently, it's
-        # implemented by raising NotImplementedError and get_physical_lock_status()
-        # always returns false. This makes bzr info hide the lock status.  (Olaf)
-        # W B R
-
-        # U U U
-        out, err = self.run_bzr('info -v branch')
-        self.assertEqualDiff(
-"""Standalone tree (format: weave)
-Location:
-  branch root: %s
-
-Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: %s
-
-In the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-Branch history:
-         0 revisions
-
-Repository:
-         0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
-        self.assertEqual('', err)
-        # L L L
-        tree.lock_write()
-        out, err = self.run_bzr('info -v branch')
-        self.assertEqualDiff(
-"""Standalone tree (format: weave)
-Location:
-  branch root: %s
-
-Format:
-       control: All-in-one format 6
-  working tree: Working tree format 2
-        branch: Branch format 4
-    repository: %s
-
-In the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-Branch history:
-         0 revisions
-
-Repository:
-         0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
-        self.assertEqual('', err)
-        tree.unlock()
-
     def test_info_stacked(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline',
@@ -1424,3 +1369,95 @@ Related branches:
      stacked on: mainline
 """, out)
         self.assertEqual("", err)
+
+    def test_info_revinfo_optional(self):
+        tree = self.make_branch_and_tree('.')
+        def last_revision_info(self):
+            raise errors.UnsupportedOperation(last_revision_info, self)
+        self.overrideAttr(
+            branch.Branch, "last_revision_info", last_revision_info)
+        out, err = self.run_bzr('info -v .')
+        self.assertEqual(
+"""Standalone tree (format: 2a)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 6
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+""", out)
+        self.assertEqual("", err)
+
+    def test_info_shows_colocated_branches(self):
+        bzrdir = self.make_branch('.', format='development-colo').bzrdir
+        bzrdir.create_branch(name="colo1")
+        bzrdir.create_branch(name="colo2")
+        bzrdir.create_branch(name="colo3")
+        out, err = self.run_bzr('info -v .')
+        self.assertEqualDiff(
+"""Standalone branch (format: development-colo)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1 with support for colocated branches
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+Control directory:
+         4 branches
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""", out)
+        self.assertEqual("", err)
+
+
+class TestSmartServerInfo(tests.TestCaseWithTransport):
+
+    def test_simple_branch_info(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['info', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(12, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_verbose_branch_info(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['info', '-v', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(16, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -30,7 +30,7 @@ class TestCommit(per_branch.TestCaseWithBranch):
 
     def test_commit_nicks(self):
         """Nicknames are committed to the revision"""
-        transport.get_transport(self.get_url()).mkdir('bzr.dev')
+        self.get_transport().mkdir('bzr.dev')
         wt = self.make_branch_and_tree('bzr.dev')
         branch = wt.branch
         branch.nick = "My happy branch"

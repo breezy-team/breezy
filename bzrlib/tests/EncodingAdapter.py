@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010, 2011 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,8 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Adapter for running test cases against multiple encodings."""
-
-from copy import deepcopy
 
 # prefix for micro (1/1000000)
 _mu = u'\xb5'

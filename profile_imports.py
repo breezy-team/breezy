@@ -21,11 +21,7 @@ import sys
 import time
 
 
-if sys.version_info < (2, 5, 0):
-    import sre
-    re = sre
-else:
-    import re
+import re
 
 
 _parent_stack = []

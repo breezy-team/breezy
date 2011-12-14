@@ -22,7 +22,7 @@ For more information about WSGI, see PEP 333:
 
 from cStringIO import StringIO
 
-from bzrlib.smart import protocol, medium
+from bzrlib.smart import medium
 from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
 
@@ -101,7 +101,7 @@ class SmartWSGIApp(object):
             backing_transport.  This is used to interpret relpaths received from
             the client.
         """
-        # Use a ChrootTransportDecorator so that this web application won't
+        # Use a ChrootServer so that this web application won't
         # accidentally let people access locations they shouldn't.
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.

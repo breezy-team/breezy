@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Robey Pointer <robey@lag.net>
+# Copyright (C) 2006-2011 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -126,12 +126,15 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
+        elif 'lsh' in version:
+            trace.mutter('ssh implementation is GNU lsh.')
+            vendor = LSHSubprocessVendor()
         # As plink user prompts are not handled currently, don't auto-detect
         # it by inspection below, but keep this vendor detection for if a path
         # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
         elif 'plink' in version and progname == 'plink':
             # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in its
             # version.  See https://bugs.launchpad.net/bzr/+bug/107155
             trace.mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
@@ -349,6 +352,11 @@ if paramiko is not None:
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
 
+    # In general stderr should be inherited from the parent process so prompts
+    # are visible on the terminal. This can be overriden to another file for
+    # tests, but beware of using PIPE which may hang due to not being read.
+    _stderr_target = None
+
     def _connect(self, argv):
         # Attempt to make a socketpair to use as stdin/stdout for the SSH
         # subprocess.  We prefer sockets to pipes because they support
@@ -356,17 +364,20 @@ class SubprocessVendor(SSHVendor):
         # whatever) chunks.
         try:
             my_sock, subproc_sock = socket.socketpair()
+            osutils.set_fd_cloexec(my_sock)
         except (AttributeError, socket.error):
             # This platform doesn't support socketpair(), so just use ordinary
             # pipes instead.
             stdin = stdout = subprocess.PIPE
-            sock = None
+            my_sock, subproc_sock = None, None
         else:
             stdin = stdout = subproc_sock
-            sock = my_sock
         proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
+                                stderr=self._stderr_target,
                                 **os_specific_subprocess_params())
-        return SSHSubprocessConnection(proc, sock=sock)
+        if subproc_sock is not None:
+            subproc_sock.close()
+        return SSHSubprocessConnection(proc, sock=my_sock)
 
     def connect_sftp(self, username, password, host, port):
         try:
@@ -403,7 +414,7 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
                                   command=None):
         args = [self.executable_path,
                 '-oForwardX11=no', '-oForwardAgent=no',
-                '-oClearAllForwardings=yes', '-oProtocol=2',
+                '-oClearAllForwardings=yes',
                 '-oNoHostAuthenticationForLocalhost=yes']
         if port is not None:
             args.extend(['-p', str(port)])
@@ -437,6 +448,27 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         return args
 
 register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
+
+
+class LSHSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'lsh' executable from GNU"""
+
+    executable_path = 'lsh'
+
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
+        args = [self.executable_path]
+        if port is not None:
+            args.extend(['-p', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['--subsystem', subsystem, host])
+        else:
+            args.extend([host] + command)
+        return args
+
+register_ssh_vendor('lsh', LSHSubprocessVendor())
 
 
 class PLinkSubprocessVendor(SubprocessVendor):
@@ -547,7 +579,8 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
         return True
     except paramiko.PasswordRequiredException:
         password = ui.ui_factory.get_password(
-            prompt='SSH %(filename)s password', filename=filename)
+            prompt=u'SSH %(filename)s password',
+            filename=filename.decode(osutils._fs_enc))
         try:
             key = pkey_class.from_private_key_file(filename, password)
             paramiko_transport.auth_publickey(username, key)
@@ -629,25 +662,24 @@ def os_specific_subprocess_params():
 import weakref
 _subproc_weakrefs = set()
 
-def _close_ssh_proc(proc):
+def _close_ssh_proc(proc, sock):
     """Carefully close stdin/stdout and reap the SSH process.
 
     If the pipes are already closed and/or the process has already been
     wait()ed on, that's ok, and no error is raised.  The goal is to do our best
     to clean up (whether or not a clean up was already tried).
     """
-    dotted_names = ['stdin.close', 'stdout.close', 'wait']
-    for dotted_name in dotted_names:
-        attrs = dotted_name.split('.')
+    funcs = []
+    for closeable in (proc.stdin, proc.stdout, sock):
+        # We expect that either proc (a subprocess.Popen) will have stdin and
+        # stdout streams to close, or that we will have been passed a socket to
+        # close, with the option not in use being None.
+        if closeable is not None:
+            funcs.append(closeable.close)
+    funcs.append(proc.wait)
+    for func in funcs:
         try:
-            obj = proc
-            for attr in attrs:
-                obj = getattr(obj, attr)
-        except AttributeError:
-            # It's ok for proc.stdin or proc.stdout to be None.
-            continue
-        try:
-            obj()
+            func()
         except OSError:
             # It's ok for the pipe to already be closed, or the process to
             # already be finished.
@@ -692,7 +724,7 @@ class SSHSubprocessConnection(SSHConnection):
         # to avoid leaving processes lingering indefinitely.
         def terminate(ref):
             _subproc_weakrefs.remove(ref)
-            _close_ssh_proc(proc)
+            _close_ssh_proc(proc, sock)
         _subproc_weakrefs.add(weakref.ref(self, terminate))
 
     def send(self, data):
@@ -708,7 +740,7 @@ class SSHSubprocessConnection(SSHConnection):
             return os.read(self.proc.stdout.fileno(), count)
 
     def close(self):
-        _close_ssh_proc(self.proc)
+        _close_ssh_proc(self.proc, self._sock)
 
     def get_sock_or_pipes(self):
         if self._sock is not None:

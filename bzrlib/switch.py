@@ -18,8 +18,8 @@
 
 from bzrlib import errors, merge, revision
 from bzrlib.branch import Branch
+from bzrlib.i18n import gettext
 from bzrlib.trace import note
-
 
 def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
     from bzrlib.branch import SwitchHookParams
@@ -33,7 +33,7 @@ def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
 def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
     """Switch the branch associated with a checkout.
 
-    :param control_dir: BzrDir of the checkout to change
+    :param control_dir: ControlDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
     :param revision_id: revision ID to switch to.
@@ -51,7 +51,7 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
 def _check_pending_merges(control, force=False):
     """Check that there are no outstanding pending merges before switching.
 
-    :param control: BzrDir of the branch to check
+    :param control: ControlDir of the branch to check
     """
     try:
         tree = control.open_workingtree()
@@ -64,14 +64,14 @@ def _check_pending_merges(control, force=False):
     # XXX: Should the tree be locked for get_parent_ids?
     existing_pending_merges = tree.get_parent_ids()[1:]
     if len(existing_pending_merges) > 0:
-        raise errors.BzrCommandError('Pending merges must be '
-            'committed or reverted before using switch.')
+        raise errors.BzrCommandError(gettext('Pending merges must be '
+            'committed or reverted before using switch.'))
 
 
 def _set_branch_location(control, to_branch, force=False):
     """Set location value of a branch reference.
 
-    :param control: BzrDir of the checkout to change
+    :param control: ControlDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
     """
@@ -90,22 +90,23 @@ def _set_branch_location(control, to_branch, force=False):
             possible_transports = []
             try:
                 if not force and _any_local_commits(b, possible_transports):
-                    raise errors.BzrCommandError(
+                    raise errors.BzrCommandError(gettext(
                         'Cannot switch as local commits found in the checkout. '
                         'Commit these to the bound branch or use --force to '
-                        'throw them away.')
+                        'throw them away.'))
             except errors.BoundBranchConnectionFailure, e:
-                raise errors.BzrCommandError(
+                raise errors.BzrCommandError(gettext(
                         'Unable to connect to current master branch %(target)s: '
-                        '%(error)s To switch anyway, use --force.' %
+                        '%(error)s To switch anyway, use --force.') %
                         e.__dict__)
             b.set_bound_location(None)
             b.pull(to_branch, overwrite=True,
                 possible_transports=possible_transports)
             b.set_bound_location(to_branch.base)
+            b.set_parent(b.get_master_branch().get_parent())
         else:
-            raise errors.BzrCommandError('Cannot switch a branch, '
-                'only a checkout.')
+            raise errors.BzrCommandError(gettext('Cannot switch a branch, '
+                'only a checkout.'))
 
 
 def _any_local_commits(this_branch, possible_transports):
@@ -140,12 +141,12 @@ def _update(tree, source_repository, quiet=False, revision_id=None):
             revision_id = to_branch.last_revision()
         if tree.last_revision() == revision_id:
             if not quiet:
-                note("Tree is up to date at revision %d.", to_branch.revno())
+                note(gettext("Tree is up to date at revision %d."), to_branch.revno())
             return
         base_tree = source_repository.revision_tree(tree.last_revision())
         merge.Merge3Merger(tree, tree, base_tree, to_branch.repository.revision_tree(revision_id))
         tree.set_last_revision(to_branch.last_revision())
         if not quiet:
-            note('Updated to revision %d.' % to_branch.revno())
+            note(gettext('Updated to revision %d.') % to_branch.revno())
     finally:
         tree.unlock()

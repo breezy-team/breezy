@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,6 @@ import sys
 from bzrlib import osutils
 
 from bzrlib.lazy_import import lazy_import
-
 lazy_import(globals(), """
 import imp
 import re
@@ -49,18 +48,19 @@ from bzrlib import (
     errors,
     trace,
     )
+from bzrlib.i18n import gettext
 from bzrlib import plugins as _mod_plugins
 """)
-
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
 
 
 DEFAULT_PLUGIN_PATH = None
 _loaded = False
 _plugins_disabled = False
+
+
+plugin_warnings = {}
+# Map from plugin name, to list of string warnings about eg plugin
+# dependencies.
 
 
 def are_plugins_disabled():
@@ -75,6 +75,43 @@ def disable_plugins():
     global _plugins_disabled
     _plugins_disabled = True
     load_plugins([])
+
+
+def describe_plugins(show_paths=False):
+    """Generate text description of plugins.
+
+    Includes both those that have loaded, and those that failed to 
+    load.
+
+    :param show_paths: If true,
+    :returns: Iterator of text lines (including newlines.)
+    """
+    from inspect import getdoc
+    loaded_plugins = plugins()
+    all_names = sorted(list(set(
+        loaded_plugins.keys() + plugin_warnings.keys())))
+    for name in all_names:
+        if name in loaded_plugins:
+            plugin = loaded_plugins[name]
+            version = plugin.__version__
+            if version == 'unknown':
+                version = ''
+            yield '%s %s\n' % (name, version)
+            d = getdoc(plugin.module)
+            if d:
+                doc = d.split('\n')[0]
+            else:
+                doc = '(no description)'
+            yield ("  %s\n" % doc)
+            if show_paths:
+                yield ("   %s\n" % plugin.path())
+            del plugin
+        else:
+            yield "%s (failed to load)\n" % name
+        if name in plugin_warnings:
+            for line in plugin_warnings[name]:
+                yield "  ** " + line + '\n'
+        yield '\n'
 
 
 def _strip_trailing_sep(path):
@@ -101,8 +138,8 @@ def _get_specific_plugin_paths(paths):
         try:
             name, path = spec.split('@')
         except ValueError:
-            raise errors.BzrCommandError(
-                '"%s" is not a valid <plugin_name>@<plugin_path> description '
+            raise errors.BzrCommandError(gettext(
+                '"%s" is not a valid <plugin_name>@<plugin_path> description ')
                 % spec)
         specs.append((name, path))
     return specs
@@ -236,9 +273,9 @@ def load_plugins(path=None):
     """Load bzrlib plugins.
 
     The environment variable BZR_PLUGIN_PATH is considered a delimited
-    set of paths to look through. Each entry is searched for *.py
+    set of paths to look through. Each entry is searched for `*.py`
     files (and whatever other extensions are used in the platform,
-    such as *.pyd).
+    such as `*.pyd`).
 
     load_from_path() provides the underlying mechanism and is called with
     the default directory list to provide the normal behaviour.
@@ -327,6 +364,11 @@ def _find_plugin_module(dir, name):
     return None, None, (None, None, None)
 
 
+def record_plugin_warning(plugin_name, warning_message):
+    trace.mutter(warning_message)
+    plugin_warnings.setdefault(plugin_name, []).append(warning_message)
+
+
 def _load_plugin_module(name, dir):
     """Load plugin name from dir.
 
@@ -340,10 +382,12 @@ def _load_plugin_module(name, dir):
     except KeyboardInterrupt:
         raise
     except errors.IncompatibleAPI, e:
-        trace.warning("Unable to load plugin %r. It requested API version "
+        warning_message = (
+            "Unable to load plugin %r. It requested API version "
             "%s of module %s but the minimum exported version is %s, and "
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
+        record_plugin_warning(name, warning_message)
     except Exception, e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):
@@ -354,7 +398,9 @@ def _load_plugin_module(name, dir):
                     "file path isn't a valid module name; try renaming "
                     "it to %r." % (name, dir, sanitised_name))
         else:
-            trace.warning('Unable to load plugin %r from %r' % (name, dir))
+            record_plugin_warning(
+                name,
+                'Unable to load plugin %r from %r' % (name, dir))
         trace.log_exception_quietly()
         if 'error' in debug.debug_flags:
             trace.print_exception(sys.exc_info(), sys.stderr)
@@ -398,6 +444,17 @@ def plugins():
         if isinstance(plugin, types.ModuleType):
             result[name] = PlugIn(name, plugin)
     return result
+
+
+def format_concise_plugin_list():
+    """Return a string holding a concise list of plugins and their version.
+    """
+    items = []
+    for name, a_plugin in sorted(plugins().items()):
+        items.append("%s[%s]" %
+            (name, a_plugin.__version__))
+    return ', '.join(items)
+
 
 
 class PluginsHelpIndex(object):
@@ -450,21 +507,12 @@ class ModuleHelpTopic(object):
             result = self.module.__doc__
         if result[-1] != '\n':
             result += '\n'
-        # there is code duplicated here and in bzrlib/help_topic.py's
-        # matching Topic code. This should probably be factored in
-        # to a helper function and a common base class.
-        if additional_see_also is not None:
-            see_also = sorted(set(additional_see_also))
-        else:
-            see_also = None
-        if see_also:
-            result += 'See also: '
-            result += ', '.join(see_also)
-            result += '\n'
+        from bzrlib import help_topics
+        result += help_topics._format_see_also(additional_see_also)
         return result
 
     def get_help_topic(self):
-        """Return the modules help topic - its __name__ after bzrlib.plugins.."""
+        """Return the module help topic: its basename."""
         return self.module.__name__[len('bzrlib.plugins.'):]
 
 
@@ -583,7 +631,7 @@ class _PluginImporter(object):
         return None
 
     def load_module(self, fullname):
-        """Load a plugin from a specific directory."""
+        """Load a plugin from a specific directory (or file)."""
         # We are called only for specific paths
         plugin_path = self.specific_paths[fullname]
         loading_path = None

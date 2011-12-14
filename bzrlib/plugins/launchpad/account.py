@@ -26,7 +26,7 @@ from bzrlib import (
     transport,
     )
 from bzrlib.config import AuthenticationConfig, GlobalConfig
-
+from bzrlib.i18n import gettext
 
 LAUNCHPAD_BASE = 'https://launchpad.net/'
 
@@ -61,7 +61,7 @@ def get_lp_login(_config=None):
         auth_username = _get_auth_user(auth)
         # Auto-upgrading
         if auth_username is None:
-            trace.note('Setting ssh/sftp usernames for launchpad.net.')
+            trace.note(gettext('Setting ssh/sftp usernames for launchpad.net.'))
             _set_auth_user(username, auth)
         elif auth_username != username:
             raise MismatchedUsernames()
@@ -100,7 +100,7 @@ def check_lp_login(username, _transport=None):
     uploaded SSH keys.
     """
     if _transport is None:
-        _transport = transport.get_transport(LAUNCHPAD_BASE)
+        _transport = transport.get_transport_from_url(LAUNCHPAD_BASE)
 
     try:
         data = _transport.get_bytes('~%s/+sshkeys' % username)

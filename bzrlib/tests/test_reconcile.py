@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,9 +23,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.reconcile import reconcile, Reconciler
-from bzrlib.revision import Revision
 from bzrlib.tests import per_repository
-from bzrlib.workingtree import WorkingTree
 
 
 class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):

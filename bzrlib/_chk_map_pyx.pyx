@@ -413,7 +413,7 @@ def _bytes_to_text_key(bytes):
     cdef Py_ssize_t byte_size, pos, file_id_len
 
     if not PyString_CheckExact(bytes):
-        raise TypeError('bytes must be a string')
+        raise TypeError('bytes must be a string, got %r' % (type(bytes),))
     byte_str = PyString_AS_STRING(bytes)
     byte_size = PyString_GET_SIZE(bytes)
     byte_end = byte_str + byte_size
@@ -421,7 +421,8 @@ def _bytes_to_text_key(bytes):
     if cur_end == NULL:
         raise ValueError('No kind section found.')
     if cur_end[1] != c' ':
-        raise ValueError('Kind section should end with ": "')
+        raise ValueError(
+            'Kind section should end with ": ", got %r' % str(cur_end[:2],))
     file_id_str = cur_end + 2
     # file_id is now the data up until the next newline
     cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)

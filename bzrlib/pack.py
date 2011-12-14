@@ -75,14 +75,12 @@ class ContainerSerialiser(object):
         """Return the bytes to finish a container."""
         return "E"
 
-    def bytes_record(self, bytes, names):
-        """Return the bytes for a Bytes record with the given name and
-        contents.
-        """
+    def bytes_header(self, length, names):
+        """Return the header for a Bytes record."""
         # Kind marker
         byte_sections = ["B"]
         # Length
-        byte_sections.append(str(len(bytes)) + "\n")
+        byte_sections.append(str(length) + "\n")
         # Names
         for name_tuple in names:
             # Make sure we're writing valid names.  Note that we will leave a
@@ -92,17 +90,16 @@ class ContainerSerialiser(object):
             byte_sections.append('\x00'.join(name_tuple) + "\n")
         # End of headers
         byte_sections.append("\n")
-        # Finally, the contents.
-        byte_sections.append(bytes)
-        # XXX: This causes a memory copy of bytes in size, but is usually
-        # faster than two write calls (12 vs 13 seconds to output a gig of
-        # 1k records.) - results may differ on significantly larger records
-        # like .iso's but as they should be rare in any case and thus not
-        # likely to be the common case. The biggest issue is causing extreme
-        # memory pressure in that case. One possibly improvement here is to
-        # check the size of the content before deciding to join here vs call
-        # write twice.
         return ''.join(byte_sections)
+
+    def bytes_record(self, bytes, names):
+        """Return the bytes for a Bytes record with the given name and
+        contents.
+
+        If the content may be large, construct the header separately and then
+        stream out the contents.
+        """
+        return self.bytes_header(len(bytes), names) + bytes
 
 
 class ContainerWriter(object):
@@ -112,6 +109,10 @@ class ContainerWriter(object):
         container. This does not count the prelude or suffix of the container
         introduced by the begin() and end() methods.
     """
+
+    # Join up headers with the body if writing fewer than this many bytes:
+    # trades off memory usage and copying to do less IO ops.
+    _JOIN_WRITES_THRESHOLD = 100000
 
     def __init__(self, write_func):
         """Constructor.
@@ -151,8 +152,13 @@ class ContainerWriter(object):
             and thus are only suitable for use by a ContainerReader.
         """
         current_offset = self.current_offset
-        serialised_record = self._serialiser.bytes_record(bytes, names)
-        self.write_func(serialised_record)
+        length = len(bytes)
+        if length < self._JOIN_WRITES_THRESHOLD:
+            self.write_func(self._serialiser.bytes_header(length, names)
+                + bytes)
+        else:
+            self.write_func(self._serialiser.bytes_header(length, names))
+            self.write_func(bytes)
         self.records_written += 1
         # return a memo of where we wrote data to allow random access.
         return current_offset, self.current_offset - current_offset
@@ -333,7 +339,7 @@ class ContainerReader(BaseReader):
                 # risk that the same unicode string has been encoded two
                 # different ways.
                 if name_tuple in all_names:
-                    raise errors.DuplicateRecordNameError(name_tuple)
+                    raise errors.DuplicateRecordNameError(name_tuple[0])
                 all_names.add(name_tuple)
         excess_bytes = self.reader_func(1)
         if excess_bytes != '':

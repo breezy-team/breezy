@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,25 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-import re
-import sys
-
-import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
     osutils,
-    merge,
-    repository,
+    revision as _mod_revision,
     versionedfile,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.test_revision import make_branches
-from bzrlib.trace import mutter
 from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
 
@@ -44,24 +36,37 @@ from bzrlib.workingtree import WorkingTree
 def has_revision(branch, revision_id):
     return branch.repository.has_revision(revision_id)
 
+
+def revision_history(branch):
+    branch.lock_read()
+    try:
+        graph = branch.repository.get_graph()
+        history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+            [_mod_revision.NULL_REVISION]))
+    finally:
+        branch.unlock()
+    history.reverse()
+    return history
+
+
 def fetch_steps(self, br_a, br_b, writable_a):
     """A foreign test method for testing fetch locally and remotely."""
 
     # TODO RBC 20060201 make this a repository test.
     repo_b = br_b.repository
-    self.assertFalse(repo_b.has_revision(br_a.revision_history()[3]))
-    self.assertTrue(repo_b.has_revision(br_a.revision_history()[2]))
-    self.assertEquals(len(br_b.revision_history()), 7)
-    br_b.fetch(br_a, br_a.revision_history()[2])
+    self.assertFalse(repo_b.has_revision(revision_history(br_a)[3]))
+    self.assertTrue(repo_b.has_revision(revision_history(br_a)[2]))
+    self.assertEquals(len(revision_history(br_b)), 7)
+    br_b.fetch(br_a, revision_history(br_a)[2])
     # branch.fetch is not supposed to alter the revision history
-    self.assertEquals(len(br_b.revision_history()), 7)
-    self.assertFalse(repo_b.has_revision(br_a.revision_history()[3]))
+    self.assertEquals(len(revision_history(br_b)), 7)
+    self.assertFalse(repo_b.has_revision(revision_history(br_a)[3]))
 
     # fetching the next revision up in sample data copies one revision
-    br_b.fetch(br_a, br_a.revision_history()[3])
-    self.assertTrue(repo_b.has_revision(br_a.revision_history()[3]))
-    self.assertFalse(has_revision(br_a, br_b.revision_history()[6]))
-    self.assertTrue(br_a.repository.has_revision(br_b.revision_history()[5]))
+    br_b.fetch(br_a, revision_history(br_a)[3])
+    self.assertTrue(repo_b.has_revision(revision_history(br_a)[3]))
+    self.assertFalse(has_revision(br_a, revision_history(br_b)[6]))
+    self.assertTrue(br_a.repository.has_revision(revision_history(br_b)[5]))
 
     # When a non-branch ancestor is missing, it should be unlisted...
     # as its not reference from the inventory weave.
@@ -69,20 +74,20 @@ def fetch_steps(self, br_a, br_b, writable_a):
     br_b4.fetch(br_b)
 
     writable_a.fetch(br_b)
-    self.assertTrue(has_revision(br_a, br_b.revision_history()[3]))
-    self.assertTrue(has_revision(br_a, br_b.revision_history()[4]))
+    self.assertTrue(has_revision(br_a, revision_history(br_b)[3]))
+    self.assertTrue(has_revision(br_a, revision_history(br_b)[4]))
 
     br_b2 = self.make_branch('br_b2')
     br_b2.fetch(br_b)
-    self.assertTrue(has_revision(br_b2, br_b.revision_history()[4]))
-    self.assertTrue(has_revision(br_b2, br_a.revision_history()[2]))
-    self.assertFalse(has_revision(br_b2, br_a.revision_history()[3]))
+    self.assertTrue(has_revision(br_b2, revision_history(br_b)[4]))
+    self.assertTrue(has_revision(br_b2, revision_history(br_a)[2]))
+    self.assertFalse(has_revision(br_b2, revision_history(br_a)[3]))
 
     br_a2 = self.make_branch('br_a2')
     br_a2.fetch(br_a)
-    self.assertTrue(has_revision(br_a2, br_b.revision_history()[4]))
-    self.assertTrue(has_revision(br_a2, br_a.revision_history()[3]))
-    self.assertTrue(has_revision(br_a2, br_a.revision_history()[2]))
+    self.assertTrue(has_revision(br_a2, revision_history(br_b)[4]))
+    self.assertTrue(has_revision(br_a2, revision_history(br_a)[3]))
+    self.assertTrue(has_revision(br_a2, revision_history(br_a)[2]))
 
     br_a3 = self.make_branch('br_a3')
     # pulling a branch with no revisions grabs nothing, regardless of
@@ -90,10 +95,10 @@ def fetch_steps(self, br_a, br_b, writable_a):
     br_a3.fetch(br_a2)
     for revno in range(4):
         self.assertFalse(
-            br_a3.repository.has_revision(br_a.revision_history()[revno]))
-    br_a3.fetch(br_a2, br_a.revision_history()[2])
+            br_a3.repository.has_revision(revision_history(br_a)[revno]))
+    br_a3.fetch(br_a2, revision_history(br_a)[2])
     # pull the 3 revisions introduced by a@u-0-3
-    br_a3.fetch(br_a2, br_a.revision_history()[3])
+    br_a3.fetch(br_a2, revision_history(br_a)[3])
     # NoSuchRevision should be raised if the branch is missing the revision
     # that was requested.
     self.assertRaises(errors.NoSuchRevision, br_a3.fetch, br_a2, 'pizza')

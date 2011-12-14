@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,14 @@
 """B+Tree indices"""
 
 import cStringIO
-from bisect import bisect_right
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import bisect
 import math
 import tempfile
 import zlib
+""")
 
 from bzrlib import (
     chunk_writer,
@@ -158,7 +162,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
-            bytes as long as it does not contain \0 or \n.
+            bytes as long as it does not contain \\0 or \\n.
         """
         # Ensure that 'key' is a StaticTuple
         key = static_tuple.StaticTuple.from_sequence(key).intern()
@@ -193,7 +197,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_backing_file, size = self._spill_mem_keys_without_combining()
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(transport.get_transport('.'),
+        new_backing = BTreeGraphIndex(transport.get_transport_from_path('.'),
                                       '<temp>', size)
         # GC will clean up the file
         new_backing._file = new_backing_file
@@ -290,8 +294,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
             flag when writing out. This is used by the _spill_mem_keys_to_disk
             functionality.
         """
+        new_leaf = False
         if rows[-1].writer is None:
             # opening a new leaf chunk;
+            new_leaf = True
             for pos, internal_row in enumerate(rows[:-1]):
                 # flesh out any internal nodes that are needed to
                 # preserve the height of the tree
@@ -316,6 +322,11 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
+            # if we failed to write, despite having an empty page to write to,
+            # then line is too big. raising the error avoids infinite recursion
+            # searching for a suitably large page that will not be found.
+            if new_leaf:
+                raise errors.BadIndexKey(string_key)
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + "\n"
@@ -1047,7 +1058,7 @@ class BTreeGraphIndex(object):
         # iter_steps = len(in_keys) + len(fixed_keys)
         # bisect_steps = len(in_keys) * math.log(len(fixed_keys), 2)
         if len(in_keys) == 1: # Bisect will always be faster for M = 1
-            return [(bisect_right(fixed_keys, in_keys[0]), in_keys)]
+            return [(bisect.bisect_right(fixed_keys, in_keys[0]), in_keys)]
         # elif bisect_steps < iter_steps:
         #     offsets = {}
         #     for key in in_keys:

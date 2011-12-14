@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,19 @@
 
 
 import os
-import shutil
 
-from bzrlib import check, osutils
-from bzrlib.branch import Branch
-from bzrlib.errors import PointlessCommit, BzrError
+from bzrlib import (
+    check,
+    osutils,
+    revision as _mod_revision,
+    )
+from bzrlib.errors import PointlessCommit
 from bzrlib.tests import (
-    SymlinkFeature,
     TestCaseWithTransport,
     )
-from bzrlib.tests.test_revision import make_branches
+from bzrlib.tests.features import (
+    SymlinkFeature,
+    )
 
 
 class TestCommitMerge(TestCaseWithTransport):
@@ -56,8 +59,12 @@ class TestCommitMerge(TestCaseWithTransport):
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 3)
-        self.assertEquals(list(by.revision_history()),
-                          [base_rev, 'y@u-0-1', 'y@u-0-2'])
+        graph = wty.branch.repository.get_graph()
+        self.addCleanup(wty.lock_read().unlock)
+        self.assertEquals(list(
+            graph.iter_lefthand_ancestry(by.last_revision(),
+                [_mod_revision.NULL_REVISION])),
+            ['y@u-0-2', 'y@u-0-1', base_rev])
         rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
@@ -92,9 +99,8 @@ class TestCommitMerge(TestCaseWithTransport):
 
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
         tree = by.repository.revision_tree('y@u-0-2')
-        inv = tree.inventory
-        self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
-        self.assertEquals(inv['why-id'].revision, 'y@u-0-1')
+        self.assertEquals(tree.get_file_revision('ecks-id'), 'x@u-0-1')
+        self.assertEquals(tree.get_file_revision('why-id'), 'y@u-0-1')
 
         check.check_dwim(bx.base, False, True, True)
         check.check_dwim(by.base, False, True, True)

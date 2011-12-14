@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,13 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test "bzr init"""
+"""Test 'bzr init'"""
 
 import os
 import re
 
 from bzrlib import (
     branch as _mod_branch,
+    config as _mod_config,
     osutils,
     urlutils,
     )
@@ -46,19 +47,21 @@ class TestInit(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
 
-    def test_init_weave(self):
-        # --format=weave should be accepted to allow interoperation with
-        # old releases when desired.
-        out, err = self.run_bzr('init --format=weave')
-        self.assertEqual("""Created a standalone tree (format: weave)\n""",
-            out)
-        self.assertEqual('', err)
-
     def test_init_format_2a(self):
-        """Smoke test for constructing a format 2a repoistory."""
+        """Smoke test for constructing a format 2a repository."""
         out, err = self.run_bzr('init --format=2a')
         self.assertEqual("""Created a standalone tree (format: 2a)\n""",
             out)
+        self.assertEqual('', err)
+
+    def test_init_colocated(self):
+        """Smoke test for constructing a colocated branch."""
+        out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
+        self.assertEqual("""Created a lightweight checkout (format: development-colo)\n""",
+            out)
+        self.assertEqual('', err)
+        out, err = self.run_bzr('branches')
+        self.assertEqual(" abranch\n", out)
         self.assertEqual('', err)
 
     def test_init_at_repository_root(self):
@@ -107,7 +110,7 @@ Using shared repository: %s
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
         self.assertEqual('', out)
-        self.failUnless(err.startswith('bzr: ERROR: Already a branch:'))
+        self.assertTrue(err.startswith('bzr: ERROR: Already a branch:'))
 
     def test_init_branch_quiet(self):
         out, err = self.run_bzr('init -q')
@@ -161,7 +164,21 @@ Using shared repository: %s
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
                             'init ../new/tree', working_dir='tree')
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
-        self.failUnlessExists('new/tree/.bzr')
+        self.assertPathExists('new/tree/.bzr')
+
+    def test_init_default_format_option(self):
+        """bzr init should read default format from option default_format"""
+        conf = _mod_config.GlobalConfig.from_string('''
+[DEFAULT]
+default_format = 1.9
+''', save=True)
+        out, err = self.run_bzr_subprocess('init')
+        self.assertContainsRe(out, '1.9')
+
+    def test_init_no_tree(self):
+        """'bzr init --no-tree' creates a branch with no working tree."""
+        out, err = self.run_bzr('init --no-tree')
+        self.assertStartsWith(out, 'Created a standalone branch')
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):
@@ -196,10 +213,10 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init_append_revisions_only(self):
         self.run_bzr('init --dirstate-tags normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
-        self.assertEqual(None, branch._get_append_revisions_only())
+        self.assertEqual(None, branch.get_append_revisions_only())
         self.run_bzr('init --append-revisions-only --dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
-        self.assertEqual(True, branch._get_append_revisions_only())
+        self.assertEqual(True, branch.get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'],
                            'init --append-revisions-only --knit knit')
 
@@ -211,8 +228,9 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # and uses whoami only in a lock file. Without whoami the login name
         # is used. This test is to ensure that init passes even when whoami
         # is not available.
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
+

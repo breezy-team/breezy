@@ -18,8 +18,12 @@
 import os
 import sys
 
-from bzrlib.tests import SymlinkFeature, TestSkipped
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    script,
+    features,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 from bzrlib.workingtree import WorkingTree
 from bzrlib import osutils
 
@@ -49,12 +53,12 @@ class TestRemove(TestCaseWithTransport):
         for f in files:
             id=f+_id
             self.assertNotInWorkingTree(f)
-            self.failIfExists(f)
+            self.assertPathDoesNotExist(f)
 
     def assertFilesUnversioned(self, files):
         for f in files:
             self.assertNotInWorkingTree(f)
-            self.failUnlessExists(f)
+            self.assertPathExists(f)
 
     def changeFile(self, file_name):
         f = file(file_name, 'ab')
@@ -76,7 +80,7 @@ class TestRemove(TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('', out)
         self.assertInWorkingTree('foo', tree=tree)
-        self.failUnlessExists('foo')
+        self.assertPathExists('foo')
 
     def test_remove_no_files_specified_missing_dir_and_contents(self):
         tree = self._make_tree_and_add(
@@ -90,9 +94,9 @@ class TestRemove(TestCaseWithTransport):
             err)
         # non-missing paths not touched:
         self.assertInWorkingTree('foo', tree=tree)
-        self.failUnlessExists('foo')
+        self.assertPathExists('foo')
         self.assertInWorkingTree('dir', tree=tree)
-        self.failUnlessExists('dir')
+        self.assertPathExists('dir')
         # missing files unversioned
         self.assertNotInWorkingTree('dir/missing', tree=tree)
         self.assertNotInWorkingTree('dir/missing/child', tree=tree)
@@ -116,12 +120,12 @@ class TestRemove(TestCaseWithTransport):
         self.assertEqual('removed bar\n', err)
         # non-missing files not touched:
         self.assertInWorkingTree('foo', tree=tree)
-        self.failUnlessExists('foo')
+        self.assertPathExists('foo')
         # missing files unversioned
         self.assertNotInWorkingTree('bar', tree=tree)
 
     def test_remove_no_files_specified_missing_link(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         tree = self._make_tree_and_add(['foo'])
         os.symlink('foo', 'linkname')
         tree.add(['linkname'])
@@ -131,7 +135,7 @@ class TestRemove(TestCaseWithTransport):
         self.assertEqual('removed linkname\n', err)
         # non-missing files not touched:
         self.assertInWorkingTree('foo', tree=tree)
-        self.failUnlessExists('foo')
+        self.assertPathExists('foo')
         # missing files unversioned
         self.assertNotInWorkingTree('linkname', tree=tree)
 
@@ -192,7 +196,7 @@ class TestRemove(TestCaseWithTransport):
         self.run_bzr_remove_changed_files(
             ['../a', 'c', '.', '../d'], working_dir='b')
         self.assertNotInWorkingTree(files)
-        self.failIfExists(files)
+        self.assertPathDoesNotExist(files)
 
     def test_remove_keep_unversioned_files(self):
         self.build_tree(files)
@@ -200,12 +204,29 @@ class TestRemove(TestCaseWithTransport):
         self.run_bzr('remove --keep a', error_regexes=["a is not versioned."])
         self.assertFilesUnversioned(files)
 
+    def test_remove_no_backup_unversioned_files(self):
+        self.build_tree(files)
+        tree = self.make_branch_and_tree('.')
+        script.ScriptRunner().run_script(self, '''
+        $ bzr remove --no-backup a b/ b/c d/
+        2>deleted d
+        2>removed b/c (but kept a copy: b/c.~1~)
+        2>deleted b
+        2>deleted a
+        ''')
+        self.assertFilesDeleted(files)
+
     def test_remove_force_unversioned_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
-        self.run_bzr(['remove', '--force'] + list(files),
-                     error_regexes=["deleted a", "deleted b",
-                                    "removed b/c", "deleted d"])
+        script.ScriptRunner().run_script(self, '''
+        $ bzr remove --force a b/ b/c d/
+        2>(The --force option is deprecated, rather use --no-backup in future.)
+        2>deleted d
+        2>removed b/c (but kept a copy: b/c.~1~)
+        2>deleted b
+        2>deleted a
+        ''')
         self.assertFilesDeleted(files)
 
     def test_remove_deleted_files(self):
@@ -216,10 +237,10 @@ class TestRemove(TestCaseWithTransport):
         for f in my_files:
             osutils.delete_any(f)
         self.assertInWorkingTree(files)
-        self.failIfExists(files)
+        self.assertPathDoesNotExist(files)
         self.run_bzr('remove ' + ' '.join(files))
         self.assertNotInWorkingTree(a)
-        self.failIfExists(files)
+        self.assertPathDoesNotExist(files)
 
     def test_remove_non_existing_files(self):
         tree = self._make_tree_and_add([])

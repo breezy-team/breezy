@@ -17,7 +17,7 @@
 """Tests for WorkingTree.flush."""
 
 import sys
-from bzrlib import errors, inventory
+from bzrlib import errors
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 

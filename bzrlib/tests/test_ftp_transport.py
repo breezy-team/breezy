@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,10 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import ftplib
 import getpass
-import sys
+import urllib
 
 from bzrlib import (
     config,
@@ -45,10 +44,10 @@ class TestCaseAFTP(tests.TestCaseWithTransport):
     """Test aftp transport."""
 
     def test_aftp_degrade(self):
-        t = transport.get_transport('aftp://host/path')
-        self.failUnless(t.is_active)
+        t = transport.get_transport_from_url('aftp://host/path')
+        self.assertTrue(t.is_active)
         parent = t.clone('..')
-        self.failUnless(parent.is_active)
+        self.assertTrue(parent.is_active)
 
         self.assertEqual('aftp://host/path', t.abspath(''))
 
@@ -83,11 +82,13 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
     def get_url(self, relpath=None):
         """Overrides get_url to inject our user."""
         base = super(TestFTPTestServerUI, self).get_url(relpath)
-        (scheme, user, password,
-         host, port, path) = transport.ConnectedTransport._split_url(base)
-        url = transport.ConnectedTransport._unsplit_url(
-            scheme, self.user, self.password, host, port, path)
-        return url
+        parsed_url = transport.ConnectedTransport._split_url(base)
+        new_url = parsed_url.clone()
+        new_url.user = self.user
+        new_url.quoted_user = urllib.quote(self.user)
+        new_url.password = self.password
+        new_url.quoted_password = urllib.quote(self.password)
+        return str(new_url)
 
     def test_no_prompt_for_username(self):
         """ensure getpass.getuser() is used if there's no username in the 

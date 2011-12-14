@@ -177,7 +177,8 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
         revision number sequences in the output. See the output description of
         the MergeSorter docstring for details.
     :result: See the MergeSorter docstring for details.
-    node identifiers can be any hashable object, and are typically strings.
+
+    Node identifiers can be any hashable object, and are typically strings.
     """
     return MergeSorter(graph, branch_tip, mainline_revisions,
         generate_revno).sorted()

@@ -35,7 +35,7 @@ Branch
 Things that can go wrong:
 * Tag or tip revision ids may be missing from the repo.
 * The revno tip cache may be wrong.
-* Various urls could be problematic (not inaccessible, just invalid)
+* Various URLS could be problematic (not inaccessible, just invalid)
 * Stacked-on branch could be inaccessible.
 
 Tree

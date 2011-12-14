@@ -20,9 +20,9 @@
 import os
 
 from bzrlib import (
-    branchbuilder,
+    conflicts,
     errors,
-    merge
+    merge,
     )
 from bzrlib.tests import per_workingtree
 
@@ -119,13 +119,6 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
 class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
 
-    def make_branch_builder(self, relpath, format=None):
-        if format is None:
-            format = self.bzrdir_format
-        builder = branchbuilder.BranchBuilder(self.get_transport(),
-                                              format=format)
-        return builder
-
     def make_inner_branch(self):
         bld_inner = self.make_branch_builder('inner')
         bld_inner.start_series()
@@ -136,6 +129,12 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
              ('add', ('dir/file1', 'file1-id', 'file', 'file1 content\n')),
              ('add', ('file3', 'file3-id', 'file', 'file3 content\n')),
              ])
+        bld_inner.build_snapshot(
+            '4', ['1'],
+            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))
+             ])
+        bld_inner.build_snapshot(
+            '5', ['4'], [('rename', ('file4', 'dir/file4'))])
         bld_inner.build_snapshot(
             '3', ['1'], [('modify', ('file3-id', 'new file3 contents\n')),])
         bld_inner.build_snapshot(
@@ -163,6 +162,8 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         outer.commit('added foo')
         inner = self.make_inner_branch()
         outer.merge_from_branch(inner, to_revision='1', from_revision='null:')
+        #retain original root id.
+        outer.set_root_id(outer.basis_tree().get_root_id())
         outer.commit('merge inner branch')
         outer.mkdir('dir-outer', 'dir-outer-id')
         outer.move(['dir', 'file3'], to_dir='dir-outer')
@@ -215,3 +216,39 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
                                'foo'],
                               outer)
 
+    def test_file4_added_in_root(self):
+        outer, inner = self.make_outer_tree()
+        nb_conflicts = outer.merge_from_branch(inner, to_revision='4')
+        # file4 could not be added to its original root, so it gets added to
+        # the new root with a conflict.
+        self.assertEqual(1, nb_conflicts)
+        self.assertTreeLayout(['dir-outer',
+                               'dir-outer/dir',
+                               'dir-outer/dir/file1',
+                               'dir-outer/file3',
+                               'file4',
+                               'foo'],
+                              outer)
+
+    def test_file4_added_then_renamed(self):
+        outer, inner = self.make_outer_tree()
+        # 1 conflict, because file4 can't be put into the old root
+        self.assertEqual(1, outer.merge_from_branch(inner, to_revision='4'))
+        try:
+            outer.set_conflicts(conflicts.ConflictList())
+        except errors.UnsupportedOperation:
+            # WT2 doesn't have a separate list of conflicts to clear. It
+            # actually says there is a conflict, but happily forgets all about
+            # it.
+            pass
+        outer.commit('added file4')
+        # And now file4 gets renamed into an existing dir
+        nb_conflicts = outer.merge_from_branch(inner, to_revision='5')
+        self.assertEqual(1, nb_conflicts)
+        self.assertTreeLayout(['dir-outer',
+                               'dir-outer/dir',
+                               'dir-outer/dir/file1',
+                               'dir-outer/dir/file4',
+                               'dir-outer/file3',
+                               'foo'],
+                              outer)

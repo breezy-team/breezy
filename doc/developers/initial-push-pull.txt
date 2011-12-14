@@ -65,5 +65,5 @@ Push: same as disk case, but write all files at once.
 Wants
 -----
 - Read partial graph
-- Read multiple segments of multiple files on http and sftp
+- Read multiple segments of multiple files on HTTP and SFTP
 - Write multiple files over SFTP

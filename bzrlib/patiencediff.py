@@ -73,7 +73,6 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
      four
     """
     if sequencematcher is None:
-        import difflib
         sequencematcher = difflib.SequenceMatcher
 
     if fromfiledate:

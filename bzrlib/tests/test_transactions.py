@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009, 2011 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,13 +17,9 @@
 
 """Tests for the behaviour of the Transaction concept in bzr."""
 
-# import system imports here
-import os
-import sys
-
 #import bzrlib specific imports here
 import bzrlib.errors as errors
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase
 import bzrlib.transactions as transactions
 
 

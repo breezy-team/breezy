@@ -27,11 +27,13 @@ class SampleUnlockError(Exception):
     pass
 
 
-def create_decorator_sample(style, unlock_error=None):
+def create_decorator_sample(style, unlock_error=None, meth=None):
     """Create a DecoratorSample object, using specific lock operators.
 
     :param style: The type of lock decorators to use (fast/pretty/None)
     :param unlock_error: If specified, an error to raise from unlock.
+    :param meth: a function to be decorated and added as a 'meth_read' and
+        'meth_write' to the object.
     :return: An instantiated DecoratorSample object.
     """
 
@@ -92,6 +94,10 @@ def create_decorator_sample(style, unlock_error=None):
             self.actions.append('fail_during_write')
             raise TypeError('during write')
 
+        if meth is not None:
+            meth_read = needs_read_lock(meth)
+            meth_write = needs_write_lock(meth)
+
     return DecoratorSample()
 
 
@@ -148,6 +154,20 @@ class TestDecoratorActions(TestCase):
         self.assertRaises(SampleUnlockError, sam.bank, 'bar', biz='bing')
         self.assertEqual(['lock_write', ('bank', 'bar', 'bing'),
                           'unlock_fail'], sam.actions)
+
+    def test_read_lock_preserves_default_str_kwarg_identity(self):
+        a_constant = 'A str used as a constant'
+        def meth(self, param=a_constant):
+            return param
+        sam = create_decorator_sample(self._decorator_style, meth=meth)
+        self.assertIs(a_constant, sam.meth_read())
+
+    def test_write_lock_preserves_default_str_kwarg_identity(self):
+        a_constant = 'A str used as a constant'
+        def meth(self, param=a_constant):
+            return param
+        sam = create_decorator_sample(self._decorator_style, meth=meth)
+        self.assertIs(a_constant, sam.meth_write())
 
 
 class TestFastDecoratorActions(TestDecoratorActions):

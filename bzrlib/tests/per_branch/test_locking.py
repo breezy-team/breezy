@@ -17,7 +17,6 @@
 """Test locks across all branch implemenations"""
 
 from bzrlib import (
-    branch as _mod_branch,
     errors,
     tests,
     )
@@ -43,13 +42,13 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         self.locks = []
         b = lock_helpers.LockWrapper(self.locks, self.get_branch(), 'b')
         b.repository = lock_helpers.LockWrapper(self.locks, b.repository, 'r')
-        bcf = b.control_files
+        bcf = getattr(b, "control_files", None)
         rcf = getattr(b.repository, 'control_files', None)
         if rcf is None:
             self.combined_branch = False
         else:
             # Look out for branch types that reuse their control files
-            self.combined_control = bcf is rcf
+            self.combined_control = bcf is rcf and bcf is not None
         try:
             b.control_files = lock_helpers.LockWrapper(
                 self.locks, b.control_files, 'bc')
@@ -501,10 +500,6 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         self.assertThat(branch.lock_read, ReturnsUnlockable(branch))
 
     def test_lock_write_locks_repo_too(self):
-        if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
-            # Branch format 4 is combined with the repository, so this test
-            # doesn't apply.
-            return
         branch = self.make_branch('b')
         branch = branch.bzrdir.open_branch()
         branch.lock_write()

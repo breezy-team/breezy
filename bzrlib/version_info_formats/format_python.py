@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,9 +38,8 @@ So don't edit it. :)
 
 
 _py_version_footer = '''
-
 if __name__ == '__main__':
-    print 'revision: %(revno)d' % version_info
+    print 'revision: %(revno)s' % version_info
     print 'nick: %(branch_nick)s' % version_info
     print 'revision id: %(revision_id)s' % version_info
 '''
@@ -61,9 +60,9 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
 
         revision_id = self._get_revision_id()
         if revision_id == NULL_REVISION:
-            info['revno'] = 0
+            info['revno'] = '0'
         else:
-            info['revno'] = self._branch.revision_id_to_revno(revision_id)
+            info['revno'] = self._get_revno_str(revision_id)
             info['revision_id'] = revision_id
             rev = self._branch.repository.get_revision(revision_id)
             info['date'] = create_date_str(rev.timestamp, rev.timezone)
@@ -84,8 +83,8 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         to_file.write('\n\n')
 
         if self._include_history:
-            self._extract_revision_history()
-            revision_str = pprint.pformat(self._revision_history_info)
+            history = list(self._iter_revision_history())
+            revision_str = pprint.pformat(history)
             to_file.write('revisions = ')
             to_file.write(revision_str)
             to_file.write('\n\n')

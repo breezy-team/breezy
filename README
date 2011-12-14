@@ -36,7 +36,7 @@ workspace in whichever way they want on a per project basis including:
 It also directly supports and encourages a large number of development best
 practices like refactoring and pre-commit regression testing. Users can
 choose between our command line tool and our cross-platform GUI application.
-For further details, see our website at http://bazaar-vcs.org/en.
+For further details, see our website at http://bazaar.canonical.com/en/
 
 Feedback
 ========

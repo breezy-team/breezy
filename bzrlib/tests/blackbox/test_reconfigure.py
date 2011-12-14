@@ -21,9 +21,10 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branchbuilder import BranchBuilder
+from bzrlib.tests.script import TestCaseWithTransportAndScript
 
 
-class TestReconfigure(tests.TestCaseWithTransport):
+class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_no_type(self):
         branch = self.make_branch('branch')
@@ -131,7 +132,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree.add('foo')
         self.run_bzr('reconfigure --with-no-trees --force',
             working_dir='repo/branch')
-        self.failUnlessExists('repo/branch/foo')
+        self.assertPathExists('repo/branch/foo')
         tree = workingtree.WorkingTree.open('repo/branch')
 
     def test_shared_format_to_standalone(self, format=None):
@@ -175,14 +176,44 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.run_bzr('revert', working_dir='checkout')
         self.check_file_contents('checkout/file', 'foo\n')
 
-    def test_lightweight_knit_checkout_to_tree(self, format=None):
+    def test_lightweight_knit_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('knit')
 
-    def test_lightweight_pack092_checkout_to_tree(self, format=None):
+    def test_lightweight_pack092_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('pack-0.92')
 
-    def test_lightweight_rich_root_pack_checkout_to_tree(self, format=None):
+    def test_lightweight_rich_root_pack_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('rich-root-pack')
+
+    def test_branch_and_use_shared(self):
+        self.run_script("""\
+$ bzr init -q branch
+$ echo foo > branch/foo
+$ bzr add -q branch/foo
+$ bzr commit -q -m msg branch
+$ bzr init-repo -q .
+$ bzr reconfigure --branch --use-shared branch
+$ bzr info branch
+Repository branch (format: ...)
+Location:
+  shared repository: .
+  repository branch: branch
+""")
+
+    def test_use_shared_and_branch(self):
+        self.run_script("""\
+$ bzr init -q branch
+$ echo foo > branch/foo
+$ bzr add -q branch/foo
+$ bzr commit -q -m msg branch
+$ bzr init-repo -q .
+$ bzr reconfigure --use-shared --branch branch
+$ bzr info branch
+Repository branch (format: ...)
+Location:
+  shared repository: .
+  repository branch: branch
+""")
 
 
 class TestReconfigureStacking(tests.TestCaseWithTransport):

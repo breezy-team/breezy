@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,26 +15,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import os
 import warnings
 
 from bzrlib import (
     bugtracker,
     revision,
-    symbol_versioning,
     )
-from bzrlib.branch import Branch
 from bzrlib.errors import (
     InvalidBugStatus,
     InvalidLineInBugsProperty,
-    NoSuchRevision,
     )
-from bzrlib.deprecated_graph import Graph
-from bzrlib.revision import (find_present_ancestors,
-                             NULL_REVISION)
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.trace import mutter
-from bzrlib.workingtree import WorkingTree
+from bzrlib.tests.matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
 warnings.filterwarnings('ignore',
@@ -73,19 +66,26 @@ def make_branches(self, format=None):
     br2 = tree2.branch
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
-    revisions_2 = br2.revision_history()
-    self.assertEquals(revisions_2[-1], 'b@u-0-4')
+    self.assertEquals(br2.last_revision(), 'b@u-0-4')
 
     tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
-    self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
+    self.assertEquals(br2.last_revision(), 'b@u-0-5')
 
     tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
     # DO NOT MERGE HERE - we WANT a GHOST.
-    tree2.add_parent_tree_id(br1.revision_history()[4])
+    br1.lock_read()
+    try:
+        graph = br1.repository.get_graph()
+        revhistory = list(graph.iter_lefthand_ancestry(br1.last_revision(),
+            [revision.NULL_REVISION]))
+        revhistory.reverse()
+    finally:
+        br1.unlock()
+    tree2.add_parent_tree_id(revhistory[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
 
     return br1, br2
@@ -111,7 +111,7 @@ class TestIsAncestor(TestCaseWithTransport):
              ('a@u-0-5', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4',
                           'b@u-0-3', 'b@u-0-4',
                           'b@u-0-5', 'a@u-0-5']),
-             ('b@u-0-6', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2',
+             ('b@u-0-6', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-4',
                           'b@u-0-3', 'b@u-0-4',
                           'b@u-0-5', 'b@u-0-6']),
              ]
@@ -123,10 +123,8 @@ class TestIsAncestor(TestCaseWithTransport):
                     continue
                 if rev_id in br2_only and not branch is br2:
                     continue
-                mutter('ancestry of {%s}: %r',
-                       rev_id, branch.repository.get_ancestry(rev_id))
-                result = sorted(branch.repository.get_ancestry(rev_id))
-                self.assertEquals(result, [None] + sorted(anc))
+                self.assertThat(anc,
+                    MatchesAncestry(branch.repository, rev_id))
 
 
 class TestIntermediateRevisions(TestCaseWithTransport):

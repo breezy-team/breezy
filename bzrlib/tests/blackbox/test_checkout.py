@@ -16,11 +16,7 @@
 
 """Tests for the 'checkout' CLI command."""
 
-from cStringIO import StringIO
 import os
-import re
-import shutil
-import sys
 
 from bzrlib import (
     branch as _mod_branch,
@@ -31,9 +27,9 @@ from bzrlib import (
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
-from bzrlib.tests import (
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+from bzrlib.tests.features import (
     HardlinkFeature,
-    KnownFailure,
     )
 
 
@@ -69,7 +65,7 @@ class TestCheckout(TestCaseWithTransport):
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
-        self.failIfExists('checkout/added_in_2')
+        self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
         out, err = self.run_bzr(['checkout','--lightweight', '-r', '-2',
@@ -78,7 +74,7 @@ class TestCheckout(TestCaseWithTransport):
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
-        self.failIfExists('checkout/added_in_2')
+        self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_reconstitutes_working_trees(self):
         # doing a 'bzr checkout' in the directory of a branch with no tree
@@ -124,9 +120,9 @@ class TestCheckout(TestCaseWithTransport):
             cmd.append('--lightweight')
         self.run_bzr('checkout source target')
         # files with unique content should be moved
-        self.failUnlessExists('target/file2.moved')
+        self.assertPathExists('target/file2.moved')
         # files with content matching tree should not be moved
-        self.failIfExists('target/file1.moved')
+        self.assertPathDoesNotExist('target/file1.moved')
 
     def test_checkout_existing_dir_heavy(self):
         self._test_checkout_existing_dir(False)
@@ -173,3 +169,43 @@ class TestCheckout(TestCaseWithTransport):
         second_stat = os.stat('second/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(second_stat, target_stat)
+
+
+class TestSmartServerCheckout(TestCaseWithTransport):
+
+    def test_heavyweight_checkout(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['checkout', self.get_url('from'),
+            'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(17, self.hpss_calls)
+        self.expectFailure("checkouts require VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_lightweight_checkout(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
+            'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        if len(self.hpss_calls) < 34 or len(self.hpss_calls) > 48:
+            self.fail(
+                "Incorrect length: wanted between 34 and 48, got %d for %r" % (
+                    len(self.hpss_calls), self.hpss_calls))
+        self.expectFailure("lightweight checkouts require VFS calls",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

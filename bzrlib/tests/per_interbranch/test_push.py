@@ -17,7 +17,6 @@
 """Tests for branch.push behaviour."""
 
 from cStringIO import StringIO
-import os
 
 from testtools.matchers import (
     Equals,
@@ -26,21 +25,18 @@ from testtools.matchers import (
 
 from bzrlib import (
     branch,
-    builtins,
     bzrdir,
     check,
-    debug,
     errors,
     push,
-    repository,
     symbol_versioning,
     tests,
+    vf_repository,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import client, server
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
@@ -64,7 +60,7 @@ class TestPush(TestCaseWithInterBranch):
         mine.merge_from_branch(other.branch)
         mine.commit('merge my change', rev_id='P2')
         result = mine.branch.push(other.branch)
-        self.assertEqual(['P1', 'P2'], other.branch.revision_history())
+        self.assertEqual('P2', other.branch.last_revision())
         # result object contains some structured data
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
@@ -89,7 +85,7 @@ class TestPush(TestCaseWithInterBranch):
         mine.merge_from_branch(other.branch)
         mine.commit('merge other', rev_id='P2')
         mine.branch.push(target.branch)
-        self.assertEqual(['P1', 'P2'], target.branch.revision_history())
+        self.assertEqual('P2', target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
         """Pushing into a checkout updates the checkout and the master branch"""
@@ -107,8 +103,8 @@ class TestPush(TestCaseWithInterBranch):
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
         other.branch.push(checkout.branch)
-        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
-        self.assertEqual([rev1, rev2], master_tree.branch.revision_history())
+        self.assertEqual(rev2, checkout.branch.last_revision())
+        self.assertEqual(rev2, master_tree.branch.last_revision())
 
     def test_push_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_to_branch_and_tree('master')
@@ -122,7 +118,7 @@ class TestPush(TestCaseWithInterBranch):
         other = other_bzrdir.open_workingtree()
         # move the branch out of the way on disk to cause a connection
         # error.
-        os.rename('master', 'master_gone')
+        master_tree.bzrdir.destroy_branch()
         # try to push, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
@@ -162,6 +158,9 @@ class TestPush(TestCaseWithInterBranch):
             return
         try:
             tree = a_branch.bzrdir.create_workingtree()
+        except errors.UnsupportedOperation:
+            self.assertFalse(a_branch.bzrdir._format.supports_workingtrees)
+            tree = a_branch.create_checkout('repo/tree', lightweight=True)
         except errors.NotLocalUrl:
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
@@ -204,8 +203,6 @@ class TestPush(TestCaseWithInterBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format_from, branch.BzrBranchFormat4):
-            raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
@@ -292,7 +289,7 @@ class TestPush(TestCaseWithInterBranch):
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
-        self.overrideAttr(repository.InterRepository,
+        self.overrideAttr(vf_repository.InterVersionedFileRepository,
                           '_walk_to_common_revisions_batch_size', 1)
         self.overrideAttr(SmartServerRepositoryGetParentMap,
                             'no_extra_results', True)
@@ -372,7 +369,7 @@ class TestPushHook(TestCaseWithInterBranch):
         target.add('')
         rev1 = target.commit('rev 1')
         target.unlock()
-        sourcedir = target.bzrdir.clone(self.get_url('source'))
+        sourcedir = target.branch.bzrdir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_push',

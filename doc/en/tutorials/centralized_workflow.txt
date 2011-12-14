@@ -80,13 +80,17 @@ called ``centralhost``. Again, we will use a
 
 ::
 
-  % bzr init-repo --no-trees sftp://centralhost/srv/bzr/
+  % bzr init-repo --no-trees bzr+ssh://centralhost/srv/bzr/
 
 You can think of this step as similar to setting up a new cvsroot, or
 subversion repository.  The ``--no-trees`` option tells bzr to not
 populate the directory with a working tree.  This is appropriate,
 since no one will be making changes directly in the branches within
 the central repository.
+
+Here we're using a ``bzr+ssh`` URL, which means to use Bazaar's own
+protocol on top of the SSH secure shell.  See the Administrator Guide for
+information about setting up a bzr+ssh server.  
 
 
 Migrating an existing project to Bazaar
@@ -116,7 +120,7 @@ want to host the project.  Let's assume we have a project named
 
 ::
 
-  % bzr init sftp://centralhost/srv/bzr/sigil
+  % bzr init bzr+ssh://centralhost/srv/bzr/sigil
 
 This can be thought of as the "HEAD" branch in CVS terms, or as the "trunk"
 in Subversion terms. We will call this the ``dev`` branch.
@@ -133,7 +137,7 @@ working on.
   % cd work
   % mkdir sigil
   % cd sigil
-  % bzr checkout sftp://centralhost/srv/bzr/sigil dev
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil dev
   % cd dev
   % cp -ar ~/sigil/* .
   % bzr add
@@ -162,10 +166,10 @@ still follow** `Setting User Email`_ and `Setting up a local Repository`_.
 To get a copy of the current development tree::
 
   % cd ~/work/sigil
-  % bzr checkout sftp://centralhost/srv/bzr/sigil dev
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil dev
 
 Now that two people both have a checkout of
-``sftp://centralhost/srv/bzr/sigil``, there will be times when one of
+``bzr+ssh://centralhost/srv/bzr/sigil``, there will be times when one of
 the checkouts will be out of date with the current version.
 At commit time, Bazaar_ will inform the user of this and prevent them from
 committing. To get up to date, use ``bzr update`` to update the
@@ -201,9 +205,9 @@ aren't quite complete yet. So we will create a new public branch on
 ::
 
   % cd ~/work/sigil
-  % bzr branch sftp://centralhost/srv/bzr/sigil \
-               sftp://centralhost/srv/bzr/sigil/doodle-fixes
-  % bzr checkout sftp://centralhost/srv/bzr/sigil/doodle-fixes doodle-fixes
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil \
+               bzr+ssh://centralhost/srv/bzr/sigil/doodle-fixes
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil/doodle-fixes doodle-fixes
   % cd doodle-fixes
 
 We now have a place to make any fixes we need to ``doodle``. And we would
@@ -272,19 +276,19 @@ One very common way to handle all of these branches is to give each
 developer their own branch, and their own place to work in the central
 location. This can be done with::
 
-  % bzr branch sftp://centralhost/srv/bzr/sigil \
-               sftp://centralhost/srv/bzr/sigil/user-a
-  % bzr branch sftp://centralhost/srv/bzr/sigil \
-               sftp://centralhost/srv/bzr/sigil/user-b
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil \
+               bzr+ssh://centralhost/srv/bzr/sigil/user-a
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil \
+               bzr+ssh://centralhost/srv/bzr/sigil/user-b
 
 This gives each developer their own branch to work on. And, they can
 easily create a new feature branch for themselves with just [#cbranch]_
 ::
 
-  % bzr branch sftp://centralhost/srv/bzr/sigil/user-a \
-               sftp://centralhost/srv/bzr/sigil/user-a/feature
+  % bzr branch bzr+ssh://centralhost/srv/bzr/sigil/user-a \
+               bzr+ssh://centralhost/srv/bzr/sigil/user-a/feature
   % cd ~/work/sigil
-  % bzr checkout sftp://centralhost/srv/bzr/sigil/user-a/feature myfeature
+  % bzr checkout bzr+ssh://centralhost/srv/bzr/sigil/user-a/feature myfeature
 
 
 Glossary

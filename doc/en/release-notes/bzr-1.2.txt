@@ -1,0 +1,224 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.2
+#######
+
+:Released: 2008-02-15
+
+Bug Fixes
+*********
+
+* Fix failing test in Launchpad plugin. (Martin Pool)
+
+
+bzr 1.2rc1
+##########
+
+:Released: 2008-02-13
+
+Notes When Upgrading
+********************
+
+* Fetching via the smart protocol may need to reconnect once during a fetch
+  if the remote server is running Bazaar 1.1 or earlier, because the client
+  attempts to use more efficient requests that confuse older servers.  You
+  may be required to re-enter a password or passphrase when this happens.
+  This won't happen if the server is upgraded to Bazaar 1.2.
+  (Andrew Bennetts)
+
+Changes
+*******
+
+* Fetching via bzr+ssh will no longer fill ghosts by default (this is
+  consistent with pack-0.92 fetching over SFTP). (Robert Collins)
+
+* Formatting of ``bzr plugins`` output is changed to be more human-
+  friendly. Full path of plugins locations will be shown only with
+  ``--verbose`` command-line option. (Alexander Belchenko)
+
+* ``merge`` now prefers to use the submit branch, but will fall back to
+  parent branch.  For many users, this has no effect.  But some users who
+  pull and merge on the same branch will notice a change.  This change
+  makes it easier to work on a branch on two different machines, pulling
+  between the machines, while merging from the upstream.
+  ``merge --remember`` can now be used to set the submit_branch.
+  (Aaron Bentley)
+
+Features
+********
+
+* ``merge --preview`` produces a diff of the changes merge would make,
+  but does not actually perform the merge.  (Aaron Bentley)
+
+* New smart method ``Repository.get_parent_map`` for getting revision
+  parent data. This returns additional parent information topologically
+  adjacent to the requested data to reduce round trip latency impacts.
+  (Robert Collins)
+
+* New smart method, ``Repository.stream_revisions_chunked``, for fetching
+  revision data that streams revision data via a chunked encoding.  This
+  avoids buffering large amounts of revision data on the server and on the
+  client, and sends less data to the server to request the revisions.
+  (Andrew Bennetts, Robert Collins, #178353)
+
+* The launchpad plugin now handles lp URLs of the form
+  ``lp://staging/``, ``lp://demo/``, ``lp://dev/`` to use the appropriate
+  launchpad instance to do the resolution of the branch identities.
+  This is primarily of use to Launchpad developers, but can also
+  be used by other users who want to try out Launchpad as
+  a branch location without messing up their public Launchpad
+  account.  Branches that are pushed to the staging environment
+  have an expected lifetime of one day. (Tim Penhey)
+
+Improvements
+************
+
+* Creating a new branch no longer tries to read the entire revision-history
+  unnecessarily over smart server operations. (Robert Collins)
+
+* Fetching between different repository formats with compatible models now
+  takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
+
+* The ``--coverage`` option is now global, rather specific to ``bzr
+  selftest``.  (Andrew Bennetts)
+
+* The ``register-branch`` command will now use the public URL of the branch
+  containing the current directory, if one has been set and no explicit
+  branch is provided.  (Robert Collins)
+
+* Tweak the ``reannotate`` code path to optimize the 2-parent case.
+  Speeds up ``bzr annotate`` with a pack repository by approx 3:2.
+  (John Arbash Meinel)
+
+Bugfixes
+********
+
+* Calculate remote path relative to the shared medium in _SmartClient.  This
+  is related to the problem in bug #124089.  (Andrew Bennetts)
+
+* Cleanly handle connection errors in smart protocol version two, the same
+  way as they are handled by version one.  (Andrew Bennetts)
+
+* Clearer error when ``version-info --custom`` is used without
+  ``--template`` (Lukáš Lalinský)
+
+* Don't raise UnavailableFeature during test setup when medusa is not
+  available or tearDown is never called leading to nasty side effects.
+  (#137823, Vincent Ladeuil)
+
+* If a plugin's test suite cannot be loaded, for example because of a syntax
+  error in the tests, then ``selftest`` fails, rather than just printing
+  a warning.  (Martin Pool, #189771)
+
+* List possible values for BZR_SSH environment variable in env-variables
+  help topic. (Alexander Belchenko, #181842)
+
+* New methods ``push_log_file`` and ``pop_log_file`` to intercept messages:
+  popping the log redirection now precisely restores the previous state,
+  which makes it easier to use bzr log output from other programs.
+  TestCaseInTempDir no longer depends on a log redirection being established
+  by the test framework, which lets bzr tests cleanly run from a normal
+  unittest runner.
+  (#124153, #124849, Martin Pool, Jonathan Lange)
+
+* ``pull --quiet`` is now more quiet, in particular a message is no longer
+  printed when the remembered pull location is used. (James Westby,
+  #185907)
+
+* ``reconfigure`` can safely be interrupted while fetching.
+  (Aaron Bentley, #179316)
+
+* ``reconfigure`` preserves tags when converting to and from lightweight
+  checkouts.  (Aaron Bentley, #182040)
+
+* Stop polluting /tmp when running selftest.
+  (Vincent Ladeuil, #123363)
+
+* Switch from NFKC => NFC for normalization checks. NFC allows a few
+  more characters which should be considered valid.
+  (John Arbash Meinel, #185458)
+
+* The launchpad plugin now uses the ``edge`` XML-RPC server to avoid
+  interacting badly with a bug on the launchpad side. (Robert Collins)
+
+* Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
+  tracebacks.  (Andrew Bennetts, #182849)
+
+API Breaks
+**********
+
+* Classes implementing Merge types like Merge3Merger must now accept (and
+  honour) a do_merge flag in their constructor.  (Aaron Bentley)
+
+* ``Repository.add_inventory`` and ``add_revision`` now require the caller
+  to previously take a write lock (and start a write group.)
+  (Martin Pool)
+
+Testing
+*******
+
+* selftest now accepts --load-list <file> to load a test id list. This
+  speeds up running the test suite on a limited set of tests.
+  (Vincent Ladeuil)
+
+Internals
+*********
+
+* Add a new method ``get_result`` to graph search objects. The resulting
+  ``SearchResult`` can be used to recreate the search later, which will
+  be useful in reducing network traffic. (Robert Collins)
+
+* Use convenience function to check whether two repository handles
+  are referring to the same repository in ``Repository.get_graph``.
+  (Jelmer Vernooij, #187162)
+
+* Fetching now passes the find_ghosts flag through to the
+  ``InterRepository.missing_revision_ids`` call consistently for all
+  repository types. This will enable faster missing revision discovery with
+  bzr+ssh. (Robert Collins)
+
+* Fix error handling in Repository.insert_data_stream. (Lukas Lalinsky)
+
+* ``InterRepository.missing_revision_ids`` is now deprecated in favour of
+  ``InterRepository.search_missing_revision_ids`` which returns a
+  ``bzrlib.graph.SearchResult`` suitable for making requests from the smart
+  server. (Robert Collins)
+
+* New error ``NoPublicBranch`` for commands that need a public branch to
+  operate. (Robert Collins)
+
+* New method ``iter_inventories`` on Repository for access to many
+  inventories. This is primarily used by the ``revision_trees`` method, as
+  direct access to inventories is discouraged. (Robert Collins)
+
+* New method ``next_with_ghosts`` on the Graph breadth-first-search objects
+  which will split out ghosts and present parents into two separate sets,
+  useful for code which needs to be aware of ghosts (e.g. fetching data
+  cares about ghosts during revision selection). (Robert Collins)
+
+* Record a timestamp against each mutter to the trace file, relative to the
+  first import of bzrlib.  (Andrew Bennetts)
+
+* ``Repository.get_data_stream`` is now deprecated in favour of
+  ``Repository.get_data_stream_for_search`` which allows less network
+  traffic when requesting data streams over a smart server. (Robert Collins)
+
+* ``RemoteBzrDir._get_tree_branch`` no longer triggers ``_ensure_real``,
+  removing one round trip on many network operations. (Robert Collins)
+
+* RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+  SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
+* Repository has a new method ``has_revisions`` which signals the presence
+  of many revisions by returning a set of the revisions listed which are
+  present. This can be done by index queries without reading data for parent
+  revision names etc. (Robert Collins)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

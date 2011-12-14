@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,7 +26,6 @@ from bzrlib.globbing import (
     )
 from bzrlib.tests import (
     TestCase,
-    TestCaseInTempDir,
     )
 
 
@@ -38,11 +37,11 @@ class TestGlobster(TestCase):
                 glob = glob_prefix + glob
             globster = Globster([glob])
             for name in positive:
-                self.failUnless(globster.match(name), repr(
+                self.assertTrue(globster.match(name), repr(
                     u'name "%s" does not match glob "%s" (re=%s)' %
                     (name, glob, globster._regex_patterns[0][0].pattern)))
             for name in negative:
-                self.failIf(globster.match(name), repr(
+                self.assertFalse(globster.match(name), repr(
                     u'name "%s" does match glob "%s" (re=%s)' %
                     (name, glob, globster._regex_patterns[0][0].pattern)))
 

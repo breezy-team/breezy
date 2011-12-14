@@ -1,0 +1,120 @@
+####################
+Bazaarユーザーガイド
+####################
+
+.. Please mark sections in included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+.. contents:: :depth: 3
+
+
+紹介
+############
+
+.. include:: introducing_bazaar.txt
+.. include:: core_concepts.txt
+.. include:: bazaar_workflows.txt
+
+
+始める
+###############
+
+.. include:: installing_bazaar.txt
+.. include:: entering_commands.txt
+.. include:: getting_help.txt
+.. include:: configuring_bazaar.txt
+.. include:: using_aliases.txt
+.. include:: plugins.txt
+.. include:: zen.txt
+
+
+個人用途のバージョン管理
+########################
+
+.. include:: solo_intro.txt
+.. include:: starting_a_project.txt
+.. include:: controlling_registration.txt
+.. include:: reviewing_changes.txt
+.. include:: recording_changes.txt
+.. include:: browsing_history.txt
+.. include:: releasing_a_project.txt
+.. include:: undoing_mistakes.txt
+
+
+同僚と共有する
+##################
+
+.. include:: partner_intro.txt
+.. include:: branching_a_project.txt
+.. include:: merging_changes.txt
+.. include:: resolving_conflicts.txt
+.. include:: annotating_changes.txt
+
+
+集中スタイルの、チームコラボレーション
+############################################
+
+.. include:: central_intro.txt
+.. include:: publishing_a_branch.txt
+.. include:: using_checkouts.txt
+.. include:: working_offline_central.txt
+.. include:: reusing_a_checkout.txt
+
+
+分散スタイルの、チームコラボレーション
+########################################
+
+.. include:: distributed_intro.txt
+.. include:: organizing_branches.txt
+.. include:: using_gatekeepers.txt
+.. include:: sending_changes.txt
+
+
+その他のトピック
+####################
+
+.. include:: part2_intro.txt
+.. include:: adv_merging.txt
+.. include:: shelving_changes.txt
+.. include:: filtered_views.txt
+.. include:: stacked.txt
+.. include:: server.txt
+.. include:: hooks.txt
+.. include:: version_info.txt
+
+
+人気のあるプラグインの手短なツアー
+####################################
+
+.. include:: bzrtools_plugin.txt
+.. include:: svn_plugin.txt
+.. include later looms_plugin.txt
+
+
+Bazaarを環境に統合する
+#######################
+
+.. include:: web_browsing.txt
+.. include later - file_explorers.txt
+.. include later - desktop_integration.txt
+.. include later - editors_and_ides.txt
+.. include later - email.txt
+.. include:: bug_trackers.txt
+
+
+付録
+#####
+
+.. include:: specifying_revisions.txt
+.. include:: organizing_your_workspace.txt
+.. include:: shared_repository_layouts.txt
+.. include:: setting_up_email.txt
+.. include:: http_smart_server.txt
+.. include:: writing_a_plugin.txt
+.. include:: licence.txt
+
+.. |--| unicode:: U+2014
+

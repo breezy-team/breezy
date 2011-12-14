@@ -16,13 +16,21 @@
 
 """Serializer object for CHK based inventory storage."""
 
+from cStringIO import StringIO
+
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(),
+"""
+from bzrlib import (
+    xml_serializer,
+    )
+""")
 from bzrlib import (
     bencode,
     cache_utf8,
-    inventory,
+    errors,
     revision as _mod_revision,
-    xml6,
-    xml7,
+    serializer,
     )
 
 
@@ -131,45 +139,105 @@ class BEncodeRevisionSerializer1(object):
         return self.read_revision_from_string(f.read())
 
 
-class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml7.Serializer_v7):
-    """A CHKInventory based serializer that supports tree references"""
-
-    supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
-    format_num = '9'
-    revision_format_num = None
-    support_altered_by_hack = False
-
-    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
-        kind = elt.tag
-        if not kind in self.supported_kinds:
-            raise AssertionError('unsupported entry kind %s' % kind)
-        if kind == 'tree-reference':
-            file_id = elt.attrib['file_id']
-            name = elt.attrib['name']
-            parent_id = elt.attrib['parent_id']
-            revision = elt.get('revision')
-            reference_revision = elt.get('reference_revision')
-            return inventory.TreeReference(file_id, name, parent_id, revision,
-                                           reference_revision)
-        else:
-            return xml7.Serializer_v7._unpack_entry(self, elt,
-                entry_cache=entry_cache, return_from_cache=return_from_cache)
-
-    def __init__(self, node_size, search_key_name):
-        self.maximum_size = node_size
-        self.search_key_name = search_key_name
-
-
-class CHKSerializer(xml6.Serializer_v6):
+class CHKSerializer(serializer.Serializer):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
     format_num = '9'
     revision_format_num = None
     support_altered_by_hack = False
+    supported_kinds = set(['file', 'directory', 'symlink'])
 
     def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
         self.search_key_name = search_key_name
+
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
+                          return_from_cache=False):
+        """Construct from XML Element"""
+        inv = xml_serializer.unpack_inventory_flat(elt, self.format_num,
+            xml_serializer.unpack_inventory_entry, entry_cache,
+            return_from_cache)
+        return inv
+
+    def read_inventory_from_string(self, xml_string, revision_id=None,
+                                   entry_cache=None, return_from_cache=False):
+        """Read xml_string into an inventory object.
+
+        :param xml_string: The xml to read.
+        :param revision_id: If not-None, the expected revision id of the
+            inventory.
+        :param entry_cache: An optional cache of InventoryEntry objects. If
+            supplied we will look up entries via (file_id, revision_id) which
+            should map to a valid InventoryEntry (File/Directory/etc) object.
+        :param return_from_cache: Return entries directly from the cache,
+            rather than copying them first. This is only safe if the caller
+            promises not to mutate the returned inventory entries, but it can
+            make some operations significantly faster.
+        """
+        try:
+            return self._unpack_inventory(
+                xml_serializer.fromstring(xml_string), revision_id,
+                entry_cache=entry_cache,
+                return_from_cache=return_from_cache)
+        except xml_serializer.ParseError, e:
+            raise errors.UnexpectedInventoryFormat(e)
+
+    def read_inventory(self, f, revision_id=None):
+        """Read an inventory from a file-like object."""
+        try:
+            try:
+                return self._unpack_inventory(self._read_element(f),
+                    revision_id=None)
+            finally:
+                f.close()
+        except xml_serializer.ParseError, e:
+            raise errors.UnexpectedInventoryFormat(e)
+
+    def write_inventory_to_lines(self, inv):
+        """Return a list of lines with the encoded inventory."""
+        return self.write_inventory(inv, None)
+
+    def write_inventory_to_string(self, inv, working=False):
+        """Just call write_inventory with a StringIO and return the value.
+
+        :param working: If True skip history data - text_sha1, text_size,
+            reference_revision, symlink_target.
+        """
+        sio = StringIO()
+        self.write_inventory(inv, sio, working)
+        return sio.getvalue()
+
+    def write_inventory(self, inv, f, working=False):
+        """Write inventory to a file.
+
+        :param inv: the inventory to write.
+        :param f: the file to write. (May be None if the lines are the desired
+            output).
+        :param working: If True skip history data - text_sha1, text_size,
+            reference_revision, symlink_target.
+        :return: The inventory as a list of lines.
+        """
+        output = []
+        append = output.append
+        if inv.revision_id is not None:
+            revid1 = ' revision_id="'
+            revid2 = xml_serializer.encode_and_escape(inv.revision_id)
+        else:
+            revid1 = ""
+            revid2 = ""
+        append('<inventory format="%s"%s%s>\n' % (
+            self.format_num, revid1, revid2))
+        append('<directory file_id="%s name="%s revision="%s />\n' % (
+            xml_serializer.encode_and_escape(inv.root.file_id),
+            xml_serializer.encode_and_escape(inv.root.name),
+            xml_serializer.encode_and_escape(inv.root.revision)))
+        xml_serializer.serialize_inventory_flat(inv,
+            append,
+            root_id=None, supported_kinds=self.supported_kinds, 
+            working=working)
+        if f is not None:
+            f.writelines(output)
+        return output
 
 
 chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')

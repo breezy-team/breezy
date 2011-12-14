@@ -88,8 +88,8 @@ own path arithmetic before passing it to the OS.
 Transports that hide symlinks
 -----------------------------
 
-On local, sftp and bzr+ssh transports, we can directly see symlinks as
-symlinks.  Over http (and ftp?) they're expanded by the server and we
+On local, SFTP and bzr+ssh transports, we can directly see symlinks as
+symlinks.  Over HTTP (and FTP?) they're expanded by the server and we
 cannot detect them.  This can cause problems when bzr follows relative
 paths because typically we will join the paths, and we may do this
 inconsistently with how the server, which can see the symlinks, would do.

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,10 +44,10 @@ from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
     errors,
-    versionedfile,
     )
 """)
 from bzrlib import (
+    errors,
     lru_cache,
     osutils,
     registry,
@@ -920,7 +920,7 @@ class LeafNode(Node):
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
             raise AssertionError('Invalid _current_size')
-        _get_cache().add(self._key, bytes)
+        _get_cache()[self._key] = bytes
         return [self._key]
 
     def refs(self):
@@ -1193,7 +1193,7 @@ class InternalNode(Node):
                     prefix, node_key_filter = keys[record.key]
                     node_and_filters.append((node, node_key_filter))
                     self._items[prefix] = node
-                    _get_cache().add(record.key, bytes)
+                    _get_cache()[record.key] = bytes
                 for info in node_and_filters:
                     yield info
 
@@ -1319,7 +1319,7 @@ class InternalNode(Node):
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = StaticTuple("sha1:" + sha1,).intern()
-        _get_cache().add(self._key, ''.join(lines))
+        _get_cache()[self._key] = ''.join(lines)
         yield self._key
 
     def _search_key(self, key):
@@ -1369,7 +1369,7 @@ class InternalNode(Node):
         return self._search_prefix
 
     def unmap(self, store, key, check_remap=True):
-        """Remove key from this node and it's children."""
+        """Remove key from this node and its children."""
         if not len(self._items):
             raise AssertionError("can't unmap in an empty InternalNode.")
         children = [node for node, _

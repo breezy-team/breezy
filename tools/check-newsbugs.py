@@ -12,23 +12,26 @@ except ImportError:
 try:
     import hydrazine
 except ImportError:
-    print "Please install hydrazine from lp:launchpadlib"
+    print "Please install hydrazine from lp:hydrazine"
     sys.exit(1)
 
 
-options, args = getopt.gnu_getopt(sys.argv, "l", ["launchpad"])
+options, args = getopt.gnu_getopt(sys.argv, "lw", ["launchpad", 'webbrowser'])
 options = dict(options)
 
 if len(args) == 1:
-    print "Usage: check-newsbugs [--launchpad] NEWS"
+    print ("Usage: check-newsbugs [--launchpad][--webbrowser] "
+           "doc/en/release-notes/bzr-x.y.txt")
     print "Options:"
     print "--launchpad     Print out Launchpad mail commands for closing bugs "
     print "                that are already fixed."
+    print "--webbrowser    Open launchpad bug pages for bugs that are already "
+    print "                fixed."
     sys.exit(1)
 
 
 def report_notmarked(bug, task, section):
-    print 
+    print
     print "Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id, )
     print "Launchpad title: %s" % bug.title
     print "NEWS summary: "
@@ -37,6 +40,9 @@ def report_notmarked(bug, task, section):
         print "  bug %d" % bug.id
         print "  affects %s" % task.bug_target_name
         print "  status fixreleased"
+    if "--webbrowser" in options or "-w" in options:
+        import webbrowser
+        webbrowser.open('http://pad.lv/%s>' % (bug.id,))
 
 
 def read_news_bugnos(path):
@@ -83,7 +89,7 @@ for bugno, section in bugnos:
             print '%s is private and cannot be accessed' % (bugno,)
             continue
         raise
-     
+
     found_bzr = False
     fix_released = False
     for task in bug.bug_tasks:

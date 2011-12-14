@@ -20,13 +20,14 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
-    graph,
     remote,
     repository,
-    tests,
     )
 from bzrlib.inventory import ROOT_ID
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import (
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -135,8 +136,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(source.repository)
+        graph = repo.get_file_graph()
         self.assertEqual(result,
-            repo.texts.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
+            graph.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
 
     def test_fetch_to_rich_root_set_parent_no_parents(self):
         # No parents rev -> No parents
@@ -154,6 +156,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
         # 1 ghost parent -> No parents
+        if not self.repository_format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support "
+                 "ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
             [('tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
             ], allow_lefthand_ghost=True)
@@ -197,6 +202,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
              ('base', None, []),
              ('tip', None, [('unversion', 'my-root'),
                             ('unversion', ROOT_ID),
+                            ('flush', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
@@ -225,9 +231,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
             # 'my-root' at root
              ('right', None, [('unversion', 'my-root'),
                               ('unversion', ROOT_ID),
+                              ('flush', None),
                               ('add', ('', 'my-root', 'directory', ''))]),
              ('tip', ['base', 'right'], [('unversion', 'my-root'),
                             ('unversion', ROOT_ID),
+                            ('flush', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
@@ -263,7 +271,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
+        try:
+            repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            self.assertFalse(repo._format.supports_revision_signatures)
+            raise TestNotApplicable("repository format does not support signatures")
         repo.commit_write_group()
         repo.unlock()
         return repo
@@ -323,6 +335,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_into_smart_with_ghost(self):
         trans = self.make_smart_server('target')
         source_b = self.make_simple_branch_with_ghost()
+        if not source_b.bzrdir._format.supports_transport(trans):
+            raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         # Re-open the repository over the smart protocol
         target = repository.Repository.open(trans.base)
@@ -334,12 +348,14 @@ class TestFetchSameRepository(TestCaseWithRepository):
             # The code inside fetch() that tries to lock and then fails, also
             # causes weird problems with 'lock_not_held' later on...
             target.lock_read()
-            raise tests.KnownFailure('some repositories fail to fetch'
+            self.knownFailure('some repositories fail to fetch'
                 ' via the smart server because of locking issues.')
 
     def test_fetch_from_smart_with_ghost(self):
         trans = self.make_smart_server('source')
         source_b = self.make_simple_branch_with_ghost()
+        if not source_b.bzrdir._format.supports_transport(trans):
+            raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         target.lock_write()
         self.addCleanup(target.unlock)
@@ -349,29 +365,3 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.addCleanup(source.unlock)
         target.fetch(source, revision_id='B-id')
 
-
-class TestSource(TestCaseWithRepository):
-    """Tests for/about the results of Repository._get_source."""
-
-    def test_no_absent_records_in_stream_with_ghosts(self):
-        # XXX: Arguably should be in per_interrepository but
-        # doesn't actually gain coverage there; need a specific set of
-        # permutations to cover it.
-        # bug lp:376255 was reported about this.
-        builder = self.make_branch_builder('repo')
-        builder.start_series()
-        builder.build_snapshot('tip', ['ghost'],
-            [('add', ('', 'ROOT_ID', 'directory', ''))],
-            allow_leftmost_as_ghost=True)
-        builder.finish_series()
-        b = builder.get_branch()
-        b.lock_read()
-        self.addCleanup(b.unlock)
-        repo = b.repository
-        source = repo._get_source(repo._format)
-        search = graph.PendingAncestryResult(['tip'], repo)
-        stream = source.get_stream(search)
-        for substream_type, substream in stream:
-            for record in substream:
-                self.assertNotEqual('absent', record.storage_kind,
-                    "Absent record for %s" % (((substream_type,) + record.key),))

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,13 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
-import errno
 import re
-import socket
-import threading
-import time
 import urllib2
-import urlparse
 
 
 from bzrlib import (
@@ -32,7 +27,6 @@ from bzrlib import (
     )
 from bzrlib.smart import (
     medium,
-    protocol,
     )
 from bzrlib.tests import http_server
 from bzrlib.transport import chroot
@@ -57,12 +51,12 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def do_POST(self):
         """Hand the request off to a smart server instance."""
-        backing = transport.get_transport(
+        backing = transport.get_transport_from_path(
             self.server.test_case_server._home_dir)
         chroot_server = chroot.ChrootServer(backing)
         chroot_server.start_server()
         try:
-            t = transport.get_transport(chroot_server.get_url())
+            t = transport.get_transport_from_url(chroot_server.get_url())
             self.do_POST_inner(t)
         finally:
             chroot_server.stop_server()
@@ -159,7 +153,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         return self._adjust_url(base, relpath)
 
     def get_secondary_transport(self, relpath=None):
-        t = transport.get_transport(self.get_secondary_url(relpath))
+        t = transport.get_transport_from_url(self.get_secondary_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -263,7 +257,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
         return self._adjust_url(base, relpath)
 
    def get_old_transport(self, relpath=None):
-        t = transport.get_transport(self.get_old_url(relpath))
+        t = transport.get_transport_from_url(self.get_old_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -272,7 +266,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
         return self._adjust_url(base, relpath)
 
    def get_new_transport(self, relpath=None):
-        t = transport.get_transport(self.get_new_url(relpath))
+        t = transport.get_transport_from_url(self.get_new_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -290,21 +284,30 @@ class AuthRequestHandler(http_server.TestingHTTPRequestHandler):
     # - auth_header_recv: the header received containing auth
     # - auth_error_code: the error code to indicate auth required
 
+    def _require_authentication(self):
+        # Note that we must update test_case_server *before*
+        # sending the error or the client may try to read it
+        # before we have sent the whole error back.
+        tcs = self.server.test_case_server
+        tcs.auth_required_errors += 1
+        self.send_response(tcs.auth_error_code)
+        self.send_header_auth_reqed()
+        # We do not send a body
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+        return
+
     def do_GET(self):
         if self.authorized():
             return http_server.TestingHTTPRequestHandler.do_GET(self)
         else:
-            # Note that we must update test_case_server *before*
-            # sending the error or the client may try to read it
-            # before we have sent the whole error back.
-            tcs = self.server.test_case_server
-            tcs.auth_required_errors += 1
-            self.send_response(tcs.auth_error_code)
-            self.send_header_auth_reqed()
-            # We do not send a body
-            self.send_header('Content-Length', '0')
-            self.end_headers()
-            return
+            return self._require_authentication()
+
+    def do_HEAD(self):
+        if self.authorized():
+            return http_server.TestingHTTPRequestHandler.do_HEAD(self)
+        else:
+            return self._require_authentication()
 
 
 class BasicAuthRequestHandler(AuthRequestHandler):

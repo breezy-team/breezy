@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,9 +18,12 @@
 from StringIO import StringIO
 import re
 
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
     diff,
+    email_message,
     errors,
     gpg,
     hooks,
@@ -34,7 +37,7 @@ from bzrlib import (
 from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
-from bzrlib.email_message import EmailMessage
+""")
 
 
 class MergeRequestBodyParams(object):
@@ -56,12 +59,12 @@ class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('merge_request_body',
+        hooks.Hooks.__init__(self, "bzrlib.merge_directive", "BaseMergeDirective.hooks")
+        self.add_hook('merge_request_body',
             "Called with a MergeRequestBodyParams when a body is needed for"
             " a merge request.  Callbacks must return a body.  If more"
             " than one callback is registered, the output of one callback is"
-            " provided to the next.", (1, 15, 0), False))
+            " provided to the next.", (1, 15, 0))
 
 
 class BaseMergeDirective(object):
@@ -79,8 +82,8 @@ class BaseMergeDirective(object):
     multiple_output_files = False
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
-                 target_branch, patch=None, source_branch=None, message=None,
-                 bundle=None):
+                 target_branch, patch=None, source_branch=None,
+                 message=None, bundle=None):
         """Constructor.
 
         :param revision_id: The revision to merge
@@ -88,7 +91,7 @@ class BaseMergeDirective(object):
             merge.
         :param time: The current POSIX timestamp time
         :param timezone: The timezone offset
-        :param target_branch: The branch to apply the merge to
+        :param target_branch: Location of branch to apply the merge to
         :param patch: The text of a diff or bundle
         :param source_branch: A public location to merge the revision from
         :param message: The message to use when committing this merge
@@ -162,9 +165,9 @@ class BaseMergeDirective(object):
         :param target_branch: The url of the branch to merge into
         :param patch_type: 'bundle', 'diff' or None, depending on the type of
             patch desired.
-        :param local_target_branch: a local copy of the target branch
-        :param public_branch: location of a public branch containing the target
-            revision.
+        :param local_target_branch: the submit branch, either itself or a local copy
+        :param public_branch: location of a public branch containing
+            the target revision.
         :param message: Message to use when committing the merge
         :return: The merge directive
 
@@ -178,7 +181,10 @@ class BaseMergeDirective(object):
         if revision_id == _mod_revision.NULL_REVISION:
             t_revision_id = None
         t = testament.StrictTestament3.from_revision(repository, t_revision_id)
-        submit_branch = _mod_branch.Branch.open(target_branch)
+        if local_target_branch is None:
+            submit_branch = _mod_branch.Branch.open(target_branch)
+        else:
+            submit_branch = local_target_branch
         if submit_branch.get_public_branch() is not None:
             target_branch = submit_branch.get_public_branch()
         if patch_type is None:
@@ -263,7 +269,8 @@ class BaseMergeDirective(object):
             body = self.to_signed(branch)
         else:
             body = ''.join(self.to_lines())
-        message = EmailMessage(mail_from, mail_to, subject, body)
+        message = email_message.EmailMessage(mail_from, mail_to, subject,
+            body)
         return message
 
     def install_revisions(self, target_repo):
@@ -369,7 +376,7 @@ class MergeDirective(BaseMergeDirective):
             merge.
         :param time: The current POSIX timestamp time
         :param timezone: The timezone offset
-        :param target_branch: The branch to apply the merge to
+        :param target_branch: Location of the branch to apply the merge to
         :param patch: The text of a diff or bundle
         :param patch_type: None, "diff" or "bundle", depending on the contents
             of patch
@@ -563,9 +570,9 @@ class MergeDirective2(BaseMergeDirective):
         :param target_branch: The url of the branch to merge into
         :param include_patch: If true, include a preview patch
         :param include_bundle: If true, include a bundle
-        :param local_target_branch: a local copy of the target branch
-        :param public_branch: location of a public branch containing the target
-            revision.
+        :param local_target_branch: the target branch, either itself or a local copy
+        :param public_branch: location of a public branch containing
+            the target revision.
         :param message: Message to use when committing the merge
         :return: The merge directive
 
@@ -584,7 +591,10 @@ class MergeDirective2(BaseMergeDirective):
                 t_revision_id = None
             t = testament.StrictTestament3.from_revision(repository,
                 t_revision_id)
-            submit_branch = _mod_branch.Branch.open(target_branch)
+            if local_target_branch is None:
+                submit_branch = _mod_branch.Branch.open(target_branch)
+            else:
+                submit_branch = local_target_branch
             submit_branch.lock_read()
             locked.append(submit_branch)
             if submit_branch.get_public_branch() is not None:

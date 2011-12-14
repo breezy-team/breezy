@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ from cStringIO import StringIO
 import errno
 import os
 import re
+import select
 import socket
 import sys
 import time
@@ -38,9 +39,10 @@ from bzrlib.tests import (
     file_utils,
     test__walkdirs_win32,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-class _UTF8DirReaderFeature(tests.Feature):
+class _UTF8DirReaderFeature(features.Feature):
 
     def _probe(self):
         try:
@@ -53,9 +55,9 @@ class _UTF8DirReaderFeature(tests.Feature):
     def feature_name(self):
         return 'bzrlib._readdir_pyx'
 
-UTF8DirReaderFeature = _UTF8DirReaderFeature()
+UTF8DirReaderFeature = features.ModuleAvailableFeature('bzrlib._readdir_pyx')
 
-term_ios_feature = tests.ModuleAvailableFeature('termios')
+term_ios_feature = features.ModuleAvailableFeature('termios')
 
 
 def _already_unicode(s):
@@ -96,30 +98,24 @@ def dir_reader_scenarios():
     return scenarios
 
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(TestDirReader))
-    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = load_tests_apply_scenarios
 
 
 class TestContainsWhitespace(tests.TestCase):
 
     def test_contains_whitespace(self):
-        self.failUnless(osutils.contains_whitespace(u' '))
-        self.failUnless(osutils.contains_whitespace(u'hello there'))
-        self.failUnless(osutils.contains_whitespace(u'hellothere\n'))
-        self.failUnless(osutils.contains_whitespace(u'hello\nthere'))
-        self.failUnless(osutils.contains_whitespace(u'hello\rthere'))
-        self.failUnless(osutils.contains_whitespace(u'hello\tthere'))
+        self.assertTrue(osutils.contains_whitespace(u' '))
+        self.assertTrue(osutils.contains_whitespace(u'hello there'))
+        self.assertTrue(osutils.contains_whitespace(u'hellothere\n'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\nthere'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\rthere'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\tthere'))
 
         # \xa0 is "Non-breaking-space" which on some python locales thinks it
         # is whitespace, but we do not.
-        self.failIf(osutils.contains_whitespace(u''))
-        self.failIf(osutils.contains_whitespace(u'hellothere'))
-        self.failIf(osutils.contains_whitespace(u'hello\xa0there'))
+        self.assertFalse(osutils.contains_whitespace(u''))
+        self.assertFalse(osutils.contains_whitespace(u'hellothere'))
+        self.assertFalse(osutils.contains_whitespace(u'hello\xa0there'))
 
 
 class TestRename(tests.TestCaseInTempDir):
@@ -139,8 +135,8 @@ class TestRename(tests.TestCaseInTempDir):
         # This should work everywhere
         self.create_file('a', 'something in a\n')
         self._fancy_rename('a', 'b')
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
         self.check_file_contents('b', 'something in a\n')
 
         self.create_file('a', 'new something in a\n')
@@ -153,7 +149,7 @@ class TestRename(tests.TestCaseInTempDir):
         self.create_file('target', 'data in target\n')
         self.assertRaises((IOError, OSError), self._fancy_rename,
                           'missingsource', 'target')
-        self.failUnlessExists('target')
+        self.assertPathExists('target')
         self.check_file_contents('target', 'data in target\n')
 
     def test_fancy_rename_fails_if_source_and_target_missing(self):
@@ -164,8 +160,8 @@ class TestRename(tests.TestCaseInTempDir):
         # Rename should be semi-atomic on all platforms
         self.create_file('a', 'something in a\n')
         osutils.rename('a', 'b')
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
         self.check_file_contents('b', 'something in a\n')
 
         self.create_file('a', 'new something in a\n')
@@ -236,6 +232,25 @@ class TestIsInside(tests.TestCase):
             self.assertFalse(osutils.is_inside_or_parent_of_any(dirs, fn))
 
 
+class TestLstat(tests.TestCaseInTempDir):
+
+    def test_lstat_matches_fstat(self):
+        # On Windows, lstat and fstat don't always agree, primarily in the
+        # 'st_ino' and 'st_dev' fields. So we force them to be '0' in our
+        # custom implementation.
+        if sys.platform == 'win32':
+            # We only have special lstat/fstat if we have the extension.
+            # Without it, we may end up re-reading content when we don't have
+            # to, but otherwise it doesn't effect correctness.
+            self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
+        f = open('test-file.txt', 'wb')
+        self.addCleanup(f.close)
+        f.write('some content\n')
+        f.flush()
+        self.assertEqualStat(osutils.fstat(f.fileno()),
+                             osutils.lstat('test-file.txt'))
+
+
 class TestRmTree(tests.TestCaseInTempDir):
 
     def test_rmtree(self):
@@ -253,8 +268,8 @@ class TestRmTree(tests.TestCaseInTempDir):
 
         osutils.rmtree('dir')
 
-        self.failIfExists('dir/file')
-        self.failIfExists('dir')
+        self.assertPathDoesNotExist('dir/file')
+        self.assertPathDoesNotExist('dir')
 
 
 class TestDeleteAny(tests.TestCaseInTempDir):
@@ -415,7 +430,7 @@ class TestDateTime(tests.TestCase):
 class TestLinks(tests.TestCaseInTempDir):
 
     def test_dereference_path(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -468,19 +483,19 @@ class TestLinks(tests.TestCaseInTempDir):
 
 class TestCanonicalRelPath(tests.TestCaseInTempDir):
 
-    _test_needs_features = [tests.CaseInsCasePresFilenameFeature]
+    _test_needs_features = [features.CaseInsCasePresFilenameFeature]
 
     def test_canonical_relpath_simple(self):
         f = file('MixedCaseName', 'w')
         f.close()
         actual = osutils.canonical_relpath(self.test_base_dir, 'mixedcasename')
-        self.failUnlessEqual('work/MixedCaseName', actual)
+        self.assertEqual('work/MixedCaseName', actual)
 
     def test_canonical_relpath_missing_tail(self):
         os.mkdir('MixedCaseParent')
         actual = osutils.canonical_relpath(self.test_base_dir,
                                            'mixedcaseparent/nochild')
-        self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
+        self.assertEqual('work/MixedCaseParent/nochild', actual)
 
 
 class Test_CICPCanonicalRelpath(tests.TestCaseWithTransport):
@@ -804,6 +819,16 @@ class TestSafeFileId(tests.TestCase):
         self.assertEqual(None, osutils.safe_file_id(None))
 
 
+class TestPosixFuncs(tests.TestCase):
+    """Test that the posix version of normpath returns an appropriate path
+       when used with 2 leading slashes."""
+
+    def test_normpath(self):
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('/etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('//etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('///etc/shadow'))
+
+
 class TestWin32Funcs(tests.TestCase):
     """Test that _win32 versions of os utilities return appropriate paths."""
 
@@ -874,7 +899,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     """Test win32 functions that create files."""
 
     def test_getcwd(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.mkdir(u'mu-\xb5')
         os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
@@ -910,8 +935,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         b.close()
 
         osutils._win32_rename('b', 'a')
-        self.failUnlessExists('a')
-        self.failIfExists('b')
+        self.assertPathExists('a')
+        self.assertPathDoesNotExist('b')
         self.assertFileEqual('baz\n', 'a')
 
     def test_rename_missing_file(self):
@@ -970,13 +995,13 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
     """Test mac special functions that require directories."""
 
     def test_getcwd(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.mkdir(u'B\xe5gfors')
         os.chdir(u'B\xe5gfors')
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
     def test_getcwd_nonnorm(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Test that _mac_getcwd() will normalize this path
         os.mkdir(u'Ba\u030agfors')
         os.chdir(u'Ba\u030agfors')
@@ -1092,7 +1117,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # are not using the filesystem's encoding
 
         # require a bytestring based filesystem
-        self.requireFeature(tests.ByteStringNamedFilesystem)
+        self.requireFeature(features.ByteStringNamedFilesystem)
 
         tree = [
             '.bzr',
@@ -1107,6 +1132,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         # rename the 1file to a latin-1 filename
         os.rename("./1file", "\xe8file")
+        if "\xe8file" not in os.listdir("."):
+            self.skip("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
@@ -1190,27 +1217,22 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'UTF-8'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
+        osutils._fs_enc = 'utf-8'
+        self.assertDirReaderIs(
+            UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'US-ASCII'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
-
-    def test_force_walkdirs_utf8_fs_ANSI(self):
-        self.requireFeature(UTF8DirReaderFeature)
-        self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'ANSI_X3.4-1968'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
+        osutils._fs_enc = 'ascii'
+        self.assertDirReaderIs(
+            UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'latin1'
+        osutils._fs_enc = 'iso-8859-1'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
 
     def test_force_walkdirs_utf8_nt(self):
@@ -1229,7 +1251,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         name0 = u'0file-\xb6'
         name1 = u'1dir-\u062c\u0648'
         name2 = u'2file-\u0633'
@@ -1272,7 +1294,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         The abspath portion might be in unicode or utf-8
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         name0 = u'0file-\xb6'
         name1 = u'1dir-\u062c\u0648'
         name2 = u'2file-\u0633'
@@ -1333,7 +1355,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         The abspath portion should be in unicode
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Use the unicode reader. TODO: split into driver-and-driven unit
         # tests.
         self._save_platform_info()
@@ -1380,7 +1402,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf8_win32readdir(self):
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
         osutils._selected_dir_reader = Win32ReadDir()
@@ -1437,7 +1459,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
         name0 = name0u.encode('utf8')
@@ -1461,7 +1483,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
@@ -1567,7 +1589,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1598,7 +1620,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                           ('d', 'source/b', 'target/b'),
                           ('f', 'source/b/c', 'target/b/c'),
                          ], processed_files)
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')
         if osutils.has_symlinks():
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
@@ -1650,7 +1672,7 @@ class TestSetUnsetEnv(tests.TestCase):
         old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', None)
         self.assertEqual('foo', old)
         self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
-        self.failIf('BZR_TEST_ENV_VAR' in os.environ)
+        self.assertFalse('BZR_TEST_ENV_VAR' in os.environ)
 
 
 class TestSizeShaFile(tests.TestCaseInTempDir):
@@ -1732,6 +1754,8 @@ class TestReCompile(tests.TestCase):
 
 
 class TestDirReader(tests.TestCaseInTempDir):
+
+    scenarios = dir_reader_scenarios()
 
     # Set by load_tests
     _dir_reader_class = None
@@ -1838,15 +1862,15 @@ class TestDirReader(tests.TestCaseInTempDir):
         return filtered_dirblocks
 
     def test_walk_unicode_tree(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree, expected_dirblocks = self._get_unicode_tree()
         self.build_tree(tree)
         result = list(osutils._walkdirs_utf8('.'))
         self.assertEqual(expected_dirblocks, self._filter_out(result))
 
     def test_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
@@ -1870,7 +1894,7 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-    _test_needs_features = [tests.SymlinkFeature, tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.SymlinkFeature, features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
@@ -1879,10 +1903,7 @@ class TestReadLink(tests.TestCaseInTempDir):
         os.symlink(self.target, self.link)
 
     def test_os_readlink_link_encoding(self):
-        if sys.version_info < (2, 6):
-            self.assertRaises(UnicodeEncodeError, os.readlink, self.link)
-        else:
-            self.assertEquals(self.target,  os.readlink(self.link))
+        self.assertEquals(self.target,  os.readlink(self.link))
 
     def test_os_readlink_link_decoding(self):
         self.assertEquals(self.target.encode(osutils._fs_enc),
@@ -1900,17 +1921,17 @@ class TestConcurrency(tests.TestCase):
         self.assertIsInstance(concurrency, int)
 
     def test_local_concurrency_environment_variable(self):
-        os.environ['BZR_CONCURRENCY'] = '2'
+        self.overrideEnv('BZR_CONCURRENCY', '2')
         self.assertEqual(2, osutils.local_concurrency(use_cache=False))
-        os.environ['BZR_CONCURRENCY'] = '3'
+        self.overrideEnv('BZR_CONCURRENCY', '3')
         self.assertEqual(3, osutils.local_concurrency(use_cache=False))
-        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.overrideEnv('BZR_CONCURRENCY', 'foo')
         self.assertEqual(1, osutils.local_concurrency(use_cache=False))
 
     def test_option_concurrency(self):
-        os.environ['BZR_CONCURRENCY'] = '1'
+        self.overrideEnv('BZR_CONCURRENCY', '1')
         self.run_bzr('rocks --concurrency 42')
-        # Command line overrides envrionment variable
+        # Command line overrides environment variable
         self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
         self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
@@ -1986,19 +2007,23 @@ class TestTerminalWidth(tests.TestCase):
     def test_defaults_to_BZR_COLUMNS(self):
         # BZR_COLUMNS is set by the test framework
         self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
-        os.environ['BZR_COLUMNS'] = '12'
+        self.overrideEnv('BZR_COLUMNS', '12')
         self.assertEqual(12, osutils.terminal_width())
 
+    def test_BZR_COLUMNS_0_no_limit(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.assertEqual(None, osutils.terminal_width())
+
     def test_falls_back_to_COLUMNS(self):
-        del os.environ['BZR_COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
         self.assertNotEqual('42', os.environ['COLUMNS'])
         self.set_fake_tty()
-        os.environ['COLUMNS'] = '42'
+        self.overrideEnv('COLUMNS', '42')
         self.assertEqual(42, osutils.terminal_width())
 
     def test_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
 
         def terminal_size(w, h):
             return 42, 42
@@ -2011,8 +2036,8 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEqual(42, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
         self.replace_stdout(None)
         self.assertEqual(None, osutils.terminal_width())
 
@@ -2028,10 +2053,11 @@ class TestTerminalWidth(tests.TestCase):
         else:
             self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
+
 
 class TestCreationOps(tests.TestCaseInTempDir):
     _test_needs_features = [features.chown_feature]
@@ -2068,10 +2094,11 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.uid, s.st_uid)
         self.assertEquals(self.gid, s.st_gid)
 
+
 class TestGetuserUnicode(tests.TestCase):
 
     def test_ascii_user(self):
-        osutils.set_or_unset_env('LOGNAME', 'jrandom')
+        self.overrideEnv('LOGNAME', 'jrandom')
         self.assertEqual(u'jrandom', osutils.getuser_unicode())
 
     def test_unicode_user(self):
@@ -2083,5 +2110,91 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        osutils.set_or_unset_env('LOGNAME', encoded_username)
+        self.overrideEnv('LOGNAME', encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
+        self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
+        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+
+    def test_no_username_bug_660174(self):
+        self.requireFeature(features.win32_feature)
+        for name in ('LOGNAME', 'USER', 'LNAME', 'USERNAME'):
+            self.overrideEnv(name, None)
+        self.assertEqual(u'UNKNOWN', osutils.getuser_unicode())
+
+
+class TestBackupNames(tests.TestCase):
+
+    def setUp(self):
+        super(TestBackupNames, self).setUp()
+        self.backups = []
+
+    def backup_exists(self, name):
+        return name in self.backups
+
+    def available_backup_name(self, name):
+        backup_name = osutils.available_backup_name(name, self.backup_exists)
+        self.backups.append(backup_name)
+        return backup_name
+
+    def assertBackupName(self, expected, name):
+        self.assertEqual(expected, self.available_backup_name(name))
+
+    def test_empty(self):
+        self.assertBackupName('file.~1~', 'file')
+
+    def test_existing(self):
+        self.available_backup_name('file')
+        self.available_backup_name('file')
+        self.assertBackupName('file.~3~', 'file')
+        # Empty slots are found, this is not a strict requirement and may be
+        # revisited if we test against all implementations.
+        self.backups.remove('file.~2~')
+        self.assertBackupName('file.~2~', 'file')
+
+
+class TestFindExecutableInPath(tests.TestCase):
+
+    def test_windows(self):
+        if sys.platform != 'win32':
+            raise tests.TestSkipped('test requires win32')
+        self.assertTrue(osutils.find_executable_on_path('explorer') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('explorer.exe') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('EXPLORER.EXE') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+        self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
+
+    def test_other(self):
+        if sys.platform == 'win32':
+            raise tests.TestSkipped('test requires non-win32')
+        self.assertTrue(osutils.find_executable_on_path('sh') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+
+
+class TestEnvironmentErrors(tests.TestCase):
+    """Test handling of environmental errors"""
+
+    def test_is_oserror(self):
+        self.assertTrue(osutils.is_environment_error(
+            OSError(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_ioerror(self):
+        self.assertTrue(osutils.is_environment_error(
+            IOError(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_socket_error(self):
+        self.assertTrue(osutils.is_environment_error(
+            socket.error(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_select_error(self):
+        self.assertTrue(osutils.is_environment_error(
+            select.error(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_pywintypes_error(self):
+        self.requireFeature(features.pywintypes)
+        import pywintypes
+        self.assertTrue(osutils.is_environment_error(
+            pywintypes.error(errno.EINVAL, "Invalid parameter", "Caller")))

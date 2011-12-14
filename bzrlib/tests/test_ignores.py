@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,15 @@
 
 from cStringIO import StringIO
 
-from bzrlib import config, errors, ignores
-from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from bzrlib import (
+    config,
+    ignores,
+    )
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    )
 
 
 class TestParseIgnoreFile(TestCase):
@@ -69,11 +76,11 @@ class TestUserIgnores(TestCaseInTempDir):
     def test_create_if_missing(self):
         # $HOME should be set to '.'
         ignore_path = config.user_ignore_config_filename()
-        self.failIfExists(ignore_path)
+        self.assertPathDoesNotExist(ignore_path)
         user_ignores = ignores.get_user_ignores()
         self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
 
-        self.failUnlessExists(ignore_path)
+        self.assertPathExists(ignore_path)
         f = open(ignore_path, 'rb')
         try:
             entries = ignores.parse_ignore_file(f)

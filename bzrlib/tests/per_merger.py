@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@ from bzrlib.conflicts import TextConflict
 from bzrlib import (
     errors,
     merge as _mod_merge,
-    option,
-    progress,
     )
 from bzrlib.tests import (
     multiply_tests,
@@ -39,7 +37,7 @@ def load_tests(standard_tests, module, loader):
     result = loader.suiteClass()
     scenarios = [
         (name, {'merge_type': merger})
-        for name, merger in option._merge_type_registry.items()]
+        for name, merger in _mod_merge.merge_type_registry.items()]
     return multiply_tests(standard_tests, scenarios, result)
 
 
@@ -176,17 +174,33 @@ class TestMergeImplementation(TestCaseWithTransport):
         transform.finalize()
         return (limbodir, deletiondir)
 
-    def test_merge_with_existing_limbo(self):
+    def test_merge_with_existing_limbo_empty(self):
+        """Empty limbo dir is just cleaned up - see bug 427773"""
         wt = self.make_branch_and_tree('this')
         (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
         os.mkdir(limbodir)
+        self.do_merge(wt, wt)
+
+    def test_merge_with_existing_limbo_non_empty(self):
+        wt = self.make_branch_and_tree('this')
+        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        os.mkdir(limbodir)
+        os.mkdir(os.path.join(limbodir, 'something'))
         self.assertRaises(errors.ExistingLimbo, self.do_merge, wt, wt)
         self.assertRaises(errors.LockError, wt.unlock)
 
-    def test_merge_with_pending_deletion(self):
+    def test_merge_with_pending_deletion_empty(self):
         wt = self.make_branch_and_tree('this')
         (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
+        self.do_merge(wt, wt)
+
+    def test_merge_with_pending_deletion_non_empty(self):
+        """Also see bug 427773"""
+        wt = self.make_branch_and_tree('this')
+        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        os.mkdir(deletiondir)
+        os.mkdir(os.path.join(deletiondir, 'something'))
         self.assertRaises(errors.ExistingPendingDeletion, self.do_merge, wt, wt)
         self.assertRaises(errors.LockError, wt.unlock)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,14 @@
 import errno
 import socket
 import SocketServer
-import select
 import sys
 import threading
+import traceback
 
 
 from bzrlib import (
+    cethread,
+    errors,
     osutils,
     transport,
     urlutils,
@@ -212,10 +214,10 @@ class TestingPathFilteringServer(pathfilter.PathFilteringServer):
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
         if backing_server is not None:
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 backing_server.get_url())
         else:
-            self.backing_transport = transport.get_transport('.')
+            self.backing_transport = transport.get_transport_from_path('.')
         self.backing_transport.clone('added-by-filter').ensure_base()
         self.filter_func = lambda x: 'added-by-filter/' + x
         super(TestingPathFilteringServer, self).start_server()
@@ -233,104 +235,25 @@ class TestingChrootServer(chroot.ChrootServer):
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
         if backing_server is not None:
-            self.backing_transport = transport.get_transport(
+            self.backing_transport = transport.get_transport_from_url(
                 backing_server.get_url())
         else:
-            self.backing_transport = transport.get_transport('.')
+            self.backing_transport = transport.get_transport_from_path('.')
         super(TestingChrootServer, self).start_server()
 
     def get_bogus_url(self):
         raise NotImplementedError
 
 
-class ThreadWithException(threading.Thread):
-    """A catching exception thread.
-
-    If an exception occurs during the thread execution, it's caught and
-    re-raised when the thread is joined().
-    """
-
-    def __init__(self, *args, **kwargs):
-        # There are cases where the calling thread must wait, yet, if an
-        # exception occurs, the event should be set so the caller is not
-        # blocked. The main example is a calling thread that want to wait for
-        # the called thread to be in a given state before continuing.
-        try:
-            event = kwargs.pop('event')
-        except KeyError:
-            # If the caller didn't pass a specific event, create our own
-            event = threading.Event()
-        super(ThreadWithException, self).__init__(*args, **kwargs)
-        self.set_ready_event(event)
-        self.exception = None
-        self.ignored_exceptions = None # see set_ignored_exceptions
-
-    # compatibility thunk for python-2.4 and python-2.5...
-    if sys.version_info < (2, 6):
-        name = property(threading.Thread.getName, threading.Thread.setName)
-
-    def set_ready_event(self, event):
-        """Set the ``ready`` event used to synchronize exception catching.
-
-        When the thread uses an event to synchronize itself with another thread
-        (setting it when the other thread can wake up from a ``wait`` call),
-        the event must be set after catching an exception or the other thread
-        will hang.
-
-        Some threads require multiple events and should set the relevant one
-        when appropriate.
-        """
-        self.ready = event
-
-    def set_ignored_exceptions(self, ignored):
-        """Declare which exceptions will be ignored.
-
-        :param ignored: Can be either:
-           - None: all exceptions will be raised,
-           - an exception class: the instances of this class will be ignored,
-           - a tuple of exception classes: the instances of any class of the
-             list will be ignored,
-           - a callable: that will be passed the exception object
-             and should return True if the exception should be ignored
-        """
-        if ignored is None:
-            self.ignored_exceptions = None
-        elif isinstance(ignored, (Exception, tuple)):
-            self.ignored_exceptions = lambda e: isinstance(e, ignored)
-        else:
-            self.ignored_exceptions = ignored
-
-    def run(self):
-        """Overrides Thread.run to capture any exception."""
-        self.ready.clear()
-        try:
-            try:
-                super(ThreadWithException, self).run()
-            except:
-                self.exception = sys.exc_info()
-        finally:
-            # Make sure the calling thread is released
-            self.ready.set()
-
+class TestThread(cethread.CatchingExceptionThread):
 
     def join(self, timeout=5):
-        """Overrides Thread.join to raise any exception caught.
-
-
-        Calling join(timeout=0) will raise the caught exception or return None
-        if the thread is still alive.
+        """Overrides to use a default timeout.
 
         The default timeout is set to 5 and should expire only when a thread
         serving a client connection is hung.
         """
-        super(ThreadWithException, self).join(timeout)
-        if self.exception is not None:
-            exc_class, exc_value, exc_tb = self.exception
-            self.exception = None # The exception should be raised only once
-            if (self.ignored_exceptions is None
-                or not self.ignored_exceptions(exc_value)):
-                # Raise non ignored exceptions
-                raise exc_class, exc_value, exc_tb
+        super(TestThread, self).join(timeout)
         if timeout and self.isAlive():
             # The timeout expired without joining the thread, the thread is
             # therefore stucked and that's a failure as far as the test is
@@ -343,15 +266,8 @@ class ThreadWithException(threading.Thread):
             sys.stderr.write('thread %s hung\n' % (self.name,))
             #raise AssertionError('thread %s hung' % (self.name,))
 
-    def pending_exception(self):
-        """Raise the caught exception.
 
-        This does nothing if no exception occurred.
-        """
-        self.join(timeout=0)
-
-
-class TestingTCPServerMixin:
+class TestingTCPServerMixin(object):
     """Mixin to support running SocketServer.TCPServer in a thread.
 
     Tests are connecting from the main thread, the server has to be run in a
@@ -373,7 +289,6 @@ class TestingTCPServerMixin:
 
     def serve(self):
         self.serving = True
-        self.stopped.clear()
         # We are listening and ready to accept connections
         self.started.set()
         try:
@@ -398,7 +313,8 @@ class TestingTCPServerMixin:
                 self.process_request(request, client_address)
             except:
                 self.handle_error(request, client_address)
-                self.close_request(request)
+        else:
+            self.close_request(request)
 
     def get_request(self):
         return self.socket.accept()
@@ -418,8 +334,16 @@ class TestingTCPServerMixin:
         # The following can be used for debugging purposes, it will display the
         # exception and the traceback just when it occurs instead of waiting
         # for the thread to be joined.
-
         # SocketServer.BaseServer.handle_error(self, request, client_address)
+
+        # We call close_request manually, because we are going to raise an
+        # exception. The SocketServer implementation calls:
+        #   handle_error(...)
+        #   close_request(...)
+        # But because we raise the exception, close_request will never be
+        # triggered. This helps client not block waiting for a response when
+        # the server gets an exception.
+        self.close_request(request)
         raise
 
     def ignored_exceptions_during_shutdown(self, e):
@@ -505,15 +429,18 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         SocketServer.ThreadingTCPServer.__init__(self, server_address,
                                                  request_handler_class)
 
-    def get_request (self):
+    def get_request(self):
         """Get the request and client address from the socket."""
         sock, addr = TestingTCPServerMixin.get_request(self)
-        # The thread is not create yet, it will be updated in process_request
+        # The thread is not created yet, it will be updated in process_request
         self.clients.append((sock, addr, None))
         return sock, addr
 
-    def process_request_thread(self, started, stopped, request, client_address):
+    def process_request_thread(self, started, detached, stopped,
+                               request, client_address):
         started.set()
+        # We will be on our own once the server tells us we're detached
+        detached.wait()
         SocketServer.ThreadingTCPServer.process_request_thread(
             self, request, client_address)
         self.close_request(request)
@@ -522,24 +449,27 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
     def process_request(self, request, client_address):
         """Start a new thread to process the request."""
         started = threading.Event()
+        detached = threading.Event()
         stopped = threading.Event()
-        t = ThreadWithException(
-            event=stopped,
+        t = TestThread(
+            sync_event=stopped,
             name='%s -> %s' % (client_address, self.server_address),
             target = self.process_request_thread,
-            args = (started, stopped, request, client_address))
+            args = (started, detached, stopped, request, client_address))
         # Update the client description
         self.clients.pop()
         self.clients.append((request, client_address, t))
-        # Propagate the exception handler since we must use the same one for
-        # connections running in their own threads than TestingTCPServer.
+        # Propagate the exception handler since we must use the same one as
+        # TestingTCPServer for connections running in their own threads.
         t.set_ignored_exceptions(self.ignored_exceptions)
         t.start()
         started.wait()
-        if debug_threads():
-            sys.stderr.write('Client thread %s started\n' % (t.name,))
         # If an exception occured during the thread start, it will get raised.
         t.pending_exception()
+        if debug_threads():
+            sys.stderr.write('Client thread %s started\n' % (t.name,))
+        # Tell the thread, it's now on its own for exception handling.
+        detached.set()
 
     # The following methods are called by the main thread
 
@@ -590,11 +520,11 @@ class TestingTCPServerInAThread(transport.Server):
 
     def start_server(self):
         self.server = self.create_server()
-        self._server_thread = ThreadWithException(
-            event=self.server.started,
+        self._server_thread = TestThread(
+            sync_event=self.server.started,
             target=self.run_server)
         self._server_thread.start()
-        # Wait for the server thread to start (i.e release the lock)
+        # Wait for the server thread to start (i.e. release the lock)
         self.server.started.wait()
         # Get the real address, especially the port
         self.host, self.port = self.server.server_address
@@ -607,7 +537,7 @@ class TestingTCPServerInAThread(transport.Server):
         self._server_thread.pending_exception()
         # From now on, we'll use a different event to ensure the server can set
         # its exception
-        self._server_thread.set_ready_event(self.server.stopped)
+        self._server_thread.set_sync_event(self.server.stopped)
 
     def run_server(self):
         self.server.serve()
@@ -634,7 +564,7 @@ class TestingTCPServerInAThread(transport.Server):
                 # server thread, it may happen that it's not blocked or even
                 # not started.
                 pass
-            # We start shutting down the client while the server itself is
+            # We start shutting down the clients while the server itself is
             # shutting down.
             self.server.stop_client_connections()
             # Now we wait for the thread running self.server.serve() to finish
@@ -675,16 +605,23 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
     def __init__(self, request, client_address, server):
         medium.SmartServerSocketStreamMedium.__init__(
             self, request, server.backing_transport,
-            server.root_client_path)
+            server.root_client_path,
+            timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
         request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         SocketServer.BaseRequestHandler.__init__(self, request, client_address,
                                                  server)
 
     def handle(self):
-        while not self.finished:
-            server_protocol = self._build_protocol()
-            self._serve_one_request(server_protocol)
+        try:
+            while not self.finished:
+                server_protocol = self._build_protocol()
+                self._serve_one_request(server_protocol)
+        except errors.ConnectionTimeout:
+            # idle connections aren't considered a failure of the server
+            return
 
+
+_DEFAULT_TESTING_CLIENT_TIMEOUT = 60.0
 
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 
@@ -693,10 +630,9 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
         TestingThreadingTCPServer.__init__(self, server_address,
                                            request_handler_class)
         server.SmartTCPServer.__init__(self, backing_transport,
-                                       root_client_path)
+            root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
+
     def serve(self):
-        # FIXME: No test are exercising the hooks for the test server
-        # -- vila 20100618
         self.run_server_started_hooks()
         try:
             TestingThreadingTCPServer.serve(self)
@@ -753,7 +689,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         self.chroot_server = ChrootServer(
             self.get_backing_transport(backing_transport_server))
         self.chroot_server.start_server()
-        self.backing_transport = transport.get_transport(
+        self.backing_transport = transport.get_transport_from_url(
             self.chroot_server.get_url())
         super(SmartTCPServer_for_testing, self).start_server()
 
@@ -765,7 +701,8 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
-        return transport.get_transport(backing_transport_server.get_url())
+        return transport.get_transport_from_url(
+            backing_transport_server.get_url())
 
     def get_url(self):
         url = self.server.get_url()
@@ -782,7 +719,7 @@ class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
+        return transport.get_transport_from_url(url)
 
 
 class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
@@ -803,8 +740,4 @@ class ReadonlySmartTCPServer_for_testing_v2_only(
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
-
-
-
-
+        return transport.get_transport_from_url(url)

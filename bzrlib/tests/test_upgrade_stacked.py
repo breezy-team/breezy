@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,12 +24,35 @@ from bzrlib import (
     tests,
     )
 from bzrlib.upgrade import upgrade
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+
+def upgrade_scenarios():
+    scenario_pairs = [ # old format, new format, model_change
+#        ('knit', 'rich-root', True),
+        ('knit', '1.6', False),
+#        ('pack-0.92', '1.6', False),
+        ('1.6', '1.6.1-rich-root', True),
+        ]
+    scenarios = []
+    for (old_name, new_name, model_change) in scenario_pairs:
+        name = old_name + ', ' + new_name
+        scenarios.append((name,
+            dict(scenario_old_format=old_name,
+                scenario_new_format=new_name,
+                scenario_model_change=model_change)))
+    return scenarios
+
+
+load_tests = load_tests_apply_scenarios
 
 
 class TestStackUpgrade(tests.TestCaseWithTransport):
     # TODO: This should possibly be repeated for all stacking repositories,
     # pairwise by rich/non-rich format; should possibly also try other kinds
     # of upgrades like knit->pack. -- mbp 20080804
+    
+    scenarios = upgrade_scenarios()
 
     def test_stack_upgrade(self):
         """Correct checks when stacked-on repository is upgraded.
@@ -65,25 +88,3 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
         stacked = bzrdir.BzrDir.open('stacked')
         # And passes check.
         check.check_dwim('stacked', False, True, True)
-
-
-def load_tests(basic_tests, module, loader):
-    """Generate dynamic scenario tests.
-
-    Called by the bzrlib test framework.
-    """
-    scenario_pairs = [ # old format, new format, model_change
-#        ('knit', 'rich-root', True),
-        ('knit', '1.6', False),
-#        ('pack-0.92', '1.6', False),
-        ('1.6', '1.6.1-rich-root', True),
-        ]
-    scenarios = []
-    for (old_name, new_name, model_change) in scenario_pairs:
-        name = old_name + ', ' + new_name
-        scenarios.append((name,
-            dict(scenario_old_format=old_name,
-                scenario_new_format=new_name,
-                scenario_model_change=model_change)))
-    suite = loader.suiteClass()
-    return tests.multiply_tests(basic_tests, scenarios, suite)

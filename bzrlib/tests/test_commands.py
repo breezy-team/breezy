@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import errno
 import inspect
 import sys
@@ -90,6 +89,35 @@ class TestCommands(tests.TestCase):
     def test_help_not_hidden(self):
         c = self.get_command([option.Option('foo', hidden=False)])
         self.assertContainsRe(c.get_help_text(), '--foo')
+
+
+class TestInsideCommand(tests.TestCaseInTempDir):
+
+    def test_command_see_config_overrides(self):
+        def run(cmd):
+            # We override the run() command method so we can observe the
+            # overrides from inside.
+            c = config.GlobalStack()
+            self.assertEquals('12', c.get('xx'))
+            self.assertEquals('foo', c.get('yy'))
+        self.overrideAttr(builtins.cmd_rocks, 'run', run)
+        self.run_bzr(['rocks', '-Oxx=12', '-Oyy=foo'])
+        c = config.GlobalStack()
+        # Ensure that we don't leak outside of the command
+        self.assertEquals(None, c.get('xx'))
+        self.assertEquals(None, c.get('yy'))
+
+
+class TestInvokedAs(tests.TestCase):
+
+    def test_invoked_as(self):
+        """The command object knows the actual name used to invoke it."""
+        commands.install_bzr_command_hooks()
+        commands._register_builtin_commands()
+        # get one from the real get_cmd_object.
+        c = commands.get_cmd_object('ci')
+        self.assertIsInstance(c, builtins.cmd_commit)
+        self.assertEquals(c.invoked_as, 'ci')
 
 
 class TestGetAlias(tests.TestCase):
@@ -343,11 +371,3 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
-
-
-class TestDeprecations(tests.TestCase):
-
-    def test_shlex_split_unicode_deprecation(self):
-        res = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 2, 0)),
-                commands.shlex_split_unicode, 'whatever')

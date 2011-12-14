@@ -16,16 +16,19 @@
 
 """Tests for checking of trees."""
 
-from bzrlib import (
-    tests,
-    )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+
+from bzrlib.workingtree import InventoryWorkingTree
+from bzrlib.tests import TestNotApplicable
 
 
 class TestCheck(TestCaseWithWorkingTree):
 
     def test__get_check_refs_new(self):
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable(
+                "_get_check_refs only relevant for inventory working trees")
         self.assertEqual(set([('trees', 'null:')]),
             set(tree._get_check_refs()))
 
@@ -33,6 +36,9 @@ class TestCheck(TestCaseWithWorkingTree):
         # with a basis, all current bzr trees cache it and so need the
         # inventory to cross-check.
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable(
+                "_get_check_refs only relevant for inventory working trees")
         revid = tree.commit('first post')
         self.assertEqual(set([('trees', revid)]),
             set(tree._get_check_refs()))
@@ -40,6 +46,9 @@ class TestCheck(TestCaseWithWorkingTree):
     def test__check_with_refs(self):
         # _check can be called with a dict of the things required.
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable(
+                "_get_check_refs only relevant for inventory working trees")
         tree.lock_write()
         self.addCleanup(tree.unlock)
         revid = tree.commit('first post')

@@ -18,6 +18,7 @@
 
 import os
 
+from bzrlib import errors
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -98,3 +99,15 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
             self.assertAlmostEqual(st.st_mtime, mtime)
         finally:
             tree.unlock()
+
+    def test_missing(self):
+        tree = self.make_basic_tree()
+
+        os.remove('tree/one')
+        tree.lock_read()
+        try:
+            self.assertRaises(errors.FileTimestampUnavailable,
+                tree.get_file_mtime, file_id='one-id')
+        finally:
+            tree.unlock()
+

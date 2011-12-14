@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,9 +22,10 @@ from bzrlib import (
     controldir,
     errors,
     option,
+    registry,
     )
 from bzrlib.builtins import cmd_commit
-from bzrlib.commands import Command, parse_args
+from bzrlib.commands import parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
 
@@ -42,15 +43,18 @@ class OptionTests(TestCase):
         # XXX: Using cmd_commit makes these tests overly sensitive to changes
         # to cmd_commit, when they are meant to be about option parsing in
         # general.
-        self.assertEqual(parse_args(cmd_commit(), ['--help']),
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}))
-        self.assertEqual(parse_args(cmd_commit(), ['--message=biter']),
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}))
+        self.assertEqual(
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}),
+           parse_args(cmd_commit(), ['--help']))
+        self.assertEqual(
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}),
+           parse_args(cmd_commit(), ['--message=biter']))
 
     def test_no_more_opts(self):
         """Terminated options"""
-        self.assertEqual(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
-                          (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}))
+        self.assertEqual(
+            (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}),
+            parse_args(cmd_commit(), ['--', '-file-with-dashes']))
 
     def test_option_help(self):
         """Options have help strings."""
@@ -63,6 +67,11 @@ class OptionTests(TestCase):
         """Global options have help strings."""
         out, err = self.run_bzr('help status')
         self.assertContainsRe(out, r'--show-ids.*Show internal object.')
+
+    def test_option_help_global_hidden(self):
+        """Hidden global options have no help strings."""
+        out, err = self.run_bzr('help log')
+        self.assertNotContainsRe(out, r'--message')
 
     def test_option_arg_help(self):
         """Help message shows option arguments."""
@@ -332,59 +341,39 @@ class TestOptionDefinitions(TestCase):
 
     def get_builtin_command_options(self):
         g = []
-        for cmd_name in sorted(commands.all_command_names()):
+        commands.install_bzr_command_hooks()
+        for cmd_name in sorted(commands.builtin_command_names()):
             cmd = commands.get_cmd_object(cmd_name)
             for opt_name, opt in sorted(cmd.options().items()):
                 g.append((cmd_name, opt))
+        self.assert_(g)
         return g
-
-    def test_global_options_used(self):
-        # In the distant memory, options could only be declared globally.  Now
-        # we prefer to declare them in the command, unless like -r they really
-        # are used very widely with the exact same meaning.  So this checks
-        # for any that should be garbage collected.
-        g = dict(option.Option.OPTIONS.items())
-        used_globals = {}
-        msgs = []
-        for cmd_name in sorted(commands.all_command_names()):
-            cmd = commands.get_cmd_object(cmd_name)
-            for option_or_name in sorted(cmd.takes_options):
-                if not isinstance(option_or_name, basestring):
-                    self.assertIsInstance(option_or_name, option.Option)
-                elif not option_or_name in g:
-                    msgs.append("apparent reference to undefined "
-                        "global option %r from %r"
-                        % (option_or_name, cmd))
-                else:
-                    used_globals.setdefault(option_or_name, []).append(cmd_name)
-        unused_globals = set(g.keys()) - set(used_globals.keys())
-        # not enforced because there might be plugins that use these globals
-        ## for option_name in sorted(unused_globals):
-        ##    msgs.append("unused global option %r" % option_name)
-        ## for option_name, cmds in sorted(used_globals.items()):
-        ##     if len(cmds) <= 1:
-        ##         msgs.append("global option %r is only used by %r"
-        ##                 % (option_name, cmds))
-        if msgs:
-            self.fail("problems with global option definitions:\n"
-                    + '\n'.join(msgs))
 
     def test_option_grammar(self):
         msgs = []
         # Option help should be written in sentence form, and have a final
-        # period and be all on a single line, because the display code will
-        # wrap it.
-        option_re = re.compile(r'^[A-Z][^\n]+\.$')
+        # period with an optional bracketed suffix. All the text should be on
+        # one line, because the display code will wrap it.
+        option_re = re.compile(r'^[A-Z][^\n]+\.(?: \([^\n]+\))?$')
         for scope, opt in self.get_builtin_command_options():
-            if not opt.help:
-                msgs.append('%-16s %-16s %s' %
-                       ((scope or 'GLOBAL'), opt.name, 'NO HELP'))
-            elif not option_re.match(opt.help):
-                msgs.append('%-16s %-16s %s' %
-                        ((scope or 'GLOBAL'), opt.name, opt.help))
+            for name, _, _, helptxt in opt.iter_switches():
+                if name != opt.name:
+                    name = "/".join([opt.name, name])
+                if not helptxt:
+                    msgs.append('%-16s %-16s %s' %
+                           ((scope or 'GLOBAL'), name, 'NO HELP'))
+                elif not option_re.match(helptxt):
+                    if name.startswith("format/"):
+                        # Don't complain about the odd format registry help
+                        continue
+                    msgs.append('%-16s %-16s %s' %
+                            ((scope or 'GLOBAL'), name, helptxt))
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))
+
+
+class TestOptionMisc(TestCase):
 
     def test_is_hidden(self):
         registry = controldir.ControlDirFormatRegistry()
@@ -396,6 +385,14 @@ class TestOptionDefinitions(TestCase):
         self.assertTrue(format.is_hidden('hidden'))
         self.assertFalse(format.is_hidden('visible'))
 
+    def test_short_name(self):
+        registry = controldir.ControlDirFormatRegistry()
+        opt = option.RegistryOption('format', help='', registry=registry)
+        self.assertEquals(None, opt.short_name())
+        opt = option.RegistryOption('format', short_name='F', help='',
+            registry=registry)
+        self.assertEquals('F', opt.short_name())
+
     def test_option_custom_help(self):
         the_opt = option.Option.OPTIONS['help']
         orig_help = the_opt.help[:]
@@ -403,6 +400,17 @@ class TestOptionDefinitions(TestCase):
         # Confirm that my_opt has my help and the original is unchanged
         self.assertEqual('suggest lottery numbers', my_opt.help)
         self.assertEqual(orig_help, the_opt.help)
+
+    def test_short_value_switches(self):
+        reg = registry.Registry()
+        reg.register('short', 'ShortChoice')
+        reg.register('long', 'LongChoice')
+        ropt = option.RegistryOption('choice', '', reg, value_switches=True,
+            short_value_switches={'short': 's'})
+        opts, args = parse([ropt], ['--short'])
+        self.assertEqual('ShortChoice', opts.choice)
+        opts, args = parse([ropt], ['-s'])
+        self.assertEqual('ShortChoice', opts.choice)
 
 
 class TestVerboseQuietLinkage(TestCase):

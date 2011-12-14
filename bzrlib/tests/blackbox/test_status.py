@@ -45,24 +45,33 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
 
-    def assertStatus(self, expected_lines, working_tree,
+    def setUp(self):
+        super(BranchStatus, self).setUp()
+        # As TestCase.setUp clears all hooks, we install this default
+        # post_status hook handler for the test.
+        status.hooks.install_named_hook('post_status',
+            status._show_shelve_summary,
+            'bzr status')
+
+    def assertStatus(self, expected_lines, working_tree, specific_files=None,
         revision=None, short=False, pending=True, verbose=False):
         """Run status in working_tree and look for output.
 
         :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
-        output_string = self.status_string(working_tree, revision, short,
+        output_string = self.status_string(working_tree, specific_files, revision, short,
                 pending, verbose)
         self.assertEqual(expected_lines, output_string.splitlines(True))
 
-    def status_string(self, wt, revision=None, short=False, pending=True,
-        verbose=False):
+    def status_string(self, wt, specific_files=None, revision=None,
+        short=False, pending=True, verbose=False):
         # use a real file rather than StringIO because it doesn't handle
         # Unicode very well.
         tof = codecs.getwriter('utf-8')(TemporaryFile())
-        show_tree_status(wt, to_file=tof, revision=revision, short=short,
-                show_pending=pending, verbose=verbose)
+        show_tree_status(wt, specific_files=specific_files, to_file=tof,
+                revision=revision, short=short, show_pending=pending,
+                verbose=verbose)
         tof.seek(0)
         return tof.read().decode('utf-8')
 
@@ -203,12 +212,18 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
+        self.build_tree(['directory/','directory/hello.c',
+                         'bye.c','test.c','dir2/',
+                         'missing.c'])
         wt.add('directory')
         wt.add('test.c')
         wt.commit('testing')
+        wt.add('missing.c')
+        unlink('missing.c')
 
         self.assertStatus([
+                'missing:\n',
+                '  missing.c\n',
                 'unknown:\n',
                 '  bye.c\n',
                 '  dir2/\n',
@@ -219,6 +234,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 '?   bye.c\n',
                 '?   dir2/\n',
+                '+!  missing.c\n',
                 '?   directory/hello.c\n'
                 ],
                 wt, short=True)
@@ -261,6 +277,20 @@ class BranchStatus(TestCaseWithTransport):
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['+N  test.c\n'])
 
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['missing:\n',
+                           '  missing.c\n'])
+
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof,
+                         short=True)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['+!  missing.c\n'])
+
     def test_specific_files_conflicts(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir2/'])
@@ -295,10 +325,10 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('FILE_D')
         wt.add('FILE_E')
         wt.commit('Create five empty files.')
-        open('FILE_B', 'w').write('Modification to file FILE_B.')
-        open('FILE_C', 'w').write('Modification to file FILE_C.')
+        with open('FILE_B', 'w') as f: f.write('Modification to file FILE_B.')
+        with open('FILE_C', 'w') as f: f.write('Modification to file FILE_C.')
         unlink('FILE_E')  # FILE_E will be versioned but missing
-        open('FILE_Q', 'w').write('FILE_Q is added but not committed.')
+        with open('FILE_Q', 'w') as f: f.write('FILE_Q is added but not committed.')
         wt.add('FILE_Q')  # FILE_Q will be added but not committed
         open('UNVERSIONED_BUT_EXISTING', 'w')
         return wt
@@ -448,10 +478,13 @@ class BranchStatus(TestCaseWithTransport):
           ' M  FILE_B\n',
           'X   NONEXISTENT\n',
           ]
+        expected.sort()
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
                                 'FILE_C FILE_D FILE_E FILE_Q', retcode=3)
-        self.assertEqual(expected, out.splitlines(True))
+        actual = out.splitlines(True)
+        actual.sort()
+        self.assertEqual(expected, actual)
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
@@ -530,17 +563,29 @@ class BranchStatus(TestCaseWithTransport):
         self.run_bzr(['shelve', '--all', '-m', 'foo'])
         self.build_tree(['bye.c'])
         wt.add('bye.c')
-        # As TestCase.setUp clears all hooks, we install this default
-        # post_status hook handler for the test.
-        status.hooks.install_named_hook('post_status',
-            status._show_shelve_summary,
-            'bzr status')
         self.assertStatus([
                 'added:\n',
                 '  bye.c\n',
-                '1 shelves exist. See "bzr shelve --list" for details.\n',
+                '1 shelf exists. See "bzr shelve --list" for details.\n',
             ],
             wt)
+        self.run_bzr(['shelve', '--all', '-m', 'bar'])
+        self.build_tree(['eggs.c', 'spam.c'])
+        wt.add('eggs.c')
+        wt.add('spam.c')
+        self.assertStatus([
+                'added:\n',
+                '  eggs.c\n',
+                '  spam.c\n',
+                '2 shelves exist. See "bzr shelve --list" for details.\n',
+            ],
+            wt)
+        self.assertStatus([
+                'added:\n',
+                '  spam.c\n',
+            ],
+            wt,
+            specific_files=['spam.c'])
 
 
 class CheckoutStatus(BranchStatus):
@@ -601,10 +646,10 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
-        result = self.run_bzr("status --short -r 0")[0]
+        result = self.run_bzr("status -S -r 0")[0]
         self.assertContainsRe(result, "[+]N  hello.txt\n" \
                                       "[?]   world.txt\n")
-        result2 = self.run_bzr("status --short -r 0..")[0]
+        result2 = self.run_bzr("status -S -r 0..")[0]
         self.assertEquals(result2, result)
 
     def test_status_versioned(self):

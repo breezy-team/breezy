@@ -96,7 +96,7 @@ class FtpTransport(ConnectedTransport):
         super(FtpTransport, self).__init__(base,
                                            _from_transport=_from_transport)
         self._unqualified_scheme = 'ftp'
-        if self._scheme == 'aftp':
+        if self._parsed_url.scheme == 'aftp':
             self.is_active = True
         else:
             self.is_active = False
@@ -203,7 +203,7 @@ class FtpTransport(ConnectedTransport):
             # Microsoft FTP-Service RNFR reply if file not found
             or (s.startswith('550 ') and 'unable to rename to' in extra)
             # if containing directory doesn't exist, suggested by
-            # <https://bugs.edge.launchpad.net/bzr/+bug/224373>
+            # <https://bugs.launchpad.net/bzr/+bug/224373>
             or (s.startswith('550 ') and "can't find folder" in s)
             ):
             raise errors.NoSuchFile(path, extra=extra)

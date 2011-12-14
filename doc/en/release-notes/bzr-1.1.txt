@@ -1,0 +1,228 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.1
+#######
+
+:Released: 2008-01-15
+
+(no changes from 1.1rc1)
+
+bzr 1.1rc1
+##########
+
+:Released: 2008-01-05
+
+Changes
+*******
+
+* Dotted revision numbers have been revised. Instead of growing longer with
+  nested branches the branch number just increases. (eg instead of 1.1.1.1.1
+  we now report 1.2.1.) This helps scale long lived branches which have many
+  feature branches merged between them. (John Arbash Meinel)
+
+* The syntax ``bzr diff branch1 branch2`` is no longer supported.
+  Use ``bzr diff branch1 --new branch2`` instead. This change has
+  been made to remove the ambiguity where ``branch2`` is in fact a
+  specific file to diff within ``branch1``.
+
+Features
+********
+
+* New option to use custom template-based formats in  ``bzr version-info``.
+  (Lukáš Lalinský)
+
+* diff '--using' allows an external diff tool to be used for files.
+  (Aaron Bentley)
+
+* New "lca" merge-type for fast everyday merging that also supports
+  criss-cross merges.  (Aaron Bentley)
+
+Improvements
+************
+
+* ``annotate`` now doesn't require a working tree. (Lukáš Lalinský,
+  #90049)
+
+* ``branch`` and ``checkout`` can now use files from a working tree to
+  to speed up the process.  For checkout, this requires the new
+  --files-from flag.  (Aaron Bentley)
+
+* ``bzr diff`` now sorts files in alphabetical order.  (Aaron Bentley)
+
+* ``bzr diff`` now works on branches without working trees. Tree-less
+  branches can also be compared to each other and to working trees using
+  the new diff options ``--old`` and ``--new``. Diffing between branches,
+  with or without trees, now supports specific file filtering as well.
+  (Ian Clatworthy, #6700)
+
+* ``bzr pack`` now orders revision texts in topological order, with newest
+  at the start of the file, promoting linear reads for ``bzr log`` and the
+  like. This partially fixes #154129. (Robert Collins)
+
+* Merge directives now fetch prerequisites from the target branch if
+  needed.  (Aaron Bentley)
+
+* pycurl now handles digest authentication.
+  (Vincent Ladeuil)
+
+* ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
+
+* ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
+
+* ``merge`` now warns when merge directives cause cherrypicks.
+  (Aaron Bentley)
+
+* ``split`` now supported, to enable splitting large trees into smaller
+  pieces.  (Aaron Bentley)
+
+Bugfixes
+********
+
+* Avoid AttributeError when unlocking a pack repository when an error occurs.
+  (Martin Pool, #180208)
+
+* Better handle short reads when processing multiple range requests.
+  (Vincent Ladeuil, #179368)
+
+* build_tree acceleration uses the correct path when a file has been moved.
+  (Aaron Bentley)
+
+* ``commit`` now succeeds when a checkout and its master branch share a
+  repository.  (Aaron Bentley, #177592)
+
+* Fixed error reporting of unsupported timezone format in
+  ``log --timezone``. (Lukáš Lalinský, #178722)
+
+* Fixed Unicode encoding error in ``ignored`` when the output is
+  redirected to a pipe. (Lukáš Lalinský)
+
+* Fix traceback when sending large response bodies over the smart protocol
+  on Windows. (Andrew Bennetts, #115781)
+
+* Fix ``urlutils.relative_url`` for the case of two ``file:///`` URLs
+  pointed to different logical drives on Windows.
+  (Alexander Belchenko, #90847)
+
+* HTTP test servers are now compatible with the HTTP protocol version 1.1.
+  (Vincent Ladeuil, #175524)
+
+* _KnitParentsProvider.get_parent_map now handles requests for ghosts
+  correctly, instead of erroring or attributing incorrect parents to ghosts.
+  (Aaron Bentley)
+
+* ``merge --weave --uncommitted`` now works.  (Aaron Bentley)
+
+* pycurl authentication handling was broken and incomplete. Fix handling of
+  user:pass embedded in the URLs.
+  (Vincent Ladeuil, #177643)
+
+* Files inside non-directories are now handled like other conflict types.
+  (Aaron Bentley, #177390)
+
+* ``reconfigure`` is able to convert trees into lightweight checkouts.
+  (Aaron Bentley)
+
+* Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
+  #148087)
+
+* Test that the old ``version_info_format`` functions still work, even
+  though they are deprecated. (John Arbash Meinel, ShenMaq, #177872)
+
+* Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
+  #137681)
+
+* ``uncommit`` works even when the commit messages of revisions to be
+  removed use characters not supported in the terminal encoding.
+  (Aaron Bentley)
+
+* When dumb HTTP servers return whole files instead of the requested ranges,
+  read the remaining bytes by chunks to avoid overflowing network buffers.
+  (Vincent Ladeuil, #175886)
+
+Documentation
+*************
+
+* Minor tweaks made to the bug tracker integration documentation.
+  (Ian Clatworthy)
+
+* Reference material has now be moved out of the User Guide and added
+  to the User Reference. The User Reference has gained 4 sections as
+  a result: Authenication Settings, Configuration Settings, Conflicts
+  and Hooks. All help topics are now dumped into text format in the
+  doc/en/user-reference directory for those who like browsing that
+  information in their editor. (Ian Clatworthy)
+
+* *Using Bazaar with Launchpad* tutorial added. (Ian Clatworthy)
+
+Internals
+*********
+
+* find_* methods available for BzrDirs, Branches and WorkingTrees.
+  (Aaron Bentley)
+
+* Help topics can now be loaded from files.
+  (Ian Clatworthy, Alexander Belchenko)
+
+* get_parent_map now always provides tuples as its output.  (Aaron Bentley)
+
+* Parent Providers should now implement ``get_parent_map`` returning a
+  dictionary instead of ``get_parents`` returning a list.
+  ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
+  Robert Collins)
+
+* Patience Diff now supports arbitrary python objects, as long as they
+  support ``hash()``. (John Arbash Meinel)
+
+* Reduce selftest overhead to establish test names by memoization.
+  (Vincent Ladeuil)
+
+API Breaks
+**********
+
+Testing
+*******
+
+* Modules can now customise their tests by defining a ``load_tests``
+  attribute. ``pydoc bzrlib.tests.TestUtil.TestLoader.loadTestsFromModule``
+  for the documentation on this attribute. (Robert Collins)
+
+* New helper function ``bzrlib.tests.condition_id_re`` which helps
+  filter tests based on a regular expression search on the tests id.
+  (Robert Collins)
+
+* New helper function ``bzrlib.tests.condition_isinstance`` which helps
+  filter tests based on class. (Robert Collins)
+
+* New helper function ``bzrlib.tests.exclude_suite_by_condition`` which
+  generalises the ``exclude_suite_by_re`` function. (Robert Collins)
+
+* New helper function ``bzrlib.tests.filter_suite_by_condition`` which
+  generalises the ``filter_suite_by_re`` function. (Robert Collins)
+
+* New helper method ``bzrlib.tests.exclude_tests_by_re`` which gives a new
+  TestSuite that does not contain tests from the input that matched a
+  regular expression. (Robert Collins)
+
+* New helper method ``bzrlib.tests.randomize_suite`` which returns a
+  randomized copy of the input suite. (Robert Collins)
+
+* New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
+  suite into two according to a regular expression. (Robert Collins)
+
+* Parametrize all HTTP tests for the transport implementations, the HTTP protocol versions (1.0 and 1.1) and the authentication schemes.
+  (Vincent Ladeuil)
+
+* The ``exclude_pattern`` and ``random_order`` parameters to the function
+  ``bzrlib.tests.filter_suite_by_re`` have been deprecated. (Robert Collins)
+
+* The method ``bzrlib.tests.sort_suite_by_re`` has been deprecated. It is
+  replaced by the new helper methods added in this release. (Robert Collins)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

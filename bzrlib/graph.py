@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ from bzrlib import (
     revision,
     trace,
     )
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -59,21 +58,23 @@ class DictParentsProvider(object):
     def __repr__(self):
         return 'DictParentsProvider(%r)' % self.ancestry
 
+    # Note: DictParentsProvider does not implement get_cached_parent_map
+    #       Arguably, the data is clearly cached in memory. However, this class
+    #       is mostly used for testing, and it keeps the tests clean to not
+    #       change it.
+
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
-        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+        return dict([(k, ancestry[k]) for k in keys if k in ancestry])
 
-@deprecated_function(deprecated_in((1, 16, 0)))
-def _StackedParentsProvider(*args, **kwargs):
-    return StackedParentsProvider(*args, **kwargs)
 
 class StackedParentsProvider(object):
     """A parents provider which stacks (or unions) multiple providers.
-    
+
     The providers are queries in the order of the provided parent_providers.
     """
-    
+
     def __init__(self, parent_providers):
         self._parent_providers = parent_providers
 
@@ -95,6 +96,22 @@ class StackedParentsProvider(object):
         """
         found = {}
         remaining = set(keys)
+        # This adds getattr() overhead to each get_parent_map call. However,
+        # this is StackedParentsProvider, which means we're dealing with I/O
+        # (either local indexes, or remote RPCs), so CPU overhead should be
+        # minimal.
+        for parents_provider in self._parent_providers:
+            get_cached = getattr(parents_provider, 'get_cached_parent_map',
+                                 None)
+            if get_cached is None:
+                continue
+            new_found = get_cached(remaining)
+            found.update(new_found)
+            remaining.difference_update(new_found)
+            if not remaining:
+                break
+        if not remaining:
+            return found
         for parents_provider in self._parent_providers:
             new_found = parents_provider.get_parent_map(remaining)
             found.update(new_found)
@@ -154,6 +171,17 @@ class CachingParentsProvider(object):
             return None
         return dict(self._cache)
 
+    def get_cached_parent_map(self, keys):
+        """Return items from the cache.
+
+        This returns the same info as get_parent_map, but explicitly does not
+        invoke the supplied ParentsProvider to search for uncached values.
+        """
+        cache = self._cache
+        if cache is None:
+            return {}
+        return dict([(key, cache[key]) for key in keys if key in cache])
+
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map."""
         cache = self._cache
@@ -181,6 +209,23 @@ class CachingParentsProvider(object):
         """Note that key is a missing key."""
         if self._cache_misses:
             self.missing_keys.add(key)
+
+
+class CallableToParentsProviderAdapter(object):
+    """A parents provider that adapts any callable to the parents provider API.
+
+    i.e. it accepts calls to self.get_parent_map and relays them to the
+    callable it was constructed with.
+    """
+
+    def __init__(self, a_callable):
+        self.callable = a_callable
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.callable)
+
+    def get_parent_map(self, keys):
+        return self.callable(keys)
 
 
 class Graph(object):
@@ -237,7 +282,8 @@ class Graph(object):
         common ancestor of all border ancestors, because this shows that it
         cannot be a descendant of any border ancestor.
 
-        The scaling of this operation should be proportional to
+        The scaling of this operation should be proportional to:
+
         1. The number of uncommon ancestors
         2. The number of border ancestors
         3. The length of the shortest path between a border ancestor and an
@@ -375,8 +421,8 @@ class Graph(object):
 
         :param unique_revision: The revision_id whose ancestry we are
             interested in.
-            XXX: Would this API be better if we allowed multiple revisions on
-                 to be searched here?
+            (XXX: Would this API be better if we allowed multiple revisions on
+            to be searched here?)
         :param common_revisions: Revision_ids of ancestries to exclude.
         :return: A set of revisions in the ancestry of unique_revision
         """
@@ -1300,12 +1346,10 @@ class _BreadthFirstSearcher(object):
         return ('_BreadthFirstSearcher(iterations=%d, %s,'
                 ' seen=%r)' % (self._iterations, search, list(self.seen)))
 
-    def get_result(self):
-        """Get a SearchResult for the current state of this searcher.
+    def get_state(self):
+        """Get the current state of this searcher.
 
-        :return: A SearchResult for this search so far. The SearchResult is
-            static - the search can be advanced and the search result will not
-            be invalidated or altered.
+        :return: Tuple with started keys, excludes and included keys
         """
         if self._returning == 'next':
             # We have to know the current nodes children to be able to list the
@@ -1322,7 +1366,18 @@ class _BreadthFirstSearcher(object):
             next_query = self._next_query
         excludes = self._stopped_keys.union(next_query)
         included_keys = self.seen.difference(excludes)
-        return SearchResult(self._started_keys, excludes, len(included_keys),
+        return self._started_keys, excludes, included_keys
+
+    def _get_result(self):
+        """Get a SearchResult for the current state of this searcher.
+
+        :return: A SearchResult for this search so far. The SearchResult is
+            static - the search can be advanced and the search result will not
+            be invalidated or altered.
+        """
+        from bzrlib.vf_search import SearchResult
+        (started_keys, excludes, included_keys) = self.get_state()
+        return SearchResult(started_keys, excludes, len(included_keys),
             included_keys)
 
     def step(self):
@@ -1405,13 +1460,14 @@ class _BreadthFirstSearcher(object):
         parents_of_found = set()
         # revisions may contain nodes that point to other nodes in revisions:
         # we want to filter them out.
-        self.seen.update(revisions)
+        seen = self.seen
+        seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
             if parents is None:
                 continue
-            new_found_parents = [p for p in parents if p not in self.seen]
+            new_found_parents = [p for p in parents if p not in seen]
             if new_found_parents:
                 # Calling set.update() with an empty generator is actually
                 # rather expensive.
@@ -1536,147 +1592,19 @@ class _BreadthFirstSearcher(object):
             return revs, ghosts
 
 
-class SearchResult(object):
-    """The result of a breadth first search.
-
-    A SearchResult provides the ability to reconstruct the search or access a
-    set of the keys the search found.
-    """
-
-    def __init__(self, start_keys, exclude_keys, key_count, keys):
-        """Create a SearchResult.
-
-        :param start_keys: The keys the search started at.
-        :param exclude_keys: The keys the search excludes.
-        :param key_count: The total number of keys (from start to but not
-            including exclude).
-        :param keys: The keys the search found. Note that in future we may get
-            a SearchResult from a smart server, in which case the keys list is
-            not necessarily immediately available.
-        """
-        self._recipe = ('search', start_keys, exclude_keys, key_count)
-        self._keys = frozenset(keys)
-
-    def get_recipe(self):
-        """Return a recipe that can be used to replay this search.
-
-        The recipe allows reconstruction of the same results at a later date
-        without knowing all the found keys. The essential elements are a list
-        of keys to start and to stop at. In order to give reproducible
-        results when ghosts are encountered by a search they are automatically
-        added to the exclude list (or else ghost filling may alter the
-        results).
-
-        :return: A tuple ('search', start_keys_set, exclude_keys_set,
-            revision_count). To recreate the results of this search, create a
-            breadth first searcher on the same graph starting at start_keys.
-            Then call next() (or next_with_ghosts()) repeatedly, and on every
-            result, call stop_searching_any on any keys from the exclude_keys
-            set. The revision_count value acts as a trivial cross-check - the
-            found revisions of the new search should have as many elements as
-            revision_count. If it does not, then additional revisions have been
-            ghosted since the search was executed the first time and the second
-            time.
-        """
-        return self._recipe
-
-    def get_keys(self):
-        """Return the keys found in this search.
-
-        :return: A set of keys.
-        """
-        return self._keys
-
-    def is_empty(self):
-        """Return false if the search lists 1 or more revisions."""
-        return self._recipe[3] == 0
-
-    def refine(self, seen, referenced):
-        """Create a new search by refining this search.
-
-        :param seen: Revisions that have been satisfied.
-        :param referenced: Revision references observed while satisfying some
-            of this search.
-        """
-        start = self._recipe[1]
-        exclude = self._recipe[2]
-        count = self._recipe[3]
-        keys = self.get_keys()
-        # New heads = referenced + old heads - seen things - exclude
-        pending_refs = set(referenced)
-        pending_refs.update(start)
-        pending_refs.difference_update(seen)
-        pending_refs.difference_update(exclude)
-        # New exclude = old exclude + satisfied heads
-        seen_heads = start.intersection(seen)
-        exclude.update(seen_heads)
-        # keys gets seen removed
-        keys = keys - seen
-        # length is reduced by len(seen)
-        count -= len(seen)
-        return SearchResult(pending_refs, exclude, count, keys)
-
-
-class PendingAncestryResult(object):
-    """A search result that will reconstruct the ancestry for some graph heads.
-
-    Unlike SearchResult, this doesn't hold the complete search result in
-    memory, it just holds a description of how to generate it.
-    """
-
-    def __init__(self, heads, repo):
-        """Constructor.
-
-        :param heads: an iterable of graph heads.
-        :param repo: a repository to use to generate the ancestry for the given
-            heads.
-        """
-        self.heads = frozenset(heads)
-        self.repo = repo
-
-    def get_recipe(self):
-        """Return a recipe that can be used to replay this search.
-
-        The recipe allows reconstruction of the same results at a later date.
-
-        :seealso SearchResult.get_recipe:
-
-        :return: A tuple ('proxy-search', start_keys_set, set(), -1)
-            To recreate this result, create a PendingAncestryResult with the
-            start_keys_set.
-        """
-        return ('proxy-search', self.heads, set(), -1)
-
-    def get_keys(self):
-        """See SearchResult.get_keys.
-
-        Returns all the keys for the ancestry of the heads, excluding
-        NULL_REVISION.
-        """
-        return self._get_keys(self.repo.get_graph())
-
-    def _get_keys(self, graph):
-        NULL_REVISION = revision.NULL_REVISION
-        keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
-                if key != NULL_REVISION and parents is not None]
-        return keys
-
-    def is_empty(self):
-        """Return false if the search lists 1 or more revisions."""
-        if revision.NULL_REVISION in self.heads:
-            return len(self.heads) == 1
-        else:
-            return len(self.heads) == 0
-
-    def refine(self, seen, referenced):
-        """Create a new search by refining this search.
-
-        :param seen: Revisions that have been satisfied.
-        :param referenced: Revision references observed while satisfying some
-            of this search.
-        """
-        referenced = self.heads.union(referenced)
-        return PendingAncestryResult(referenced - seen, self.repo)
+def invert_parent_map(parent_map):
+    """Given a map from child => parents, create a map of parent=>children"""
+    child_map = {}
+    for child, parents in parent_map.iteritems():
+        for p in parents:
+            # Any given parent is likely to have only a small handful
+            # of children, many will have only one. So we avoid mem overhead of
+            # a list, in exchange for extra copying of tuples
+            if p not in child_map:
+                child_map[p] = (child,)
+            else:
+                child_map[p] = child_map[p] + (child,)
+    return child_map
 
 
 def collapse_linear_regions(parent_map):
@@ -1768,7 +1696,13 @@ class GraphThunkIdsToKeys(object):
         return set([h[0] for h in head_keys])
 
     def merge_sort(self, tip_revision):
-        return self._graph.merge_sort((tip_revision,))
+        nodes = self._graph.merge_sort((tip_revision,))
+        for node in nodes:
+            node.key = node.key[0]
+        return nodes
+
+    def add_node(self, revision, parents):
+        self._graph.add_node((revision,), [(p,) for p in parents])
 
 
 _counters = [0,0,0,0,0,0,0]

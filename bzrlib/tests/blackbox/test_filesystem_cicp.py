@@ -23,9 +23,13 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests import CaseInsCasePresFilenameFeature, KnownFailure
+from bzrlib.tests import KnownFailure
 from bzrlib.osutils import canonical_relpath, pathjoin
 from bzrlib.tests.script import run_script
+from bzrlib.tests.features import (
+    CaseInsCasePresFilenameFeature,
+    )
+
 
 
 class TestCICPBase(tests.TestCaseWithTransport):
@@ -131,8 +135,8 @@ class TestMove(TestCICPBase):
     def test_mv_newname(self):
         wt = self._make_mixed_case_tree()
         run_script(self, """
-            $ bzr add
-            $ bzr ci -m message
+            $ bzr add -q
+            $ bzr ci -qm message
             $ bzr mv camelcaseparent/camelcase camelcaseparent/NewCamelCase
             CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase
             """)
@@ -142,8 +146,8 @@ class TestMove(TestCICPBase):
         # In this case we can specify the incorrect case for the destination,
         # as we use --after, so the file-system is sniffed.
         run_script(self, """
-            $ bzr add 
-            $ bzr ci -m message
+            $ bzr add -q
+            $ bzr ci -qm message
             $ mv CamelCaseParent/CamelCase CamelCaseParent/NewCamelCase
             $ bzr mv --after camelcaseparent/camelcase camelcaseparent/newcamelcase
             CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase

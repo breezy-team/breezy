@@ -34,7 +34,7 @@ from bzrlib.trace import mutter, warning
 def report_changes(to_file, old, new, specific_files, 
                    show_short_reporter, show_long_callback, 
                    short=False, want_unchanged=False, 
-                   want_unversioned=False, show_ids=False):
+                   want_unversioned=False, show_ids=False, classify=True):
     """Display summary of changes.
 
     This compares two trees with regards to a list of files, and delegates 
@@ -59,6 +59,7 @@ def report_changes(to_file, old, new, specific_files,
         files.
     :param show_ids: If set, includes each file's id.
     :param want_unversioned: If False, only shows versioned files.
+    :param classify: Add special symbols to indicate file kind.
     """
 
     if short:
@@ -76,7 +77,8 @@ def report_changes(to_file, old, new, specific_files,
             delta.unversioned if not new.is_ignored(unversioned[0])]
         show_long_callback(to_file, delta, 
                            show_ids=show_ids,
-                           show_unchanged=want_unchanged)
+                           show_unchanged=want_unchanged,
+                           classify=classify)
 
 
 def show_tree_status(wt, show_unchanged=None,
@@ -88,6 +90,7 @@ def show_tree_status(wt, show_unchanged=None,
                      short=False,
                      verbose=False,
                      versioned=False,
+                     classify=True,
                      show_long_callback=_mod_delta.report_delta):
     """Display summary of changes.
 
@@ -117,6 +120,7 @@ def show_tree_status(wt, show_unchanged=None,
     :param verbose: If True, show all merged revisions, not just
         the merge tips
     :param versioned: If True, only shows versioned files.
+    :param classify: Add special symbols to indicate file kind.
     :param show_long_callback: A callback: message = show_long_callback(to_file, delta, 
         show_ids, show_unchanged, indent, filter), only used with the long output
     """
@@ -153,7 +157,7 @@ def show_tree_status(wt, show_unchanged=None,
         try:
             for hook in hooks['pre_status']:
                 hook(StatusHookParams(old, new, to_file, versioned,
-                    show_ids, short, verbose))
+                    show_ids, short, verbose, specific_files=specific_files))
 
             specific_files, nonexistents \
                 = _filter_nonexistent(specific_files, old, new)
@@ -161,11 +165,12 @@ def show_tree_status(wt, show_unchanged=None,
 
             # Reporter used for short outputs
             reporter = _mod_delta._ChangeReporter(output_file=to_file,
-                unversioned_filter=new.is_ignored)
+                unversioned_filter=new.is_ignored, classify=classify)
             report_changes(to_file, old, new, specific_files, 
                            reporter, show_long_callback, 
                            short=short, want_unchanged=show_unchanged, 
-                           want_unversioned=want_unversioned, show_ids=show_ids)
+                           want_unversioned=want_unversioned, show_ids=show_ids,
+                           classify=classify)
 
             # show the ignored files among specific files (i.e. show the files
             # identified from input that we choose to ignore). 
@@ -194,7 +199,7 @@ def show_tree_status(wt, show_unchanged=None,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("%s %s\n" % (prefix, conflict))
+                to_file.write("%s %s\n" % (prefix, unicode(conflict)))
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status
@@ -217,7 +222,7 @@ def show_tree_status(wt, show_unchanged=None,
                 raise errors.PathsDoNotExist(nonexistents)
             for hook in hooks['post_status']:
                 hook(StatusHookParams(old, new, to_file, versioned,
-                    show_ids, short, verbose))
+                    show_ids, short, verbose, specific_files=specific_files))
         finally:
             old.unlock()
             new.unlock()
@@ -379,23 +384,23 @@ class StatusHooks(_mod_hooks.Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        _mod_hooks.Hooks.__init__(self)
-        self.create_hook(_mod_hooks.HookPoint('post_status',
+        _mod_hooks.Hooks.__init__(self, "bzrlib.status", "hooks")
+        self.add_hook('post_status',
             "Called with argument StatusHookParams after Bazaar has "
             "displayed the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
-        self.create_hook(_mod_hooks.HookPoint('pre_status',
+            (2, 3))
+        self.add_hook('pre_status',
             "Called with argument StatusHookParams before Bazaar "
             "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
+            (2, 3))
 
 
 class StatusHookParams(object):
@@ -411,7 +416,7 @@ class StatusHookParams(object):
     """
 
     def __init__(self, old_tree, new_tree, to_file, versioned, show_ids,
-            short, verbose):
+            short, verbose, specific_files=None):
         """Create a group of post_status hook parameters.
 
         :param old_tree: Start tree (basis tree) for comparison.
@@ -421,6 +426,9 @@ class StatusHookParams(object):
         :param show_ids: Show internal object ids.
         :param short: Use short status indicators.
         :param verbose: Verbose flag.
+        :param specific_files: If set, a list of filenames whose status should be
+            shown.  It is an error to give a filename that is not in the working
+            tree, or in the working inventory or in the basis inventory.
         """
         self.old_tree = old_tree
         self.new_tree = new_tree
@@ -429,14 +437,15 @@ class StatusHookParams(object):
         self.show_ids = show_ids
         self.short = short
         self.verbose = verbose
+        self.specific_files = specific_files
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s(%s, %s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
+        return "<%s(%s, %s, %s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
             self.old_tree, self.new_tree, self.to_file, self.versioned,
-            self.show_ids, self.short, self.verbose)
+            self.show_ids, self.short, self.verbose, self.specific_files)
 
 
 def _show_shelve_summary(params):
@@ -444,11 +453,24 @@ def _show_shelve_summary(params):
 
     :param params: StatusHookParams.
     """
-    manager = params.new_tree.get_shelf_manager()
+    # Don't show shelves if status of specific files is being shown, only if
+    # no file arguments have been passed
+    if params.specific_files:
+        return
+    get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
+    if get_shelf_manager is None:
+        return
+    manager = get_shelf_manager()
     shelves = manager.active_shelves()
     if shelves:
-        params.to_file.write('%d shelves exist. '
-            'See "bzr shelve --list" for details.\n' % len(shelves))
+        singular = '%d shelf exists. '
+        plural = '%d shelves exist. '
+        if len(shelves) == 1:
+            fmt = singular
+        else:
+            fmt = plural
+        params.to_file.write(fmt % len(shelves))
+        params.to_file.write('See "bzr shelve --list" for details.\n')
 
 
 hooks = StatusHooks()

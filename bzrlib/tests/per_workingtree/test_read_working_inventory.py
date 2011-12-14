@@ -17,19 +17,27 @@
 """Tests for WorkingTree.read_working_inventory."""
 
 from bzrlib import errors, inventory
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib.workingtree import InventoryWorkingTree
 
 
 class TestReadWorkingInventory(TestCaseWithWorkingTree):
 
     def test_trivial_read(self):
         tree = self.make_branch_and_tree('t1')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("read_working_inventory not usable on "
+                "non-inventory working trees")
         tree.lock_read()
         self.assertIsInstance(tree.read_working_inventory(), inventory.Inventory)
         tree.unlock()
 
     def test_read_after_inventory_modification(self):
         tree = self.make_branch_and_tree('tree')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("read_working_inventory not usable on "
+                "non-inventory working trees")
         # prepare for a series of changes that will modify the
         # inventory
         tree.lock_write()

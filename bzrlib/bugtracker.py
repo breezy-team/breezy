@@ -48,8 +48,14 @@ rather than a full URL. This looks like::
 
     bzr commit --fixes <tracker>:<id>
 
+or::
+
+    bzr commit --fixes <id>
+
 where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
 identifier for that bug within the bugtracker, usually the bug number.
+If "<tracker>" is not specified the ``bugtracker`` set in the branch
+or global configuration is used.
 
 Bazaar knows about a few bug trackers that have many users. If
 you use one of these bug trackers then there is no setup required to
@@ -231,7 +237,8 @@ tracker_registry.register(
 
 
 tracker_registry.register('gnome',
-    UniqueIntegerBugTracker('gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
+    UniqueIntegerBugTracker('gnome',
+                            'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
 class URLParametrizedBugTracker(BugTracker):
@@ -246,7 +253,7 @@ class URLParametrizedBugTracker(BugTracker):
     def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "%s_%s_url" % (self.type_name, abbreviation))
+            "%s_%s_url" % (self.type_name, abbreviation), expand=False)
         if url is None:
             return None
         self._base_url = url
@@ -261,9 +268,12 @@ class URLParametrizedBugTracker(BugTracker):
         return urlutils.join(self._base_url, self._bug_area) + str(bug_id)
 
 
-class URLParametrizedIntegerBugTracker(IntegerBugTracker, URLParametrizedBugTracker):
-    """A type of bug tracker that can be found on a variety of different sites,
-    and thus needs to have the base URL configured, but only allows integer bug IDs.
+class URLParametrizedIntegerBugTracker(IntegerBugTracker,
+                                       URLParametrizedBugTracker):
+    """A type of bug tracker that  only allows integer bug IDs.
+
+    This can be found on a variety of different sites, and thus needs to have
+    the base URL configured.
 
     Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
     `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')

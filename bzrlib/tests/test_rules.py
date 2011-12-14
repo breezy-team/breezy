@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,13 @@
 
 """Tests for finding, parsing and searching rule-based preferences."""
 
-import os
 import sys
 
 from bzrlib import (
-    config,
     errors,
     rules,
     tests,
     )
-from bzrlib.util.configobj import configobj
 
 
 class TestIniBasedRulesSearcher(tests.TestCase):
@@ -46,11 +43,13 @@ class TestIniBasedRulesSearcher(tests.TestCase):
         rs = self.make_searcher(None)
         self.assertEquals((), rs.get_items('a.txt'))
         self.assertEquals((), rs.get_selected_items('a.txt', ['foo']))
+        self.assertEquals(None, rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_file_empty(self):
         rs = self.make_searcher("")
         self.assertEquals((), rs.get_items('a.txt'))
         self.assertEquals((), rs.get_selected_items('a.txt', ['foo']))
+        self.assertEquals(None, rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_from_extension_match(self):
         rs = self.make_searcher("[name *.txt]\nfoo=bar\na=True\n")
@@ -61,6 +60,7 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             rs.get_items('dir/a.txt'))
         self.assertEquals((('foo', 'bar'),),
             rs.get_selected_items('a.txt', ['foo']))
+        self.assertEquals('bar', rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_from_multiple_glob_match(self):
         rs = self.make_searcher(
@@ -74,12 +74,15 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             rs.get_items('x x'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
             rs.get_items('y y'))
+        self.assertEquals('bar', rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_pathname_match(self):
         rs = self.make_searcher("[name ./a.txt]\nfoo=baz\n")
         self.assertEquals((('foo', 'baz'),),
             rs.get_items('a.txt'))
+        self.assertEquals('baz', rs.get_single_value('a.txt', 'foo'))
         self.assertEquals((), rs.get_items('dir/a.txt'))
+        self.assertEquals(None, rs.get_single_value('dir/a.txt', 'foo'))
 
     def test_get_items_match_first(self):
         rs = self.make_searcher(
@@ -87,8 +90,10 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             "[name *.txt]\nfoo=bar\na=True\n")
         self.assertEquals((('foo', 'baz'),),
             rs.get_items('a.txt'))
+        self.assertEquals('baz', rs.get_single_value('a.txt', 'foo'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
             rs.get_items('dir/a.txt'))
+        self.assertEquals('bar', rs.get_single_value('dir/a.txt', 'foo'))
 
 
 class TestStackedRulesSearcher(tests.TestCase):
@@ -110,18 +115,22 @@ class TestStackedRulesSearcher(tests.TestCase):
             "[name *.txt]\nfoo=bar\na=True\n")
         self.assertEquals((('foo', 'baz'),),
             rs.get_items('a.txt'))
+        self.assertEquals('baz', rs.get_single_value('a.txt', 'foo'))
+        self.assertEquals(None, rs.get_single_value('a.txt', 'a'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
             rs.get_items('dir/a.txt'))
+        self.assertEquals('bar', rs.get_single_value('dir/a.txt', 'foo'))
+        self.assertEquals('True', rs.get_single_value('dir/a.txt', 'a'))
 
 
 class TestRulesPath(tests.TestCase):
 
     def setUp(self):
         super(TestRulesPath, self).setUp()
-        os.environ['HOME'] = '/home/bogus'
+        self.overrideEnv('HOME', '/home/bogus')
         if sys.platform == 'win32':
-            os.environ['BZR_HOME'] = \
-                r'C:\Documents and Settings\bogus\Application Data'
+            self.overrideEnv(
+                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:

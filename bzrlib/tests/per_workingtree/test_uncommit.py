@@ -16,12 +16,7 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-import os
-
 from bzrlib import (
-    errors,
-    revision as _mod_revision,
-    symbol_versioning,
     uncommit,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree

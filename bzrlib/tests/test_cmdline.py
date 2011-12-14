@@ -113,4 +113,3 @@ class TestSplitter(tests.TestCase):
         self.assertAsTokens([(False, r'\\"'), (False, r'*.py')],
                             r'\\\\\" *.py')
         self.assertAsTokens([(True, u'\\\\')], u'"\\\\')
-

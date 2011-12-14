@@ -143,7 +143,7 @@ Puede ver el histórico de su branch navegando su log::
     Importación inicial
 
 
-Publicando su branch con sftp
+Publicando su branch con SFTP
 =============================
 
 Hay un par de maneras para publicar su branch. Si ya tiene un servidor
@@ -166,7 +166,7 @@ Ahora cualquiera podrá crear su propia copia de su branch tecleando::
 
  $ bzr branch http://www.example.com/miproyecto
 
-**Nota:** para utilizar sftp deberá instalar ``paramiko`` y
+**Nota:** para utilizar SFTP deberá instalar ``paramiko`` y
 ``pyCrypto``. Vea http://wiki.bazaar.canonical.com/InstallationFaq para más información.
 
 

@@ -2,7 +2,7 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
@@ -13,7 +13,7 @@
    height="744.09448"
    id="svg2766"
    sodipodi:version="0.32"
-   inkscape:version="0.45.1"
+   inkscape:version="0.46"
    version="1.0"
    sodipodi:docbase="/home/ian/bzr/repo.packs/bzr.quick-start-tweaks/doc/en/quick-reference"
    sodipodi:docname="quick-start-summary.svg"
@@ -363,7 +363,7 @@
              sodipodi:role="line"
              id="tspan2187"
              x="64.448624"
-             y="277.48495">bzr branch mp myproject</tspan></text>
+             y="277.48495">bzr branch myproject newproject</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -389,7 +389,7 @@
              sodipodi:role="line"
              id="tspan3406"
              x="64.448624"
-             y="308.44989">bzr checkout mp myproject</tspan></text>
+             y="308.44989">bzr checkout srcproject myproject</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -415,11 +415,11 @@
              id="tspan3424"
              sodipodi:role="line"
              x="64.448624"
-             y="341.88864">bzr checkout --lightweight mp \</tspan><tspan
+             y="341.88864">bzr checkout --lightweight \</tspan><tspan
              sodipodi:role="line"
              x="64.448624"
              y="352.96197"
-             id="tspan2780"> myproject</tspan></text>
+             id="tspan2780"> srcproject myproject</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1329,7 +1329,7 @@
          sodipodi:role="line"
          id="tspan3411"
          x="146.57143"
-         y="97.808769">Quick Start Card</tspan></text>
+         y="97.808769">Quick Reference Card</tspan></text>
     <g
        id="g12314"
        transform="translate(17.946423,1.7472534)"

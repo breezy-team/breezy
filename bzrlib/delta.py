@@ -61,6 +61,7 @@ class TreeDelta(object):
         self.modified = []
         self.unchanged = []
         self.unversioned = []
+        self.missing = []
 
     def __eq__(self, other):
         if not isinstance(other, TreeDelta):
@@ -137,7 +138,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             else:
                 delta.removed.append((path[0], file_id, kind[0]))
         elif fully_present[0] is False:
-            continue
+            delta.missing.append((path[1], file_id, kind[1]))
         elif name[0] != name[1] or parent_id[0] != parent_id[1]:
             # If the name changes, or the parent_id changes, we have a rename
             # (if we move a parent, that doesn't count as a rename for the
@@ -160,6 +161,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     delta.removed.sort()
     delta.added.sort()
     delta.renamed.sort()
+    delta.missing.sort()
     # TODO: jam 20060529 These lists shouldn't need to be sorted
     #       since we added them in alphabetical order.
     delta.modified.sort()
@@ -172,7 +174,8 @@ class _ChangeReporter(object):
     """Report changes between two trees"""
 
     def __init__(self, output=None, suppress_root_add=True,
-                 output_file=None, unversioned_filter=None, view_info=None):
+                 output_file=None, unversioned_filter=None, view_info=None,
+                 classify=True):
         """Constructor
 
         :param output: a function with the signature of trace.note, i.e.
@@ -187,6 +190,7 @@ class _ChangeReporter(object):
         :param view_info: A tuple of view_name,view_files if only
             items inside a view are to be reported on, or None for
             no view filtering.
+        :param classify: Add special symbols to indicate file kind.
         """
         if output_file is not None:
             if output is not None:
@@ -202,13 +206,19 @@ class _ChangeReporter(object):
                              'unchanged': ' ',
                              'created': 'N',
                              'modified': 'M',
-                             'deleted': 'D'}
+                             'deleted': 'D',
+                             'missing': '!',
+                             }
         self.versioned_map = {'added': '+', # versioned target
                               'unchanged': ' ', # versioned in both
                               'removed': '-', # versioned in source
                               'unversioned': '?', # versioned in neither
                               }
         self.unversioned_filter = unversioned_filter
+        if classify:
+            self.kind_marker = osutils.kind_marker
+        else:
+            self.kind_marker = lambda kind: ''
         if view_info is None:
             self.view_name = None
             self.view_files = []
@@ -263,7 +273,7 @@ class _ChangeReporter(object):
             # if the file is not missing in the source, we show its kind
             # when we show two paths.
             if kind[0] is not None:
-                old_path += osutils.kind_marker(kind[0])
+                old_path += self.kind_marker(kind[0])
             old_path += " => "
         elif versioned == 'removed':
             # not present in target
@@ -278,10 +288,10 @@ class _ChangeReporter(object):
             rename = self.versioned_map[versioned]
         # we show the old kind on the new path when the content is deleted.
         if modified == 'deleted':
-            path += osutils.kind_marker(kind[0])
+            path += self.kind_marker(kind[0])
         # otherwise we always show the current kind when there is one
         elif kind[1] is not None:
-            path += osutils.kind_marker(kind[1])
+            path += self.kind_marker(kind[1])
         if exe_change:
             exe = '*'
         else:
@@ -325,6 +335,8 @@ def report_changes(change_iterator, reporter):
         else:
             if content_change:
                 modified = "modified"
+            elif kind[0] is None:
+                modified = "missing"
             else:
                 modified = "unchanged"
             if kind[1] == "file":
@@ -334,7 +346,7 @@ def report_changes(change_iterator, reporter):
                         exe_change, kind)
 
 def report_delta(to_file, delta, short_status=False, show_ids=False, 
-         show_unchanged=False, indent='', filter=None):
+         show_unchanged=False, indent='', filter=None, classify=True):
     """Output this delta in status-like form to to_file.
 
     :param to_file: A file-like object where the output is displayed.
@@ -352,9 +364,13 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
     :param filter: A callable receiving a path and a file id and
         returning True if the path should be displayed.
+
+    :param classify: Add special symbols to indicate file kind.
     """
 
     def decorate_path(path, kind, meta_modified=None):
+        if not classify:
+            return path
         if kind == 'directory':
             path += '/'
         elif kind == 'symlink':
@@ -417,6 +433,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
     show_list(delta.removed, 'removed', 'D')
     show_list(delta.added, 'added', 'A')
+    show_list(delta.missing, 'missing', '!')
     extra_modified = []
     # Reorder delta.renamed tuples so that all lists share the same
     # order for their 3 first fields and that they also begin like

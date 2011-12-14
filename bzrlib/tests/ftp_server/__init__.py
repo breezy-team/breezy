@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 """
 Facilities to use ftp test servers.
 """
@@ -20,12 +21,20 @@ Facilities to use ftp test servers.
 import sys
 
 from bzrlib import tests
+from bzrlib.tests import (
+    features,
+    )
 
 
 try:
     from bzrlib.tests.ftp_server import medusa_based
-    # medusa is bogus under python2.6
-    medusa_available = sys.version_info < (2, 6)
+    # medusa is bogus starting with python2.6, since we don't support earlier
+    # pythons anymore, it's currently useless. There is hope though that the
+    # unicode bugs get fixed in the future so we leave it disabled until
+    # then. Keeping the framework in place means that only the following line
+    # will need to be changed.  The last tests were conducted with medusa-2.0
+    # -- vila 20110607
+    medusa_available = False
 except ImportError:
     medusa_available = False
 
@@ -37,7 +46,7 @@ except ImportError:
     pyftpdlib_available = False
 
 
-class _FTPServerFeature(tests.Feature):
+class _FTPServerFeature(features.Feature):
     """Some tests want an FTP Server, check if one is available.
 
     Right now, the only way this is available is if one of the following is

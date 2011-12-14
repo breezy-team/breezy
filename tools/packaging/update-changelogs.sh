@@ -1,4 +1,5 @@
 #!/bin/bash
+# Helper to insert a new entry in debian/changelog
 
 if [ -z "$UBUNTU_RELEASES" ]; then
     echo "Configure the distro platforms that you want to"

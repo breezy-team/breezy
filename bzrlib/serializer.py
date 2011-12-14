@@ -93,7 +93,6 @@ class SerializerRegistry(registry.Registry):
 
 
 format_registry = SerializerRegistry()
-format_registry.register_lazy('4', 'bzrlib.xml4', 'serializer_v4')
 format_registry.register_lazy('5', 'bzrlib.xml5', 'serializer_v5')
 format_registry.register_lazy('6', 'bzrlib.xml6', 'serializer_v6')
 format_registry.register_lazy('7', 'bzrlib.xml7', 'serializer_v7')

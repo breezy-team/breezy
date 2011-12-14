@@ -19,6 +19,7 @@ from bzrlib import (
     commands,
     osutils,
     tests,
+    trace,
     ui,
     )
 from bzrlib.tests import script
@@ -160,7 +161,51 @@ class TestRedirections(tests.TestCase):
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
-        self.assertRaises(SyntaxError, self.run_script, 'foo')
+        """A clear error is reported for commands that aren't recognised
+
+        Testing the attributes of the SyntaxError instance is equivalent to
+        using traceback.format_exception_only and comparing with:
+          File "<string>", line 1
+            foo --frob
+            ^
+        SyntaxError: Command not found "foo"
+        """
+        e = self.assertRaises(SyntaxError, self.run_script, "$ foo --frob")
+        self.assertContainsRe(e.msg, "not found.*foo")
+        self.assertEquals(e.text, "foo --frob")
+
+    def test_blank_output_mismatches_output(self):
+        """If you give output, the output must actually be blank.
+        
+        See <https://bugs.launchpad.net/bzr/+bug/637830>: previously blank
+        output was a wildcard.  Now you must say ... if you want that.
+        """
+        self.assertRaises(AssertionError,
+            self.run_script,
+            """
+            $ echo foo
+            """)
+
+    def test_null_output_matches_option(self):
+        """If you want null output to be a wild card, you can pass 
+        null_output_matches_anything to run_script"""
+        self.run_script(
+            """
+            $ echo foo
+            """, null_output_matches_anything=True)
+
+    def test_ellipsis_everything(self):
+        """A simple ellipsis matches everything."""
+        self.run_script("""
+        $ echo foo
+        ...
+        """)
+
+    def test_ellipsis_matches_empty(self):
+        self.run_script("""
+        $ cd .
+        ...
+        """)
 
     def test_stops_on_unexpected_output(self):
         story = """
@@ -169,7 +214,6 @@ $ cd dir
 The cd command ouputs nothing
 """
         self.assertRaises(AssertionError, self.run_script, story)
-
 
     def test_stops_on_unexpected_error(self):
         story = """
@@ -190,10 +234,13 @@ $ bzr not-a-command
         # The status matters, not the output
         story = """
 $ bzr init
+...
 $ cat >file
 <Hello
 $ bzr add file
+...
 $ bzr commit -m 'adding file'
+2>...
 """
         self.run_script(story)
 
@@ -244,6 +291,15 @@ $ cat '*'
 $ echo 'cat' "dog" '"chicken"' "'dragon'"
 cat dog "chicken" 'dragon'
 """)
+
+    def test_verbosity_isolated(self):
+        """Global verbosity is isolated from commands run in scripts.
+        """
+        # see also 656694; we should get rid of global verbosity
+        self.run_script("""
+        $ bzr init --quiet a
+        """)
+        self.assertEquals(trace.is_quiet(), False)
 
 
 class TestCat(script.TestCaseWithTransportAndScript):
@@ -327,8 +383,8 @@ $ cd dir
 $ mkdir ../dir2
 $ cd ..
 """)
-        self.failUnlessExists('dir')
-        self.failUnlessExists('dir2')
+        self.assertPathExists('dir')
+        self.assertPathExists('dir2')
 
 
 class TestCd(script.TestCaseWithTransportAndScript):
@@ -356,8 +412,11 @@ $ cd dir
 class TestBzr(script.TestCaseWithTransportAndScript):
 
     def test_bzr_smoke(self):
-        self.run_script('$ bzr init branch')
-        self.failUnlessExists('branch')
+        self.run_script("""
+            $ bzr init branch
+            Created a standalone tree (format: ...)
+            """)
+        self.assertPathExists('branch')
 
 
 class TestEcho(script.TestCaseWithMemoryTransportAndScript):
@@ -421,39 +480,39 @@ class TestRm(script.TestCaseWithTransportAndScript):
 
     def test_rm_file(self):
         self.run_script('$ echo content >file')
-        self.failUnlessExists('file')
+        self.assertPathExists('file')
         self.run_script('$ rm file')
-        self.failIfExists('file')
+        self.assertPathDoesNotExist('file')
 
     def test_rm_file_force(self):
-        self.failIfExists('file')
+        self.assertPathDoesNotExist('file')
         self.run_script('$ rm -f file')
-        self.failIfExists('file')
+        self.assertPathDoesNotExist('file')
 
     def test_rm_files(self):
         self.run_script("""
 $ echo content >file
 $ echo content >file2
 """)
-        self.failUnlessExists('file2')
+        self.assertPathExists('file2')
         self.run_script('$ rm file file2')
-        self.failIfExists('file2')
+        self.assertPathDoesNotExist('file2')
 
     def test_rm_dir(self):
         self.run_script('$ mkdir dir')
-        self.failUnlessExists('dir')
+        self.assertPathExists('dir')
         self.run_script("""
 $ rm dir
 2>rm: cannot remove 'dir': Is a directory
 """)
-        self.failUnlessExists('dir')
+        self.assertPathExists('dir')
 
     def test_rm_dir_recursive(self):
         self.run_script("""
 $ mkdir dir
 $ rm -r dir
 """)
-        self.failIfExists('dir')
+        self.assertPathDoesNotExist('dir')
 
 
 class TestMv(script.TestCaseWithTransportAndScript):
@@ -465,10 +524,10 @@ class TestMv(script.TestCaseWithTransportAndScript):
 
     def test_move_file(self):
         self.run_script('$ echo content >file')
-        self.failUnlessExists('file')
+        self.assertPathExists('file')
         self.run_script('$ mv file new_name')
-        self.failIfExists('file')
-        self.failUnlessExists('new_name')
+        self.assertPathDoesNotExist('file')
+        self.assertPathExists('new_name')
 
     def test_move_unknown_file(self):
         self.assertRaises(AssertionError,
@@ -480,9 +539,9 @@ $ mkdir dir
 $ echo content >dir/file
 """)
         self.run_script('$ mv dir new_name')
-        self.failIfExists('dir')
-        self.failUnlessExists('new_name')
-        self.failUnlessExists('new_name/file')
+        self.assertPathDoesNotExist('dir')
+        self.assertPathExists('new_name')
+        self.assertPathExists('new_name/file')
 
     def test_move_file_into_dir(self):
         self.run_script("""
@@ -490,16 +549,16 @@ $ mkdir dir
 $ echo content > file
 """)
         self.run_script('$ mv file dir')
-        self.failUnlessExists('dir')
-        self.failIfExists('file')
-        self.failUnlessExists('dir/file')
+        self.assertPathExists('dir')
+        self.assertPathDoesNotExist('file')
+        self.assertPathExists('dir/file')
 
 
 class cmd_test_confirm(commands.Command):
 
     def run(self):
         if ui.ui_factory.get_boolean(
-            'Really do it',
+            u'Really do it',
             # 'bzrlib.tests.test_script.confirm',
             # {}
             ):
@@ -513,20 +572,68 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
     def test_confirm_action(self):
         """You can write tests that demonstrate user confirmation.
         
-        Specifically, ScriptRunner does't care if the output line for the prompt
-        isn't terminated by a newline from the program; it's implicitly terminated 
-        by the input.
+        Specifically, ScriptRunner does't care if the output line for the
+        prompt isn't terminated by a newline from the program; it's implicitly
+        terminated by the input.
         """
         commands.builtin_command_registry.register(cmd_test_confirm)
         self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
         self.run_script("""
             $ bzr test-confirm
-            2>Really do it? [y/n]: 
-            <yes
+            2>Really do it? ([y]es, [n]o): yes
+            <y
             Do it!
             $ bzr test-confirm
-            2>Really do it? [y/n]: 
-            <no
+            2>Really do it? ([y]es, [n]o): no
+            <n
             ok, no
             """)
 
+class TestShelve(script.TestCaseWithTransportAndScript):
+
+    def setUp(self):
+        super(TestShelve, self).setUp()
+        self.run_script("""
+            $ bzr init test
+            Created a standalone tree (format: 2a)
+            $ cd test
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'file added'
+            2>Committing to:...test/
+            2>added file
+            2>Committed revision 1.
+            $ echo bar > file
+            """)
+
+    def test_shelve(self):
+        self.run_script("""
+            $ bzr shelve -m 'shelve bar'
+            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): yes
+            <y
+            2>Selected changes:
+            2> M  file
+            2>Shelve 1 change(s)? ([y]es, [N]o, [f]inish, [q]uit): yes
+            <y
+            2>Changes shelved with id "1".
+            """,
+                        null_output_matches_anything=True)
+        self.run_script("""
+            $ bzr shelve --list
+              1: shelve bar
+            """)
+
+    def test_dont_shelve(self):
+        # We intentionally provide no input here to test EOF
+        self.run_script("""
+            $ bzr shelve -m 'shelve bar'
+            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): 
+            2>No changes to shelve.
+            """,
+                        null_output_matches_anything=True)
+        self.run_script("""
+            $ bzr st
+            modified:
+              file
+            """)

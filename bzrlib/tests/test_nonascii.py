@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ from unicodedata import normalize
 from bzrlib import osutils
 from bzrlib.osutils import pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.workingtree import WorkingTree
 
 
 class NonAsciiTest(TestCaseWithTransport):

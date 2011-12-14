@@ -329,20 +329,28 @@ Doctests
 We make selective use of doctests__.  In general they should provide
 *examples* within the API documentation which can incidentally be tested.  We
 don't try to test every important case using doctests |--| regular Python
-tests are generally a better solution.  That is, we just use doctests to
-make our documentation testable, rather than as a way to make tests.
+tests are generally a better solution.  That is, we just use doctests to make
+our documentation testable, rather than as a way to make tests. Be aware that
+doctests are not as well isolated as the unit tests, if you need more
+isolation, you're likely want to write unit tests anyway if only to get a
+better control of the test environment.
 
 Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
   __ http://docs.python.org/lib/module-doctest.html
 
+There is an `assertDoctestExampleMatches` method in
+`bzrlib.tests.TestCase` that allows you to match against doctest-style
+string templates (including ``...`` to skip sections) from regular Python
+tests.
+
 
 Shell-like tests
 ----------------
 
-``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
-using a restricted and limited set of commands that should be enough to mimic
-most of the behaviours.
+``bzrlib/tests/script.py`` allows users to write tests in a syntax very
+close to a shell session, using a restricted and limited set of commands
+that should be enough to mimic most of the behaviours.
 
 A script is a set of commands, each command is composed of:
 
@@ -367,8 +375,9 @@ the line.
 The execution stops as soon as an expected output or an expected error is not
 matched.
 
-When no output is specified, any ouput from the command is accepted
-and execution continue.
+If output occurs and no output is expected, the execution stops and the
+test fails.  If unexpected output occurs on the standard error, then
+execution stops and the test fails.
 
 If an error occurs and no expected error is specified, the execution stops.
 
@@ -388,6 +397,12 @@ The following will succeeds only if 'bzr add' outputs 'adding file'::
 If you want the command to succeed for any output, just use::
 
   $ bzr add file
+  ...
+  2>...
+
+or use the ``--quiet`` option::
+
+  $ bzr add -q file
 
 The following will stop with an error::
 
@@ -427,6 +442,12 @@ the file doesn't exist::
 
   $ cat file
 
+You can run files containing shell-like scripts with::
+
+  $ bzr test-script <script>
+
+where ``<script>`` is the path to the file containing the shell-like script.
+
 The actual use of ScriptRunner within a TestCase looks something like
 this::
 
@@ -435,11 +456,11 @@ this::
     def test_unshelve_keep(self):
         # some setup here
         script.run_script(self, '''
-            $ bzr add file
-            $ bzr shelve --all -m Foo
+            $ bzr add -q file
+            $ bzr shelve -q --all -m Foo
             $ bzr shelve --list
             1: Foo
-            $ bzr unshelve --keep
+            $ bzr unshelve -q --keep
             $ bzr shelve --list
             1: Foo
             $ cat file
@@ -458,6 +479,19 @@ You can also test commands that read user interaction::
             <yes
             yes
             """)
+
+To avoid having to specify "-q" for all commands whose output is
+irrelevant, the run_script() method may be passed the keyword argument
+``null_output_matches_anything=True``.  For example::
+
+    def test_ignoring_null_output(self):
+        self.run_script("""
+            $ bzr init
+            $ bzr ci -m 'first revision' --unchanged
+            $ bzr log --line
+            1: ...
+            """, null_output_matches_anything=True)
+           
 
 Import tariff tests
 -------------------
@@ -482,9 +516,9 @@ We want to avoid loading code unnecessarily, for reasons including:
 regress.
 
 This is done by running the command in a subprocess with
-``--profile-imports``.  Starting a whole Python interpreter is pretty
-slow, so we don't want exhaustive testing here, but just enough to guard
-against distinct fixed problems.
+``PYTHON_VERBOSE=1``.  Starting a whole Python interpreter is pretty slow,
+so we don't want exhaustive testing here, but just enough to guard against
+distinct fixed problems.
 
 Assertions about precisely what is loaded tend to be brittle so we instead
 make assertions that particular things aren't loaded.
@@ -711,6 +745,22 @@ new feature instance with::
         _test_needs_features = [features.apport]
 
 
+Testing translations
+-----------------------
+
+Translations are disabled by default in tests.  If you want to test
+that code is translated you can use the ``ZzzTranslations`` class from
+``test_i18n``::
+
+    self.overrideAttr(i18n, '_translations', ZzzTranslations())
+
+And check the output strings look like ``u"zz\xe5{{output}}"``.
+
+To test the gettext setup and usage you override i18n.installed back
+to self.i18nInstalled and _translations to None, see
+test_i18n.TestInstall.
+
+
 Testing deprecated code
 -----------------------
 
@@ -805,17 +855,11 @@ with only one particular transport.  Once it's isolated, we can consider
 whether a test should be added for that particular implementation,
 or for all implementations of the interface.
 
-The multiplication of tests for different implementations is normally
-accomplished by overriding the ``load_tests`` function used to load tests
-from a module.  This function typically loads all the tests, then applies
-a TestProviderAdapter to them, which generates a longer suite containing
-all the test variations.
-
 See also `Per-implementation tests`_ (above).
 
 
-Test scenarios
---------------
+Test scenarios and variations
+-----------------------------
 
 Some utilities are provided for generating variations of tests.  This can
 be used for per-implementation tests, or other cases where the same test
@@ -826,8 +870,24 @@ which depend on attributes of the test object being pre-set with the
 values to which the test should be applied.  The test suite should then
 also provide a list of scenarios in which to run the tests.
 
-Typically ``multiply_tests_from_modules`` should be called from the test
-module's ``load_tests`` function.
+A single *scenario* is defined by a `(name, parameter_dict)` tuple.  The
+short string name is combined with the name of the test method to form the
+test instance name.  The parameter dict is merged into the instance's
+attributes.
+
+For example::
+
+    load_tests = load_tests_apply_scenarios
+
+    class TestCheckout(TestCase):
+
+        scenarios = multiply_scenarios(
+            VaryByRepositoryFormat(), 
+            VaryByTreeFormat(),
+            )
+
+The `load_tests` declaration or definition should be near the top of the
+file so its effect can be seen.
 
 
 Test support
@@ -932,6 +992,39 @@ method of ``TestCaseWithTransport``).
 
 Please see bzrlib.treebuilder for more details.
 
+PreviewTree
+~~~~~~~~~~~
+
+PreviewTrees are based on TreeTransforms.  This means they can represent
+virtually any state that a WorkingTree can have, including unversioned files.
+They can be used to test the output of anything that produces TreeTransforms,
+such as merge algorithms and revert.  They can also be used to test anything
+that takes arbitrary Trees as its input.
+
+::
+
+  # Get an empty tree to base the transform on.
+  b = self.make_branch('.')
+  empty_tree = b.repository.revision_tree(_mod_revision.NULL_REVISION)
+  tt = TransformPreview(empty_tree)
+  self.addCleanup(tt.finalize)
+  # Empty trees don't have a root, so add it first.
+  root = tt.new_directory('', ROOT_PARENT, 'tree-root')
+  # Set the contents of a file.
+  tt.new_file('new-file', root, 'contents', 'file-id')
+  preview = tt.get_preview_tree()
+  # Test the contents.
+  self.assertEqual('contents', preview.get_file_text('file-id'))
+
+PreviewTrees can stack, with each tree falling back to the previous::
+
+  tt2 = TransformPreview(preview)
+  self.addCleanup(tt2.finalize)
+  tt2.new_file('new-file2', tt2.root, 'contents2', 'file-id2')
+  preview2 = tt2.get_preview_tree()
+  self.assertEqual('contents', preview2.get_file_text('file-id'))
+  self.assertEqual('contents2', preview2.get_file_text('file-id2'))
+
 
 Temporarily changing state
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -940,6 +1033,42 @@ If your test needs to temporarily mutate some global state, and you need
 it restored at the end, you can say for example::
 
     self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+
+This should be used with discretion; sometimes it's better to make the
+underlying code more testable so that you don't need to rely on monkey
+patching.
+
+
+Observing calls to a function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes it's useful to observe how a function is called, typically when
+calling it has side effects but the side effects are not easy to observe
+from a test case.  For instance the function may be expensive and we want
+to assert it is not called too many times, or it has effects on the
+machine that are safe to run during a test but not easy to measure.  In
+these cases, you can use `recordCalls` which will monkey-patch in a
+wrapper that records when the function is called.
+
+
+Temporarily changing environment variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If yout test needs to temporarily change some environment variable value
+(which generally means you want it restored at the end), you can use::
+
+    self.overrideEnv('BZR_ENV_VAR', 'new_value')
+
+If you want to remove a variable from the environment, you should use the
+special ``None`` value::
+
+    self.overrideEnv('PATH', None)
+
+If you add a new feature which depends on a new environment variable, make
+sure it behaves properly when this variable is not defined (if applicable) and
+if you need to enforce a specific default value, check the
+``TestCase._cleanEnvironment`` in ``bzrlib.tests.__init__.py`` which defines a
+proper set of values for all tests.
 
 Cleaning up
 ~~~~~~~~~~~
@@ -976,9 +1105,8 @@ A more precise version that only filters traffic to port 4155 is::
 
     tc qdisc add dev lo root handle 1: prio
     tc qdisc add dev lo parent 1:3 handle 30: netem delay 500ms 
-    tc qdisc add dev lo parent 30:1 handle 40: prio
-    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 handle 800::800
-    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 handle 800::801
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 
 
 and to remove this::
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 from cStringIO import StringIO
 import os
 import socket
+import SocketServer
 import sys
 import threading
 
@@ -27,7 +28,6 @@ from bzrlib import (
     inventory,
     merge,
     osutils,
-    repository,
     revision as _mod_revision,
     tests,
     treebuilder,
@@ -35,17 +35,17 @@ from bzrlib import (
 from bzrlib.bundle import read_mergeable_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
-from bzrlib.bzrdir import BzrDir
 from bzrlib.directory_service import directories
 from bzrlib.bundle.serializer import write_bundle, read_bundle, v09, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
-from bzrlib.branch import Branch
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
-    test_read_bundle,
+    features,
     test_commit,
+    test_read_bundle,
+    test_server,
     )
 from bzrlib.transform import TreeTransform
 
@@ -67,6 +67,7 @@ def get_inventory_text(repo, revision_id):
 
 
 class MockTree(object):
+
     def __init__(self):
         from bzrlib.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
@@ -77,8 +78,8 @@ class MockTree(object):
 
     inventory = property(lambda x:x)
 
-    def __iter__(self):
-        return self.paths.iterkeys()
+    def all_file_ids(self):
+        return set(self.paths.keys())
 
     def __getitem__(self, file_id):
         if file_id == self.root.file_id:
@@ -144,6 +145,9 @@ class MockTree(object):
         result.write(self.contents[file_id])
         result.seek(0,0)
         return result
+
+    def get_file_revision(self, file_id):
+        return self.inventory[file_id].revision
 
     def contents_stats(self, file_id):
         if file_id not in self.contents:
@@ -492,7 +496,7 @@ class BundleTester(object):
                                  % (ancestor,))
 
                 # Now check that the file contents are all correct
-                for inventory_id in old:
+                for inventory_id in old.all_file_ids():
                     try:
                         old_file = old.get_file(inventory_id)
                     except errors.NoSuchFile:
@@ -505,8 +509,7 @@ class BundleTester(object):
                 new.unlock()
                 old.unlock()
         if not _mod_revision.is_null(rev_id):
-            rh = self.b1.revision_history()
-            tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
+            tree.branch.generate_revision_history(rev_id)
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
@@ -679,7 +682,7 @@ class BundleTester(object):
     def _test_symlink_bundle(self, link_name, link_target, new_link_target):
         link_id = 'link-1'
 
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
@@ -726,7 +729,7 @@ class BundleTester(object):
         self._test_symlink_bundle('link', 'bar/foo', 'mars')
 
     def test_unicode_symlink_bundle(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         self._test_symlink_bundle(u'\N{Euro Sign}link',
                                   u'bar/\N{Euro Sign}foo',
                                   u'mars\N{Euro Sign}')
@@ -833,7 +836,7 @@ class BundleTester(object):
         return bundle_file.getvalue()
 
     def test_unicode_bundle(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Handle international characters
         os.mkdir('b1')
         f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
@@ -1412,7 +1415,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         branch = tree_a.branch
         repo_a = branch.repository
         tree_a.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -1440,12 +1443,6 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         s.seek(0)
         # ensure repeat installs are harmless
         install_bundle(repo_b, serializer.read(s))
-
-
-class V4WeaveBundleTester(V4BundleTester):
-
-    def bzrdir_format(self):
-        return 'metaweave'
 
 
 class V4_2aBundleTester(V4BundleTester):
@@ -1839,7 +1836,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         bundle, then the ConnectionReset error should be propagated.
         """
         # Instantiate a server that will provoke a ConnectionReset
-        sock_server = _DisconnectingTCPServer()
+        sock_server = DisconnectingServer()
         self.start_server(sock_server)
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
@@ -1847,35 +1844,21 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
 
 
-class _DisconnectingTCPServer(object):
-    """A TCP server that immediately closes any connection made to it."""
+class DisconnectingHandler(SocketServer.BaseRequestHandler):
+    """A request handler that immediately closes any connection made to it."""
 
-    def start_server(self):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.bind(('127.0.0.1', 0))
-        self.sock.listen(1)
-        self.port = self.sock.getsockname()[1]
-        self.thread = threading.Thread(
-            name='%s (port %d)' % (self.__class__.__name__, self.port),
-            target=self.accept_and_close)
-        self.thread.start()
+    def handle(self):
+        self.request.close()
 
-    def accept_and_close(self):
-        conn, addr = self.sock.accept()
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
+
+class DisconnectingServer(test_server.TestingTCPServerInAThread):
+
+    def __init__(self):
+        super(DisconnectingServer, self).__init__(
+            ('127.0.0.1', 0),
+            test_server.TestingTCPServer,
+            DisconnectingHandler)
 
     def get_url(self):
-        return 'bzr://127.0.0.1:%d/' % (self.port,)
-
-    def stop_server(self):
-        try:
-            # make sure the thread dies by connecting to the listening socket,
-            # just in case the test failed to do so.
-            conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            conn.connect(self.sock.getsockname())
-            conn.close()
-        except socket.error:
-            pass
-        self.sock.close()
-        self.thread.join()
+        """Return the url of the server"""
+        return "bzr://%s:%d/" % self.server.server_address

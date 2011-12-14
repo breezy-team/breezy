@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,26 +42,17 @@ bzrlib.ui.text.TextUIFactory
 """
 
 
-import os
-import sys
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
-
 from bzrlib import (
-    errors,
+    config,
     osutils,
     progress,
     trace,
     )
 """)
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 _valid_boolean_strings = dict(yes=True, no=False,
@@ -154,7 +145,26 @@ class UIFactory(object):
             "%(from_format)s to %(to_format)s.\n"
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
-            )
+            ),
+        experimental_format_fetch=("Fetching into experimental format "
+            "%(to_format)s.\n"
+            "This format may be unreliable or change in the future "
+            "without an upgrade path.\n"),
+        deprecated_command=(
+            "The command 'bzr %(deprecated_name)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use 'bzr %(recommended_name)s' instead."),
+        deprecated_command_option=(
+            "The option '%(deprecated_name)s' to 'bzr %(command)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use '%(recommended_name)s' instead."),
+        recommend_upgrade=("%(current_format_name)s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  bzr upgrade %(basedir)s"),
+        locks_steal_dead=(
+            u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
         )
 
     def __init__(self):
@@ -205,10 +215,10 @@ class UIFactory(object):
         """
         return self.get_boolean(prompt % prompt_kwargs)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         """Prompt the user for a password.
 
-        :param prompt: The prompt to present the user
+        :param prompt: The prompt to present the user (must be unicode)
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
@@ -242,9 +252,7 @@ class UIFactory(object):
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            from bzrlib import config
-            encoding = config.GlobalConfig().get_user_option(
-                'output_encoding')
+            encoding = config.GlobalStack().get('output_encoding')
         if encoding is None:
             encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:
@@ -305,31 +313,52 @@ class UIFactory(object):
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
-            fail = "failed to format warning %r, %r" % (warning_id, message_args)
-            warnings.warn(fail)   # so tests will fail etc
+            fail = "bzr warning: %r, %r" % (warning_id, message_args)
+            warnings.warn("no template for warning: " + fail)   # so tests will fail etc
             return fail
         try:
             return template % message_args
         except ValueError, e:
-            fail = "failed to format warning %r, %r: %s" % (
+            fail = "bzr unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
             return fail
+
+    def choose(self, msg, choices, default=None):
+        """Prompt the user for a list of alternatives.
+
+        :param msg: message to be shown as part of the prompt.
+
+        :param choices: list of choices, with the individual choices separated
+            by '\n', e.g.: choose("Save changes?", "&Yes\n&No\n&Cancel"). The
+            letter after the '&' is the shortcut key for that choice. Thus you
+            can type 'c' to select "Cancel".  Shorcuts are case insensitive.
+            The shortcut does not need to be the first letter. If a shorcut key
+            is not provided, the first letter for the choice will be used.
+
+        :param default: default choice (index), returned for example when enter
+            is pressed for the console version.
+
+        :return: the index fo the user choice (so '0', '1' or '2' for
+            respectively yes/no/cancel in the previous example).
+        """
+        raise NotImplementedError(self.choose)
 
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user.
 
         :param prompt: a message to prompt the user with. Should be a single
-        line without terminating \n.
+            line without terminating \\n.
         :return: True or False for y/yes or n/no.
         """
-        raise NotImplementedError(self.get_boolean)
+        choice = self.choose(prompt + '?', '&yes\n&no', default=None)
+        return 0 == choice
 
     def get_integer(self, prompt):
         """Get an integer from the user.
 
         :param prompt: a message to prompt the user with. Could be a multi-line
-            prompt but without a terminating \n.
+            prompt but without a terminating \\n.
 
         :return: A signed integer.
         """
@@ -343,21 +372,14 @@ class UIFactory(object):
         """
         return NullProgressView()
 
-    def recommend_upgrade(self,
-        current_format_name,
-        basedir):
-        # XXX: this should perhaps be in the TextUIFactory and the default can do
-        # nothing
-        #
-        # XXX: Change to show_user_warning - that will accomplish the previous
-        # xxx. -- mbp 2010-02-25
-        trace.warning("%s is deprecated "
-            "and a better format is available.\n"
-            "It is recommended that you upgrade by "
-            "running the command\n"
-            "  bzr upgrade %s",
-            current_format_name,
-            basedir)
+    def recommend_upgrade(self, current_format_name, basedir):
+        """Recommend the user upgrade a control directory.
+
+        :param current_format_name: Description of the current format
+        :param basedir: Location of the control dir
+        """
+        self.show_user_warning('recommend_upgrade',
+            current_format_name=current_format_name, basedir=basedir)
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -413,22 +435,6 @@ class UIFactory(object):
     def show_warning(self, msg):
         """Show a warning to the user."""
         raise NotImplementedError(self.show_warning)
-
-    def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer.
-        
-        This is deprecated in favor of show_user_warning, but retained for api
-        compatibility in 2.0 and 2.1.
-        """
-        self.show_user_warning('cross_format_fetch', from_format=from_format,
-            to_format=to_format)
-
-    def warn_experimental_format_fetch(self, inter):
-        """Warn about fetching into experimental repository formats."""
-        if inter.target._format.experimental:
-            trace.warning("Fetching into experimental format %s.\n"
-                "This format may be unreliable or change in the future "
-                "without an upgrade path.\n" % (inter.target._format,))
 
 
 class NoninteractiveUIFactory(UIFactory):
@@ -491,7 +497,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_integer(self, prompt):
         return self.responses.pop(0)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt=u'', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):

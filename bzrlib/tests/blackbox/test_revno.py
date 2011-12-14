@@ -21,6 +21,8 @@
 import os
 
 from bzrlib import tests
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+
 
 class TestRevno(tests.TestCaseWithTransport):
 
@@ -117,3 +119,59 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr('revno --tree checkout_b')
         self.assertEqual('', err)
         self.assertEqual('???\n', out)
+
+    def test_revno_with_revision(self):
+        wt = self.make_branch_and_tree('.')
+        revid1 = wt.commit('rev1')
+        revid2 = wt.commit('rev2')
+
+        out, err = self.run_bzr('revno -r-2 .')
+        self.assertEqual('1\n', out)
+
+        out, err = self.run_bzr('revno -rrevid:%s .' % revid1)
+        self.assertEqual('1\n', out)
+
+    def test_revno_and_tree_mutually_exclusive(self):
+        wt = self.make_branch_and_tree('.')
+        out, err = self.run_bzr('revno -r-2 --tree .', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual(
+            'bzr: ERROR: --tree and --revision can not be used together\n',
+            err)
+
+
+class TestSmartServerRevno(tests.TestCaseWithTransport):
+
+    def test_simple_branch_revno(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        revid = t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['revno', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(6, self.hpss_calls)
+
+    def test_simple_branch_revno_lookup(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        revid1 = t.commit("message")
+        revid2 = t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['revno', '-rrevid:' + revid1,
+            self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(5, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

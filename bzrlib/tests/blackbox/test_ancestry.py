@@ -17,9 +17,6 @@
 import os
 
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
-from bzrlib.branch import Branch
-
 
 class TestAncestry(TestCaseWithTransport):
 
